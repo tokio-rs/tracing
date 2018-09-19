@@ -1,0 +1,12 @@
+[package]
+name = "tokio-trace-prototype"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+futures = "0.1"
+log = "0.4"
+lazy_static = "1"
+
+[dev-dependencies]
+env_logger = "0.5"
