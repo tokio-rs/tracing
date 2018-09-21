@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate tokio_trace_prototype as tokio_trace;
+extern crate tokio_trace;
 extern crate env_logger;
 
 use tokio_trace::Level;

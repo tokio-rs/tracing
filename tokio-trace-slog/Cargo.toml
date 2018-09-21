@@ -1,0 +1,7 @@
+[package]
+name = "tokio-trace-slog"
+version = "0.1.0"
+authors = ["David Barsky <dbarsky@amazon.com>"]
+
+[dependencies]
+tokio-trace = { path = "../tokio-trace" }
