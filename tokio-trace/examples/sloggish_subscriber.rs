@@ -10,20 +10,25 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
-use ansi_term::{Color, Style};
-use tokio_trace::Level;
+extern crate humantime;
+extern crate ansi_term;
+use self::ansi_term::{Color, Style};
+use tokio_trace::{self, Level};
+
 
 use std::{
     fmt,
     io::{self, Write},
     sync::atomic::{AtomicUsize, Ordering},
-    time::SystemTime,
+    time::{Instant, SystemTime},
 };
 
 pub struct SloggishSubscriber {
     indent: AtomicUsize,
     indent_amount: usize,
     stderr: io::Stderr,
+    t0_instant: Instant,
+    t0_sys: SystemTime,
 }
 
 struct ColorLevel(Level);
@@ -46,7 +51,14 @@ impl SloggishSubscriber {
             indent: AtomicUsize::new(0),
             indent_amount,
             stderr: io::stderr(),
+            t0_instant: Instant::now(),
+            t0_sys: SystemTime::now(),
         }
+    }
+
+    fn anchor_instant(&self, t1: Instant) -> SystemTime {
+        let diff = t1 - self.t0_instant;
+        self.t0_sys + diff
     }
 
     fn print_kvs<'a, I>(&self, writer: &mut impl Write, kvs: I, leading: &str) -> io::Result<()>
@@ -96,10 +108,11 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     fn observe_event<'event>(&self, event: &'event tokio_trace::Event<'event>) {
         let mut stderr = self.stderr.lock();
         self.print_indent(&mut stderr).unwrap();
+        let t1 = self.anchor_instant(event.timestamp);
         write!(
             &mut stderr,
             "{} ",
-            humantime::format_rfc3339_seconds(event.timestamp)
+            humantime::format_rfc3339_seconds(t1)
         ).unwrap();
         self.print_meta(&mut stderr, event.static_meta).unwrap();
         write!(
@@ -112,7 +125,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn enter(&self, span: &tokio_trace::Span, _at: SystemTime) {
+    fn enter(&self, span: &tokio_trace::Span, _at: Instant) {
         let mut stderr = self.stderr.lock();
         let indent = self.print_indent(&mut stderr).unwrap();
         self.print_kvs(&mut stderr, span.fields(), "").unwrap();
@@ -122,7 +135,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::Span, _at: SystemTime) {
+    fn exit(&self, _span: &tokio_trace::Span, _at: Instant) {
         self.indent.fetch_sub(self.indent_amount, Ordering::Release);
     }
 }
