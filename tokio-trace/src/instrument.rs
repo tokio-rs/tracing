@@ -1,12 +1,12 @@
 use super::Span;
-use futures::{Future, Sink, Stream, Poll};
+use futures::{Future, Sink, Stream, Poll, StartSend};
 
-
+// TODO: seal?
 pub trait Instrument: Sized {
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented {
             inner: self,
-            span
+            span,
         }
     }
 }
@@ -17,33 +17,35 @@ pub struct Instrumented<T> {
     span: Span,
 }
 
-impl<T: Future + Sized> Instrument for T {}
-impl<T: Stream + Sized> Instrument for T {}
-impl<T: Sink + Sized> Instrument for T {}
+impl<T: Sized> Instrument for T {}
 
-impl<T: Future> Future for Instrument<T> {
+impl<T: Future> Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.span.enter(|| {
-            self.inner.poll()
+        let span = &self.span;
+        let inner = &mut self.inner;
+        span.enter(move || {
+            inner.poll()
         })
     }
 }
 
-impl<T: Stream> Stream for Instrument<T> {
+impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        self.span.enter(|| {
-            self.inner.poll()
+        let span = &self.span;
+        let inner = &mut self.inner;
+        span.enter(move || {
+            inner.poll()
         })
     }
 }
 
-impl<T: Sink> Sink for Instrument<T> {
+impl<T: Sink> Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
 
@@ -51,10 +53,18 @@ impl<T: Sink> Sink for Instrument<T> {
         &mut self,
         item: Self::SinkItem
     ) -> StartSend<Self::SinkItem, Self::SinkError> {
-        self.span.enter(|| self.inner.start_send(item))
+        let span = &self.span;
+        let inner = &mut self.inner;
+        span.enter(move || {
+            inner.start_send(item)
+        })
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        self.span.enter(|| { self.inner.poll_complete() })
+        let span = &self.span;
+        let inner = &mut self.inner;
+        span.enter(move || {
+            inner.poll_complete()
+        })
     }
 }

@@ -2,5 +2,6 @@
 
 members = [
     "tokio-trace",
+    "tokio-trace-tower",
     "tokio-trace-slog"
 ]
