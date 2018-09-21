@@ -178,7 +178,10 @@ impl<'event> Event<'event> {
     }
 
     pub fn all_fields<'a>(&'a self) -> impl Iterator<Item = (&'static str, &'a dyn Value)> {
-        self.fields().chain(self.parents().flat_map(|parent| parent.fields())).dedup()
+        self.fields()
+            .chain(self.parents()
+            .flat_map(|parent| parent.fields()))
+            .dedup_by(|(k, _)| k)
     }
 }
 
