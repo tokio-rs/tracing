@@ -15,6 +15,8 @@ use std::{
     slice,
 };
 
+use self::dedup::IteratorDedup;
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! static_meta {
@@ -91,6 +93,7 @@ thread_local! {
 
 pub mod subscriber;
 mod dispatcher;
+mod dedup;
 
 pub use dispatcher::{Dispatcher, Builder as DispatcherBuilder};
 
@@ -162,7 +165,6 @@ impl<'event> Event<'event> {
         self.field_names()
             .enumerate()
             .filter_map(move |(idx, &name)| self.field_values.get(idx).map(|&val| (name, val)))
-            .chain(self.parent.fields())
     }
 
     pub fn debug_fields(&'event self) -> DebugFields<'event, Self> {
@@ -173,6 +175,10 @@ impl<'event> Event<'event> {
         Parents {
             next: Some(&self.parent)
         }
+    }
+
+    pub fn all_fields<'a>(&'a self) -> impl Iterator<Item = (&'static str, &'a dyn Value)> {
+        self.fields().chain(self.parents().flat_map(|parent| parent.fields())).dedup()
     }
 }
 
