@@ -3,17 +3,10 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
-pub use log::Level;
 pub use self::subscriber::Subscriber;
+pub use log::Level;
 
-use std::{
-    cmp,
-    cell::RefCell,
-    fmt,
-    time::SystemTime,
-    sync::Arc,
-    slice,
-};
+use std::{cell::RefCell, cmp, fmt, slice, sync::Arc, time::SystemTime};
 
 use self::dedup::IteratorDedup;
 
@@ -91,18 +84,18 @@ thread_local! {
     static CURRENT_SPAN: RefCell<Span> = RefCell::new(ROOT_SPAN.clone());
 }
 
-pub mod subscriber;
-mod dispatcher;
 mod dedup;
+mod dispatcher;
+pub mod subscriber;
 
-pub use dispatcher::{Dispatcher, Builder as DispatcherBuilder};
+pub use dispatcher::{Builder as DispatcherBuilder, Dispatcher};
 
 // XXX: im using fmt::Debug for prototyping purposes, it should probably leave.
 pub trait Value: fmt::Debug + Send + Sync {
     // ... ?
 }
 
-impl<T> Value for T where T: fmt::Debug + Send + Sync { }
+impl<T> Value for T where T: fmt::Debug + Send + Sync {}
 
 pub struct Event<'event> {
     pub timestamp: SystemTime,
@@ -143,7 +136,6 @@ struct SpanInner {
     pub static_meta: &'static StaticMeta,
 
     pub field_values: Vec<Box<dyn Value>>,
-
     // ...
 }
 
@@ -156,9 +148,7 @@ pub struct Parents<'a> {
 
 impl<'event> Event<'event> {
     pub fn field_names(&self) -> slice::Iter<&'static str> {
-        self.static_meta
-            .field_names
-            .iter()
+        self.static_meta.field_names.iter()
     }
 
     pub fn fields(&'event self) -> impl Iterator<Item = (&'static str, &'event dyn Value)> {
@@ -173,14 +163,13 @@ impl<'event> Event<'event> {
 
     pub fn parents<'a>(&'a self) -> Parents<'a> {
         Parents {
-            next: Some(&self.parent)
+            next: Some(&self.parent),
         }
     }
 
     pub fn all_fields<'a>(&'a self) -> impl Iterator<Item = (&'static str, &'a dyn Value)> {
         self.fields()
-            .chain(self.parents()
-            .flat_map(|parent| parent.fields()))
+            .chain(self.parents().flat_map(|parent| parent.fields()))
             .dedup_by(|(k, _)| k)
     }
 }
@@ -208,14 +197,12 @@ impl Span {
                 parent: Some(parent),
                 static_meta,
                 field_values,
-            })
+            }),
         }
     }
 
     pub fn current() -> Self {
-        CURRENT_SPAN.with(|span| {
-            span.borrow().clone()
-        })
+        CURRENT_SPAN.with(|span| span.borrow().clone())
     }
 
     pub fn name(&self) -> Option<&'static str> {
@@ -231,10 +218,7 @@ impl Span {
     }
 
     pub fn field_names(&self) -> slice::Iter<&'static str> {
-        self.inner
-            .static_meta
-            .field_names
-            .iter()
+        self.inner.static_meta.field_names.iter()
     }
 
     pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'static str, &'a dyn Value)> {
@@ -264,23 +248,21 @@ impl Span {
     }
 
     pub fn parents<'a>(&'a self) -> Parents<'a> {
-        Parents {
-            next: Some(self)
-        }
+        Parents { next: Some(self) }
     }
 }
 
 impl cmp::PartialEq for SpanInner {
     fn eq(&self, other: &SpanInner) -> bool {
-        self.opened_at == other.opened_at &&
-        self.name == other.name &&
-        self.static_meta == other.static_meta
+        self.opened_at == other.opened_at
+            && self.name == other.name
+            && self.static_meta == other.static_meta
     }
 }
 
 impl<'a> IntoIterator for &'a Span {
     type Item = (&'static str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'static str, &'a dyn Value)> +'a>; // TODO: unbox
+    type IntoIter = Box<Iterator<Item = (&'static str, &'a dyn Value)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
@@ -288,7 +270,7 @@ impl<'a> IntoIterator for &'a Span {
 
 impl<'a> IntoIterator for &'a Event<'a> {
     type Item = (&'static str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'static str, &'a dyn Value)> +'a>; // TODO: unbox
+    type IntoIter = Box<Iterator<Item = (&'static str, &'a dyn Value)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
@@ -298,7 +280,7 @@ pub struct DebugFields<'a, I: 'a>(&'a I)
 where
     &'a I: IntoIterator<Item = (&'static str, &'a dyn Value)>;
 
-impl<'a, I:'a > fmt::Debug for DebugFields<'a, I>
+impl<'a, I: 'a> fmt::Debug for DebugFields<'a, I>
 where
     &'a I: IntoIterator<Item = (&'static str, &'a dyn Value)>,
 {
