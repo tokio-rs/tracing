@@ -4,7 +4,7 @@ use ::{
 };
 
 use std::{
-    time::Instant,
+    time::SystemTime,
     sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
 };
 
@@ -63,14 +63,14 @@ impl Subscriber for Builder {
     }
 
     #[inline]
-    fn enter(&self, span: &Span, at: Instant) {
+    fn enter(&self, span: &Span, at: SystemTime) {
         for subscriber in &self.subscribers {
             subscriber.enter(span, at)
         }
     }
 
     #[inline]
-    fn exit(&self, span: &Span, at: Instant) {
+    fn exit(&self, span: &Span, at: SystemTime) {
        for subscriber in &self.subscribers {
             subscriber.exit(span, at)
         }
@@ -97,12 +97,12 @@ impl Subscriber for Dispatcher {
     }
 
     #[inline]
-    fn enter(&self, span: &Span, at: Instant) {
+    fn enter(&self, span: &Span, at: SystemTime) {
         self.0.enter(span, at)
     }
 
     #[inline]
-    fn exit(&self, span: &Span, at: Instant) {
+    fn exit(&self, span: &Span, at: SystemTime) {
         self.0.exit(span, at)
     }
 }
@@ -118,7 +118,7 @@ impl Subscriber for NoDispatcher {
         // TODO: should this panic instead?
     }
 
-    fn enter(&self, _span: &Span, _at: Instant) { }
+    fn enter(&self, _span: &Span, _at: SystemTime) { }
 
-    fn exit(&self, _span: &Span, _at: Instant) { }
+    fn exit(&self, _span: &Span, _at: SystemTime) { }
 }

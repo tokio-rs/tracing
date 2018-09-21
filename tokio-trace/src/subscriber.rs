@@ -1,11 +1,11 @@
 use super::{Event, Span, StaticMeta};
 use ::log;
-use std::time::Instant;
+use std::time::SystemTime;
 
 pub trait Subscriber {
     fn observe_event<'event>(&self, event: &'event Event<'event>);
-    fn enter(&self, span: &Span, at: Instant);
-    fn exit(&self, span: &Span, at: Instant);
+    fn enter(&self, span: &Span, at: SystemTime);
+    fn exit(&self, span: &Span, at: SystemTime);
 }
 
 pub struct LogSubscriber;
@@ -32,8 +32,8 @@ impl Subscriber for LogSubscriber {
         }
     }
 
-    fn enter(&self, _span: &Span, _at: Instant) { }
-    fn exit(&self, _span: &Span, _at: Instant) { }
+    fn enter(&self, _span: &Span, _at: SystemTime) { }
+    fn exit(&self, _span: &Span, _at: SystemTime) { }
 }
 
 impl<'a, 'b> Into<log::Metadata<'a>> for &'b StaticMeta {
