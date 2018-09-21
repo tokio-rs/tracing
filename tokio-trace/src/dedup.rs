@@ -3,7 +3,7 @@ use std::iter::Peekable;
 pub trait IteratorDedup: Iterator + Sized {
     fn dedup_by<F, K>(self, f: F) -> DedupBy<Self, F, K>
     where
-        F: Fn(&Self::Item) -> K,
+        F: Fn(&Self::Item) -> &K,
         K: PartialEq,
     {
         DedupBy {
@@ -19,16 +19,21 @@ where
     I: Iterator + Sized,
 {}
 
-pub struct DedupBy<I: Iterator, F> {
+pub struct DedupBy<I: Iterator, F: Fn(&I::Item) -> &K, K> {
     f: F,
     inner: Peekable<I>,
     emit: bool,
 }
 
-impl<I> Iterator for DedupBy<I>
-where I: Iterator, <I as Iterator>::Item: PartialEq {
+impl<I, F, K> Iterator for DedupBy<I, F, K>
+where
+    I: Iterator,
+    F: Fn(&I::Item) -> &K,
+    K: PartialEq,
+{
     type Item = <I as Iterator>::Item;
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
+        let f = &self.f;
         let result =
             if self.emit {
                 self.inner.next()
@@ -37,9 +42,9 @@ where I: Iterator, <I as Iterator>::Item: PartialEq {
                     None => return None,
                     Some(first) => first,
                 };
-                self.inner.find(|item| first != *item)
+                self.inner.find(|item| (f)(&first) != (f)(item))
             };
-        self.emit = result.as_ref() != self.inner.peek();
+        self.emit = result.as_ref().map(f) != self.inner.peek().map(f);
         result
     }
 }

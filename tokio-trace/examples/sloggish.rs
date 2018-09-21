@@ -1,3 +1,15 @@
+//! A simple example demonstrating how one might implement a custom
+//! subscriber.
+//!
+//! This subscriber implements a tree-structured logger similar to
+//! the "compact" formatter in [`slog-term`]. The demo mimicks the
+//! example output in the screenshot in the [`slog` README].
+//!
+//! Note that this logger isn't ready for actual production use.
+//! Several corners were cut to make the example simple.
+//!
+//! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
+//! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 #[macro_use]
 extern crate tokio_trace;
 extern crate ansi_term;
@@ -8,8 +20,8 @@ use tokio_trace::Level;
 use std::{
     fmt,
     io::{self, Write},
-    time::Instant,
     sync::atomic::{AtomicUsize, Ordering},
+    time::Instant,
 };
 
 struct SloggishSubscriber {
@@ -27,7 +39,7 @@ impl fmt::Display for ColorLevel {
             Level::Debug => Color::Blue.paint("DEBUG"),
             Level::Info => Color::Green.paint("INFO "),
             Level::Warn => Color::Yellow.paint("WARN "),
-            Level::Error => Color::Red.paint("ERROR")
+            Level::Error => Color::Red.paint("ERROR"),
         }.fmt(f)
     }
 }
@@ -41,18 +53,27 @@ impl SloggishSubscriber {
         }
     }
 
-    fn print_kvs<'a, I>(&self, writer: &mut impl Write, kvs: I) -> io::Result<()>
+    fn print_kvs<'a, I>(&self, writer: &mut impl Write, kvs: I, leading: &str) -> io::Result<()>
     where
-        I: IntoIterator<Item=(&'static str, &'a dyn tokio_trace::Value)>,
+        I: IntoIterator<Item = (&'static str, &'a dyn tokio_trace::Value)>,
     {
+        let mut kvs = kvs.into_iter();
+        if let Some((k, v)) = kvs.next() {
+            write!(writer, "{}{}: {:?}", leading, Style::new().bold().paint(k), v)?;
+        }
         for (k, v) in kvs {
-            write!(writer, "{}: {:?} ", Style::new().bold().paint(k), v)?;
+            write!(writer, ", {}: {:?}", Style::new().bold().paint(k), v)?;
         }
         Ok(())
     }
 
-    fn print_meta(&self, writer: &mut impl Write, meta: &tokio_trace::StaticMeta) -> io::Result<()> {
-        write!(writer,
+    fn print_meta(
+        &self,
+        writer: &mut impl Write,
+        meta: &tokio_trace::StaticMeta,
+    ) -> io::Result<()> {
+        write!(
+            writer,
             "{level} {target} ",
             level = ColorLevel(meta.level),
             target = meta.target.unwrap_or(meta.module_path),
@@ -74,8 +95,12 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         let mut stderr = self.stderr.lock();
         self.print_meta(&mut stderr, event.static_meta).unwrap();
         self.print_indent(&mut stderr).unwrap();
-        write!(&mut stderr, "{}, ", Style::new().bold().paint(format!("{}", event.message))).unwrap();
-        self.print_kvs(&mut stderr, event.all_fields()).unwrap();
+        write!(
+            &mut stderr,
+            "{}",
+            Style::new().bold().paint(format!("{}", event.message))
+        ).unwrap();
+        self.print_kvs(&mut stderr, event.fields(), ", ").unwrap();
         write!(&mut stderr, "\n").unwrap();
     }
 
@@ -84,9 +109,10 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         let mut stderr = self.stderr.lock();
         self.print_meta(&mut stderr, span.meta()).unwrap();
         let indent = self.print_indent(&mut stderr).unwrap();
-        self.print_kvs(&mut stderr, span.fields()).unwrap();
+        self.print_kvs(&mut stderr, span.fields(), "").unwrap();
         write!(&mut stderr, "\n").unwrap();
-        self.indent.compare_and_swap(indent, indent + self.indent_amount, Ordering::Release);
+        self.indent
+            .compare_and_swap(indent, indent + self.indent_amount, Ordering::Release);
     }
 
     #[inline]
@@ -103,8 +129,31 @@ fn main() {
     let foo = 3;
     event!(Level::Info, { foo = foo, bar = "bar" }, "hello world");
 
-    let span = span!("my_great_span", foo = 4, baz = 5);
-    span.enter(|| {
-        event!(Level::Info, { yak_shaved = true }, "hi from inside my span");
+    span!("", version = 5.0).enter(|| {
+        span!("server", host = "localhost", port = 8080).enter(|| {
+            event!(Level::Info, {}, "starting");
+            event!(Level::Info, {}, "listening");
+            let peer1 = span!("conn", peer_addr = "82.9.9.9", port = 42381);
+            peer1.enter(|| {
+                event!(Level::Debug, {}, "connected");
+                event!(Level::Debug, { length = 2 }, "message received");
+            });
+            let peer2 = span!("conn", peer_addr = "8.8.8.8", port = 18230);
+            peer2.enter(|| {
+                event!(Level::Debug, {}, "connected");
+            });
+            peer1.enter(|| {
+                event!(Level::Warn, { algo = "xor" }, "weak encryption requested");
+                event!(Level::Debug, { length = 8 }, "response sent");
+                event!(Level::Debug, { }, "disconnected");
+            });
+            peer2.enter(|| {
+                event!(Level::Debug, { length = 5 }, "message received");
+                event!(Level::Debug, { length = 8 }, "response sent");
+                event!(Level::Debug, { }, "disconnected");
+            });
+            event!(Level::Error, {}, "internal error");
+            event!(Level::Info, {}, "exit");
+        })
     });
 }
