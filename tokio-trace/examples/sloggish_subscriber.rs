@@ -10,11 +10,6 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
-#[macro_use]
-extern crate tokio_trace;
-extern crate ansi_term;
-extern crate humantime;
-
 use ansi_term::{Color, Style};
 use tokio_trace::Level;
 
@@ -25,7 +20,7 @@ use std::{
     time::SystemTime,
 };
 
-struct SloggishSubscriber {
+pub struct SloggishSubscriber {
     indent: AtomicUsize,
     indent_amount: usize,
     stderr: io::Stderr,
@@ -130,38 +125,4 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     fn exit(&self, _span: &tokio_trace::Span, _at: SystemTime) {
         self.indent.fetch_sub(self.indent_amount, Ordering::Release);
     }
-}
-
-fn main() {
-    tokio_trace::Dispatcher::builder()
-        .add_subscriber(SloggishSubscriber::new(2))
-        .init();
-
-    span!("", version = 5.0).enter(|| {
-        span!("server", host = "localhost", port = 8080).enter(|| {
-            event!(Level::Info, {}, "starting");
-            event!(Level::Info, {}, "listening");
-            let peer1 = span!("conn", peer_addr = "82.9.9.9", port = 42381);
-            peer1.enter(|| {
-                event!(Level::Debug, {}, "connected");
-                event!(Level::Debug, { length = 2 }, "message received");
-            });
-            let peer2 = span!("conn", peer_addr = "8.8.8.8", port = 18230);
-            peer2.enter(|| {
-                event!(Level::Debug, {}, "connected");
-            });
-            peer1.enter(|| {
-                event!(Level::Warn, { algo = "xor" }, "weak encryption requested");
-                event!(Level::Debug, { length = 8 }, "response sent");
-                event!(Level::Debug, {}, "disconnected");
-            });
-            peer2.enter(|| {
-                event!(Level::Debug, { length = 5 }, "message received");
-                event!(Level::Debug, { length = 8 }, "response sent");
-                event!(Level::Debug, {}, "disconnected");
-            });
-            event!(Level::Error, {}, "internal error");
-            event!(Level::Info, {}, "exit");
-        })
-    });
 }
