@@ -10,7 +10,7 @@ use std::{
     cmp,
     cell::RefCell,
     fmt,
-    time::Instant,
+    time::SystemTime,
     sync::Arc,
     slice,
 };
@@ -49,7 +49,7 @@ macro_rules! span {
     ($name:expr, $($k:ident = $val:expr),*) => {
         $crate::Span::new(
             Some($name),
-            ::std::time::Instant::now(),
+            ::std::time::SystemTime::now(),
             $crate::Span::current(),
             &static_meta!( $($k),* ),
             vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
@@ -62,7 +62,7 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
     {       let field_values: &[& dyn $crate::Value] = &[ $( & $val),* ];
             $crate::Event {
-                timestamp: ::std::time::Instant::now(),
+                timestamp: ::std::time::SystemTime::now(),
                 parent: $crate::Span::current(),
                 follows_from: &[],
                 static_meta: &static_meta!(@ $target, $lvl, $($k),* ),
@@ -79,7 +79,7 @@ lazy_static! {
     static ref ROOT_SPAN: Span = Span {
         inner: Arc::new(SpanInner {
             name: Some("root"),
-            opened_at: Instant::now(),
+            opened_at: SystemTime::now(),
             parent: None,
             static_meta: &static_meta!(),
             field_values: Vec::new(),
@@ -105,7 +105,7 @@ pub trait Value: fmt::Debug + Send + Sync {
 impl<T> Value for T where T: fmt::Debug + Send + Sync { }
 
 pub struct Event<'event> {
-    pub timestamp: Instant,
+    pub timestamp: SystemTime,
 
     pub parent: Span,
     pub follows_from: &'event [Span],
@@ -136,7 +136,7 @@ pub struct Span {
 #[derive(Debug)]
 struct SpanInner {
     pub name: Option<&'static str>,
-    pub opened_at: Instant,
+    pub opened_at: SystemTime,
 
     pub parent: Option<Span>,
 
@@ -196,7 +196,7 @@ impl<'event> Drop for Event<'event> {
 impl Span {
     pub fn new(
         name: Option<&'static str>,
-        opened_at: Instant,
+        opened_at: SystemTime,
         parent: Span,
         static_meta: &'static StaticMeta,
         field_values: Vec<Box<dyn Value>>,
@@ -246,15 +246,15 @@ impl Span {
     pub fn enter<F: FnOnce() -> T, T>(&self, f: F) -> T {
         CURRENT_SPAN.with(|current_span| {
             current_span.replace(self.clone());
-            Dispatcher::current().enter(&self, Instant::now());
+            Dispatcher::current().enter(&self, SystemTime::now());
 
             let result = f();
 
-            if *self != *current_span.borrow() {
-                current_span.replace(self.parent().unwrap_or(self).clone());
-                Dispatcher::current().exit(&self, Instant::now());
+            if let Some(parent) = self.parent() {
+                current_span.replace(parent.clone());
             }
 
+            Dispatcher::current().exit(&self, SystemTime::now());
             result
         })
     }
