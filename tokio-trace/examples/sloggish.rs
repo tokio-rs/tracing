@@ -13,6 +13,7 @@
 #[macro_use]
 extern crate tokio_trace;
 extern crate ansi_term;
+extern crate humantime;
 
 use ansi_term::{Color, Style};
 use tokio_trace::Level;
@@ -21,7 +22,7 @@ use std::{
     fmt,
     io::{self, Write},
     sync::atomic::{AtomicUsize, Ordering},
-    time::Instant,
+    time::SystemTime,
 };
 
 struct SloggishSubscriber {
@@ -37,7 +38,7 @@ impl fmt::Display for ColorLevel {
         match self.0 {
             Level::Trace => Color::Purple.paint("TRACE"),
             Level::Debug => Color::Blue.paint("DEBUG"),
-            Level::Info => Color::Green.paint("INFO "),
+            Level::Info => Color::Green.paint("INFO"),
             Level::Warn => Color::Yellow.paint("WARN "),
             Level::Error => Color::Red.paint("ERROR"),
         }.fmt(f)
@@ -93,8 +94,13 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     #[inline]
     fn observe_event<'event>(&self, event: &'event tokio_trace::Event<'event>) {
         let mut stderr = self.stderr.lock();
-        self.print_meta(&mut stderr, event.static_meta).unwrap();
         self.print_indent(&mut stderr).unwrap();
+        write!(
+            &mut stderr,
+            "{} ",
+            humantime::format_rfc3339_seconds(event.timestamp)
+        ).unwrap();
+        self.print_meta(&mut stderr, event.static_meta).unwrap();
         write!(
             &mut stderr,
             "{}",
@@ -105,9 +111,8 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn enter(&self, span: &tokio_trace::Span, _at: Instant) {
+    fn enter(&self, span: &tokio_trace::Span, _at: SystemTime) {
         let mut stderr = self.stderr.lock();
-        self.print_meta(&mut stderr, span.meta()).unwrap();
         let indent = self.print_indent(&mut stderr).unwrap();
         self.print_kvs(&mut stderr, span.fields(), "").unwrap();
         write!(&mut stderr, "\n").unwrap();
@@ -116,7 +121,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::Span, _at: Instant) {
+    fn exit(&self, _span: &tokio_trace::Span, _at: SystemTime) {
         self.indent.fetch_sub(self.indent_amount, Ordering::Release);
     }
 }
@@ -125,9 +130,6 @@ fn main() {
     tokio_trace::Dispatcher::builder()
         .add_subscriber(SloggishSubscriber::new(2))
         .init();
-
-    let foo = 3;
-    event!(Level::Info, { foo = foo, bar = "bar" }, "hello world");
 
     span!("", version = 5.0).enter(|| {
         span!("server", host = "localhost", port = 8080).enter(|| {
