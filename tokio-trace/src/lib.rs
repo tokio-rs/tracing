@@ -87,6 +87,7 @@ thread_local! {
 mod dedup;
 mod dispatcher;
 pub mod subscriber;
+pub mod instrument;
 
 pub use dispatcher::{Builder as DispatcherBuilder, Dispatcher};
 
