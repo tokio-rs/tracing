@@ -1,5 +1,5 @@
 use super::{Event, Span, StaticMeta};
-use ::log;
+use log;
 use std::time::SystemTime;
 
 pub trait Subscriber {
@@ -22,18 +22,24 @@ impl Subscriber for LogSubscriber {
         let meta = event.static_meta.into();
         let logger = log::logger();
         if logger.enabled(&meta) {
-            logger.log(&log::Record::builder()
-                .metadata(meta)
-                .module_path(Some(event.static_meta.module_path))
-                .file(Some(event.static_meta.file))
-                .line(Some(event.static_meta.line))
-                .args(format_args!("[{}] {:?} {}", event.parent.name().unwrap_or("???"), fields, event.message))
-                .build());
+            logger.log(
+                &log::Record::builder()
+                    .metadata(meta)
+                    .module_path(Some(event.static_meta.module_path))
+                    .file(Some(event.static_meta.file))
+                    .line(Some(event.static_meta.line))
+                    .args(format_args!(
+                        "[{}] {:?} {}",
+                        event.parent.name().unwrap_or("???"),
+                        fields,
+                        event.message
+                    )).build(),
+            );
         }
     }
 
-    fn enter(&self, _span: &Span, _at: SystemTime) { }
-    fn exit(&self, _span: &Span, _at: SystemTime) { }
+    fn enter(&self, _span: &Span, _at: SystemTime) {}
+    fn exit(&self, _span: &Span, _at: SystemTime) {}
 }
 
 impl<'a, 'b> Into<log::Metadata<'a>> for &'b StaticMeta {

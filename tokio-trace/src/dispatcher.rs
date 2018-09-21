@@ -1,11 +1,8 @@
-use ::{
-    Event, Span,
-    subscriber::Subscriber,
-};
+use {subscriber::Subscriber, Event, Span};
 
 use std::{
-    time::SystemTime,
     sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
+    time::SystemTime,
 };
 
 static STATE: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -71,7 +68,7 @@ impl Subscriber for Builder {
 
     #[inline]
     fn exit(&self, span: &Span, at: SystemTime) {
-       for subscriber in &self.subscribers {
+        for subscriber in &self.subscribers {
             subscriber.exit(span, at)
         }
     }
@@ -88,7 +85,6 @@ impl Dispatcher {
         Builder::new()
     }
 }
-
 
 impl Subscriber for Dispatcher {
     #[inline]
@@ -118,7 +114,7 @@ impl Subscriber for NoDispatcher {
         // TODO: should this panic instead?
     }
 
-    fn enter(&self, _span: &Span, _at: SystemTime) { }
+    fn enter(&self, _span: &Span, _at: SystemTime) {}
 
-    fn exit(&self, _span: &Span, _at: SystemTime) { }
+    fn exit(&self, _span: &Span, _at: SystemTime) {}
 }
