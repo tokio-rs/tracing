@@ -230,6 +230,10 @@ impl Span {
 
     pub fn enter<F: FnOnce() -> T, T>(&self, f: F) -> T {
         CURRENT_SPAN.with(|current_span| {
+            if *current_span.borrow() == *self || current_span.borrow().parents().any(|span| span == self) {
+                return f();
+            }
+
             current_span.replace(self.clone());
             Dispatcher::current().enter(&self, Instant::now());
 
@@ -237,9 +241,9 @@ impl Span {
 
             if let Some(parent) = self.parent() {
                 current_span.replace(parent.clone());
+                Dispatcher::current().exit(&self, Instant::now());
             }
 
-            Dispatcher::current().exit(&self, Instant::now());
             result
         })
     }

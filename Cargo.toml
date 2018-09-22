@@ -3,5 +3,6 @@
 members = [
     "tokio-trace",
     "tokio-trace-tower",
+    "tokio-trace-tower-http",
     "tokio-trace-slog"
 ]

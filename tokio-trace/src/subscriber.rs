@@ -21,6 +21,7 @@ impl Subscriber for LogSubscriber {
         let fields = event.debug_fields();
         let meta = event.static_meta.into();
         let logger = log::logger();
+        let parents = event.parents().filter_map(Span::name).collect::<Vec<_>>();
         if logger.enabled(&meta) {
             logger.log(
                 &log::Record::builder()
@@ -30,7 +31,7 @@ impl Subscriber for LogSubscriber {
                     .line(Some(event.static_meta.line))
                     .args(format_args!(
                         "[{}] {:?} {}",
-                        event.parent.name().unwrap_or("???"),
+                        parents.join(":"),
                         fields,
                         event.message
                     )).build(),
@@ -38,8 +39,17 @@ impl Subscriber for LogSubscriber {
         }
     }
 
-    fn enter(&self, _span: &Span, _at: Instant) {}
-    fn exit(&self, _span: &Span, _at: Instant) {}
+    fn enter(&self, span: &Span, _at: Instant) {
+        let logger = log::logger();
+        logger.log(&log::Record::builder()
+            .args(format_args!("-> {:?}", span.name()))
+            .build()
+        )
+    }
+    fn exit(&self, span: &Span, _at: Instant) {
+        let logger = log::logger();
+        logger.log(&log::Record::builder().args(format_args!("<- {:?}", span.name())).build())
+    }
 }
 
 impl<'a, 'b> Into<log::Metadata<'a>> for &'b StaticMeta {
