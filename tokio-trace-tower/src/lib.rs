@@ -24,6 +24,7 @@ pub trait InstrumentableService: Service + Sized {
 
 impl<T: Service> Service for InstrumentedService<T>
 where
+    // TODO: it would be nice to do more for HTTP services...
     T::Request: fmt::Debug + Clone + Send + Sync + 'static,
 {
     type Request = T::Request;

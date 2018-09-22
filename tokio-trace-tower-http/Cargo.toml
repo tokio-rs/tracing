@@ -1,0 +1,25 @@
+[package]
+name = "tokio-trace-tower-http"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+edition = "2018"
+
+[dependencies]
+tokio-trace = { path = "../tokio-trace" }
+futures = "0.1"
+tower-service = { git = "https://github.com/tower-rs/tower.git" }
+http = "0.1"
+
+
+[dev-dependencies]
+bytes = "0.4"
+h2 = "0.1.11"
+
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
+string = { git = "https://github.com/carllerche/string" }
+tokio = "0.1"
+tokio-current-thread = "0.1.1"
+tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
+tokio-io = "0.1"
+ansi_term = "0.11"
+humantime = "1.1.1"

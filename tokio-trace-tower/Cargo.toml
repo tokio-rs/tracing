@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 tokio-trace = { path = "../tokio-trace" }
 futures = "0.1"
-tower-service = "https://github.com/tower-rs/tower.git"
+tower-service = { git = "https://github.com/tower-rs/tower.git" }

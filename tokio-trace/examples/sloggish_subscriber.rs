@@ -95,7 +95,7 @@ impl SloggishSubscriber {
     }
 
     fn print_indent(&self, writer: &mut impl Write) -> io::Result<usize> {
-        let indent = self.indent.load(Ordering::Acquire);
+        let indent = self.indent.load(Ordering::SeqCst);
         for _ in 0..indent {
             write!(writer, " ")?;
         }
@@ -131,11 +131,11 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         self.print_kvs(&mut stderr, span.fields(), "").unwrap();
         write!(&mut stderr, "\n").unwrap();
         self.indent
-            .compare_and_swap(indent, indent + self.indent_amount, Ordering::Release);
+            .compare_and_swap(indent, indent + self.indent_amount, Ordering::SeqCst);
     }
 
     #[inline]
     fn exit(&self, _span: &tokio_trace::Span, _at: Instant) {
-        self.indent.fetch_sub(self.indent_amount, Ordering::Release);
+        self.indent.fetch_sub(self.indent_amount, Ordering::SeqCst);
     }
 }
