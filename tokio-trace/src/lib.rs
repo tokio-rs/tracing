@@ -6,7 +6,7 @@ extern crate lazy_static;
 pub use self::subscriber::Subscriber;
 pub use log::Level;
 
-use std::{cell::RefCell, cmp, fmt, slice, sync::Arc, time::Instant};
+use std::{cell::RefCell, cmp, hash::{Hash, Hasher}, fmt, slice, sync::Arc, time::Instant};
 
 use self::dedup::IteratorDedup;
 
@@ -110,7 +110,7 @@ pub struct Event<'event> {
     pub message: fmt::Arguments<'event>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct StaticMeta {
     pub target: Option<&'static str>,
     pub level: log::Level,
@@ -122,7 +122,7 @@ pub struct StaticMeta {
     pub field_names: &'static [&'static str],
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Hash)]
 pub struct Span {
     inner: Arc<SpanInner>,
 }
@@ -262,6 +262,14 @@ impl cmp::PartialEq for SpanInner {
         self.opened_at == other.opened_at
             && self.name == other.name
             && self.static_meta == other.static_meta
+    }
+}
+
+impl Hash for SpanInner {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.opened_at.hash(state);
+        self.name.hash(state);
+        self.static_meta.hash(state);
     }
 }
 

@@ -17,18 +17,21 @@ use tokio_trace::{self, Level};
 
 
 use std::{
+    collections::hash_map::RandomState,
+    hash::{BuildHasher, Hash, Hasher},
     fmt,
     io::{self, Write},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::Mutex,
     time::{Instant, SystemTime},
 };
 
 pub struct SloggishSubscriber {
-    indent: AtomicUsize,
     indent_amount: usize,
     stderr: io::Stderr,
     t0_instant: Instant,
     t0_sys: SystemTime,
+    hash_builder: RandomState,
+    stack: Mutex<Vec<u64>>,
 }
 
 struct ColorLevel(Level);
@@ -48,11 +51,12 @@ impl fmt::Display for ColorLevel {
 impl SloggishSubscriber {
     pub fn new(indent_amount: usize) -> Self {
         Self {
-            indent: AtomicUsize::new(0),
             indent_amount,
             stderr: io::stderr(),
             t0_instant: Instant::now(),
             t0_sys: SystemTime::now(),
+            hash_builder: RandomState::new(),
+            stack: Mutex::new(vec![]),
         }
     }
 
@@ -94,12 +98,17 @@ impl SloggishSubscriber {
         )
     }
 
-    fn print_indent(&self, writer: &mut impl Write) -> io::Result<usize> {
-        let indent = self.indent.load(Ordering::SeqCst);
-        for _ in 0..indent {
+    fn print_indent(&self, writer: &mut impl Write, indent: usize,) -> io::Result<()> {
+        for _ in 0..(indent * self.indent_amount) {
             write!(writer, " ")?;
         }
-        Ok(indent)
+        Ok(())
+    }
+
+    fn hash_span(&self, span: &tokio_trace::Span) -> u64 {
+        let mut hasher = self.hash_builder.build_hasher();
+        span.hash(&mut hasher);
+        hasher.finish()
     }
 }
 
@@ -107,8 +116,15 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     #[inline]
     fn observe_event<'event>(&self, event: &'event tokio_trace::Event<'event>) {
         let mut stderr = self.stderr.lock();
-        self.print_indent(&mut stderr).unwrap();
-        let t1 = self.anchor_instant(event.timestamp);
+        let parent_hash = self.hash_span(&event.parent);
+
+        let stack = self.stack.lock().unwrap();
+        if let Some(idx) = stack.iter()
+            .position(|hash| hash == &parent_hash)
+        {
+            self.print_indent(&mut stderr, idx + 1).unwrap();
+        }
+
         write!(
             &mut stderr,
             "{} ",
@@ -127,15 +143,36 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     #[inline]
     fn enter(&self, span: &tokio_trace::Span, _at: Instant) {
         let mut stderr = self.stderr.lock();
-        let indent = self.print_indent(&mut stderr).unwrap();
-        self.print_kvs(&mut stderr, span.fields(), "").unwrap();
-        write!(&mut stderr, "\n").unwrap();
-        self.indent
-            .compare_and_swap(indent, indent + self.indent_amount, Ordering::SeqCst);
+
+        let span_hash = self.hash_span(span);
+        let parent_hash = span.parent()
+            .map(|parent| self.hash_span(parent));
+
+        let mut stack = self.stack.lock().unwrap();
+        if stack.iter().any(|hash| hash == &span_hash) {
+            // We are already in this span, do nothing.
+            return;
+        } else {
+            let indent = if let Some(idx) = stack
+                .iter()
+                .position(|hash| parent_hash
+                    .map(|p| hash == &p)
+                    .unwrap_or(false))
+            {
+                let idx = idx + 1;
+                stack.truncate(idx);
+                idx
+            } else {
+                stack.clear();
+                0
+            };
+            self.print_indent(&mut stderr, indent).unwrap();
+            stack.push(span_hash);
+            self.print_kvs(&mut stderr, span.fields(), "").unwrap();
+            write!(&mut stderr, "\n").unwrap();
+        }
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::Span, _at: Instant) {
-        self.indent.fetch_sub(self.indent_amount, Ordering::SeqCst);
-    }
+    fn exit(&self, _span: &tokio_trace::Span, _at: Instant) {}
 }
