@@ -97,7 +97,9 @@ where
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
+        let span = &self.span;
         let inner = &mut self.inner;
+        span.enter(move || {
             let request_span = span!(
                 "request",
                 method = request.method().clone(),
@@ -105,6 +107,10 @@ where
                 uri = request.uri().clone(),
                 headers = request.headers().clone()
             );
-            request_span.clone().enter(move || { inner.call(request) }).instrument(request_span)
+            request_span.clone()
+                .enter(move || { inner.call(request).instrument(request_span) })
+
+        })
+
     }
 }

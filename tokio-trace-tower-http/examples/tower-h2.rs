@@ -13,7 +13,6 @@ use bytes::Bytes;
 use futures::*;
 use http::Request;
 use tokio::{
-    executor::Executor,
     net::TcpListener,
     runtime::current_thread::Runtime,
 };
@@ -74,6 +73,7 @@ impl Service for Svc {
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
+        event!(Level::Debug, {}, "received request");
         let mut rsp = http::Response::builder();
         rsp.version(http::Version::HTTP_2);
 
@@ -81,7 +81,7 @@ impl Service for Svc {
         if uri.path() != ROOT {
             let body = RspBody::empty();
             let rsp = rsp.status(404).body(body).unwrap();
-            event!(Level::Warn, { status_code = 404 }, "unrecognized URI");
+            event!(Level::Warn, { status_code = 404, path = uri.path() }, "unrecognized URI");
             return future::ok(rsp);
         }
 
@@ -125,7 +125,7 @@ fn main() {
             .fold(h2, |h2, sock| {
                 let addr = sock.peer_addr().expect("can't get addr");
                 let conn_span = span!("conn", remote_ip = addr.ip(), remote_port = addr.port());
-                conn_span.enter(|| {
+                conn_span.clone().enter(|| {
                     if let Err(e) = sock.set_nodelay(true) {
                         return Err(e);
                     }
@@ -133,7 +133,9 @@ fn main() {
                     event!(Level::Info, {}, "accepted connection");
 
                     let serve = h2.serve(sock)
-                        .map_err(|e| event!(Level::Error, { }, "error {:?}", e));
+                        .map_err(|e| event!(Level::Error, { }, "error {:?}", e))
+                        .map(|_| event!(Level::Debug, { }, "response finished"))
+                        .instrument(conn_span);
                     TaskExecutor::current().spawn_local(Box::new(serve)).unwrap();
 
                     Ok(h2)
