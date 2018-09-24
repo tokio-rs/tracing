@@ -124,7 +124,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         {
             self.print_indent(&mut stderr, idx + 1).unwrap();
         }
-
+        let t1 = self.anchor_instant(event.timestamp);
         write!(
             &mut stderr,
             "{} ",
