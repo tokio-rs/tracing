@@ -67,7 +67,7 @@ impl SloggishSubscriber {
 
     fn print_kvs<'a, I>(&self, writer: &mut impl Write, kvs: I, leading: &str) -> io::Result<()>
     where
-        I: IntoIterator<Item = (&'static str, &'a dyn tokio_trace::Value)>,
+        I: IntoIterator<Item = (&'a str, &'a dyn tokio_trace::Value)>,
     {
         let mut kvs = kvs.into_iter();
         if let Some((k, v)) = kvs.next() {
@@ -88,7 +88,7 @@ impl SloggishSubscriber {
     fn print_meta(
         &self,
         writer: &mut impl Write,
-        meta: &tokio_trace::StaticMeta,
+        meta: &tokio_trace::Meta,
     ) -> io::Result<()> {
         write!(
             writer,
@@ -114,7 +114,7 @@ impl SloggishSubscriber {
 
 impl tokio_trace::Subscriber for SloggishSubscriber {
     #[inline]
-    fn observe_event<'event>(&self, event: &'event tokio_trace::Event<'event>) {
+    fn observe_event<'event, 'meta: 'event>(&self, event: &'event tokio_trace::Event<'event, 'meta>) {
         let mut stderr = self.stderr.lock();
         let parent_hash = self.hash_span(&event.parent);
 
@@ -130,7 +130,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
             "{} ",
             humantime::format_rfc3339_seconds(t1)
         ).unwrap();
-        self.print_meta(&mut stderr, event.static_meta).unwrap();
+        self.print_meta(&mut stderr, event.meta).unwrap();
         write!(
             &mut stderr,
             "{}",

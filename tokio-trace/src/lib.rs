@@ -26,7 +26,7 @@ macro_rules! static_meta {
         static_meta!(@ Some($target), $crate::Level::Trace, $($k),* )
     );
     (@ $target:expr, $lvl:expr, $($k:ident),*) => (
-        $crate::StaticMeta {
+        $crate::Meta {
             target: $target,
             level: $lvl,
             module_path: module_path!(),
@@ -58,7 +58,7 @@ macro_rules! event {
                 timestamp: ::std::time::Instant::now(),
                 parent: $crate::Span::current(),
                 follows_from: &[],
-                static_meta: &static_meta!(@ $target, $lvl, $($k),* ),
+                meta: &static_meta!(@ $target, $lvl, $($k),* ),
                 field_values: &field_values[..],
                 message: format_args!( $($arg)+ ),
             };
@@ -98,28 +98,36 @@ pub trait Value: fmt::Debug + Send + Sync {
 
 impl<T> Value for T where T: fmt::Debug + Send + Sync {}
 
-pub struct Event<'event> {
+/// **Note**: `Event` must be generic over two lifetimes, that of `Event` itself
+/// (the `'event` lifetime) *and* the lifetime of the event's metadata (the
+/// `'meta` lifetime), which must be at least as long as the event's lifetime.
+/// This is because the metadata may live as long as the lifetime, or it may be
+/// `'static` and reused for all `Event`s generated from a particular source
+/// code location (as is the case when the event is produced by the `event!`
+/// macro). Consumers of `Event` probably do not need to actually care about
+/// these lifetimes, however.
+pub struct Event<'event, 'meta> {
     pub timestamp: Instant,
 
     pub parent: Span,
     pub follows_from: &'event [Span],
 
-    pub static_meta: &'event StaticMeta,
+    pub meta: &'meta Meta<'meta>,
     // TODO: agh box
     pub field_values: &'event [&'event dyn Value],
     pub message: fmt::Arguments<'event>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct StaticMeta {
-    pub target: Option<&'static str>,
+pub struct Meta<'a> {
+    pub target: Option<&'a str>,
     pub level: log::Level,
 
-    pub module_path: &'static str,
-    pub file: &'static str,
+    pub module_path: &'a str,
+    pub file: &'a str,
     pub line: u32,
 
-    pub field_names: &'static [&'static str],
+    pub field_names: &'a [&'a str],
 }
 
 #[derive(Clone, PartialEq, Hash)]
@@ -134,7 +142,7 @@ struct SpanInner {
 
     pub parent: Option<Span>,
 
-    pub static_meta: &'static StaticMeta,
+    pub static_meta: &'static Meta<'static>,
 
     pub field_values: Vec<Box<dyn Value>>,
     // ...
@@ -147,18 +155,18 @@ pub struct Parents<'a> {
 
 // ===== impl Event =====
 
-impl<'event> Event<'event> {
-    pub fn field_names(&self) -> slice::Iter<&'static str> {
-        self.static_meta.field_names.iter()
+impl<'event, 'meta: 'event> Event<'event, 'meta> {
+    pub fn field_names(&self) -> slice::Iter<&'event str> {
+        self.meta.field_names.iter()
     }
 
-    pub fn fields(&'event self) -> impl Iterator<Item = (&'static str, &'event dyn Value)> {
+    pub fn fields(&'event self) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
         self.field_names()
             .enumerate()
             .filter_map(move |(idx, &name)| self.field_values.get(idx).map(|&val| (name, val)))
     }
 
-    pub fn debug_fields(&'event self) -> DebugFields<'event, Self> {
+    pub fn debug_fields<'a: 'meta>(&'a self) -> DebugFields<'a, Self> {
         DebugFields(self)
     }
 
@@ -168,14 +176,14 @@ impl<'event> Event<'event> {
         }
     }
 
-    pub fn all_fields<'a>(&'a self) -> impl Iterator<Item = (&'static str, &'a dyn Value)> {
+    pub fn all_fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
         self.fields()
             .chain(self.parents().flat_map(|parent| parent.fields()))
             .dedup_by(|(k, _)| k)
     }
 }
 
-impl<'event> Drop for Event<'event> {
+impl<'event, 'meta> Drop for Event<'event, 'meta> {
     fn drop(&mut self) {
         Dispatcher::current().observe_event(self);
     }
@@ -188,7 +196,7 @@ impl Span {
         name: Option<&'static str>,
         opened_at: Instant,
         parent: Span,
-        static_meta: &'static StaticMeta,
+        static_meta: &'static Meta,
         field_values: Vec<Box<dyn Value>>,
     ) -> Self {
         Span {
@@ -214,15 +222,15 @@ impl Span {
         self.inner.parent.as_ref()
     }
 
-    pub fn meta(&self) -> &'static StaticMeta {
+    pub fn meta(&self) -> &'static Meta<'static> {
         self.inner.static_meta
     }
 
-    pub fn field_names(&self) -> slice::Iter<&'static str> {
+    pub fn field_names<'a>(&'a self) -> slice::Iter<&'a str> {
         self.inner.static_meta.field_names.iter()
     }
 
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'static str, &'a dyn Value)> {
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
         self.field_names()
             .enumerate()
             .map(move |(idx, &name)| (name, self.inner.field_values[idx].as_ref()))
@@ -275,16 +283,16 @@ impl Hash for SpanInner {
 }
 
 impl<'a> IntoIterator for &'a Span {
-    type Item = (&'static str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'static str, &'a dyn Value)> + 'a>; // TODO: unbox
+    type Item = (&'a str, &'a dyn Value);
+    type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
 }
 
-impl<'a> IntoIterator for &'a Event<'a> {
-    type Item = (&'static str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'static str, &'a dyn Value)> + 'a>; // TODO: unbox
+impl<'b, 'a: 'b> IntoIterator for &'a Event<'a, 'b> {
+    type Item = (&'a str, &'a dyn Value);
+    type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
@@ -292,11 +300,11 @@ impl<'a> IntoIterator for &'a Event<'a> {
 
 pub struct DebugFields<'a, I: 'a>(&'a I)
 where
-    &'a I: IntoIterator<Item = (&'static str, &'a dyn Value)>;
+    &'a I: IntoIterator<Item = (&'a str, &'a dyn Value)>;
 
 impl<'a, I: 'a> fmt::Debug for DebugFields<'a, I>
 where
-    &'a I: IntoIterator<Item = (&'static str, &'a dyn Value)>,
+    &'a I: IntoIterator<Item = (&'a str, &'a dyn Value)>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map().entries(self.0.into_iter()).finish()
@@ -322,5 +330,21 @@ impl<'a> Iterator for Parents<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.next = self.next.and_then(Span::parent);
         self.next
+    }
+}
+
+impl<'a, 'meta> From<&'a log::Record<'meta>> for Meta<'meta> {
+    fn from(record: &'a log::Record<'meta>) -> Self {
+        Meta {
+            target: Some(record.target()),
+            level: record.level(),
+            module_path: record
+                .module_path()
+                // TODO: make symmetric
+                .unwrap_or_else(|| record.target() ),
+            line: record.line().unwrap_or(0),
+            file: record.file().unwrap_or("???"),
+            field_names: &[],
+        }
     }
 }

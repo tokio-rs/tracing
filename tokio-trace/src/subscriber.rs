@@ -1,9 +1,11 @@
-use super::{Event, Span, StaticMeta};
+use super::{Event, Span, Meta};
 use log;
 use std::time::Instant;
 
 pub trait Subscriber {
-    fn observe_event<'event>(&self, event: &'event Event<'event>);
+    /// Note that this function is generic over a pair of lifetimes because the
+    /// `Event` type is. See the documentation for [`Event`] for details.
+    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>);
     fn enter(&self, span: &Span, at: Instant);
     fn exit(&self, span: &Span, at: Instant);
 }
@@ -17,18 +19,18 @@ impl LogSubscriber {
 }
 
 impl Subscriber for LogSubscriber {
-    fn observe_event<'event>(&self, event: &'event Event<'event>) {
+    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         let fields = event.debug_fields();
-        let meta = event.static_meta.into();
+        let meta = event.meta.into();
         let logger = log::logger();
         let parents = event.parents().filter_map(Span::name).collect::<Vec<_>>();
         if logger.enabled(&meta) {
             logger.log(
                 &log::Record::builder()
                     .metadata(meta)
-                    .module_path(Some(event.static_meta.module_path))
-                    .file(Some(event.static_meta.file))
-                    .line(Some(event.static_meta.line))
+                    .module_path(Some(event.meta.module_path))
+                    .file(Some(event.meta.file))
+                    .line(Some(event.meta.line))
                     .args(format_args!(
                         "[{}] {:?} {}",
                         parents.join(":"),
@@ -52,7 +54,7 @@ impl Subscriber for LogSubscriber {
     }
 }
 
-impl<'a, 'b> Into<log::Metadata<'a>> for &'b StaticMeta {
+impl<'a, 'b> Into<log::Metadata<'a>> for &'b Meta<'a> {
     fn into(self) -> log::Metadata<'a> {
         log::Metadata::builder()
             .level(self.level)

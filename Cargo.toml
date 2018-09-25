@@ -4,5 +4,7 @@ members = [
     "tokio-trace",
     "tokio-trace-tower",
     "tokio-trace-tower-http",
+    "tokio-trace-log",
+    "tokio-trace-env-logger",
     "tokio-trace-slog"
 ]
