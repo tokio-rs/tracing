@@ -53,7 +53,7 @@ impl Builder {
 }
 
 impl Subscriber for Builder {
-    fn observe_event<'event>(&self, event: &'event Event<'event>) {
+    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         for subscriber in &self.subscribers {
             subscriber.observe_event(event)
         }
@@ -88,7 +88,7 @@ impl Dispatcher {
 
 impl Subscriber for Dispatcher {
     #[inline]
-    fn observe_event<'event>(&self, event: &'event Event<'event>) {
+    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         self.0.observe_event(event)
     }
 
@@ -109,7 +109,7 @@ struct NoDispatcher;
 pub struct InitError;
 
 impl Subscriber for NoDispatcher {
-    fn observe_event<'event>(&self, _event: &'event Event<'event>) {
+    fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
         // Do nothing.
         // TODO: should this panic instead?
     }

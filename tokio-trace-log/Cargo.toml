@@ -1,0 +1,8 @@
+[package]
+name = "tokio-trace-log"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+tokio-trace = { path = "../tokio-trace" }
+log = "0.4"
