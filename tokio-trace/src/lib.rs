@@ -23,6 +23,8 @@
 //! span is _completed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
+//! # extern crate futures;
+//! # use futures::{Future, Poll, Async};
 //! struct MyFuture {
 //!    // data
 //!    span: tokio_trace::Span,
@@ -35,6 +37,7 @@
 //!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
 //!         self.span.enter(|| {
 //!             // Do actual future work
+//! # Ok(Async::Ready(()))
 //!         })
 //!     }
 //! }
