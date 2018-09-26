@@ -23,26 +23,20 @@ extern crate tokio_trace;
 extern crate log;
 
 use std::{io, time::Instant};
-use tokio_trace::Subscriber;
+use tokio_trace::{Subscriber, Event};
 
-/// Converts a `log::Record` into a `tokio_trace::Event` in the
-/// currently executing span.
-pub fn log_record_to_event<'a>(record: &log::Record<'a>) -> Event<'a, 'a> {
+/// Format a log record as a trace event in the current span.
+pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let parent = tokio_trace::Span::current();
     let meta: tokio_trace::Meta = record.into();
-    Event {
+    let event = Event {
         timestamp: Instant::now(),
         parent,
         follows_from: &[],
         meta: &meta,
         field_values: &[],
         message: record.args().clone()
-    }
-}
-
-/// Format a log record as a trace event in the current span.
-pub fn format_trace(record: &log::Record) -> io::Result<()> {
-    let event = log_record_to_event(record)
+    };
     tokio_trace::Dispatcher::current().observe_event(&event);
     Ok(())
 }
@@ -69,12 +63,12 @@ impl Default for SimpleTraceLogger {
 }
 
 impl log::Log for SimpleTraceLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
         metadata.level() <= self.filter
     }
 
-    fn log(&self, record: &Record) {
-        format_trace(record)
+    fn log(&self, record: &log::Record) {
+        format_trace(record).unwrap();
     }
 
     fn flush(&self) {}
