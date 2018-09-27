@@ -2,7 +2,6 @@
 name = "tokio-trace-tower"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
-edition = "2018"
 
 [dependencies]
 tokio-trace = { path = "../tokio-trace" }
