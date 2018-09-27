@@ -23,6 +23,7 @@
 //! span is _completed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
+//! # extern crate tokio_trace;
 //! # extern crate futures;
 //! # use futures::{Future, Poll, Async};
 //! struct MyFuture {
@@ -35,7 +36,7 @@
 //!     type Error = ();
 //!
 //!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-//!         self.span.enter(|| {
+//!         self.span.clone().enter(|| {
 //!             // Do actual future work
 //! # Ok(Async::Ready(()))
 //!         })
@@ -78,11 +79,9 @@ extern crate futures;
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-
-pub use self::subscriber::Subscriber;
 pub use log::Level;
 
-use std::{cell::RefCell, cmp, hash::{Hash, Hasher}, fmt, slice, sync::Arc, time::Instant};
+use std::{fmt, slice, time::Instant};
 
 use self::dedup::IteratorDedup;
 
@@ -119,7 +118,7 @@ macro_rules! span {
         $crate::Span::new(
             Some($name),
             ::std::time::Instant::now(),
-            $crate::Span::current(),
+            Some($crate::Span::current()),
             &static_meta!( $($k),* ),
             vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
         )
@@ -133,7 +132,7 @@ macro_rules! event {
             use $crate::Subscriber;
             $crate::Dispatcher::current().observe_event(&$crate::Event {
                 timestamp: ::std::time::Instant::now(),
-                parent: $crate::Span::current(),
+                parent: $crate::Span::current().into(),
                 follows_from: &[],
                 meta: &static_meta!(@ $target, $lvl, $($k),* ),
                 field_values: &field_values[..],
@@ -145,28 +144,17 @@ macro_rules! event {
     ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (event!(target: None, $lvl, { $($k = $val),* }, $($arg)+))
 }
 
-lazy_static! {
-    static ref ROOT_SPAN: Span = Span {
-        inner: Arc::new(SpanInner {
-            name: Some("root"),
-            opened_at: Instant::now(),
-            parent: None,
-            static_meta: &static_meta!(),
-            field_values: Vec::new(),
-        })
-    };
-}
-
-thread_local! {
-    static CURRENT_SPAN: RefCell<Span> = RefCell::new(ROOT_SPAN.clone());
-}
-
 mod dedup;
 mod dispatcher;
-pub mod subscriber;
 pub mod instrument;
+pub mod span;
+pub mod subscriber;
 
-pub use dispatcher::{Builder as DispatcherBuilder, Dispatcher};
+pub use self::{
+    dispatcher::{Builder as DispatcherBuilder, Dispatcher},
+    span::{Data as SpanData, Span},
+    subscriber::Subscriber,
+};
 
 // XXX: im using fmt::Debug for prototyping purposes, it should probably leave.
 pub trait Value: fmt::Debug + Send + Sync {
@@ -186,8 +174,8 @@ impl<T> Value for T where T: fmt::Debug + Send + Sync {}
 pub struct Event<'event, 'meta> {
     pub timestamp: Instant,
 
-    pub parent: Span,
-    pub follows_from: &'event [Span],
+    pub parent: SpanData,
+    pub follows_from: &'event [SpanData],
 
     pub meta: &'meta Meta<'meta>,
     // TODO: agh box
@@ -207,27 +195,11 @@ pub struct Meta<'a> {
     pub field_names: &'a [&'a str],
 }
 
-#[derive(Clone, PartialEq, Hash)]
-pub struct Span {
-    inner: Arc<SpanInner>,
-}
-
-#[derive(Debug)]
-struct SpanInner {
-    pub name: Option<&'static str>,
-    pub opened_at: Instant,
-
-    pub parent: Option<Span>,
-
-    pub static_meta: &'static Meta<'static>,
-
-    pub field_values: Vec<Box<dyn Value>>,
-    // ...
-}
+type StaticMeta = Meta<'static>;
 
 /// Iterator over the parents of a span or event
 pub struct Parents<'a> {
-    next: Option<&'a Span>,
+    next: Option<&'a SpanData>,
 }
 
 // ===== impl Event =====
@@ -260,108 +232,7 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     }
 }
 
-// ===== impl Span =====
-
-impl Span {
-    pub fn new(
-        name: Option<&'static str>,
-        opened_at: Instant,
-        parent: Span,
-        static_meta: &'static Meta,
-        field_values: Vec<Box<dyn Value>>,
-    ) -> Self {
-        Span {
-            inner: Arc::new(SpanInner {
-                name,
-                opened_at,
-                parent: Some(parent),
-                static_meta,
-                field_values,
-            }),
-        }
-    }
-
-    pub fn current() -> Self {
-        CURRENT_SPAN.with(|span| span.borrow().clone())
-    }
-
-    pub fn name(&self) -> Option<&'static str> {
-        self.inner.name
-    }
-
-    pub fn parent(&self) -> Option<&Span> {
-        self.inner.parent.as_ref()
-    }
-
-    pub fn meta(&self) -> &'static Meta<'static> {
-        self.inner.static_meta
-    }
-
-    pub fn field_names<'a>(&'a self) -> slice::Iter<&'a str> {
-        self.inner.static_meta.field_names.iter()
-    }
-
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
-        self.field_names()
-            .enumerate()
-            .map(move |(idx, &name)| (name, self.inner.field_values[idx].as_ref()))
-    }
-
-    pub fn enter<F: FnOnce() -> T, T>(&self, f: F) -> T {
-        let result = CURRENT_SPAN.with(|current_span| {
-            if *current_span.borrow() == *self || current_span.borrow().parents().any(|span| span == self) {
-                return f();
-            }
-
-            current_span.replace(self.clone());
-            Dispatcher::current().enter(&self, Instant::now());
-            f()
-        });
-
-        CURRENT_SPAN.with(|current_span| {
-            if let Some(parent) = self.parent() {
-                current_span.replace(parent.clone());
-                Dispatcher::current().exit(&self, Instant::now());
-            }
-        });
-
-        result
-    }
-
-    pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, Self> {
-        DebugFields(self)
-    }
-
-    pub fn parents<'a>(&'a self) -> Parents<'a> {
-        Parents { next: Some(self) }
-    }
-}
-
-impl cmp::PartialEq for SpanInner {
-    fn eq(&self, other: &SpanInner) -> bool {
-        self.opened_at == other.opened_at
-            && self.name == other.name
-            && self.static_meta == other.static_meta
-    }
-}
-
-impl Hash for SpanInner {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.opened_at.hash(state);
-        self.name.hash(state);
-        self.static_meta.hash(state);
-    }
-}
-
-impl<'a> IntoIterator for &'a Span {
-    type Item = (&'a str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
-    fn into_iter(self) -> Self::IntoIter {
-        Box::new(self.fields())
-    }
-}
-
-impl<'b, 'a: 'b> IntoIterator for &'a Event<'a, 'b> {
+impl<'a, 'm: 'a> IntoIterator for &'a Event<'a, 'm> {
     type Item = (&'a str, &'a dyn Value);
     type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
@@ -382,24 +253,12 @@ where
     }
 }
 
-impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Span")
-            .field("name", &self.inner.name)
-            .field("opened_at", &self.inner.opened_at)
-            .field("parent", &self.parent().unwrap_or(self).name())
-            .field("fields", &self.debug_fields())
-            .field("meta", &self.meta())
-            .finish()
-    }
-}
-
 // ===== impl Parents =====
 
 impl<'a> Iterator for Parents<'a> {
-    type Item = &'a Span;
+    type Item = &'a SpanData;
     fn next(&mut self) -> Option<Self::Item> {
-        self.next = self.next.and_then(Span::parent);
+        self.next = self.next.and_then(SpanData::parent);
         self.next
     }
 }

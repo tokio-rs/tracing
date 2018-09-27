@@ -9,7 +9,7 @@ use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
-#[path = "../../tokio-trace/examples/sloggish_subscriber.rs"]
+#[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
 use self::sloggish::SloggishSubscriber;
 
@@ -106,7 +106,7 @@ fn main() {
     server_span.clone().enter(|| {
         let span2 = server_span.clone();
         let server = Server::bind(&addr)
-            .serve(move || span2.enter(|| service_fn(echo)))
+            .serve(move || span2.clone().enter(|| service_fn(echo)))
             .map_err(|e| event!(Level::Error, { error = e }, "server error"));
         event!(Level::Info, {}, "listening...");
         hyper::rt::run(server.instrument(server_span));

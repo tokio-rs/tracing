@@ -13,7 +13,7 @@
 extern crate humantime;
 extern crate ansi_term;
 use self::ansi_term::{Color, Style};
-use tokio_trace::{self, Level};
+use super::tokio_trace::{self, Level};
 
 
 use std::{
@@ -105,7 +105,7 @@ impl SloggishSubscriber {
         Ok(())
     }
 
-    fn hash_span(&self, span: &tokio_trace::Span) -> u64 {
+    fn hash_span(&self, span: &tokio_trace::SpanData) -> u64 {
         let mut hasher = self.hash_builder.build_hasher();
         span.hash(&mut hasher);
         hasher.finish()
@@ -141,7 +141,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn enter(&self, span: &tokio_trace::Span, _at: Instant) {
+    fn enter(&self, span: &tokio_trace::SpanData, _at: Instant) {
         let mut stderr = self.stderr.lock();
 
         let span_hash = self.hash_span(span);
@@ -174,5 +174,5 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::Span, _at: Instant) {}
+    fn exit(&self, _span: &tokio_trace::SpanData, _at: Instant) {}
 }
