@@ -25,7 +25,7 @@ use tokio_trace::{
     instrument::Instrument,
 };
 
-#[path = "../../tokio-trace/examples/sloggish_subscriber.rs"]
+#[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
 use self::sloggish::SloggishSubscriber;
 

@@ -33,13 +33,13 @@ where
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        let span = &self.span;
+        let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(|| { inner.poll_ready() })
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let span = &self.span;
+        let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(|| {
             let request_span = span!("request", request = request.clone());

@@ -73,10 +73,11 @@ where
     type Item = InstrumentedHttpService<T::Service>;
     type Error = T::InitError;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let span = &self.span;
+        let span = self.span.clone();
         let inner = &mut self.inner;
-        span.enter(move || {
-            inner.poll().map(|ready| ready.map(|svc| InstrumentedHttpService::new(svc, span.clone())))
+        span.clone().enter(move || {
+            inner.poll().map(|ready|
+                ready.map(|svc| InstrumentedHttpService::new(svc, span.clone())))
         })
     }
 }
@@ -91,13 +92,13 @@ where
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        let span = &self.span;
+        let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(move || { inner.poll_ready() })
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
-        let span = &self.span;
+        let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(move || {
             let request_span = span!(
