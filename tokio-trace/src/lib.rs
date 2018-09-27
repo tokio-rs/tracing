@@ -130,14 +130,15 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
     {       let field_values: &[& dyn $crate::Value] = &[ $( & $val),* ];
-            $crate::Event {
+            use $crate::Subscriber;
+            $crate::Dispatcher::current().observe_event(&$crate::Event {
                 timestamp: ::std::time::Instant::now(),
                 parent: $crate::Span::current(),
                 follows_from: &[],
                 meta: &static_meta!(@ $target, $lvl, $($k),* ),
                 field_values: &field_values[..],
                 message: format_args!( $($arg)+ ),
-            };
+            });
         }
 
     });
@@ -256,12 +257,6 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
         self.fields()
             .chain(self.parents().flat_map(|parent| parent.fields()))
             .dedup_by(|(k, _)| k)
-    }
-}
-
-impl<'event, 'meta> Drop for Event<'event, 'meta> {
-    fn drop(&mut self) {
-        Dispatcher::current().observe_event(self);
     }
 }
 
