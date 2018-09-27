@@ -3,6 +3,7 @@ extern crate futures;
 extern crate h2;
 extern crate http;
 extern crate tokio;
+extern crate tokio_current_thread;
 #[macro_use]
 extern crate tokio_trace;
 extern crate tokio_trace_tower_http;
