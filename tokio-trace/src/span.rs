@@ -1,6 +1,5 @@
 use super::{DebugFields, Dispatcher, StaticMeta, Subscriber, Value};
 use std::{
-    borrow::Borrow,
     cell::RefCell,
     cmp, fmt,
     hash::{Hash, Hasher},
@@ -324,26 +323,34 @@ impl Data {
         }
     }
 
+    /// Returns the name of this span, or `None` if it is unnamed,
     pub fn name(&self) -> Option<&'static str> {
         self.inner.name
     }
 
+    /// Returns a `Data` reference to the parent of this span, if one exists.
     pub fn parent(&self) -> Option<&Data> {
         self.inner.parent.as_ref()
     }
 
+    /// Borrows this span's metadata.
     pub fn meta(&self) -> &'static StaticMeta {
         self.inner.static_meta
     }
 
+    /// Returns an iterator over the names of all the fields on this span.
     pub fn field_names<'a>(&self) -> slice::Iter<&'a str> {
         self.inner.static_meta.field_names.iter()
     }
 
+    /// Returns the `Instant` at which this span was created.
     pub fn opened_at(&self) -> Instant {
         self.inner.opened_at
     }
 
+
+    /// Borrows the value of the field named `name`, if it exists. Otherwise,
+    /// returns `None`.
     pub fn field<Q>(&self, key: Q) -> Option<&dyn Value>
     where
         &'static str: PartialEq<Q>,
@@ -356,16 +363,20 @@ impl Data {
                 .map(AsRef::as_ref))
     }
 
+    /// Returns an iterator over all the field names and values on this span.
     pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
         self.field_names()
             .enumerate()
             .map(move |(idx, &name)| (name, self.inner.field_values[idx].as_ref()))
     }
 
+    /// Returns a struct that can be used to format all the fields on this
+    /// span ith `fmt::Debug`.
     pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, Self> {
         DebugFields(self)
     }
 
+    /// Returns the current [`State`] of this span.
     pub fn state(&self) -> State {
         match self.inner.state.load(Ordering::Acquire) {
             s if s == State::Unentered as usize => State::Unentered,
