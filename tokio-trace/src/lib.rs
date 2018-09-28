@@ -255,11 +255,13 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     /// # #[macro_use]
     /// # extern crate tokio_trace;
     /// # use tokio_trace::Level;
+    /// # fn main() {
     /// span!("parent 1", foo = 1, bar = 1).enter(|| {
     ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
     ///         event!(Level::Info, { bar = 2 }, "my event");
     ///     })
-    /// })
+    /// });
+    /// # }
     /// ```
     /// If a `Subscriber` were to call `all_fields` on this event, it will
     /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
