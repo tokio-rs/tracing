@@ -1,4 +1,4 @@
-use super::{DebugFields, Dispatcher, StaticMeta, Subscriber, Value};
+use super::{DebugFields, Dispatcher, StaticMeta, Subscriber, Value, Parents, dedup::IteratorDedup};
 use std::{
     cell::RefCell,
     cmp, fmt,
@@ -348,7 +348,6 @@ impl Data {
         self.inner.opened_at
     }
 
-
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
     /// returns `None`.
     pub fn field<Q>(&self, key: Q) -> Option<&dyn Value>
@@ -374,6 +373,46 @@ impl Data {
     /// span ith `fmt::Debug`.
     pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, Self> {
         DebugFields(self)
+    }
+
+    /// Returns an iterator over [`Data`] references to all the spans that are
+    /// parents of this span.
+    ///
+    /// The iterator will traverse the trace tree in ascending order from this
+    /// span's immediate parent to the root span of the trace.
+    pub fn parents<'a>(&'a self) -> Parents<'a> {
+        Parents {
+            next: self.parent(),
+        }
+    }
+
+    /// Returns an iterator over all the field names and values of this span
+    /// and all of its parent spans.
+    ///
+    /// Fields with duplicate names are skipped, and the value defined lowest
+    /// in the tree is used. For example:
+    /// ```
+    /// # #[macro_use]
+    /// # extern crate tokio_trace;
+    /// # use tokio_trace::Level;
+    /// # fn main() {
+    /// span!("parent 1", foo = 1, bar = 1).enter(|| {
+    ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
+    ///         span!("my span", bar = 2).enter(|| {
+    ///             // do stuff...
+    ///         })
+    ///     })
+    /// });
+    /// # }
+    /// ```
+    /// If a `Subscriber` were to call `all_fields` on "my span" event, it will
+    /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
+    pub fn all_fields<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
+        self.fields()
+            .chain(self.parents().flat_map(|parent| parent.fields()))
+            .dedup_by(|(k, _)| k)
     }
 
     /// Returns the current [`State`] of this span.
