@@ -209,6 +209,18 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
         self.meta.field_names.iter()
     }
 
+
+    pub fn field<Q>(&'event self, key: Q) -> Option<&'event dyn Value>
+    where
+        &'event str: PartialEq<Q>,
+    {
+        self.field_names()
+            .position(|&field_name| field_name == key)
+            .and_then(|i| self.field_values
+                .get(i)
+                .map(|&val| val))
+    }
+
     pub fn fields(&'event self) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
         self.field_names()
             .enumerate()

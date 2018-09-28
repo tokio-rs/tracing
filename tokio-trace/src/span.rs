@@ -1,5 +1,6 @@
 use super::{DebugFields, Dispatcher, StaticMeta, Subscriber, Value};
 use std::{
+    borrow::Borrow,
     cell::RefCell,
     cmp, fmt,
     hash::{Hash, Hasher},
@@ -341,6 +342,18 @@ impl Data {
 
     pub fn opened_at(&self) -> Instant {
         self.inner.opened_at
+    }
+
+    pub fn field<Q>(&self, key: Q) -> Option<&dyn Value>
+    where
+        &'static str: PartialEq<Q>,
+    {
+        self.field_names()
+            .position(|&field_name| field_name == key)
+            .and_then(|i| self.inner
+                .field_values
+                .get(i)
+                .map(AsRef::as_ref))
     }
 
     pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
