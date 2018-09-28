@@ -3,11 +3,13 @@ extern crate hyper;
 #[macro_use]
 extern crate tokio_trace;
 extern crate tokio_trace_env_logger;
+extern crate tokio;
 
 use futures::future;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::server::conn::Http;
 
 #[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
@@ -98,17 +100,25 @@ fn main() {
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
     let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-    let server_span = span!(
-        "server",
-        local_addr = addr.ip(),
-        local_port = addr.port()
-    );
+    let server_span = span!("server", local = addr);
     server_span.clone().enter(|| {
-        let span2 = server_span.clone();
-        let server = Server::bind(&addr)
-            .serve(move || span2.clone().enter(|| service_fn(echo)))
-            .map_err(|e| event!(Level::Error, { error = e }, "server error"));
+        let server = tokio::net::TcpListener::bind(&addr)
+            .expect("bind")
+            .incoming()
+            .fold(Http::new(), move |http, sock| {
+
+                let span = span!("connection", remote = sock.peer_addr().unwrap());
+                hyper::rt::spawn(http.serve_connection(sock, service_fn(echo))
+                    .map_err(|e| { event!(Level::Error, { error = &e }, "serve error"); })
+                    .instrument(span));
+                Ok::<_, ::std::io::Error>(http)
+
+            })
+            .instrument(server_span)
+            .map(|_|())
+            .map_err(|e| { event!(Level::Error, { error = &e }, "server error"); })
+            ;
         event!(Level::Info, {}, "listening...");
-        hyper::rt::run(server.instrument(server_span));
+        hyper::rt::run(server);
     });
 }
