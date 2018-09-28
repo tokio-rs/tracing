@@ -8,8 +8,10 @@ extern crate tokio;
 use futures::future;
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn;
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::{Body, Method, Request, Response, StatusCode};
 use hyper::server::conn::Http;
+
+use std::str;
 
 #[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
@@ -44,21 +46,30 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             (&Method::POST, "/echo") => {
                 let body = req.into_body();
                 *response.body_mut() = body;
-                (span!("response", body = "echo"), Box::new(future::ok(response)))
+                (span!("response", response_kind = "echo"), Box::new(future::ok(response)))
             }
 
             // Convert to uppercase before sending back to client.
             (&Method::POST, "/echo/uppercase") => {
                 let mapping = req.into_body().map(|chunk| {
-                    event!(Level::Debug, { chunk = format!("{:?}", chunk) }, "got chunk");
-                    chunk
+                    let upper = chunk
                         .iter()
                         .map(|byte| byte.to_ascii_uppercase())
-                        .collect::<Vec<u8>>()
+                        .collect::<Vec<u8>>();
+
+                    event!(
+                        Level::Debug,
+                        {
+                            chunk = str::from_utf8(&chunk[..]),
+                            uppercased = str::from_utf8(&upper[..])
+                        },
+                        "uppercased request body"
+                    );
+                    upper
                 });
 
                 *response.body_mut() = Body::wrap_stream(mapping);
-                (span!("response", body = "uppercase"), Box::new(future::ok(response)))
+                (span!("response", response_kind = "uppercase"), Box::new(future::ok(response)))
             }
 
             // Reverse the entire body before sending back to the client.
@@ -70,11 +81,17 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             (&Method::POST, "/echo/reversed") => {
                 let reversed = req.into_body().concat2().map(move |chunk| {
                     let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
+                    event!(Level::Debug,
+                        {
+                            chunk = str::from_utf8(&chunk[..]),
+                            reversed = str::from_utf8(&body[..])
+                        },
+                        "reversed request body");
                     *response.body_mut() = Body::from(body);
                     response
                 });
 
-                (span!("response", body = "reversed"), Box::new(reversed))
+                (span!("response", response_kind = "reversed"), Box::new(reversed))
             }
 
             // The 404 Not Found route...
