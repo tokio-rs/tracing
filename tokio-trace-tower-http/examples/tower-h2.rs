@@ -142,6 +142,7 @@ fn main() {
             })
             .map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
             .map(|_| {})
+            .instrument(server_span.clone())
             ;
 
         rt.spawn(serve);
