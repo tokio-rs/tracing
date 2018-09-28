@@ -132,7 +132,7 @@ fn main() {
 
                     let serve = h2.serve(sock)
                         .map_err(|e| event!(Level::Error, { }, "error {:?}", e))
-                        .map(|_| event!(Level::Debug, { }, "response finished"))
+                        .and_then(|_| { event!(Level::Debug, { }, "response finished"); future::ok(()) })
                         .instrument(conn_span);
                     reactor.spawn(Box::new(serve));
 
