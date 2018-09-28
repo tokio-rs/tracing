@@ -238,8 +238,11 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
         DebugFields(self)
     }
 
-    /// Returns an iterator over all the [`Span`]s that are parents of this
-    /// `Event`.
+    /// Returns an iterator over [`SpanData`] references to all the [`Span`]s
+    /// that are parents of this `Event`.
+    ///
+    /// The iterator will traverse the trace tree in ascending order from this
+    ///  event's immediate parent to the root span of the trace.
     pub fn parents<'a>(&'a self) -> Parents<'a> {
         Parents {
             next: Some(&self.parent),
