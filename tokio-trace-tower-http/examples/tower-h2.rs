@@ -3,7 +3,6 @@ extern crate futures;
 extern crate h2;
 extern crate http;
 extern crate tokio;
-extern crate tokio_current_thread;
 #[macro_use]
 extern crate tokio_trace;
 extern crate tokio_trace_tower_http;
@@ -13,11 +12,8 @@ extern crate tower_service;
 use bytes::Bytes;
 use futures::*;
 use http::Request;
-use tokio::{
-    net::TcpListener,
-    runtime::current_thread::Runtime,
-};
-use tokio_current_thread::TaskExecutor;
+use tokio::net::TcpListener;
+use tokio::runtime::Runtime;
 use tower_h2::{Body, Server, RecvBody};
 use tower_service::{NewService, Service};
 use tokio_trace::{
@@ -113,6 +109,7 @@ fn main() {
         .init();
 
     let mut rt = Runtime::new().unwrap();
+    let reactor = rt.executor();
 
     let addr = "[::1]:8888".parse().unwrap();
     let bind = TcpListener::bind(&addr).expect("bind");
@@ -120,10 +117,10 @@ fn main() {
     let server_span = span!("serve", local_ip = addr.ip(), local_port = addr.port());
     server_span.clone().enter(move || {
         let new_svc = tokio_trace_tower_http::InstrumentedNewService::new(NewSvc);
-        let h2 = Server::new(new_svc, Default::default(), TaskExecutor::current());
+        let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
         let serve = bind.incoming()
-            .fold(h2, |h2, sock| {
+            .fold((h2, reactor), |(h2, reactor), sock| {
                 let addr = sock.peer_addr().expect("can't get addr");
                 let conn_span = span!("conn", remote_ip = addr.ip(), remote_port = addr.port());
                 conn_span.clone().enter(|| {
@@ -137,9 +134,9 @@ fn main() {
                         .map_err(|e| event!(Level::Error, { }, "error {:?}", e))
                         .map(|_| event!(Level::Debug, { }, "response finished"))
                         .instrument(conn_span);
-                    TaskExecutor::current().spawn_local(Box::new(serve)).unwrap();
+                    reactor.spawn(Box::new(serve));
 
-                    Ok(h2)
+                    Ok((h2, reactor))
                 })
 
             })
@@ -147,6 +144,8 @@ fn main() {
             .map(|_| {})
             ;
 
-        rt.block_on(serve).unwrap()
+        rt.spawn(serve);
+        rt.shutdown_on_idle()
+            .wait().unwrap();
     })
 }
