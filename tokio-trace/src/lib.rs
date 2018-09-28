@@ -205,39 +205,67 @@ pub struct Parents<'a> {
 // ===== impl Event =====
 
 impl<'event, 'meta: 'event> Event<'event, 'meta> {
+    /// Returns an iterator over the names of all the fields on this `Event`.
     pub fn field_names(&self) -> slice::Iter<&'event str> {
         self.meta.field_names.iter()
     }
 
-
-    pub fn field<Q>(&'event self, key: Q) -> Option<&'event dyn Value>
+    /// Borrows the value of the field named `name`, if it exists. Otherwise,
+    /// returns `None`.
+    pub fn field<Q>(&'event self, name: Q) -> Option<&'event dyn Value>
     where
         &'event str: PartialEq<Q>,
     {
         self.field_names()
-            .position(|&field_name| field_name == key)
-            .and_then(|i| self.field_values
-                .get(i)
-                .map(|&val| val))
+            .position(|&field_name| field_name == name)
+            .and_then(|i| self.field_values.get(i).map(|&val| val))
     }
 
-    pub fn fields(&'event self) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
+    /// Returns an iterator over all the field names and values on this event.
+    pub fn fields(
+        &'event self,
+    ) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
         self.field_names()
             .enumerate()
-            .filter_map(move |(idx, &name)| self.field_values.get(idx).map(|&val| (name, val)))
+            .filter_map(move |(idx, &name)| {
+                self.field_values.get(idx).map(|&val| (name, val))
+            })
     }
 
+    /// Returns a struct that can be used to format all the fields on this
+    /// `Event` with `fmt::Debug`.
     pub fn debug_fields<'a: 'meta>(&'a self) -> DebugFields<'a, Self> {
         DebugFields(self)
     }
 
+    /// Returns an iterator over all the [`Span`]s that are parents of this
+    /// `Event`.
     pub fn parents<'a>(&'a self) -> Parents<'a> {
         Parents {
             next: Some(&self.parent),
         }
     }
 
-    pub fn all_fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
+    /// Returns an iterator over all the field names and values of this `Event`
+    /// and all of its parent [`Span`]s.
+    ///
+    /// Fields with duplicate names are skipped, and the value defined lowest
+    /// in the tree is used. For example:
+    /// ```
+    /// # #[macro_use]
+    /// # extern crate tokio_trace;
+    /// # use tokio_trace::Level;
+    /// span!("parent 1", foo = 1, bar = 1).enter(|| {
+    ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
+    ///         event!(Level::Info, { bar = 2 }, "my event");
+    ///     })
+    /// })
+    /// ```
+    /// If a `Subscriber` were to call `all_fields` on this event, it will
+    /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
+    pub fn all_fields<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
         self.fields()
             .chain(self.parents().flat_map(|parent| parent.fields()))
             .dedup_by(|(k, _)| k)
@@ -283,7 +311,7 @@ impl<'a, 'meta> From<&'a log::Record<'meta>> for Meta<'meta> {
             module_path: record
                 .module_path()
                 // TODO: make symmetric
-                .unwrap_or_else(|| record.target() ),
+                .unwrap_or_else(|| record.target()),
             line: record.line().unwrap_or(0),
             file: record.file().unwrap_or("???"),
             field_names: &[],
