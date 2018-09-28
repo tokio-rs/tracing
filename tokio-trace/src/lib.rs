@@ -242,7 +242,7 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     /// that are parents of this `Event`.
     ///
     /// The iterator will traverse the trace tree in ascending order from this
-    ///  event's immediate parent to the root span of the trace.
+    /// event's immediate parent to the root span of the trace.
     pub fn parents<'a>(&'a self) -> Parents<'a> {
         Parents {
             next: Some(&self.parent),
@@ -303,8 +303,9 @@ where
 impl<'a> Iterator for Parents<'a> {
     type Item = &'a SpanData;
     fn next(&mut self) -> Option<Self::Item> {
+        let next = self.next;
         self.next = self.next.and_then(SpanData::parent);
-        self.next
+        next
     }
 }
 
