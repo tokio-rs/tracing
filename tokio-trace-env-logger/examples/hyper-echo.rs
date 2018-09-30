@@ -79,19 +79,22 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // future, waiting on concatenating the full body, so that
             // it can be reversed. Only then can we return a `Response`.
             (&Method::POST, "/echo/reversed") => {
-                let reversed = req.into_body().concat2().map(move |chunk| {
-                    let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
-                    event!(Level::Debug,
-                        {
-                            chunk = str::from_utf8(&chunk[..]),
-                            reversed = str::from_utf8(&body[..])
-                        },
-                        "reversed request body");
-                    *response.body_mut() = Body::from(body);
-                    response
+                let span = span!("response", response_kind = "reversed");
+                let reversed = span.clone().enter(|| {
+                    req.into_body().concat2().map(move |chunk| {
+                        let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
+                        event!(Level::Debug,
+                            {
+                                chunk = str::from_utf8(&chunk[..]),
+                                reversed = str::from_utf8(&body[..])
+                            },
+                            "reversed request body");
+                        *response.body_mut() = Body::from(body);
+                        response
+                    })
                 });
 
-                (span!("response", response_kind = "reversed"), Box::new(reversed))
+                (span, Box::new(reversed))
             }
 
             // The 404 Not Found route...
