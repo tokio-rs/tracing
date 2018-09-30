@@ -112,6 +112,32 @@ macro_rules! static_meta {
     )
 }
 
+/// Constructs a new span.
+///
+/// # Examples
+///
+/// Creating a new span with no fields:
+/// ```
+/// # #[macro_use]
+/// # extern crate tokio_trace;
+/// # fn main() {
+/// let span = span!("my span");
+/// span.enter(|| {
+///     // do work inside the span...
+/// });
+/// # }
+/// ```
+///
+/// Creating a span with fields:
+/// ```
+/// # #[macro_use]
+/// # extern crate tokio_trace;
+/// # fn main() {
+/// span!("my span", foo = 2, bar = "a string").enter(|| {
+///     // do work inside the span...
+/// });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! span {
     ($name:expr) => { span!($name,) };
