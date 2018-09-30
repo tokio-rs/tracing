@@ -114,6 +114,7 @@ macro_rules! static_meta {
 
 #[macro_export]
 macro_rules! span {
+    ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident = $val:expr),*) => {
         $crate::Span::new(
             Some($name),
