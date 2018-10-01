@@ -1,5 +1,4 @@
 use super::{Event, SpanData, Meta};
-use log;
 use std::time::Instant;
 
 pub trait Subscriber {
@@ -29,11 +28,12 @@ pub trait Subscriber {
     /// ```
     /// #[macro_use]
     /// extern crate tokio_trace;
-    /// use tokio_trace::subscriber::{Subscriber, LogSubscriber};
+    /// extern crate tokio_trace_log;
+    /// use tokio_trace::subscriber::Subscriber;
     /// # use tokio_trace::Level;
     /// # fn main() {
     ///
-    /// let filtered_subscriber = LogSubscriber
+    /// let filtered_subscriber = tokio_trace_log::LogSubscriber::new()
     ///     // Subscribe *only* to spans named "foo".
     ///     .with_filter(|meta| {
     ///         meta.name == Some("foo")
@@ -67,59 +67,10 @@ pub trait Subscriber {
     }
 }
 
-pub struct LogSubscriber;
-
 #[derive(Debug, Clone)]
 pub struct WithFilter<S, F> {
     inner: S,
     filter: F
-}
-
-impl LogSubscriber {
-    pub fn new() -> Self {
-        LogSubscriber
-    }
-}
-
-impl Subscriber for LogSubscriber {
-    fn enabled(&self, metadata: &Meta) -> bool {
-        log::logger().enabled(&metadata.into())
-    }
-
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
-        let fields = event.debug_fields();
-        let meta = event.meta.into();
-        let logger = log::logger();
-        let parents = event.parents().filter_map(SpanData::name).collect::<Vec<_>>();
-        if logger.enabled(&meta) {
-            logger.log(
-                &log::Record::builder()
-                    .metadata(meta)
-                    .module_path(Some(event.meta.module_path))
-                    .file(Some(event.meta.file))
-                    .line(Some(event.meta.line))
-                    .args(format_args!(
-                        "[{}] {:?} {}",
-                        parents.join(":"),
-                        fields,
-                        event.message
-                    )).build(),
-            );
-        }
-    }
-
-    fn enter(&self, span: &SpanData, _at: Instant) {
-        let logger = log::logger();
-        logger.log(&log::Record::builder()
-            .args(format_args!("-> {:?}", span.name()))
-            .build()
-        )
-    }
-
-    fn exit(&self, span: &SpanData, _at: Instant) {
-        let logger = log::logger();
-        logger.log(&log::Record::builder().args(format_args!("<- {:?}", span.name())).build())
-    }
 }
 
 impl<S, F> Subscriber for WithFilter<S, F>
@@ -144,15 +95,6 @@ where
     #[inline]
     fn exit(&self, span: &SpanData, at: Instant) {
         self.inner.exit(span, at)
-    }
-}
-
-impl<'a, 'b> Into<log::Metadata<'a>> for &'b Meta<'a> {
-    fn into(self) -> log::Metadata<'a> {
-        log::Metadata::builder()
-            .level(self.level)
-            .target(self.target.unwrap_or(""))
-            .build()
     }
 }
 

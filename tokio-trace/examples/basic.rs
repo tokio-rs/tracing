@@ -1,12 +1,13 @@
 #[macro_use]
 extern crate tokio_trace;
+extern crate tokio_trace_log;
 extern crate env_logger;
 
 use tokio_trace::Level;
 
 fn main() {
     tokio_trace::Dispatcher::builder()
-        .add_subscriber(tokio_trace::subscriber::LogSubscriber::new())
+        .add_subscriber(tokio_trace_log::LogSubscriber::new())
         .init();
     env_logger::Builder::new().parse("info").init();
 

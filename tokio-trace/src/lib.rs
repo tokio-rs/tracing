@@ -112,12 +112,35 @@
 //! [`Dispatcher::builder`]: struct.Dispatcher.html#method.builder
 
 extern crate futures;
-extern crate log;
-pub use log::Level;
 
 use std::{fmt, slice, time::Instant};
 
 use self::dedup::IteratorDedup;
+
+#[repr(usize)]
+#[derive(Copy, Eq, Debug, Hash)]
+pub enum Level {
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    Error = 1, // This way these line up with the discriminants for LevelFilter below
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug,
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace,
+}
 
 #[doc(hidden)]
 #[macro_export]
@@ -275,7 +298,7 @@ pub struct Event<'event, 'meta> {
 pub struct Meta<'a> {
     pub name: Option<&'a str>,
     pub target: Option<&'a str>,
-    pub level: log::Level,
+    pub level: Level,
 
     pub module_path: &'a str,
     pub file: &'a str,
@@ -398,19 +421,19 @@ impl<'a> Iterator for Parents<'a> {
     }
 }
 
-impl<'a, 'meta> From<&'a log::Record<'meta>> for Meta<'meta> {
-    fn from(record: &'a log::Record<'meta>) -> Self {
-        Meta {
-            name: None,
-            target: Some(record.target()),
-            level: record.level(),
-            module_path: record
-                .module_path()
-                // TODO: make symmetric
-                .unwrap_or_else(|| record.target()),
-            line: record.line().unwrap_or(0),
-            file: record.file().unwrap_or("???"),
-            field_names: &[],
-        }
+
+// ===== impl Level =====
+
+impl Clone for Level {
+    #[inline]
+    fn clone(&self) -> Level {
+        *self
+    }
+}
+
+impl PartialEq for Level {
+    #[inline]
+    fn eq(&self, other: &Level) -> bool {
+        *self as usize == *other as usize
     }
 }
