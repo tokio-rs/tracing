@@ -1,4 +1,4 @@
-use {subscriber::Subscriber, Event, SpanData};
+use {subscriber::Subscriber, Event, SpanData, Meta};
 
 use std::{
     sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
@@ -53,6 +53,11 @@ impl Builder {
 }
 
 impl Subscriber for Builder {
+    fn enabled(&self, metadata: &Meta) -> bool {
+        self.subscribers.iter()
+            .any(|subscriber| subscriber.enabled(metadata))
+    }
+
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         for subscriber in &self.subscribers {
             subscriber.observe_event(event)
@@ -88,6 +93,11 @@ impl Dispatcher {
 
 impl Subscriber for Dispatcher {
     #[inline]
+    fn enabled(&self, metadata: &Meta) -> bool {
+        self.0.enabled(metadata)
+    }
+
+    #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         self.0.observe_event(event)
     }
@@ -109,9 +119,12 @@ struct NoDispatcher;
 pub struct InitError;
 
 impl Subscriber for NoDispatcher {
+    fn enabled(&self, _metadata: &Meta) -> bool {
+        false
+    }
+
     fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
         // Do nothing.
-        // TODO: should this panic instead?
     }
 
     fn enter(&self, _span: &SpanData, _at: Instant) {}

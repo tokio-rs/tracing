@@ -113,6 +113,10 @@ impl SloggishSubscriber {
 }
 
 impl tokio_trace::Subscriber for SloggishSubscriber {
+    fn enabled(&self, _metadata: &tokio_trace::Meta) -> bool {
+        true
+    }
+
     #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event tokio_trace::Event<'event, 'meta>) {
         let mut stderr = self.stderr.lock();
