@@ -11,20 +11,8 @@ use std::{
     time::Instant,
 };
 
-lazy_static! {
-    static ref ROOT_SPAN: Active = Active::new(
-        Data::new(
-            Instant::now(),
-            None,
-            &static_meta!("root"),
-            Vec::new(),
-        ),
-        None
-    );
-}
-
 thread_local! {
-    static CURRENT_SPAN: RefCell<Active> = RefCell::new(ROOT_SPAN.clone());
+    static CURRENT_SPAN: RefCell<Option<Active>> = RefCell::new(None);
 }
 
 /// A handle that represents a span in the process of executing.
@@ -212,11 +200,11 @@ impl Span {
         let parent = Active::current();
         let data = Data::new(
             opened_at,
-            Some(parent.data()),
+            parent.as_ref().map(Active::data),
             static_meta,
             field_values,
         );
-        let inner = Some(Active::new(data, Some(parent)));
+        let inner = Some(Active::new(data, parent));
         Span {
             inner,
         }
@@ -233,8 +221,7 @@ impl Span {
     /// Returns a reference to the span that this thread is currently
     /// executing.
     pub fn current() -> Self {
-        let inner = Some(Active::current());
-        Self { inner }
+        Self { inner: Active::current() }
     }
 
     pub fn enter<F: FnOnce() -> T, T>(self, f: F) -> T {
@@ -298,9 +285,9 @@ impl Data {
         }
     }
 
-    pub fn current() -> Self {
+    pub fn current() -> Option<Self> {
         CURRENT_SPAN.with(|current| {
-            current.borrow().data().clone()
+            current.borrow().as_ref().map(Active::data).cloned()
         })
     }
 
@@ -439,9 +426,8 @@ impl fmt::Debug for Data {
 // ===== impl Active =====
 
 impl Active {
-    #[doc(hidden)]
-    pub fn current() -> Self {
-        CURRENT_SPAN.with(|span| span.borrow().clone())
+    fn current() -> Option<Self> {
+        CURRENT_SPAN.with(|span| span.borrow().as_ref().cloned())
     }
 
     fn new(data: Data, enter_parent: Option<Self>) -> Self  {
@@ -464,16 +450,14 @@ impl Active {
             _ => {
                 let result = CURRENT_SPAN.with(|current_span| {
                     self.inner.transition_on_enter(prior_state);
-                    current_span.replace(self.clone());
+                    current_span.replace(Some(self.clone()));
                     Dispatcher::current().enter(self.data(), Instant::now());
                     f()
                 });
 
                 CURRENT_SPAN.with(|current_span| {
                     let timestamp = Instant::now();
-                    if let Some(ref parent) = self.inner.enter_parent {
-                        current_span.replace(parent.clone());
-                    }
+                    current_span.replace(self.inner.enter_parent.as_ref().cloned());
                     // If we are the only remaining enter handle to this
                     // span, it can now transition to Done. Otherwise, it
                     // transitions to Idle.

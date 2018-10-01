@@ -113,8 +113,6 @@
 
 extern crate futures;
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
 pub use log::Level;
 
 use std::{fmt, slice, time::Instant};
@@ -264,7 +262,7 @@ impl<T> Value for T where T: fmt::Debug + Send + Sync {}
 pub struct Event<'event, 'meta> {
     pub timestamp: Instant,
 
-    pub parent: SpanData,
+    pub parent: Option<SpanData>,
     pub follows_from: &'event [SpanData],
 
     pub meta: &'meta Meta<'meta>,
@@ -336,7 +334,7 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     /// event's immediate parent to the root span of the trace.
     pub fn parents<'a>(&'a self) -> Parents<'a> {
         Parents {
-            next: Some(&self.parent),
+            next: self.parent.as_ref(),
         }
     }
 
