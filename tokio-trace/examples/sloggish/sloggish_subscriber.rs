@@ -120,11 +120,16 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event tokio_trace::Event<'event, 'meta>) {
         let mut stderr = self.stderr.lock();
-        let parent_hash = self.hash_span(&event.parent);
+        let parent_hash = event.parent
+            .as_ref()
+            .map(|span| self.hash_span(span));
 
         let stack = self.stack.lock().unwrap();
         if let Some(idx) = stack.iter()
-            .position(|hash| hash == &parent_hash)
+            .position(|hash| parent_hash.as_ref()
+                .map(|p| p == hash)
+                .unwrap_or(false)
+            )
         {
             self.print_indent(&mut stderr, idx + 1).unwrap();
         }
