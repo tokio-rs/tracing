@@ -30,7 +30,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let meta: tokio_trace::Meta = record.into();
     let event = Event {
         timestamp: Instant::now(),
-        parent: tokio_trace::Span::current().into(),
+        parent: tokio_trace::SpanData::current(),
         follows_from: &[],
         meta: &meta,
         field_values: &[],
