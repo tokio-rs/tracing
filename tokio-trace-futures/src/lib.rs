@@ -1,4 +1,8 @@
-use super::Span;
+#[cfg_attr(test, macro_use)]
+extern crate tokio_trace;
+extern crate futures;
+
+use tokio_trace::Span;
 use futures::{Async, Future, Sink, Stream, Poll, StartSend};
 
 // TODO: seal?
@@ -92,7 +96,7 @@ impl<T: Sink> Sink for Instrumented<T> {
 #[cfg(test)]
 mod tests {
     use futures::{prelude::*, task, future, stream};
-    use ::{span, subscriber};
+    use tokio_trace::{span, subscriber};
     use super::*;
 
     #[test]
@@ -131,7 +135,7 @@ mod tests {
             )
             .run();
         MyFuture { polls: 0 }
-            .instrument(span!("foo",))
+            .instrument(span!("foo"))
             .wait().unwrap();
     }
 
@@ -166,7 +170,7 @@ mod tests {
                     .with_state(span::State::Idle)
             )
             .run();
-        let foo = span!("foo",);
+        let foo = span!("foo");
         MyFuture { polls: 0 }
             .instrument(foo.clone())
             .wait().unwrap();
@@ -204,7 +208,7 @@ mod tests {
             )
             .run();
         MyFuture { polls: 0 }
-            .instrument(span!("foo",))
+            .instrument(span!("foo"))
             .wait().unwrap_err();
     }
 
@@ -233,7 +237,7 @@ mod tests {
             )
             .run();
         stream::iter_ok::<_, ()>(&[1, 2, 3])
-            .instrument(span!("foo",))
+            .instrument(span!("foo"))
             .for_each(|_| { future::ok(()) })
             .wait().unwrap();
     }

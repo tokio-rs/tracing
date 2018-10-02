@@ -6,6 +6,3 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 [dependencies]
 tokio-trace = { path = "../tokio-trace" }
 log = "0.4"
-
-[dev-dependencies]
-env_logger = "0.5"

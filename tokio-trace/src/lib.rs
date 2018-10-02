@@ -117,31 +117,6 @@ use std::{fmt, slice, time::Instant};
 
 use self::dedup::IteratorDedup;
 
-#[repr(usize)]
-#[derive(Copy, Eq, Debug, Hash)]
-pub enum Level {
-    /// The "error" level.
-    ///
-    /// Designates very serious errors.
-    Error = 1, // This way these line up with the discriminants for LevelFilter below
-    /// The "warn" level.
-    ///
-    /// Designates hazardous situations.
-    Warn,
-    /// The "info" level.
-    ///
-    /// Designates useful information.
-    Info,
-    /// The "debug" level.
-    ///
-    /// Designates lower priority information.
-    Debug,
-    /// The "trace" level.
-    ///
-    /// Designates very low priority, often extremely verbose, information.
-    Trace,
-}
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! static_meta {
@@ -255,9 +230,33 @@ macro_rules! event {
     ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (event!(target: None, $lvl, { $($k = $val),* }, $($arg)+))
 }
 
+#[repr(usize)]
+#[derive(Copy, Eq, Debug, Hash)]
+pub enum Level {
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    Error = 1, // This way these line up with the discriminants for LevelFilter below
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug,
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace,
+}
+
 mod dedup;
 mod dispatcher;
-pub mod instrument;
 pub mod span;
 pub mod subscriber;
 

@@ -2,10 +2,11 @@ extern crate tower_service;
 extern crate http;
 #[macro_use]
 extern crate tokio_trace;
+extern crate tokio_trace_futures;
 extern crate futures;
 
 use futures::{Future, Poll};
-use tokio_trace::instrument::{Instrumented, Instrument};
+use tokio_trace_futures::{Instrumented, Instrument};
 use tower_service::{Service, NewService};
 
 #[derive(Clone, Debug)]

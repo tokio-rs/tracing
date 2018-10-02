@@ -5,5 +5,6 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
 tokio-trace = { path = "../tokio-trace" }
+tokio-trace-futures = { path = "../tokio-trace-futures" }
 futures = "0.1"
 tower-service = { git = "https://github.com/tower-rs/tower.git" }

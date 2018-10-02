@@ -5,6 +5,7 @@ extern crate http;
 extern crate tokio;
 #[macro_use]
 extern crate tokio_trace;
+extern crate tokio_trace_futures;
 extern crate tokio_trace_tower_http;
 extern crate tower_h2;
 extern crate tower_service;
@@ -16,10 +17,8 @@ use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
 use tower_h2::{Body, Server, RecvBody};
 use tower_service::{NewService, Service};
-use tokio_trace::{
-    Level,
-    instrument::Instrument,
-};
+use tokio_trace::Level;
+use tokio_trace_futures::Instrument;
 
 #[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;

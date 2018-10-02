@@ -98,9 +98,10 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 pub use self::test_support::*;
-#[cfg(test)]
+
+#[cfg(any(test, feature = "test-support"))]
 mod test_support {
     use super::Subscriber;
     use ::{Event, SpanData, Meta};
