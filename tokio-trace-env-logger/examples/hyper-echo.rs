@@ -2,6 +2,7 @@ extern crate futures;
 extern crate hyper;
 #[macro_use]
 extern crate tokio_trace;
+extern crate tokio_trace_futures;
 extern crate tokio_trace_env_logger;
 extern crate tokio;
 
@@ -17,10 +18,8 @@ use std::str;
 mod sloggish;
 use self::sloggish::SloggishSubscriber;
 
-use tokio_trace::{
-    Level,
-    instrument::{Instrument, Instrumented},
-};
+use tokio_trace::Level;
+use tokio_trace_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 

@@ -1,0 +1,11 @@
+[package]
+name = "tokio-trace-futures"
+version = "0.0.1"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+futures = "0.1"
+tokio-trace = { path = "../tokio-trace" }
+
+[dev-dependencies]
+tokio-trace = { path = "../tokio-trace", features = ["test-support"] }

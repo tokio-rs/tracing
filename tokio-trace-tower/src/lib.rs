@@ -1,9 +1,10 @@
 extern crate tower_service;
 #[macro_use]
 extern crate tokio_trace;
+extern crate tokio_trace_futures;
 extern crate futures;
 
-use tokio_trace::instrument::{Instrumented, Instrument};
+use tokio_trace_futures::{Instrumented, Instrument};
 use tower_service::Service;
 use std::fmt;
 
