@@ -405,7 +405,11 @@ where
     &'a I: IntoIterator<Item = (&'a str, &'a dyn Value)>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_map().entries(self.0.into_iter()).finish()
+        self.0.into_iter()
+            .fold(&mut f.debug_struct(""), |s, (name, value)| {
+                s.field(name, &value)
+            })
+            .finish()
     }
 }
 
