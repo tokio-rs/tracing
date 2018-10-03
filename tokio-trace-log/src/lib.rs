@@ -23,7 +23,7 @@ extern crate tokio_trace;
 extern crate log;
 
 use std::{io, time::Instant};
-use tokio_trace::{Subscriber, Event, SpanData, Meta};
+use tokio_trace::{span, Subscriber, Event, SpanData, Meta};
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
@@ -153,6 +153,10 @@ impl LogSubscriber {
 impl Subscriber for LogSubscriber {
     fn enabled(&self, metadata: &Meta) -> bool {
         log::logger().enabled(&metadata.as_log())
+    }
+
+    fn new_span_id(&self, metadata: &Meta) -> span::Id {
+        span::Id::from_u64(0)
     }
 
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {

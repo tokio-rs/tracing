@@ -193,8 +193,10 @@ macro_rules! span {
         {
             use $crate::{span, Subscriber, Dispatcher, Meta};
             static META: Meta<'static> = static_meta!($name, $($k),* );
-            if Dispatcher::current().enabled(&META) {
+            let dispatcher = Dispatcher::current();
+            if dispatcher.enabled(&META) {
                 span::Span::new(
+                    dispatcher.new_span_id(&META),
                     ::std::time::Instant::now(),
                     &META,
                     vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
