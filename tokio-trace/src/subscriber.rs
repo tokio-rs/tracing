@@ -1,4 +1,4 @@
-use super::{Event, SpanData, Meta};
+use super::{span, Event, SpanData, Meta};
 use std::time::Instant;
 
 pub trait Subscriber {
@@ -7,6 +7,23 @@ pub trait Subscriber {
     /// This is used by the dispatcher to avoid allocating for span construction
     /// if the span would be discarded anyway.
     fn enabled(&self, metadata: &Meta) -> bool;
+
+    /// Returns a new [span ID] for a span with the specified metadata.
+    ///
+    /// Span IDs are used to uniquely identify spans, so span equality will be
+    /// based on the returned ID. Thus, if the subscriber wishes for all spans
+    /// with the same metadata to be considered equal, it should return the same
+    /// ID every time it is given a particular set of metadata. Similarly, if it
+    /// wishes for two separate instances of a span with the same metadata to *not*
+    /// be equal, it should return a distinct ID every time this function is called,
+    /// regardless of the metadata.
+    ///
+    /// Subscribers which do not rely on the implementations of `PartialEq`,
+    /// `Eq`, and `Hash` for `Span`s are free to return span IDs with value 0
+    /// from all calls to this function, if they so choose.
+    ///
+    /// [span ID]: ../span/struct.Id.html
+    fn new_span_id(&self, metadata: &Meta) -> span::Id;
 
     /// Note that this function is generic over a pair of lifetimes because the
     /// `Event` type is. See the documentation for [`Event`] for details.
@@ -82,6 +99,10 @@ where
         (self.filter)(metadata) && self.inner.enabled(metadata)
     }
 
+    fn new_span_id(&self, metadata: &Meta) -> span::Id {
+        self.inner.new_span_id(metadata)
+    }
+
     #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         self.inner.observe_event(event)
@@ -105,13 +126,14 @@ pub use self::test_support::*;
 mod test_support {
     use super::Subscriber;
     use ::{Event, SpanData, Meta};
-    use ::span::MockSpan;
+    use ::span::{self, MockSpan};
 
     use std::{
         cell::RefCell,
         collections::VecDeque,
         time::Instant,
         thread,
+        sync::atomic::{AtomicUsize, Ordering},
     };
 
     struct ExpectEvent {
@@ -126,6 +148,7 @@ mod test_support {
 
     struct Running {
         expected: RefCell<VecDeque<Expect>>,
+        ids: AtomicUsize,
     }
 
     pub struct MockSubscriber {
@@ -166,6 +189,7 @@ mod test_support {
                 .try_init();
             let subscriber = Running {
                 expected: RefCell::new(self.expected),
+                ids: AtomicUsize::new(0),
             };
             MOCK_SUBSCRIBER.with(move |mock| {
                 *mock.borrow_mut() = Some(subscriber);
@@ -177,6 +201,10 @@ mod test_support {
         fn enabled(&self, _meta: &Meta) -> bool {
             // TODO: allow the mock subscriber to filter events for testing filtering?
             true
+        }
+
+        fn new_span_id(&self, _meta: &Meta) -> span::Id {
+            span::Id::from_u64(self.ids.fetch_add(1, Ordering::SeqCst) as u64)
         }
 
         fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
@@ -235,6 +263,15 @@ mod test_support {
         fn enabled(&self, _meta: &Meta) -> bool {
             // TODO: allow the mock dispatcher to filter events for testing filtering?
             true
+        }
+
+        fn new_span_id(&self, meta: &Meta) -> span::Id {
+            MOCK_SUBSCRIBER.with(|mock| {
+                mock.borrow()
+                    .as_ref()
+                    .map(|subscriber| subscriber.new_span_id(meta))
+                    .unwrap_or_else(|| span::Id::from_u64(0))
+            })
         }
 
         fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {

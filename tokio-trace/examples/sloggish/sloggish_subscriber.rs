@@ -21,7 +21,7 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
     fmt,
     io::{self, Write},
-    sync::Mutex,
+    sync::{Mutex, atomic::{AtomicUsize, Ordering}},
     time::{Instant, SystemTime},
 };
 
@@ -32,6 +32,7 @@ pub struct SloggishSubscriber {
     t0_sys: SystemTime,
     hash_builder: RandomState,
     stack: Mutex<Vec<u64>>,
+    ids: AtomicUsize,
 }
 
 struct ColorLevel(Level);
@@ -57,6 +58,7 @@ impl SloggishSubscriber {
             t0_sys: SystemTime::now(),
             hash_builder: RandomState::new(),
             stack: Mutex::new(vec![]),
+            ids: AtomicUsize::new(0),
         }
     }
 
@@ -115,6 +117,11 @@ impl SloggishSubscriber {
 impl tokio_trace::Subscriber for SloggishSubscriber {
     fn enabled(&self, _metadata: &tokio_trace::Meta) -> bool {
         true
+    }
+
+    fn new_span_id(&self, _: &tokio_trace::Meta) -> tokio_trace::span::Id {
+        let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
+        tokio_trace::span::Id::from_u64(next)
     }
 
     #[inline]

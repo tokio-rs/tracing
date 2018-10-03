@@ -1,4 +1,4 @@
-use {subscriber::Subscriber, Event, SpanData, Meta};
+use {span, subscriber::Subscriber, Event, SpanData, Meta};
 
 use std::{
     sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
@@ -64,6 +64,15 @@ impl Subscriber for Builder {
         }
     }
 
+    fn new_span_id(&self, metadata: &Meta) -> span::Id {
+        // TODO: this shouldn't let the first attached subscriber always be in
+        // control of the span ID, but the dispatcher type is going away soon
+        // anyway, so for now, it just needs to compile.
+        self.subscribers.get(0)
+            .map(|subscriber| subscriber.new_span_id(metadata))
+            .unwrap_or_else(|| span::Id::from_u64(0))
+    }
+
     #[inline]
     fn enter(&self, span: &SpanData, at: Instant) {
         for subscriber in &self.subscribers {
@@ -98,6 +107,11 @@ impl Subscriber for Dispatcher {
     }
 
     #[inline]
+    fn new_span_id(&self, metadata: &Meta) -> span::Id {
+        self.0.new_span_id(metadata)
+    }
+
+    #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         self.0.observe_event(event)
     }
@@ -121,6 +135,10 @@ pub struct InitError;
 impl Subscriber for NoDispatcher {
     fn enabled(&self, _metadata: &Meta) -> bool {
         false
+    }
+
+    fn new_span_id(&self, _metadata: &Meta) -> span::Id {
+        span::Id::from_u64(0)
     }
 
     fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
