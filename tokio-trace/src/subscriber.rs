@@ -8,7 +8,8 @@ pub trait Subscriber {
     /// if the span would be discarded anyway.
     fn enabled(&self, metadata: &Meta) -> bool;
 
-    /// Returns a new [span ID] for a span with the specified metadata.
+    /// Record the construction of a new [`Span`], returning a a new [span ID] for
+    /// the span being constructed.
     ///
     /// Span IDs are used to uniquely identify spans, so span equality will be
     /// based on the returned ID. Thus, if the subscriber wishes for all spans
@@ -23,7 +24,7 @@ pub trait Subscriber {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span_id(&self, metadata: &Meta) -> span::Id;
+    fn new_span(&self, new_span: &span::NewSpan) -> span::Id;
 
     /// Note that this function is generic over a pair of lifetimes because the
     /// `Event` type is. See the documentation for [`Event`] for details.
@@ -99,8 +100,8 @@ where
         (self.filter)(metadata) && self.inner.enabled(metadata)
     }
 
-    fn new_span_id(&self, metadata: &Meta) -> span::Id {
-        self.inner.new_span_id(metadata)
+    fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
+        self.inner.new_span(&new_span)
     }
 
     #[inline]
@@ -203,7 +204,7 @@ mod test_support {
             true
         }
 
-        fn new_span_id(&self, _meta: &Meta) -> span::Id {
+        fn new_span(&self, _: &span::NewSpan) -> span::Id {
             span::Id::from_u64(self.ids.fetch_add(1, Ordering::SeqCst) as u64)
         }
 
@@ -265,11 +266,11 @@ mod test_support {
             true
         }
 
-        fn new_span_id(&self, meta: &Meta) -> span::Id {
+        fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
             MOCK_SUBSCRIBER.with(|mock| {
                 mock.borrow()
                     .as_ref()
-                    .map(|subscriber| subscriber.new_span_id(meta))
+                    .map(|subscriber| subscriber.new_span(new_span))
                     .unwrap_or_else(|| span::Id::from_u64(0))
             })
         }

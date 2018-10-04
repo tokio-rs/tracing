@@ -93,6 +93,15 @@ pub struct Span {
     inner: Option<Active>,
 }
 
+#[derive(Debug)]
+pub struct NewSpan {
+    parent: Option<Active>,
+
+    static_meta: &'static StaticMeta,
+
+    field_values: Vec<Box<dyn Value>>,
+}
+
 /// A handle on the data associated with a span.
 ///
 /// This may be used to access the span but may *not* be used to enter the span.
@@ -203,29 +212,6 @@ pub enum State {
 // ===== impl Span =====
 
 impl Span {
-    /// This is primarily used by the `span!` macro, so it has to be public,
-    /// but it's not intended for use by consumers of the tokio-trace API
-    /// directly.
-    #[doc(hidden)]
-    pub fn new(
-        id: Id,
-        opened_at: Instant,
-        static_meta: &'static StaticMeta,
-        field_values: Vec<Box<dyn Value>>,
-    ) -> Self {
-        let parent = Active::current();
-        let data = Data::new(
-            id,
-            opened_at,
-            parent.as_ref().map(Active::data),
-            static_meta,
-            field_values,
-        );
-        let inner = Some(Active::new(data, parent));
-        Span {
-            inner,
-        }
-    }
 
     /// This is primarily used by the `span!` macro, so it has to be public,
     /// but it's not intended for use by consumers of the tokio-trace API
@@ -452,6 +438,122 @@ impl fmt::Debug for Data {
 impl Id {
     pub fn from_u64(u: u64) -> Self {
         Id(u)
+    }
+}
+
+// ===== impl NewSpan =====
+
+impl NewSpan {
+
+    /// This is primarily used by the `span!` macro, so it has to be public,
+    /// but it's not intended for use by consumers of the tokio-trace API
+    /// directly.
+    #[doc(hidden)]
+    pub fn new(
+        static_meta: &'static StaticMeta,
+        field_values: Vec<Box<dyn Value>>,
+    ) -> Self {
+        Self {
+            parent: Active::current(),
+            static_meta,
+            field_values,
+        }
+    }
+
+    /// Returns the name of this span, or `None` if it is unnamed,
+    pub fn name(&self) -> Option<&'static str> {
+        self.static_meta.name
+    }
+
+    /// Returns a `Data` reference to the parent of this span, if one exists.
+    pub fn parent(&self) -> Option<&Data> {
+        self.parent.as_ref().map(Active::data)
+    }
+
+    /// Borrows this span's metadata.
+    pub fn meta(&self) -> &'static StaticMeta {
+        self.static_meta
+    }
+
+    /// Returns an iterator over the names of all the fields on this span.
+    pub fn field_names<'a>(&self) -> slice::Iter<&'a str> {
+        self.static_meta.field_names.iter()
+    }
+
+    /// Borrows the value of the field named `name`, if it exists. Otherwise,
+    /// returns `None`.
+    pub fn field<Q>(&self, key: Q) -> Option<&dyn Value>
+    where
+        &'static str: PartialEq<Q>,
+    {
+        self.field_names()
+            .position(|&field_name| field_name == key)
+            .and_then(|i| self.field_values
+                .get(i)
+                .map(AsRef::as_ref))
+    }
+
+    /// Returns an iterator over all the field names and values on this span.
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
+        self.field_names()
+            .enumerate()
+            .map(move |(idx, &name)| (name, self.field_values[idx].as_ref()))
+    }
+
+    /// Returns an iterator over [`Data`] references to all the spans that are
+    /// parents of this span.
+    ///
+    /// The iterator will traverse the trace tree in ascending order from this
+    /// span's immediate parent to the root span of the trace.
+    pub fn parents<'a>(&'a self) -> Parents<'a> {
+        Parents {
+            next: self.parent(),
+        }
+    }
+
+    /// Returns an iterator over all the field names and values of this span
+    /// and all of its parent spans.
+    ///
+    /// Fields with duplicate names are skipped, and the value defined lowest
+    /// in the tree is used. For example:
+    /// ```
+    /// # #[macro_use]
+    /// # extern crate tokio_trace;
+    /// # use tokio_trace::Level;
+    /// # fn main() {
+    /// span!("parent 1", foo = 1, bar = 1).enter(|| {
+    ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
+    ///         span!("my span", bar = 2).enter(|| {
+    ///             // do stuff...
+    ///         })
+    ///     })
+    /// });
+    /// # }
+    /// ```
+    /// If a `Subscriber` were to call `all_fields` on "my span" event, it will
+    /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
+    pub fn all_fields<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
+        self.fields()
+            .chain(self.parents().flat_map(|parent| parent.fields()))
+            .dedup_by(|(k, _)| k)
+    }
+
+    /// Finalize constructing the span by attaching a span ID and constructing
+    /// the internal span state.
+    pub fn finish(self, id: Id) -> Span {
+        let data = Data::new(
+            id,
+            Instant::now(), // TODO: remove
+            self.parent.as_ref().map(Active::data),
+            self.static_meta,
+            self.field_values,
+        );
+        let inner = Some(Active::new(data, self.parent));
+        Span {
+            inner,
+        }
     }
 }
 

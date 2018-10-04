@@ -119,7 +119,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         true
     }
 
-    fn new_span_id(&self, _: &tokio_trace::Meta) -> tokio_trace::span::Id {
+    fn new_span(&self, _: &tokio_trace::span::NewSpan) -> tokio_trace::span::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
         tokio_trace::span::Id::from_u64(next)
     }

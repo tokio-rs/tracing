@@ -64,13 +64,21 @@ impl Subscriber for Builder {
         }
     }
 
-    fn new_span_id(&self, metadata: &Meta) -> span::Id {
+    fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
         // TODO: this shouldn't let the first attached subscriber always be in
         // control of the span ID, but the dispatcher type is going away soon
         // anyway, so for now, it just needs to compile.
-        self.subscribers.get(0)
-            .map(|subscriber| subscriber.new_span_id(metadata))
-            .unwrap_or_else(|| span::Id::from_u64(0))
+        let id = self.subscribers.get(0)
+            .map(|subscriber| subscriber.new_span(&new_span))
+            .unwrap_or_else(|| span::Id::from_u64(0));
+        // Show the new span to all the attached subscribers anyway, so they can
+        // register its creation.
+        // TODO: this means their IDs will silently be ignored. Figure out a
+        // better way to handle this!
+        for subscriber in &self.subscribers[1..] {
+            subscriber.new_span(&new_span);
+        }
+        id
     }
 
     #[inline]
@@ -107,8 +115,8 @@ impl Subscriber for Dispatcher {
     }
 
     #[inline]
-    fn new_span_id(&self, metadata: &Meta) -> span::Id {
-        self.0.new_span_id(metadata)
+    fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
+        self.0.new_span(new_span)
     }
 
     #[inline]
@@ -137,7 +145,7 @@ impl Subscriber for NoDispatcher {
         false
     }
 
-    fn new_span_id(&self, _metadata: &Meta) -> span::Id {
+    fn new_span(&self, _new_span: &span::NewSpan) -> span::Id {
         span::Id::from_u64(0)
     }
 

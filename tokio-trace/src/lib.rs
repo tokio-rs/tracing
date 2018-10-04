@@ -195,12 +195,12 @@ macro_rules! span {
             static META: Meta<'static> = static_meta!($name, $($k),* );
             let dispatcher = Dispatcher::current();
             if dispatcher.enabled(&META) {
-                span::Span::new(
-                    dispatcher.new_span_id(&META),
-                    ::std::time::Instant::now(),
+                let new_span = span::NewSpan::new(
                     &META,
                     vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
-                )
+                );
+                let id = dispatcher.new_span(&new_span);
+                new_span.finish(id)
             } else {
                 span::Span::new_disabled()
             }
