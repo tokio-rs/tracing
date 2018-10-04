@@ -160,6 +160,48 @@ macro_rules! static_meta {
     )
 }
 
+// Cache the result of testing if a span or event with the given metadata is
+// enabled by the current subscriber, so the filter doesn't have to be
+// reapplied if we have already called `enabled`.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! cached_filter {
+    ($meta:expr, $dispatcher:expr) => {
+        {
+            use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
+            static FILTERED: AtomicUsize = ATOMIC_USIZE_INIT;
+            const ENABLED: usize = 1;
+            const DISABLED: usize = 2;
+            if $dispatcher.should_invalidate_filter($meta) {
+                let enabled = $dispatcher.enabled(&META);
+                if enabled {
+                    FILTERED.store(ENABLED, Ordering::Relaxed);
+                } else {
+                    FILTERED.store(DISABLED, Ordering::Relaxed);
+                }
+                enabled
+            } else {
+                match FILTERED.load(Ordering::Relaxed) {
+                    // If there's a cached result, use that.
+                    ENABLED => true,
+                    DISABLED => false,
+                    // Otherwise, this span has not yet been filtered, so call
+                    // `enabled` now and store the result.
+                    _ => {
+                        let enabled = $dispatcher.enabled(&META);
+                        if enabled {
+                            FILTERED.store(ENABLED, Ordering::Relaxed);
+                        } else {
+                            FILTERED.store(DISABLED, Ordering::Relaxed);
+                        }
+                        enabled
+                    },
+                }
+            }
+        }
+    }
+}
+
 /// Constructs a new span.
 ///
 /// # Examples
@@ -194,7 +236,7 @@ macro_rules! span {
             use $crate::{span, Subscriber, Dispatcher, Meta};
             static META: Meta<'static> = static_meta!($name, $($k),* );
             let dispatcher = Dispatcher::current();
-            if dispatcher.enabled(&META) {
+            if cached_filter!(&META, dispatcher) {
                 let new_span = span::NewSpan::new(
                     &META,
                     vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
@@ -216,7 +258,7 @@ macro_rules! event {
             use $crate::{Subscriber, Dispatcher, Meta, SpanData, Event, Value};
             static META: Meta<'static> = static_meta!(@ None, $target, $lvl, $($k),* );
             let dispatcher = Dispatcher::current();
-            if dispatcher.enabled(&META) {
+            if cached_filter!(&META, dispatcher) {
                 let field_values: &[& dyn Value] = &[ $( & $val),* ];
                 dispatcher.observe_event(&Event {
                     parent: SpanData::current(),

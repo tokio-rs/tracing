@@ -25,6 +25,37 @@ pub trait Subscriber {
     /// [span ID]: ../span/struct.Id.html
     fn new_span(&self, new_span: &span::NewSpan) -> span::Id;
 
+    /// Returns `true` if the cached result to a call to `enabled` for a span
+    /// with the given metadata is still valid.
+    ///
+    /// By default, this function assumes that cached filter results will remain
+    /// valid, but should be overridden when this is not the case.
+    ///
+    /// If this returns `false`, then the prior value may be used.
+    /// `Subscriber`s which require their filters to be run every time an event
+    /// occurs or a span is entered/exited should always return `true`.
+    ///
+    /// For example, suppose a sampling subscriber is implemented by incrementing a
+    /// counter every time `enabled` is called and only returning `true` when
+    /// the counter is divisible by a specified sampling rate. If that
+    /// subscriber returns `false` from `should_invalidate_filter`, then the
+    /// filter will not be re-evaluated once it has been applied to a given set
+    /// of metadata. Thus, the counter will not be incremented, and the span or
+    /// event that correspands to the metadata will never be `enabled`.
+    ///
+    /// Similarly, if a `Subscriber` has a filtering strategy that can be
+    /// changed dynamically at runtime, it would need to invalidate any cached
+    /// filter results when the filtering rules change.
+    ///
+    /// A subscriber which manages fanout to multiple other subscribers should
+    /// proxy this decision to all of its child subscribers, returning `false`
+    /// only if _all_ such children return `false`. If the set of subscribers to
+    /// which spans are broadcast may change dynamically, adding a new
+    /// subscriber should also invalidate cached filters.
+    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+        false
+    }
+
     /// Note that this function is generic over a pair of lifetimes because the
     /// `Event` type is. See the documentation for [`Event`] for details.
     ///
@@ -162,10 +193,10 @@ mod test_support {
 
     // hack so each test thread can run its own mock subscriber, even though the
     // global dispatcher is static for the lifetime of the whole test binary.
-    struct MockDispatch {}
+    pub struct MockDispatch {}
 
     thread_local! {
-        static MOCK_SUBSCRIBER: RefCell<Option<Running>> = RefCell::new(None);
+        static MOCK_SUBSCRIBER: RefCell<Option<Box<dyn Subscriber>>> = RefCell::new(None);
     }
 
     impl MockSubscriber {
@@ -180,19 +211,15 @@ mod test_support {
             self
         }
 
-        pub fn run(self) {
-            // don't care if this succeeds --- another test may have already
-            // installed the test dispatcher.
-            let _ = ::Dispatcher::builder()
-                .add_subscriber(MockDispatch {})
-                .try_init();
-            let subscriber = Running {
+        pub fn to_subscriber(self) -> impl Subscriber {
+            Running {
                 expected: RefCell::new(self.expected),
                 ids: AtomicUsize::new(0),
-            };
-            MOCK_SUBSCRIBER.with(move |mock| {
-                *mock.borrow_mut() = Some(subscriber);
-            })
+            }
+        }
+
+        pub fn run(self) {
+            MockDispatch::run(self.to_subscriber());
         }
     }
 
@@ -259,9 +286,14 @@ mod test_support {
     }
 
     impl Subscriber for MockDispatch {
-        fn enabled(&self, _meta: &Meta) -> bool {
-            // TODO: allow the mock dispatcher to filter events for testing filtering?
-            true
+        fn enabled(&self, meta: &Meta) -> bool {
+            MOCK_SUBSCRIBER.with(|mock| {
+                if let Some(ref subscriber) = *mock.borrow() {
+                    subscriber.enabled(meta)
+                } else {
+                    false
+                }
+            })
         }
 
         fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
@@ -298,5 +330,213 @@ mod test_support {
                 }
             })
         }
+    }
+
+    impl MockDispatch {
+        pub fn run<T: Subscriber + Sized + 'static>(subscriber: T) {
+            // don't care if this succeeds --- another test may have already
+            // installed the test dispatcher.
+            let _ = ::Dispatcher::builder()
+                .add_subscriber(MockDispatch {})
+                .try_init();
+            MOCK_SUBSCRIBER.with(move |mock| {
+                *mock.borrow_mut() = Some(Box::new(subscriber));
+            })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ::{
+        span,
+        subscriber::{self, Subscriber},
+    };
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    #[test]
+    fn filters_are_not_reevaluated_for_the_same_span() {
+        // Asserts that the `span!` macro caches the result of calling
+        // `Subscriber::enabled` for each span.
+        let foo_count = Arc::new(AtomicUsize::new(0));
+        let bar_count = Arc::new(AtomicUsize::new(0));
+        let foo_count2 = foo_count.clone();
+        let bar_count2 = bar_count.clone();
+
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .to_subscriber()
+            .with_filter(move |meta| match meta.name {
+                Some("foo") => {
+                    foo_count2.fetch_add(1, Ordering::Relaxed);
+                    false
+                },
+                Some("bar") => {
+                    bar_count2.fetch_add(1, Ordering::Relaxed);
+                    true
+                },
+                _ => false,
+            });
+        subscriber::MockDispatch::run(subscriber);
+
+
+        // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
+        // not "foo."
+        let foo = span!("foo");
+        let bar = foo.clone().enter(|| {
+            let bar = span!("bar");
+            bar.clone().enter(|| { bar })
+        });
+
+        // The filter should have seen each span a single time.
+        assert_eq!(foo_count.load(Ordering::Relaxed), 1);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+
+        foo.clone().enter(|| {
+            bar.clone().enter(|| { })
+        });
+
+        // The subscriber should see "bar" again, but the filter should not have
+        // been called.
+        assert_eq!(foo_count.load(Ordering::Relaxed), 1);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+
+        bar.clone().enter(|| { });
+        assert_eq!(foo_count.load(Ordering::Relaxed), 1);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn filters_are_reevaluated_for_different_call_sites() {
+        // Asserts that the `span!` macro caches the result of calling
+        // `Subscriber::enabled` for each span.
+        let foo_count = Arc::new(AtomicUsize::new(0));
+        let bar_count = Arc::new(AtomicUsize::new(0));
+        let foo_count2 = foo_count.clone();
+        let bar_count2 = bar_count.clone();
+
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .to_subscriber()
+            .with_filter(move |meta| match meta.name {
+                Some("foo") => {
+                    foo_count2.fetch_add(1, Ordering::Relaxed);
+                    false
+                },
+                Some("bar") => {
+                    bar_count2.fetch_add(1, Ordering::Relaxed);
+                    true
+                },
+                _ => false,
+            });
+        subscriber::MockDispatch::run(subscriber);
+
+
+        // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
+        // not "foo."
+        let foo = span!("foo");
+        let bar = foo.clone().enter(|| {
+            let bar = span!("bar");
+            bar.clone().enter(|| { bar })
+        });
+
+        // The filter should have seen each span a single time.
+        assert_eq!(foo_count.load(Ordering::Relaxed), 1);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+
+        foo.clone().enter(|| {
+            bar.clone().enter(|| { })
+        });
+
+        // The subscriber should see "bar" again, but the filter should not have
+        // been called.
+        assert_eq!(foo_count.load(Ordering::Relaxed), 1);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+
+        // A different span with the same name has a different call site, so it
+        // should cause the filter to be reapplied.
+        let foo2 = span!("foo");
+        foo.clone().enter(|| { });
+        assert_eq!(foo_count.load(Ordering::Relaxed), 2);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+
+        // But, the filter should not be re-evaluated for the new "foo" span
+        // when it is re-entered.
+        foo2.enter(|| { span!("bar").enter(|| { }) });
+        assert_eq!(foo_count.load(Ordering::Relaxed), 2);
+        assert_eq!(bar_count.load(Ordering::Relaxed), 2);
+    }
+
+    #[test]
+    fn filter_caching_is_lexically_scoped() {
+        pub fn my_great_function() -> bool {
+            span!("foo").enter(|| {
+                true
+            })
+        }
+
+        pub fn my_other_function() -> bool {
+            span!("bar").enter(|| {
+                true
+            })
+        }
+
+        let count = Arc::new(AtomicUsize::new(0));
+        let count2 = count.clone();
+
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .to_subscriber()
+            .with_filter(move |_meta| {
+                count2.fetch_add(1, Ordering::Relaxed);
+                true
+            });
+        subscriber::MockDispatch::run(subscriber);
+
+        // Call the function once. The filter should be re-evaluated.
+        assert!(my_great_function());
+        assert_eq!(count.load(Ordering::Relaxed), 1);
+
+        // Call the function again. The cached result should be used.
+        assert!(my_great_function());
+        assert_eq!(count.load(Ordering::Relaxed), 1);
+
+        assert!(my_other_function());
+        assert_eq!(count.load(Ordering::Relaxed), 2);
+
+        assert!(my_great_function());
+        assert_eq!(count.load(Ordering::Relaxed), 2);
+
+        assert!(my_other_function());
+        assert_eq!(count.load(Ordering::Relaxed), 2);
+
+        assert!(my_great_function());
+        assert_eq!(count.load(Ordering::Relaxed), 2);
+
+
     }
 }
