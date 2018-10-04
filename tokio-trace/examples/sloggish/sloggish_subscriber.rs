@@ -22,14 +22,12 @@ use std::{
     fmt,
     io::{self, Write},
     sync::{Mutex, atomic::{AtomicUsize, Ordering}},
-    time::{Instant, SystemTime},
+    time::SystemTime,
 };
 
 pub struct SloggishSubscriber {
     indent_amount: usize,
     stderr: io::Stderr,
-    t0_instant: Instant,
-    t0_sys: SystemTime,
     hash_builder: RandomState,
     stack: Mutex<Vec<u64>>,
     ids: AtomicUsize,
@@ -54,17 +52,10 @@ impl SloggishSubscriber {
         Self {
             indent_amount,
             stderr: io::stderr(),
-            t0_instant: Instant::now(),
-            t0_sys: SystemTime::now(),
             hash_builder: RandomState::new(),
             stack: Mutex::new(vec![]),
             ids: AtomicUsize::new(0),
         }
-    }
-
-    fn anchor_instant(&self, t1: Instant) -> SystemTime {
-        let diff = t1 - self.t0_instant;
-        self.t0_sys + diff
     }
 
     fn print_kvs<'a, I>(&self, writer: &mut impl Write, kvs: I, leading: &str) -> io::Result<()>
@@ -140,11 +131,10 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         {
             self.print_indent(&mut stderr, idx + 1).unwrap();
         }
-        let t1 = self.anchor_instant(event.timestamp);
         write!(
             &mut stderr,
             "{} ",
-            humantime::format_rfc3339_seconds(t1)
+            humantime::format_rfc3339_seconds(SystemTime::now())
         ).unwrap();
         self.print_meta(&mut stderr, event.meta).unwrap();
         write!(
@@ -157,7 +147,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn enter(&self, span: &tokio_trace::SpanData, _at: Instant) {
+    fn enter(&self, span: &tokio_trace::SpanData) {
         let mut stderr = self.stderr.lock();
 
         let span_hash = self.hash_span(span);
@@ -190,5 +180,5 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::SpanData, _at: Instant) {}
+    fn exit(&self, _span: &tokio_trace::SpanData) {}
 }

@@ -8,7 +8,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
-    time::Instant,
 };
 
 thread_local! {
@@ -134,8 +133,6 @@ pub struct Id(u64);
 /// interaction with a span's data is carried out through `Data` references.
 #[derive(Debug)]
 struct DataInner {
-    pub opened_at: Instant,
-
     pub parent: Option<Data>,
 
     pub static_meta: &'static StaticMeta,
@@ -212,6 +209,27 @@ pub enum State {
 // ===== impl Span =====
 
 impl Span {
+    /// This is primarily used by the `span!` macro, so it has to be public,
+    /// but it's not intended for use by consumers of the tokio-trace API
+    /// directly.
+    #[doc(hidden)]
+    pub fn new(
+        id: Id,
+        static_meta: &'static StaticMeta,
+        field_values: Vec<Box<dyn Value>>,
+    ) -> Self {
+        let parent = Active::current();
+        let data = Data::new(
+            id,
+            parent.as_ref().map(Active::data),
+            static_meta,
+            field_values,
+        );
+        let inner = Some(Active::new(data, parent));
+        Span {
+            inner,
+        }
+    }
 
     /// This is primarily used by the `span!` macro, so it has to be public,
     /// but it's not intended for use by consumers of the tokio-trace API
@@ -244,7 +262,6 @@ impl fmt::Debug for Span {
         if let Some(inner) = self.data() {
             f.debug_struct("Span")
                 .field("name", &inner.name())
-                .field("opened_at", &inner.opened_at())
                 .field("parent", &inner.parent().map(Data::name))
                 .field("fields", &inner.debug_fields())
                 .field("meta", &inner.meta())
@@ -273,14 +290,12 @@ impl Into<Option<Data>> for Span {
 impl Data {
     fn new(
         id: Id,
-        opened_at: Instant,
         parent: Option<&Data>,
         static_meta: &'static StaticMeta,
         field_values: Vec<Box<dyn Value>>,
     ) -> Self {
         Data {
             inner: Arc::new(DataInner {
-                opened_at,
                 parent: parent.cloned(),
                 static_meta,
                 field_values,
@@ -314,11 +329,6 @@ impl Data {
     /// Returns an iterator over the names of all the fields on this span.
     pub fn field_names<'a>(&self) -> slice::Iter<&'a str> {
         self.inner.static_meta.field_names.iter()
-    }
-
-    /// Returns the `Instant` at which this span was created.
-    pub fn opened_at(&self) -> Instant {
-        self.inner.opened_at
     }
 
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
@@ -425,7 +435,6 @@ impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Span")
             .field("name", &self.name())
-            .field("opened_at", &self.inner.opened_at)
             .field("parent", &self.parent().unwrap_or(self).name())
             .field("fields", &self.debug_fields())
             .field("meta", &self.meta())
@@ -545,7 +554,6 @@ impl NewSpan {
     pub fn finish(self, id: Id) -> Span {
         let data = Data::new(
             id,
-            Instant::now(), // TODO: remove
             self.parent.as_ref().map(Active::data),
             self.static_meta,
             self.field_values,
@@ -586,12 +594,11 @@ impl Active {
                 let result = CURRENT_SPAN.with(|current_span| {
                     self.inner.transition_on_enter(prior_state);
                     current_span.replace(Some(self.clone()));
-                    Dispatcher::current().enter(self.data(), Instant::now());
+                    Dispatcher::current().enter(self.data());
                     f()
                 });
 
                 CURRENT_SPAN.with(|current_span| {
-                    let timestamp = Instant::now();
                     current_span.replace(self.inner.enter_parent.as_ref().cloned());
                     // If we are the only remaining enter handle to this
                     // span, it can now transition to Done. Otherwise, it
@@ -604,7 +611,7 @@ impl Active {
                         State::Idle
                     };
                     self.inner.transition_on_exit(next_state);
-                    Dispatcher::current().exit(self.data(), timestamp);
+                    Dispatcher::current().exit(self.data());
                 });
                 result
             }

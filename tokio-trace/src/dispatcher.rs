@@ -1,9 +1,6 @@
 use {span, subscriber::Subscriber, Event, SpanData, Meta};
 
-use std::{
-    sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
-    time::Instant,
-};
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 static STATE: AtomicUsize = ATOMIC_USIZE_INIT;
 
@@ -82,16 +79,16 @@ impl Subscriber for Builder {
     }
 
     #[inline]
-    fn enter(&self, span: &SpanData, at: Instant) {
+    fn enter(&self, span: &SpanData) {
         for subscriber in &self.subscribers {
-            subscriber.enter(span, at)
+            subscriber.enter(span)
         }
     }
 
     #[inline]
-    fn exit(&self, span: &SpanData, at: Instant) {
+    fn exit(&self, span: &SpanData) {
         for subscriber in &self.subscribers {
-            subscriber.exit(span, at)
+            subscriber.exit(span)
         }
     }
 }
@@ -125,13 +122,13 @@ impl Subscriber for Dispatcher {
     }
 
     #[inline]
-    fn enter(&self, span: &SpanData, at: Instant) {
-        self.0.enter(span, at)
+    fn enter(&self, span: &SpanData) {
+        self.0.enter(span)
     }
 
     #[inline]
-    fn exit(&self, span: &SpanData, at: Instant) {
-        self.0.exit(span, at)
+    fn exit(&self, span: &SpanData) {
+        self.0.exit(span)
     }
 }
 
@@ -153,7 +150,7 @@ impl Subscriber for NoDispatcher {
         // Do nothing.
     }
 
-    fn enter(&self, _span: &SpanData, _at: Instant) {}
+    fn enter(&self, _span: &SpanData) {}
 
-    fn exit(&self, _span: &SpanData, _at: Instant) {}
+    fn exit(&self, _span: &SpanData) {}
 }

@@ -1,5 +1,4 @@
 use super::{span, Event, SpanData, Meta};
-use std::time::Instant;
 
 pub trait Subscriber {
     /// Determines if a span or event with the specified metadata would be recorded.
@@ -31,8 +30,8 @@ pub trait Subscriber {
     ///
     /// [`Event`]: ../struct.Event.html
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>);
-    fn enter(&self, span: &SpanData, at: Instant);
-    fn exit(&self, span: &SpanData, at: Instant);
+    fn enter(&self, span: &SpanData);
+    fn exit(&self, span: &SpanData);
 
     /// Composes `self` with a `filter` that returns true or false if a span or
     /// event with the specified metadata should be recorded.
@@ -110,13 +109,13 @@ where
     }
 
     #[inline]
-    fn enter(&self, span: &SpanData, at: Instant) {
-        self.inner.enter(span, at)
+    fn enter(&self, span: &SpanData) {
+        self.inner.enter(span)
     }
 
     #[inline]
-    fn exit(&self, span: &SpanData, at: Instant) {
-        self.inner.exit(span, at)
+    fn exit(&self, span: &SpanData) {
+        self.inner.exit(span)
     }
 }
 
@@ -132,7 +131,6 @@ mod test_support {
     use std::{
         cell::RefCell,
         collections::VecDeque,
-        time::Instant,
         thread,
         sync::atomic::{AtomicUsize, Ordering},
     };
@@ -217,7 +215,7 @@ mod test_support {
             }
         }
 
-        fn enter(&self, span: &SpanData, _at: Instant) {
+        fn enter(&self, span: &SpanData) {
             println!("+ {}: {:?}", thread::current().name().unwrap_or("unknown thread"), span);
             match self.expected.borrow_mut().pop_front() {
                 None => {},
@@ -238,7 +236,7 @@ mod test_support {
             }
         }
 
-        fn exit(&self, span: &SpanData, _at: Instant) {
+        fn exit(&self, span: &SpanData) {
             println!("- {}: {:?}", thread::current().name().unwrap_or("unknown_thread"), span);
             match self.expected.borrow_mut().pop_front() {
                 None => {},
@@ -284,19 +282,19 @@ mod test_support {
         }
 
         #[inline]
-        fn enter(&self, span: &SpanData, at: Instant) {
+        fn enter(&self, span: &SpanData) {
             MOCK_SUBSCRIBER.with(|mock| {
                 if let Some(ref subscriber) = *mock.borrow() {
-                    subscriber.enter(span, at)
+                    subscriber.enter(span)
                 }
             })
         }
 
         #[inline]
-        fn exit(&self, span: &SpanData, at: Instant) {
+        fn exit(&self, span: &SpanData) {
             MOCK_SUBSCRIBER.with(|mock| {
                 if let Some(ref subscriber) = *mock.borrow() {
-                    subscriber.exit(span, at)
+                    subscriber.exit(span)
                 }
             })
         }

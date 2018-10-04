@@ -113,7 +113,7 @@
 
 extern crate futures;
 
-use std::{fmt, slice, time::Instant};
+use std::{fmt, slice};
 
 use self::dedup::IteratorDedup;
 
@@ -219,7 +219,6 @@ macro_rules! event {
             if dispatcher.enabled(&META) {
                 let field_values: &[& dyn Value] = &[ $( & $val),* ];
                 dispatcher.observe_event(&Event {
-                    timestamp: ::std::time::Instant::now(),
                     parent: SpanData::current(),
                     follows_from: &[],
                     meta: &META,
@@ -284,8 +283,6 @@ impl<T> Value for T where T: fmt::Debug + Send + Sync {}
 /// macro). Consumers of `Event` probably do not need to actually care about
 /// these lifetimes, however.
 pub struct Event<'event, 'meta> {
-    pub timestamp: Instant,
-
     pub parent: Option<SpanData>,
     pub follows_from: &'event [SpanData],
 
