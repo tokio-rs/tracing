@@ -155,7 +155,7 @@ impl Subscriber for LogSubscriber {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span_id(&self, metadata: &Meta) -> span::Id {
+    fn new_span(&self, _new_span: &span::NewSpan) -> span::Id {
         span::Id::from_u64(0)
     }
 
