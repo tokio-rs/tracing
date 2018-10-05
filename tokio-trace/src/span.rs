@@ -1,4 +1,4 @@
-use super::{DebugFields, Dispatcher, StaticMeta, Subscriber, Value, Parents, dedup::IteratorDedup};
+use super::{DebugFields, Dispatch, StaticMeta, Subscriber, Value, Parents, dedup::IteratorDedup};
 use std::{
     cell::RefCell,
     cmp, fmt,
@@ -186,6 +186,11 @@ struct ActiveInner {
     ///
     /// Incremented on enter and decremented on exit.
     currently_entered: AtomicUsize,
+
+    /// The subscriber with which this span was registered.
+    /// TODO: it would be nice if this could be any arbitrary `Subscriber`,
+    /// rather than `Dispatch`, but object safety.
+    subscriber: Dispatch,
 }
 
 /// Enumeration of the potential states of a [`Span`].
@@ -209,27 +214,6 @@ pub enum State {
 // ===== impl Span =====
 
 impl Span {
-    /// This is primarily used by the `span!` macro, so it has to be public,
-    /// but it's not intended for use by consumers of the tokio-trace API
-    /// directly.
-    #[doc(hidden)]
-    pub fn new(
-        id: Id,
-        static_meta: &'static StaticMeta,
-        field_values: Vec<Box<dyn Value>>,
-    ) -> Self {
-        let parent = Active::current();
-        let data = Data::new(
-            id,
-            parent.as_ref().map(Active::data),
-            static_meta,
-            field_values,
-        );
-        let inner = Some(Active::new(data, parent));
-        Span {
-            inner,
-        }
-    }
 
     /// This is primarily used by the `span!` macro, so it has to be public,
     /// but it's not intended for use by consumers of the tokio-trace API
@@ -435,7 +419,7 @@ impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Span")
             .field("name", &self.name())
-            .field("parent", &self.parent().unwrap_or(self).name())
+            .field("parent", &self.parent())
             .field("fields", &self.debug_fields())
             .field("meta", &self.meta())
             .finish()
@@ -549,16 +533,17 @@ impl NewSpan {
             .dedup_by(|(k, _)| k)
     }
 
-    /// Finalize constructing the span by attaching a span ID and constructing
-    /// the internal span state.
-    pub fn finish(self, id: Id) -> Span {
+    /// Finalize constructing the span by attaching a subscriber, generating a
+    /// span ID, and constructing the internal span state.
+    pub fn finish(self, subscriber: Dispatch) -> Span {
+        let id = subscriber.new_span(&self);
         let data = Data::new(
             id,
             self.parent.as_ref().map(Active::data),
             self.static_meta,
             self.field_values,
         );
-        let inner = Some(Active::new(data, self.parent));
+        let inner = Some(Active::new(data, subscriber, self.parent));
         Span {
             inner,
         }
@@ -573,11 +558,12 @@ impl Active {
         CURRENT_SPAN.with(|span| span.borrow().as_ref().cloned())
     }
 
-    fn new(data: Data, enter_parent: Option<Self>) -> Self  {
+    fn new(data: Data, subscriber: Dispatch, enter_parent: Option<Self>) -> Self  {
         let inner = Arc::new(ActiveInner {
             data,
             enter_parent,
-            currently_entered: AtomicUsize::new(0)
+            currently_entered: AtomicUsize::new(0),
+            subscriber,
         });
         Self {
             inner,
@@ -594,7 +580,7 @@ impl Active {
                 let result = CURRENT_SPAN.with(|current_span| {
                     self.inner.transition_on_enter(prior_state);
                     current_span.replace(Some(self.clone()));
-                    Dispatcher::current().enter(self.data());
+                    self.inner.subscriber.enter(self.data());
                     f()
                 });
 
@@ -611,7 +597,7 @@ impl Active {
                         State::Idle
                     };
                     self.inner.transition_on_exit(next_state);
-                    Dispatcher::current().exit(self.data());
+                    self.inner.subscriber.exit(self.data());
                 });
                 result
             }
@@ -722,14 +708,15 @@ mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use ::{subscriber, span};
+    use ::{subscriber, span, Dispatch};
+    use std::thread;
     use super::*;
 
     #[test]
     fn exit_doesnt_finish_while_handles_still_exist() {
         // Test that exiting a span only marks it as "done" when no handles
         // that can re-enter the span exist.
-        let _running = subscriber::mock()
+       let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("bar")))
             // The first time we exit "bar", there will be another handle with
@@ -750,15 +737,17 @@ mod tests {
             )
             .run();
 
-        span!("foo",).enter(|| {
-            let bar = span!("bar",);
-            bar.clone().enter(|| {
-                // do nothing. exiting "bar" should leave it idle, since it can
-                // be re-entered.
-            });
-            bar.enter(|| {
-                // enter "bar" again. this time, the last handle is used, so
-                // "bar" should be marked as done.
+        Dispatch::to(subscriber).with(|| {
+            span!("foo",).enter(|| {
+                let bar = span!("bar",);
+                bar.clone().enter(|| {
+                    // do nothing. exiting "bar" should leave it idle, since it can
+                    // be re-entered.
+                });
+                bar.enter(|| {
+                    // enter "bar" again. this time, the last handle is used, so
+                    // "bar" should be marked as done.
+                });
             });
         });
     }
@@ -767,21 +756,23 @@ mod tests {
     fn exit_doesnt_finish_concurrently_executing_spans() {
         // Test that exiting a span only marks it as "done" when no other
         // threads are still executing inside that span.
-        use std::{thread, sync::{Arc, Barrier}};
+        use std::sync::{Arc, Barrier};
 
-        let barrier1 = Arc::new(Barrier::new(2));
-        let barrier2 = Arc::new(Barrier::new(2));
-        // Make copies of the barriers for thread 2 to wait on.
-        let t2_barrier1 = barrier1.clone();
-        let t2_barrier2 = barrier2.clone();
-
-        subscriber::mock()
+        let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("baz")))
+            // Main thread enters "quux".
+            .enter(span::mock().named(Some("quux")))
+            // Spawned thread also enters "quux".
             .enter(span::mock().named(Some("quux")))
             // When the main thread exits "quux", it will still be running in the
             // spawned thread.
             .exit(span::mock().named(Some("quux"))
                 .with_state(State::Running))
+            // Now, when this thread exits "quux", there is no handle to re-enter it, so
+            // it should become "done".
+            .exit(span::mock().named(Some("quux"))
+                .with_state(State::Done)
+            )
             // "baz" never had more than one handle, so it should also become
             // "done" when we exit it.
             .exit(span::mock().named(Some("baz"))
@@ -789,39 +780,38 @@ mod tests {
             )
             .run();
 
-        span!("baz",).enter(|| {
-            let quux = span!("quux",);
-            let quux2 = quux.clone();
-            let handle = thread::Builder::new()
-                .name("thread-2".to_string())
-                .spawn(move || {
-                    subscriber::mock()
-                        // Spawned thread also enters "quux".
-                        .enter(span::mock().named(Some("quux")))
-                        // Now, when this thread exits "quux", there is no handle to re-enter it, so
-                        // it should become "done".
-                        .exit(span::mock().named(Some("quux"))
-                            .with_state(State::Done)
-                        )
-                        .run();
-                    quux2.enter(|| {
-                        // Once this thread has entered "quux", allow thread 1
-                        // to exit.
-                        t2_barrier1.wait();
-                        // Wait for the main thread to allow us to exit.
-                        t2_barrier2.wait();
+        Dispatch::to(subscriber).with(|| {
+            let barrier1 = Arc::new(Barrier::new(2));
+            let barrier2 = Arc::new(Barrier::new(2));
+            // Make copies of the barriers for thread 2 to wait on.
+            let t2_barrier1 = barrier1.clone();
+            let t2_barrier2 = barrier2.clone();
+
+            span!("baz",).enter(move || {
+                let quux = span!("quux",);
+                let quux2 = quux.clone();
+                let handle = thread::Builder::new()
+                    .name("thread-2".to_string())
+                    .spawn(move || {
+                        quux2.enter(|| {
+                            // Once this thread has entered "quux", allow thread 1
+                            // to exit.
+                            t2_barrier1.wait();
+                            // Wait for the main thread to allow us to exit.
+                            t2_barrier2.wait();
+                        })
                     })
-                })
-                .expect("spawn test thread");
-            quux.enter(|| {
-                // Wait for thread 2 to enter "quux". When we exit "quux", it
-                // should stay running, since it's running in the other thread.
-                barrier1.wait();
+                    .expect("spawn test thread");
+                quux.enter(|| {
+                    // Wait for thread 2 to enter "quux". When we exit "quux", it
+                    // should stay running, since it's running in the other thread.
+                    barrier1.wait();
+                });
+                // After we exit "quux", wait for the second barrier, so the other
+                // thread unblocks and exits "quux".
+                barrier2.wait();
+                handle.join().unwrap();
             });
-            // After we exit "quux", wait for the second barrier, so the other
-            // thread unblocks and exits "quux".
-            barrier2.wait();
-            handle.join().unwrap();
         });
     }
 
@@ -831,45 +821,98 @@ mod tests {
         // `Subscriber::enabled`, so that the spans will be constructed. We
         // won't enter any spans in this test, so the subscriber won't actually
         // expect to see any spans.
-        subscriber::mock().run();
+        Dispatch::to(subscriber::mock().run()).with(|| {
+            let foo1 = span!("foo");
+            let foo2 = foo1.clone();
 
-        let foo1 = span!("foo");
-        let foo2 = foo1.clone();
+            // Two handles that point to the same span are equal.
+            assert_eq!(foo1, foo2);
 
-        // Two handles that point to the same span are equal.
-        assert_eq!(foo1, foo2);
-
-        // The two span's data handles are also equal.
-        assert_eq!(foo1.data(), foo2.data());
+            // The two span's data handles are also equal.
+            assert_eq!(foo1.data(), foo2.data());
+        });
     }
 
     #[test]
     fn handles_to_different_spans_are_not_equal() {
-        subscriber::mock().run();
+        Dispatch::to(subscriber::mock().run()).with(|| {
+            // Even though these spans have the same name and fields, they will have
+            // differing metadata, since they were created on different lines.
+            let foo1 = span!("foo", bar = 1, baz = false);
+            let foo2 = span!("foo", bar = 1, baz = false);
 
-        // Even though these spans have the same name and fields, they will have
-        // differing metadata, since they were created on different lines.
-        let foo1 = span!("foo", bar = 1, baz = false);
-        let foo2 = span!("foo", bar = 1, baz = false);
-
-        assert_ne!(foo1, foo2);
-        assert_ne!(foo1.data(), foo2.data());
+            assert_ne!(foo1, foo2);
+            assert_ne!(foo1.data(), foo2.data());
+        });
     }
 
     #[test]
     fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
-        subscriber::mock().run();
-
         // Every time time this function is called, it will return a _new
         // instance_ of a span with the same metadata, name, and fields.
         fn make_span() -> Span {
             span!("foo", bar = 1, baz = false)
         }
 
-        let foo1 = make_span();
-        let foo2 = make_span();
+        Dispatch::to(subscriber::mock().run()).with(|| {
+            let foo1 = make_span();
+            let foo2 = make_span();
 
-        assert_ne!(foo1, foo2);
-        assert_ne!(foo1.data(), foo2.data());
+            assert_ne!(foo1, foo2);
+            assert_ne!(foo1.data(), foo2.data());
+        });
+
+    }
+
+    #[test]
+    fn spans_always_go_to_the_subscriber_that_tagged_them() {
+        let subscriber1 = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo"))
+                .with_state(State::Idle))
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo"))
+                .with_state(State::Done)
+            );
+        let subscriber1 = Dispatch::to(subscriber1.run());
+        let subscriber2 = Dispatch::to(subscriber::mock().run());
+
+        let foo = subscriber1.with(|| {
+            let foo = span!("foo");
+            foo.clone().enter(|| { });
+            foo
+        });
+        // Even though we enter subscriber 2's context, the subscriber that
+        // tagged the span should see the enter/exit.
+        subscriber2.with(move || {
+            foo.enter(|| { })
+        });
+    }
+
+    #[test]
+    fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
+        let subscriber1 = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo"))
+                .with_state(State::Idle))
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo"))
+                .with_state(State::Done)
+            );
+        let subscriber1 = Dispatch::to(subscriber1.run());
+        let foo = subscriber1.with(|| {
+            let foo = span!("foo");
+            foo.clone().enter(|| { });
+            foo
+        });
+
+        // Even though we enter subscriber 2's context, the subscriber that
+        // tagged the span should see the enter/exit.
+        thread::spawn(move || {
+            Dispatch::to(subscriber::mock().run()).with(|| {
+
+                foo.enter(|| { });
+            })
+        }).join().unwrap();
     }
 }

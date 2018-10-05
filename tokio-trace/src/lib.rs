@@ -233,16 +233,14 @@ macro_rules! span {
     ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident = $val:expr),*) => {
         {
-            use $crate::{span, Subscriber, Dispatcher, Meta};
+            use $crate::{span, Subscriber, Dispatch, Meta};
             static META: Meta<'static> = static_meta!($name, $($k),* );
-            let dispatcher = Dispatcher::current();
+            let dispatcher = Dispatch::current();
             if cached_filter!(&META, dispatcher) {
-                let new_span = span::NewSpan::new(
+                span::NewSpan::new(
                     &META,
                     vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
-                );
-                let id = dispatcher.new_span(&new_span);
-                new_span.finish(id)
+                ).finish(dispatcher)
             } else {
                 span::Span::new_disabled()
             }
@@ -255,9 +253,9 @@ macro_rules! event {
 
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{Subscriber, Dispatcher, Meta, SpanData, Event, Value};
+            use $crate::{Subscriber, Dispatch, Meta, SpanData, Event, Value};
             static META: Meta<'static> = static_meta!(@ None, $target, $lvl, $($k),* );
-            let dispatcher = Dispatcher::current();
+            let dispatcher = Dispatch::current();
             if cached_filter!(&META, dispatcher) {
                 let field_values: &[& dyn Value] = &[ $( & $val),* ];
                 dispatcher.observe_event(&Event {
@@ -304,7 +302,7 @@ pub mod span;
 pub mod subscriber;
 
 pub use self::{
-    dispatcher::{Builder as DispatcherBuilder, Dispatcher},
+    dispatcher::Dispatch,
     span::{Data as SpanData, Span},
     subscriber::Subscriber,
 };

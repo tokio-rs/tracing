@@ -103,49 +103,50 @@ impl NewService for NewSvc {
 }
 
 fn main() {
-    tokio_trace::Dispatcher::builder()
-        .add_subscriber(SloggishSubscriber::new(2))
-        .init();
+    let subscriber = SloggishSubscriber::new(2);
 
-    let mut rt = Runtime::new().unwrap();
-    let reactor = rt.executor();
 
-    let addr = "[::1]:8888".parse().unwrap();
-    let bind = TcpListener::bind(&addr).expect("bind");
+    tokio_trace::Dispatch::to(subscriber).with(|| {
+        let mut rt = Runtime::new().unwrap();
+        let reactor = rt.executor();
 
-    let server_span = span!("serve", local_ip = addr.ip(), local_port = addr.port());
-    server_span.clone().enter(move || {
-        let new_svc = tokio_trace_tower_http::InstrumentedNewService::new(NewSvc);
-        let h2 = Server::new(new_svc, Default::default(), reactor.clone());
+        let addr = "[::1]:8888".parse().unwrap();
+        let bind = TcpListener::bind(&addr).expect("bind");
 
-        let serve = bind.incoming()
-            .fold((h2, reactor), |(h2, reactor), sock| {
-                let addr = sock.peer_addr().expect("can't get addr");
-                let conn_span = span!("conn", remote_ip = addr.ip(), remote_port = addr.port());
-                conn_span.clone().enter(|| {
-                    if let Err(e) = sock.set_nodelay(true) {
-                        return Err(e);
-                    }
+        let server_span = span!("serve", local_ip = addr.ip(), local_port = addr.port());
+        server_span.clone().enter(move || {
+            let new_svc = tokio_trace_tower_http::InstrumentedNewService::new(NewSvc);
+            let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
-                    event!(Level::Info, {}, "accepted connection");
+            let serve = bind.incoming()
+                .fold((h2, reactor), |(h2, reactor), sock| {
+                    let addr = sock.peer_addr().expect("can't get addr");
+                    let conn_span = span!("conn", remote_ip = addr.ip(), remote_port = addr.port());
+                    conn_span.clone().enter(|| {
+                        if let Err(e) = sock.set_nodelay(true) {
+                            return Err(e);
+                        }
 
-                    let serve = h2.serve(sock)
-                        .map_err(|e| event!(Level::Error, { }, "error {:?}", e))
-                        .and_then(|_| { event!(Level::Debug, { }, "response finished"); future::ok(()) })
-                        .instrument(conn_span);
-                    reactor.spawn(Box::new(serve));
+                        event!(Level::Info, {}, "accepted connection");
 
-                    Ok((h2, reactor))
+                        let serve = h2.serve(sock)
+                            .map_err(|e| event!(Level::Error, { }, "error {:?}", e))
+                            .and_then(|_| { event!(Level::Debug, { }, "response finished"); future::ok(()) })
+                            .instrument(conn_span);
+                        reactor.spawn(Box::new(serve));
+
+                        Ok((h2, reactor))
+                    })
+
                 })
+                .map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
+                .map(|_| {})
+                .instrument(server_span.clone())
+                ;
 
-            })
-            .map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
-            .map(|_| {})
-            .instrument(server_span.clone())
-            ;
-
-        rt.spawn(serve);
-        rt.shutdown_on_idle()
-            .wait().unwrap();
-    })
+            rt.spawn(serve);
+            rt.shutdown_on_idle()
+                .wait().unwrap();
+        });
+    });
 }

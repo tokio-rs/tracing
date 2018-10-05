@@ -113,31 +113,31 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 }
 
 fn main() {
-    tokio_trace::Dispatcher::builder()
-        .add_subscriber(SloggishSubscriber::new(2))
-        .init();
+    let subscriber = SloggishSubscriber::new(2);
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
-    let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-    let server_span = span!("server", local = addr);
-    server_span.clone().enter(|| {
-        let server = tokio::net::TcpListener::bind(&addr)
-            .expect("bind")
-            .incoming()
-            .fold(Http::new(), move |http, sock| {
+    tokio_trace::Dispatch::to(subscriber).with(|| {
+        let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
+        let server_span = span!("server", local = addr);
+        server_span.clone().enter(|| {
+            let server = tokio::net::TcpListener::bind(&addr)
+                .expect("bind")
+                .incoming()
+                .fold(Http::new(), move |http, sock| {
 
-                let span = span!("connection", remote = sock.peer_addr().unwrap());
-                hyper::rt::spawn(http.serve_connection(sock, service_fn(echo))
-                    .map_err(|e| { event!(Level::Error, { error = &e }, "serve error"); })
-                    .instrument(span));
-                Ok::<_, ::std::io::Error>(http)
+                    let span = span!("connection", remote = sock.peer_addr().unwrap());
+                    hyper::rt::spawn(http.serve_connection(sock, service_fn(echo))
+                        .map_err(|e| { event!(Level::Error, { error = &e }, "serve error"); })
+                        .instrument(span));
+                    Ok::<_, ::std::io::Error>(http)
 
-            })
-            .instrument(server_span)
-            .map(|_|())
-            .map_err(|e| { event!(Level::Error, { error = &e }, "server error"); })
-            ;
-        event!(Level::Info, {}, "listening...");
-        hyper::rt::run(server);
-    });
+                })
+                .instrument(server_span)
+                .map(|_|())
+                .map_err(|e| { event!(Level::Error, { error = &e }, "server error"); })
+                ;
+            event!(Level::Info, {}, "listening...");
+            hyper::rt::run(server);
+        });
+    })
 }

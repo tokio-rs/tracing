@@ -35,7 +35,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         field_values: &[],
         message: record.args().clone()
     };
-    tokio_trace::Dispatcher::current().observe_event(&event);
+    tokio_trace::Dispatch::current().observe_event(&event);
     Ok(())
 }
 
