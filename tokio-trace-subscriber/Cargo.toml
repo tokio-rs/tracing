@@ -1,9 +1,10 @@
 [package]
-name = "tokio-trace-log"
+name = "tokio-trace-subscriber"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
 tokio-trace = { path = "../tokio-trace" }
-tokio-trace-subscriber = { path = "../tokio-trace-subscriber" }
-log = "0.4"
+
+[dev-dependencies]
+tokio-trace-log = { path = "../tokio-trace-log" }

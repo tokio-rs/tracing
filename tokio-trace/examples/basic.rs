@@ -7,7 +7,7 @@ use tokio_trace::Level;
 
 fn main() {
     env_logger::Builder::new().parse("info").init();
-    let subscriber = tokio_trace_log::LogSubscriber::new();
+    let subscriber = tokio_trace_log::TraceLogger::new();
 
     tokio_trace::Dispatch::to(subscriber).with(|| {
         let foo = 3;

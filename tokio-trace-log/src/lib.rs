@@ -11,15 +11,16 @@
 //!
 //! Note that logger implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
-//! log records (such as the `LogSubscriber` in the `tokio_trace` crate), as
-//! doing so will result in the event recursing between the subscriber and the
-//! logger forever (or, in real life, probably overflowing the call stack)
+//! log records (such as the `TraceLogger`), as doing so will result in the
+//! event recursing between the subscriber and the logger forever (or, in real
+//! life, probably overflowing the call stack).
 //!
 //! If the logging of trace events generated from log records produced by the
 //! `log` crate is desired, either the `log` crate should not be used to
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 extern crate tokio_trace;
+extern crate tokio_trace_subscriber;
 extern crate log;
 
 use std::io;
@@ -106,16 +107,17 @@ impl AsTrace for log::Level {
 /// A simple "logger" that converts all log records into `tokio_trace` `Event`s,
 /// with an optional level filter.
 #[derive(Debug)]
-pub struct SimpleTraceLogger {
+pub struct LogTracer {
     filter: log::LevelFilter,
 }
 
-/// A `tokio_trace` subscriber that logs all recorded trace events.
-pub struct LogSubscriber;
+/// A `tokio_trace_subscriber::Observe` implementation that logs all recorded
+/// trace events.
+pub struct TraceLogger;
 
-// ===== impl SimpleTraceLogger =====
+// ===== impl LogTracer =====
 
-impl SimpleTraceLogger {
+impl LogTracer {
     pub fn with_filter(filter: log::LevelFilter) -> Self {
        Self {
            filter,
@@ -123,13 +125,13 @@ impl SimpleTraceLogger {
     }
 }
 
-impl Default for SimpleTraceLogger {
+impl Default for LogTracer {
     fn default() -> Self {
         Self::with_filter(log::LevelFilter::Info)
     }
 }
 
-impl log::Log for SimpleTraceLogger {
+impl log::Log for LogTracer {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
         metadata.level() <= self.filter
     }
@@ -141,15 +143,15 @@ impl log::Log for SimpleTraceLogger {
     fn flush(&self) {}
 }
 
-// ===== impl LogSubscriber =====
+// ===== impl TraceLogger =====
 
-impl LogSubscriber {
+impl TraceLogger {
     pub fn new() -> Self {
-        LogSubscriber
+        TraceLogger
     }
 }
 
-impl Subscriber for LogSubscriber {
+impl Subscriber for TraceLogger {
     fn enabled(&self, metadata: &Meta) -> bool {
         log::logger().enabled(&metadata.as_log())
     }
@@ -191,5 +193,33 @@ impl Subscriber for LogSubscriber {
     fn exit(&self, span: &SpanData) {
         let logger = log::logger();
         logger.log(&log::Record::builder().args(format_args!("<- {:?}", span.name())).build())
+    }
+}
+
+impl tokio_trace_subscriber::Observe for TraceLogger {
+    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+        <Self as Subscriber>::observe_event(&self, event)
+    }
+
+    fn enter(&self, span: &SpanData) {
+        <Self as Subscriber>::enter(&self, span)
+    }
+
+    fn exit(&self, span: &SpanData) {
+        <Self as Subscriber>::exit(&self, span)
+    }
+
+    fn filter(&self) -> &dyn tokio_trace_subscriber::Filter {
+        self
+    }
+}
+
+impl tokio_trace_subscriber::Filter for TraceLogger {
+    fn enabled(&self, metadata: &Meta) -> bool {
+        <Self as Subscriber>::enabled(&self, metadata)
+    }
+
+    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+        false
     }
 }
