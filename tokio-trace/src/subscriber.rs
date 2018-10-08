@@ -63,90 +63,6 @@ pub trait Subscriber {
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>);
     fn enter(&self, span: &SpanData);
     fn exit(&self, span: &SpanData);
-
-    /// Composes `self` with a `filter` that returns true or false if a span or
-    /// event with the specified metadata should be recorded.
-    ///
-    /// This function is intended to be used with composing subscribers from
-    /// external crates with user-defined filters, so that the resulting
-    /// subscriber is [`enabled`] only for a subset of the events and spans for
-    /// which the original subscriber would be enabled.
-    ///
-    /// For example:
-    /// ```
-    /// #[macro_use]
-    /// extern crate tokio_trace;
-    /// extern crate tokio_trace_log;
-    /// use tokio_trace::subscriber::Subscriber;
-    /// # use tokio_trace::Level;
-    /// # fn main() {
-    ///
-    /// let filtered_subscriber = tokio_trace_log::LogSubscriber::new()
-    ///     // Subscribe *only* to spans named "foo".
-    ///     .with_filter(|meta| {
-    ///         meta.name == Some("foo")
-    ///     });
-    ///
-    /// tokio_trace::Dispatch::to(filtered_subscriber).with(|| {
-    ///     /// // This span will be logged.
-    ///     span!("foo", enabled = true) .enter(|| {
-    ///         // do work;
-    ///     });
-    ///     // This span will *not* be logged.
-    ///     span!("bar", enabled = false).enter(|| {
-    ///         // This event also will not be logged.
-    ///         event!(Level::Debug, { enabled = false },"this won't be logged");
-    ///     });
-    /// });
-    /// # }
-    /// ```
-    ///
-    /// [`enabled`]: #tymethod.enabled
-    fn with_filter<F>(self, filter: F) -> WithFilter<Self, F>
-    where
-        F: Fn(&Meta) -> bool,
-        Self: Sized,
-    {
-        WithFilter {
-            inner: self,
-            filter,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct WithFilter<S, F> {
-    inner: S,
-    filter: F
-}
-
-impl<S, F> Subscriber for WithFilter<S, F>
-where
-    S: Subscriber,
-    F: Fn(&Meta) -> bool,
-{
-    fn enabled(&self, metadata: &Meta) -> bool {
-        (self.filter)(metadata) && self.inner.enabled(metadata)
-    }
-
-    fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
-        self.inner.new_span(&new_span)
-    }
-
-    #[inline]
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
-        self.inner.observe_event(event)
-    }
-
-    #[inline]
-    fn enter(&self, span: &SpanData) {
-        self.inner.enter(span)
-    }
-
-    #[inline]
-    fn exit(&self, span: &SpanData) {
-        self.inner.exit(span)
-    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -174,22 +90,25 @@ mod test_support {
         Exit(MockSpan),
     }
 
-    struct Running {
+    struct Running<F: Fn(&Meta) -> bool> {
         expected: Mutex<VecDeque<Expect>>,
         ids: AtomicUsize,
+        filter: F,
     }
 
-    pub struct MockSubscriber {
+    pub struct MockSubscriber<F: Fn(&Meta) -> bool> {
         expected: VecDeque<Expect>,
+        filter: F,
     }
 
-    pub fn mock() -> MockSubscriber {
+    pub fn mock() -> MockSubscriber<fn(&Meta) -> bool> {
         MockSubscriber {
             expected: VecDeque::new(),
+            filter: (|_: &Meta| true) as for<'r, 's> fn(&'r Meta<'s>) -> _,
         }
     }
 
-    impl MockSubscriber {
+    impl<F: Fn(&Meta) -> bool> MockSubscriber<F> {
         pub fn enter(mut self, span: MockSpan) -> Self {
             self.expected.push_back(Expect::Enter(span
                 .with_state(::span::State::Running)));
@@ -201,18 +120,28 @@ mod test_support {
             self
         }
 
+        pub fn with_filter<G>(self, filter: G) -> MockSubscriber<G>
+        where
+            G: Fn(&Meta) -> bool
+        {
+            MockSubscriber {
+                filter,
+                expected: self.expected,
+            }
+        }
+
         pub fn run(self) -> impl Subscriber {
             Running {
                 expected: Mutex::new(self.expected),
                 ids: AtomicUsize::new(0),
+                filter: self.filter,
             }
         }
     }
 
-    impl Subscriber for Running {
-        fn enabled(&self, _meta: &Meta) -> bool {
-            // TODO: allow the mock subscriber to filter events for testing filtering?
-            true
+    impl<F: Fn(&Meta) -> bool> Subscriber for Running<F>{
+        fn enabled(&self, meta: &Meta) -> bool {
+            (self.filter)(meta)
         }
 
         fn new_span(&self, _: &span::NewSpan) -> span::Id {
@@ -305,7 +234,6 @@ mod tests {
             .exit(span::mock().named(Some("bar")))
             .enter(span::mock().named(Some("bar")))
             .exit(span::mock().named(Some("bar")))
-            .run()
             .with_filter(move |meta| match meta.name {
                 Some("foo") => {
                     foo_count2.fetch_add(1, Ordering::Relaxed);
@@ -316,7 +244,8 @@ mod tests {
                     true
                 },
                 _ => false,
-            });
+            })
+            .run();
 
         Dispatch::to(subscriber).with(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
@@ -354,7 +283,7 @@ mod tests {
 
         let foo_count1 = foo_count.clone();
         let bar_count1 = bar_count.clone();
-        let subscriber1 = Dispatch::to(subscriber::mock()
+        let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("bar")))
             .exit(span::mock().named(Some("bar")))
             .enter(span::mock().named(Some("bar")))
@@ -367,7 +296,6 @@ mod tests {
             .exit(span::mock().named(Some("bar")))
             .enter(span::mock().named(Some("bar")))
             .exit(span::mock().named(Some("bar")))
-            .run()
             .with_filter(move |meta| match meta.name {
                 Some("foo") => {
                     foo_count1.fetch_add(1, Ordering::Relaxed);
@@ -378,11 +306,13 @@ mod tests {
                     true
                 },
                 _ => false,
-            }));
+            })
+            .run();
+        let subscriber1 = Dispatch::to(subscriber1);
 
         let foo_count2 = foo_count.clone();
         let bar_count2 = bar_count.clone();
-        let subscriber2 = Dispatch::to(subscriber::mock()
+        let subscriber2 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
@@ -395,7 +325,6 @@ mod tests {
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .run()
             .with_filter(move |meta| match meta.name {
                 Some("foo") => {
                     foo_count2.fetch_add(1, Ordering::Relaxed);
@@ -406,8 +335,9 @@ mod tests {
                     false
                 },
                 _ => false,
-            }));
-
+            })
+            .run();
+        let subscriber2 = Dispatch::to(subscriber2);
 
         let do_test = move |n: usize| {
             let foo = span!("foo");
@@ -475,11 +405,11 @@ mod tests {
                 .exit(span::mock().named(Some("bar")))
                 .enter(span::mock().named(Some("bar")))
                 .exit(span::mock().named(Some("bar")))
-                .run()
                 .with_filter(|meta| match meta.name {
                     Some("bar") => true,
                     _ => false,
-                });
+                })
+                .run();
             // barrier1.wait();
             let subscriber = Dispatch::to(subscriber);
             subscriber.with(do_test);
@@ -499,11 +429,11 @@ mod tests {
                 .exit(span::mock().named(Some("foo")))
                 .enter(span::mock().named(Some("foo")))
                 .exit(span::mock().named(Some("foo")))
-                .run()
                 .with_filter(move |meta| match meta.name {
                     Some("foo") => true,
                     _ => false,
-                });
+                })
+                .run();
             let subscriber = Dispatch::to(subscriber);
             subscriber.with(do_test);
             barrier.wait();
@@ -536,7 +466,6 @@ mod tests {
             .exit(span::mock().named(Some("bar")))
             .enter(span::mock().named(Some("bar")))
             .exit(span::mock().named(Some("bar")))
-            .run()
             .with_filter(move |meta| match meta.name {
                 Some("foo") => {
                     foo_count2.fetch_add(1, Ordering::Relaxed);
@@ -547,7 +476,8 @@ mod tests {
                     true
                 },
                 _ => false,
-            });
+            })
+            .run();
 
         Dispatch::to(subscriber).with(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
@@ -616,11 +546,11 @@ mod tests {
             .exit(span::mock().named(Some("bar")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .run()
             .with_filter(move |_meta| {
                 count2.fetch_add(1, Ordering::Relaxed);
                 true
-            });
+            })
+            .run();
 
         Dispatch::to(subscriber).with(|| {
             // Call the function once. The filter should be re-evaluated.
