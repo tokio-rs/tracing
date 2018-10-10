@@ -2,8 +2,10 @@
 extern crate tokio_trace;
 extern crate futures;
 
-use tokio_trace::Span;
+use tokio_trace::{Dispatch, Span, Subscriber};
 use futures::{Async, Future, Sink, Stream, Poll, StartSend};
+
+pub mod executor;
 
 // TODO: seal?
 pub trait Instrument: Sized {
@@ -15,10 +17,28 @@ pub trait Instrument: Sized {
     }
 }
 
+pub trait WithSubscriber: Sized {
+    fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
+    where
+        S: Subscriber + Send + Sync + 'static,
+    {
+        WithDispatch {
+            inner: self,
+            dispatch: Dispatch::to(subscriber),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Instrumented<T> {
     inner: T,
     span: Option<Span>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WithDispatch<T> {
+    inner: T,
+    dispatch: Dispatch,
 }
 
 impl<T: Sized> Instrument for T {}
@@ -92,6 +112,29 @@ impl<T: Sink> Sink for Instrumented<T> {
     }
 }
 
+impl<T: Sized> WithSubscriber for T {}
+
+impl<T: Future> Future for WithDispatch<T> {
+    type Item = T::Item;
+    type Error = T::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let dispatch = &self.dispatch;
+        let inner = &mut self.inner;
+        dispatch.with(|| {
+            inner.poll()
+        })
+    }
+}
+
+impl<T> WithDispatch<T> {
+    pub(crate) fn with_dispatch <U: Sized>(&self, inner: U) -> WithDispatch<U> {
+        WithDispatch {
+            dispatch: self.dispatch.clone(),
+            inner,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
