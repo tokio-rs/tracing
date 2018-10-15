@@ -78,7 +78,7 @@ pub trait FilterExt: Filter {
     /// }
     ///
     /// let name_filter = |meta: &Meta| { meta.name == Some("foo") };
-    /// let mod_filter = |meta: &Meta| { meta.module_path == "my_module" };
+    /// let mod_filter = |meta: &Meta| { meta.module_path == Some("my_module") };
     ///
     /// let subscriber = tokio_trace_subscriber::Composed::builder()
     ///     .with_registry(tokio_trace_subscriber::registry::increasing_counter)
@@ -136,37 +136,82 @@ pub struct Sample {
 /// A filter that enables all spans and events, except those originating
 /// from a specified set of module paths.
 #[derive(Debug)]
-pub struct ModuleBlacklist {
+pub struct ExceptModules {
     modules: HashSet<String>,
 }
 
 /// A filter that enables only spans and events originating from a specified
 /// set of module paths.
 #[derive(Debug)]
-pub struct ModuleWhitelist {
+pub struct OnlyModules {
     modules: HashSet<String>,
+}
+
+/// A filter that enables all spans and events, except those with a specified
+/// set of targets.
+#[derive(Debug)]
+pub struct ExceptTargets {
+    targets: HashSet<String>,
+}
+
+/// A filter that enables onlu spans and events with a specified set of targets.
+#[derive(Debug)]
+pub struct OnlyTargets {
+    targets: HashSet<String>,
 }
 
 /// Returns a filter that enables all spans and events, except those originating
 /// from a specified set of module paths.
-pub fn module_blacklist<I>(modules: I) -> ModuleBlacklist
+pub fn except_modules<I>(modules: I) -> ExceptModules
 where
     I: IntoIterator,
     String: From<<I as IntoIterator>::Item>,
 {
     let modules = modules.into_iter().map(String::from).collect();
-    ModuleBlacklist { modules }
+    ExceptModules { modules }
 }
 
 /// Returns a filter that enables only spans and events originating from a
 /// specified set of module paths.
-pub fn module_whitelist<I>(modules: I) -> ModuleWhitelist
+pub fn only_modules<I>(modules: I) -> OnlyModules
 where
     I: IntoIterator,
     String: From<<I as IntoIterator>::Item>,
 {
     let modules = modules.into_iter().map(String::from).collect();
-    ModuleWhitelist { modules }
+    OnlyModules { modules }
+}
+
+/// A filter which only enables spans.
+pub fn spans_only<'a, 'b>(metadata: &'a Meta<'b>) -> bool {
+    metadata.is_span()
+}
+
+/// A filter which only enables events.
+pub fn events_only<'a, 'b>(metadata: &'a Meta<'b>) -> bool {
+    metadata.is_event()
+}
+
+/// Returns a filter that enables all spans and events, except those originating
+/// with a specified set of targets.
+pub fn except_targets<I>(targets: I) -> ExceptTargets
+where
+    I: IntoIterator,
+    String: From<<I as IntoIterator>::Item>,
+{
+    let targets = targets.into_iter().map(String::from).collect();
+    ExceptTargets { targets }
+}
+
+/// Returns a filter that enables only spans and events with a specified set of
+/// targets.
+pub fn only_targets<I>(targets: I) -> OnlyTargets
+where
+    I: IntoIterator,
+    String: From<<I as IntoIterator>::Item>,
+{
+    let targets = targets.into_iter().map(String::from).collect();
+    OnlyTargets { targets }
 }
 
 impl<F> Filter for F
@@ -258,9 +303,12 @@ impl Filter for NoFilter {
     }
 }
 
-impl Filter for ModuleBlacklist {
+impl Filter for ExceptModules {
     fn enabled(&self, metadata: &Meta) -> bool {
-        !self.modules.contains(metadata.module_path)
+        metadata.module_path
+            .map(|module| !self.modules.contains(module))
+            .unwrap_or(true)
+
     }
 
     fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
@@ -268,9 +316,32 @@ impl Filter for ModuleBlacklist {
     }
 }
 
-impl Filter for ModuleWhitelist {
+impl Filter for OnlyModules {
     fn enabled(&self, metadata: &Meta) -> bool {
-        self.modules.contains(metadata.module_path)
+        metadata.module_path
+            .map(|module| self.modules.contains(module))
+            .unwrap_or(false)
+    }
+
+    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+        false
+    }
+}
+
+
+impl Filter for ExceptTargets {
+    fn enabled(&self, metadata: &Meta) -> bool {
+        !self.targets.contains(metadata.target)
+    }
+
+    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+        false
+    }
+}
+
+impl Filter for OnlyTargets {
+    fn enabled(&self, metadata: &Meta) -> bool {
+        self.targets.contains(metadata.target)
     }
 
     fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
