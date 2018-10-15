@@ -87,7 +87,7 @@ impl SloggishSubscriber {
             writer,
             "{level} {target} ",
             level = ColorLevel(meta.level),
-            target = meta.target.unwrap_or(meta.module_path),
+            target = meta.target,
         )
     }
 
