@@ -24,6 +24,7 @@ extern crate tokio_trace_subscriber;
 extern crate log;
 
 use std::{
+    fmt,
     io,
     sync::atomic::{
         AtomicUsize,
@@ -119,6 +120,10 @@ pub struct LogTracer {
 /// trace events.
 pub struct TraceLogger;
 
+struct LogFields<'a, I: 'a>(&'a I)
+where
+    &'a I: IntoIterator<Item = (&'a str, &'a dyn tokio_trace::Value)>;
+
 // ===== impl LogTracer =====
 
 impl LogTracer {
@@ -171,18 +176,17 @@ impl Subscriber for TraceLogger {
             .file(meta.file)
             .line(meta.line)
             .args(format_args!(
-                "new_span: {}{:?}; span={:?}; parent={:?};",
+                "new_span: {}; span={:?}; parent={:?}; {:?}",
                 meta.name.unwrap_or(""),
-                new_span.debug_fields(),
                 id,
                 new_span.parent(),
+                LogFields(&new_span),
             ))
             .build());
         id
     }
 
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
-        let fields = event.debug_fields();
         let meta = event.meta.as_log();
         let logger = log::logger();
         if logger.enabled(&meta) {
@@ -193,10 +197,10 @@ impl Subscriber for TraceLogger {
                     .file(event.meta.file)
                     .line(event.meta.line)
                     .args(format_args!(
-                        "{}; in_span={:?};{:?};",
+                        "{}; in_span={:?}; {:?}",
                         event.message,
                         event.parent,
-                        fields,
+                        LogFields(event),
                     )).build(),
             );
         }
@@ -236,7 +240,6 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
             let log_meta = meta.as_log();
             let logger = log::logger();
             if logger.enabled(&log_meta) {
-                let fields = data.debug_fields();
                 logger.log(
                     &log::Record::builder()
                         .metadata(log_meta)
@@ -244,12 +247,12 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
                         .file(meta.file)
                         .line(meta.line)
                         .args(format_args!(
-                            "enter: {}{:?}; span={:?}; parent={:?}; state={:?};",
+                            "enter: {}; span={:?}; parent={:?}; state={:?}; {:?}",
                             meta.name.unwrap_or(""),
-                            fields,
                             span.id,
                             data.parent,
                             span.state,
+                            LogFields(span),
                         )).build(),
                 );
             }
@@ -296,5 +299,24 @@ impl tokio_trace_subscriber::Filter for TraceLogger {
 
     fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
         false
+    }
+}
+
+impl<'a, I: 'a> fmt::Debug for LogFields<'a, I>
+where
+    &'a I: IntoIterator<Item = (&'a str, &'a dyn tokio_trace::Value)>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut fields = self.0.into_iter();
+        if let Some((field, value)) = fields.next() {
+            // Format the first field without a leading space, in case it's the
+            // only field.
+            write!(f, "{}={:?};", field, value)?;
+            for (field, value) in fields {
+                write!(f, " {}={:?};", field, value)?;
+            }
+        }
+
+        Ok(())
     }
 }
