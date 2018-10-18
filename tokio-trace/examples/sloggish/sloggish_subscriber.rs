@@ -13,12 +13,11 @@
 extern crate humantime;
 extern crate ansi_term;
 use self::ansi_term::{Color, Style};
-use super::tokio_trace::{self, Level};
+use super::tokio_trace::{self, Level, SpanId, SpanData};
 
 
 use std::{
-    collections::hash_map::RandomState,
-    hash::{BuildHasher, Hash, Hasher},
+    collections::HashMap,
     fmt,
     io::{self, Write},
     sync::{Mutex, atomic::{AtomicUsize, Ordering}},
@@ -28,8 +27,8 @@ use std::{
 pub struct SloggishSubscriber {
     indent_amount: usize,
     stderr: io::Stderr,
-    hash_builder: RandomState,
-    stack: Mutex<Vec<u64>>,
+    stack: Mutex<Vec<SpanId>>,
+    spans: Mutex<HashMap<SpanId, SpanData>>,
     ids: AtomicUsize,
 }
 
@@ -52,8 +51,8 @@ impl SloggishSubscriber {
         Self {
             indent_amount,
             stderr: io::stderr(),
-            hash_builder: RandomState::new(),
             stack: Mutex::new(vec![]),
+            spans: Mutex::new(HashMap::new()),
             ids: AtomicUsize::new(0),
         }
     }
@@ -97,12 +96,6 @@ impl SloggishSubscriber {
         }
         Ok(())
     }
-
-    fn hash_span(&self, span: &tokio_trace::SpanData) -> u64 {
-        let mut hasher = self.hash_builder.build_hasher();
-        span.hash(&mut hasher);
-        hasher.finish()
-    }
 }
 
 impl tokio_trace::Subscriber for SloggishSubscriber {
@@ -110,22 +103,21 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         true
     }
 
-    fn new_span(&self, _: &tokio_trace::span::NewSpan) -> tokio_trace::span::Id {
+    fn new_span(&self, span: tokio_trace::SpanData) -> tokio_trace::span::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
-        tokio_trace::span::Id::from_u64(next)
+        let id = tokio_trace::span::Id::from_u64(next);
+        self.spans.lock().unwrap().insert(id.clone(), span);
+        id
     }
 
     #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event tokio_trace::Event<'event, 'meta>) {
         let mut stderr = self.stderr.lock();
-        let parent_hash = event.parent
-            .as_ref()
-            .map(|span| self.hash_span(span));
 
         let stack = self.stack.lock().unwrap();
         if let Some(idx) = stack.iter()
-            .position(|hash| parent_hash.as_ref()
-                .map(|p| p == hash)
+            .position(|id| event.parent.as_ref()
+                .map(|p| p == id)
                 .unwrap_or(false)
             )
         {
@@ -147,22 +139,20 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn enter(&self, span: &tokio_trace::SpanData) {
+    fn enter(&self, span: tokio_trace::span::Id, _state: tokio_trace::span::State) {
         let mut stderr = self.stderr.lock();
-
-        let span_hash = self.hash_span(span);
-        let parent_hash = span.parent()
-            .map(|parent| self.hash_span(parent));
-
         let mut stack = self.stack.lock().unwrap();
-        if stack.iter().any(|hash| hash == &span_hash) {
+        let spans = self.spans.lock().unwrap();
+        let data = spans.get(&span);
+        let parent = data.and_then(SpanData::parent);
+        if stack.iter().any(|id| id == &span) {
             // We are already in this span, do nothing.
             return;
         } else {
             let indent = if let Some(idx) = stack
                 .iter()
-                .position(|hash| parent_hash
-                    .map(|p| hash == &p)
+                .position(|id| parent
+                    .map(|p| id == p)
                     .unwrap_or(false))
             {
                 let idx = idx + 1;
@@ -173,12 +163,14 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
                 0
             };
             self.print_indent(&mut stderr, indent).unwrap();
-            stack.push(span_hash);
-            self.print_kvs(&mut stderr, span.fields(), "").unwrap();
+            stack.push(span);
+            if let Some(data) = data {
+                self.print_kvs(&mut stderr, data.fields(), "").unwrap();
+            }
             write!(&mut stderr, "\n").unwrap();
         }
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::SpanData) {}
+    fn exit(&self, _span: tokio_trace::span::Id, _state: tokio_trace::span::State) {}
 }

@@ -1,4 +1,4 @@
-use super::{DebugFields, Dispatch, StaticMeta, Subscriber, Value, Parents, dedup::IteratorDedup};
+use super::{DebugFields, Dispatch, StaticMeta, Subscriber, Value};
 use std::{
     cell::RefCell,
     cmp, fmt,
@@ -92,21 +92,19 @@ pub struct Span {
     inner: Option<Active>,
 }
 
-#[derive(Debug)]
-pub struct NewSpan {
-    parent: Option<Active>,
-
-    static_meta: &'static StaticMeta,
-
-    field_values: Vec<Box<dyn Value>>,
-}
-
-/// A handle on the data associated with a span.
+/// Representation of the data associated with a span.
 ///
-/// This may be used to access the span but may *not* be used to enter the span.
-#[derive(Clone, PartialEq, Hash)]
+/// This has the potential to outlive the span itself if it exists after the
+/// span completes executing --- such as if it is still being processed by a
+/// subscriber.
+///
+/// This may *not* be used to enter the span.
 pub struct Data {
-    inner: Arc<DataInner>,
+    pub parent: Option<Id>,
+
+    pub static_meta: &'static StaticMeta,
+
+    pub field_values: Vec<Box<dyn Value>>,
 }
 
 /// Identifies a span within the context of a process.
@@ -119,31 +117,8 @@ pub struct Data {
 /// method for more information on span ID generation.
 ///
 /// [`Subscriber::new_span_id`]: ../subscriber/trait.Subscriber.html#tymethod.new_span_id
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(u64);
-
-/// Internal representation of the data associated with a span.
-///
-/// This has the potential to outlive the span itself, if a `Data` reference to
-/// it exists after the span completes executing --- such as if it is still
-/// being processed by a subscriber.
-///
-/// This type is purely internal to the `span` module and is not intended to be
-/// interacted with directly by downstream users of `tokio-trace`. Instead, all
-/// interaction with a span's data is carried out through `Data` references.
-#[derive(Debug)]
-struct DataInner {
-    pub parent: Option<Data>,
-
-    pub static_meta: &'static StaticMeta,
-
-    pub field_values: Vec<Box<dyn Value>>,
-
-    pub id: Id,
-
-    state: AtomicUsize,
-}
-
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 struct Active {
@@ -172,8 +147,7 @@ struct Active {
 /// references.
 #[derive(Debug)]
 struct ActiveInner {
-    /// A reference to the span's associated data.
-    data: Data,
+    id: Id,
 
     /// An entering reference to the span's parent, used to re-enter the parent
     /// span upon exiting this span.
@@ -191,6 +165,8 @@ struct ActiveInner {
     /// TODO: it would be nice if this could be any arbitrary `Subscriber`,
     /// rather than `Dispatch`, but object safety.
     subscriber: Dispatch,
+
+    state: AtomicUsize,
 }
 
 /// Enumeration of the potential states of a [`Span`].
@@ -215,6 +191,25 @@ pub enum State {
 
 impl Span {
 
+    #[doc(hidden)]
+    pub fn new(
+        dispatch: Dispatch,
+        static_meta: &'static StaticMeta,
+        field_values: Vec<Box<dyn Value>>,
+    ) -> Span {
+        let parent = Active::current();
+        let data = Data::new(
+            parent.as_ref().map(Active::id),
+            static_meta,
+            field_values,
+        );
+        let id = dispatch.new_span(data);
+        let inner = Some(Active::new(id, dispatch, parent));
+        Self {
+            inner,
+        }
+    }
+
     /// This is primarily used by the `span!` macro, so it has to be public,
     /// but it's not intended for use by consumers of the tokio-trace API
     /// directly.
@@ -236,36 +231,25 @@ impl Span {
         }
     }
 
-    pub fn data(&self) -> Option<&Data> {
-        self.inner.as_ref().map(Active::data)
+    /// Returns the `Id` of the parent of this span, if one exists.
+    pub fn parent(&self) -> Option<Id> {
+        self.inner.as_ref().and_then(Active::parent)
     }
 }
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(inner) = self.data() {
-            f.debug_struct("Span")
-                .field("name", &inner.name())
-                .field("parent", &inner.parent().map(Data::name))
-                .field("fields", &inner.debug_fields())
-                .field("meta", &inner.meta())
-                .finish()
+        let mut span = f.debug_struct("Span");
+        if let Some(ref inner) = self.inner {
+            span.field("id", &inner.id())
+                .field("parent", &inner.parent())
+                .field("state", &inner.state())
+                .field("is_last_standing", &inner.is_last_standing())
         } else {
-            f.debug_struct("Span").field("disabled", &true).finish()
+            span.field("disabled", &true)
         }
+        .finish()
 
-    }
-}
-
-impl<'a> Into<Option<&'a Data>> for &'a Span {
-    fn into(self) -> Option<&'a Data> {
-        self.data()
-    }
-}
-
-impl Into<Option<Data>> for Span {
-    fn into(self) -> Option<Data> {
-        self.data().cloned()
     }
 }
 
@@ -273,181 +257,12 @@ impl Into<Option<Data>> for Span {
 
 impl Data {
     fn new(
-        id: Id,
-        parent: Option<&Data>,
+        parent: Option<Id>,
         static_meta: &'static StaticMeta,
         field_values: Vec<Box<dyn Value>>,
     ) -> Self {
         Data {
-            inner: Arc::new(DataInner {
-                parent: parent.cloned(),
-                static_meta,
-                field_values,
-                id,
-                state: AtomicUsize::new(0),
-            })
-        }
-    }
-
-    pub fn current() -> Option<Self> {
-        CURRENT_SPAN.with(|current| {
-            current.borrow().as_ref().map(Active::data).cloned()
-        })
-    }
-
-    /// Returns the name of this span, or `None` if it is unnamed,
-    pub fn name(&self) -> Option<&'static str> {
-        self.inner.static_meta.name
-    }
-
-    /// Returns a `Data` reference to the parent of this span, if one exists.
-    pub fn parent(&self) -> Option<&Data> {
-        self.inner.parent.as_ref()
-    }
-
-    /// Borrows this span's metadata.
-    pub fn meta(&self) -> &'static StaticMeta {
-        self.inner.static_meta
-    }
-
-    /// Returns an iterator over the names of all the fields on this span.
-    pub fn field_names<'a>(&self) -> slice::Iter<&'a str> {
-        self.inner.static_meta.field_names.iter()
-    }
-
-    /// Borrows the value of the field named `name`, if it exists. Otherwise,
-    /// returns `None`.
-    pub fn field<Q>(&self, key: Q) -> Option<&dyn Value>
-    where
-        &'static str: PartialEq<Q>,
-    {
-        self.field_names()
-            .position(|&field_name| field_name == key)
-            .and_then(|i| self.inner
-                .field_values
-                .get(i)
-                .map(AsRef::as_ref))
-    }
-
-    /// Returns an iterator over all the field names and values on this span.
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
-        self.field_names()
-            .enumerate()
-            .map(move |(idx, &name)| (name, self.inner.field_values[idx].as_ref()))
-    }
-
-    /// Returns a struct that can be used to format all the fields on this
-    /// span ith `fmt::Debug`.
-    pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, Self> {
-        DebugFields(self)
-    }
-
-    /// Returns an iterator over [`Data`] references to all the spans that are
-    /// parents of this span.
-    ///
-    /// The iterator will traverse the trace tree in ascending order from this
-    /// span's immediate parent to the root span of the trace.
-    pub fn parents<'a>(&'a self) -> Parents<'a> {
-        Parents {
-            next: self.parent(),
-        }
-    }
-
-    /// Returns an iterator over all the field names and values of this span
-    /// and all of its parent spans.
-    ///
-    /// Fields with duplicate names are skipped, and the value defined lowest
-    /// in the tree is used. For example:
-    /// ```
-    /// # #[macro_use]
-    /// # extern crate tokio_trace;
-    /// # use tokio_trace::Level;
-    /// # fn main() {
-    /// span!("parent 1", foo = 1, bar = 1).enter(|| {
-    ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
-    ///         span!("my span", bar = 2).enter(|| {
-    ///             // do stuff...
-    ///         })
-    ///     })
-    /// });
-    /// # }
-    /// ```
-    /// If a `Subscriber` were to call `all_fields` on "my span" event, it will
-    /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
-    pub fn all_fields<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
-        self.fields()
-            .chain(self.parents().flat_map(|parent| parent.fields()))
-            .dedup_by(|(k, _)| k)
-    }
-
-    /// Returns the current [`State`] of this span.
-    pub fn state(&self) -> State {
-        match self.inner.state.load(Ordering::Acquire) {
-            s if s == State::Unentered as usize => State::Unentered,
-            s if s == State::Running as usize => State::Running,
-            s if s == State::Idle as usize => State::Idle,
-            s if s == State::Done as usize => State::Done,
-            invalid => panic!("invalid state: {:?}", invalid),
-        }
-    }
-
-    /// Returns the span's identifier.
-    pub fn id(&self) -> Id {
-        Id(self.inner.id.0)
-    }
-
-    fn set_state(&self, prev: State, next: State) {
-        self.inner.state.compare_and_swap(
-            prev as usize,
-            next as usize,
-            Ordering::Release,
-        );
-    }
-}
-
-impl<'a> IntoIterator for &'a Data {
-    type Item = (&'a str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
-    fn into_iter(self) -> Self::IntoIter {
-        Box::new(self.fields())
-    }
-}
-
-impl fmt::Debug for Data {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Span")
-            .field("name", &self.name())
-            .field("parent", &self.parent())
-            .field("fields", &self.debug_fields())
-            .field("meta", &self.meta())
-            .finish()
-    }
-}
-
-// ===== impl Id =====
-
-impl Id {
-    pub fn from_u64(u: u64) -> Self {
-        Id(u)
-    }
-}
-
-// ===== impl NewSpan =====
-
-impl NewSpan {
-
-    /// This is primarily used by the `span!` macro, so it has to be public,
-    /// but it's not intended for use by consumers of the tokio-trace API
-    /// directly.
-    #[doc(hidden)]
-    pub fn new(
-        static_meta: &'static StaticMeta,
-        field_values: Vec<Box<dyn Value>>,
-    ) -> Self {
-        Self {
-            parent: Active::current(),
+            parent,
             static_meta,
             field_values,
         }
@@ -458,9 +273,9 @@ impl NewSpan {
         self.static_meta.name
     }
 
-    /// Returns a `Data` reference to the parent of this span, if one exists.
-    pub fn parent(&self) -> Option<&Data> {
-        self.parent.as_ref().map(Active::data)
+    /// Returns the `Id` of the parent of this span, if one exists.
+    pub fn parent(&self) -> Option<&Id> {
+        self.parent.as_ref()
     }
 
     /// Borrows this span's metadata.
@@ -490,66 +305,51 @@ impl NewSpan {
     pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
         self.field_names()
             .enumerate()
-            .map(move |(idx, &name)| (name, self.field_values[idx].as_ref()))
+            .filter_map(move |(i, &name)| {
+                self.field_values
+                .get(i)
+                .map(move |val| (name, val.as_ref()))
+        })
     }
 
-    /// Returns an iterator over [`Data`] references to all the spans that are
-    /// parents of this span.
-    ///
-    /// The iterator will traverse the trace tree in ascending order from this
-    /// span's immediate parent to the root span of the trace.
-    pub fn parents<'a>(&'a self) -> Parents<'a> {
-        Parents {
-            next: self.parent(),
-        }
-    }
-
-    /// Returns an iterator over all the field names and values of this span
-    /// and all of its parent spans.
-    ///
-    /// Fields with duplicate names are skipped, and the value defined lowest
-    /// in the tree is used. For example:
-    /// ```
-    /// # #[macro_use]
-    /// # extern crate tokio_trace;
-    /// # use tokio_trace::Level;
-    /// # fn main() {
-    /// span!("parent 1", foo = 1, bar = 1).enter(|| {
-    ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
-    ///         span!("my span", bar = 2).enter(|| {
-    ///             // do stuff...
-    ///         })
-    ///     })
-    /// });
-    /// # }
-    /// ```
-    /// If a `Subscriber` were to call `all_fields` on "my span" event, it will
-    /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
-    pub fn all_fields<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
-        self.fields()
-            .chain(self.parents().flat_map(|parent| parent.fields()))
-            .dedup_by(|(k, _)| k)
-    }
-
-    /// Finalize constructing the span by attaching a subscriber, generating a
-    /// span ID, and constructing the internal span state.
-    pub fn finish(self, subscriber: Dispatch) -> Span {
-        let id = subscriber.new_span(&self);
-        let data = Data::new(
-            id,
-            self.parent.as_ref().map(Active::data),
-            self.static_meta,
-            self.field_values,
-        );
-        let inner = Some(Active::new(data, subscriber, self.parent));
-        Span {
-            inner,
-        }
+    /// Returns a struct that can be used to format all the fields on this
+    /// span ith `fmt::Debug`.
+    pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, Self> {
+        DebugFields(self)
     }
 }
 
+impl<'a> IntoIterator for &'a Data {
+    type Item = (&'a str, &'a dyn Value);
+    type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
+    fn into_iter(self) -> Self::IntoIter {
+        Box::new(self.fields())
+    }
+}
+
+impl fmt::Debug for Data {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Span")
+            .field("name", &self.name())
+            .field("parent", &self.parent)
+            .field("fields", &self.debug_fields())
+            .field("meta", &self.meta())
+            .finish()
+    }
+}
+
+// ===== impl Id =====
+
+impl Id {
+    pub fn from_u64(u: u64) -> Self {
+        Id(u)
+    }
+
+    /// Returns the ID of the currently-executing span.
+    pub fn current() -> Option<Self> {
+        Active::current().as_ref().map(Active::id)
+    }
+}
 
 // ===== impl Active =====
 
@@ -558,11 +358,12 @@ impl Active {
         CURRENT_SPAN.with(|span| span.borrow().as_ref().cloned())
     }
 
-    fn new(data: Data, subscriber: Dispatch, enter_parent: Option<Self>) -> Self  {
+    fn new(id: Id, subscriber: Dispatch, enter_parent: Option<Self>) -> Self  {
         let inner = Arc::new(ActiveInner {
-            data,
+            id,
             enter_parent,
             currently_entered: AtomicUsize::new(0),
+            state: AtomicUsize::new(State::Unentered as usize),
             subscriber,
         });
         Self {
@@ -571,7 +372,7 @@ impl Active {
     }
 
     fn enter<F: FnOnce() -> T, T>(self, f: F) -> T {
-        let prior_state = self.inner.data.state();
+        let prior_state = self.state();
         match prior_state {
             // The span has been marked as done; it may not be reentered again.
             // TODO: maybe this should not crash the thread?
@@ -580,7 +381,7 @@ impl Active {
                 let result = CURRENT_SPAN.with(|current_span| {
                     self.inner.transition_on_enter(prior_state);
                     current_span.replace(Some(self.clone()));
-                    self.inner.subscriber.enter(self.data());
+                    self.inner.subscriber.enter(self.id(), self.state());
                     f()
                 });
 
@@ -597,15 +398,11 @@ impl Active {
                         State::Idle
                     };
                     self.inner.transition_on_exit(next_state);
-                    self.inner.subscriber.exit(self.data());
+                    self.inner.subscriber.exit(self.id(), self.state());
                 });
                 result
             }
         }
-    }
-
-    fn data(&self) -> &Data {
-        &self.inner.data
     }
 
     /// Returns true if this is the last remaining handle with the capacity to
@@ -615,18 +412,48 @@ impl Active {
     fn is_last_standing(&self) -> bool {
         Arc::strong_count(&self.inner) == 1
     }
+
+    fn id(&self) -> Id {
+        self.inner.id.clone()
+    }
+
+    fn state(&self) -> State {
+        self.inner.state()
+    }
+
+    fn parent(&self) -> Option<Id> {
+        self.inner.enter_parent.as_ref().map(Active::id)
+    }
 }
 
 
 // ===== impl ActiveInnInner =====
 
 impl ActiveInner {
+    /// Returns the current [`State`] of this span.
+    pub fn state(&self) -> State {
+        match self.state.load(Ordering::Acquire) {
+            s if s == State::Unentered as usize => State::Unentered,
+            s if s == State::Running as usize => State::Running,
+            s if s == State::Idle as usize => State::Idle,
+            s if s == State::Done as usize => State::Done,
+            invalid => panic!("invalid state: {:?}", invalid),
+        }
+    }
+
+    fn set_state(&self, prev: State, next: State) {
+        self.state.compare_and_swap(
+            prev as usize,
+            next as usize,
+            Ordering::Release,
+        );
+    }
 
     /// Performs the state transition when entering the span.
     fn transition_on_enter(&self, from_state: State) {
         self.currently_entered
             .fetch_add(1, Ordering::Release);
-        self.data.set_state(from_state, State::Running);
+        self.set_state(from_state, State::Running);
     }
 
     /// Performs the state transition when exiting the span.
@@ -637,36 +464,24 @@ impl ActiveInner {
         // Only advance the state if we are the last remaining
         // thread to exit the span.
         if remaining_exits == 1 {
-            self.data.set_state(State::Running, next_state);
+            self.set_state(State::Running, next_state);
         }
     }
 }
 
 impl cmp::PartialEq for ActiveInner {
     fn eq(&self, other: &ActiveInner) -> bool {
-        self.data == other.data
+        self.id == other.id
     }
 }
 
 impl Hash for ActiveInner {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.data.hash(state);
-    }
-}
-
-// ===== impl DataInner =====
-
-impl Hash for DataInner {
-    fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl cmp::PartialEq for DataInner {
-    fn eq(&self, other: &DataInner) -> bool {
-        self.id == other.id
-    }
-}
+// ===== impl DataInner =====
 
 #[cfg(any(test, feature = "test-support"))]
 pub use self::test_support::*;
@@ -828,8 +643,8 @@ mod tests {
             // Two handles that point to the same span are equal.
             assert_eq!(foo1, foo2);
 
-            // The two span's data handles are also equal.
-            assert_eq!(foo1.data(), foo2.data());
+            // // The two span's data handles are also equal.
+            // assert_eq!(foo1.data(), foo2.data());
         });
     }
 
@@ -842,7 +657,7 @@ mod tests {
             let foo2 = span!("foo", bar = 1, baz = false);
 
             assert_ne!(foo1, foo2);
-            assert_ne!(foo1.data(), foo2.data());
+            // assert_ne!(foo1.data(), foo2.data());
         });
     }
 
@@ -859,7 +674,7 @@ mod tests {
             let foo2 = make_span();
 
             assert_ne!(foo1, foo2);
-            assert_ne!(foo1.data(), foo2.data());
+            // assert_ne!(foo1.data(), foo2.data());
         });
 
     }

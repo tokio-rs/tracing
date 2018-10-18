@@ -115,8 +115,6 @@ extern crate futures;
 
 use std::{fmt, slice};
 
-use self::dedup::IteratorDedup;
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! meta {
@@ -221,16 +219,17 @@ macro_rules! span {
     ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident = $val:expr),*) => {
         {
-            use $crate::{span, Subscriber, Dispatch, Meta};
+            use $crate::{Span, Subscriber, Dispatch, Meta};
             static META: Meta<'static> = meta! { span: $name, $( $k ),* };
             let dispatcher = Dispatch::current();
             if cached_filter!(&META, dispatcher) {
-                span::NewSpan::new(
+                Span::new(
+                    dispatcher,
                     &META,
                     vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
-                ).finish(dispatcher)
+                )
             } else {
-                span::Span::new_disabled()
+                Span::new_disabled()
             }
         }
     }
@@ -240,7 +239,7 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{Subscriber, Dispatch, Meta, SpanData, Event, Value};
+            use $crate::{SpanId, Subscriber, Dispatch, Meta, SpanData, Event, Value};
             static META: Meta<'static> = meta! { event:
                 $lvl,
                 target:
@@ -250,7 +249,7 @@ macro_rules! event {
             if cached_filter!(&META, dispatcher) {
                 let field_values: &[& dyn Value] = &[ $( & $val),* ];
                 dispatcher.observe_event(&Event {
-                    parent: SpanData::current(),
+                    parent: SpanId::current(),
                     follows_from: &[],
                     meta: &META,
                     field_values: &field_values[..],
@@ -289,14 +288,13 @@ pub enum Level {
     Trace,
 }
 
-mod dedup;
 mod dispatcher;
 pub mod span;
 pub mod subscriber;
 
 pub use self::{
     dispatcher::Dispatch,
-    span::{Data as SpanData, Span},
+    span::{Data as SpanData, Span, Id as SpanId},
     subscriber::Subscriber,
 };
 
@@ -316,8 +314,8 @@ impl<T> Value for T where T: fmt::Debug + Send + Sync {}
 /// macro). Consumers of `Event` probably do not need to actually care about
 /// these lifetimes, however.
 pub struct Event<'event, 'meta> {
-    pub parent: Option<SpanData>,
-    pub follows_from: &'event [SpanData],
+    pub parent: Option<SpanId>,
+    pub follows_from: &'event [SpanId],
 
     pub meta: &'meta Meta<'meta>,
     // TODO: agh box
@@ -349,11 +347,6 @@ pub enum Kind {
 }
 
 type StaticMeta = Meta<'static>;
-
-/// Iterator over the parents of a span or event
-pub struct Parents<'a> {
-    next: Option<&'a SpanData>,
-}
 
 // ===== impl Meta =====
 
@@ -457,44 +450,6 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     pub fn debug_fields<'a: 'meta>(&'a self) -> DebugFields<'a, Self> {
         DebugFields(self)
     }
-
-    /// Returns an iterator over [`SpanData`] references to all the [`Span`]s
-    /// that are parents of this `Event`.
-    ///
-    /// The iterator will traverse the trace tree in ascending order from this
-    /// event's immediate parent to the root span of the trace.
-    pub fn parents<'a>(&'a self) -> Parents<'a> {
-        Parents {
-            next: self.parent.as_ref(),
-        }
-    }
-
-    /// Returns an iterator over all the field names and values of this `Event`
-    /// and all of its parent [`Span`]s.
-    ///
-    /// Fields with duplicate names are skipped, and the value defined lowest
-    /// in the tree is used. For example:
-    /// ```
-    /// # #[macro_use]
-    /// # extern crate tokio_trace;
-    /// # use tokio_trace::Level;
-    /// # fn main() {
-    /// span!("parent 1", foo = 1, bar = 1).enter(|| {
-    ///     span!("parent 2", foo = 2, bar = 1).enter(|| {
-    ///         event!(Level::Info, { bar = 2 }, "my event");
-    ///     })
-    /// });
-    /// # }
-    /// ```
-    /// If a `Subscriber` were to call `all_fields` on this event, it will
-    /// receive an iterator with the values `("foo", 2)` and `("bar", 2)`.
-    pub fn all_fields<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a str, &'a dyn Value)> {
-        self.fields()
-            .chain(self.parents().flat_map(|parent| parent.fields()))
-            .dedup_by(|(k, _)| k)
-    }
 }
 
 impl<'a, 'm: 'a> IntoIterator for &'a Event<'a, 'm> {
@@ -521,18 +476,6 @@ where
             .finish()
     }
 }
-
-// ===== impl Parents =====
-
-impl<'a> Iterator for Parents<'a> {
-    type Item = &'a SpanData;
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = self.next;
-        self.next = self.next.and_then(SpanData::parent);
-        next
-    }
-}
-
 
 // ===== impl Level =====
 
