@@ -1,4 +1,7 @@
-use tokio_trace::span::{Id, Data, State};
+use tokio_trace::{
+    span::{Id, Data, State},
+    Value,
+};
 
 use std::{
     cmp,
@@ -58,7 +61,17 @@ impl<'a, 'b> cmp::PartialEq<SpanRef<'b>> for SpanRef<'a> {
 
 impl<'a> cmp::Eq for SpanRef<'a> { }
 
-
+impl<'a> IntoIterator for &'a SpanRef<'a> {
+    type Item = (&'a str, &'a dyn Value);
+    type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.map(|data| {
+            // This is necessary because of type inference.
+            let iter: Box<Iterator<Item = Self::Item> + 'a> = Box::new(data.fields());
+            iter
+        }).unwrap_or_else(|| Box::new(::std::iter::empty()))
+    }
+}
 // /// Registers new span IDs with an increasing `usize` counter.
 // ///
 // /// This may overflow on 32-bit machines.
