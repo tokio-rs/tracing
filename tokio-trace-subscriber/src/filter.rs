@@ -305,10 +305,10 @@ impl Filter for NoFilter {
 
 impl Filter for ExceptModules {
     fn enabled(&self, metadata: &Meta) -> bool {
-        metadata.module_path
+        metadata
+            .module_path
             .map(|module| !self.modules.contains(module))
             .unwrap_or(true)
-
     }
 
     fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
@@ -318,7 +318,8 @@ impl Filter for ExceptModules {
 
 impl Filter for OnlyModules {
     fn enabled(&self, metadata: &Meta) -> bool {
-        metadata.module_path
+        metadata
+            .module_path
             .map(|module| self.modules.contains(module))
             .unwrap_or(false)
     }
@@ -327,7 +328,6 @@ impl Filter for OnlyModules {
         false
     }
 }
-
 
 impl Filter for ExceptTargets {
     fn enabled(&self, metadata: &Meta) -> bool {

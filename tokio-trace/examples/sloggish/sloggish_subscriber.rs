@@ -10,17 +10,19 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
-extern crate humantime;
 extern crate ansi_term;
+extern crate humantime;
 use self::ansi_term::{Color, Style};
-use super::tokio_trace::{self, Level, SpanId, SpanData};
-
+use super::tokio_trace::{self, Level, SpanData, SpanId};
 
 use std::{
     collections::HashMap,
     fmt,
     io::{self, Write},
-    sync::{Mutex, atomic::{AtomicUsize, Ordering}},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Mutex,
+    },
     time::SystemTime,
 };
 
@@ -77,11 +79,7 @@ impl SloggishSubscriber {
         Ok(())
     }
 
-    fn print_meta(
-        &self,
-        writer: &mut impl Write,
-        meta: &tokio_trace::Meta,
-    ) -> io::Result<()> {
+    fn print_meta(&self, writer: &mut impl Write, meta: &tokio_trace::Meta) -> io::Result<()> {
         write!(
             writer,
             "{level} {target} ",
@@ -90,7 +88,7 @@ impl SloggishSubscriber {
         )
     }
 
-    fn print_indent(&self, writer: &mut impl Write, indent: usize,) -> io::Result<()> {
+    fn print_indent(&self, writer: &mut impl Write, indent: usize) -> io::Result<()> {
         for _ in 0..(indent * self.indent_amount) {
             write!(writer, " ")?;
         }
@@ -111,15 +109,16 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event tokio_trace::Event<'event, 'meta>) {
+    fn observe_event<'event, 'meta: 'event>(
+        &self,
+        event: &'event tokio_trace::Event<'event, 'meta>,
+    ) {
         let mut stderr = self.stderr.lock();
 
         let stack = self.stack.lock().unwrap();
-        if let Some(idx) = stack.iter()
-            .position(|id| event.parent.as_ref()
-                .map(|p| p == id)
-                .unwrap_or(false)
-            )
+        if let Some(idx) = stack
+            .iter()
+            .position(|id| event.parent.as_ref().map(|p| p == id).unwrap_or(false))
         {
             self.print_indent(&mut stderr, idx + 1).unwrap();
         }
@@ -151,9 +150,7 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         } else {
             let indent = if let Some(idx) = stack
                 .iter()
-                .position(|id| parent
-                    .map(|p| id == p)
-                    .unwrap_or(false))
+                .position(|id| parent.map(|p| id == p).unwrap_or(false))
             {
                 let idx = idx + 1;
                 stack.truncate(idx);

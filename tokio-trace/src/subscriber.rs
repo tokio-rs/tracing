@@ -1,5 +1,4 @@
-use super::{span, Event, SpanId, Meta};
-
+use super::{span, Event, Meta, SpanId};
 
 pub trait Subscriber {
     // === Span registry methods ==============================================
@@ -81,12 +80,15 @@ pub use self::test_support::*;
 #[cfg(any(test, feature = "test-support"))]
 mod test_support {
     use super::Subscriber;
-    use ::{Event, SpanData, SpanId, Meta};
-    use ::span::{self, MockSpan};
+    use span::{self, MockSpan};
+    use {Event, Meta, SpanData, SpanId};
 
     use std::{
         collections::{HashMap, VecDeque},
-        sync::{Mutex, atomic::{AtomicUsize, Ordering}},
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Mutex,
+        },
     };
 
     struct ExpectEvent {
@@ -120,8 +122,8 @@ mod test_support {
 
     impl<F: Fn(&Meta) -> bool> MockSubscriber<F> {
         pub fn enter(mut self, span: MockSpan) -> Self {
-            self.expected.push_back(Expect::Enter(span
-                .with_state(::span::State::Running)));
+            self.expected
+                .push_back(Expect::Enter(span.with_state(::span::State::Running)));
             self
         }
 
@@ -132,7 +134,7 @@ mod test_support {
 
         pub fn with_filter<G>(self, filter: G) -> MockSubscriber<G>
         where
-            G: Fn(&Meta) -> bool
+            G: Fn(&Meta) -> bool,
         {
             MockSubscriber {
                 filter,
@@ -150,7 +152,7 @@ mod test_support {
         }
     }
 
-    impl<F: Fn(&Meta) -> bool> Subscriber for Running<F>{
+    impl<F: Fn(&Meta) -> bool> Subscriber for Running<F> {
         fn enabled(&self, meta: &Meta) -> bool {
             (self.filter)(meta)
         }
@@ -166,20 +168,28 @@ mod test_support {
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Event(_)) => unimplemented!(),
-                Some(Expect::Enter(expected_span)) => panic!("expected to enter span {:?}, but got an event", expected_span.name),
-                Some(Expect::Exit(expected_span)) => panic!("expected to exit span {:?} but got an event", expected_span.name),
+                Some(Expect::Enter(expected_span)) => panic!(
+                    "expected to enter span {:?}, but got an event",
+                    expected_span.name
+                ),
+                Some(Expect::Exit(expected_span)) => panic!(
+                    "expected to exit span {:?} but got an event",
+                    expected_span.name
+                ),
             }
         }
 
         fn enter(&self, span: span::Id, state: span::State) {
             let spans = self.spans.lock().unwrap();
-            let span = spans.get(&span)
-                .unwrap_or_else(|| {
-                    panic!("no span for ID {:?}", span)
-                });
+            let span = spans
+                .get(&span)
+                .unwrap_or_else(|| panic!("no span for ID {:?}", span));
             match self.expected.lock().unwrap().pop_front() {
-                None => {},
-                Some(Expect::Event(_)) => panic!("expected an event, but entered span {:?} instead", span.name()),
+                None => {}
+                Some(Expect::Event(_)) => panic!(
+                    "expected an event, but entered span {:?} instead",
+                    span.name()
+                ),
                 Some(Expect::Enter(expected_span)) => {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name());
@@ -192,23 +202,27 @@ mod test_support {
                 Some(Expect::Exit(expected_span)) => panic!(
                     "expected to exit span {:?}, but entered span {:?} instead",
                     expected_span.name,
-                    span.name()),
+                    span.name()
+                ),
             }
         }
 
-        fn exit(&self, span: span::Id, state: span::State)  {
+        fn exit(&self, span: span::Id, state: span::State) {
             let spans = self.spans.lock().unwrap();
-            let span = spans.get(&span)
-                .unwrap_or_else(|| {
-                    panic!("no span for ID {:?}", span)
-                });
+            let span = spans
+                .get(&span)
+                .unwrap_or_else(|| panic!("no span for ID {:?}", span));
             match self.expected.lock().unwrap().pop_front() {
-                None => {},
-                Some(Expect::Event(_)) => panic!("expected an event, but exited span {:?} instead", span.name()),
+                None => {}
+                Some(Expect::Event(_)) => panic!(
+                    "expected an event, but exited span {:?} instead",
+                    span.name()
+                ),
                 Some(Expect::Enter(expected_span)) => panic!(
                     "expected to enter span {:?}, but exited span {:?} instead",
                     expected_span.name,
-                    span.name()),
+                    span.name()
+                ),
                 Some(Expect::Exit(expected_span)) => {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name());
@@ -225,20 +239,14 @@ mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use ::{
-        span,
-        subscriber,
-        Span,
-        Dispatch,
-    };
     use std::{
-        thread,
         sync::{
-            Arc,
-            Barrier,
             atomic::{AtomicUsize, Ordering},
+            Arc, Barrier,
         },
+        thread,
     };
+    use {span, subscriber, Dispatch, Span};
 
     #[test]
     fn filters_are_not_reevaluated_for_the_same_span() {
@@ -260,14 +268,13 @@ mod tests {
                 Some("foo") => {
                     foo_count2.fetch_add(1, Ordering::Relaxed);
                     false
-                },
+                }
                 Some("bar") => {
                     bar_count2.fetch_add(1, Ordering::Relaxed);
                     true
-                },
+                }
                 _ => false,
-            })
-            .run();
+            }).run();
 
         Dispatch::to(subscriber).with(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
@@ -275,28 +282,25 @@ mod tests {
             let foo = span!("foo");
             let bar = foo.clone().enter(|| {
                 let bar = span!("bar");
-                bar.clone().enter(|| { bar })
+                bar.clone().enter(|| bar)
             });
 
             // The filter should have seen each span a single time.
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
-            foo.clone().enter(|| {
-                bar.clone().enter(|| { })
-            });
+            foo.clone().enter(|| bar.clone().enter(|| {}));
 
             // The subscriber should see "bar" again, but the filter should not have
             // been called.
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
-            bar.clone().enter(|| { });
+            bar.clone().enter(|| {});
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
         });
     }
-
 
     #[test]
     fn filters_are_reevaluated_when_changing_subscribers() {
@@ -322,14 +326,13 @@ mod tests {
                 Some("foo") => {
                     foo_count1.fetch_add(1, Ordering::Relaxed);
                     false
-                },
+                }
                 Some("bar") => {
                     bar_count1.fetch_add(1, Ordering::Relaxed);
                     true
-                },
+                }
                 _ => false,
-            })
-            .run();
+            }).run();
         let subscriber1 = Dispatch::to(subscriber1);
 
         let foo_count2 = foo_count.clone();
@@ -351,29 +354,26 @@ mod tests {
                 Some("foo") => {
                     foo_count2.fetch_add(1, Ordering::Relaxed);
                     true
-                },
+                }
                 Some("bar") => {
                     bar_count2.fetch_add(1, Ordering::Relaxed);
                     false
-                },
+                }
                 _ => false,
-            })
-            .run();
+            }).run();
         let subscriber2 = Dispatch::to(subscriber2);
 
         let do_test = move |n: usize| {
             let foo = span!("foo");
             let bar = foo.clone().enter(|| {
                 let bar = span!("bar");
-                bar.clone().enter(|| { bar })
+                bar.clone().enter(|| bar)
             });
 
             assert_eq!(foo_count.load(Ordering::Relaxed), n);
             assert_eq!(bar_count.load(Ordering::Relaxed), n);
 
-            foo.clone().enter(|| {
-                bar.clone().enter(|| { })
-            });
+            foo.clone().enter(|| bar.clone().enter(|| {}));
 
             assert_eq!(foo_count.load(Ordering::Relaxed), n);
             assert_eq!(bar_count.load(Ordering::Relaxed), n);
@@ -383,17 +383,11 @@ mod tests {
             do_test(1);
         });
 
-        subscriber2.with(|| {
-            do_test(2)
-        });
+        subscriber2.with(|| do_test(2));
 
-        subscriber1.with(|| {
-            do_test(3)
-        });
+        subscriber1.with(|| do_test(3));
 
-        subscriber2.with(|| {
-            do_test(4)
-        });
+        subscriber2.with(|| do_test(4));
     }
 
     #[test]
@@ -402,12 +396,10 @@ mod tests {
             let foo = span!("foo");
             let bar = foo.clone().enter(|| {
                 let bar = span!("bar");
-                bar.clone().enter(|| { bar })
+                bar.clone().enter(|| bar)
             });
 
-            foo.enter(|| {
-                bar.clone().enter(|| { })
-            });
+            foo.enter(|| bar.clone().enter(|| {}));
 
             bar.clone()
         }
@@ -430,8 +422,7 @@ mod tests {
                 .with_filter(|meta| match meta.name {
                     Some("bar") => true,
                     _ => false,
-                })
-                .run();
+                }).run();
             // barrier1.wait();
             let subscriber = Dispatch::to(subscriber);
             subscriber.with(do_test);
@@ -454,8 +445,7 @@ mod tests {
                 .with_filter(move |meta| match meta.name {
                     Some("foo") => true,
                     _ => false,
-                })
-                .run();
+                }).run();
             let subscriber = Dispatch::to(subscriber);
             subscriber.with(do_test);
             barrier.wait();
@@ -466,10 +456,10 @@ mod tests {
         // parent subscribers.
 
         let bar = thread1.join().unwrap();
-        bar.enter(|| { });
+        bar.enter(|| {});
 
         let bar = thread2.join().unwrap();
-        bar.enter(|| { });
+        bar.enter(|| {});
     }
 
     #[test]
@@ -492,14 +482,13 @@ mod tests {
                 Some("foo") => {
                     foo_count2.fetch_add(1, Ordering::Relaxed);
                     false
-                },
+                }
                 Some("bar") => {
                     bar_count2.fetch_add(1, Ordering::Relaxed);
                     true
-                },
+                }
                 _ => false,
-            })
-            .run();
+            }).run();
 
         Dispatch::to(subscriber).with(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
@@ -507,16 +496,14 @@ mod tests {
             let foo = span!("foo");
             let bar = foo.clone().enter(|| {
                 let bar = span!("bar");
-                bar.clone().enter(|| { bar })
+                bar.clone().enter(|| bar)
             });
 
             // The filter should have seen each span a single time.
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
-            foo.clone().enter(|| {
-                bar.clone().enter(|| { })
-            });
+            foo.clone().enter(|| bar.clone().enter(|| {}));
 
             // The subscriber should see "bar" again, but the filter should not have
             // been called.
@@ -526,13 +513,13 @@ mod tests {
             // A different span with the same name has a different call site, so it
             // should cause the filter to be reapplied.
             let foo2 = span!("foo");
-            foo.clone().enter(|| { });
+            foo.clone().enter(|| {});
             assert_eq!(foo_count.load(Ordering::Relaxed), 2);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
             // But, the filter should not be re-evaluated for the new "foo" span
             // when it is re-entered.
-            foo2.enter(|| { span!("bar").enter(|| { }) });
+            foo2.enter(|| span!("bar").enter(|| {}));
             assert_eq!(foo_count.load(Ordering::Relaxed), 2);
             assert_eq!(bar_count.load(Ordering::Relaxed), 2);
         });
@@ -541,15 +528,11 @@ mod tests {
     #[test]
     fn filter_caching_is_lexically_scoped() {
         pub fn my_great_function() -> bool {
-            span!("foo").enter(|| {
-                true
-            })
+            span!("foo").enter(|| true)
         }
 
         pub fn my_other_function() -> bool {
-            span!("bar").enter(|| {
-                true
-            })
+            span!("bar").enter(|| true)
         }
 
         let count = Arc::new(AtomicUsize::new(0));
@@ -571,8 +554,7 @@ mod tests {
             .with_filter(move |_meta| {
                 count2.fetch_add(1, Ordering::Relaxed);
                 true
-            })
-            .run();
+            }).run();
 
         Dispatch::to(subscriber).with(|| {
             // Call the function once. The filter should be re-evaluated.

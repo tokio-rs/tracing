@@ -1,6 +1,9 @@
-use futures::{future::{Executor, ExecuteError}, Future};
+use futures::{
+    future::{ExecuteError, Executor},
+    Future,
+};
 use tokio_trace::Span;
-use ::{Instrumented, Instrument, WithDispatch};
+use {Instrument, Instrumented, WithDispatch};
 
 pub trait InstrumentExecutor<F>
 where
@@ -29,7 +32,7 @@ impl<T, F> InstrumentExecutor<F> for T
 where
     T: Executor<Instrumented<F>>,
     F: Future<Item = (), Error = ()>,
-{ }
+{}
 
 macro_rules! deinstrument_err {
     ($e:expr) => {
@@ -38,7 +41,7 @@ macro_rules! deinstrument_err {
             let future = e.into_future().inner;
             ExecuteError::new(kind, future)
         })
-    }
+    };
 }
 
 impl<T, F, N> Executor<F> for InstrumentedExecutor<T, N>

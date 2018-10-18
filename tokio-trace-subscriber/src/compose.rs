@@ -111,7 +111,6 @@ where
         self.registry.with_span(&id, state, |span| {
             self.observer.enter(span);
         });
-
     }
 
     fn exit(&self, id: span::Id, state: span::State) {

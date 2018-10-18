@@ -190,7 +190,6 @@ pub enum State {
 // ===== impl Span =====
 
 impl Span {
-
     #[doc(hidden)]
     pub fn new(
         dispatch: Dispatch,
@@ -198,16 +197,10 @@ impl Span {
         field_values: Vec<Box<dyn Value>>,
     ) -> Span {
         let parent = Active::current();
-        let data = Data::new(
-            parent.as_ref().map(Active::id),
-            static_meta,
-            field_values,
-        );
+        let data = Data::new(parent.as_ref().map(Active::id), static_meta, field_values);
         let id = dispatch.new_span(data);
         let inner = Some(Active::new(id, dispatch, parent));
-        Self {
-            inner,
-        }
+        Self { inner }
     }
 
     /// This is primarily used by the `span!` macro, so it has to be public,
@@ -221,7 +214,9 @@ impl Span {
     /// Returns a reference to the span that this thread is currently
     /// executing.
     pub fn current() -> Self {
-        Self { inner: Active::current() }
+        Self {
+            inner: Active::current(),
+        }
     }
 
     pub fn enter<F: FnOnce() -> T, T>(self, f: F) -> T {
@@ -247,9 +242,7 @@ impl fmt::Debug for Span {
                 .field("is_last_standing", &inner.is_last_standing())
         } else {
             span.field("disabled", &true)
-        }
-        .finish()
-
+        }.finish()
     }
 }
 
@@ -296,9 +289,7 @@ impl Data {
     {
         self.field_names()
             .position(|&field_name| field_name == key)
-            .and_then(|i| self.field_values
-                .get(i)
-                .map(AsRef::as_ref))
+            .and_then(|i| self.field_values.get(i).map(AsRef::as_ref))
     }
 
     /// Returns an iterator over all the field names and values on this span.
@@ -307,9 +298,9 @@ impl Data {
             .enumerate()
             .filter_map(move |(i, &name)| {
                 self.field_values
-                .get(i)
-                .map(move |val| (name, val.as_ref()))
-        })
+                    .get(i)
+                    .map(move |val| (name, val.as_ref()))
+            })
     }
 
     /// Returns a struct that can be used to format all the fields on this
@@ -358,7 +349,7 @@ impl Active {
         CURRENT_SPAN.with(|span| span.borrow().as_ref().cloned())
     }
 
-    fn new(id: Id, subscriber: Dispatch, enter_parent: Option<Self>) -> Self  {
+    fn new(id: Id, subscriber: Dispatch, enter_parent: Option<Self>) -> Self {
         let inner = Arc::new(ActiveInner {
             id,
             enter_parent,
@@ -366,9 +357,7 @@ impl Active {
             state: AtomicUsize::new(State::Unentered as usize),
             subscriber,
         });
-        Self {
-            inner,
-        }
+        Self { inner }
     }
 
     fn enter<F: FnOnce() -> T, T>(self, f: F) -> T {
@@ -426,7 +415,6 @@ impl Active {
     }
 }
 
-
 // ===== impl ActiveInnInner =====
 
 impl ActiveInner {
@@ -442,25 +430,20 @@ impl ActiveInner {
     }
 
     fn set_state(&self, prev: State, next: State) {
-        self.state.compare_and_swap(
-            prev as usize,
-            next as usize,
-            Ordering::Release,
-        );
+        self.state
+            .compare_and_swap(prev as usize, next as usize, Ordering::Release);
     }
 
     /// Performs the state transition when entering the span.
     fn transition_on_enter(&self, from_state: State) {
-        self.currently_entered
-            .fetch_add(1, Ordering::Release);
+        self.currently_entered.fetch_add(1, Ordering::Release);
         self.set_state(from_state, State::Running);
     }
 
     /// Performs the state transition when exiting the span.
     fn transition_on_exit(&self, next_state: State) {
         // Decrement the exit count
-        let remaining_exits = self.currently_entered
-            .fetch_sub(1, Ordering::AcqRel);
+        let remaining_exits = self.currently_entered.fetch_sub(1, Ordering::AcqRel);
         // Only advance the state if we are the last remaining
         // thread to exit the span.
         if remaining_exits == 1 {
@@ -488,8 +471,8 @@ pub use self::test_support::*;
 
 #[cfg(any(test, feature = "test-support"))]
 mod test_support {
-    use ::{ Value, span::State };
     use std::collections::HashMap;
+    use {span::State, Value};
 
     pub struct MockSpan {
         pub name: Option<Option<&'static str>>,
@@ -523,15 +506,15 @@ mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use ::{subscriber, span, Dispatch};
-    use std::thread;
     use super::*;
+    use std::thread;
+    use {span, subscriber, Dispatch};
 
     #[test]
     fn exit_doesnt_finish_while_handles_still_exist() {
         // Test that exiting a span only marks it as "done" when no handles
         // that can re-enter the span exist.
-       let subscriber = subscriber::mock()
+        let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("bar")))
             // The first time we exit "bar", there will be another handle with
@@ -615,8 +598,7 @@ mod tests {
                             // Wait for the main thread to allow us to exit.
                             t2_barrier2.wait();
                         })
-                    })
-                    .expect("spawn test thread");
+                    }).expect("spawn test thread");
                 quux.enter(|| {
                     // Wait for thread 2 to enter "quux". When we exit "quux", it
                     // should stay running, since it's running in the other thread.
@@ -676,48 +658,39 @@ mod tests {
             assert_ne!(foo1, foo2);
             // assert_ne!(foo1.data(), foo2.data());
         });
-
     }
 
     #[test]
     fn spans_always_go_to_the_subscriber_that_tagged_them() {
         let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo"))
-                .with_state(State::Idle))
+            .exit(span::mock().named(Some("foo")).with_state(State::Idle))
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo"))
-                .with_state(State::Done)
-            );
+            .exit(span::mock().named(Some("foo")).with_state(State::Done));
         let subscriber1 = Dispatch::to(subscriber1.run());
         let subscriber2 = Dispatch::to(subscriber::mock().run());
 
         let foo = subscriber1.with(|| {
             let foo = span!("foo");
-            foo.clone().enter(|| { });
+            foo.clone().enter(|| {});
             foo
         });
         // Even though we enter subscriber 2's context, the subscriber that
         // tagged the span should see the enter/exit.
-        subscriber2.with(move || {
-            foo.enter(|| { })
-        });
+        subscriber2.with(move || foo.enter(|| {}));
     }
 
     #[test]
     fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
         let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo"))
-                .with_state(State::Idle))
+            .exit(span::mock().named(Some("foo")).with_state(State::Idle))
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo"))
-                .with_state(State::Done)
-            );
+            .exit(span::mock().named(Some("foo")).with_state(State::Done));
         let subscriber1 = Dispatch::to(subscriber1.run());
         let foo = subscriber1.with(|| {
             let foo = span!("foo");
-            foo.clone().enter(|| { });
+            foo.clone().enter(|| {});
             foo
         });
 
@@ -725,9 +698,9 @@ mod tests {
         // tagged the span should see the enter/exit.
         thread::spawn(move || {
             Dispatch::to(subscriber::mock().run()).with(|| {
-
-                foo.enter(|| { });
+                foo.enter(|| {});
             })
-        }).join().unwrap();
+        }).join()
+        .unwrap();
     }
 }

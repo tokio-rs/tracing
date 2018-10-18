@@ -1,6 +1,6 @@
-extern crate tokio_trace_log;
 extern crate env_logger;
 extern crate log;
+extern crate tokio_trace_log;
 
 pub fn try_init() -> Result<(), log::SetLoggerError> {
     env_logger::Builder::from_default_env()
