@@ -6,7 +6,7 @@ extern crate env_logger;
 use tokio_trace::Level;
 
 fn main() {
-    env_logger::Builder::new().parse("info").init();
+    env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::new();
 
     tokio_trace::Dispatch::to(subscriber).with(|| {

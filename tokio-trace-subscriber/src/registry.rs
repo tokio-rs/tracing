@@ -1,12 +1,18 @@
-use tokio_trace::span::{Id, NewSpan};
+use tokio_trace::span::{Id, Data, State};
 
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::{
+    cmp,
+    collections::HashMap,
+    hash::{Hash, Hasher},
+    sync::{Mutex, atomic::{AtomicUsize, Ordering}},
+};
 
 /// The span registration portion of the [`Subscriber`] trait.
 ///
 /// Implementations of this trait represent the logic run on span creation. They
 /// handle span ID generation.
 pub trait RegisterSpan {
+
     /// Record the construction of a new [`Span`], returning a a new [span ID] for
     /// the span being constructed.
     ///
@@ -23,23 +29,76 @@ pub trait RegisterSpan {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span(&self, new_span: &NewSpan) -> Id;
+    fn new_span(&self, new_span: Data) -> Id;
+
+    fn with_span<F>(&self, id: &Id, state: State, f: F)
+    where
+        F: for<'a> Fn(&'a SpanRef<'a>);
 }
 
-/// Registers new span IDs with an increasing `usize` counter.
-///
-/// This may overflow on 32-bit machines.
-pub fn increasing_counter(_new_span: &NewSpan) -> Id {
-    static NEXT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
-    let next = NEXT_ID.fetch_add(1, Ordering::SeqCst);
-    Id::from_u64(next as u64)
+#[derive(Debug)]
+pub struct SpanRef<'a> {
+    pub id: &'a Id,
+    pub data: Option<&'a Data>,
+    pub state: State,
 }
 
-impl<T> RegisterSpan for T
-where
-    T: Fn(&NewSpan) -> Id,
-{
-    fn new_span(&self, new_span: &NewSpan) -> Id {
-        self(new_span)
+impl<'a> Hash for SpanRef<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.state.hash(state);
+    }
+}
+
+impl<'a, 'b> cmp::PartialEq<SpanRef<'b>> for SpanRef<'a> {
+    fn eq(&self, other: &SpanRef<'b>) -> bool {
+        self.id == other.id && self.state == other.state
+    }
+}
+
+impl<'a> cmp::Eq for SpanRef<'a> { }
+
+
+// /// Registers new span IDs with an increasing `usize` counter.
+// ///
+// /// This may overflow on 32-bit machines.
+// pub fn increasing_counter(_new_span: Data) -> Id {
+//     static NEXT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+//     let next = NEXT_ID.fetch_add(1, Ordering::SeqCst);
+//     Id::from_u64(next as u64)
+// }
+
+#[derive(Default)]
+pub struct IncreasingCounter {
+    next_id: AtomicUsize,
+    spans: Mutex<HashMap<Id, Data>>,
+}
+
+pub fn increasing_counter() -> IncreasingCounter {
+    IncreasingCounter::default()
+}
+
+impl RegisterSpan for IncreasingCounter {
+    fn new_span(&self, new_span: Data) -> Id {
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let id = Id::from_u64(id as u64);
+        if let Ok(mut spans) = self.spans.lock() {
+            spans.insert(id.clone(), new_span);
+        }
+        id
+    }
+
+    fn with_span<F>(&self, id: &Id, state: State, f: F)
+    where
+        F: for<'a> Fn(&'a SpanRef<'a>)
+    {
+        let spans = self.spans.lock().expect("mutex poisoned!");
+        let data = spans.get(id);
+        let span = SpanRef {
+            id,
+            data,
+            state,
+        };
+        f(&span);
     }
 }

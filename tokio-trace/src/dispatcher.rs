@@ -1,4 +1,4 @@
-use {span, subscriber::Subscriber, Event, SpanData, Meta};
+use {span, subscriber::Subscriber, Event, Meta};
 
 use std::{
     cell::RefCell,
@@ -36,6 +36,9 @@ impl Dispatch {
 
     pub fn to<S>(subscriber: S) -> Self
     // TODO: Add some kind of `UnsyncDispatch`?
+    // TODO: agh, dispatchers really need not be sync, _only_ the exit part
+    // really has to be Send + Sync. if this were in the subscriber crate, we
+    // could slice and dice the sync requirement a little better...hmmm...
     where
         S: Subscriber + Send + Sync + 'static,
     {
@@ -66,6 +69,10 @@ impl fmt::Debug for Dispatch {
 }
 
 impl Subscriber for Dispatch {
+    fn new_span(&self, span: span::Data) -> span::Id {
+        self.0.new_span(span)
+    }
+
     fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
         CURRENT_DISPATCH.with(|current| {
             let mut hasher = DefaultHasher::new();
@@ -88,42 +95,37 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn new_span(&self, new_span: &span::NewSpan) -> span::Id {
-        self.0.new_span(new_span)
-    }
-
-    #[inline]
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
         self.0.observe_event(event)
     }
 
     #[inline]
-    fn enter(&self, span: &SpanData) {
-        self.0.enter(span)
+    fn enter(&self, span: span::Id, state: span::State) {
+        self.0.enter(span, state)
     }
 
     #[inline]
-    fn exit(&self, span: &SpanData) {
-        self.0.exit(span)
+    fn exit(&self, span: span::Id, state: span::State) {
+        self.0.exit(span, state)
     }
 }
 
 struct NoSubscriber;
 
 impl Subscriber for NoSubscriber {
-    fn enabled(&self, _metadata: &Meta) -> bool {
-        false
+    fn new_span(&self, _span: span::Data) -> span::Id {
+        span::Id::from_u64(0)
     }
 
-    fn new_span(&self, _new_span: &span::NewSpan) -> span::Id {
-        span::Id::from_u64(0)
+    fn enabled(&self, _metadata: &Meta) -> bool {
+        false
     }
 
     fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
         // Do nothing.
     }
 
-    fn enter(&self, _span: &SpanData) {}
+    fn enter(&self, _span: span::Id, _state: span::State) {}
 
-    fn exit(&self, _span: &SpanData) {}
+    fn exit(&self, _span: span::Id, _state: span::State) {}
 }

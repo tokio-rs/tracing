@@ -1,11 +1,8 @@
-use super::{span, Event, SpanData, Meta};
+use super::{span, Event, SpanId, Meta};
+
 
 pub trait Subscriber {
-    /// Determines if a span or event with the specified metadata would be recorded.
-    ///
-    /// This is used by the dispatcher to avoid allocating for span construction
-    /// if the span would be discarded anyway.
-    fn enabled(&self, metadata: &Meta) -> bool;
+    // === Span registry methods ==============================================
 
     /// Record the construction of a new [`Span`], returning a a new [span ID] for
     /// the span being constructed.
@@ -23,7 +20,18 @@ pub trait Subscriber {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span(&self, new_span: &span::NewSpan) -> span::Id;
+    fn new_span(&self, span: span::Data) -> span::Id;
+
+    // // XXX: should this be a subscriber method or should it have its own type???
+    // fn span_data(&self, id: &span::Id) -> Option<&span::Data>;
+
+    // === Filtering methods ==================================================
+
+    /// Determines if a span or event with the specified metadata would be recorded.
+    ///
+    /// This is used by the dispatcher to avoid allocating for span construction
+    /// if the span would be discarded anyway.
+    fn enabled(&self, metadata: &Meta) -> bool;
 
     /// Returns `true` if the cached result to a call to `enabled` for a span
     /// with the given metadata is still valid.
@@ -52,17 +60,19 @@ pub trait Subscriber {
     /// only if _all_ such children return `false`. If the set of subscribers to
     /// which spans are broadcast may change dynamically, adding a new
     /// subscriber should also invalidate cached filters.
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
         false
     }
+
+    // === Notification methods ===============================================
 
     /// Note that this function is generic over a pair of lifetimes because the
     /// `Event` type is. See the documentation for [`Event`] for details.
     ///
     /// [`Event`]: ../struct.Event.html
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>);
-    fn enter(&self, span: &SpanData);
-    fn exit(&self, span: &SpanData);
+    fn enter(&self, span: SpanId, state: span::State);
+    fn exit(&self, span: SpanId, state: span::State);
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -71,12 +81,11 @@ pub use self::test_support::*;
 #[cfg(any(test, feature = "test-support"))]
 mod test_support {
     use super::Subscriber;
-    use ::{Event, SpanData, Meta};
+    use ::{Event, SpanData, SpanId, Meta};
     use ::span::{self, MockSpan};
 
     use std::{
-        collections::VecDeque,
-        thread,
+        collections::{HashMap, VecDeque},
         sync::{Mutex, atomic::{AtomicUsize, Ordering}},
     };
 
@@ -91,6 +100,7 @@ mod test_support {
     }
 
     struct Running<F: Fn(&Meta) -> bool> {
+        spans: Mutex<HashMap<SpanId, SpanData>>,
         expected: Mutex<VecDeque<Expect>>,
         ids: AtomicUsize,
         filter: F,
@@ -132,6 +142,7 @@ mod test_support {
 
         pub fn run(self) -> impl Subscriber {
             Running {
+                spans: Mutex::new(HashMap::new()),
                 expected: Mutex::new(self.expected),
                 ids: AtomicUsize::new(0),
                 filter: self.filter,
@@ -144,8 +155,11 @@ mod test_support {
             (self.filter)(meta)
         }
 
-        fn new_span(&self, _: &span::NewSpan) -> span::Id {
-            span::Id::from_u64(self.ids.fetch_add(1, Ordering::SeqCst) as u64)
+        fn new_span(&self, span: SpanData) -> span::Id {
+            let id = self.ids.fetch_add(1, Ordering::SeqCst);
+            let id = span::Id::from_u64(id as u64);
+            self.spans.lock().unwrap().insert(id.clone(), span);
+            id
         }
 
         fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
@@ -157,8 +171,12 @@ mod test_support {
             }
         }
 
-        fn enter(&self, span: &SpanData) {
-            // println!("+ {}: {:?}", thread::current().name().unwrap_or("unknown thread"), span);
+        fn enter(&self, span: span::Id, state: span::State) {
+            let spans = self.spans.lock().unwrap();
+            let span = spans.get(&span)
+                .unwrap_or_else(|| {
+                    panic!("no span for ID {:?}", span)
+                });
             match self.expected.lock().unwrap().pop_front() {
                 None => {},
                 Some(Expect::Event(_)) => panic!("expected an event, but entered span {:?} instead", span.name()),
@@ -166,8 +184,8 @@ mod test_support {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name());
                     }
-                    if let Some(state) = expected_span.state {
-                        assert_eq!(state, span.state());
+                    if let Some(expected_state) = expected_span.state {
+                        assert_eq!(expected_state, state);
                     }
                     // TODO: expect fields
                 }
@@ -178,8 +196,12 @@ mod test_support {
             }
         }
 
-        fn exit(&self, span: &SpanData) {
-            // println!("- {}: {:?}", thread::current().name().unwrap_or("unknown_thread"), span);
+        fn exit(&self, span: span::Id, state: span::State)  {
+            let spans = self.spans.lock().unwrap();
+            let span = spans.get(&span)
+                .unwrap_or_else(|| {
+                    panic!("no span for ID {:?}", span)
+                });
             match self.expected.lock().unwrap().pop_front() {
                 None => {},
                 Some(Expect::Event(_)) => panic!("expected an event, but exited span {:?} instead", span.name()),
@@ -191,8 +213,8 @@ mod test_support {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name());
                     }
-                    if let Some(state) = expected_span.state {
-                        assert_eq!(state, span.state());
+                    if let Some(expected_state) = expected_span.state {
+                        assert_eq!(expected_state, state);
                     }
                     // TODO: expect fields
                 }
@@ -205,7 +227,7 @@ mod test_support {
 mod tests {
     use ::{
         span,
-        subscriber::{self, Subscriber},
+        subscriber,
         Span,
         Dispatch,
     };
