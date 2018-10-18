@@ -1,5 +1,5 @@
 use tokio_trace::{
-    span::{Id, Data, State},
+    span::{Data, Id, State},
     Value,
 };
 
@@ -7,7 +7,10 @@ use std::{
     cmp,
     collections::HashMap,
     hash::{Hash, Hasher},
-    sync::{Mutex, atomic::{AtomicUsize, Ordering}},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Mutex,
+    },
 };
 
 /// The span registration portion of the [`Subscriber`] trait.
@@ -15,7 +18,6 @@ use std::{
 /// Implementations of this trait represent the logic run on span creation. They
 /// handle span ID generation.
 pub trait RegisterSpan {
-
     /// Record the construction of a new [`Span`], returning a a new [span ID] for
     /// the span being constructed.
     ///
@@ -59,17 +61,18 @@ impl<'a, 'b> cmp::PartialEq<SpanRef<'b>> for SpanRef<'a> {
     }
 }
 
-impl<'a> cmp::Eq for SpanRef<'a> { }
+impl<'a> cmp::Eq for SpanRef<'a> {}
 
 impl<'a> IntoIterator for &'a SpanRef<'a> {
     type Item = (&'a str, &'a dyn Value);
     type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
-        self.data.map(|data| {
-            // This is necessary because of type inference.
-            let iter: Box<Iterator<Item = Self::Item> + 'a> = Box::new(data.fields());
-            iter
-        }).unwrap_or_else(|| Box::new(::std::iter::empty()))
+        self.data
+            .map(|data| {
+                // This is necessary because of type inference.
+                let iter: Box<Iterator<Item = Self::Item> + 'a> = Box::new(data.fields());
+                iter
+            }).unwrap_or_else(|| Box::new(::std::iter::empty()))
     }
 }
 // /// Registers new span IDs with an increasing `usize` counter.
@@ -103,15 +106,11 @@ impl RegisterSpan for IncreasingCounter {
 
     fn with_span<F>(&self, id: &Id, state: State, f: F)
     where
-        F: for<'a> Fn(&'a SpanRef<'a>)
+        F: for<'a> Fn(&'a SpanRef<'a>),
     {
         let spans = self.spans.lock().expect("mutex poisoned!");
         let data = spans.get(id);
-        let span = SpanRef {
-            id,
-            data,
-            state,
-        };
+        let span = SpanRef { id, data, state };
         f(&span);
     }
 }

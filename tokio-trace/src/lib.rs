@@ -152,40 +152,38 @@ macro_rules! meta {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! cached_filter {
-    ($meta:expr, $dispatcher:expr) => {
-        {
-            use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
-            static FILTERED: AtomicUsize = ATOMIC_USIZE_INIT;
-            const ENABLED: usize = 1;
-            const DISABLED: usize = 2;
-            if $dispatcher.should_invalidate_filter($meta) {
-                let enabled = $dispatcher.enabled(&META);
-                if enabled {
-                    FILTERED.store(ENABLED, Ordering::Relaxed);
-                } else {
-                    FILTERED.store(DISABLED, Ordering::Relaxed);
-                }
-                enabled
+    ($meta:expr, $dispatcher:expr) => {{
+        use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+        static FILTERED: AtomicUsize = ATOMIC_USIZE_INIT;
+        const ENABLED: usize = 1;
+        const DISABLED: usize = 2;
+        if $dispatcher.should_invalidate_filter($meta) {
+            let enabled = $dispatcher.enabled(&META);
+            if enabled {
+                FILTERED.store(ENABLED, Ordering::Relaxed);
             } else {
-                match FILTERED.load(Ordering::Relaxed) {
-                    // If there's a cached result, use that.
-                    ENABLED => true,
-                    DISABLED => false,
-                    // Otherwise, this span has not yet been filtered, so call
-                    // `enabled` now and store the result.
-                    _ => {
-                        let enabled = $dispatcher.enabled(&META);
-                        if enabled {
-                            FILTERED.store(ENABLED, Ordering::Relaxed);
-                        } else {
-                            FILTERED.store(DISABLED, Ordering::Relaxed);
-                        }
-                        enabled
-                    },
+                FILTERED.store(DISABLED, Ordering::Relaxed);
+            }
+            enabled
+        } else {
+            match FILTERED.load(Ordering::Relaxed) {
+                // If there's a cached result, use that.
+                ENABLED => true,
+                DISABLED => false,
+                // Otherwise, this span has not yet been filtered, so call
+                // `enabled` now and store the result.
+                _ => {
+                    let enabled = $dispatcher.enabled(&META);
+                    if enabled {
+                        FILTERED.store(ENABLED, Ordering::Relaxed);
+                    } else {
+                        FILTERED.store(DISABLED, Ordering::Relaxed);
+                    }
+                    enabled
                 }
             }
         }
-    }
+    }};
 }
 
 /// Constructs a new span.
@@ -294,7 +292,7 @@ pub mod subscriber;
 
 pub use self::{
     dispatcher::Dispatch,
-    span::{Data as SpanData, Span, Id as SpanId},
+    span::{Data as SpanData, Id as SpanId, Span},
     subscriber::Subscriber,
 };
 
@@ -351,7 +349,6 @@ type StaticMeta = Meta<'static>;
 // ===== impl Meta =====
 
 impl<'a> Meta<'a> {
-
     /// Construct new metadata for a span, with a name, target, level, field
     /// names, and optional source code location.
     pub fn new_span(
@@ -414,7 +411,6 @@ impl<'a> Meta<'a> {
     }
 }
 
-
 // ===== impl Event =====
 
 impl<'event, 'meta: 'event> Event<'event, 'meta> {
@@ -435,14 +431,10 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     }
 
     /// Returns an iterator over all the field names and values on this event.
-    pub fn fields(
-        &'event self,
-    ) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
+    pub fn fields(&'event self) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
         self.field_names()
             .enumerate()
-            .filter_map(move |(idx, &name)| {
-                self.field_values.get(idx).map(|&val| (name, val))
-            })
+            .filter_map(move |(idx, &name)| self.field_values.get(idx).map(|&val| (name, val)))
     }
 
     /// Returns a struct that can be used to format all the fields on this
@@ -469,11 +461,11 @@ where
     &'a I: IntoIterator<Item = (&'a str, &'a dyn Value)>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.into_iter()
+        self.0
+            .into_iter()
             .fold(&mut f.debug_struct(""), |s, (name, value)| {
                 s.field(name, &value)
-            })
-            .finish()
+            }).finish()
     }
 }
 

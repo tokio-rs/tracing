@@ -1,9 +1,9 @@
+extern crate futures;
 #[cfg_attr(test, macro_use)]
 extern crate tokio_trace;
-extern crate futures;
 
+use futures::{Async, Future, Poll, Sink, StartSend, Stream};
 use tokio_trace::{Dispatch, Span, Subscriber};
-use futures::{Async, Future, Sink, Stream, Poll, StartSend};
 
 pub mod executor;
 
@@ -48,18 +48,15 @@ impl<T: Future> Future for Instrumented<T> {
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let span = self.span.take()
-            .expect("polled after Ready");
+        let span = self.span.take().expect("polled after Ready");
         let new_span = &mut self.span;
         let inner = &mut self.inner;
-        span.clone().enter(move || {
-            match inner.poll() {
-                Ok(Async::NotReady) => {
-                    *new_span = Some(span);
-                    Ok(Async::NotReady)
-                },
-                poll => poll,
+        span.clone().enter(move || match inner.poll() {
+            Ok(Async::NotReady) => {
+                *new_span = Some(span);
+                Ok(Async::NotReady)
             }
+            poll => poll,
         })
     }
 }
@@ -69,18 +66,15 @@ impl<T: Stream> Stream for Instrumented<T> {
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        let span = self.span.take()
-            .expect("polled after None");
+        let span = self.span.take().expect("polled after None");
         let new_span = &mut self.span;
         let inner = &mut self.inner;
-        span.clone().enter(move || {
-            match inner.poll() {
-                Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
-                Err(e) => Err(e),
-                poll => {
-                    *new_span = Some(span);
-                    poll
-                },
+        span.clone().enter(move || match inner.poll() {
+            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
+            Err(e) => Err(e),
+            poll => {
+                *new_span = Some(span);
+                poll
             }
         })
     }
@@ -90,25 +84,24 @@ impl<T: Sink> Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
 
-    fn start_send(
-        &mut self,
-        item: Self::SinkItem
-    ) -> StartSend<Self::SinkItem, Self::SinkError> {
-        let span = self.span.as_ref().cloned()
+    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
+        let span = self
+            .span
+            .as_ref()
+            .cloned()
             .expect("span never goes away for Sinks");
         let inner = &mut self.inner;
-        span.enter(move || {
-            inner.start_send(item)
-        })
+        span.enter(move || inner.start_send(item))
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        let span = self.span.as_ref().cloned()
+        let span = self
+            .span
+            .as_ref()
+            .cloned()
             .expect("span never goes away for Sinks");
         let inner = &mut self.inner;
-        span.enter(move || {
-            inner.poll_complete()
-        })
+        span.enter(move || inner.poll_complete())
     }
 }
 
@@ -121,14 +114,12 @@ impl<T: Future> Future for WithDispatch<T> {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let dispatch = &self.dispatch;
         let inner = &mut self.inner;
-        dispatch.with(|| {
-            inner.poll()
-        })
+        dispatch.with(|| inner.poll())
     }
 }
 
 impl<T> WithDispatch<T> {
-    pub(crate) fn with_dispatch <U: Sized>(&self, inner: U) -> WithDispatch<U> {
+    pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
             inner,
@@ -138,9 +129,9 @@ impl<T> WithDispatch<T> {
 
 #[cfg(test)]
 mod tests {
-    use futures::{prelude::*, task, future, stream};
-    use tokio_trace::{span, subscriber};
     use super::*;
+    use futures::{future, prelude::*, stream, task};
+    use tokio_trace::{span, subscriber};
 
     #[test]
     fn future_enter_exit_is_reasonable() {
@@ -162,27 +153,24 @@ mod tests {
             }
         }
         subscriber::mock()
-            .enter(
-                span::mock().named(Some("foo"))
-            )
+            .enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .enter(
-                span::mock().named(Some("foo"))
-            )
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Done)
-            )
-            .run();
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Done),
+            ).run();
         MyFuture { polls: 0 }
             .instrument(span!("foo"))
-            .wait().unwrap();
+            .wait()
+            .unwrap();
     }
 
-     #[test]
+    #[test]
     fn future_completion_leaves_reachable_spans_idle() {
         struct MyFuture {
             polls: usize,
@@ -204,19 +192,20 @@ mod tests {
         subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .enter(span::mock().named(Some("foo")))
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .run();
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).run();
         let foo = span!("foo");
         MyFuture { polls: 0 }
             .instrument(foo.clone())
-            .wait().unwrap();
+            .wait()
+            .unwrap();
     }
 
     #[test]
@@ -241,18 +230,19 @@ mod tests {
         subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .enter(span::mock().named(Some("foo")))
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Done)
-            )
-            .run();
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Done),
+            ).run();
         MyFuture { polls: 0 }
             .instrument(span!("foo"))
-            .wait().unwrap_err();
+            .wait()
+            .unwrap_err();
     }
 
     #[test]
@@ -260,28 +250,29 @@ mod tests {
         subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .enter(span::mock().named(Some("foo")))
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .enter(span::mock().named(Some("foo")) )
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Idle)
-            )
-            .enter(span::mock().named(Some("foo")))
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Idle),
+            ).enter(span::mock().named(Some("foo")))
             .exit(
-                span::mock().named(Some("foo"))
-                    .with_state(span::State::Done)
-            )
-            .run();
+                span::mock()
+                    .named(Some("foo"))
+                    .with_state(span::State::Done),
+            ).run();
         stream::iter_ok::<_, ()>(&[1, 2, 3])
             .instrument(span!("foo"))
-            .for_each(|_| { future::ok(()) })
-            .wait().unwrap();
+            .for_each(|_| future::ok(()))
+            .wait()
+            .unwrap();
     }
 }

@@ -1,12 +1,12 @@
 extern crate tower_service;
 #[macro_use]
 extern crate tokio_trace;
-extern crate tokio_trace_futures;
 extern crate futures;
+extern crate tokio_trace_futures;
 
-use tokio_trace_futures::{Instrumented, Instrument};
-use tower_service::Service;
 use std::fmt;
+use tokio_trace_futures::{Instrument, Instrumented};
+use tower_service::Service;
 
 #[derive(Clone, Debug)]
 pub struct InstrumentedService<T> {
@@ -16,10 +16,7 @@ pub struct InstrumentedService<T> {
 
 pub trait InstrumentableService: Service + Sized {
     fn instrument(self, span: tokio_trace::Span) -> InstrumentedService<Self> {
-        InstrumentedService {
-            inner: self,
-            span,
-        }
+        InstrumentedService { inner: self, span }
     }
 }
 
@@ -36,7 +33,7 @@ where
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
         let span = self.span.clone();
         let inner = &mut self.inner;
-        span.enter(|| { inner.poll_ready() })
+        span.enter(|| inner.poll_ready())
     }
 
     fn call(&mut self, request: Self::Request) -> Self::Future {
@@ -44,9 +41,9 @@ where
         let inner = &mut self.inner;
         span.enter(|| {
             let request_span = span!("request", request = request.clone());
-            request_span.clone().enter(move || {
-                inner.call(request).instrument(request_span)
-            })
+            request_span
+                .clone()
+                .enter(move || inner.call(request).instrument(request_span))
         })
     }
 }

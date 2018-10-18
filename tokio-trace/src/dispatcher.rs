@@ -2,12 +2,9 @@ use {span, subscriber::Subscriber, Event, Meta};
 
 use std::{
     cell::RefCell,
-    collections::{
-        HashSet,
-        hash_map::DefaultHasher,
-    },
-    hash::{Hash, Hasher},
+    collections::{hash_map::DefaultHasher, HashSet},
     fmt,
+    hash::{Hash, Hasher},
     sync::Arc,
 };
 
@@ -29,9 +26,7 @@ impl Dispatch {
     }
 
     pub fn current() -> Dispatch {
-        CURRENT_DISPATCH.with(|current| {
-            current.borrow().dispatch.clone()
-        })
+        CURRENT_DISPATCH.with(|current| current.borrow().dispatch.clone())
     }
 
     pub fn to<S>(subscriber: S) -> Self
@@ -86,7 +81,6 @@ impl Subscriber for Dispatch {
                 true
             }
         })
-
     }
 
     #[inline]

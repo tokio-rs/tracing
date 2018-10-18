@@ -19,20 +19,15 @@
 //! `log` crate is desired, either the `log` crate should not be used to
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
+extern crate log;
 extern crate tokio_trace;
 extern crate tokio_trace_subscriber;
-extern crate log;
 
 use std::{
-    fmt,
-    io,
-    sync::atomic::{
-        AtomicUsize,
-        ATOMIC_USIZE_INIT,
-        Ordering
-    },
+    fmt, io,
+    sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
 };
-use tokio_trace::{span, Subscriber, Event, Meta};
+use tokio_trace::{span, Event, Meta, Subscriber};
 use tokio_trace_subscriber::SpanRef;
 
 /// Format a log record as a trace event in the current span.
@@ -43,7 +38,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         follows_from: &[],
         meta: &meta,
         field_values: &[],
-        message: record.args().clone()
+        message: record.args().clone(),
     };
     tokio_trace::Dispatch::current().observe_event(&event);
     Ok(())
@@ -128,9 +123,7 @@ where
 
 impl LogTracer {
     pub fn with_filter(filter: log::LevelFilter) -> Self {
-       Self {
-           filter,
-       }
+        Self { filter }
     }
 }
 
@@ -170,19 +163,20 @@ impl Subscriber for TraceLogger {
         let id = span::Id::from_u64(NEXT_ID.fetch_add(1, Ordering::SeqCst) as u64);
         let meta = new_span.meta();
         let logger = log::logger();
-        logger.log(&log::Record::builder()
-            .metadata(meta.as_log())
-            .module_path(meta.module_path)
-            .file(meta.file)
-            .line(meta.line)
-            .args(format_args!(
-                "new_span: {}; span={:?}; parent={:?}; {:?}",
-                meta.name.unwrap_or(""),
-                id,
-                new_span.parent(),
-                LogFields(&new_span),
-            ))
-            .build());
+        logger.log(
+            &log::Record::builder()
+                .metadata(meta.as_log())
+                .module_path(meta.module_path)
+                .file(meta.file)
+                .line(meta.line)
+                .args(format_args!(
+                    "new_span: {}; span={:?}; parent={:?}; {:?}",
+                    meta.name.unwrap_or(""),
+                    id,
+                    new_span.parent(),
+                    LogFields(&new_span),
+                )).build(),
+        );
         id
     }
 
@@ -208,24 +202,22 @@ impl Subscriber for TraceLogger {
 
     fn enter(&self, span: span::Id, state: span::State) {
         let logger = log::logger();
-        logger.log(&log::Record::builder()
-            .level(log::Level::Trace)
-            .args(format_args!(
-                "enter: span={:?}; state={:?};",
-                span, state
-            ))
-            .build());
+        logger.log(
+            &log::Record::builder()
+                .level(log::Level::Trace)
+                .args(format_args!("enter: span={:?}; state={:?};", span, state))
+                .build(),
+        );
     }
 
     fn exit(&self, span: span::Id, state: span::State) {
         let logger = log::logger();
-        logger.log(&log::Record::builder()
-            .level(log::Level::Trace)
-            .args(format_args!(
-                "exit: id={:?}; state={:?};",
-                span, state
-            ))
-            .build());
+        logger.log(
+            &log::Record::builder()
+                .level(log::Level::Trace)
+                .args(format_args!("exit: id={:?}; state={:?};", span, state))
+                .build(),
+        );
     }
 }
 

@@ -15,10 +15,10 @@ use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tower_h2::{Body, Server, RecvBody};
-use tower_service::{NewService, Service};
 use tokio_trace::Level;
 use tokio_trace_futures::Instrument;
+use tower_h2::{Body, RecvBody, Server};
+use tower_service::{NewService, Service};
 
 #[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
@@ -38,7 +38,6 @@ impl RspBody {
     }
 }
 
-
 impl Body for RspBody {
     type Data = Bytes;
 
@@ -47,7 +46,8 @@ impl Body for RspBody {
     }
 
     fn poll_data(&mut self) -> Poll<Option<Bytes>, h2::Error> {
-        let data = self.0
+        let data = self
+            .0
             .take()
             .and_then(|b| if b.is_empty() { None } else { Some(b) });
         Ok(Async::Ready(data))
@@ -97,14 +97,13 @@ impl NewService for NewSvc {
     type Service = Svc;
     type Future = future::FutureResult<Svc, Self::InitError>;
 
-   fn new_service(&self) -> Self::Future {
+    fn new_service(&self) -> Self::Future {
         future::ok(Svc)
     }
 }
 
 fn main() {
     let subscriber = SloggishSubscriber::new(2);
-
 
     tokio_trace::Dispatch::to(subscriber).with(|| {
         let mut rt = Runtime::new().unwrap();
@@ -118,7 +117,8 @@ fn main() {
             let new_svc = tokio_trace_tower_http::InstrumentedNewService::new(NewSvc);
             let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
-            let serve = bind.incoming()
+            let serve = bind
+                .incoming()
                 .fold((h2, reactor), |(h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
                     let conn_span = span!("conn", remote_ip = addr.ip(), remote_port = addr.port());
@@ -129,24 +129,23 @@ fn main() {
 
                         event!(Level::Info, {}, "accepted connection");
 
-                        let serve = h2.serve(sock)
-                            .map_err(|e| event!(Level::Error, { }, "error {:?}", e))
-                            .and_then(|_| { event!(Level::Debug, { }, "response finished"); future::ok(()) })
-                            .instrument(conn_span);
+                        let serve = h2
+                            .serve(sock)
+                            .map_err(|e| event!(Level::Error, {}, "error {:?}", e))
+                            .and_then(|_| {
+                                event!(Level::Debug, {}, "response finished");
+                                future::ok(())
+                            }).instrument(conn_span);
                         reactor.spawn(Box::new(serve));
 
                         Ok((h2, reactor))
                     })
-
-                })
-                .map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
+                }).map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
                 .map(|_| {})
-                .instrument(server_span.clone())
-                ;
+                .instrument(server_span.clone());
 
             rt.spawn(serve);
-            rt.shutdown_on_idle()
-                .wait().unwrap();
+            rt.shutdown_on_idle().wait().unwrap();
         });
     });
 }

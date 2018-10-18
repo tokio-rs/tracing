@@ -2,15 +2,15 @@ extern crate futures;
 extern crate hyper;
 #[macro_use]
 extern crate tokio_trace;
-extern crate tokio_trace_futures;
-extern crate tokio_trace_env_logger;
 extern crate tokio;
+extern crate tokio_trace_env_logger;
+extern crate tokio_trace_futures;
 
 use futures::future;
 use hyper::rt::{Future, Stream};
+use hyper::server::conn::Http;
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, StatusCode};
-use hyper::server::conn::Http;
 
 use std::str;
 
@@ -29,7 +29,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
         method = req.method().clone(),
         uri = req.uri().clone(),
         headers = req.headers().clone()
-    ).enter( || {
+    ).enter(|| {
         event!(Level::Info, {}, "received request");
         let mut response = Response::new(Body::empty());
 
@@ -38,14 +38,20 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             (&Method::GET, "/") => {
                 const BODY: &'static str = "Try POSTing data to /echo";
                 *response.body_mut() = Body::from(BODY);
-                (span!("response", body = BODY), Box::new(future::ok(response)))
+                (
+                    span!("response", body = BODY),
+                    Box::new(future::ok(response)),
+                )
             }
 
             // Simply echo the body back to the client.
             (&Method::POST, "/echo") => {
                 let body = req.into_body();
                 *response.body_mut() = body;
-                (span!("response", response_kind = "echo"), Box::new(future::ok(response)))
+                (
+                    span!("response", response_kind = "echo"),
+                    Box::new(future::ok(response)),
+                )
             }
 
             // Convert to uppercase before sending back to client.
@@ -68,7 +74,10 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 });
 
                 *response.body_mut() = Body::wrap_stream(mapping);
-                (span!("response", response_kind = "uppercase"), Box::new(future::ok(response)))
+                (
+                    span!("response", response_kind = "uppercase"),
+                    Box::new(future::ok(response)),
+                )
             }
 
             // Reverse the entire body before sending back to the client.
@@ -99,12 +108,10 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // The 404 Not Found route...
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
-                (span!(
-                    "response",
-                    body = (),
-                    status = StatusCode::NOT_FOUND
-                ),
-                Box::new(future::ok(response)))
+                (
+                    span!("response", body = (), status = StatusCode::NOT_FOUND),
+                    Box::new(future::ok(response)),
+                )
             }
         };
 
@@ -124,18 +131,19 @@ fn main() {
                 .expect("bind")
                 .incoming()
                 .fold(Http::new(), move |http, sock| {
-
                     let span = span!("connection", remote = sock.peer_addr().unwrap());
-                    hyper::rt::spawn(http.serve_connection(sock, service_fn(echo))
-                        .map_err(|e| { event!(Level::Error, { error = &e }, "serve error"); })
-                        .instrument(span));
+                    hyper::rt::spawn(
+                        http.serve_connection(sock, service_fn(echo))
+                            .map_err(|e| {
+                                event!(Level::Error, { error = &e }, "serve error");
+                            }).instrument(span),
+                    );
                     Ok::<_, ::std::io::Error>(http)
-
-                })
-                .instrument(server_span)
-                .map(|_|())
-                .map_err(|e| { event!(Level::Error, { error = &e }, "server error"); })
-                ;
+                }).instrument(server_span)
+                .map(|_| ())
+                .map_err(|e| {
+                    event!(Level::Error, { error = &e }, "server error");
+                });
             event!(Level::Info, {}, "listening...");
             hyper::rt::run(server);
         });

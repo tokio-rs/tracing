@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tokio_trace;
-extern crate tokio_trace_log;
 extern crate env_logger;
+extern crate tokio_trace_log;
 
 use tokio_trace::Level;
 
