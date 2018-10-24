@@ -116,11 +116,11 @@ pub trait ObserveExt: Observe {
     ///
     /// tokio_trace::Dispatch::to(subscriber).with(|| {
     ///     /// // This span will be logged.
-    ///     span!("foo", enabled = true) .enter(|| {
+    ///     span!("foo", enabled = &true) .enter(|| {
     ///         // do work;
     ///     });
     ///     // This span will *not* be logged.
-    ///     span!("bar", enabled = false).enter(|| {
+    ///     span!("bar", enabled = &false).enter(|| {
     ///         // This event also will not be logged.
     ///         event!(Level::Debug, { enabled = false },"this won't be logged");
     ///     });

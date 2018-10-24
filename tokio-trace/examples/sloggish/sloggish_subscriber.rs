@@ -13,7 +13,11 @@
 extern crate ansi_term;
 extern crate humantime;
 use self::ansi_term::{Color, Style};
-use super::tokio_trace::{self, Level, SpanData, SpanId};
+use super::tokio_trace::{
+    self,
+    subscriber::{self, Subscriber},
+    Level, SpanData, SpanId,
+};
 
 use std::{
     collections::HashMap,
@@ -59,9 +63,10 @@ impl SloggishSubscriber {
         }
     }
 
-    fn print_kvs<'a, I>(&self, writer: &mut impl Write, kvs: I, leading: &str) -> io::Result<()>
+    fn print_kvs<'a, I, T>(&self, writer: &mut impl Write, kvs: I, leading: &str) -> io::Result<()>
     where
-        I: IntoIterator<Item = (&'a str, &'a dyn tokio_trace::Value)>,
+        I: IntoIterator<Item = (&'a str, T)>,
+        T: fmt::Debug,
     {
         let mut kvs = kvs.into_iter();
         if let Some((k, v)) = kvs.next() {
@@ -96,7 +101,7 @@ impl SloggishSubscriber {
     }
 }
 
-impl tokio_trace::Subscriber for SloggishSubscriber {
+impl Subscriber for SloggishSubscriber {
     fn enabled(&self, _metadata: &tokio_trace::Meta) -> bool {
         true
     }
@@ -106,6 +111,19 @@ impl tokio_trace::Subscriber for SloggishSubscriber {
         let id = tokio_trace::span::Id::from_u64(next);
         self.spans.lock().unwrap().insert(id.clone(), span);
         id
+    }
+
+    fn add_value(
+        &self,
+        span: &tokio_trace::SpanId,
+        name: &'static str,
+        value: &dyn tokio_trace::IntoValue,
+    ) -> Result<(), subscriber::AddValueError> {
+        let mut spans = self.spans.lock().expect("mutex poisoned!");
+        let span = spans
+            .get_mut(span)
+            .ok_or(subscriber::AddValueError::NoSpan)?;
+        span.add_value(name, value)
     }
 
     #[inline]

@@ -18,6 +18,10 @@ string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"
 tokio-current-thread = "0.1.1"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
+tokio-trace-subscriber = { path = "../tokio-trace-subscriber" }
+tokio-trace-log = { path = "../tokio-trace-log" }
 tokio-io = "0.1"
 ansi_term = "0.11"
 humantime = "1.1.1"
+
+env_logger = "0.5"

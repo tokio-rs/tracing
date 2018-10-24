@@ -207,7 +207,7 @@ macro_rules! cached_filter {
 /// # #[macro_use]
 /// # extern crate tokio_trace;
 /// # fn main() {
-/// span!("my span", foo = 2, bar = "a string").enter(|| {
+/// span!("my span", foo = &2, bar = &"a string").enter(|| {
 ///     // do work inside the span...
 /// });
 /// # }
@@ -215,20 +215,24 @@ macro_rules! cached_filter {
 #[macro_export]
 macro_rules! span {
     ($name:expr) => { span!($name,) };
-    ($name:expr, $($k:ident = $val:expr),*) => {
+    ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
             use $crate::{Span, Subscriber, Dispatch, Meta};
             static META: Meta<'static> = meta! { span: $name, $( $k ),* };
             let dispatcher = Dispatch::current();
-            if cached_filter!(&META, dispatcher) {
+            let span = if cached_filter!(&META, dispatcher) {
                 Span::new(
                     dispatcher,
                     &META,
-                    vec![ $(Box::new($val)),* ], // todo: wish this wasn't double-boxed...
                 )
             } else {
                 Span::new_disabled()
-            }
+            };
+            $(
+                span.add_value(stringify!($k), $( $val )* )
+                    .expect(concat!("adding value for field ", stringify!($k), " failed"));
+            )*
+            span
         }
     }
 }
@@ -237,7 +241,7 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{SpanId, Subscriber, Dispatch, Meta, SpanData, Event, Value};
+            use $crate::{SpanId, Subscriber, Dispatch, Meta, SpanData, Event, value::AsValue};
             static META: Meta<'static> = meta! { event:
                 $lvl,
                 target:
@@ -245,7 +249,7 @@ macro_rules! event {
             };
             let dispatcher = Dispatch::current();
             if cached_filter!(&META, dispatcher) {
-                let field_values: &[& dyn Value] = &[ $( & $val),* ];
+                let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
                 dispatcher.observe_event(&Event {
                     parent: SpanId::current(),
                     follows_from: &[],
@@ -289,19 +293,15 @@ pub enum Level {
 mod dispatcher;
 pub mod span;
 pub mod subscriber;
+pub mod value;
 
 pub use self::{
     dispatcher::Dispatch,
     span::{Data as SpanData, Id as SpanId, Span},
     subscriber::Subscriber,
+    value::{AsValue, Value, IntoValue},
 };
-
-// XXX: im using fmt::Debug for prototyping purposes, it should probably leave.
-pub trait Value: fmt::Debug + Send + Sync {
-    // ... ?
-}
-
-impl<T> Value for T where T: fmt::Debug + Send + Sync {}
+use value::BorrowedValue;
 
 /// **Note**: `Event` must be generic over two lifetimes, that of `Event` itself
 /// (the `'event` lifetime) *and* the lifetime of the event's metadata (the
@@ -316,8 +316,8 @@ pub struct Event<'event, 'meta> {
     pub follows_from: &'event [SpanId],
 
     pub meta: &'meta Meta<'meta>,
-    // TODO: agh box
-    pub field_values: &'event [&'event dyn Value],
+
+    pub field_values: &'event [ &'event dyn AsValue ],
     pub message: fmt::Arguments<'event>,
 }
 
@@ -421,44 +421,49 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
 
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
     /// returns `None`.
-    pub fn field<Q>(&'event self, name: Q) -> Option<&'event dyn Value>
+    pub fn field<Q>(&self, name: Q) -> Option<value::BorrowedValue>
     where
         &'event str: PartialEq<Q>,
     {
         self.field_names()
             .position(|&field_name| field_name == name)
-            .and_then(|i| self.field_values.get(i).map(|&val| val))
+            .and_then(|i| self.field_values.get(i).map(|&val| value::borrowed(val)))
     }
 
     /// Returns an iterator over all the field names and values on this event.
-    pub fn fields(&'event self) -> impl Iterator<Item = (&'event str, &'event dyn Value)> {
+    pub fn fields<'a: 'event>(&'a self) -> impl Iterator<Item = (&'event str, BorrowedValue<'a>)> {
         self.field_names()
             .enumerate()
-            .filter_map(move |(idx, &name)| self.field_values.get(idx).map(|&val| (name, val)))
+            .filter_map(move |(idx, &name)| {
+                self.field_values
+                    .get(idx)
+                    .map(|&val| (name, value::borrowed(val)))
+            })
     }
 
     /// Returns a struct that can be used to format all the fields on this
     /// `Event` with `fmt::Debug`.
-    pub fn debug_fields<'a: 'meta>(&'a self) -> DebugFields<'a, Self> {
+    pub fn debug_fields<'a: 'event>(&'a self) -> DebugFields<'a, Self, BorrowedValue<'event>> {
         DebugFields(self)
     }
 }
 
 impl<'a, 'm: 'a> IntoIterator for &'a Event<'a, 'm> {
-    type Item = (&'a str, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (&'a str, &'a dyn Value)> + 'a>; // TODO: unbox
+    type Item = (&'a str, BorrowedValue<'a>);
+    type IntoIter = Box<Iterator<Item = (&'a str, BorrowedValue<'a>)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
 }
 
-pub struct DebugFields<'a, I: 'a>(&'a I)
+pub struct DebugFields<'a, I: 'a, T: 'a>(&'a I)
 where
-    &'a I: IntoIterator<Item = (&'a str, &'a dyn Value)>;
+    &'a I: IntoIterator<Item = (&'a str, T)>;
 
-impl<'a, I: 'a> fmt::Debug for DebugFields<'a, I>
+impl<'a, I: 'a, T: 'a> fmt::Debug for DebugFields<'a, I, T>
 where
-    &'a I: IntoIterator<Item = (&'a str, &'a dyn Value)>,
+    &'a I: IntoIterator<Item = (&'a str, T)>,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0

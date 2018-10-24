@@ -102,10 +102,10 @@ where
         span.enter(move || {
             let request_span = span!(
                 "request",
-                method = request.method().clone(),
-                version = request.version().clone(),
-                uri = request.uri().clone(),
-                headers = request.headers().clone()
+                method = request.method(),
+                version = &request.version(),
+                uri = request.uri(),
+                headers = request.headers()
             );
             request_span
                 .clone()

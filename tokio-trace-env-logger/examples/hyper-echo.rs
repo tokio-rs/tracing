@@ -26,9 +26,9 @@ type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send
 fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     span!(
         "request",
-        method = req.method().clone(),
-        uri = req.uri().clone(),
-        headers = req.headers().clone()
+        method = req.method(),
+        uri = req.uri(),
+        headers = req.headers()
     ).enter(|| {
         event!(Level::Info, {}, "received request");
         let mut response = Response::new(Body::empty());
@@ -39,7 +39,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 const BODY: &'static str = "Try POSTing data to /echo";
                 *response.body_mut() = Body::from(BODY);
                 (
-                    span!("response", body = BODY),
+                    span!("response", body = &BODY),
                     Box::new(future::ok(response)),
                 )
             }
@@ -49,7 +49,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 let body = req.into_body();
                 *response.body_mut() = body;
                 (
-                    span!("response", response_kind = "echo"),
+                    span!("response", response_kind = &"echo"),
                     Box::new(future::ok(response)),
                 )
             }
@@ -61,7 +61,6 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                         .iter()
                         .map(|byte| byte.to_ascii_uppercase())
                         .collect::<Vec<u8>>();
-
                     event!(
                         Level::Debug,
                         {
@@ -75,7 +74,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 
                 *response.body_mut() = Body::wrap_stream(mapping);
                 (
-                    span!("response", response_kind = "uppercase"),
+                    span!("response", response_kind = &"uppercase"),
                     Box::new(future::ok(response)),
                 )
             }
@@ -87,7 +86,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // future, waiting on concatenating the full body, so that
             // it can be reversed. Only then can we return a `Response`.
             (&Method::POST, "/echo/reversed") => {
-                let span = span!("response", response_kind = "reversed");
+                let span = span!("response", response_kind = &"reversed");
                 let reversed = span.clone().enter(|| {
                     req.into_body().concat2().map(move |chunk| {
                         let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
@@ -109,7 +108,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
                 (
-                    span!("response", body = (), status = StatusCode::NOT_FOUND),
+                    span!("response", body = &(), status = &StatusCode::NOT_FOUND),
                     Box::new(future::ok(response)),
                 )
             }
@@ -125,13 +124,13 @@ fn main() {
 
     tokio_trace::Dispatch::to(subscriber).with(|| {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-        let server_span = span!("server", local = addr);
+        let server_span = span!("server", local = &addr);
         server_span.clone().enter(|| {
             let server = tokio::net::TcpListener::bind(&addr)
                 .expect("bind")
                 .incoming()
                 .fold(Http::new(), move |http, sock| {
-                    let span = span!("connection", remote = sock.peer_addr().unwrap());
+                    let span = span!("connection", remote = &sock.peer_addr().unwrap());
                     hyper::rt::spawn(
                         http.serve_connection(sock, service_fn(echo))
                             .map_err(|e| {
