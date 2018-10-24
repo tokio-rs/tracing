@@ -36,14 +36,14 @@ where
         span.enter(|| inner.poll_ready())
     }
 
-    fn call(&mut self, request: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Self::Request) -> Self::Future {
         let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(|| {
-            let request_span = span!("request", request = request.clone());
+            let request_span = span!("request", request = &req);
             request_span
                 .clone()
-                .enter(move || inner.call(request).instrument(request_span))
+                .enter(move || inner.call(req).instrument(request_span))
         })
     }
 }

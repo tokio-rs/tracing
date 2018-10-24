@@ -27,7 +27,11 @@ use std::{
     fmt, io,
     sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
 };
-use tokio_trace::{span, Event, Meta, Subscriber};
+use tokio_trace::{
+    span,
+    subscriber::{self, Subscriber},
+    Event, IntoValue, Meta,
+};
 use tokio_trace_subscriber::SpanRef;
 
 /// Format a log record as a trace event in the current span.
@@ -115,9 +119,9 @@ pub struct LogTracer {
 /// trace events.
 pub struct TraceLogger;
 
-struct LogFields<'a, I: 'a>(&'a I)
+struct LogFields<'a, I: 'a, T: 'a>(&'a I)
 where
-    &'a I: IntoIterator<Item = (&'a str, &'a dyn tokio_trace::Value)>;
+    &'a I: IntoIterator<Item = (&'a str, T)>;
 
 // ===== impl LogTracer =====
 
@@ -178,6 +182,16 @@ impl Subscriber for TraceLogger {
                 )).build(),
         );
         id
+    }
+
+    fn add_value(
+        &self,
+        _span: &span::Id,
+        _name: &'static str,
+        _value: &dyn IntoValue,
+    ) -> Result<(), subscriber::AddValueError> {
+        // XXX eventually this should Do Something...
+        Ok(())
     }
 
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
@@ -294,9 +308,10 @@ impl tokio_trace_subscriber::Filter for TraceLogger {
     }
 }
 
-impl<'a, I: 'a> fmt::Debug for LogFields<'a, I>
+impl<'a, I: 'a, T: 'a> fmt::Debug for LogFields<'a, I, T>
 where
-    &'a I: IntoIterator<Item = (&'a str, &'a dyn tokio_trace::Value)>,
+    &'a I: IntoIterator<Item = (&'a str, T)>,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut fields = self.0.into_iter();

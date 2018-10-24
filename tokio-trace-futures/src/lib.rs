@@ -130,7 +130,7 @@ impl<T> WithDispatch<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::{future, prelude::*, stream, task};
+    use futures::{future, stream, task};
     use tokio_trace::{span, subscriber};
 
     #[test]
