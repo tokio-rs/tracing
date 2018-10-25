@@ -9,7 +9,7 @@ use std::{
     },
 };
 use {
-    subscriber::{AddValueError, Subscriber},
+    subscriber::{AddValueError, PriorError, Subscriber},
     value::{IntoValue, OwnedValue},
     DebugFields, Dispatch, StaticMeta,
 };
@@ -123,6 +123,10 @@ pub struct Data {
 /// [`Subscriber::new_span_id`]: ../subscriber/trait.Subscriber.html#tymethod.new_span_id
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(u64);
+
+pub trait AsId {
+    fn as_id(&self) -> Option<Id>;
+}
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 struct Active {
@@ -248,6 +252,23 @@ impl Span {
             Ok(())
         }
     }
+
+    pub fn proceeds<I: AsId>(&self, from: I) -> Result<(), PriorError> {
+        if let Some(ref inner) = self.inner {
+            let from_id = from.as_id().ok_or(PriorError::NoPreceedingId)?;
+            let inner = &inner.inner;
+            match inner.subscriber.add_prior_span(&inner.id, from_id) {
+                Ok(()) => Ok(()),
+                Err(PriorError::NoSpan(ref id)) if id == &inner.id => {
+                    panic!("span {:?} should exist to add a preceeding span", inner.id)
+                }
+                Err(e) => Err(e),
+            }
+        } else {
+            // If the span doesn't exist, silently do nothing.
+            Ok(())
+        }
+    }
 }
 
 impl fmt::Debug for Span {
@@ -261,6 +282,12 @@ impl fmt::Debug for Span {
         } else {
             span.field("disabled", &true)
         }.finish()
+    }
+}
+
+impl AsId for Span {
+    fn as_id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Active::id)
     }
 }
 
@@ -384,6 +411,12 @@ impl Id {
     /// Returns the ID of the currently-executing span.
     pub fn current() -> Option<Self> {
         Active::current().as_ref().map(Active::id)
+    }
+}
+
+impl AsId for Id {
+    fn as_id(&self) -> Option<Id> {
+        Some(self.clone())
     }
 }
 

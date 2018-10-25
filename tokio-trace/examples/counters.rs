@@ -53,6 +53,15 @@ impl Subscriber for CounterSubscriber {
             .add_value(name, value)
     }
 
+    fn add_prior_span(
+        &self,
+        _span: &span::Id,
+        _follows: span::Id,
+    ) -> Result<(), subscriber::PriorError> {
+        // unimplemented
+        Ok(())
+    }
+
     fn enabled(&self, metadata: &Meta) -> bool {
         metadata.is_span() && metadata
             .field_names

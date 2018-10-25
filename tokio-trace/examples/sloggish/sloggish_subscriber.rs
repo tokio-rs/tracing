@@ -126,6 +126,15 @@ impl Subscriber for SloggishSubscriber {
         span.add_value(name, value)
     }
 
+    fn add_prior_span(
+        &self,
+        _span: &tokio_trace::SpanId,
+        _follows: tokio_trace::SpanId,
+    ) -> Result<(), subscriber::PriorError> {
+        // unimplemented
+        Ok(())
+    }
+
     #[inline]
     fn observe_event<'event, 'meta: 'event>(
         &self,

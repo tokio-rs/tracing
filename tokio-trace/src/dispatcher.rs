@@ -98,6 +98,15 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
+    fn add_prior_span(
+        &self,
+        span: &span::Id,
+        follows: span::Id,
+    ) -> Result<(), subscriber::PriorError> {
+        self.0.add_prior_span(span, follows)
+    }
+
+    #[inline]
     fn enabled(&self, metadata: &Meta) -> bool {
         self.0.enabled(metadata)
     }
@@ -131,6 +140,14 @@ impl Subscriber for NoSubscriber {
         _name: &'static str,
         _value: &dyn IntoValue,
     ) -> Result<(), subscriber::AddValueError> {
+        Ok(())
+    }
+
+    fn add_prior_span(
+        &self,
+        _span: &span::Id,
+        _follows: span::Id,
+    ) -> Result<(), subscriber::PriorError> {
         Ok(())
     }
 
