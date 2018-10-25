@@ -253,6 +253,21 @@ impl Span {
         }
     }
 
+    /// Indicates that the span with the given ID has an indirect causal
+    /// relationship with this span.
+    ///
+    /// This relationship differs somewhat from the parent-child relationship: a
+    /// span may have any number of prior spans, rather than a single one; and
+    /// spans are not considered to be executing _inside_ of the spans they
+    /// follow from. This means that a span may close even if subsequent spans
+    /// that follow from it are still open, and time spent inside of a
+    /// subsequent span should not be included in the time its precedents were
+    /// executing. This is used to model causal relationships such as when a
+    /// single future spawns several related background tasks, et cetera.
+    ///
+    /// If this span is disabled, this function will do nothing. Otherwise, it
+    /// returns `Ok(())` if the other span was added as a precedent of this
+    /// span, or an error if this was not possible.
     pub fn follows<I: AsId>(&self, from: I) -> Result<(), PriorError> {
         if let Some(ref inner) = self.inner {
             let from_id = from.as_id().ok_or(PriorError::NoPreceedingId)?;
