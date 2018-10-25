@@ -564,20 +564,15 @@ mod tests {
             .enter(span::mock().named(Some("bar")))
             // The first time we exit "bar", there will be another handle with
             // which we could potentially re-enter bar.
-            .exit(span::mock().named(Some("bar"))
-                .with_state(State::Idle))
+            .exit(span::mock().named(Some("bar")).with_state(State::Idle))
             // Re-enter "bar", using the cloned handle.
             .enter(span::mock().named(Some("bar")))
             // Now, when we exit "bar", there is no handle to re-enter it, so
             // it should become "done".
-            .exit(span::mock().named(Some("bar"))
-                .with_state(State::Done)
-            )
+            .exit(span::mock().named(Some("bar")).with_state(State::Done))
             // "foo" never had more than one handle, so it should also become
             // "done" when we exit it.
-            .exit(span::mock().named(Some("foo"))
-                .with_state(State::Done)
-            )
+            .exit(span::mock().named(Some("foo")).with_state(State::Done))
             .run();
 
         Dispatch::to(subscriber).with(|| {
@@ -609,18 +604,13 @@ mod tests {
             .enter(span::mock().named(Some("quux")))
             // When the main thread exits "quux", it will still be running in the
             // spawned thread.
-            .exit(span::mock().named(Some("quux"))
-                .with_state(State::Running))
+            .exit(span::mock().named(Some("quux")).with_state(State::Running))
             // Now, when this thread exits "quux", there is no handle to re-enter it, so
             // it should become "done".
-            .exit(span::mock().named(Some("quux"))
-                .with_state(State::Done)
-            )
+            .exit(span::mock().named(Some("quux")).with_state(State::Done))
             // "baz" never had more than one handle, so it should also become
             // "done" when we exit it.
-            .exit(span::mock().named(Some("baz"))
-                .with_state(State::Done)
-            )
+            .exit(span::mock().named(Some("baz")).with_state(State::Done))
             .run();
 
         Dispatch::to(subscriber).with(|| {
