@@ -299,7 +299,7 @@ pub use self::{
     dispatcher::Dispatch,
     span::{Data as SpanData, Id as SpanId, Span},
     subscriber::Subscriber,
-    value::{AsValue, Value, IntoValue},
+    value::{AsValue, IntoValue, Value},
 };
 use value::BorrowedValue;
 
@@ -317,7 +317,7 @@ pub struct Event<'event, 'meta> {
 
     pub meta: &'meta Meta<'meta>,
 
-    pub field_values: &'event [ &'event dyn AsValue ],
+    pub field_values: &'event [&'event dyn AsValue],
     pub message: fmt::Arguments<'event>,
 }
 

@@ -72,7 +72,6 @@ pub trait Value: fmt::Debug + Send + Sync {
         Self: 'static;
 }
 
-
 /// Trait implemented by types which may be converted into a `Value`.
 ///
 /// Implementors of `AsValue` must provide an implementation of the `fmt_value`
@@ -195,7 +194,7 @@ impl AsValue + 'static {
     #[inline]
     fn is<T: AsValue + 'static>(&self) -> bool
     where
-        Self: 'static
+        Self: 'static,
     {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
@@ -214,9 +213,7 @@ impl AsValue + 'static {
         Self: 'static,
     {
         if self.is::<T>() {
-            unsafe {
-                Some(&*(self as *const AsValue as *const T))
-            }
+            unsafe { Some(&*(self as *const AsValue as *const T)) }
         } else {
             None
         }
@@ -225,7 +222,7 @@ impl AsValue + 'static {
 
 impl<T> AsValue for T
 where
-    T: fmt::Debug + Send + Sync
+    T: fmt::Debug + Send + Sync,
 {
     fn fmt_value(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
@@ -349,8 +346,14 @@ mod tests {
         let foo = Foo { bar: "foo" };
         let display_foo = display(foo.clone());
 
-        assert_eq!(format!("{:?}", BorrowedValue(&foo)), "Foo { bar: \"foo\" }".to_owned());
-        assert_eq!(format!("{:?}", BorrowedValue(&display_foo)), format!("{}", foo));
+        assert_eq!(
+            format!("{:?}", BorrowedValue(&foo)),
+            "Foo { bar: \"foo\" }".to_owned()
+        );
+        assert_eq!(
+            format!("{:?}", BorrowedValue(&display_foo)),
+            format!("{}", foo)
+        );
     }
 
     #[test]
