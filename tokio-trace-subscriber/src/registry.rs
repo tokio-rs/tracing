@@ -1,6 +1,6 @@
 use tokio_trace::{
     span::{Data, Id, State},
-    subscriber::AddValueError,
+    subscriber::{AddValueError, PriorError},
     value::{IntoValue, OwnedValue},
 };
 
@@ -8,6 +8,7 @@ use std::{
     cmp,
     collections::HashMap,
     hash::{Hash, Hasher},
+    iter,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Mutex,
@@ -19,6 +20,8 @@ use std::{
 /// Implementations of this trait represent the logic run on span creation. They
 /// handle span ID generation.
 pub trait RegisterSpan {
+    type PriorSpans: Iterator<Item = Id>;
+
     /// Record the construction of a new [`Span`], returning a a new [span ID] for
     /// the span being constructed.
     ///
@@ -43,6 +46,13 @@ pub trait RegisterSpan {
         name: &'static str,
         value: &dyn IntoValue,
     ) -> Result<(), AddValueError>;
+
+    /// Indicates that `span` follows from `follows.
+    fn add_prior_span(&self, span: &Id, follows: Id) -> Result<(), PriorError>;
+
+    /// Queries the registry for an iterator over the IDs of the spans that
+    /// `span` follows from.
+    fn prior_spans(&self, span: &Id) -> Self::PriorSpans;
 
     fn with_span<F>(&self, id: &Id, state: State, f: F)
     where
@@ -103,6 +113,8 @@ pub fn increasing_counter() -> IncreasingCounter {
 }
 
 impl RegisterSpan for IncreasingCounter {
+    type PriorSpans = iter::Empty<Id>;
+
     fn new_span(&self, new_span: Data) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
@@ -121,6 +133,16 @@ impl RegisterSpan for IncreasingCounter {
         let mut spans = self.spans.lock().expect("mutex poisoned!");
         let span = spans.get_mut(span).ok_or(AddValueError::NoSpan)?;
         span.add_value(name, value)
+    }
+
+    fn add_prior_span(&self, span: &Id, follows: Id) -> Result<(), PriorError> {
+        // unimplemented
+        Ok(())
+    }
+
+    fn prior_spans(&self, span: &Id) -> Self::PriorSpans {
+        unimplemented!();
+        iter::empty()
     }
 
     fn with_span<F>(&self, id: &Id, state: State, f: F)

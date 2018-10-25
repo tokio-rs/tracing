@@ -38,6 +38,8 @@ pub trait Subscriber {
         value: &dyn IntoValue,
     ) -> Result<(), AddValueError>;
 
+    fn add_prior_span(&self, span: &span::Id, follows: span::Id) -> Result<(), PriorError>;
+
     // === Filtering methods ==================================================
 
     /// Determines if a span or event with the specified metadata would be recorded.
@@ -88,6 +90,8 @@ pub trait Subscriber {
     fn exit(&self, span: SpanId, state: span::State);
 }
 
+// TODO: before releasing core 0.1 this needs to be made private, to avoid
+// future breaking changes.
 #[derive(Clone, Debug)]
 pub enum AddValueError {
     /// The span with the given ID does not exist.
@@ -96,6 +100,18 @@ pub enum AddValueError {
     NoField,
     /// The named field already has a value.
     FieldAlreadyExists,
+}
+
+// TODO: before releasing core 0.1 this needs to be made private, to avoid
+// future breaking changes.
+#[derive(Clone, Debug)]
+pub enum PriorError {
+    /// The span with the given ID does not exist.
+    /// TODO: can this error type be generalized between `PriorError` and
+    /// `AddValueError`?
+    NoSpan(SpanId),
+    /// The span that this span follows from does not exist (it has no ID).
+    NoPreceedingId,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -188,6 +204,15 @@ mod test_support {
             _value: &dyn IntoValue,
         ) -> Result<(), AddValueError> {
             // TODO: it should be possible to expect values...
+            Ok(())
+        }
+
+        fn add_prior_span(
+            &self,
+            _span: &span::Id,
+            _follows: span::Id,
+        ) -> Result<(), PriorError> {
+            // TODO: it should be possible to expect spans to follow from other spans
             Ok(())
         }
 
