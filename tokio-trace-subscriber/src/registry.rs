@@ -47,7 +47,24 @@ pub trait RegisterSpan {
         value: &dyn IntoValue,
     ) -> Result<(), AddValueError>;
 
-    /// Indicates that `span` follows from `follows.
+    /// Adds an indication that `span` follows from the span with the id
+    /// `follows`.
+    ///
+    /// This relationship differs somewhat from the parent-child relationship: a
+    /// span may have any number of prior spans, rather than a single one; and
+    /// spans are not considered to be executing _inside_ of the spans they
+    /// follow from. This means that a span may close even if subsequent spans
+    /// that follow from it are still open, and time spent inside of a
+    /// subsequent span should not be included in the time its precedents were
+    /// executing. This is used to model causal relationships such as when a
+    /// single future spawns several related background tasks, et cetera.
+    ///
+    /// If the registry has spans corresponding to the given IDs, it should
+    /// record this relationship in whatever way it deems necessary. Otherwise,
+    /// if one or both of the given span IDs do not correspond to spans that the
+    /// registry knows about, or if a cyclical relationship would be created
+    /// (i.e., some span _a_ which proceeds some other span _b_ may not also
+    /// follow from _b_), it should return a `PriorError`.
     fn add_prior_span(&self, span: &Id, follows: Id) -> Result<(), PriorError>;
 
     /// Queries the registry for an iterator over the IDs of the spans that
