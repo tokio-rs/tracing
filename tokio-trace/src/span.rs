@@ -253,7 +253,7 @@ impl Span {
         }
     }
 
-    pub fn proceeds<I: AsId>(&self, from: I) -> Result<(), PriorError> {
+    pub fn follows<I: AsId>(&self, from: I) -> Result<(), PriorError> {
         if let Some(ref inner) = self.inner {
             let from_id = from.as_id().ok_or(PriorError::NoPreceedingId)?;
             let inner = &inner.inner;
