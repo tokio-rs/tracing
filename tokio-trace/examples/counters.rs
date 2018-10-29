@@ -8,7 +8,6 @@ use tokio_trace::{
 };
 
 use std::{
-    any::Any,
     collections::HashMap,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -73,9 +72,9 @@ impl Subscriber for CounterSubscriber {
         false
     }
 
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {}
+    fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {}
 
-    fn enter(&self, span: span::Id, state: span::State) {}
+    fn enter(&self, _span: span::Id, _state: span::State) {}
 
     fn exit(&self, span: span::Id, state: span::State) {
         if state != span::State::Done {
