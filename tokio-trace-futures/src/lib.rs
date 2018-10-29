@@ -131,7 +131,7 @@ impl<T> WithDispatch<T> {
 mod tests {
     use super::*;
     use futures::{future, stream, task};
-    use tokio_trace::{span, subscriber};
+    use tokio_trace::{span, subscriber, Dispatch};
 
     #[test]
     fn future_enter_exit_is_reasonable() {
@@ -152,7 +152,7 @@ mod tests {
                 }
             }
         }
-        subscriber::mock()
+        let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
                 span::mock()
@@ -164,10 +164,12 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Done),
             ).run();
-        MyFuture { polls: 0 }
-            .instrument(span!("foo"))
-            .wait()
-            .unwrap();
+        Dispatch::to(subscriber).with(|| {
+            MyFuture { polls: 0 }
+                .instrument(span!("foo"))
+                .wait()
+                .unwrap();
+        })
     }
 
     #[test]
@@ -189,7 +191,7 @@ mod tests {
                 }
             }
         }
-        subscriber::mock()
+        let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
                 span::mock()
@@ -201,11 +203,13 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Idle),
             ).run();
-        let foo = span!("foo");
-        MyFuture { polls: 0 }
-            .instrument(foo.clone())
-            .wait()
-            .unwrap();
+        Dispatch::to(subscriber).with(|| {
+            let foo = span!("foo");
+            MyFuture { polls: 0 }
+                .instrument(foo.clone())
+                .wait()
+                .unwrap();
+        })
     }
 
     #[test]
@@ -227,7 +231,7 @@ mod tests {
                 }
             }
         }
-        subscriber::mock()
+        let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
                 span::mock()
@@ -239,15 +243,17 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Done),
             ).run();
-        MyFuture { polls: 0 }
-            .instrument(span!("foo"))
-            .wait()
-            .unwrap_err();
+        Dispatch::to(subscriber).with(|| {
+            MyFuture { polls: 0 }
+                .instrument(span!("foo"))
+                .wait()
+                .unwrap_err();
+        })
     }
 
     #[test]
     fn stream_enter_exit_is_reasonable() {
-        subscriber::mock()
+        let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(
                 span::mock()
@@ -269,10 +275,12 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Done),
             ).run();
-        stream::iter_ok::<_, ()>(&[1, 2, 3])
-            .instrument(span!("foo"))
-            .for_each(|_| future::ok(()))
-            .wait()
-            .unwrap();
+        Dispatch::to(subscriber).with(|| {
+            stream::iter_ok::<_, ()>(&[1, 2, 3])
+                .instrument(span!("foo"))
+                .for_each(|_| future::ok(()))
+                .wait()
+                .unwrap();
+        })
     }
 }
