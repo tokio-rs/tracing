@@ -154,6 +154,7 @@ mod test_support {
     }
 
     enum Expect {
+        #[allow(dead_code)] // TODO: implement!
         Event(ExpectEvent),
         Enter(MockSpan),
         Exit(MockSpan),

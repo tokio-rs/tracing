@@ -152,14 +152,13 @@ impl RegisterSpan for IncreasingCounter {
         span.add_value(name, value)
     }
 
-    fn add_prior_span(&self, span: &Id, follows: Id) -> Result<(), PriorError> {
+    fn add_prior_span(&self, _span: &Id, _follows: Id) -> Result<(), PriorError> {
         // unimplemented
         Ok(())
     }
 
-    fn prior_spans(&self, span: &Id) -> Self::PriorSpans {
+    fn prior_spans(&self, _span: &Id) -> Self::PriorSpans {
         unimplemented!();
-        iter::empty()
     }
 
     fn with_span<F>(&self, id: &Id, state: State, f: F)
