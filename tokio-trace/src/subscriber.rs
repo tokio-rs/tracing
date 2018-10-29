@@ -225,11 +225,7 @@ mod test_support {
             Ok(())
         }
 
-        fn add_prior_span(
-            &self,
-            _span: &span::Id,
-            _follows: span::Id,
-        ) -> Result<(), PriorError> {
+        fn add_prior_span(&self, _span: &span::Id, _follows: span::Id) -> Result<(), PriorError> {
             // TODO: it should be possible to expect spans to follow from other spans
             Ok(())
         }
