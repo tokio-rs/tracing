@@ -8,5 +8,6 @@ members = [
     "tokio-trace-log",
     "tokio-trace-env-logger",
     "tokio-trace-slog",
+    "tokio-trace-macros",
     "tokio-trace-subscriber"
 ]
