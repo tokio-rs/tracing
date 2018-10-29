@@ -11,7 +11,7 @@ fn main() {
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::new();
 
-    tokio_trace::Dispatch::to(subscriber).with(|| {
+    tokio_trace::Dispatch::to(subscriber).as_default(|| {
         let num = 1;
 
         let span = span!("Getting rec from another function.", number_of_recs = &num);

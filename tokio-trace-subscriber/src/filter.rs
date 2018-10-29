@@ -84,7 +84,7 @@ pub trait FilterExt: Filter {
     ///     .with_registry(tokio_trace_subscriber::registry::increasing_counter())
     ///     .with_filter(name_filter.and(mod_filter));
     ///
-    /// tokio_trace::Dispatch::to(subscriber).with(|| {
+    /// tokio_trace::Dispatch::to(subscriber).as_default(|| {
     ///     foo();
     ///     my_module::foo();
     ///     my_module::bar();

@@ -223,6 +223,12 @@ impl Span {
         }
     }
 
+    /// Returns a reference to the dispatcher that tracks this span, or `None`
+    /// if the span is disabled.
+    pub(crate) fn dispatch(&self) -> Option<&Dispatch> {
+        self.inner.as_ref().map(|inner| &inner.inner.subscriber)
+    }
+
     pub fn enter<F: FnOnce() -> T, T>(self, f: F) -> T {
         match self.inner {
             Some(inner) => inner.enter(f),
@@ -623,7 +629,7 @@ mod tests {
             .exit(span::mock().named(Some("foo")).with_state(State::Done))
             .run();
 
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             span!("foo",).enter(|| {
                 let bar = span!("bar",);
                 bar.clone().enter(|| {
@@ -661,7 +667,7 @@ mod tests {
             .exit(span::mock().named(Some("baz")).with_state(State::Done))
             .run();
 
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             let barrier1 = Arc::new(Barrier::new(2));
             let barrier2 = Arc::new(Barrier::new(2));
             // Make copies of the barriers for thread 2 to wait on.
@@ -701,7 +707,7 @@ mod tests {
         // `Subscriber::enabled`, so that the spans will be constructed. We
         // won't enter any spans in this test, so the subscriber won't actually
         // expect to see any spans.
-        Dispatch::to(subscriber::mock().run()).with(|| {
+        Dispatch::to(subscriber::mock().run()).as_default(|| {
             let foo1 = span!("foo");
             let foo2 = foo1.clone();
 
@@ -715,7 +721,7 @@ mod tests {
 
     #[test]
     fn handles_to_different_spans_are_not_equal() {
-        Dispatch::to(subscriber::mock().run()).with(|| {
+        Dispatch::to(subscriber::mock().run()).as_default(|| {
             // Even though these spans have the same name and fields, they will have
             // differing metadata, since they were created on different lines.
             let foo1 = span!("foo", bar = &1, baz = &false);
@@ -734,7 +740,7 @@ mod tests {
             span!("foo", bar = &1, baz = &false)
         }
 
-        Dispatch::to(subscriber::mock().run()).with(|| {
+        Dispatch::to(subscriber::mock().run()).as_default(|| {
             let foo1 = make_span();
             let foo2 = make_span();
 
@@ -753,14 +759,14 @@ mod tests {
         let subscriber1 = Dispatch::to(subscriber1.run());
         let subscriber2 = Dispatch::to(subscriber::mock().run());
 
-        let foo = subscriber1.with(|| {
+        let foo = subscriber1.as_default(|| {
             let foo = span!("foo");
             foo.clone().enter(|| {});
             foo
         });
         // Even though we enter subscriber 2's context, the subscriber that
         // tagged the span should see the enter/exit.
-        subscriber2.with(move || foo.enter(|| {}));
+        subscriber2.as_default(move || foo.enter(|| {}));
     }
 
     #[test]
@@ -771,7 +777,7 @@ mod tests {
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")).with_state(State::Done));
         let subscriber1 = Dispatch::to(subscriber1.run());
-        let foo = subscriber1.with(|| {
+        let foo = subscriber1.as_default(|| {
             let foo = span!("foo");
             foo.clone().enter(|| {});
             foo
@@ -780,7 +786,7 @@ mod tests {
         // Even though we enter subscriber 2's context, the subscriber that
         // tagged the span should see the enter/exit.
         thread::spawn(move || {
-            Dispatch::to(subscriber::mock().run()).with(|| {
+            Dispatch::to(subscriber::mock().run()).as_default(|| {
                 foo.enter(|| {});
             })
         }).join()

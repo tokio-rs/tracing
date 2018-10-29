@@ -114,7 +114,7 @@ impl<T: Future> Future for WithDispatch<T> {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let dispatch = &self.dispatch;
         let inner = &mut self.inner;
-        dispatch.with(|| inner.poll())
+        dispatch.as_default(|| inner.poll())
     }
 }
 
@@ -164,7 +164,7 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Done),
             ).run();
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             MyFuture { polls: 0 }
                 .instrument(span!("foo"))
                 .wait()
@@ -203,7 +203,7 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Idle),
             ).run();
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             let foo = span!("foo");
             MyFuture { polls: 0 }
                 .instrument(foo.clone())
@@ -243,7 +243,7 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Done),
             ).run();
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             MyFuture { polls: 0 }
                 .instrument(span!("foo"))
                 .wait()
@@ -275,7 +275,7 @@ mod tests {
                     .named(Some("foo"))
                     .with_state(span::State::Done),
             ).run();
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             stream::iter_ok::<_, ()>(&[1, 2, 3])
                 .instrument(span!("foo"))
                 .for_each(|_| future::ok(()))
