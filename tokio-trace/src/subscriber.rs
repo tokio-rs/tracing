@@ -349,7 +349,7 @@ mod tests {
                 _ => false,
             }).run();
 
-        Dispatch::to(subscriber).with(move || {
+        Dispatch::to(subscriber).as_default(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
             // not "foo."
             let foo = span!("foo");
@@ -452,15 +452,15 @@ mod tests {
             assert_eq!(bar_count.load(Ordering::Relaxed), n);
         };
 
-        subscriber1.with(|| {
+        subscriber1.as_default(|| {
             do_test(1);
         });
 
-        subscriber2.with(|| do_test(2));
+        subscriber2.as_default(|| do_test(2));
 
-        subscriber1.with(|| do_test(3));
+        subscriber1.as_default(|| do_test(3));
 
-        subscriber2.with(|| do_test(4));
+        subscriber2.as_default(|| do_test(4));
     }
 
     #[test]
@@ -498,9 +498,9 @@ mod tests {
                 }).run();
             // barrier1.wait();
             let subscriber = Dispatch::to(subscriber);
-            subscriber.with(do_test);
+            subscriber.as_default(do_test);
             barrier1.wait();
-            subscriber.with(do_test)
+            subscriber.as_default(do_test)
         });
 
         let thread2 = thread::spawn(move || {
@@ -520,9 +520,9 @@ mod tests {
                     _ => false,
                 }).run();
             let subscriber = Dispatch::to(subscriber);
-            subscriber.with(do_test);
+            subscriber.as_default(do_test);
             barrier.wait();
-            subscriber.with(do_test)
+            subscriber.as_default(do_test)
         });
 
         // the threads have completed, but the spans should still notify their
@@ -563,7 +563,7 @@ mod tests {
                 _ => false,
             }).run();
 
-        Dispatch::to(subscriber).with(move || {
+        Dispatch::to(subscriber).as_default(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
             // not "foo."
             let foo = span!("foo");
@@ -629,7 +629,7 @@ mod tests {
                 true
             }).run();
 
-        Dispatch::to(subscriber).with(|| {
+        Dispatch::to(subscriber).as_default(|| {
             // Call the function once. The filter should be re-evaluated.
             assert!(my_great_function());
             assert_eq!(count.load(Ordering::Relaxed), 1);

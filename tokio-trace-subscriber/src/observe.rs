@@ -67,7 +67,7 @@ pub trait ObserveExt: Observe {
     ///     .with_observer(observer)
     ///     .with_registry(registry::increasing_counter());
     ///
-    /// tokio_trace::Dispatch::to(subscriber).with(|| {
+    /// tokio_trace::Dispatch::to(subscriber).as_default(|| {
     ///     // This span will be seen by both `foo` and `bar`.
     ///     span!("my great span").enter(|| {
     ///         // ...
@@ -114,7 +114,7 @@ pub trait ObserveExt: Observe {
     ///     .with_observer(observer)
     ///     .with_registry(registry::increasing_counter());
     ///
-    /// tokio_trace::Dispatch::to(subscriber).with(|| {
+    /// tokio_trace::Dispatch::to(subscriber).as_default(|| {
     ///     /// // This span will be logged.
     ///     span!("foo", enabled = &true) .enter(|| {
     ///         // do work;
