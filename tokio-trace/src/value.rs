@@ -77,6 +77,7 @@ pub trait Value: fmt::Debug + Send + Sync {
 /// Implementors of `AsValue` must provide an implementation of the `fmt_value`
 /// function, which describes how to format a value of this type.
 pub trait AsValue: Send + Sync {
+    /// Formats the value with the given formatter.
     fn fmt_value(&self, f: &mut fmt::Formatter) -> fmt::Result;
 
     #[doc(hidden)]

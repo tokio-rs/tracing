@@ -8,11 +8,11 @@
 //!
 //! A [`Span`] represents a _period of time_ during which a program was executing
 //! in some context. A thread of execution is said to _enter_ a span when it
-//! begins executing in that context and _exit_s the span when switching to
+//! begins executing in that context, and to _exit_ the span when switching to
 //! another context. The span in which a thread is currently executing is
 //! referred to as the _current_ span.
 //!
-//! Spans form a tree structure --- unless it is the root span, all spans have a
+//! Spans form a tree structure --- unless it is a root span, all spans have a
 //! _parent_, and may have one or more _children_. When a new span is created,
 //! the current span becomes the new span's parent. The total execution time of
 //! a span consists of the time spent in that span and in the entire subtree
@@ -94,12 +94,6 @@
 //! active subscribers express  interest in a given set of metadata by returning
 //! `true`, then the corresponding `Span` or `Event` will never be constructed.
 //!
-//! `Event`s and `Span`s are broadcast to `Subscriber`s by the [`Dispatcher`], a
-//! special `Subscriber` implementation which broadcasts the notifications it
-//! receives to a list of attached `Subscriber`s. The [`Dispatcher::builder`]
-//! function returns a builder that can be used to attach `Subscriber`s to a
-//! `Dispatcher` and initialize it.
-//!
 //! [`Span`]: span/struct.Span
 //! [`Event`]: struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
@@ -108,9 +102,7 @@
 //! [`exit`]: subscriber/trait.Subscriber.html#tymethod.exit
 //! [`enabled`]: subscriber/trait.Subscriber.html#tymethod.enabled
 //! [metadata]: struct.Meta.html
-//! [`Dispatcher`]: struct.Dispatcher.html
-//! [`Dispatcher::builder`]: struct.Dispatcher.html#method.builder
-
+#![warn(missing_docs)]
 extern crate futures;
 
 use std::{fmt, slice};
@@ -265,6 +257,7 @@ macro_rules! event {
     )
 }
 
+/// Describes the level of verbosity of a `Span` or `Event`.
 #[repr(usize)]
 #[derive(Copy, Eq, Debug, Hash)]
 pub enum Level {
@@ -303,6 +296,19 @@ pub use self::{
 };
 use value::BorrowedValue;
 
+/// `Event`s represent single points in time where something occurred during the
+/// execution of a program.
+///
+/// An event can be compared to a log record in unstructured logging, but with
+/// two key differences:
+/// - Events exist _within the context of a [`Span`]_. Unlike log lines, they may
+///   be located within the trace tree, allowing visibility into the context in
+///   which the event occurred.
+/// - Events have structured key-value data known as _fields_, as well as a
+///   textual message. In general, a majority of the data associated with an
+///   event should be in the event's fields rather than in the textual message,
+///   as the fields are more structed.
+///
 /// **Note**: `Event` must be generic over two lifetimes, that of `Event` itself
 /// (the `'event` lifetime) *and* the lifetime of the event's metadata (the
 /// `'meta` lifetime), which must be at least as long as the event's lifetime.
@@ -311,26 +317,77 @@ use value::BorrowedValue;
 /// code location (as is the case when the event is produced by the `event!`
 /// macro). Consumers of `Event` probably do not need to actually care about
 /// these lifetimes, however.
+///
+/// [`Span`]: ::span::Span
 pub struct Event<'event, 'meta> {
+    /// The span ID of the span in which this event occurred.
     pub parent: Option<SpanId>,
+
+    /// The IDs of a set of spans which are causally linked with this event, but
+    /// are not its direct parent.
     pub follows_from: &'event [SpanId],
 
+    /// Metadata describing this event.
     pub meta: &'meta Meta<'meta>,
 
+    /// The values of the fields on this event.
+    ///
+    /// The names of these fields are defined in the event's metadata. Each
+    /// index in this array corresponds to the name at the same index in
+    /// `self.meta.field_names`.
     pub field_values: &'event [&'event dyn AsValue],
+
+    /// A textual message describing the event that occurred.
     pub message: fmt::Arguments<'event>,
 }
 
+/// Metadata describing a [`Span`] or [`Event`].
+///
+/// This includes the source code location where the span or event occurred, the
+/// names of its fields, et cetera.
+///
+/// Metadata is used by [`Subscriber`]s when filtering spans and events, and it
+/// may also be used as part of their data payload.
+///
+/// When created by the `event!` or `span!` macro, the metadata describing a
+/// particular event or span is constructed statically and exists as a single
+/// static instance. Thus, the overhead of  creating the metadata is
+/// _significantly_ lower than that of creating the actual span or event.
+/// Therefore, filtering is based on metadata, rather than  on the constructed
+/// span or event.
+///
+/// [`Span`]: ::span::Span
+/// [`Event`]: ::Event
+/// [`Subscriber`]: ::Subscriber
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Meta<'a> {
+    /// If this metadata describes a span, the name of the span.
     pub name: Option<&'a str>,
+
+    /// The part of the system that the span or event that this metadata
+    /// describes occurred in.
+    ///
+    /// Typically, this is the module path, but alternate targets may be set
+    /// when spans or events are constructed.
     pub target: &'a str,
+
+    /// The level of verbosity of the described span or event.
     pub level: Level,
 
+    /// The name of the Rust module where the span or event occurred, or `None`
+    /// if this could not be determined.
     pub module_path: Option<&'a str>,
+
+    /// The name of the source code file where the span or event occurred, or
+    /// `None` if this could not be determined.
     pub file: Option<&'a str>,
+
+    /// The line number in the source code file where the span or event
+    /// occurred, or `None` if this could not be determined.
     pub line: Option<u32>,
 
+    /// The names of the key-value fields attached to the described span or
+    /// event.
     pub field_names: &'a [&'a str],
 
     #[doc(hidden)]
@@ -456,6 +513,7 @@ impl<'a, 'm: 'a> IntoIterator for &'a Event<'a, 'm> {
     }
 }
 
+/// Formats the key-value fields of a `Span` or `Event` with `fmt::Debug`.
 pub struct DebugFields<'a, I: 'a, T: 'a>(&'a I)
 where
     &'a I: IntoIterator<Item = (&'a str, T)>;
