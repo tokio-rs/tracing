@@ -22,29 +22,49 @@ struct Current {
     seen: HashSet<u64>,
 }
 
+/// `Dispatch` trace data to a [`Subscriber`].
 #[derive(Clone)]
 pub struct Dispatch(Arc<dyn Subscriber + Send + Sync>);
 
 impl Dispatch {
+    /// Returns a new `Dispatch` that discards events and spans.
     pub fn none() -> Self {
         Dispatch(Arc::new(NoSubscriber))
     }
 
+    /// Returns the subscriber that a new [`Span`] or [`Event`] would dispatch
+    /// to.
+    ///
+    /// This returns a `Dispatch` to the [`Subscriber`] that created the
+    /// current [`Span`], or the thread's default subscriber if no
+    /// span is currently executing.
+    ///
+    /// [`Span`]: ::span::Span
+    /// [`Subscriber`]: ::Subscriber
+    /// [`Event`]: ::Event
     pub fn current() -> Dispatch {
         Span::current().dispatch().cloned().unwrap_or_default()
     }
 
+    /// Returns a `Dispatch` to the given [`Subscriber`](::Subscriber).
     pub fn to<S>(subscriber: S) -> Self
     // TODO: Add some kind of `UnsyncDispatch`?
-    // TODO: agh, dispatchers really need not be sync, _only_ the exit part
-    // really has to be Send + Sync. if this were in the subscriber crate, we
-    // could slice and dice the sync requirement a little better...hmmm...
     where
         S: Subscriber + Send + Sync + 'static,
     {
         Dispatch(Arc::new(subscriber))
     }
 
+    /// Sets this dispatch as the default for the duration of a closure.
+    ///
+    /// The default dispatcher is used when creating a new [`Span`] or
+    /// [`Event`], _if no span is currently executing_. If a span is currently
+    /// executing, new spans or events are dispatched to the subscriber that
+    /// tagged that span, instead.
+    ///
+    /// [`Span`]: ::span::Span
+    /// [`Subscriber`]: ::Subscriber
+    /// [`Event`]: ::Event
     pub fn as_default<T>(&self, f: impl FnOnce() -> T) -> T {
         CURRENT_DISPATCH.with(|current| {
             let prior = current.replace(self.with_invalidate()).dispatch;
