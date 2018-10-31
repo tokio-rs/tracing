@@ -144,35 +144,38 @@ macro_rules! meta {
 #[macro_export]
 macro_rules! cached_filter {
     ($meta:expr, $dispatcher:expr) => {{
-        use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-        static FILTERED: AtomicUsize = ATOMIC_USIZE_INIT;
-        const ENABLED: usize = 1;
-        const DISABLED: usize = 2;
-        if $dispatcher.should_invalidate_filter($meta) {
+        use std::cell::RefCell;
+        thread_local! {
+            // TODO: maybe we should bundle all this callsite-specific data together
+            // into a struct or something...
+            static FILTERED_BY: RefCell<usize> = RefCell::new(0);
+            static FILTERED: RefCell<u8> = RefCell::new(0);
+        }
+
+        // TODO: since this is now stored in a RefCell rather than as an atomic, we
+        // can just use an enum rather than a number...
+        const ENABLED: u8 = 1;
+        const DISABLED: u8 = 2;
+        if FILTERED_BY.with(|filtered_by| $dispatcher.validate_cache(filtered_by, $meta)) {
             let enabled = $dispatcher.enabled(&META);
-            if enabled {
-                FILTERED.store(ENABLED, Ordering::Relaxed);
-            } else {
-                FILTERED.store(DISABLED, Ordering::Relaxed);
-            }
+            FILTERED.with(|filtered| {
+                *filtered.borrow_mut() = if enabled { ENABLED } else { DISABLED };
+            });
             enabled
         } else {
-            match FILTERED.load(Ordering::Relaxed) {
-                // If there's a cached result, use that.
-                ENABLED => true,
-                DISABLED => false,
-                // Otherwise, this span has not yet been filtered, so call
-                // `enabled` now and store the result.
-                _ => {
-                    let enabled = $dispatcher.enabled(&META);
-                    if enabled {
-                        FILTERED.store(ENABLED, Ordering::Relaxed);
-                    } else {
-                        FILTERED.store(DISABLED, Ordering::Relaxed);
-                    }
-                    enabled
+            FILTERED.with(|filtered| {
+                match *filtered.borrow() {
+                    // If there's a cached result, use that.
+                    ENABLED => return true,
+                    DISABLED => return false,
+                    // Otherwise, this span has not yet been filtered, so call
+                    // `enabled` now and store the result.
+                    _ => {}
                 }
-            }
+                let enabled = $dispatcher.enabled(&META);
+                *filtered.borrow_mut() = if enabled { ENABLED } else { DISABLED };
+                enabled
+            })
         }
     }};
 }
