@@ -81,18 +81,9 @@ impl Dispatch {
     }
 
     #[doc(hidden)]
-    pub fn validate_cache(&self, filtered_by: &RefCell<usize>, meta: &Meta) -> bool {
-        // If the callsite was last filtered by a different subscriber, assume
-        // the filter is no longer valid.
-        if *filtered_by.borrow() != self.id {
-            // Update the stamp on the call site so this subscriber is now the
-            // last to filter it.
-            *filtered_by.borrow_mut() = self.id;
-            return true;
-        }
-
-        // Otherwise, just ask the subscriber what it thinks.
-        self.subscriber.should_invalidate_filter(meta)
+    #[inline]
+    pub fn id(&self) -> usize {
+        self.id
     }
 }
 
