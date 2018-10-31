@@ -103,7 +103,6 @@
 //! [`enabled`]: subscriber/trait.Subscriber.html#tymethod.enabled
 //! [metadata]: struct.Meta.html
 #![warn(missing_docs)]
-extern crate futures;
 
 use std::{fmt, slice};
 
