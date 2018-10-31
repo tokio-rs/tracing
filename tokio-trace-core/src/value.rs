@@ -133,7 +133,7 @@ pub fn borrowed<'a>(t: &'a dyn AsValue) -> BorrowedValue<'a> {
 ///
 /// # Examples
 /// ```
-/// # extern crate tokio_trace;
+/// # extern crate tokio_trace_core as tokio_trace;
 /// use tokio_trace::value;
 /// # use std::fmt;
 /// # fn main() {
@@ -159,7 +159,7 @@ pub fn borrowed<'a>(t: &'a dyn AsValue) -> BorrowedValue<'a> {
 /// ```
 ///
 /// ```
-/// # extern crate tokio_trace;
+/// # extern crate tokio_trace_core as tokio_trace;
 /// # use std::fmt;
 /// # fn main() {
 /// #

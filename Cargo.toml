@@ -2,6 +2,7 @@
 
 members = [
     "tokio-trace",
+    "tokio-trace-core",
     "tokio-trace-futures",
     "tokio-trace-tower",
     "tokio-trace-tower-http",
