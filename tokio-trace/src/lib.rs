@@ -142,42 +142,14 @@ macro_rules! meta {
 // reapplied if we have already called `enabled`.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! cached_filter {
-    ($meta:expr, $dispatcher:expr) => {{
-        use std::cell::RefCell;
-        thread_local! {
-            // TODO: maybe we should bundle all this callsite-specific data together
-            // into a struct or something...
-            static FILTERED_BY: RefCell<usize> = RefCell::new(0);
-            static FILTERED: RefCell<u8> = RefCell::new(0);
+macro_rules! callsite {
+    ($meta:expr) => {
+        $crate::callsite::Cache {
+            last_filtered_by: ::std::cell::Cell::new(0),
+            cached_filter: ::std::cell::Cell::new(None),
+            meta: $meta,
         }
-
-        // TODO: since this is now stored in a RefCell rather than as an atomic, we
-        // can just use an enum rather than a number...
-        const ENABLED: u8 = 1;
-        const DISABLED: u8 = 2;
-        if FILTERED_BY.with(|filtered_by| $dispatcher.validate_cache(filtered_by, $meta)) {
-            let enabled = $dispatcher.enabled(&META);
-            FILTERED.with(|filtered| {
-                *filtered.borrow_mut() = if enabled { ENABLED } else { DISABLED };
-            });
-            enabled
-        } else {
-            FILTERED.with(|filtered| {
-                match *filtered.borrow() {
-                    // If there's a cached result, use that.
-                    ENABLED => return true,
-                    DISABLED => return false,
-                    // Otherwise, this span has not yet been filtered, so call
-                    // `enabled` now and store the result.
-                    _ => {}
-                }
-                let enabled = $dispatcher.enabled(&META);
-                *filtered.borrow_mut() = if enabled { ENABLED } else { DISABLED };
-                enabled
-            })
-        }
-    }};
+    };
 }
 
 /// Constructs a new span.
@@ -211,14 +183,17 @@ macro_rules! span {
     ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
-            use $crate::{Span, Subscriber, Dispatch, Meta};
+            use $crate::{callsite, Span, Dispatch, Meta};
             static META: Meta<'static> = meta! { span: $name, $( $k ),* };
+            thread_local! {
+                // TODO: if callsite caches become an API, can we better
+                // encapsulate the thread-local-iness of them? Do we want to?
+                static CALLSITE: callsite::Cache<'static> = callsite!(&META);
+            }
             let dispatcher = Dispatch::current();
-            let span = if cached_filter!(&META, dispatcher) {
-                Span::new(
-                    dispatcher,
-                    &META,
-                )
+            // TODO: should span construction just become a method on callsites?
+            let span = if CALLSITE.with(|c| c.is_enabled(&dispatcher)) {
+                Span::new(dispatcher, &META)
             } else {
                 Span::new_disabled()
             };
@@ -235,14 +210,17 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{SpanId, Subscriber, Dispatch, Meta, SpanData, Event, value::AsValue};
+            use $crate::{callsite, Dispatch, Meta, SpanData, SpanId, Subscriber, Event, value::AsValue};
             static META: Meta<'static> = meta! { event:
                 $lvl,
                 target:
                 $target, $( $k ),*
             };
+            thread_local! {
+                static CALLSITE: callsite::Cache<'static> = callsite!(&META);
+            }
             let dispatcher = Dispatch::current();
-            if cached_filter!(&META, dispatcher) {
+            if CALLSITE.with(|c| c.is_enabled(&dispatcher)) {
                 let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
                 dispatcher.observe_event(&Event {
                     parent: SpanId::current(),
@@ -284,6 +262,9 @@ pub enum Level {
     /// Designates very low priority, often extremely verbose, information.
     Trace,
 }
+
+#[doc(hidden)]
+pub mod callsite;
 
 mod dispatcher;
 pub mod span;
