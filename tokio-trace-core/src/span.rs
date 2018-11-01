@@ -10,7 +10,7 @@ use std::{
     },
 };
 use {
-    subscriber::{AddValueError, PriorError, Subscriber},
+    subscriber::{AddValueError, FollowsError, Subscriber},
     value::{IntoValue, OwnedValue},
     DebugFields, Dispatch, StaticMeta,
 };
@@ -222,13 +222,13 @@ impl Span {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    pub fn follows<I: AsId>(&self, from: I) -> Result<(), PriorError> {
+    pub fn follows_from<I: AsId>(&self, from: I) -> Result<(), FollowsError> {
         if let Some(ref inner) = self.inner {
-            let from_id = from.as_id().ok_or(PriorError::NoPreceedingId)?;
+            let from_id = from.as_id().ok_or(FollowsError::NoPreceedingId)?;
             let inner = &inner.inner;
-            match inner.subscriber.add_prior_span(&inner.id, from_id) {
+            match inner.subscriber.add_follows_from(&inner.id, from_id) {
                 Ok(()) => Ok(()),
-                Err(PriorError::NoSpan(ref id)) if id == &inner.id => {
+                Err(FollowsError::NoSpan(ref id)) if id == &inner.id => {
                     panic!("span {:?} should exist to add a preceeding span", inner.id)
                 }
                 Err(e) => Err(e),

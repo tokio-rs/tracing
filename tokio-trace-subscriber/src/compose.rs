@@ -1,6 +1,6 @@
 use tokio_trace::{
     span,
-    subscriber::{AddValueError, PriorError, Subscriber},
+    subscriber::{AddValueError, FollowsError, Subscriber},
     Event, IntoValue, Meta, SpanData,
 };
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
@@ -116,8 +116,8 @@ where
         self.registry.add_value(span, name, value)
     }
 
-    fn add_prior_span(&self, span: &span::Id, follows: span::Id) -> Result<(), PriorError> {
-        self.registry.add_prior_span(span, follows)
+    fn add_follows_from(&self, span: &span::Id, follows: span::Id) -> Result<(), FollowsError> {
+        self.registry.add_follows_from(span, follows)
     }
 
     fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {

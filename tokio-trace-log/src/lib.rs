@@ -194,11 +194,11 @@ impl Subscriber for TraceLogger {
         Ok(())
     }
 
-    fn add_prior_span(
+    fn add_follows_from(
         &self,
         span: &span::Id,
         follows: span::Id,
-    ) -> Result<(), subscriber::PriorError> {
+    ) -> Result<(), subscriber::FollowsError> {
         // TODO: this should eventually track the relationship?
         log::logger().log(
             &log::Record::builder()

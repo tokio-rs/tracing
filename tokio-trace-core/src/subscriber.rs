@@ -89,10 +89,10 @@ pub trait Subscriber {
     /// if one or both of the given span IDs do not correspond to spans that the
     /// subscriber knows about, or if a cyclical relationship would be created
     /// (i.e., some span _a_ which proceeds some other span _b_ may not also
-    /// follow from _b_), it should return a [`PriorError`].
+    /// follow from _b_), it should return a [`FollowsError`].
     ///
-    /// [`PriorError`]: PriorError
-    fn add_prior_span(&self, span: &span::Id, follows: span::Id) -> Result<(), PriorError>;
+    /// [`FollowsError`]: FollowsError
+    fn add_follows_from(&self, span: &span::Id, follows: span::Id) -> Result<(), FollowsError>;
 
     // === Filtering methods ==================================================
 
@@ -197,9 +197,9 @@ pub enum AddValueError {
 // TODO: before releasing core 0.1 this needs to be made private, to avoid
 // future breaking changes.
 #[derive(Clone, Debug)]
-pub enum PriorError {
+pub enum FollowsError {
     /// The span with the given ID does not exist.
-    /// TODO: can this error type be generalized between `PriorError` and
+    /// TODO: can this error type be generalized between `FollowsError` and
     /// `AddValueError`?
     NoSpan(SpanId),
     /// The span that this span follows from does not exist (it has no ID).
@@ -302,7 +302,11 @@ mod test_support {
             Ok(())
         }
 
-        fn add_prior_span(&self, _span: &span::Id, _follows: span::Id) -> Result<(), PriorError> {
+        fn add_follows_from(
+            &self,
+            _span: &span::Id,
+            _follows: span::Id,
+        ) -> Result<(), FollowsError> {
             // TODO: it should be possible to expect spans to follow from other spans
             Ok(())
         }
