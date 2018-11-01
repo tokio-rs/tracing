@@ -121,12 +121,12 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn add_prior_span(
+    fn add_follows_from(
         &self,
         span: &span::Id,
         follows: span::Id,
-    ) -> Result<(), subscriber::PriorError> {
-        self.subscriber.add_prior_span(span, follows)
+    ) -> Result<(), subscriber::FollowsError> {
+        self.subscriber.add_follows_from(span, follows)
     }
 
     #[inline]
@@ -166,11 +166,11 @@ impl Subscriber for NoSubscriber {
         Ok(())
     }
 
-    fn add_prior_span(
+    fn add_follows_from(
         &self,
         _span: &span::Id,
         _follows: span::Id,
-    ) -> Result<(), subscriber::PriorError> {
+    ) -> Result<(), subscriber::FollowsError> {
         Ok(())
     }
 
