@@ -14,18 +14,17 @@ pub struct InstrumentedService<T> {
     span: tokio_trace::Span,
 }
 
-pub trait InstrumentableService: Service + Sized {
+pub trait InstrumentableService<Request>: Service<Request> + Sized {
     fn instrument(self, span: tokio_trace::Span) -> InstrumentedService<Self> {
         InstrumentedService { inner: self, span }
     }
 }
 
-impl<T: Service> Service for InstrumentedService<T>
+impl<T: Service<Request>, Request> Service<Request> for InstrumentedService<T>
 where
     // TODO: it would be nice to do more for HTTP services...
-    T::Request: fmt::Debug + Clone + Send + Sync + 'static,
+    Request: fmt::Debug + Clone + Send + Sync + 'static,
 {
-    type Request = T::Request;
     type Response = T::Response;
     type Future = Instrumented<T::Future>;
     type Error = T::Error;
@@ -36,7 +35,7 @@ where
         span.enter(|| inner.poll_ready())
     }
 
-    fn call(&mut self, req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Request) -> Self::Future {
         let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(|| {

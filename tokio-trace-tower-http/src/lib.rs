@@ -16,10 +16,7 @@ pub struct InstrumentedHttpService<T> {
 }
 
 impl<T> InstrumentedHttpService<T> {
-    pub fn new<B>(inner: T, span: tokio_trace::Span) -> Self
-    where
-        T: Service<Request = http::Request<B>>,
-    {
+    pub fn new(inner: T, span: tokio_trace::Span) -> Self {
         Self { inner, span }
     }
 }
@@ -32,22 +29,21 @@ pub struct InstrumentedNewService<T> {
 impl<T> InstrumentedNewService<T> {
     pub fn new<B>(inner: T) -> Self
     where
-        T: NewService<Request = http::Request<B>>,
+        T: NewService<http::Request<B>>,
     {
         Self { inner }
     }
 }
 
-impl<T, B> NewService for InstrumentedNewService<T>
+impl<T, B> NewService<http::Request<B>> for InstrumentedNewService<T>
 where
-    T: NewService<Request = http::Request<B>>,
+    T: NewService<http::Request<B>>,
 {
-    type Request = T::Request;
     type Response = T::Response;
     type Error = T::Error;
     type InitError = T::InitError;
     type Service = InstrumentedHttpService<T::Service>;
-    type Future = InstrumentedNewServiceFuture<T>;
+    type Future = InstrumentedNewServiceFuture<T::Future>;
 
     fn new_service(&self) -> Self::Future {
         let span = tokio_trace::Span::current();
@@ -56,20 +52,17 @@ where
     }
 }
 
-pub struct InstrumentedNewServiceFuture<T>
-where
-    T: NewService,
-{
-    inner: T::Future,
+pub struct InstrumentedNewServiceFuture<T> {
+    inner: T,
     span: tokio_trace::Span,
 }
 
-impl<T, B> Future for InstrumentedNewServiceFuture<T>
+impl<T> Future for InstrumentedNewServiceFuture<T>
 where
-    T: NewService<Request = http::Request<B>>,
+    T: Future,
 {
-    type Item = InstrumentedHttpService<T::Service>;
-    type Error = T::InitError;
+    type Item = InstrumentedHttpService<T::Item>;
+    type Error = T::Error;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let span = self.span.clone();
         let inner = &mut self.inner;
@@ -81,11 +74,10 @@ where
     }
 }
 
-impl<T, B> Service for InstrumentedHttpService<T>
+impl<T, B> Service<http::Request<B>> for InstrumentedHttpService<T>
 where
-    T: Service<Request = http::Request<B>>,
+    T: Service<http::Request<B>>,
 {
-    type Request = T::Request;
     type Response = T::Response;
     type Future = Instrumented<T::Future>;
     type Error = T::Error;
@@ -96,7 +88,7 @@ where
         span.enter(move || inner.poll_ready())
     }
 
-    fn call(&mut self, request: Self::Request) -> Self::Future {
+    fn call(&mut self, request: http::Request<B>) -> Self::Future {
         let span = self.span.clone();
         let inner = &mut self.inner;
         span.enter(move || {
