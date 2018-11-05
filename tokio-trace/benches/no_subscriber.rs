@@ -16,6 +16,17 @@ fn bench_span_no_subscriber(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_costly_field_no_subscriber(b: &mut Bencher) {
+    let n = test::black_box(1);
+    b.iter(|| {
+        (0..n).fold(0, |old, new| {
+            span!("span", foo = &format!("bar {:?}", 2));
+            old ^ new
+        })
+    });
+}
+
+#[bench]
 fn bench_no_span_no_subscriber(b: &mut Bencher) {
     let n = test::black_box(1);
     b.iter(|| (0..n).fold(0, |new, old| old ^ new));
