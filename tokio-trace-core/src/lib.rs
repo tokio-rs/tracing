@@ -19,39 +19,6 @@
 //! represented by its children. Thus, a parent span always lasts for at least
 //! as long as the longest-executing span in its subtree.
 //!
-//! Furthermore, execution may enter and exit a span multiple times before that
-//! span is _completed_. Consider, for example, a future which has an associated
-//! span and enters that span every time it is polled:
-//! ```rust
-//! # extern crate tokio_trace_core as tokio_trace;
-//! # extern crate futures;
-//! # use futures::{Future, Poll, Async};
-//! struct MyFuture {
-//!    // data
-//!    span: tokio_trace::Span,
-//! }
-//!
-//! impl Future for MyFuture {
-//!     type Item = ();
-//!     type Error = ();
-//!
-//!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-//!         self.span.clone().enter(|| {
-//!             // Do actual future work
-//! # Ok(Async::Ready(()))
-//!         })
-//!     }
-//! }
-//! ```
-//!
-//! If this future was spawned on an executor, it might yield one or more times
-//! before `poll` returns `Ok(Async::Ready)`. If the future were to yield, then
-//! the executor would move on to poll the next future, which may _also_ enter
-//! an associated span or series of spans. Therefore, it is valid for a span to
-//! be entered repeatedly before it completes. Only the time when that span or
-//! one of its children was the current span is considered to be time spent in
-//! that span.
-//!
 //! In addition, data may be associated with spans. A span may have _fields_ ---
 //! a set of key-value pairs describing the state of the program during that
 //! span; an optional name, and metadata describing the source code location

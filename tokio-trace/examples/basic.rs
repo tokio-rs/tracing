@@ -13,8 +13,7 @@ fn main() {
         let foo = 3;
         event!(Level::Info, { foo = foo, bar = "bar" }, "hello world");
 
-        let span = span!("my_great_span", foo = &4, baz = &5);
-        span.enter(|| {
+        span!("my_great_span", foo = &4, baz = &5).enter(|| {
             event!(
                 Level::Info,
                 { yak_shaved = &true },

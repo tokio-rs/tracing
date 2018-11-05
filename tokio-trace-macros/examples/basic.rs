@@ -14,7 +14,7 @@ fn main() {
     tokio_trace::Dispatch::to(subscriber).as_default(|| {
         let num = 1;
 
-        let span = span!("Getting rec from another function.", number_of_recs = &num);
+        let mut span = span!("Getting rec from another function.", number_of_recs = &num);
         span.enter(|| {
             let band = suggest_band();
             event!(Level::Info, { band_recommendation = &band }, "Got a rec.");

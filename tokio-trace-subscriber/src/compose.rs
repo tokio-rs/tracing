@@ -124,15 +124,21 @@ where
         self.observer.observe_event(event)
     }
 
-    fn enter(&self, id: span::Id, state: span::State) {
-        self.registry.with_span(&id, state, |span| {
+    fn enter(&self, id: span::Id) {
+        self.registry.with_span(&id, |span| {
             self.observer.enter(span);
         });
     }
 
-    fn exit(&self, id: span::Id, state: span::State) {
-        self.registry.with_span(&id, state, |span| {
+    fn exit(&self, id: span::Id) {
+        self.registry.with_span(&id, |span| {
             self.observer.exit(span);
+        });
+    }
+
+    fn close(&self, id: span::Id) {
+        self.registry.with_span(&id, |span| {
+            self.observer.close(span);
         });
     }
 }

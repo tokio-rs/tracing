@@ -74,12 +74,10 @@ impl Subscriber for CounterSubscriber {
 
     fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {}
 
-    fn enter(&self, _span: span::Id, _state: span::State) {}
+    fn enter(&self, _span: span::Id) {}
+    fn exit(&self, _span: span::Id) {}
 
-    fn exit(&self, span: span::Id, state: span::State) {
-        if state != span::State::Done {
-            return;
-        }
+    fn close(&self, span: span::Id) {
         if let Some(span) = self.spans.read().unwrap().get(&span) {
             let registry = self.counters.0.read().unwrap();
             for (counter, value) in span.fields().into_iter().filter_map(|(k, v)| {

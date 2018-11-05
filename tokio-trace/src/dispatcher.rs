@@ -3,10 +3,7 @@ pub use tokio_trace_core::dispatcher::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {
-        span::{self, State},
-        subscriber,
-    };
+    use {span, subscriber};
 
     #[test]
     fn dispatcher_is_sticky() {
@@ -14,18 +11,19 @@ mod tests {
         // dispatcher, even across dispatcher context switches.
         let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")).with_state(State::Idle))
+            .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")).with_state(State::Done))
-            .exit(span::mock().named(Some("foo")).with_state(State::Done))
+            .exit(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("foo")))
+            .done()
             .run();
-        let foo = Dispatch::to(subscriber1).as_default(|| {
-            let foo = span!("foo");
-            foo.clone().enter(|| {});
+        let mut foo = Dispatch::to(subscriber1).as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
             foo
         });
-        Dispatch::to(subscriber::mock().run())
+        Dispatch::to(subscriber::mock().done().run())
             .as_default(move || foo.enter(|| span!("bar").enter(|| {})))
     }
 
@@ -35,25 +33,27 @@ mod tests {
         // dispatcher.
         let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")).with_state(State::Idle))
+            .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")).with_state(State::Done))
-            .exit(span::mock().named(Some("foo")).with_state(State::Done))
+            .exit(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("foo")))
+            .done()
             .run();
         let subscriber2 = subscriber::mock()
             .enter(span::mock().named(Some("baz")))
             .enter(span::mock().named(Some("quux")))
-            .exit(span::mock().named(Some("quux")).with_state(State::Done))
-            .exit(span::mock().named(Some("baz")).with_state(State::Done))
+            .exit(span::mock().named(Some("quux")))
+            .exit(span::mock().named(Some("baz")))
+            .done()
             .run();
 
-        let foo = Dispatch::to(subscriber1).as_default(|| {
-            let foo = span!("foo");
-            foo.clone().enter(|| {});
+        let mut foo = Dispatch::to(subscriber1).as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
             foo
         });
-        let baz = Dispatch::to(subscriber2).as_default(|| span!("baz"));
+        let mut baz = Dispatch::to(subscriber2).as_default(|| span!("baz"));
         Dispatch::to(subscriber::mock().run()).as_default(move || {
             foo.enter(|| span!("bar").enter(|| {}));
             baz.enter(|| span!("quux").enter(|| {}))

@@ -229,22 +229,32 @@ impl Subscriber for TraceLogger {
         }
     }
 
-    fn enter(&self, span: span::Id, state: span::State) {
+    fn enter(&self, span: span::Id) {
         let logger = log::logger();
         logger.log(
             &log::Record::builder()
                 .level(log::Level::Trace)
-                .args(format_args!("enter: span={:?}; state={:?};", span, state))
+                .args(format_args!("enter: span={:?};", span))
                 .build(),
         );
     }
 
-    fn exit(&self, span: span::Id, state: span::State) {
+    fn exit(&self, span: span::Id) {
         let logger = log::logger();
         logger.log(
             &log::Record::builder()
                 .level(log::Level::Trace)
-                .args(format_args!("exit: id={:?}; state={:?};", span, state))
+                .args(format_args!("exit: id={:?};", span))
+                .build(),
+        );
+    }
+
+    fn close(&self, span: span::Id) {
+        let logger = log::logger();
+        logger.log(
+            &log::Record::builder()
+                .level(log::Level::Trace)
+                .args(format_args!("close: id={:?};", span))
                 .build(),
         );
     }
@@ -268,17 +278,16 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
                         .file(meta.file)
                         .line(meta.line)
                         .args(format_args!(
-                            "enter: {}; span={:?}; parent={:?}; state={:?}; {:?}",
+                            "enter: {}; span={:?}; parent={:?}; {:?}",
                             meta.name.unwrap_or(""),
                             span.id,
                             data.parent,
-                            span.state,
                             LogFields(span),
                         )).build(),
                 );
             }
         } else {
-            <Self as Subscriber>::enter(&self, span.id.clone(), span.state)
+            <Self as Subscriber>::enter(&self, span.id.clone())
         }
     }
 
@@ -295,16 +304,40 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
                         .file(meta.file)
                         .line(meta.line)
                         .args(format_args!(
-                            "exit: {}; span={:?}; parent={:?}; state={:?};",
+                            "exit: {}; span={:?}; parent={:?};",
                             meta.name.unwrap_or(""),
                             span.id,
                             data.parent,
-                            span.state,
                         )).build(),
                 );
             }
         } else {
-            <Self as Subscriber>::exit(&self, span.id.clone(), span.state)
+            <Self as Subscriber>::exit(&self, span.id.clone())
+        }
+    }
+
+    fn close(&self, span: &SpanRef) {
+        if let Some(data) = span.data {
+            let meta = data.meta();
+            let log_meta = meta.as_log();
+            let logger = log::logger();
+            if logger.enabled(&log_meta) {
+                logger.log(
+                    &log::Record::builder()
+                        .metadata(log_meta)
+                        .module_path(meta.module_path)
+                        .file(meta.file)
+                        .line(meta.line)
+                        .args(format_args!(
+                            "close: {}; span={:?}; parent={:?};",
+                            meta.name.unwrap_or(""),
+                            span.id,
+                            data.parent,
+                        )).build(),
+                );
+            }
+        } else {
+            <Self as Subscriber>::close(&self, span.id.clone())
         }
     }
 

@@ -9,7 +9,7 @@ extern crate tokio_trace_core;
 /// # #[macro_use]
 /// # extern crate tokio_trace;
 /// # fn main() {
-/// let span = span!("my span");
+/// let mut span = span!("my span");
 /// span.enter(|| {
 ///     // do work inside the span...
 /// });

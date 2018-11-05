@@ -140,13 +140,18 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn enter(&self, span: span::Id, state: span::State) {
-        self.subscriber.enter(span, state)
+    fn enter(&self, span: span::Id) {
+        self.subscriber.enter(span)
     }
 
     #[inline]
-    fn exit(&self, span: span::Id, state: span::State) {
-        self.subscriber.exit(span, state)
+    fn exit(&self, span: span::Id) {
+        self.subscriber.exit(span)
+    }
+
+    #[inline]
+    fn close(&self, span: span::Id) {
+        self.subscriber.close(span)
     }
 }
 
@@ -182,7 +187,9 @@ impl Subscriber for NoSubscriber {
         // Do nothing.
     }
 
-    fn enter(&self, _span: span::Id, _state: span::State) {}
+    fn enter(&self, _span: span::Id) {}
 
-    fn exit(&self, _span: span::Id, _state: span::State) {}
+    fn exit(&self, _span: span::Id) {}
+
+    fn close(&self, _span: span::Id) {}
 }

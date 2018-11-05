@@ -18,7 +18,8 @@ use {span, Event, IntoValue, Meta, SpanId};
 ///   spans.
 /// - Filtering spans and events, and determining when those filters must be
 ///   invalidated.
-/// - Observing spans as they are entered and exited, and events as they occur.
+/// - Observing spans as they are entered, exited, and closed, and events as
+///   they occur.
 ///
 /// When a span is entered or exited, the subscriber is provided only with the
 /// [`SpanId`] with which it tagged that span when it was created. This means
@@ -161,23 +162,33 @@ pub trait Subscriber {
     /// [`Span`]: ::span::Span
     /// [`SpanId`]: ::span::Id
     /// [`State`]: ::span::State
-    fn enter(&self, span: SpanId, state: span::State);
+    fn enter(&self, span: SpanId);
 
     /// Records that a [`Span`] has been exited.
     ///
     /// When exiting a span, this method is called to notify the subscriber
     /// that the span has been exited. The subscriber is provided with the
-    /// [`SpanId`] that identifies the exited span, and the current [`State`]
-    /// of the span.
+    /// [`SpanId`] that identifies the exited span.
     ///
-    /// The state may be used to determine whether the span may be entered again
-    /// (`State::Idle`), or if the span has completed and will not be entered
-    /// again (`State::Done`).
+    /// Exiting a span does not imply that the span will not be re-entered.
+    /// [`Span`]: ::span::Span
+    /// [`SpanId`]: ::span::Id
+    fn exit(&self, span: SpanId);
+
+    /// Records that a [`Span`] has been closed.
+    ///
+    /// When exiting a span, this method is called to notify the subscriber
+    /// that the span has been closed. The subscriber is provided with the
+    /// [`SpanId`] that identifies the closed span.
+    ///
+    /// Unlike `exit`, this method implies that the span will not be entered
+    /// again. The subscriber is free to use that guarantee as it sees fit (such
+    /// as garbage-collecting any cached data related to that span, if
+    /// necessary).
     ///
     /// [`Span`]: ::span::Span
     /// [`SpanId`]: ::span::Id
-    /// [`State`]: ::span::State
-    fn exit(&self, span: SpanId, state: span::State);
+    fn close(&self, span: SpanId);
 }
 
 /// Errors which may prevent a value from being successfully added to a span.
@@ -234,6 +245,8 @@ mod test_support {
         Event(ExpectEvent),
         Enter(MockSpan),
         Exit(MockSpan),
+        Close(MockSpan),
+        Nothing,
     }
 
     struct Running<F: Fn(&Meta) -> bool> {
@@ -257,13 +270,22 @@ mod test_support {
 
     impl<F: Fn(&Meta) -> bool> MockSubscriber<F> {
         pub fn enter(mut self, span: MockSpan) -> Self {
-            self.expected
-                .push_back(Expect::Enter(span.with_state(::span::State::Running)));
+            self.expected.push_back(Expect::Enter(span));
             self
         }
 
         pub fn exit(mut self, span: MockSpan) -> Self {
             self.expected.push_back(Expect::Exit(span));
+            self
+        }
+
+        pub fn close(mut self, span: MockSpan) -> Self {
+            self.expected.push_back(Expect::Close(span));
+            self
+        }
+
+        pub fn done(mut self) -> Self {
+            self.expected.push_back(Expect::Nothing);
             self
         }
 
@@ -330,10 +352,17 @@ mod test_support {
                     "expected to exit span {:?} but got an event",
                     expected_span.name
                 ),
+                Some(Expect::Close(expected_span)) => panic!(
+                    "expected to close span {:?} but got an event",
+                    expected_span.name,
+                ),
+                Some(Expect::Nothing) => {
+                    panic!("expected nothing else to happen, but got an event")
+                }
             }
         }
 
-        fn enter(&self, span: span::Id, state: span::State) {
+        fn enter(&self, span: span::Id) {
             let spans = self.spans.lock().unwrap();
             let span = spans
                 .get(&span)
@@ -348,9 +377,6 @@ mod test_support {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name());
                     }
-                    if let Some(expected_state) = expected_span.state {
-                        assert_eq!(expected_state, state);
-                    }
                     // TODO: expect fields
                 }
                 Some(Expect::Exit(expected_span)) => panic!(
@@ -358,10 +384,19 @@ mod test_support {
                     expected_span.name,
                     span.name()
                 ),
+                Some(Expect::Close(expected_span)) => panic!(
+                    "expected to close span {:?}, but entered span {:?} instead",
+                    expected_span.name,
+                    span.name()
+                ),
+                Some(Expect::Nothing) => panic!(
+                    "expected nothing else to happen, but entered span {:?}",
+                    span.name(),
+                ),
             }
         }
 
-        fn exit(&self, span: span::Id, state: span::State) {
+        fn exit(&self, span: span::Id) {
             let spans = self.spans.lock().unwrap();
             let span = spans
                 .get(&span)
@@ -381,11 +416,51 @@ mod test_support {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name());
                     }
-                    if let Some(expected_state) = expected_span.state {
-                        assert_eq!(expected_state, state);
+                    // TODO: expect fields
+                }
+                Some(Expect::Close(expected_span)) => panic!(
+                    "expected to close span {:?}, but exited span {:?} instead",
+                    expected_span.name,
+                    span.name()
+                ),
+                Some(Expect::Nothing) => panic!(
+                    "expected nothing else to happen, but exited span {:?}",
+                    span.name(),
+                ),
+            }
+        }
+
+        fn close(&self, span: span::Id) {
+            let spans = self.spans.lock().unwrap();
+            let span = spans
+                .get(&span)
+                .unwrap_or_else(|| panic!("no span for ID {:?}", span));
+            match self.expected.lock().unwrap().pop_front() {
+                None => {}
+                Some(Expect::Event(_)) => panic!(
+                    "expected an event, but closed span {:?} instead",
+                    span.name()
+                ),
+                Some(Expect::Enter(expected_span)) => panic!(
+                    "expected to enter span {:?}, but closed span {:?} instead",
+                    expected_span.name,
+                    span.name()
+                ),
+                Some(Expect::Exit(expected_span)) => panic!(
+                    "expected to exit span {:?}, but closed span {:?} instead",
+                    expected_span.name,
+                    span.name()
+                ),
+                Some(Expect::Close(expected_span)) => {
+                    if let Some(name) = expected_span.name {
+                        assert_eq!(name, span.name());
                     }
                     // TODO: expect fields
                 }
+                Some(Expect::Nothing) => panic!(
+                    "expected nothing else to happen, but closed span {:?}",
+                    span.name(),
+                ),
             }
         }
     }

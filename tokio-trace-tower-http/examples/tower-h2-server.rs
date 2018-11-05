@@ -113,8 +113,7 @@ fn main() {
         let addr = "[::1]:8888".parse().unwrap();
         let bind = TcpListener::bind(&addr).expect("bind");
 
-        let server_span = span!("serve", local_ip = &addr.ip(), local_port = &addr.port());
-        server_span.clone().enter(move || {
+        span!("serve", local_ip = &addr.ip(), local_port = &addr.port()).enter(move || {
             let new_svc = tokio_trace_tower_http::InstrumentedNewService::new(NewSvc);
             let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
@@ -122,9 +121,7 @@ fn main() {
                 .incoming()
                 .fold((h2, reactor), |(h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
-                    let conn_span =
-                        span!("conn", remote_ip = &addr.ip(), remote_port = &addr.port());
-                    conn_span.clone().enter(|| {
+                    span!("conn", remote_ip = &addr.ip(), remote_port = &addr.port()).enter(|| {
                         if let Err(e) = sock.set_nodelay(true) {
                             return Err(e);
                         }
@@ -137,14 +134,14 @@ fn main() {
                             .and_then(|_| {
                                 event!(Level::Debug, {}, "response finished");
                                 future::ok(())
-                            }).instrument(conn_span);
+                            }).in_current_span();
                         reactor.spawn(Box::new(serve));
 
                         Ok((h2, reactor))
                     })
                 }).map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
                 .map(|_| {})
-                .instrument(server_span.clone());
+                .in_current_span();
 
             rt.spawn(serve);
             rt.shutdown_on_idle().wait().unwrap();

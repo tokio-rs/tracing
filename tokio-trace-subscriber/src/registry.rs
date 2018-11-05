@@ -1,5 +1,5 @@
 use tokio_trace::{
-    span::{Data, Id, State},
+    span::{Data, Id},
     subscriber::{AddValueError, FollowsError},
     value::{IntoValue, OwnedValue},
 };
@@ -71,28 +71,29 @@ pub trait RegisterSpan {
     /// `span` follows from.
     fn prior_spans(&self, span: &Id) -> Self::PriorSpans;
 
-    fn with_span<F>(&self, id: &Id, state: State, f: F)
+    fn with_span<F>(&self, id: &Id, f: F)
     where
         F: for<'a> Fn(&'a SpanRef<'a>);
+
+    // TODO: Should the registry also be informed of span closure?
 }
 
 #[derive(Debug)]
 pub struct SpanRef<'a> {
     pub id: &'a Id,
     pub data: Option<&'a Data>,
-    pub state: State,
+    // TODO: the registry can still have a concept of span states...
 }
 
 impl<'a> Hash for SpanRef<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
-        self.state.hash(state);
     }
 }
 
 impl<'a, 'b> cmp::PartialEq<SpanRef<'b>> for SpanRef<'a> {
     fn eq(&self, other: &SpanRef<'b>) -> bool {
-        self.id == other.id && self.state == other.state
+        self.id == other.id
     }
 }
 
@@ -161,13 +162,13 @@ impl RegisterSpan for IncreasingCounter {
         unimplemented!();
     }
 
-    fn with_span<F>(&self, id: &Id, state: State, f: F)
+    fn with_span<F>(&self, id: &Id, f: F)
     where
         F: for<'a> Fn(&'a SpanRef<'a>),
     {
         let spans = self.spans.lock().expect("mutex poisoned!");
         let data = spans.get(id);
-        let span = SpanRef { id, data, state };
+        let span = SpanRef { id, data };
         f(&span);
     }
 }

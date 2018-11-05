@@ -165,7 +165,7 @@ impl Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn enter(&self, span: tokio_trace::span::Id, _state: tokio_trace::span::State) {
+    fn enter(&self, span: tokio_trace::span::Id) {
         let mut stderr = self.stderr.lock();
         let mut stack = self.stack.lock().unwrap();
         let spans = self.spans.lock().unwrap();
@@ -196,5 +196,11 @@ impl Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn exit(&self, _span: tokio_trace::span::Id, _state: tokio_trace::span::State) {}
+    fn exit(&self, _span: tokio_trace::span::Id) {}
+
+    #[inline]
+    fn close(&self, _span: tokio_trace::span::Id) {
+        // TODO: it's *probably* safe to remove the span from the cache
+        // now...but that doesn't really matter for this example.
+    }
 }

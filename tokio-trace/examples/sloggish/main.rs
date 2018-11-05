@@ -26,13 +26,13 @@ fn main() {
             span!("server", host = &"localhost", port = &8080).enter(|| {
                 event!(Level::Info, {}, "starting");
                 event!(Level::Info, {}, "listening");
-                let peer1 = span!("conn", peer_addr = &"82.9.9.9", port = &42381);
-                peer1.clone().enter(|| {
+                let mut peer1 = span!("conn", peer_addr = &"82.9.9.9", port = &42381);
+                peer1.enter(|| {
                     event!(Level::Debug, {}, "connected");
                     event!(Level::Debug, { length = 2 }, "message received");
                 });
-                let peer2 = span!("conn", peer_addr = &"8.8.8.8", port = &18230);
-                peer2.clone().enter(|| {
+                let mut peer2 = span!("conn", peer_addr = &"8.8.8.8", port = &18230);
+                peer2.enter(|| {
                     event!(Level::Debug, {}, "connected");
                 });
                 peer1.enter(|| {
