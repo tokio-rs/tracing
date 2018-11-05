@@ -31,14 +31,16 @@ macro_rules! span {
     ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
-            use $crate::{callsite, Dispatch};
+            use $crate::{callsite, Dispatch, Span};
             let callsite = callsite! { span: $name, $( $k ),* };
-            let span = callsite.new_span(Dispatch::current());
-            $(
-                span.add_value(stringify!($k), $( $val )* )
-                    .expect(concat!("adding value for field ", stringify!($k), " failed"));
-            )*
-            span
+            Dispatch::current().if_enabled(&callsite, |dispatch, meta| {
+                let span = Span::new(dispatch, meta);
+                $(
+                    span.add_value(stringify!($k), $( $val )* )
+                        .expect(concat!("adding value for field ", stringify!($k), " failed"));
+                )*
+                span
+            }).unwrap_or_else(Span::new_disabled)
         }
     }
 }
@@ -53,17 +55,16 @@ macro_rules! event {
                 target:
                 $target, $( $k ),*
             };
-            let dispatcher = Dispatch::current();
-            if callsite.is_enabled(&dispatcher) {
+            Dispatch::current().if_enabled(&callsite, |dispatch, meta| {
                 let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
-                dispatcher.observe_event(&Event {
+                dispatch.observe_event(&Event {
                     parent: SpanId::current(),
                     follows_from: &[],
-                    meta: callsite.metadata(),
+                    meta,
                     field_values: &field_values[..],
                     message: format_args!( $($arg)+ ),
                 });
-            }
+            });
         }
     });
     ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
