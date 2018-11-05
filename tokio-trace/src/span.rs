@@ -8,17 +8,15 @@
 //! performs a given function (either a closure or a function pointer), exits
 //! the span, and then returns the result.
 //!
-//! Calling `enter` on a span handle consumes that handle (as the number of
-//! currently extant span handles is used for span completion bookkeeping), but
-//! it may be `clone`d inexpensively (span handles are atomically reference
-//! counted) in order to enter the span multiple times. For example:
+//! Calling `enter` on a span handle enters the span that handle corresponds to,
+//! if the span exists:
 //! ```
 //! # #[macro_use] extern crate tokio_trace;
 //! # fn main() {
 //! let my_var = 5;
-//! let my_span = span!("my_span", my_var = &my_var);
+//! let mut my_span = span!("my_span", my_var = &my_var);
 //!
-//! my_span.clone().enter(|| {
+//! my_span.enter(|| {
 //!     // perform some work in the context of `my_span`...
 //! });
 //!
@@ -26,54 +24,108 @@
 //!
 //! my_span.enter(|| {
 //!     // Perform some more work in the context of `my_span`.
-//!     // Since this call to `enter` *consumes* rather than clones `my_span`,
-//!     // it may not be entered again (unless any more clones of the handle
-//!     // exist elsewhere). Thus, `my_span` is free to mark itself as "done"
-//!     // upon exiting.
 //! });
 //! # }
 //! ```
 //!
 //! # The Span Lifecycle
 //!
-//! At any given point in time, a `Span` is in one of four [`State`]s:
-//! - `State::Unentered`: The span has been constructed but has not yet been
-//!   entered for the first time.
-//! - `State::Running`: One or more threads are currently executing inside this
-//!   span or one of its children.
-//! - `State::Idle`: The flow of execution has exited the span, but it may be
-//!   entered again and resume execution.
-//! - `State::Done`: The span has completed execution and may not be entered
-//!   again.
+//! Execution may enter and exit a span multiple times before that
+//! span is _closed_. Consider, for example, a future which has an associated
+//! span and enters that span every time it is polled:
+//! ```rust
+//! # extern crate tokio_trace;
+//! # extern crate futures;
+//! # use futures::{Future, Poll, Async};
+//! struct MyFuture {
+//!    // data
+//!    span: tokio_trace::Span,
+//! }
 //!
-//! Spans transition between these states when execution enters and exit them.
-//! Upon entry, if a span is not currently in the `Running` state, it will
-//! transition to the running state. Upon exit, a span checks if it is executing
-//! in any other threads, and if it is not, it transitions to either the `Idle`
-//! or `Done` state. The determination of which state to transition to is made
-//! based on whether or not the potential exists for the span to be entered
-//! again (i.e. whether any `Span` handles with that capability currently
-//! exist).
+//! impl Future for MyFuture {
+//!     type Item = ();
+//!     type Error = ();
 //!
-//! **Note**: A `Span` handle represents a _single entry_ into the span.
-//! Entering a `Span` handle, but a handle may be `clone`d prior to entry if the
-//! span expects to be entered again. This is due to how spans determine whether
-//! or not to close themselves.
+//!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+//!         self.span.enter(|| {
+//!             // Do actual future work
+//! # Ok(Async::Ready(()))
+//!         })
+//!     }
+//! }
+//! ```
 //!
-//! Rather than requiring the user to _explicitly_ close a span, spans are able
-//! to account for their own completion automatically. When a span is exited,
-//! the span is responsible for determining whether it should transition back to
-//! the `Idle` state, or transition to the `Done` state. This is determined
-//! prior to notifying the subscriber that the span has been exited, so that the
-//! subscriber can be informed of the state that the span has transitioned to.
-//! The next state is chosen based on whether or not the possibility to re-enter
-//! the span exists --- namely, are there still handles with the capacity to
-//! enter the span? If so, the span transitions back to `Idle`. However, if no
-//! more handles exist, the span cannot be entered again; it may instead
-//! transition to `Done`.
+//! If this future was spawned on an executor, it might yield one or more times
+//! before `poll` returns `Ok(Async::Ready)`. If the future were to yield, then
+//! the executor would move on to poll the next future, which may _also_ enter
+//! an associated span or series of spans. Therefore, it is valid for a span to
+//! be entered repeatedly before it completes. Only the time when that span or
+//! one of its children was the current span is considered to be time spent in
+//! that span. A span which is not executing and has not yet been closed is said
+//! to be _idle_.
 //!
-//! Thus, span handles are single-use. Cloning the span handle _signals the
-//! intent to enter the span again_.
+//! Because spans may be entered and exited multiple times before they close,
+//! [`Subscriber`]s have separate trait methods which are called to notify them
+//! of span exits and span closures. When execution exits a span,
+//! [`exit`](::Subscriber::exit) will always be called with that span's ID to
+//! notify the subscriber that the span has been exited. If the span has been
+//! exited for the final time, the `exit` will be followed by a call to
+//! [`close`](::Subscriber::close), signalling that the span has been closed.
+//! Subscribers may expect that a span which has closed will not be entered
+//! again.
+//!
+//! If there is only a single handle with the capacity to exit a span, dropping
+//! that handle will automatically close the span, since the capacity to enter
+//! it no longer exists. For example:
+//! ```
+//! # #[macro_use] extern crate tokio_trace;
+//! # fn main() {
+//! {
+//!     span!("my_span").enter(|| {
+//!         // perform some work in the context of `my_span`...
+//!     }); // --> Subscriber::exit(my_span)
+//!
+//!     // The handle to `my_span` only lives inside of this block; when it is
+//!     // dropped, the subscriber will be informed that `my_span` has closed.
+//!
+//! } // --> Subscriber::close(my_span)
+//! # }
+//! ```
+//!
+//! If one or more handles to a span exist, the span will be kept open until
+//! that handle drops. However, a span may be explicitly asked to close by
+//! calling the [`Span::close`] method. For example:
+//! ```
+//! # #[macro_use] extern crate tokio_trace;
+//! # fn main() {
+//! use tokio_trace::Span;
+//!
+//! let mut my_span = span!("my_span");
+//! my_span.enter(|| {
+//!     // Signal to my_span that it should close when it exits
+//!     Span::current().close();
+//! }); // --> Subscriber::exit(my_span); Subscriber::close(my_span)
+//!
+//! // The handle to `my_span` still exists, but it now knows that the span was
+//! // closed while it was executing.
+//! my_span.is_closed(); // ==> true
+//!
+//! // Attempting to enter the span using the handle again will do nothing.
+//! my_span.enter(|| {
+//!     // no-op
+//! });
+//! # }
+//! ```
+//!
+//! When a span is asked to close by explicitly calling `Span::close`, if it is
+//! executing, it will wait until it exits to signal that it has been closed. If
+//! it is not currently executing, it will signal closure immediately.
+//!
+//! Calls to `Span::close()` are *not* guaranteed to close the span immediately.
+//! If multiple handles to the span exist, the span will not be closed until all
+//! but the one which opened the span have been dropped. This is to ensure that
+//! a subscriber never observes an inconsistant state; namely, a span being
+//! entered after it has closed.
 //!
 //! # Accessing a Span's Data
 //!
@@ -88,6 +140,13 @@
 //! [`State`]: ::span::State
 //! [`Data`]: ::span::Data
 pub use tokio_trace_core::span::*;
+pub use tokio_trace_core::Span; // TODO: auto-close
+                                // use tokio_trace_core::span::Span as Inner;
+
+// #[derive(Clone, Debug)]
+// pub struct Span {
+
+// }
 
 #[cfg(test)]
 mod tests {
@@ -104,33 +163,40 @@ mod tests {
             .enter(span::mock().named(Some("bar")))
             // The first time we exit "bar", there will be another handle with
             // which we could potentially re-enter bar.
-            .exit(span::mock().named(Some("bar")).with_state(State::Idle))
+            .exit(span::mock().named(Some("bar")))
             // Re-enter "bar", using the cloned handle.
             .enter(span::mock().named(Some("bar")))
             // Now, when we exit "bar", there is no handle to re-enter it, so
             // it should become "done".
-            .exit(span::mock().named(Some("bar")).with_state(State::Done))
-            // "foo" never had more than one handle, so it should also become
-            // "done" when we exit it.
-            .exit(span::mock().named(Some("foo")).with_state(State::Done))
+            .exit(span::mock().named(Some("bar")))
+            .close(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("foo")))
             .run();
 
         Dispatch::to(subscriber).as_default(|| {
-            span!("foo",).enter(|| {
-                let bar = span!("bar",);
-                bar.clone().enter(|| {
+            span!("foo").enter(|| {
+                let mut bar = span!("bar",);
+                let another_bar = bar.enter(|| {
                     // do nothing. exiting "bar" should leave it idle, since it can
                     // be re-entered.
+                    let mut another_bar = Span::current();
+                    another_bar.close();
+                    another_bar
                 });
-                bar.enter(|| {
-                    // enter "bar" again. this time, the last handle is used, so
-                    // "bar" should be marked as done.
+                // Enter "bar" again. This time, the previously-requested
+                // closure should be honored.
+                bar.enter(move || {
+                    // Drop the other handle to bar. Now, the span should be allowed
+                    // to close.
+                    drop(another_bar);
                 });
             });
         });
     }
 
-    #[test]
+    // This test doesn't make sense in the context of non-cloneable spans.
+    /*
+   #[test]
     fn exit_doesnt_finish_concurrently_executing_spans() {
         // Test that exiting a span only marks it as "done" when no other
         // threads are still executing inside that span.
@@ -144,13 +210,15 @@ mod tests {
             .enter(span::mock().named(Some("quux")))
             // When the main thread exits "quux", it will still be running in the
             // spawned thread.
-            .exit(span::mock().named(Some("quux")).with_state(State::Running))
+            .exit(span::mock().named(Some("quux")))
             // Now, when this thread exits "quux", there is no handle to re-enter it, so
             // it should become "done".
-            .exit(span::mock().named(Some("quux")).with_state(State::Done))
+            .exit(span::mock().named(Some("quux")))
+            .close(span::mock().named(Some("quux")))
             // "baz" never had more than one handle, so it should also become
             // "done" when we exit it.
-            .exit(span::mock().named(Some("baz")).with_state(State::Done))
+            .exit(span::mock().named(Some("baz")))
+            .close(span::mock().named(Some("baz")))
             .run();
 
         Dispatch::to(subscriber).as_default(|| {
@@ -186,6 +254,7 @@ mod tests {
             });
         });
     }
+    */
 
     #[test]
     fn handles_to_the_same_span_are_equal() {
@@ -194,14 +263,12 @@ mod tests {
         // won't enter any spans in this test, so the subscriber won't actually
         // expect to see any spans.
         Dispatch::to(subscriber::mock().run()).as_default(|| {
-            let foo1 = span!("foo");
-            let foo2 = foo1.clone();
-
-            // Two handles that point to the same span are equal.
-            assert_eq!(foo1, foo2);
-
-            // // The two span's data handles are also equal.
-            // assert_eq!(foo1.data(), foo2.data());
+            span!("foo").enter(|| {
+                let foo1 = Span::current();
+                let foo2 = Span::current();
+                // Two handles that point to the same span are equal.
+                assert_eq!(foo1, foo2);
+            })
         });
     }
 
@@ -239,15 +306,17 @@ mod tests {
     fn spans_always_go_to_the_subscriber_that_tagged_them() {
         let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")).with_state(State::Idle))
+            .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")).with_state(State::Done));
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .done();
         let subscriber1 = Dispatch::to(subscriber1.run());
         let subscriber2 = Dispatch::to(subscriber::mock().run());
 
-        let foo = subscriber1.as_default(|| {
-            let foo = span!("foo");
-            foo.clone().enter(|| {});
+        let mut foo = subscriber1.as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
             foo
         });
         // Even though we enter subscriber 2's context, the subscriber that
@@ -259,13 +328,15 @@ mod tests {
     fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
         let subscriber1 = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")).with_state(State::Idle))
+            .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")).with_state(State::Done));
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .done();
         let subscriber1 = Dispatch::to(subscriber1.run());
-        let foo = subscriber1.as_default(|| {
-            let foo = span!("foo");
-            foo.clone().enter(|| {});
+        let mut foo = subscriber1.as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
             foo
         });
 
@@ -277,5 +348,77 @@ mod tests {
             })
         }).join()
         .unwrap();
+    }
+
+    #[test]
+    fn span_closes_on_drop() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .done()
+            .run();
+        Dispatch::to(subscriber).as_default(|| {
+            let mut span = span!("foo");
+            span.enter(|| {});
+            drop(span);
+        })
+    }
+
+    #[test]
+    fn span_closes_when_idle() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            // A second span is entered so that the mock subscriber will
+            // expect "foo" at a separate point in time from when it is exited.
+            .enter(span::mock().named(Some("bar")))
+            .close(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("bar")))
+            .close(span::mock().named(Some("bar")))
+            .done()
+            .run();
+        Dispatch::to(subscriber).as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
+
+            span!("bar").enter(|| {
+                // Since `foo` is not executing, it should close immediately.
+                foo.close();
+            });
+
+            assert!(foo.is_closed());
+        })
+    }
+
+    #[test]
+    fn entering_a_closed_span_is_a_no_op() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .done()
+            .run();
+        Dispatch::to(subscriber).as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
+
+            foo.close();
+
+            foo.enter(|| {
+                // The subscriber expects nothing else to happen after the first
+                // exit.
+            });
+            assert!(foo.is_closed());
+        })
+    }
+
+    #[test]
+    fn span_doesnt_close_if_it_never_opened() {
+        let subscriber = subscriber::mock().done().run();
+        Dispatch::to(subscriber).as_default(|| {
+            let span = span!("foo");
+            drop(span);
+        })
     }
 }

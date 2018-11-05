@@ -42,24 +42,25 @@ mod tests {
         Dispatch::to(subscriber).as_default(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
             // not "foo."
-            let foo = span!("foo");
-            let bar = foo.clone().enter(|| {
-                let bar = span!("bar");
-                bar.clone().enter(|| bar)
+            let mut foo = span!("foo");
+            let mut bar = foo.enter(|| {
+                let mut bar = span!("bar");
+                bar.enter(|| ());
+                bar
             });
 
             // The filter should have seen each span a single time.
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
-            foo.clone().enter(|| bar.clone().enter(|| {}));
+            foo.enter(|| bar.enter(|| {}));
 
             // The subscriber should see "bar" again, but the filter should not have
             // been called.
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
-            bar.clone().enter(|| {});
+            bar.enter(|| {});
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
         });
@@ -127,16 +128,17 @@ mod tests {
         let subscriber2 = Dispatch::to(subscriber2);
 
         let do_test = move |n: usize| {
-            let foo = span!("foo");
-            let bar = foo.clone().enter(|| {
-                let bar = span!("bar");
-                bar.clone().enter(|| bar)
+            let mut foo = span!("foo");
+            let mut bar = foo.enter(|| {
+                let mut bar = span!("bar");
+                bar.enter(|| ());
+                bar
             });
 
             assert_eq!(foo_count.load(Ordering::Relaxed), n);
             assert_eq!(bar_count.load(Ordering::Relaxed), n);
 
-            foo.clone().enter(|| bar.clone().enter(|| {}));
+            foo.enter(|| bar.enter(|| {}));
 
             assert_eq!(foo_count.load(Ordering::Relaxed), n);
             assert_eq!(bar_count.load(Ordering::Relaxed), n);
@@ -156,15 +158,16 @@ mod tests {
     #[test]
     fn filters_evaluated_across_threads() {
         fn do_test() -> Span {
-            let foo = span!("foo");
-            let bar = foo.clone().enter(|| {
-                let bar = span!("bar");
-                bar.clone().enter(|| bar)
+            let mut foo = span!("foo");
+            let mut bar = foo.enter(|| {
+                let mut bar = span!("bar");
+                bar.enter(|| ());
+                bar
             });
 
-            foo.enter(|| bar.clone().enter(|| {}));
+            foo.enter(|| bar.enter(|| {}));
 
-            bar.clone()
+            bar
         }
 
         let barrier = Arc::new(Barrier::new(2));
@@ -218,10 +221,10 @@ mod tests {
         // the threads have completed, but the spans should still notify their
         // parent subscribers.
 
-        let bar = thread1.join().unwrap();
+        let mut bar = thread1.join().unwrap();
         bar.enter(|| {});
 
-        let bar = thread2.join().unwrap();
+        let mut bar = thread2.join().unwrap();
         bar.enter(|| {});
     }
 
@@ -256,17 +259,18 @@ mod tests {
         Dispatch::to(subscriber).as_default(move || {
             // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
             // not "foo."
-            let foo = span!("foo");
-            let bar = foo.clone().enter(|| {
-                let bar = span!("bar");
-                bar.clone().enter(|| bar)
+            let mut foo = span!("foo");
+            let mut bar = foo.enter(|| {
+                let mut bar = span!("bar");
+                bar.enter(|| {});
+                bar
             });
 
             // The filter should have seen each span a single time.
             assert_eq!(foo_count.load(Ordering::Relaxed), 1);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 
-            foo.clone().enter(|| bar.clone().enter(|| {}));
+            foo.enter(|| bar.enter(|| {}));
 
             // The subscriber should see "bar" again, but the filter should not have
             // been called.
@@ -275,8 +279,8 @@ mod tests {
 
             // A different span with the same name has a different call site, so it
             // should cause the filter to be reapplied.
-            let foo2 = span!("foo");
-            foo.clone().enter(|| {});
+            let mut foo2 = span!("foo");
+            foo.enter(|| {});
             assert_eq!(foo_count.load(Ordering::Relaxed), 2);
             assert_eq!(bar_count.load(Ordering::Relaxed), 1);
 

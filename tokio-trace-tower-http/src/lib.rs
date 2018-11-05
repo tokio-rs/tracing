@@ -9,7 +9,7 @@ use futures::{Future, Poll};
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower_service::{NewService, Service};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct InstrumentedHttpService<T> {
     inner: T,
     span: tokio_trace::Span,
@@ -19,9 +19,13 @@ impl<T> InstrumentedHttpService<T> {
     pub fn new(inner: T, span: tokio_trace::Span) -> Self {
         Self { inner, span }
     }
+
+    pub fn in_current(inner: T) -> Self {
+        Self::new(inner, tokio_trace::Span::current())
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct InstrumentedNewService<T> {
     inner: T,
 }
@@ -64,12 +68,12 @@ where
     type Item = InstrumentedHttpService<T::Item>;
     type Error = T::Error;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let span = self.span.clone();
+        let span = &mut self.span;
         let inner = &mut self.inner;
-        span.clone().enter(move || {
+        span.enter(move || {
             inner
                 .poll()
-                .map(|ready| ready.map(|svc| InstrumentedHttpService::new(svc, span.clone())))
+                .map(|ready| ready.map(|svc| InstrumentedHttpService::in_current(svc)))
         })
     }
 }
@@ -83,25 +87,22 @@ where
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        let span = self.span.clone();
+        let span = &mut self.span;
         let inner = &mut self.inner;
         span.enter(move || inner.poll_ready())
     }
 
     fn call(&mut self, request: http::Request<B>) -> Self::Future {
-        let span = self.span.clone();
+        let span = &mut self.span;
         let inner = &mut self.inner;
         span.enter(move || {
-            let request_span = span!(
+            span!(
                 "request",
                 method = request.method(),
                 version = &request.version(),
                 uri = request.uri(),
                 headers = request.headers()
-            );
-            request_span
-                .clone()
-                .enter(move || inner.call(request).instrument(request_span))
+            ).enter(move || inner.call(request).in_current_span())
         })
     }
 }
