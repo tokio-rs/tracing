@@ -146,11 +146,8 @@ pub trait Subscriber {
     /// When an `Event` takes place, this function is called to notify the
     /// subscriber of that event.
     ///
-    /// Note that this function is generic over a pair of lifetimes because the
-    /// `Event` type is. See the documentation for [`Event`] for details.
-    ///
     /// [`Event`]: ../struct.Event.html
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>);
+    fn observe_event<'a>(&self, event: &'a Event<'a>);
 
     /// Records that a [`Span`] has been entered.
     ///
@@ -340,7 +337,7 @@ mod test_support {
             id
         }
 
-        fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {
+        fn observe_event<'a>(&self, _event: &'a Event<'a>) {
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Event(_)) => unimplemented!(),

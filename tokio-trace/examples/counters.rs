@@ -72,7 +72,7 @@ impl Subscriber for CounterSubscriber {
         false
     }
 
-    fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {}
+    fn observe_event<'a>(&self, _event: &'a Event<'a>) {}
 
     fn enter(&self, _span: span::Id) {}
     fn exit(&self, _span: span::Id) {}
