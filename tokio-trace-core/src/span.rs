@@ -72,16 +72,6 @@ pub struct Data {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(u64);
 
-/// Trait representing something which is associated with a span `Id`.
-///
-/// This is used primarily to allow [`Span::follows`](::Span::follows) to accept
-/// both `Span`s and `Id`s as valid arguments.
-pub trait AsId {
-    /// Returns the span `Id` that `self` is associated with, or `None` if that
-    /// span is disabled.
-    fn as_id(&self) -> Option<Id>;
-}
-
 /// A handle representing the capacity to enter a span which is known to exist.
 ///
 /// Unlike `Span`, this type is only constructed for spans which _have_ been
@@ -253,11 +243,16 @@ impl Span {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    pub fn follows_from<I: AsId>(&self, from: I) -> Result<(), FollowsError> {
+    pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
         self.inner
             .as_ref()
             .map(move |inner| inner.follows_from(from))
             .unwrap_or(Ok(()))
+    }
+
+    /// Returns this span's `Id`, if it is enabled.
+    pub fn id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Enter::id)
     }
 }
 
@@ -270,12 +265,6 @@ impl fmt::Debug for Span {
         } else {
             span.field("disabled", &true)
         }.finish()
-    }
-}
-
-impl AsId for Span {
-    fn as_id(&self) -> Option<Id> {
-        self.inner.as_ref().map(Enter::id)
     }
 }
 
@@ -408,12 +397,6 @@ impl Id {
     }
 }
 
-impl AsId for Id {
-    fn as_id(&self) -> Option<Id> {
-        Some(self.clone())
-    }
-}
-
 // ===== impl Enter =====
 
 impl Enter {
@@ -511,9 +494,8 @@ impl Enter {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    pub fn follows_from<I: AsId>(&self, from: I) -> Result<(), FollowsError> {
-        let from_id = from.as_id().ok_or(FollowsError::NoPreceedingId)?;
-        match self.subscriber.add_follows_from(&self.id, from_id) {
+    pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
+        match self.subscriber.add_follows_from(&self.id, from) {
             Ok(()) => Ok(()),
             Err(FollowsError::NoSpan(ref id)) if id == &self.id => {
                 panic!("span {:?} should exist to add a preceeding span", self.id)
