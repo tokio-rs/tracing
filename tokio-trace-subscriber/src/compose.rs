@@ -120,7 +120,7 @@ where
         self.registry.add_follows_from(span, follows)
     }
 
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'a>(&self, event: &'a Event<'a>) {
         self.observer.observe_event(event)
     }
 

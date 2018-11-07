@@ -166,36 +166,27 @@ use value::BorrowedValue;
 ///   event should be in the event's fields rather than in the textual message,
 ///   as the fields are more structed.
 ///
-/// **Note**: `Event` must be generic over two lifetimes, that of `Event` itself
-/// (the `'event` lifetime) *and* the lifetime of the event's metadata (the
-/// `'meta` lifetime), which must be at least as long as the event's lifetime.
-/// This is because the metadata may live as long as the lifetime, or it may be
-/// `'static` and reused for all `Event`s generated from a particular source
-/// code location (as is the case when the event is produced by the `event!`
-/// macro). Consumers of `Event` probably do not need to actually care about
-/// these lifetimes, however.
-///
 /// [`Span`]: ::span::Span
-pub struct Event<'event, 'meta> {
+pub struct Event<'a> {
     /// The span ID of the span in which this event occurred.
     pub parent: Option<SpanId>,
 
     /// The IDs of a set of spans which are causally linked with this event, but
     /// are not its direct parent.
-    pub follows_from: &'event [SpanId],
+    pub follows_from: &'a [SpanId],
 
     /// Metadata describing this event.
-    pub meta: &'meta Meta<'meta>,
+    pub meta: &'a Meta<'a>,
 
     /// The values of the fields on this event.
     ///
     /// The names of these fields are defined in the event's metadata. Each
     /// index in this array corresponds to the name at the same index in
     /// `self.meta.field_names`.
-    pub field_values: &'event [&'event dyn AsValue],
+    pub field_values: &'a [&'a dyn AsValue],
 
     /// A textual message describing the event that occurred.
-    pub message: fmt::Arguments<'event>,
+    pub message: fmt::Arguments<'a>,
 }
 
 /// Metadata describing a [`Span`] or [`Event`].
@@ -327,9 +318,9 @@ impl<'a> Meta<'a> {
 
 // ===== impl Event =====
 
-impl<'event, 'meta: 'event> Event<'event, 'meta> {
+impl<'a> Event<'a> {
     /// Returns an iterator over the names of all the fields on this `Event`.
-    pub fn field_names(&self) -> slice::Iter<&'event str> {
+    pub fn field_names(&self) -> slice::Iter<&'a str> {
         self.meta.field_names.iter()
     }
 
@@ -337,7 +328,7 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     /// returns `None`.
     pub fn field<Q>(&self, name: Q) -> Option<value::BorrowedValue>
     where
-        &'event str: PartialEq<Q>,
+        &'a str: PartialEq<Q>,
     {
         self.field_names()
             .position(|&field_name| field_name == name)
@@ -345,7 +336,7 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
     }
 
     /// Returns an iterator over all the field names and values on this event.
-    pub fn fields<'a: 'event>(&'a self) -> impl Iterator<Item = (&'event str, BorrowedValue<'a>)> {
+    pub fn fields<'b: 'a>(&'b self) -> impl Iterator<Item = (&'a str, BorrowedValue<'b>)> {
         self.field_names()
             .enumerate()
             .filter_map(move |(idx, &name)| {
@@ -357,12 +348,12 @@ impl<'event, 'meta: 'event> Event<'event, 'meta> {
 
     /// Returns a struct that can be used to format all the fields on this
     /// `Event` with `fmt::Debug`.
-    pub fn debug_fields<'a: 'event>(&'a self) -> DebugFields<'a, Self, BorrowedValue<'event>> {
+    pub fn debug_fields<'b: 'a>(&'b self) -> DebugFields<'b, Self, BorrowedValue<'b>> {
         DebugFields(self)
     }
 }
 
-impl<'a, 'm: 'a> IntoIterator for &'a Event<'a, 'm> {
+impl<'a> IntoIterator for &'a Event<'a> {
     type Item = (&'a str, BorrowedValue<'a>);
     type IntoIter = Box<Iterator<Item = (&'a str, BorrowedValue<'a>)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {

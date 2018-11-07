@@ -209,7 +209,7 @@ impl Subscriber for TraceLogger {
         Ok(())
     }
 
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'a>(&self, event: &'a Event<'a>) {
         let meta = event.meta.as_log();
         let logger = log::logger();
         if logger.enabled(&meta) {
@@ -261,7 +261,7 @@ impl Subscriber for TraceLogger {
 }
 
 impl tokio_trace_subscriber::Observe for TraceLogger {
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'a>(&self, event: &'a Event<'a>) {
         <Self as Subscriber>::observe_event(&self, event)
     }
 

@@ -10,7 +10,7 @@ use tokio_trace::{Event, Meta};
 /// Implementations of this trait describe the logic needed to process envent
 /// and span notifications, but don't implement span registration.
 pub trait Observe {
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>);
+    fn observe_event<'a>(&self, event: &'a Event<'a>);
     fn enter<'a>(&self, span: &SpanRef<'a>);
     fn exit<'a>(&self, span: &SpanRef<'a>);
     fn close<'a>(&self, span: &SpanRef<'a>);
@@ -45,7 +45,7 @@ pub trait ObserveExt: Observe {
     ///
     /// impl Observe for Foo {
     ///     // ...
-    /// # fn observe_event<'event, 'meta: 'event>(&self, _: &'event Event<'event, 'meta>) {}
+    /// # fn observe_event<'a>(&self, _: &'a Event<'a>) {}
     /// # fn enter(&self, _: &SpanRef) {}
     /// # fn exit(&self, _: &SpanRef) {}
     /// # fn close(&self, _: &SpanRef) {}
@@ -54,7 +54,7 @@ pub trait ObserveExt: Observe {
     ///
     /// impl Observe for Bar {
     ///     // ...
-    /// # fn observe_event<'event, 'meta: 'event>(&self, _: &'event Event<'event, 'meta>) {}
+    /// # fn observe_event<'a>(&self, _: &'a Event<'a>) {}
     /// # fn enter(&self, _: &SpanRef) {}
     /// # fn exit(&self, _: &SpanRef) {}
     /// # fn close(&self, _: &SpanRef) {}
@@ -177,7 +177,7 @@ pub struct NoObserver;
 ///
 /// impl Observe for Foo {
 ///     // ...
-/// # fn observe_event<'event, 'meta: 'event>(&self, _: &'event Event<'event, 'meta>) {}
+/// # fn observe_event<'a>(&self, _: &'a Event<'a>) {}
 /// # fn enter(&self, _: &SpanRef) {}
 /// # fn exit(&self, _: &SpanRef) {}
 /// # fn close(&self, _: &SpanRef) {}
@@ -186,7 +186,7 @@ pub struct NoObserver;
 ///
 /// impl Observe for Bar {
 ///     // ...
-/// # fn observe_event<'event, 'meta: 'event>(&self, _: &'event Event<'event, 'meta>) {}
+/// # fn observe_event<'a>(&self, _: &'a Event<'a>) {}
 /// # fn enter(&self, _: &SpanRef) {}
 /// # fn exit(&self, _: &SpanRef) {}
 /// # fn close(&self, _: &SpanRef) {}
@@ -254,7 +254,7 @@ where
     F: Filter,
 {
     #[inline]
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'a>(&self, event: &'a Event<'a>) {
         self.inner.observe_event(event)
     }
 
@@ -300,7 +300,7 @@ where
     A: Observe,
     B: Observe,
 {
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'a>(&self, event: &'a Event<'a>) {
         self.a.observe_event(event);
         self.b.observe_event(event);
     }
@@ -345,7 +345,7 @@ where
     A: Observe,
     B: Observe,
 {
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'a>(&self, event: &'a Event<'a>) {
         match self {
             Either::A(a) => a.observe_event(event),
             Either::B(b) => b.observe_event(event),
@@ -395,7 +395,7 @@ where
 }
 
 impl Observe for NoObserver {
-    fn observe_event<'event, 'meta: 'event>(&self, _event: &'event Event<'event, 'meta>) {}
+    fn observe_event<'a>(&self, _event: &'a Event<'a>) {}
 
     fn enter<'a>(&self, _span: &SpanRef<'a>) {}
 
