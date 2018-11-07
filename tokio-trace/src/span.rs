@@ -196,7 +196,7 @@
 //! [`Data`]: ::span::Data
 //! [shared span]: ::span::Shared
 //! [`IntoShared`]: ::span::IntoShared
-pub use tokio_trace_core::span::{AsId, Data, Id, Span};
+pub use tokio_trace_core::span::{Data, Id, Span};
 
 #[cfg(any(test, feature = "test-support"))]
 pub use tokio_trace_core::span::{mock, MockSpan};
@@ -317,17 +317,11 @@ impl Shared {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    pub fn follows_from<I: AsId>(&self, from: I) -> Result<(), subscriber::FollowsError> {
+    pub fn follows_from(&self, from: Id) -> Result<(), subscriber::FollowsError> {
         self.inner
             .as_ref()
             .map(move |inner| inner.follows_from(from))
             .unwrap_or(Ok(()))
-    }
-}
-
-impl AsId for Shared {
-    fn as_id(&self) -> Option<Id> {
-        self.id()
     }
 }
 
