@@ -486,7 +486,6 @@ impl Enter {
     /// This function is intended to be used by span handle implementations to
     /// ensuring that multiple entering handles are kept consistent. Probably
     /// don't use this unless you know what you're doing.
-    #[doc(hidden)]
     pub fn exit_and_join(&self, other: Entered) {
         if let Some(other) = other.exit() {
             self.handles.store(other.handle_count(), Ordering::Release);

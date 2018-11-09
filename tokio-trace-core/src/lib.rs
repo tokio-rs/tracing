@@ -76,74 +76,6 @@ extern crate lazy_static;
 
 use std::{borrow::Borrow, fmt, slice};
 
-#[macro_export]
-macro_rules! callsite {
-    (span: $name:expr, $( $field_name:ident ),*) => ({
-        callsite!(@ $crate::Meta {
-            name: Some($name),
-            target: module_path!(),
-            level: $crate::Level::Trace,
-            module_path: Some(module_path!()),
-            file: Some(file!()),
-            line: Some(line!()),
-            field_names: &[ $(stringify!($field_name)),* ],
-            kind: $crate::Kind::Span,
-        })
-    });
-    (event: $lvl:expr, $( $field_name:ident ),*) =>
-        (callsite!(event: $lvl, target: module_path!(), $( $field_name ),* ));
-    (event: $lvl:expr, target: $target:expr, $( $field_name:ident ),*) => ({
-        callsite!(@ $crate::Meta {
-            name: None,
-            target: $target,
-            level: $lvl,
-            module_path: Some(module_path!()),
-            file: Some(file!()),
-            line: Some(line!()),
-            field_names: &[ $(stringify!($field_name)),* ],
-            kind: $crate::Kind::Event,
-        })
-    });
-    (@ $meta:expr ) => ({
-        use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
-        use $crate::{callsite, Meta, subscriber::{Subscriber, Interest}};
-        static META: Meta<'static> = $meta;
-        static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
-        static REGISTRATION: Once = Once::new();
-        struct MyCallsite;
-        impl callsite::Callsite for MyCallsite {
-            fn is_enabled(&self, dispatch: &Dispatch) -> bool {
-                let current_interest = INTEREST.load(Ordering::Relaxed);
-                match Interest::from_usize(current_interest) {
-                    Some(Interest::ALWAYS) => true,
-                    Some(Interest::NEVER) => false,
-                    _ => dispatch.enabled(&META),
-                }
-            }
-            fn add_interest(&self, interest: Interest) {
-                let current_interest = INTEREST.load(Ordering::Relaxed);
-                match Interest::from_usize(current_interest) {
-                    Some(current) if interest > current =>
-                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
-                    None =>
-                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
-                    _ => {}
-                }
-            }
-            fn remove_interest(&self) {
-                INTEREST.store(0, Ordering::Relaxed);
-            }
-            fn metadata(&self) -> &Meta {
-                &META
-            }
-        }
-        REGISTRATION.call_once(|| {
-            callsite::register(&MyCallsite);
-        });
-        &MyCallsite
-    })
-}
-
 /// Describes the level of verbosity of a `Span` or `Event`.
 #[repr(usize)]
 #[derive(Copy, Eq, Debug, Hash)]
@@ -171,7 +103,6 @@ pub enum Level {
 }
 
 pub mod callsite;
-#[doc(hidden)]
 pub mod dispatcher;
 pub mod field;
 pub mod span;
@@ -245,6 +176,10 @@ pub struct Event<'a> {
 /// [`Subscriber`]: ::Subscriber
 #[derive(Clone, Debug, Eq, Hash)]
 pub struct Meta<'a> {
+    // TODO: The fields on this type are currently `pub` because it must be able
+    // to be constructed statically by macros. However, when `const fn`s are
+    // available on stable Rust, this will no longer be necessary. Thus, these
+    // fields should be made private when `const fn` is stable.
     /// If this metadata describes a span, the name of the span.
     pub name: Option<&'a str>,
 
@@ -274,13 +209,23 @@ pub struct Meta<'a> {
     /// event.
     pub field_names: &'a [&'a str],
 
-    #[doc(hidden)]
-    pub kind: Kind,
+    /// Whether this metadata escribes a [`Span`] or an [`Event`].
+    ///
+    /// [`Span`]: ::span::Span
+    /// [`Event`]: ::Event
+    pub kind: MetaKind,
 }
 
-#[doc(hidden)]
+/// Indicates whether a set of [metadata] describes a [`Span`] or an [`Event`].
+///
+/// [metadata]: ::Meta
+/// [`Span`]: ::span::Span
+/// [`Event`]: ::Event
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum Kind {
+pub struct MetaKind(KindInner);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+enum KindInner {
     Span,
     Event,
 }
@@ -309,7 +254,7 @@ impl<'a> Meta<'a> {
             file,
             line,
             field_names,
-            kind: Kind::Span,
+            kind: MetaKind::SPAN,
         }
     }
 
@@ -331,24 +276,18 @@ impl<'a> Meta<'a> {
             file,
             line,
             field_names,
-            kind: Kind::Event,
+            kind: MetaKind::EVENT,
         }
     }
 
     /// Returns true if this metadata corresponds to an event.
     pub fn is_event(&self) -> bool {
-        match self.kind {
-            Kind::Event => true,
-            _ => false,
-        }
+        self.kind.is_event()
     }
 
     /// Returns true if this metadata corresponds to a span.
     pub fn is_span(&self) -> bool {
-        match self.kind {
-            Kind::Span => true,
-            _ => false,
-        }
+        self.kind.is_span()
     }
 
     /// Returns an iterator over the fields defined by this set of metadata.
@@ -493,4 +432,30 @@ impl PartialEq for Level {
     fn eq(&self, other: &Level) -> bool {
         *self as usize == *other as usize
     }
+}
+
+// ===== impl MetaKind =====
+
+impl MetaKind {
+    /// Returns `true` if this metadata corresponds to a `Span`.
+    pub fn is_span(&self) -> bool {
+        match self {
+            MetaKind(KindInner::Span) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this metadata corresponds to an `Event`.
+    pub fn is_event(&self) -> bool {
+        match self {
+            MetaKind(KindInner::Event) => true,
+            _ => false,
+        }
+    }
+
+    /// The `MetaKind` for `Span` metadata.
+    pub const SPAN: Self = MetaKind(KindInner::Span);
+
+    /// The `MetaKind` for `Event` metadata.
+    pub const EVENT: Self = MetaKind(KindInner::Event);
 }
