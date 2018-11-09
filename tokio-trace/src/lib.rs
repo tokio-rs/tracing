@@ -1,5 +1,74 @@
 extern crate tokio_trace_core;
 
+/// Constructs a new static callsite for a span or event.
+#[macro_export]
+macro_rules! callsite {
+    (span: $name:expr, $( $field_name:ident ),*) => ({
+        callsite!(@ $crate::Meta {
+            name: Some($name),
+            target: module_path!(),
+            level: $crate::Level::Trace,
+            module_path: Some(module_path!()),
+            file: Some(file!()),
+            line: Some(line!()),
+            field_names: &[ $(stringify!($field_name)),* ],
+            kind: $crate::MetaKind::SPAN,
+        })
+    });
+    (event: $lvl:expr, $( $field_name:ident ),*) =>
+        (callsite!(event: $lvl, target: module_path!(), $( $field_name ),* ));
+    (event: $lvl:expr, target: $target:expr, $( $field_name:ident ),*) => ({
+        callsite!(@ $crate::Meta {
+            name: None,
+            target: $target,
+            level: $lvl,
+            module_path: Some(module_path!()),
+            file: Some(file!()),
+            line: Some(line!()),
+            field_names: &[ $(stringify!($field_name)),* ],
+            kind: $crate::MetaKind::EVENT,
+        })
+    });
+    (@ $meta:expr ) => ({
+        use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
+        use $crate::{callsite, Meta, subscriber::{Subscriber, Interest}};
+        static META: Meta<'static> = $meta;
+        static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
+        static REGISTRATION: Once = Once::new();
+        struct MyCallsite;
+        impl callsite::Callsite for MyCallsite {
+            fn is_enabled(&self, dispatch: &Dispatch) -> bool {
+                let current_interest = INTEREST.load(Ordering::Relaxed);
+                match Interest::from_usize(current_interest) {
+                    Some(Interest::ALWAYS) => true,
+                    Some(Interest::NEVER) => false,
+                    _ => dispatch.enabled(&META),
+                }
+            }
+            fn add_interest(&self, interest: Interest) {
+                let current_interest = INTEREST.load(Ordering::Relaxed);
+                match Interest::from_usize(current_interest) {
+                    Some(current) if interest > current =>
+                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
+                    None =>
+                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
+                    _ => {}
+                }
+            }
+            fn remove_interest(&self) {
+                INTEREST.store(0, Ordering::Relaxed);
+            }
+            fn metadata(&self) -> &Meta {
+                &META
+            }
+        }
+        REGISTRATION.call_once(|| {
+            callsite::register(&MyCallsite);
+        });
+        &MyCallsite
+    })
+}
+
 /// Constructs a new span.
 ///
 /// # Examples
@@ -92,11 +161,11 @@ pub use self::{
     field::{AsValue, IntoValue, Value},
     span::{Data as SpanData, Id as SpanId, Span},
     subscriber::Subscriber,
-    tokio_trace_core::{callsite, Event, Level, Meta},
+    tokio_trace_core::{
+        callsite::{self, Callsite},
+        Event, Level, Meta, MetaKind,
+    },
 };
-
-#[doc(hidden)]
-pub use tokio_trace_core::Kind;
 
 mod sealed {
     pub trait Sealed {}
