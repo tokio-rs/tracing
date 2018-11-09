@@ -43,7 +43,7 @@ impl Dispatch {
     /// [`Span`]: ::span::Span
     /// [`Subscriber`]: ::Subscriber
     /// [`Event`]: ::Event
-    pub fn current() -> Dispatch {
+    pub(crate) fn current() -> Dispatch {
         Span::current().dispatch().cloned().unwrap_or_default()
     }
 

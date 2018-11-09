@@ -178,6 +178,7 @@ pub mod span;
 pub mod subscriber;
 
 pub use self::{
+    callsite::Callsite,
     dispatcher::Dispatch,
     field::{AsValue, IntoValue, Key, Value},
     span::{Data as SpanData, Id as SpanId, Span},
@@ -384,6 +385,35 @@ impl<'a> PartialEq for Meta<'a> {
 // ===== impl Event =====
 
 impl<'a> Event<'a> {
+    /// Notifies the currently active [`Subscriber`] of an `Event` at the given
+    /// [`Callsite`].
+    ///
+    /// If the given callsite is enabled, a  new `Event` will be constructed
+    /// with the provided `field_values` and `message`, following from the
+    /// provided span IDs. The subscriber will then observe that event.
+    ///
+    /// If the callsite is not enabled, this function does nothing.
+    ///
+    /// [`Subscriber`]: ::subscriber::Subscriber
+    /// [`Callsite`]: ::callsite::Callsite
+    pub fn observe(
+        callsite: &'a dyn callsite::Callsite,
+        field_values: &[&dyn field::AsValue],
+        follows_from: &[SpanId],
+        message: fmt::Arguments<'a>,
+    ) {
+        let dispatch = Dispatch::current();
+        if callsite.is_enabled(&dispatch) {
+            dispatch.observe_event(&Event {
+                parent: SpanId::current(),
+                follows_from,
+                meta: callsite.metadata(),
+                field_values,
+                message,
+            });
+        }
+    }
+
     /// Returns an iterator over the names of all the fields on this `Event`.
     pub fn field_names(&self) -> slice::Iter<&'a str> {
         self.meta.field_names.iter()
