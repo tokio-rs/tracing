@@ -1,15 +1,16 @@
 //! Spans represent periods of time in the execution of a program.
 use std::{
+    borrow::Borrow,
     cell::RefCell,
     cmp, fmt,
     hash::{Hash, Hasher},
-    iter, slice,
+    iter,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use {
+    field::{IntoValue, Key, OwnedValue},
     subscriber::{AddValueError, FollowsError, Subscriber},
-    value::{IntoValue, OwnedValue},
-    DebugFields, Dispatch, StaticMeta,
+    DebugFields, Dispatch, Meta, StaticMeta,
 };
 
 thread_local! {
@@ -106,6 +107,8 @@ pub struct Enter {
     /// Incremented when new handles are created, and decremented when they are
     /// dropped if this is the current span.
     handles: AtomicUsize,
+
+    meta: &'static StaticMeta,
 }
 
 /// A guard representing a span which has been entered and is currently
@@ -130,7 +133,7 @@ impl Span {
         let parent = Id::current();
         let data = Data::new(parent.clone(), static_meta);
         let id = dispatch.new_span(data);
-        let inner = Some(Enter::new(id, dispatch, parent));
+        let inner = Some(Enter::new(id, dispatch, parent, static_meta));
         Self {
             inner,
             is_closed: false,
@@ -189,20 +192,28 @@ impl Span {
         self.inner.as_ref().and_then(Enter::parent)
     }
 
+    /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
+    /// one exists,
+    pub fn key_for<Q>(&self, name: &Q) -> Option<Key<'static>>
+    where
+        Q: Borrow<str>,
+    {
+        self.inner
+            .as_ref()
+            .and_then(|inner| inner.meta.key_for(name))
+    }
+
     /// Sets the field on this span named `name` to the given `value`.
     ///
     /// `name` must name a field already defined by this span's metadata, and
     /// the field must not already have a value. If this is not the case, this
     /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(
-        &self,
-        field: &'static str,
-        value: &dyn IntoValue,
-    ) -> Result<(), AddValueError> {
-        self.inner
-            .as_ref()
-            .map(|inner| inner.add_value(field, value))
-            .unwrap_or(Ok(()))
+    pub fn add_value(&self, field: &Key, value: &dyn IntoValue) -> Result<(), AddValueError> {
+        if let Some(ref inner) = self.inner {
+            inner.add_value(field, value)
+        } else {
+            Ok(())
+        }
     }
 
     /// Signals that this span should close the next time it is exited, or when
@@ -254,6 +265,11 @@ impl Span {
     pub fn id(&self) -> Option<Id> {
         self.inner.as_ref().map(Enter::id)
     }
+
+    /// Returns this span's `Meta`, if it is enabled.
+    pub fn metadata(&self) -> Option<&'static Meta<'static>> {
+        self.inner.as_ref().map(|inner| inner.metadata())
+    }
 }
 
 impl fmt::Debug for Span {
@@ -301,72 +317,73 @@ impl Data {
     }
 
     /// Returns an iterator over the names of all the fields on this span.
-    pub fn field_names<'a>(&self) -> slice::Iter<&'a str> {
-        self.static_meta.field_names.iter()
+    pub fn field_keys(&self) -> impl Iterator<Item = Key<'static>> {
+        self.static_meta.fields()
+    }
+
+    /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
+    /// one exists,
+    pub fn key_for<Q>(&self, name: &Q) -> Option<Key<'static>>
+    where
+        Q: Borrow<str>,
+    {
+        self.static_meta.key_for(name)
     }
 
     /// Returns true if a field named 'name' has been declared on this span,
     /// even if the field does not currently have a value.
-    pub fn has_field<Q>(&self, key: Q) -> bool
-    where
-        &'static str: PartialEq<Q>,
-    {
-        self.field_names().any(|&name| name == key)
+    #[inline]
+    pub fn has_field(&self, key: &Key) -> bool {
+        self.static_meta.contains_key(key)
     }
 
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
     /// returns `None`.
-    pub fn field<Q>(&self, key: Q) -> Option<&OwnedValue>
-    where
-        &'static str: PartialEq<Q>,
-    {
-        self.field_names()
-            .position(|&field_name| field_name == key)
-            .and_then(|i| self.field_values.get(i)?.as_ref())
+    pub fn field(&self, key: &Key) -> Option<&OwnedValue> {
+        if !self.has_field(key) {
+            return None;
+        }
+
+        let i = key.as_usize();
+        self.field_values.get(i)?.as_ref()
     }
 
     /// Returns an iterator over all the field names and values on this span.
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (&'a str, &'a OwnedValue)> {
-        self.field_names()
-            .filter_map(move |&name| self.field(name).map(move |val| (name, val)))
+    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (Key<'static>, &'a OwnedValue)> {
+        self.field_keys().filter_map(move |key| {
+            let val = self.field_values.get(key.as_usize())?.as_ref()?;
+            Some((key, val))
+        })
     }
 
-    /// Edits the span data to add the given `value` to the field named `name`.
+    /// Edits the span data to add the given `value` to the field indexed by `key`.
     ///
     /// `name` must name a field already defined by this span's metadata, and
     /// the field must not already have a value. If this is not the case, this
     /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(
-        &mut self,
-        name: &'static str,
-        value: &dyn IntoValue,
-    ) -> Result<(), AddValueError> {
-        if let Some(i) = self
-            .field_names()
-            .position(|&field_name| field_name == name)
-        {
-            let field = &mut self.field_values[i];
-            if field.is_some() {
-                Err(AddValueError::FieldAlreadyExists)
-            } else {
-                *field = Some(value.into_value());
-                Ok(())
-            }
+    pub fn add_value(&mut self, key: &Key, value: &dyn IntoValue) -> Result<(), AddValueError> {
+        if !self.has_field(key) {
+            return Err(AddValueError::NoField);
+        }
+        let field = &mut self.field_values[key.as_usize()];
+        if field.is_some() {
+            Err(AddValueError::FieldAlreadyExists)
         } else {
-            Err(AddValueError::NoField)
+            *field = Some(value.into_value());
+            Ok(())
         }
     }
 
     /// Returns a struct that can be used to format all the fields on this
     /// span with `fmt::Debug`.
-    pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, Self, &'a OwnedValue> {
+    pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, 'static, Self, &'a OwnedValue> {
         DebugFields(self)
     }
 }
 
 impl<'a> IntoIterator for &'a Data {
-    type Item = (&'a str, &'a OwnedValue);
-    type IntoIter = Box<Iterator<Item = (&'a str, &'a OwnedValue)> + 'a>; // TODO: unbox
+    type Item = (Key<'static>, &'a OwnedValue);
+    type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
@@ -467,12 +484,12 @@ impl Enter {
     /// `name` must name a field already defined by this span's metadata, and
     /// the field must not already have a value. If this is not the case, this
     /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(
-        &self,
-        field: &'static str,
-        value: &dyn IntoValue,
-    ) -> Result<(), AddValueError> {
-        match self.subscriber.add_value(&self.id, field, value) {
+    pub fn add_value(&self, field: &Key, value: &dyn IntoValue) -> Result<(), AddValueError> {
+        if !self.meta.contains_key(field) {
+            return Err(AddValueError::NoField);
+        }
+
+        match self.subscriber.add_value(&self.id, &field, value) {
             Ok(()) => Ok(()),
             Err(AddValueError::NoSpan) => panic!("span should still exist!"),
             Err(e) => Err(e),
@@ -514,7 +531,12 @@ impl Enter {
         self.parent.clone()
     }
 
-    fn new(id: Id, subscriber: Dispatch, parent: Option<Id>) -> Self {
+    /// Returns the span's metadata.
+    pub fn metadata(&self) -> &'static Meta<'static> {
+        self.meta
+    }
+
+    fn new(id: Id, subscriber: Dispatch, parent: Option<Id>, meta: &'static StaticMeta) -> Self {
         Self {
             id,
             subscriber,
@@ -522,6 +544,7 @@ impl Enter {
             wants_close: AtomicBool::from(false),
             has_entered: AtomicBool::from(false),
             handles: AtomicUsize::from(1),
+            meta,
         }
     }
 
@@ -542,6 +565,7 @@ impl Enter {
             wants_close: AtomicBool::from(self.wants_close()),
             has_entered: AtomicBool::from(self.has_entered()),
             handles: AtomicUsize::from(self.handle_count()),
+            meta: self.meta,
         }
     }
 
@@ -641,8 +665,8 @@ pub use self::test_support::*;
 #[cfg(any(test, feature = "test-support"))]
 mod test_support {
     #![allow(missing_docs)]
+    use field::OwnedValue;
     use std::collections::HashMap;
-    use value::OwnedValue;
 
     /// A mock span.
     ///

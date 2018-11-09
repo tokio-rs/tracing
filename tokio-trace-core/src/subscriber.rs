@@ -1,5 +1,5 @@
 //! Subscribers collect and record trace data.
-use {span, Event, IntoValue, Meta, SpanId};
+use {span, Event, IntoValue, Key, Meta, SpanId};
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -69,7 +69,7 @@ pub trait Subscriber {
     fn add_value(
         &self,
         span: &span::Id,
-        name: &'static str,
+        field: &Key,
         value: &dyn IntoValue,
     ) -> Result<(), AddValueError>;
 
@@ -223,7 +223,7 @@ mod test_support {
 
     use super::*;
     use span::{self, MockSpan};
-    use {Event, IntoValue, Meta, SpanData, SpanId};
+    use {field::Key, Event, IntoValue, Meta, SpanData, SpanId};
 
     use std::{
         collections::{HashMap, VecDeque},
@@ -314,7 +314,7 @@ mod test_support {
         fn add_value(
             &self,
             _span: &span::Id,
-            _name: &'static str,
+            _name: &Key,
             _value: &dyn IntoValue,
         ) -> Result<(), AddValueError> {
             // TODO: it should be possible to expect values...

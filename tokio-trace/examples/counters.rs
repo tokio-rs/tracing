@@ -2,7 +2,7 @@
 extern crate tokio_trace;
 
 use tokio_trace::{
-    span,
+    field, span,
     subscriber::{self, Subscriber},
     Event, IntoValue, Level, Meta, Value,
 };
@@ -21,35 +21,41 @@ struct Counters(Arc<RwLock<HashMap<&'static str, AtomicUsize>>>);
 struct CounterSubscriber {
     ids: AtomicUsize,
     counters: Counters,
-    spans: RwLock<HashMap<span::Id, span::Data>>,
 }
 
 impl Subscriber for CounterSubscriber {
     fn new_span(&self, new_span: span::Data) -> span::Id {
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
-        let id = span::Id::from_u64(id as u64);
-        let mut registry = self.counters.0.write().unwrap();
-        for name in new_span.meta().field_names {
-            if name.contains("count") {
-                let _ = registry.entry(name).or_insert_with(|| AtomicUsize::new(0));
+        for key in new_span.field_keys() {
+            if let Some(name) = key.name() {
+                if name.contains("count") {
+                    self.counters
+                        .0
+                        .write()
+                        .unwrap()
+                        .entry(name)
+                        .or_insert_with(|| AtomicUsize::new(0));
+                }
             }
         }
-        self.spans.write().unwrap().insert(id.clone(), new_span);
-        id
+        span::Id::from_u64(id as u64)
     }
 
     fn add_value(
         &self,
-        span: &span::Id,
-        name: &'static str,
+        _span: &span::Id,
+        key: &field::Key,
         value: &dyn IntoValue,
     ) -> Result<(), subscriber::AddValueError> {
-        self.spans
-            .write()
-            .unwrap()
-            .get_mut(span)
-            .ok_or(subscriber::AddValueError::NoSpan)?
-            .add_value(name, value)
+        let registry = self.counters.0.read().unwrap();
+        if let Some((counter, value)) = key.name().and_then(|name| {
+            let counter = registry.get(name)?;
+            let &val = value.into_value().downcast_ref::<usize>()?;
+            Some((counter, val))
+        }) {
+            counter.fetch_add(value, Ordering::Release);
+        }
+        Ok(())
     }
 
     fn add_follows_from(
@@ -62,10 +68,12 @@ impl Subscriber for CounterSubscriber {
     }
 
     fn enabled(&self, metadata: &Meta) -> bool {
-        metadata.is_span() && metadata
-            .field_names
-            .iter()
-            .any(|name| name.contains("count"))
+        if !metadata.is_span() {
+            return false;
+        }
+        metadata
+            .fields()
+            .any(|f| f.name().map(|name| name.contains("count")).unwrap_or(false))
     }
 
     fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
@@ -76,22 +84,7 @@ impl Subscriber for CounterSubscriber {
 
     fn enter(&self, _span: span::Id) {}
     fn exit(&self, _span: span::Id) {}
-
-    fn close(&self, span: span::Id) {
-        if let Some(span) = self.spans.read().unwrap().get(&span) {
-            let registry = self.counters.0.read().unwrap();
-            for (counter, value) in span.fields().into_iter().filter_map(|(k, v)| {
-                if !k.contains("count") {
-                    return None;
-                }
-                let v = v.downcast_ref::<usize>()?;
-                let c = registry.get(k)?;
-                Some((c, v))
-            }) {
-                counter.fetch_add(*value, Ordering::Release);
-            }
-        }
-    }
+    fn close(&self, _span: span::Id) {}
 }
 
 impl Counters {
@@ -106,7 +99,6 @@ impl Counters {
         let subscriber = CounterSubscriber {
             ids: AtomicUsize::new(0),
             counters: counters.clone(),
-            spans: RwLock::new(HashMap::new()),
         };
         (counters, subscriber)
     }
