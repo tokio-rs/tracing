@@ -34,34 +34,24 @@ macro_rules! span {
             use $crate::{callsite, Dispatch, Span};
             use $crate::callsite::Callsite;
             let callsite = callsite! { span: $name, $( $k ),* };
-            let dispatch = Dispatch::current();
-            if callsite.is_enabled(&dispatch) {
-                let meta = callsite.metadata();
-                let span = Span::new(dispatch.clone(), meta);
-                // Depending on how many fields are generated, this may or may
-                // not actually be used, but it doesn't make sense to repeat it.
-                #[allow(unused_variables, unused_mut, unused_imports)] {
-                    use $crate::Subscriber;
-                    let id = span.id().expect("span must have an ID if enabled");
-                    let mut keys = meta.fields();
-                    $(
-                        let key = keys.next()
-                            .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
-                        span!(@ add_value: &dispatch, &id, $k, &key, $($val)*);
-                    )*
-                }
-
-                span
-            } else {
-                Span::new_disabled()
-            }
+            // Depending on how many fields are generated, this may or may
+            // not actually be used, but it doesn't make sense to repeat it.
+            #[allow(unused_variables, unused_mut)]
+            Span::new(callsite, |span| {
+                let mut keys = callsite.metadata().fields();
+                $(
+                    let key = keys.next()
+                        .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
+                    span!(@ add_value: span, $k, &key, $($val)*);
+                )*
+            })
         }
     };
-    (@ add_value: $dispatch:expr, $id:expr, $k:expr, $i:expr, $val:expr) => (
-        $dispatch.add_value($id, $i, $val)
+    (@ add_value: $span:expr, $k:expr, $i:expr, $val:expr) => (
+        $span.add_value($i, $val)
             .expect(concat!("adding value for field '", stringify!($k), "' failed"));
     );
-    (@ add_value: $dispatch:expr, $id:expr, $k:expr, $i:expr,) => (
+    (@ add_value: $span:expr, $k:expr, $i:expr,) => (
         // skip
     );
 }
@@ -77,17 +67,13 @@ macro_rules! event {
                 target:
                 $target, $( $k ),*
             };
-            let dispatch = Dispatch::current();
-            if callsite.is_enabled(&dispatch) {
-                let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
-                dispatch.observe_event(&Event {
-                    parent: SpanId::current(),
-                    follows_from: &[],
-                    meta: callsite.metadata(),
-                    field_values: &field_values[..],
-                    message: format_args!( $($arg)+ ),
-                });
-            }
+            let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
+            Event::observe(
+                callsite,
+                &field_values[..],
+                &[],
+                format_args!( $($arg)+ ),
+            );
         }
     });
     ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
@@ -101,6 +87,7 @@ pub mod span;
 pub mod subscriber;
 
 pub use self::{
+    callsite::Callsite,
     dispatcher::Dispatch,
     field::{AsValue, IntoValue, Value},
     span::{Data as SpanData, Id as SpanId, Span},

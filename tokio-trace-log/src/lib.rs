@@ -33,18 +33,35 @@ use tokio_trace::{
     Event, IntoValue, Meta,
 };
 use tokio_trace_subscriber::SpanRef;
-
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
-    let meta: tokio_trace::Meta = record.as_trace();
-    let event = Event {
-        parent: tokio_trace::SpanId::current(),
-        follows_from: &[],
-        meta: &meta,
-        field_values: &[],
-        message: record.args().clone(),
-    };
-    tokio_trace::Dispatch::current().observe_event(&event);
+    struct LogCallsite<'a>(tokio_trace::Meta<'a>);
+    impl<'a> tokio_trace::Callsite for LogCallsite<'a> {
+        fn is_enabled(&self, dispatch: &tokio_trace::Dispatch) -> bool {
+            dispatch.enabled(&self.0)
+        }
+
+        fn add_interest(&self, _interest: tokio_trace::subscriber::Interest) {
+            // Since these callsites can't be registered (they're not known to
+            // be valid for the 'static lifetime), we don't need to track
+            // interest --- do nothing.
+        }
+
+        fn remove_interest(&self) {
+            // Again, we don't cache interest for these.
+        }
+
+        fn metadata(&self) -> &Meta {
+            &self.0
+        }
+    }
+
+    tokio_trace::Event::observe(
+        &LogCallsite(record.as_trace()),
+        &[],
+        &[],
+        record.args().clone(),
+    );
     Ok(())
 }
 

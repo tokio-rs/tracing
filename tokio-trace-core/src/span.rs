@@ -8,6 +8,7 @@ use std::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use {
+    callsite::Callsite,
     field::{IntoValue, Key, OwnedValue},
     subscriber::{AddValueError, FollowsError, Subscriber},
     DebugFields, Dispatch, Meta, StaticMeta,
@@ -128,26 +129,43 @@ pub struct Entered {
 // ===== impl Span =====
 
 impl Span {
-    #[doc(hidden)]
-    pub fn new(dispatch: Dispatch, static_meta: &'static StaticMeta) -> Span {
-        let parent = Id::current();
-        let data = Data::new(parent.clone(), static_meta);
-        let id = dispatch.new_span(data);
-        let inner = Some(Enter::new(id, dispatch, parent, static_meta));
-        Self {
-            inner,
-            is_closed: false,
-        }
-    }
-
-    /// This is primarily used by the `span!` macro, so it has to be public,
-    /// but it's not intended for use by consumers of the tokio-trace API
-    /// directly.
-    #[doc(hidden)]
-    pub fn new_disabled() -> Self {
-        Span {
-            inner: None,
-            is_closed: false,
+    /// Constructs a new `Span` originating from the given [`Callsite`].
+    ///
+    /// The new span will be constructed by the currently-active [`Subscriber`],
+    /// with the [current span] as its parent (if one exists).
+    ///
+    /// If the new span is enabled, then the provided function `if_enabled` is
+    /// envoked on it before it is returned. This allows [field values] and/or
+    /// [`follows_from` annotations] to be added to the span, but skips this
+    /// work for spans which are disabled.
+    ///
+    /// [`Callsite`]: ::callsite::Callsite
+    /// [`Subscriber`]: ::subscriber::Subscriber
+    /// [current span]: ::span::Span::current
+    /// [field values]: ::span::Span::add_value
+    /// [`follows_from` annotations]: ::span::Span::follows_from
+    pub fn new<F>(callsite: &'static dyn Callsite, if_enabled: F) -> Span
+    where
+        F: FnOnce(&mut Span),
+    {
+        let dispatch = Dispatch::current();
+        if callsite.is_enabled(&dispatch) {
+            let meta = callsite.metadata();
+            let parent = Id::current();
+            let data = Data::new(parent.clone(), meta);
+            let id = dispatch.new_span(data);
+            let inner = Some(Enter::new(id, dispatch, parent, meta));
+            let mut span = Self {
+                inner,
+                is_closed: false,
+            };
+            if_enabled(&mut span);
+            span
+        } else {
+            Span {
+                inner: None,
+                is_closed: false,
+            }
         }
     }
 
