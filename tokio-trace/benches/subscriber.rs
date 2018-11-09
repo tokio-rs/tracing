@@ -39,11 +39,7 @@ impl tokio_trace::Subscriber for EnabledSubscriber {
         true
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
-        false
-    }
-
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'event>(&self, event: &'event Event<'event>) {
         let _ = event;
     }
 
@@ -96,11 +92,7 @@ impl tokio_trace::Subscriber for AddData {
         true
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
-        false
-    }
-
-    fn observe_event<'event, 'meta: 'event>(&self, event: &'event Event<'event, 'meta>) {
+    fn observe_event<'event>(&self, event: &'event Event<'event>) {
         let _ = event;
     }
 
@@ -117,9 +109,23 @@ impl tokio_trace::Subscriber for AddData {
     }
 }
 
+const N_SPANS: usize = 100;
+
 #[bench]
 fn span_no_fields(b: &mut Bencher) {
     tokio_trace::Dispatch::to(EnabledSubscriber).as_default(|| b.iter(|| span!("span")));
+}
+
+#[bench]
+fn span_repeatedly(b: &mut Bencher) {
+    #[inline]
+    fn mk_span(i: usize) -> tokio_trace::Span {
+        span!("span", i = &i)
+    }
+
+    let n = test::black_box(N_SPANS);
+    tokio_trace::Dispatch::to(EnabledSubscriber)
+        .as_default(|| b.iter(|| (0..n).fold(mk_span(0), |span, i| mk_span(i))));
 }
 
 #[bench]

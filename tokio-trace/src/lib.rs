@@ -32,8 +32,11 @@ macro_rules! span {
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
             use $crate::{callsite, Dispatch, Span};
+            use $crate::callsite::Callsite;
             let callsite = callsite! { span: $name, $( $k ),* };
-            Dispatch::current().if_enabled(&callsite, |dispatch, meta| {
+            let dispatch = Dispatch::current();
+            if callsite.is_enabled(&dispatch) {
+                let meta = callsite.metadata();
                 let span = Span::new(dispatch.clone(), meta);
                 // Depending on how many fields are generated, this may or may
                 // not actually be used, but it doesn't make sense to repeat it.
@@ -49,7 +52,9 @@ macro_rules! span {
                 }
 
                 span
-            }).unwrap_or_else(Span::new_disabled)
+            } else {
+                Span::new_disabled()
+            }
         }
     };
     (@ add_value: $dispatch:expr, $id:expr, $k:expr, $i:expr, $val:expr) => (
@@ -66,21 +71,23 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
             use $crate::{callsite, Dispatch, SpanData, SpanId, Subscriber, Event, field::AsValue};
+            use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,
                 target:
                 $target, $( $k ),*
             };
-            Dispatch::current().if_enabled(&callsite, |dispatch, meta| {
+            let dispatch = Dispatch::current();
+            if callsite.is_enabled(&dispatch) {
                 let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
                 dispatch.observe_event(&Event {
                     parent: SpanId::current(),
                     follows_from: &[],
-                    meta,
+                    meta: callsite.metadata(),
                     field_values: &field_values[..],
                     message: format_args!( $($arg)+ ),
                 });
-            });
+            }
         }
     });
     ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (

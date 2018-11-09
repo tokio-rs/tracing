@@ -2,161 +2,65 @@ pub use tokio_trace_core::subscriber::*;
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        sync::{
-            atomic::{AtomicUsize, Ordering},
-            Arc, Barrier,
-        },
-        thread,
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
     };
-    use {span, subscriber, Dispatch, Span};
+    use {span, subscriber, Dispatch};
 
     #[test]
     fn filters_are_not_reevaluated_for_the_same_span() {
         // Asserts that the `span!` macro caches the result of calling
         // `Subscriber::enabled` for each span.
-        let foo_count = Arc::new(AtomicUsize::new(0));
-        let bar_count = Arc::new(AtomicUsize::new(0));
-        let foo_count2 = foo_count.clone();
-        let bar_count2 = bar_count.clone();
+        let alice_count = Arc::new(AtomicUsize::new(0));
+        let bob_count = Arc::new(AtomicUsize::new(0));
+        let alice_count2 = alice_count.clone();
+        let bob_count2 = bob_count.clone();
 
         let subscriber = subscriber::mock()
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
             .with_filter(move |meta| match meta.name {
-                Some("foo") => {
-                    foo_count2.fetch_add(1, Ordering::Relaxed);
+                Some("alice") => {
+                    alice_count2.fetch_add(1, Ordering::Relaxed);
                     false
                 }
-                Some("bar") => {
-                    bar_count2.fetch_add(1, Ordering::Relaxed);
+                Some("bob") => {
+                    bob_count2.fetch_add(1, Ordering::Relaxed);
                     true
                 }
                 _ => false,
             }).run();
 
         Dispatch::to(subscriber).as_default(move || {
-            // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
-            // not "foo."
-            let mut foo = span!("foo");
-            let mut bar = foo.enter(|| {
-                let mut bar = span!("bar");
-                bar.enter(|| ());
-                bar
+            // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
+            // not "alice."
+            let mut alice = span!("alice");
+            let mut bob = alice.enter(|| {
+                let mut bob = span!("bob");
+                bob.enter(|| ());
+                bob
             });
 
             // The filter should have seen each span a single time.
-            assert_eq!(foo_count.load(Ordering::Relaxed), 1);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+            assert_eq!(alice_count.load(Ordering::Relaxed), 1);
+            assert_eq!(bob_count.load(Ordering::Relaxed), 1);
 
-            foo.enter(|| bar.enter(|| {}));
+            alice.enter(|| bob.enter(|| {}));
 
-            // The subscriber should see "bar" again, but the filter should not have
+            // The subscriber should see "bob" again, but the filter should not have
             // been called.
-            assert_eq!(foo_count.load(Ordering::Relaxed), 1);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+            assert_eq!(alice_count.load(Ordering::Relaxed), 1);
+            assert_eq!(bob_count.load(Ordering::Relaxed), 1);
 
-            bar.enter(|| {});
-            assert_eq!(foo_count.load(Ordering::Relaxed), 1);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+            bob.enter(|| {});
+            assert_eq!(alice_count.load(Ordering::Relaxed), 1);
+            assert_eq!(bob_count.load(Ordering::Relaxed), 1);
         });
     }
 
-    #[test]
-    fn filters_are_reevaluated_when_changing_subscribers() {
-        let foo_count = Arc::new(AtomicUsize::new(0));
-        let bar_count = Arc::new(AtomicUsize::new(0));
-
-        let foo_count1 = foo_count.clone();
-        let bar_count1 = bar_count.clone();
-        let subscriber1 = subscriber::mock()
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .with_filter(move |meta| match meta.name {
-                Some("foo") => {
-                    foo_count1.fetch_add(1, Ordering::Relaxed);
-                    false
-                }
-                Some("bar") => {
-                    bar_count1.fetch_add(1, Ordering::Relaxed);
-                    true
-                }
-                _ => false,
-            }).run();
-        let subscriber1 = Dispatch::to(subscriber1);
-
-        let foo_count2 = foo_count.clone();
-        let bar_count2 = bar_count.clone();
-        let subscriber2 = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .with_filter(move |meta| match meta.name {
-                Some("foo") => {
-                    foo_count2.fetch_add(1, Ordering::Relaxed);
-                    true
-                }
-                Some("bar") => {
-                    bar_count2.fetch_add(1, Ordering::Relaxed);
-                    false
-                }
-                _ => false,
-            }).run();
-        let subscriber2 = Dispatch::to(subscriber2);
-
-        let do_test = move |n: usize| {
-            let mut foo = span!("foo");
-            let mut bar = foo.enter(|| {
-                let mut bar = span!("bar");
-                bar.enter(|| ());
-                bar
-            });
-
-            assert_eq!(foo_count.load(Ordering::Relaxed), n);
-            assert_eq!(bar_count.load(Ordering::Relaxed), n);
-
-            foo.enter(|| bar.enter(|| {}));
-
-            assert_eq!(foo_count.load(Ordering::Relaxed), n);
-            assert_eq!(bar_count.load(Ordering::Relaxed), n);
-        };
-
-        subscriber1.as_default(|| {
-            do_test(1);
-        });
-
-        subscriber2.as_default(|| do_test(2));
-
-        subscriber1.as_default(|| do_test(3));
-
-        subscriber2.as_default(|| do_test(4));
-    }
-
-    #[test]
+    // This is no longer testing the expected behaviour.
+    /*
     fn filters_evaluated_across_threads() {
+        ::callsite::reset_registry();
         fn do_test() -> Span {
             let mut foo = span!("foo");
             let mut bar = foo.enter(|| {
@@ -227,100 +131,101 @@ mod tests {
         let mut bar = thread2.join().unwrap();
         bar.enter(|| {});
     }
+    */
 
     #[test]
     fn filters_are_reevaluated_for_different_call_sites() {
         // Asserts that the `span!` macro caches the result of calling
         // `Subscriber::enabled` for each span.
-        let foo_count = Arc::new(AtomicUsize::new(0));
-        let bar_count = Arc::new(AtomicUsize::new(0));
-        let foo_count2 = foo_count.clone();
-        let bar_count2 = bar_count.clone();
+        let charlie_count = Arc::new(AtomicUsize::new(0));
+        let dave_count = Arc::new(AtomicUsize::new(0));
+        let charlie_count2 = charlie_count.clone();
+        let dave_count2 = dave_count.clone();
 
         let subscriber = subscriber::mock()
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .with_filter(move |meta| match meta.name {
-                Some("foo") => {
-                    foo_count2.fetch_add(1, Ordering::Relaxed);
-                    false
+            .with_filter(move |meta| {
+                println!("Filter: {:?}", meta.name);
+                match meta.name {
+                    Some("charlie") => {
+                        charlie_count2.fetch_add(1, Ordering::Relaxed);
+                        false
+                    }
+                    Some("dave") => {
+                        dave_count2.fetch_add(1, Ordering::Relaxed);
+                        true
+                    }
+                    _ => false,
                 }
-                Some("bar") => {
-                    bar_count2.fetch_add(1, Ordering::Relaxed);
-                    true
-                }
-                _ => false,
             }).run();
 
         Dispatch::to(subscriber).as_default(move || {
-            // Enter "foo" and then "bar". The dispatcher expects to see "bar" but
-            // not "foo."
-            let mut foo = span!("foo");
-            let mut bar = foo.enter(|| {
-                let mut bar = span!("bar");
-                bar.enter(|| {});
-                bar
+            // Enter "charlie" and then "dave". The dispatcher expects to see "dave" but
+            // not "charlie."
+            let mut charlie = span!("charlie");
+            let mut dave = charlie.enter(|| {
+                let mut dave = span!("dave");
+                dave.enter(|| {});
+                dave
             });
 
             // The filter should have seen each span a single time.
-            assert_eq!(foo_count.load(Ordering::Relaxed), 1);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+            assert_eq!(charlie_count.load(Ordering::Relaxed), 1);
+            assert_eq!(dave_count.load(Ordering::Relaxed), 1);
 
-            foo.enter(|| bar.enter(|| {}));
+            charlie.enter(|| dave.enter(|| {}));
 
-            // The subscriber should see "bar" again, but the filter should not have
+            // The subscriber should see "dave" again, but the filter should not have
             // been called.
-            assert_eq!(foo_count.load(Ordering::Relaxed), 1);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+            assert_eq!(charlie_count.load(Ordering::Relaxed), 1);
+            assert_eq!(dave_count.load(Ordering::Relaxed), 1);
 
             // A different span with the same name has a different call site, so it
             // should cause the filter to be reapplied.
-            let mut foo2 = span!("foo");
-            foo.enter(|| {});
-            assert_eq!(foo_count.load(Ordering::Relaxed), 2);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 1);
+            let mut charlie2 = span!("charlie");
+            charlie.enter(|| {});
+            assert_eq!(charlie_count.load(Ordering::Relaxed), 2);
+            assert_eq!(dave_count.load(Ordering::Relaxed), 1);
 
-            // But, the filter should not be re-evaluated for the new "foo" span
+            // But, the filter should not be re-evaluated for the new "charlie" span
             // when it is re-entered.
-            foo2.enter(|| span!("bar").enter(|| {}));
-            assert_eq!(foo_count.load(Ordering::Relaxed), 2);
-            assert_eq!(bar_count.load(Ordering::Relaxed), 2);
+            charlie2.enter(|| span!("dave").enter(|| {}));
+            assert_eq!(charlie_count.load(Ordering::Relaxed), 2);
+            assert_eq!(dave_count.load(Ordering::Relaxed), 2);
         });
     }
 
     #[test]
     fn filter_caching_is_lexically_scoped() {
         pub fn my_great_function() -> bool {
-            span!("foo").enter(|| true)
+            span!("emily").enter(|| true)
         }
 
         pub fn my_other_function() -> bool {
-            span!("bar").enter(|| true)
+            span!("frank").enter(|| true)
         }
 
         let count = Arc::new(AtomicUsize::new(0));
         let count2 = count.clone();
 
         let subscriber = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .with_filter(move |_meta| {
-                count2.fetch_add(1, Ordering::Relaxed);
-                true
+            .enter(span::mock().named(Some("emily")))
+            .exit(span::mock().named(Some("emily")))
+            .enter(span::mock().named(Some("emily")))
+            .exit(span::mock().named(Some("emily")))
+            .enter(span::mock().named(Some("frank")))
+            .exit(span::mock().named(Some("frank")))
+            .enter(span::mock().named(Some("emily")))
+            .exit(span::mock().named(Some("emily")))
+            .enter(span::mock().named(Some("frank")))
+            .exit(span::mock().named(Some("frank")))
+            .enter(span::mock().named(Some("emily")))
+            .exit(span::mock().named(Some("emily")))
+            .with_filter(move |meta| match meta.name {
+                Some("emily") | Some("frank") => {
+                    count2.fetch_add(1, Ordering::Relaxed);
+                    true
+                }
+                _ => false,
             }).run();
 
         Dispatch::to(subscriber).as_default(|| {
