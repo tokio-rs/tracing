@@ -10,10 +10,7 @@ use std::{
     cell::RefCell,
     default::Default,
     fmt,
-    sync::{
-        atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
-        Arc,
-    },
+    sync::{Arc, Weak},
 };
 
 thread_local! {
@@ -24,15 +21,15 @@ thread_local! {
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
-    id: usize,
 }
+
+pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
 
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
     pub fn none() -> Self {
         Dispatch {
             subscriber: Arc::new(NoSubscriber),
-            id: 0,
         }
     }
 
@@ -56,11 +53,11 @@ impl Dispatch {
     where
         S: Subscriber + Send + Sync + 'static,
     {
-        static GEN: AtomicUsize = ATOMIC_USIZE_INIT;
-        Dispatch {
+        let me = Dispatch {
             subscriber: Arc::new(subscriber),
-            id: GEN.fetch_add(1, Ordering::AcqRel),
-        }
+        };
+        callsite::register_dispatch(&me);
+        me
     }
 
     /// Sets this dispatch as the default for the duration of a closure.
@@ -82,57 +79,8 @@ impl Dispatch {
         })
     }
 
-    /// Performs an operation if a callsite is enabled.
-    ///
-    /// If the given callsite is enabled for this subscriber, this function
-    /// calls the given closure with the dispatcher and the callsite's metadata,
-    /// and returns the result. Otherwise, it returns `None`.
-    #[inline]
-    pub fn if_enabled<F, T>(self, callsite: &callsite::Callsite, f: F) -> Option<T>
-    where
-        F: FnOnce(Dispatch, &'static Meta<'static>) -> T,
-    {
-        if self.is_enabled(callsite) {
-            return Some(f(self, callsite.metadata()));
-        }
-
-        None
-    }
-
-    #[inline]
-    fn is_invalid(&self, callsite: &callsite::Callsite) -> bool {
-        callsite.0.with(|cache| {
-            // If the callsite was last filtered by a different subscriber, assume
-            // the filter is no longer valid.
-            if cache.cached_filter.get().is_none() || cache.last_filtered_by.get() != self.id {
-                // Update the stamp on the call site so this subscriber is now the
-                // last to filter it.
-                cache.last_filtered_by.set(self.id);
-                return true;
-            }
-
-            // Otherwise, just ask the subscriber what it thinks.
-            self.subscriber.should_invalidate_filter(&cache.meta)
-        })
-    }
-
-    #[inline]
-    fn is_enabled(&self, callsite: &callsite::Callsite) -> bool {
-        if self.is_invalid(callsite) {
-            callsite.0.with(|cache| {
-                let enabled = self.subscriber.enabled(&cache.meta);
-                cache.cached_filter.set(Some(enabled));
-                enabled
-            })
-        } else if let Some(cached) = callsite.0.with(|cache| cache.cached_filter.get()) {
-            cached
-        } else {
-            callsite.0.with(|cache| {
-                let enabled = self.subscriber.enabled(&cache.meta);
-                cache.cached_filter.set(Some(enabled));
-                enabled
-            })
-        }
+    pub(crate) fn registrar(&self) -> Registrar {
+        Registrar(Arc::downgrade(&self.subscriber))
     }
 }
 
@@ -150,13 +98,13 @@ impl Default for Dispatch {
 
 impl Subscriber for Dispatch {
     #[inline]
-    fn new_span(&self, span: span::Data) -> span::Id {
-        self.subscriber.new_span(span)
+    fn register_callsite(&self, metadata: &Meta) -> subscriber::Interest {
+        self.subscriber.register_callsite(metadata)
     }
 
     #[inline]
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
-        self.subscriber.should_invalidate_filter(metadata)
+    fn new_span(&self, span: span::Data) -> span::Id {
+        self.subscriber.new_span(span)
     }
 
     #[inline]
@@ -241,4 +189,10 @@ impl Subscriber for NoSubscriber {
     fn exit(&self, _span: span::Id) {}
 
     fn close(&self, _span: span::Id) {}
+}
+
+impl Registrar {
+    pub(crate) fn try_register(&self, metadata: &Meta) -> Option<subscriber::Interest> {
+        self.0.upgrade().map(|s| s.register_callsite(metadata))
+    }
 }

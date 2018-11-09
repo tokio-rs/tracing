@@ -71,6 +71,9 @@
 //! [metadata]: struct.Meta.html
 #![warn(missing_docs)]
 
+#[macro_use]
+extern crate lazy_static;
+
 use std::{borrow::Borrow, fmt, slice};
 
 #[macro_export]
@@ -102,12 +105,42 @@ macro_rules! callsite {
         })
     });
     (@ $meta:expr ) => ({
-        use $crate::{callsite, Meta};
+        use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
+        use $crate::{callsite, Meta, subscriber::{Subscriber, Interest}};
         static META: Meta<'static> = $meta;
-        thread_local! {
-            static CACHE: callsite::Cache<'static> = callsite::Cache::new(&META);
+        static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
+        static REGISTRATION: Once = Once::new();
+        struct MyCallsite;
+        impl callsite::Callsite for MyCallsite {
+            fn is_enabled(&self, dispatch: &Dispatch) -> bool {
+                let current_interest = INTEREST.load(Ordering::Relaxed);
+                match Interest::from_usize(current_interest) {
+                    Some(Interest::ALWAYS) => true,
+                    Some(Interest::NEVER) => false,
+                    _ => dispatch.enabled(&META),
+                }
+            }
+            fn add_interest(&self, interest: Interest) {
+                let current_interest = INTEREST.load(Ordering::Relaxed);
+                match Interest::from_usize(current_interest) {
+                    Some(current) if interest > current =>
+                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
+                    None =>
+                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
+                    _ => {}
+                }
+            }
+            fn remove_interest(&self) {
+                INTEREST.store(0, Ordering::Relaxed);
+            }
+            fn metadata(&self) -> &Meta {
+                &META
+            }
         }
-        callsite::Callsite::new(&CACHE)
+        REGISTRATION.call_once(|| {
+            callsite::register(&MyCallsite);
+        });
+        &MyCallsite
     })
 }
 
@@ -137,8 +170,8 @@ pub enum Level {
     Trace,
 }
 
-#[doc(hidden)]
 pub mod callsite;
+#[doc(hidden)]
 pub mod dispatcher;
 pub mod field;
 pub mod span;

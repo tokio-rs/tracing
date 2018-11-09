@@ -76,10 +76,6 @@ impl Subscriber for CounterSubscriber {
             .any(|f| f.name().map(|name| name.contains("count")).unwrap_or(false))
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
-        false
-    }
-
     fn observe_event<'a>(&self, _event: &'a Event<'a>) {}
 
     fn enter(&self, _span: span::Id) {}

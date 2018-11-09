@@ -36,6 +36,64 @@ use {span, Event, IntoValue, Key, Meta, SpanId};
 pub trait Subscriber {
     // === Span registry methods ==============================================
 
+    /// Registers a new callsite with this subscriber, returning whether or not
+    /// the subscriber is interested in being notified about the callsite.
+    ///
+    /// By default, this function assumes that the subscriber's filter
+    /// represents an unchanging view of its interest in the callsite. However,
+    /// if this is not the case, subscribers may override this function to
+    /// indicate different interests, or to implement behaviour that should run
+    /// once for every callsite.
+    ///
+    /// This function is guaranteed to be called exactly once per callsite on
+    /// every active subscriber. The subscriber may store the keys to fields it
+    /// cares in order to reduce the cost of accessing fields by name,
+    /// preallocate storage for that callsite, or perform any other actions it
+    /// wishes to perform once for each callsite.
+    ///
+    /// The subscriber should then return an [`Interest`](Interest), indicating
+    /// whether it is interested in being notified about that callsite in the
+    /// future. This may be `Always` indicating that the subscriber always
+    /// wishes to be notified about the callsite, and its filter need not be
+    /// re-evaluated; `Sometimes`, indicating that the subscriber may sometimes
+    /// care about the callsite but not always (such as when sampling), or
+    /// `Never`, indicating that the subscriber never wishes to be notified about
+    /// that callsite. If all active subscribers return `Never`, a callsite will
+    /// never be enabled unless a new subscriber expresses interest in it.
+    ///
+    /// `Subscriber`s which require their filters to be run every time an event
+    /// occurs or a span is entered/exited should return `Interest::Sometimes`.
+    ///
+    /// For example, suppose a sampling subscriber is implemented by
+    /// incrementing a counter every time `enabled` is called and only returning
+    /// `true` when the counter is divisible by a specified sampling rate. If
+    /// that subscriber returns `Interest::Always` from `register_callsite`, then
+    /// the filter will not be re-evaluated once it has been applied to a given
+    /// set of metadata. Thus, the counter will not be incremented, and the span
+    /// or event that correspands to the metadata will never be `enabled`.
+    ///
+    /// Similarly, if a `Subscriber` has a filtering strategy that can be
+    /// changed dynamically at runtime, it would need to re-evaluate that filter
+    /// if the cached results have changed.
+    // TODO: there should be a function to request all callsites be
+    // re-registered?
+    ///
+    /// A subscriber which manages fanout to multiple other subscribers
+    /// should proxy this decision to all of its child subscribers,
+    /// returning `Interest::Never` only if _all_ such children return
+    /// `Interest::Never`. If the set of subscribers to which spans are
+    /// broadcast may change dynamically, the subscriber should also never
+    /// return `Interest::Never`, as a new subscriber may be added that _is_
+    /// interested.
+    ///
+    /// **Note**: If a subscriber returns `Interest::Never` for a particular
+    /// callsite, it _may_ still see spans and events originating from that
+    /// callsite, if another subscriber expressed interest in it.
+    /// [metadata]: ::Meta [`enabled`]: ::Subscriber::enabled
+    fn register_callsite(&self, metadata: &Meta) -> Interest {
+        Interest::from_filter(self.enabled(metadata))
+    }
+
     /// Record the construction of a new [`Span`], returning a a new [span ID] for
     /// the span being constructed.
     ///
@@ -55,9 +113,6 @@ pub trait Subscriber {
     /// [span ID]: ::span::Id
     /// [`Span`]: ::span::Span
     fn new_span(&self, span: span::Data) -> span::Id;
-
-    // // XXX: should this be a subscriber method or should it have its own type???
-    // fn span_data(&self, id: &span::Id) -> Option<&span::Data>;
 
     /// Adds a new field to an existing span observed by this `Subscriber`.
     ///
@@ -105,39 +160,6 @@ pub trait Subscriber {
     ///
     /// [metadata]: ::Meta
     fn enabled(&self, metadata: &Meta) -> bool;
-
-    /// Returns `true` if the cached result to a call to [`enabled`] for a span
-    /// with the given metadata is still valid.
-    ///
-    /// By default, this function assumes that cached filter results will remain
-    /// valid, but should be overridden when this is not the case.
-    ///
-    /// If this returns `false`, then the prior value may be used. `Subscriber`s
-    /// which require their filters to be run every time an event occurs or a
-    /// span is entered/exited should always return `true`.
-    ///
-    /// For example, suppose a sampling subscriber is implemented by
-    /// incrementing a counter every time `enabled` is called and only returning
-    /// `true` when the counter is divisible by a specified sampling rate. If
-    /// that subscriber returns `false` from `should_invalidate_filter`, then
-    /// the filter will not be re-evaluated once it has been applied to a given
-    /// set of metadata. Thus, the counter will not be incremented, and the span
-    /// or event that correspands to the metadata will never be `enabled`.
-    ///
-    /// Similarly, if a `Subscriber` has a filtering strategy that can be
-    /// changed dynamically at runtime, it would need to invalidate any cached
-    /// filter results when the filtering rules change.
-    ///
-    /// A subscriber which manages fanout to multiple other subscribers should
-    /// proxy this decision to all of its child subscribers, returning `false`
-    /// only if _all_ such children return `false`. If the set of subscribers to
-    /// which spans are broadcast may change dynamically, adding a new
-    /// subscriber should also invalidate cached filters.
-    ///
-    /// [metadata]: ::Meta [`enabled`]: ::Subscriber::enabled
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
-        false
-    }
 
     // === Notification methods ===============================================
 
@@ -188,6 +210,17 @@ pub trait Subscriber {
     fn close(&self, span: SpanId);
 }
 
+/// Indicates a `Subscriber`'s interest in a particular callsite.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Interest(InterestKind);
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+enum InterestKind {
+    Never = 0,
+    Sometimes = 1,
+    Always = 2,
+}
+
 /// Errors which may prevent a value from being successfully added to a span.
 // TODO: before releasing core 0.1 this needs to be made private, to avoid
 // future breaking changes.
@@ -212,6 +245,55 @@ pub enum FollowsError {
     NoSpan(SpanId),
     /// The span that this span follows from does not exist (it has no ID).
     NoPreceedingId,
+}
+
+impl Interest {
+    /// Construct a new `Interest` from the result of evaluating a filter.
+    pub fn from_filter(filter: bool) -> Self {
+        match filter {
+            true => Interest::ALWAYS,
+            false => Interest::NEVER,
+        }
+    }
+
+    /// Indicates that the subscriber is never interested in being notified
+    /// about a callsite.
+    ///
+    /// If all active subscribers are `NEVER` interested in a callsite, it will
+    /// be completely disabled unless a new subscriber becomes active.
+    pub const NEVER: Interest = Interest(InterestKind::Never);
+
+    /// Indicates that the subscriber is sometimes interested in being
+    /// notified about a callsite.
+    ///
+    /// If all active subscribers are `sometimes` or `never` interested in a
+    /// callsite, the currently active subscriber will be asked to filter that
+    /// callsite every time it creates a span or event. This will be the case
+    /// until a subscriber expresses that it is `always` interested in the
+    /// callsite.
+    pub const SOMETIMES: Interest = Interest(InterestKind::Sometimes);
+
+    /// Indicates that the subscriber is always interested in being
+    /// notified about a callsite.
+    ///
+    /// If any subscriber expresses that it is `ALWAYS` interested in a given
+    /// callsite, then the callsite will always be enabled.
+    pub const ALWAYS: Interest = Interest(InterestKind::Always);
+
+    /// Constructs a new `Interest` from a `usize`.
+    pub fn from_usize(u: usize) -> Option<Self> {
+        match u {
+            0 => Some(Interest::NEVER),
+            1 => Some(Interest::SOMETIMES),
+            2 => Some(Interest::ALWAYS),
+            _ => None,
+        }
+    }
+
+    /// Returns an `usize` representing this `Interest`.
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -360,6 +442,7 @@ mod test_support {
         }
 
         fn enter(&self, span: span::Id) {
+            println!("enter: {:?}", span);
             let spans = self.spans.lock().unwrap();
             let span = spans
                 .get(&span)
@@ -394,6 +477,7 @@ mod test_support {
         }
 
         fn exit(&self, span: span::Id) {
+            println!("exit: {:?}", span);
             let spans = self.spans.lock().unwrap();
             let span = spans
                 .get(&span)

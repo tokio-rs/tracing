@@ -98,11 +98,6 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
-        self.filter.should_invalidate_filter(metadata)
-            || self.observer.filter().should_invalidate_filter(metadata)
-    }
-
     fn new_span(&self, new_span: SpanData) -> span::Id {
         self.registry.new_span(new_span)
     }
