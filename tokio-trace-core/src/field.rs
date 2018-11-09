@@ -1,4 +1,4 @@
-//! Arbitrarily-typed field values.
+//! `Span` and `Event` key-value data.
 //!
 //! Spans and events may be annotated with key-value data, referred to as known
 //! as _fields_. These fields consist of a mapping from a `&'static str` to a
@@ -56,6 +56,7 @@
 //! indefinitely, they are not heap-allocated by default, to avoid unnecessary
 //! allocations, but the `IntoValue` trait presents `Subscriber`s with the
 //! _option_ to box values should they need to do so.
+use super::Meta;
 use std::{any::TypeId, borrow::Borrow, fmt};
 
 /// A formattable field value of an erased type.
@@ -99,6 +100,20 @@ pub trait IntoValue: AsValue {
     fn into_value(&self) -> OwnedValue;
 }
 
+/// An opaque key allowing _O_(1) access to a field in a `Span` or `Event`'s
+/// key-value data.
+///
+/// As keys are defined by the _metadata_ of a span or event, rather than by an
+/// individual instance of a span or event, a key may be used to access the same
+/// field across all instances of a given span or event with the same metadata.
+/// Thus, when a subscriber observes a new span or event, it need only access a
+/// field by name _once_, and use the key for that name for all other accesses.
+#[derive(Clone, Eq, PartialEq, Hash)]
+pub struct Key<'a> {
+    i: usize,
+    metadata: &'a Meta<'a>,
+}
+
 /// A borrowed value of an erased type.
 ///
 /// Like `Any`,`BorrowedValue`s may attempt to downcast the value to
@@ -134,7 +149,7 @@ pub fn borrowed<'a>(t: &'a dyn AsValue) -> BorrowedValue<'a> {
 /// # Examples
 /// ```
 /// # extern crate tokio_trace_core as tokio_trace;
-/// use tokio_trace::value;
+/// use tokio_trace::field;
 /// # use std::fmt;
 /// # fn main() {
 ///
@@ -150,10 +165,10 @@ pub fn borrowed<'a>(t: &'a dyn AsValue) -> BorrowedValue<'a> {
 /// let foo = Foo;
 /// assert_eq!("Foo".to_owned(), format!("{:?}", foo));
 ///
-/// let display_foo = value::display(foo.clone());
+/// let display_foo = field::display(foo.clone());
 /// assert_eq!(
 ///     format!("{}", foo),
-///     format!("{:?}", value::borrowed(&display_foo)),
+///     format!("{:?}", field::borrowed(&display_foo)),
 /// );
 /// # }
 /// ```
@@ -171,8 +186,8 @@ pub fn borrowed<'a>(t: &'a dyn AsValue) -> BorrowedValue<'a> {
 /// #       f.pad("Hello, I'm Foo")
 /// #   }
 /// # }
-/// use tokio_trace::value::{self, Value, IntoValue};
-/// let foo = value::display(Foo);
+/// use tokio_trace::field::{self, Value, IntoValue};
+/// let foo = field::display(Foo);
 ///
 /// let owned_value = foo.into_value();
 /// assert_eq!("Hello, I'm Foo".to_owned(), format!("{:?}", owned_value));
@@ -324,6 +339,59 @@ impl<'a> Value for &'a OwnedValue {
 impl fmt::Debug for OwnedValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt_value(f)
+    }
+}
+
+// ===== impl Field =====
+
+impl<'a> Key<'a> {
+    pub(crate) fn new(i: usize, metadata: &'a Meta<'a>) -> Self {
+        Self { i, metadata }
+    }
+
+    pub(crate) fn as_usize(&self) -> usize {
+        self.i
+    }
+
+    pub(crate) fn metadata(&self) -> &Meta<'a> {
+        self.metadata
+    }
+
+    /// Returns a string representing the name of the field, or `None` if the
+    /// field does not exist.
+    pub fn name(&self) -> Option<&'a str> {
+        self.metadata.field_names.get(self.i).map(|&n| n)
+    }
+
+    /// If `self` indexes the given `metadata`, returns a new key into that
+    /// metadata. Otherwise, returns `None`.
+    ///
+    /// This is essentially just a trick to tell the compiler that the lifetine
+    /// parameters of two references to a metadata are equal if they are the
+    /// same metadata (which can't be inferred when dealing with metadata with
+    /// generic lifetimes).
+    #[inline]
+    pub fn with_metadata<'b>(&self, metadata: &'b Meta<'b>) -> Option<Key<'b>> {
+        if self.metadata == metadata {
+            Some(Key {
+                i: self.i,
+                metadata,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> fmt::Display for Key<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(self.name().unwrap_or("???"))
+    }
+}
+
+impl<'a> AsRef<str> for Key<'a> {
+    fn as_ref(&self) -> &str {
+        self.name().unwrap_or("???")
     }
 }
 

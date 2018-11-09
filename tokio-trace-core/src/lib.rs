@@ -71,7 +71,7 @@
 //! [metadata]: struct.Meta.html
 #![warn(missing_docs)]
 
-use std::{fmt, slice};
+use std::{borrow::Borrow, fmt, slice};
 
 #[macro_export]
 macro_rules! callsite {
@@ -139,19 +139,18 @@ pub enum Level {
 
 #[doc(hidden)]
 pub mod callsite;
-
 pub mod dispatcher;
+pub mod field;
 pub mod span;
 pub mod subscriber;
-pub mod value;
 
 pub use self::{
     dispatcher::Dispatch,
+    field::{AsValue, IntoValue, Key, Value},
     span::{Data as SpanData, Id as SpanId, Span},
     subscriber::Subscriber,
-    value::{AsValue, IntoValue, Value},
 };
-use value::BorrowedValue;
+use field::BorrowedValue;
 
 /// `Event`s represent single points in time where something occurred during the
 /// execution of a program.
@@ -204,10 +203,13 @@ pub struct Event<'a> {
 /// Therefore, filtering is based on metadata, rather than  on the constructed
 /// span or event.
 ///
+/// **Note**: The implementation of `PartialEq` for `Meta` is address-based,
+/// *not* structural equality. This is intended as a performance optimization,
+/// as metadata are intended to be created statically once per callsite.
 /// [`Span`]: ::span::Span
 /// [`Event`]: ::Event
 /// [`Subscriber`]: ::Subscriber
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub struct Meta<'a> {
     /// If this metadata describes a span, the name of the span.
     pub name: Option<&'a str>,
@@ -314,6 +316,36 @@ impl<'a> Meta<'a> {
             _ => false,
         }
     }
+
+    /// Returns an iterator over the fields defined by this set of metadata.
+    pub fn fields(&'a self) -> impl Iterator<Item = field::Key<'a>> {
+        (0..self.field_names.len()).map(move |i| Key::new(i, self))
+    }
+
+    /// Returns a [`Key`](::field::Key) to the field corresponding to `name`, if
+    /// one exists, or `None` if no such field exists.
+    pub fn key_for<Q>(&'a self, name: &Q) -> Option<field::Key<'a>>
+    where
+        Q: Borrow<str>,
+    {
+        let name = &name.borrow();
+        self.field_names
+            .iter()
+            .position(|f| f == name)
+            .map(|i| Key::new(i, self))
+    }
+
+    /// Returns `true` if `self` contains a field for the given `key`.
+    pub fn contains_key(&self, key: &field::Key<'a>) -> bool {
+        key.metadata() == self && key.as_usize() <= self.field_names.len()
+    }
+}
+
+impl<'a> PartialEq for Meta<'a> {
+    #[inline]
+    fn eq(&self, other: &Meta<'a>) -> bool {
+        ::std::ptr::eq(self, other)
+    }
 }
 
 // ===== impl Event =====
@@ -324,57 +356,61 @@ impl<'a> Event<'a> {
         self.meta.field_names.iter()
     }
 
+    /// Returns true if this event has a field for the specified `key`.
+    #[inline]
+    pub fn has_field(&self, key: &field::Key) -> bool {
+        self.meta.contains_key(key)
+    }
+
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
     /// returns `None`.
-    pub fn field<Q>(&self, name: Q) -> Option<value::BorrowedValue>
-    where
-        &'a str: PartialEq<Q>,
-    {
-        self.field_names()
-            .position(|&field_name| field_name == name)
-            .and_then(|i| self.field_values.get(i).map(|&val| value::borrowed(val)))
+    pub fn field(&self, key: &field::Key) -> Option<field::BorrowedValue> {
+        if !self.has_field(key) {
+            return None;
+        }
+        self.field_values
+            .get(key.as_usize())
+            .map(|&val| field::borrowed(val))
     }
 
     /// Returns an iterator over all the field names and values on this event.
-    pub fn fields<'b: 'a>(&'b self) -> impl Iterator<Item = (&'a str, BorrowedValue<'b>)> {
-        self.field_names()
-            .enumerate()
-            .filter_map(move |(idx, &name)| {
-                self.field_values
-                    .get(idx)
-                    .map(|&val| (name, value::borrowed(val)))
-            })
+    pub fn fields<'b: 'a>(&'b self) -> impl Iterator<Item = (field::Key<'a>, BorrowedValue<'b>)> {
+        self.meta.fields().filter_map(move |key| {
+            let val = self.field(&key)?;
+            Some((key, val))
+        })
     }
 
     /// Returns a struct that can be used to format all the fields on this
     /// `Event` with `fmt::Debug`.
-    pub fn debug_fields<'b: 'a>(&'b self) -> DebugFields<'b, Self, BorrowedValue<'b>> {
+    pub fn debug_fields<'b: 'a>(&'b self) -> DebugFields<'b, 'b, Self, BorrowedValue<'a>> {
         DebugFields(self)
     }
 }
 
 impl<'a> IntoIterator for &'a Event<'a> {
-    type Item = (&'a str, BorrowedValue<'a>);
-    type IntoIter = Box<Iterator<Item = (&'a str, BorrowedValue<'a>)> + 'a>; // TODO: unbox
+    type Item = (field::Key<'a>, BorrowedValue<'a>);
+    type IntoIter = Box<Iterator<Item = (field::Key<'a>, BorrowedValue<'a>)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
     }
 }
 
 /// Formats the key-value fields of a `Span` or `Event` with `fmt::Debug`.
-pub struct DebugFields<'a, I: 'a, T: 'a>(&'a I)
+pub struct DebugFields<'a, 'b: 'a, I: 'a, T: 'a>(&'a I)
 where
-    &'a I: IntoIterator<Item = (&'a str, T)>;
+    &'a I: IntoIterator<Item = (field::Key<'b>, T)>;
 
-impl<'a, I: 'a, T: 'a> fmt::Debug for DebugFields<'a, I, T>
+impl<'a, 'b: 'a, I: 'a, T: 'a> fmt::Debug for DebugFields<'a, 'b, I, T>
 where
-    &'a I: IntoIterator<Item = (&'a str, T)>,
+    &'a I: IntoIterator<Item = (field::Key<'b>, T)>,
     T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0
             .into_iter()
-            .fold(&mut f.debug_struct(""), |s, (name, value)| {
+            .fold(&mut f.debug_struct(""), |s, (key, value)| {
+                let name = key.name().unwrap_or("???");
                 s.field(name, &value)
             }).finish()
     }

@@ -203,7 +203,7 @@ pub use tokio_trace_core::span::{mock, MockSpan};
 
 use std::sync::Arc;
 use tokio_trace_core::span::Enter;
-use {subscriber, IntoValue};
+use {field, subscriber, IntoValue};
 
 /// Trait for converting a `Span` into a cloneable `Shared` span.
 pub trait IntoShared {
@@ -211,6 +211,26 @@ pub trait IntoShared {
     ///
     /// This will allocate memory to store the span if the span is enabled.
     fn into_shared(self) -> Shared;
+}
+
+pub trait SpanExt: ::sealed::Sealed {
+    fn add_value_for<Q: ?Sized>(
+        &mut self,
+        field: &Q,
+        value: &dyn IntoValue,
+    ) -> Result<(), subscriber::AddValueError>
+    where
+        Q: field::AsKey;
+
+    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
+    where
+        Q: field::AsKey;
+}
+
+pub trait DataExt: SpanExt {
+    fn field_for<Q: ?Sized + field::AsKey>(&self, field: &Q) -> Option<&field::OwnedValue>
+    where
+        Q: field::AsKey;
 }
 
 impl IntoShared for Span {
@@ -291,15 +311,19 @@ impl Shared {
     /// `name` must name a field already defined by this span's metadata, and
     /// the field must not already have a value. If this is not the case, this
     /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(
+    pub fn add_value<Q: field::AsKey>(
         &self,
-        field: &'static str,
+        field: &Q,
         value: &dyn IntoValue,
     ) -> Result<(), subscriber::AddValueError> {
-        self.inner
-            .as_ref()
-            .map(|inner| inner.add_value(field, value))
-            .unwrap_or(Ok(()))
+        if let Some(ref inner) = self.inner {
+            let field = field
+                .as_key(inner.metadata())
+                .ok_or(subscriber::AddValueError::NoField)?;
+            inner.add_value(&field, value)
+        } else {
+            Ok(())
+        }
     }
 
     /// Indicates that the span with the given ID has an indirect causal
@@ -322,6 +346,70 @@ impl Shared {
             .as_ref()
             .map(move |inner| inner.follows_from(from))
             .unwrap_or(Ok(()))
+    }
+}
+
+impl ::sealed::Sealed for Span {}
+
+impl SpanExt for Span {
+    fn add_value_for<Q: ?Sized>(
+        &mut self,
+        field: &Q,
+        value: &dyn IntoValue,
+    ) -> Result<(), subscriber::AddValueError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field
+                .as_key(meta)
+                .ok_or(subscriber::AddValueError::NoField)?;
+            self.add_value(&key, value)
+        } else {
+            Ok(())
+        }
+    }
+    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
+    where
+        Q: field::AsKey,
+    {
+        self.metadata()
+            .and_then(|meta| field.as_key(meta))
+            .is_some()
+    }
+}
+
+impl ::sealed::Sealed for Data {}
+
+impl SpanExt for Data {
+    fn add_value_for<Q: ?Sized>(
+        &mut self,
+        field: &Q,
+        value: &dyn IntoValue,
+    ) -> Result<(), subscriber::AddValueError>
+    where
+        Q: field::AsKey,
+    {
+        let key = field
+            .as_key(self.meta())
+            .ok_or(subscriber::AddValueError::NoField)?;
+        self.add_value(&key, value)
+    }
+
+    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
+    where
+        Q: field::AsKey,
+    {
+        field.as_key(self.meta()).is_some()
+    }
+}
+
+impl DataExt for Data {
+    fn field_for<Q: ?Sized>(&self, field: &Q) -> Option<&field::OwnedValue>
+    where
+        Q: field::AsKey,
+    {
+        self.field(&field.as_key(self.meta())?)
     }
 }
 
