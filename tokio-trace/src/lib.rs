@@ -156,7 +156,6 @@ pub mod span;
 pub mod subscriber;
 
 pub use self::{
-    callsite::Callsite,
     dispatcher::Dispatch,
     field::{AsValue, IntoValue, Value},
     span::{Data as SpanData, Id as SpanId, Span},
