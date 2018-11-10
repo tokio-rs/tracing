@@ -146,24 +146,25 @@ impl Span {
                 is_closed: false,
             };
         }
-        let dispatch = Dispatch::current();
-        let meta = callsite.metadata();
-        if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
-            return Span {
-                inner: None,
+        Dispatch::with_current(|dispatch| {
+            let meta = callsite.metadata();
+            if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
+                return Span {
+                    inner: None,
+                    is_closed: false,
+                };
+            }
+            let parent = Id::current();
+            let attrs = Attributes::new(parent.clone(), meta);
+            let id = dispatch.new_span(attrs);
+            let inner = Some(Enter::new(id, dispatch, parent, meta));
+            let mut span = Self {
+                inner,
                 is_closed: false,
             };
-        }
-        let parent = Id::current();
-        let attrs = Attributes::new(parent.clone(), meta);
-        let id = dispatch.new_span(attrs);
-        let inner = Some(Enter::new(id, dispatch, parent, meta));
-        let mut span = Self {
-            inner,
-            is_closed: false,
-        };
-        if_enabled(&mut span);
-        span
+            if_enabled(&mut span);
+            span
+        })
     }
 
     /// Returns a reference to the span that this thread is currently
@@ -478,10 +479,10 @@ impl Enter {
         self.meta
     }
 
-    fn new(id: Id, subscriber: Dispatch, parent: Option<Id>, meta: &'static StaticMeta) -> Self {
+    fn new(id: Id, subscriber: &Dispatch, parent: Option<Id>, meta: &'static StaticMeta) -> Self {
         Self {
             id,
-            subscriber,
+            subscriber: subscriber.clone(),
             parent,
             wants_close: AtomicBool::from(false),
             has_entered: AtomicBool::from(false),
