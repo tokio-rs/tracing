@@ -134,6 +134,7 @@ impl Span {
     /// [current span]: ::span::Span::current
     /// [field values]: ::span::Span::add_value
     /// [`follows_from` annotations]: ::span::Span::follows_from
+    #[inline]
     pub fn new<F>(callsite: &'static dyn Callsite, if_enabled: F) -> Span
     where
         F: FnOnce(&mut Span),
