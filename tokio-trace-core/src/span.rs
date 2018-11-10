@@ -10,7 +10,7 @@ use std::{
 use {
     callsite::Callsite,
     field::{IntoValue, Key, OwnedValue},
-    subscriber::{AddValueError, FollowsError, Subscriber},
+    subscriber::{AddValueError, FollowsError, Interest, Subscriber},
     DebugFields, Dispatch, Meta, StaticMeta,
 };
 
@@ -138,25 +138,31 @@ impl Span {
     where
         F: FnOnce(&mut Span),
     {
-        let dispatch = Dispatch::current();
-        if callsite.is_enabled(&dispatch) {
-            let meta = callsite.metadata();
-            let parent = Id::current();
-            let data = Attributes::new(parent.clone(), meta);
-            let id = dispatch.new_span(data);
-            let inner = Some(Enter::new(id, dispatch, parent, meta));
-            let mut span = Self {
-                inner,
-                is_closed: false,
-            };
-            if_enabled(&mut span);
-            span
-        } else {
-            Span {
+        let interest = callsite.interest();
+        if interest == Interest::NEVER {
+            return Span {
                 inner: None,
                 is_closed: false,
-            }
+            };
         }
+        let dispatch = Dispatch::current();
+        let meta = callsite.metadata();
+        if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
+            return Span {
+                inner: None,
+                is_closed: false,
+            };
+        }
+        let parent = Id::current();
+        let attrs = Attributes::new(parent.clone(), meta);
+        let id = dispatch.new_span(attrs);
+        let inner = Some(Enter::new(id, dispatch, parent, meta));
+        let mut span = Self {
+            inner,
+            is_closed: false,
+        };
+        if_enabled(&mut span);
+        span
     }
 
     /// Returns a reference to the span that this thread is currently

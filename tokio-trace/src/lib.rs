@@ -31,19 +31,15 @@ macro_rules! callsite {
     });
     (@ $meta:expr ) => ({
         use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
-        use $crate::{callsite, Meta, subscriber::{Subscriber, Interest}};
+        use $crate::{callsite, Meta, subscriber::{Interest}};
         static META: Meta<'static> = $meta;
         static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
         static REGISTRATION: Once = Once::new();
         struct MyCallsite;
         impl callsite::Callsite for MyCallsite {
-            fn is_enabled(&self, dispatch: &Dispatch) -> bool {
-                let current_interest = INTEREST.load(Ordering::Relaxed);
-                match Interest::from_usize(current_interest) {
-                    Some(Interest::ALWAYS) => true,
-                    Some(Interest::NEVER) => false,
-                    _ => dispatch.enabled(&META),
-                }
+            fn interest(&self) -> Interest {
+                Interest::from_usize(INTEREST.load(Ordering::Relaxed))
+                    .unwrap_or(Interest::SOMETIMES)
             }
             fn add_interest(&self, interest: Interest) {
                 let current_interest = INTEREST.load(Ordering::Relaxed);
@@ -100,8 +96,7 @@ macro_rules! span {
     ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
-            use $crate::{callsite, Dispatch, Span};
-            use $crate::callsite::Callsite;
+            use $crate::{callsite, callsite::Callsite, Span};
             let callsite = callsite! { span: $name, $( $k ),* };
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
@@ -129,7 +124,7 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{callsite, Dispatch, SpanData, SpanId, Subscriber, Event, field::AsValue};
+            use $crate::{callsite, SpanData, SpanId, Subscriber, Event, field::AsValue};
             use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,

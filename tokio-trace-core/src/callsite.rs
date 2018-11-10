@@ -21,10 +21,8 @@ struct Registry {
 
 /// Trait implemented by callsites.
 pub trait Callsite: Sync {
-    /// Returns `true` if the callsite is enabled for the given [dispatcher].
-    ///
-    /// [dispatcher]: ::Dispatch
-    fn is_enabled(&self, dispatch: &Dispatch) -> bool;
+    /// Returns the callsite's current Interest.
+    fn interest(&self) -> Interest;
 
     /// Adds the [`Interest`] returned by [registering] the callsite with a
     /// [dispatcher].

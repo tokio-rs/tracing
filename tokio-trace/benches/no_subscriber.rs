@@ -1,6 +1,8 @@
 #![feature(test)]
 #[macro_use]
 extern crate tokio_trace;
+#[macro_use]
+extern crate log;
 extern crate test;
 use test::Bencher;
 
@@ -10,6 +12,17 @@ fn bench_span_no_subscriber(b: &mut Bencher) {
     b.iter(|| {
         (0..n).fold(0, |old, new| {
             span!("span");
+            old ^ new
+        })
+    });
+}
+
+#[bench]
+fn bench_log_no_logger(b: &mut Bencher) {
+    let n = test::black_box(1);
+    b.iter(|| {
+        (0..n).fold(0, |old, new| {
+            log!(log::Level::Info, "log");
             old ^ new
         })
     });
