@@ -40,26 +40,16 @@ pub struct Span {
     is_closed: bool,
 }
 
-/// Representation of the data associated with a span.
-///
-/// This has the potential to outlive the span itself if it exists after the
-/// span completes executing --- such as if it is still being processed by a
-/// subscriber.
+/// A set of attributes describing a new `Span`.
 ///
 /// This may *not* be used to enter the span.
-pub struct Data {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Attributes {
     /// The span ID of the parent span, or `None` if that span does not exist.
-    pub parent: Option<Id>,
+    parent: Option<Id>,
 
     /// Metadata describing this span.
-    pub static_meta: &'static StaticMeta,
-
-    /// The values of the fields attached to this span.
-    ///
-    /// These may be `None` if a field was defined but the value has yet to be
-    /// attached. The name of the field at each index is defined by
-    /// `self.static_meta.field_names[i]`.
-    pub field_values: Vec<Option<OwnedValue>>,
+    metadata: &'static Meta<'static>,
 }
 
 /// Identifies a span within the context of a process.
@@ -152,7 +142,7 @@ impl Span {
         if callsite.is_enabled(&dispatch) {
             let meta = callsite.metadata();
             let parent = Id::current();
-            let data = Data::new(parent.clone(), meta);
+            let data = Attributes::new(parent.clone(), meta);
             let id = dispatch.new_span(data);
             let inner = Some(Enter::new(id, dispatch, parent, meta));
             let mut span = Self {
@@ -302,26 +292,16 @@ impl fmt::Debug for Span {
     }
 }
 
-// ===== impl Data =====
+// ===== impl Attributes =====
 
-impl Data {
-    fn new(parent: Option<Id>, static_meta: &'static StaticMeta) -> Self {
-        // Preallocate enough `None`s to hold the unset state of every field
-        // name.
-        let field_values = iter::repeat(())
-            .map(|_| None)
-            .take(static_meta.field_names.len())
-            .collect();
-        Data {
-            parent,
-            static_meta,
-            field_values,
-        }
+impl Attributes {
+    fn new(parent: Option<Id>, metadata: &'static StaticMeta) -> Self {
+        Attributes { parent, metadata }
     }
 
     /// Returns the name of this span, or `None` if it is unnamed,
     pub fn name(&self) -> Option<&'static str> {
-        self.static_meta.name
+        self.metadata.name
     }
 
     /// Returns the `Id` of the parent of this span, if one exists.
@@ -330,13 +310,13 @@ impl Data {
     }
 
     /// Borrows this span's metadata.
-    pub fn meta(&self) -> &'static StaticMeta {
-        self.static_meta
+    pub fn metadata(&self) -> &'static StaticMeta {
+        self.metadata
     }
 
     /// Returns an iterator over the names of all the fields on this span.
     pub fn field_keys(&self) -> impl Iterator<Item = Key<'static>> {
-        self.static_meta.fields()
+        self.metadata.fields()
     }
 
     /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
@@ -345,76 +325,14 @@ impl Data {
     where
         Q: Borrow<str>,
     {
-        self.static_meta.key_for(name)
+        self.metadata.key_for(name)
     }
 
     /// Returns true if a field named 'name' has been declared on this span,
     /// even if the field does not currently have a value.
     #[inline]
     pub fn has_field(&self, key: &Key) -> bool {
-        self.static_meta.contains_key(key)
-    }
-
-    /// Borrows the value of the field named `name`, if it exists. Otherwise,
-    /// returns `None`.
-    pub fn field(&self, key: &Key) -> Option<&OwnedValue> {
-        if !self.has_field(key) {
-            return None;
-        }
-
-        let i = key.as_usize();
-        self.field_values.get(i)?.as_ref()
-    }
-
-    /// Returns an iterator over all the field names and values on this span.
-    pub fn fields<'a>(&'a self) -> impl Iterator<Item = (Key<'static>, &'a OwnedValue)> {
-        self.field_keys().filter_map(move |key| {
-            let val = self.field_values.get(key.as_usize())?.as_ref()?;
-            Some((key, val))
-        })
-    }
-
-    /// Edits the span data to add the given `value` to the field indexed by `key`.
-    ///
-    /// `name` must name a field already defined by this span's metadata, and
-    /// the field must not already have a value. If this is not the case, this
-    /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(&mut self, key: &Key, value: &dyn IntoValue) -> Result<(), AddValueError> {
-        if !self.has_field(key) {
-            return Err(AddValueError::NoField);
-        }
-        let field = &mut self.field_values[key.as_usize()];
-        if field.is_some() {
-            Err(AddValueError::FieldAlreadyExists)
-        } else {
-            *field = Some(value.into_value());
-            Ok(())
-        }
-    }
-
-    /// Returns a struct that can be used to format all the fields on this
-    /// span with `fmt::Debug`.
-    pub fn debug_fields<'a>(&'a self) -> DebugFields<'a, 'static, Self, &'a OwnedValue> {
-        DebugFields(self)
-    }
-}
-
-impl<'a> IntoIterator for &'a Data {
-    type Item = (Key<'static>, &'a OwnedValue);
-    type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
-    fn into_iter(self) -> Self::IntoIter {
-        Box::new(self.fields())
-    }
-}
-
-impl fmt::Debug for Data {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Span")
-            .field("name", &self.name())
-            .field("parent", &self.parent)
-            .field("fields", &self.debug_fields())
-            .field("meta", &self.meta())
-            .finish()
+        self.metadata.contains_key(key)
     }
 }
 

@@ -1,7 +1,7 @@
 use tokio_trace::{
     span,
     subscriber::{AddValueError, FollowsError, Subscriber},
-    Event, IntoValue, Meta, SpanData,
+    Event, IntoValue, Meta,
 };
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
@@ -98,8 +98,9 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_span(&self, new_span: SpanData) -> span::Id {
-        self.registry.new_span(new_span)
+    fn new_span(&self, new_span: span::Attributes) -> span::Id {
+        self.registry
+            .new_span(span::Data::from_attributes(new_span))
     }
 
     fn add_value(

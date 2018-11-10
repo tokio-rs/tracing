@@ -112,7 +112,7 @@ pub use self::{
     callsite::Callsite,
     dispatcher::Dispatch,
     field::{AsValue, IntoValue, Key, Value},
-    span::{Data as SpanData, Id as SpanId, Span},
+    span::{Attributes as SpanAttributes, Id as SpanId, Span},
     subscriber::Subscriber,
 };
 use field::BorrowedValue;

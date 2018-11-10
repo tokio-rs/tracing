@@ -349,12 +349,14 @@ impl<'a> Key<'a> {
         Self { i, metadata }
     }
 
-    pub(crate) fn as_usize(&self) -> usize {
-        self.i
-    }
-
     pub(crate) fn metadata(&self) -> &Meta<'a> {
         self.metadata
+    }
+
+    /// Return a `usize` representing the index into an array whose indices are
+    /// ordered the same as the set of fields that generated this `key`.
+    pub fn as_usize(&self) -> usize {
+        self.i
     }
 
     /// Returns a string representing the name of the field, or `None` if the
