@@ -281,6 +281,7 @@ impl Interest {
     pub const ALWAYS: Interest = Interest(InterestKind::Always);
 
     /// Constructs a new `Interest` from a `usize`.
+    #[inline]
     pub fn from_usize(u: usize) -> Option<Self> {
         match u {
             0 => Some(Interest::NEVER),

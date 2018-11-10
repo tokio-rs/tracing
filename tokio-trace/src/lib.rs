@@ -37,6 +37,7 @@ macro_rules! callsite {
         static REGISTRATION: Once = Once::new();
         struct MyCallsite;
         impl callsite::Callsite for MyCallsite {
+            #[inline]
             fn interest(&self) -> Interest {
                 Interest::from_usize(INTEREST.load(Ordering::Relaxed))
                     .unwrap_or(Interest::SOMETIMES)
