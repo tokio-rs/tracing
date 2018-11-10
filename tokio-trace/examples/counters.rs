@@ -24,7 +24,7 @@ struct CounterSubscriber {
 }
 
 impl Subscriber for CounterSubscriber {
-    fn new_span(&self, new_span: span::Data) -> span::Id {
+    fn new_span(&self, new_span: span::Attributes) -> span::Id {
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         for key in new_span.field_keys() {
             if let Some(name) = key.name() {

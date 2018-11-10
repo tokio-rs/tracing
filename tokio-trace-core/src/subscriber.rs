@@ -112,7 +112,7 @@ pub trait Subscriber {
     ///
     /// [span ID]: ::span::Id
     /// [`Span`]: ::span::Span
-    fn new_span(&self, span: span::Data) -> span::Id;
+    fn new_span(&self, span: span::Attributes) -> span::Id;
 
     /// Adds a new field to an existing span observed by this `Subscriber`.
     ///
@@ -305,7 +305,7 @@ mod test_support {
 
     use super::*;
     use span::{self, MockSpan};
-    use {field::Key, Event, IntoValue, Meta, SpanData, SpanId};
+    use {field::Key, Event, IntoValue, Meta, SpanAttributes, SpanId};
 
     use std::{
         collections::{HashMap, VecDeque},
@@ -329,7 +329,7 @@ mod test_support {
     }
 
     struct Running<F: Fn(&Meta) -> bool> {
-        spans: Mutex<HashMap<SpanId, SpanData>>,
+        spans: Mutex<HashMap<SpanId, SpanAttributes>>,
         expected: Mutex<VecDeque<Expect>>,
         ids: AtomicUsize,
         filter: F,
@@ -412,7 +412,7 @@ mod test_support {
             Ok(())
         }
 
-        fn new_span(&self, span: SpanData) -> span::Id {
+        fn new_span(&self, span: SpanAttributes) -> span::Id {
             let id = self.ids.fetch_add(1, Ordering::SeqCst);
             let id = span::Id::from_u64(id as u64);
             self.spans.lock().unwrap().insert(id.clone(), span);

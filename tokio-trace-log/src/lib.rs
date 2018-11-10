@@ -179,10 +179,10 @@ impl Subscriber for TraceLogger {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, new_span: span::Data) -> span::Id {
+    fn new_span(&self, new_span: span::Attributes) -> span::Id {
         static NEXT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
         let id = span::Id::from_u64(NEXT_ID.fetch_add(1, Ordering::SeqCst) as u64);
-        let meta = new_span.meta();
+        let meta = new_span.metadata();
         let logger = log::logger();
         logger.log(
             &log::Record::builder()
@@ -191,11 +191,10 @@ impl Subscriber for TraceLogger {
                 .file(meta.file)
                 .line(meta.line)
                 .args(format_args!(
-                    "new_span: {}; span={:?}; parent={:?}; {:?}",
+                    "new_span: {}; span={:?}; parent={:?};",
                     meta.name.unwrap_or(""),
                     id,
                     new_span.parent(),
-                    LogFields(&new_span),
                 )).build(),
         );
         id
@@ -284,7 +283,7 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
 
     fn enter(&self, span: &SpanRef) {
         if let Some(data) = span.data {
-            let meta = data.meta();
+            let meta = data.metadata();
             let log_meta = meta.as_log();
             let logger = log::logger();
             if logger.enabled(&log_meta) {
@@ -298,7 +297,7 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
                             "enter: {}; span={:?}; parent={:?}; {:?}",
                             meta.name.unwrap_or(""),
                             span.id,
-                            data.parent,
+                            data.parent(),
                             LogFields(span),
                         )).build(),
                 );
@@ -310,7 +309,7 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
 
     fn exit(&self, span: &SpanRef) {
         if let Some(data) = span.data {
-            let meta = data.meta();
+            let meta = data.metadata();
             let log_meta = meta.as_log();
             let logger = log::logger();
             if logger.enabled(&log_meta) {
@@ -324,7 +323,7 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
                             "exit: {}; span={:?}; parent={:?};",
                             meta.name.unwrap_or(""),
                             span.id,
-                            data.parent,
+                            data.parent(),
                         )).build(),
                 );
             }
@@ -335,7 +334,7 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
 
     fn close(&self, span: &SpanRef) {
         if let Some(data) = span.data {
-            let meta = data.meta();
+            let meta = data.metadata();
             let log_meta = meta.as_log();
             let logger = log::logger();
             if logger.enabled(&log_meta) {
@@ -349,7 +348,7 @@ impl tokio_trace_subscriber::Observe for TraceLogger {
                             "close: {}; span={:?}; parent={:?};",
                             meta.name.unwrap_or(""),
                             span.id,
-                            data.parent,
+                            data.parent(),
                         )).build(),
                 );
             }
