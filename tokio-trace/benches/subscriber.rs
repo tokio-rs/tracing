@@ -11,7 +11,7 @@ use tokio_trace::{field, span, subscriber, Event, Meta};
 struct EnabledSubscriber;
 
 impl tokio_trace::Subscriber for EnabledSubscriber {
-    fn new_span(&self, span: span::Data) -> span::Id {
+    fn new_span(&self, span: span::Attributes) -> span::Id {
         let _ = span;
         span::Id::from_u64(0)
     }
@@ -60,8 +60,8 @@ impl tokio_trace::Subscriber for EnabledSubscriber {
 struct AddData(Mutex<Option<span::Data>>);
 
 impl tokio_trace::Subscriber for AddData {
-    fn new_span(&self, span: span::Data) -> span::Id {
-        *self.0.lock().unwrap() = Some(span);
+    fn new_span(&self, span: span::Attributes) -> span::Id {
+        *self.0.lock().unwrap() = Some(span.into());
         span::Id::from_u64(0)
     }
 
