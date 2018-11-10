@@ -37,8 +37,8 @@ use tokio_trace_subscriber::SpanRef;
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     struct LogCallsite<'a>(tokio_trace::Meta<'a>);
     impl<'a> tokio_trace::Callsite for LogCallsite<'a> {
-        fn is_enabled(&self, dispatch: &tokio_trace::Dispatch) -> bool {
-            dispatch.enabled(&self.0)
+        fn interest(&self) -> tokio_trace::subscriber::Interest {
+            tokio_trace::subscriber::Interest::SOMETIMES
         }
 
         fn add_interest(&self, _interest: tokio_trace::subscriber::Interest) {

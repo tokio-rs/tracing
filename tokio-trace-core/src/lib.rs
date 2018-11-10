@@ -113,7 +113,7 @@ pub use self::{
     dispatcher::Dispatch,
     field::{AsValue, IntoValue, Key, Value},
     span::{Attributes as SpanAttributes, Id as SpanId, Span},
-    subscriber::Subscriber,
+    subscriber::{Interest, Subscriber},
 };
 use field::BorrowedValue;
 
@@ -341,12 +341,17 @@ impl<'a> Event<'a> {
         follows_from: &[SpanId],
         message: fmt::Arguments<'a>,
     ) {
+        let interest = callsite.interest();
+        if interest == Interest::NEVER {
+            return;
+        }
         let dispatch = Dispatch::current();
-        if callsite.is_enabled(&dispatch) {
+        let meta = callsite.metadata();
+        if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
             dispatch.observe_event(&Event {
                 parent: SpanId::current(),
                 follows_from,
-                meta: callsite.metadata(),
+                meta,
                 field_values,
                 message,
             });
