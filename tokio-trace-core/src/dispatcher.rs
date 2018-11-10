@@ -8,7 +8,6 @@ use {
 
 use std::{
     cell::RefCell,
-    default::Default,
     fmt,
     sync::{Arc, Weak},
 };
@@ -33,18 +32,15 @@ impl Dispatch {
         }
     }
 
-    /// Returns the subscriber that a new [`Span`] or [`Event`] would dispatch
-    /// to.
-    ///
-    /// This returns a `Dispatch` to the [`Subscriber`] that created the
-    /// current [`Span`], or the thread's default subscriber if no
-    /// span is currently executing.
-    ///
-    /// [`Span`]: ::span::Span
-    /// [`Subscriber`]: ::Subscriber
-    /// [`Event`]: ::Event
-    pub(crate) fn current() -> Dispatch {
-        Span::current().dispatch().cloned().unwrap_or_default()
+    pub(crate) fn with_current<T, F>(f: F) -> T
+    where
+        F: FnOnce(&Dispatch) -> T,
+    {
+        if let Some(c) = Span::current().dispatch() {
+            f(c)
+        } else {
+            CURRENT_DISPATCH.with(|current| f(&*current.borrow()))
+        }
     }
 
     /// Returns a `Dispatch` to the given [`Subscriber`](::Subscriber).
@@ -87,12 +83,6 @@ impl Dispatch {
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Dispatch(...)")
-    }
-}
-
-impl Default for Dispatch {
-    fn default() -> Self {
-        CURRENT_DISPATCH.with(|current| current.borrow().clone())
     }
 }
 

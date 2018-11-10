@@ -345,17 +345,18 @@ impl<'a> Event<'a> {
         if interest == Interest::NEVER {
             return;
         }
-        let dispatch = Dispatch::current();
-        let meta = callsite.metadata();
-        if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
-            dispatch.observe_event(&Event {
-                parent: SpanId::current(),
-                follows_from,
-                meta,
-                field_values,
-                message,
-            });
-        }
+        Dispatch::with_current(|dispatch| {
+            let meta = callsite.metadata();
+            if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
+                dispatch.observe_event(&Event {
+                    parent: SpanId::current(),
+                    follows_from,
+                    meta,
+                    field_values,
+                    message,
+                });
+            }
+        })
     }
 
     /// Returns an iterator over the names of all the fields on this `Event`.
