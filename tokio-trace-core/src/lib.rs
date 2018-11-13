@@ -337,7 +337,7 @@ impl<'a> Event<'a> {
     /// [`Callsite`]: ::callsite::Callsite
     pub fn observe(
         callsite: &'a dyn callsite::Callsite,
-        field_values: &[&dyn field::AsValue],
+        field_values: &[&dyn field::Value],
         follows_from: &[SpanId],
         message: fmt::Arguments<'a>,
     ) {
@@ -348,14 +348,15 @@ impl<'a> Event<'a> {
         Dispatch::with_current(|dispatch| {
             let meta = callsite.metadata();
             if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
-                dispatch.observe_event(&Event {
-                    parent: SpanId::current(),
-                    follows_from,
-                    meta,
-                    field_values,
-                    message,
-                });
+                return;
             }
+            dispatch.observe_event(&Event {
+                parent: SpanId::current(),
+                follows_from,
+                meta,
+                field_values,
+                message,
+            });
         })
     }
 
