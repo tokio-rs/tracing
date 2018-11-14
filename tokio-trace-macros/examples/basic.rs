@@ -5,19 +5,23 @@ extern crate tokio_trace_macros;
 extern crate env_logger;
 extern crate tokio_trace_log;
 
-use tokio_trace::Level;
+use tokio_trace::{field, Level};
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::new();
 
     tokio_trace::Dispatch::to(subscriber).as_default(|| {
-        let num = 1;
+        let num: u64 = 1;
 
         let mut span = span!("Getting rec from another function.", number_of_recs = &num);
         span.enter(|| {
             let band = suggest_band();
-            event!(Level::Info, { band_recommendation = &band }, "Got a rec.");
+            event!(
+                Level::Info,
+                { band_recommendation = field::Value::display(&band) },
+                "Got a rec."
+            );
         });
     });
 }

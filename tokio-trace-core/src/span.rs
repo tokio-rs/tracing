@@ -4,14 +4,13 @@ use std::{
     cell::RefCell,
     cmp, fmt,
     hash::{Hash, Hasher},
-    iter,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use {
     callsite::Callsite,
-    field::{IntoValue, Key, OwnedValue},
-    subscriber::{AddValueError, FollowsError, Interest, Subscriber},
-    DebugFields, Dispatch, Meta, StaticMeta,
+    field::{self, Key},
+    subscriber::{FollowsError, Interest, RecordError, Subscriber},
+    Dispatch, Meta, StaticMeta,
 };
 
 thread_local! {
@@ -132,7 +131,7 @@ impl Span {
     /// [`Callsite`]: ::callsite::Callsite
     /// [`Subscriber`]: ::subscriber::Subscriber
     /// [current span]: ::span::Span::current
-    /// [field values]: ::span::Span::add_value
+    /// [field values]: ::span::Span::record
     /// [`follows_from` annotations]: ::span::Span::follows_from
     #[inline]
     pub fn new<F>(callsite: &'static dyn Callsite, if_enabled: F) -> Span
@@ -223,10 +222,10 @@ impl Span {
     ///
     /// `name` must name a field already defined by this span's metadata, and
     /// the field must not already have a value. If this is not the case, this
-    /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(&self, field: &Key, value: &dyn IntoValue) -> Result<(), AddValueError> {
+    /// function returns an [`RecordError`](::subscriber::RecordError).
+    pub fn record(&self, field: &Key, value: &dyn field::Value) -> Result<(), RecordError> {
         if let Some(ref inner) = self.inner {
-            inner.add_value(field, value)
+            inner.record(field, value)
         } else {
             Ok(())
         }
@@ -426,15 +425,15 @@ impl Enter {
     ///
     /// `name` must name a field already defined by this span's metadata, and
     /// the field must not already have a value. If this is not the case, this
-    /// function returns an [`AddValueError`](::subscriber::AddValueError).
-    pub fn add_value(&self, field: &Key, value: &dyn IntoValue) -> Result<(), AddValueError> {
+    /// function returns an [`RecordError`](::subscriber::RecordError).
+    pub fn record(&self, field: &Key, value: &dyn field::Value) -> Result<(), RecordError> {
         if !self.meta.contains_key(field) {
-            return Err(AddValueError::NoField);
+            return Err(RecordError::NoField);
         }
 
-        match self.subscriber.add_value(&self.id, &field, value) {
+        match self.subscriber.record(&self.id, field, value) {
             Ok(()) => Ok(()),
-            Err(AddValueError::NoSpan) => panic!("span should still exist!"),
+            Err(RecordError::NoSpan) => panic!("span should still exist!"),
             Err(e) => Err(e),
         }
     }
@@ -608,7 +607,7 @@ pub use self::test_support::*;
 #[cfg(any(test, feature = "test-support"))]
 mod test_support {
     #![allow(missing_docs)]
-    use field::OwnedValue;
+    use field;
     use std::collections::HashMap;
 
     /// A mock span.
@@ -618,7 +617,7 @@ mod test_support {
     #[derive(Default)]
     pub struct MockSpan {
         pub name: Option<Option<&'static str>>,
-        pub fields: HashMap<String, Box<OwnedValue>>,
+        pub fields: HashMap<String, Box<dyn field::Value>>,
         // TODO: more
     }
 

@@ -87,7 +87,7 @@ macro_rules! callsite {
 /// # #[macro_use]
 /// # extern crate tokio_trace;
 /// # fn main() {
-/// span!("my span", foo = &2, bar = &"a string").enter(|| {
+/// span!("my span", foo = 2u64, bar = "a string").enter(|| {
 ///     // do work inside the span...
 /// });
 /// # }
@@ -107,16 +107,16 @@ macro_rules! span {
                 $(
                     let key = keys.next()
                         .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
-                    span!(@ add_value: span, $k, &key, $($val)*);
+                    span!(@ record: span, $k, &key, $($val)*);
                 )*
             })
         }
     };
-    (@ add_value: $span:expr, $k:expr, $i:expr, $val:expr) => (
-        $span.add_value($i, $val)
+    (@ record: $span:expr, $k:expr, $i:expr, $val:expr) => (
+        $span.record($i, &$val)
             .expect(concat!("adding value for field '", stringify!($k), "' failed"));
     );
-    (@ add_value: $span:expr, $k:expr, $i:expr,) => (
+    (@ record: $span:expr, $k:expr, $i:expr,) => (
         // skip
     );
 }
@@ -125,14 +125,14 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{callsite, SpanData, SpanId, Subscriber, Event, field::AsValue};
+            use $crate::{callsite, SpanAttributes, SpanId, Subscriber, Event, field::Value};
             use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,
                 target:
                 $target, $( $k ),*
             };
-            let field_values: &[ &dyn AsValue ] = &[ $( &$val ),* ];
+            let field_values: &[ &dyn Value ] = &[ $( &$val ),* ];
             Event::observe(
                 callsite,
                 &field_values[..],
@@ -153,8 +153,8 @@ pub mod subscriber;
 
 pub use self::{
     dispatcher::Dispatch,
-    field::{AsValue, IntoValue, Value},
-    span::{Data as SpanData, Id as SpanId, Span},
+    field::Value,
+    span::{Attributes as SpanAttributes, Id as SpanId, Span},
     subscriber::Subscriber,
     tokio_trace_core::{
         callsite::{self, Callsite},

@@ -18,7 +18,7 @@ use std::str;
 mod sloggish;
 use self::sloggish::SloggishSubscriber;
 
-use tokio_trace::Level;
+use tokio_trace::{field::Value, Level};
 use tokio_trace_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
@@ -26,9 +26,9 @@ type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send
 fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     span!(
         "request",
-        method = req.method(),
-        uri = req.uri(),
-        headers = req.headers()
+        method = &Value::debug(req.method()),
+        uri = &Value::debug(req.uri()),
+        headers = &Value::debug(req.headers())
     ).enter(|| {
         event!(Level::Info, {}, "received request");
         let mut response = Response::new(Body::empty());
@@ -39,7 +39,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 const BODY: &'static str = "Try POSTing data to /echo";
                 *response.body_mut() = Body::from(BODY);
                 (
-                    span!("response", body = &BODY),
+                    span!("response", body = &Value::display(&BODY)),
                     Box::new(future::ok(response)),
                 )
             }
@@ -47,11 +47,9 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // Simply echo the body back to the client.
             (&Method::POST, "/echo") => {
                 let body = req.into_body();
+                let span = span!("response", response_kind = &"echo");
                 *response.body_mut() = body;
-                (
-                    span!("response", response_kind = &"echo"),
-                    Box::new(future::ok(response)),
-                )
+                (span, Box::new(future::ok(response)))
             }
 
             // Convert to uppercase before sending back to client.
@@ -64,8 +62,8 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                     event!(
                         Level::Debug,
                         {
-                            chunk = str::from_utf8(&chunk[..]),
-                            uppercased = str::from_utf8(&upper[..])
+                            chunk = Value::debug(str::from_utf8(&chunk[..])),
+                            uppercased = Value::debug(str::from_utf8(&upper[..]))
                         },
                         "uppercased request body"
                     );
@@ -92,15 +90,14 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                         let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
                         event!(Level::Debug,
                             {
-                                chunk = str::from_utf8(&chunk[..]),
-                                reversed = str::from_utf8(&body[..])
+                                chunk = Value::debug(str::from_utf8(&chunk[..])),
+                                body = Value::debug(str::from_utf8(&body[..]))
                             },
                             "reversed request body");
                         *response.body_mut() = Body::from(body);
                         response
                     })
                 });
-
                 (span, Box::new(reversed))
             }
 
@@ -108,7 +105,11 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
                 (
-                    span!("response", body = &(), status = &StatusCode::NOT_FOUND),
+                    span!(
+                        "response",
+                        body = &Value::debug(()),
+                        status = &Value::debug(&StatusCode::NOT_FOUND)
+                    ),
                     Box::new(future::ok(response)),
                 )
             }
@@ -124,23 +125,26 @@ fn main() {
 
     tokio_trace::Dispatch::to(subscriber).as_default(|| {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-        span!("server", local = &addr).enter(|| {
+        span!("server", local = &Value::debug(addr)).enter(|| {
             let server = tokio::net::TcpListener::bind(&addr)
                 .expect("bind")
                 .incoming()
                 .fold(Http::new(), move |http, sock| {
-                    let span = span!("connection", remote = &sock.peer_addr().unwrap());
+                    let span = span!(
+                        "connection",
+                        remote = &Value::debug(&sock.peer_addr().unwrap())
+                    );
                     hyper::rt::spawn(
                         http.serve_connection(sock, service_fn(echo))
                             .map_err(|e| {
-                                event!(Level::Error, { error = &e }, "serve error");
+                                event!(Level::Error, { error = Value::display(e) }, "serve error");
                             }).instrument(span),
                     );
                     Ok::<_, ::std::io::Error>(http)
                 }).in_current_span()
                 .map(|_| ())
                 .map_err(|e| {
-                    event!(Level::Error, { error = &e }, "server error");
+                    event!(Level::Error, { error = Value::display(e) }, "server error");
                 });
             event!(Level::Info, {}, "listening...");
             hyper::rt::run(server);

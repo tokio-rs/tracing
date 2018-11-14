@@ -1,5 +1,7 @@
 //! Subscribers collect and record trace data.
-use {span, Event, IntoValue, Key, Meta, SpanId};
+use {field, span, Event, Meta, SpanId};
+
+use std::fmt;
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -121,12 +123,12 @@ pub trait Subscriber {
     /// - The span does not have a field with the given name.
     /// - The span has a field with the given name, but the value has already
     ///   been set.
-    fn add_value(
+    fn record(
         &self,
         span: &span::Id,
-        field: &Key,
-        value: &dyn IntoValue,
-    ) -> Result<(), AddValueError>;
+        key: &field::Key,
+        value: &dyn field::Value,
+    ) -> Result<(), RecordError>;
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -181,7 +183,7 @@ pub trait Subscriber {
     /// [`Span`]: ::span::Span
     /// [`SpanId`]: ::span::Id
     /// [`State`]: ::span::State
-    fn enter(&self, span: SpanId);
+    fn enter(&self, span: span::Id);
 
     /// Records that a [`Span`] has been exited.
     ///
@@ -192,7 +194,7 @@ pub trait Subscriber {
     /// Exiting a span does not imply that the span will not be re-entered.
     /// [`Span`]: ::span::Span
     /// [`SpanId`]: ::span::Id
-    fn exit(&self, span: SpanId);
+    fn exit(&self, span: span::Id);
 
     /// Records that a [`Span`] has been closed.
     ///
@@ -207,7 +209,7 @@ pub trait Subscriber {
     ///
     /// [`Span`]: ::span::Span
     /// [`SpanId`]: ::span::Id
-    fn close(&self, span: SpanId);
+    fn close(&self, span: span::Id);
 }
 
 /// Indicates a `Subscriber`'s interest in a particular callsite.
@@ -224,14 +226,16 @@ enum InterestKind {
 /// Errors which may prevent a value from being successfully added to a span.
 // TODO: before releasing core 0.1 this needs to be made private, to avoid
 // future breaking changes.
-#[derive(Clone, Debug)]
-pub enum AddValueError {
+#[derive(Debug)]
+pub enum RecordError {
     /// The span with the given ID does not exist.
     NoSpan,
     /// The span exists, but does not have the specified field.
     NoField,
     /// The named field already has a value.
     FieldAlreadyExists,
+    /// An error occurred recording the field.
+    Record,
 }
 
 /// Errors which may prevent a prior span from being added to a span.
@@ -241,7 +245,7 @@ pub enum AddValueError {
 pub enum FollowsError {
     /// The span with the given ID does not exist.
     /// TODO: can this error type be generalized between `FollowsError` and
-    /// `AddValueError`?
+    /// `RecordError`?
     NoSpan(SpanId),
     /// The span that this span follows from does not exist (it has no ID).
     NoPreceedingId,
@@ -297,6 +301,15 @@ impl Interest {
     }
 }
 
+// ===== impl RecordError =====
+// TODO: impl Error, etc
+
+impl From<fmt::Error> for RecordError {
+    fn from(_e: fmt::Error) -> Self {
+        RecordError::Record
+    }
+}
+
 #[cfg(any(test, feature = "test-support"))]
 pub use self::test_support::*;
 
@@ -306,7 +319,7 @@ mod test_support {
 
     use super::*;
     use span::{self, MockSpan};
-    use {field::Key, Event, IntoValue, Meta, SpanAttributes, SpanId};
+    use {field, Event, Meta, SpanAttributes, SpanId};
 
     use std::{
         collections::{HashMap, VecDeque},
@@ -389,18 +402,32 @@ mod test_support {
         }
     }
 
+    impl<'a, F> field::Record for &'a Running<F>
+    where
+        F: Fn(&Meta) -> bool,
+        F: 'a,
+    {
+        fn record_fmt(
+            &mut self,
+            _field: &field::Key,
+            _value: ::std::fmt::Arguments,
+        ) -> Result<(), ::subscriber::RecordError> {
+            // TODO: it would be nice to be able to expect field values...
+            Ok(())
+        }
+    }
+
     impl<F: Fn(&Meta) -> bool> Subscriber for Running<F> {
         fn enabled(&self, meta: &Meta) -> bool {
             (self.filter)(meta)
         }
 
-        fn add_value(
+        fn record(
             &self,
             _span: &span::Id,
-            _name: &Key,
-            _value: &dyn IntoValue,
-        ) -> Result<(), AddValueError> {
-            // TODO: it should be possible to expect values...
+            _key: &field::Key,
+            _value: &dyn field::Value,
+        ) -> Result<(), ::subscriber::RecordError> {
             Ok(())
         }
 

@@ -111,11 +111,10 @@ pub mod subscriber;
 pub use self::{
     callsite::Callsite,
     dispatcher::Dispatch,
-    field::{AsValue, IntoValue, Key, Value},
+    field::{Key, Value},
     span::{Attributes as SpanAttributes, Id as SpanId, Span},
     subscriber::{Interest, Subscriber},
 };
-use field::BorrowedValue;
 
 /// `Event`s represent single points in time where something occurred during the
 /// execution of a program.
@@ -147,7 +146,7 @@ pub struct Event<'a> {
     /// The names of these fields are defined in the event's metadata. Each
     /// index in this array corresponds to the name at the same index in
     /// `self.meta.field_names`.
-    pub field_values: &'a [&'a dyn AsValue],
+    pub field_values: &'a [&'a dyn Value],
 
     /// A textual message describing the event that occurred.
     pub message: fmt::Arguments<'a>,
@@ -373,55 +372,27 @@ impl<'a> Event<'a> {
 
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
     /// returns `None`.
-    pub fn field(&self, key: &field::Key) -> Option<field::BorrowedValue> {
+    pub fn field(&self, key: &field::Key) -> Option<&dyn Value> {
         if !self.has_field(key) {
             return None;
         }
-        self.field_values
-            .get(key.as_usize())
-            .map(|&val| field::borrowed(val))
+        self.field_values.get(key.as_usize()).map(|&v| v)
     }
 
     /// Returns an iterator over all the field names and values on this event.
-    pub fn fields<'b: 'a>(&'b self) -> impl Iterator<Item = (field::Key<'a>, BorrowedValue<'b>)> {
+    pub fn fields<'b: 'a>(&'b self) -> impl Iterator<Item = (field::Key<'a>, &'a dyn Value)> {
         self.meta.fields().filter_map(move |key| {
             let val = self.field(&key)?;
             Some((key, val))
         })
     }
-
-    /// Returns a struct that can be used to format all the fields on this
-    /// `Event` with `fmt::Debug`.
-    pub fn debug_fields<'b: 'a>(&'b self) -> DebugFields<'b, 'b, Self, BorrowedValue<'a>> {
-        DebugFields(self)
-    }
 }
 
 impl<'a> IntoIterator for &'a Event<'a> {
-    type Item = (field::Key<'a>, BorrowedValue<'a>);
-    type IntoIter = Box<Iterator<Item = (field::Key<'a>, BorrowedValue<'a>)> + 'a>; // TODO: unbox
+    type Item = (field::Key<'a>, &'a dyn Value);
+    type IntoIter = Box<Iterator<Item = (field::Key<'a>, &'a dyn Value)> + 'a>; // TODO: unbox
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.fields())
-    }
-}
-
-/// Formats the key-value fields of a `Span` or `Event` with `fmt::Debug`.
-pub struct DebugFields<'a, 'b: 'a, I: 'a, T: 'a>(&'a I)
-where
-    &'a I: IntoIterator<Item = (field::Key<'b>, T)>;
-
-impl<'a, 'b: 'a, I: 'a, T: 'a> fmt::Debug for DebugFields<'a, 'b, I, T>
-where
-    &'a I: IntoIterator<Item = (field::Key<'b>, T)>,
-    T: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0
-            .into_iter()
-            .fold(&mut f.debug_struct(""), |s, (key, value)| {
-                let name = key.name().unwrap_or("???");
-                s.field(name, &value)
-            }).finish()
     }
 }
 
@@ -465,4 +436,8 @@ impl MetaKind {
 
     /// The `MetaKind` for `Event` metadata.
     pub const EVENT: Self = MetaKind(KindInner::Event);
+}
+
+mod sealed {
+    pub trait Sealed {}
 }

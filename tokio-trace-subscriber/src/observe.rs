@@ -98,7 +98,9 @@ pub trait ObserveExt: Observe {
     ///
     ///
     /// For example:
-    /// ```
+    // TODO: this needs to be fixed since it uses the `tokio-trace-log` crate,
+    // which  doesn't work with `Observer` yet.
+    /// ```ignore
     /// #[macro_use]
     /// extern crate tokio_trace;
     /// extern crate tokio_trace_log;

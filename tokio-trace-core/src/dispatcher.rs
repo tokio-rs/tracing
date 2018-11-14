@@ -1,9 +1,8 @@
 use {
-    callsite,
-    field::Key,
+    callsite, field,
     span::{self, Span},
     subscriber::{self, Subscriber},
-    Event, IntoValue, Meta,
+    Event, Meta,
 };
 
 use std::{
@@ -98,13 +97,13 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn add_value(
+    fn record(
         &self,
         span: &span::Id,
-        name: &Key,
-        value: &dyn IntoValue,
-    ) -> Result<(), subscriber::AddValueError> {
-        self.subscriber.add_value(span, name, value)
+        key: &field::Key,
+        value: &dyn field::Value,
+    ) -> Result<(), ::subscriber::RecordError> {
+        self.subscriber.record(span, key, value)
     }
 
     #[inline]
@@ -143,18 +142,17 @@ impl Subscriber for Dispatch {
 }
 
 struct NoSubscriber;
-
 impl Subscriber for NoSubscriber {
     fn new_span(&self, _span: span::Attributes) -> span::Id {
         span::Id::from_u64(0)
     }
 
-    fn add_value(
+    fn record(
         &self,
         _span: &span::Id,
-        _name: &Key,
-        _value: &dyn IntoValue,
-    ) -> Result<(), subscriber::AddValueError> {
+        _key: &field::Key,
+        _value: &dyn field::Value,
+    ) -> Result<(), ::subscriber::RecordError> {
         Ok(())
     }
 
