@@ -1,7 +1,7 @@
 use tokio_trace::{
-    field::{self, IntoValue, OwnedValue},
-    span::{Data, Id},
-    subscriber::{AddValueError, FollowsError},
+    field,
+    span::{Attributes, Id},
+    subscriber::{FollowsError, RecordError},
 };
 
 use std::{
@@ -38,14 +38,14 @@ pub trait RegisterSpan {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span(&self, new_span: Data) -> Id;
+    fn new_span(&self, new_span: Attributes) -> Id;
 
-    fn add_value(
+    fn record(
         &self,
         span: &Id,
         name: &field::Key,
-        value: &dyn IntoValue,
-    ) -> Result<(), AddValueError>;
+        value: &dyn field::Value,
+    ) -> Result<(), RecordError>;
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -81,7 +81,7 @@ pub trait RegisterSpan {
 #[derive(Debug)]
 pub struct SpanRef<'a> {
     pub id: &'a Id,
-    pub data: Option<&'a Data>,
+    pub data: Option<&'a Attributes>,
     // TODO: the registry can still have a concept of span states...
 }
 
@@ -99,22 +99,22 @@ impl<'a, 'b> cmp::PartialEq<SpanRef<'b>> for SpanRef<'a> {
 
 impl<'a> cmp::Eq for SpanRef<'a> {}
 
-impl<'a> IntoIterator for &'a SpanRef<'a> {
-    type Item = (field::Key<'a>, &'a OwnedValue);
-    type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
-    fn into_iter(self) -> Self::IntoIter {
-        self.data
-            .map(|data| {
-                // This is necessary because of type inference.
-                let iter: Box<Iterator<Item = Self::Item> + 'a> = Box::new(data.fields());
-                iter
-            }).unwrap_or_else(|| Box::new(::std::iter::empty()))
-    }
-}
+// impl<'a> IntoIterator for &'a SpanRef<'a> {
+//     type Item = (field::Key<'a>, &'a OwnedValue);
+//     type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.data
+//             .map(|data| {
+//                 // This is necessary because of type inference.
+//                 let iter: Box<Iterator<Item = Self::Item> + 'a> = Box::new(data.fields());
+//                 iter
+//             }).unwrap_or_else(|| Box::new(::std::iter::empty()))
+//     }
+// }
 // /// Registers new span IDs with an increasing `usize` counter.
 // ///
 // /// This may overflow on 32-bit machines.
-// pub fn increasing_counter(_new_span: Data) -> Id {
+// pub fn increasing_counter(_new_span: Attributes) -> Id {
 //     static NEXT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 //     let next = NEXT_ID.fetch_add(1, Ordering::SeqCst);
 //     Id::from_u64(next as u64)
@@ -123,7 +123,7 @@ impl<'a> IntoIterator for &'a SpanRef<'a> {
 #[derive(Default)]
 pub struct IncreasingCounter {
     next_id: AtomicUsize,
-    spans: Mutex<HashMap<Id, Data>>,
+    spans: Mutex<HashMap<Id, Attributes>>,
 }
 
 pub fn increasing_counter() -> IncreasingCounter {
@@ -133,7 +133,7 @@ pub fn increasing_counter() -> IncreasingCounter {
 impl RegisterSpan for IncreasingCounter {
     type PriorSpans = iter::Empty<Id>;
 
-    fn new_span(&self, new_span: Data) -> Id {
+    fn new_span(&self, new_span: Attributes) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         if let Ok(mut spans) = self.spans.lock() {
@@ -142,15 +142,13 @@ impl RegisterSpan for IncreasingCounter {
         id
     }
 
-    fn add_value(
+    fn record(
         &self,
-        span: &Id,
-        name: &field::Key,
-        value: &dyn IntoValue,
-    ) -> Result<(), AddValueError> {
-        let mut spans = self.spans.lock().expect("mutex poisoned!");
-        let span = spans.get_mut(span).ok_or(AddValueError::NoSpan)?;
-        span.add_value(name, value)
+        _span: &Id,
+        _name: &field::Key,
+        _value: &dyn field::Value,
+    ) -> Result<(), RecordError> {
+        unimplemented!("TODO: figure out")
     }
 
     fn add_follows_from(&self, _span: &Id, _follows: Id) -> Result<(), FollowsError> {
