@@ -428,12 +428,12 @@ impl Enter {
     /// function returns an [`RecordError`](::subscriber::RecordError).
     pub fn record(&self, field: &Key, value: &dyn field::Value) -> Result<(), RecordError> {
         if !self.meta.contains_key(field) {
-            return Err(RecordError::NoField);
+            return Err(RecordError::no_field());
         }
 
         match self.subscriber.record(&self.id, field, value) {
             Ok(()) => Ok(()),
-            Err(RecordError::NoSpan) => panic!("span should still exist!"),
+            Err(ref e) if e.is_no_span() => panic!("span should still exist!"),
             Err(e) => Err(e),
         }
     }
@@ -454,13 +454,7 @@ impl Enter {
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
     pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
-        match self.subscriber.add_follows_from(&self.id, from) {
-            Ok(()) => Ok(()),
-            Err(FollowsError::NoSpan(ref id)) if id == &self.id => {
-                panic!("span {:?} should exist to add a preceeding span", self.id)
-            }
-            Err(e) => Err(e),
-        }
+        self.subscriber.add_follows_from(&self.id, from)
     }
 
     /// Returns the span's ID.

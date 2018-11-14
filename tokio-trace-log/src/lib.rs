@@ -249,7 +249,7 @@ impl Subscriber for TraceLogger {
             span.record(key, val)?;
             Ok(())
         } else {
-            Err(subscriber::RecordError::NoSpan)
+            Err(subscriber::RecordError::no_span(span.clone()))
         }
     }
 
