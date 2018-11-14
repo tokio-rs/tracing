@@ -313,7 +313,7 @@ impl Shared {
         if let Some(ref inner) = self.inner {
             let field = field
                 .as_key(inner.metadata())
-                .ok_or(subscriber::RecordError::NoField)?;
+                .ok_or_else(subscriber::RecordError::no_field)?;
             inner.record(&field, value)
         } else {
             Ok(())
@@ -355,7 +355,9 @@ impl SpanExt for Span {
         Q: field::AsKey,
     {
         if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or(subscriber::RecordError::NoField)?;
+            let key = field
+                .as_key(meta)
+                .ok_or_else(subscriber::RecordError::no_field)?;
             self.record(&key, value)
         } else {
             Ok(())

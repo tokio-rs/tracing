@@ -155,7 +155,9 @@ impl Subscriber for SloggishSubscriber {
         value: &dyn tokio_trace::field::Value,
     ) -> Result<(), subscriber::RecordError> {
         let mut spans = self.spans.lock().expect("mutex poisoned!");
-        let span = spans.get_mut(span).ok_or(subscriber::RecordError::NoSpan)?;
+        let span = spans
+            .get_mut(span)
+            .ok_or_else(|| subscriber::RecordError::no_span(span.clone()))?;
         span.record(name, value)?;
         Ok(())
     }
