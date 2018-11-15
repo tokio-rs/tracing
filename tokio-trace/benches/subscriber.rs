@@ -109,7 +109,7 @@ const N_SPANS: usize = 100;
 
 #[bench]
 fn span_no_fields(b: &mut Bencher) {
-    tokio_trace::Dispatch::to(EnabledSubscriber).as_default(|| b.iter(|| span!("span")));
+    tokio_trace::Dispatch::new(EnabledSubscriber).as_default(|| b.iter(|| span!("span")));
 }
 
 #[bench]
@@ -120,13 +120,13 @@ fn span_repeatedly(b: &mut Bencher) {
     }
 
     let n = test::black_box(N_SPANS);
-    tokio_trace::Dispatch::to(EnabledSubscriber)
+    tokio_trace::Dispatch::new(EnabledSubscriber)
         .as_default(|| b.iter(|| (0..n).fold(mk_span(0), |span, i| mk_span(i as u64))));
 }
 
 #[bench]
 fn span_with_fields(b: &mut Bencher) {
-    tokio_trace::Dispatch::to(EnabledSubscriber).as_default(|| {
+    tokio_trace::Dispatch::new(EnabledSubscriber).as_default(|| {
         b.iter(|| {
             span!(
                 "span",
@@ -142,7 +142,7 @@ fn span_with_fields(b: &mut Bencher) {
 // TODO: bring this back
 // #[bench]
 // fn span_with_fields_add_data(b: &mut Bencher) {
-//     tokio_trace::Dispatch::to(AddAttributes(Mutex::new(None))).as_default(|| {
+//     tokio_trace::Dispatch::new(AddAttributes(Mutex::new(None))).as_default(|| {
 //         b.iter(|| span!("span", foo = &"foo", bar = &"bar", baz = &3, quuux = &0.99))
 //     });
 // }

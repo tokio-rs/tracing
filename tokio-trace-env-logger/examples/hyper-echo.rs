@@ -123,7 +123,7 @@ fn main() {
     let subscriber = SloggishSubscriber::new(2);
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
-    tokio_trace::Dispatch::to(subscriber).as_default(|| {
+    tokio_trace::Dispatch::new(subscriber).as_default(|| {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
         span!("server", local = &Value::debug(addr)).enter(|| {
             let server = tokio::net::TcpListener::bind(&addr)

@@ -30,7 +30,7 @@ mod tests {
                 _ => false,
             }).run();
 
-        Dispatch::to(subscriber).as_default(move || {
+        Dispatch::new(subscriber).as_default(move || {
             // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
             // not "alice."
             let mut alice = span!("alice");
@@ -94,7 +94,7 @@ mod tests {
                     _ => false,
                 }).run();
             // barrier1.wait();
-            let subscriber = Dispatch::to(subscriber);
+            let subscriber = Dispatch::new(subscriber);
             subscriber.as_default(do_test);
             barrier1.wait();
             subscriber.as_default(do_test)
@@ -116,7 +116,7 @@ mod tests {
                     Some("foo") => true,
                     _ => false,
                 }).run();
-            let subscriber = Dispatch::to(subscriber);
+            let subscriber = Dispatch::new(subscriber);
             subscriber.as_default(do_test);
             barrier.wait();
             subscriber.as_default(do_test)
@@ -158,7 +158,7 @@ mod tests {
                 }
             }).run();
 
-        Dispatch::to(subscriber).as_default(move || {
+        Dispatch::new(subscriber).as_default(move || {
             // Enter "charlie" and then "dave". The dispatcher expects to see "dave" but
             // not "charlie."
             let mut charlie = span!("charlie");
@@ -228,7 +228,7 @@ mod tests {
                 _ => false,
             }).run();
 
-        Dispatch::to(subscriber).as_default(|| {
+        Dispatch::new(subscriber).as_default(|| {
             // Call the function once. The filter should be re-evaluated.
             assert!(my_great_function());
             assert_eq!(count.load(Ordering::Relaxed), 1);

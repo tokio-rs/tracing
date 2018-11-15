@@ -9,7 +9,7 @@ fn main() {
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::new();
 
-    tokio_trace::Dispatch::to(subscriber).as_default(|| {
+    tokio_trace::Dispatch::new(subscriber).as_default(|| {
         let foo: u64 = 3;
         event!(Level::Info, { foo = foo, bar = "bar" }, "hello world");
 

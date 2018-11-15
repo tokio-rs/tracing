@@ -150,7 +150,7 @@ impl Counters {
 fn main() {
     let (counters, subscriber) = Counters::new();
 
-    tokio_trace::Dispatch::to(subscriber).as_default(|| {
+    tokio_trace::Dispatch::new(subscriber).as_default(|| {
         let mut foo: u64 = 2;
         span!("my_great_span", foo_count = &foo).enter(|| {
             foo += 1;

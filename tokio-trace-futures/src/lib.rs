@@ -26,7 +26,7 @@ pub trait WithSubscriber: Sized {
     {
         WithDispatch {
             inner: self,
-            dispatch: Dispatch::to(subscriber),
+            dispatch: Dispatch::new(subscriber),
         }
     }
 }
@@ -156,7 +156,7 @@ mod tests {
             .close(span::mock().named(Some("foo")))
             .done()
             .run();
-        Dispatch::to(subscriber).as_default(|| {
+        Dispatch::new(subscriber).as_default(|| {
             MyFuture { polls: 0 }
                 .instrument(span!("foo"))
                 .wait()
@@ -191,7 +191,7 @@ mod tests {
             .close(span::mock().named(Some("foo")))
             .done()
             .run();
-        Dispatch::to(subscriber).as_default(|| {
+        Dispatch::new(subscriber).as_default(|| {
             MyFuture { polls: 0 }
                 .instrument(span!("foo"))
                 .wait()
@@ -212,7 +212,7 @@ mod tests {
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .run();
-        Dispatch::to(subscriber).as_default(|| {
+        Dispatch::new(subscriber).as_default(|| {
             stream::iter_ok::<_, ()>(&[1, 2, 3])
                 .instrument(span!("foo"))
                 .for_each(|_| future::ok(()))
