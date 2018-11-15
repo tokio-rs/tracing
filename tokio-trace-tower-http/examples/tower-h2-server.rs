@@ -107,7 +107,7 @@ impl tower_service::Service<()> for NewSvc {
 fn main() {
     let subscriber = SloggishSubscriber::new(2);
 
-    tokio_trace::Dispatch::to(subscriber).as_default(|| {
+    tokio_trace::Dispatch::new(subscriber).as_default(|| {
         let mut rt = Runtime::new().unwrap();
         let reactor = rt.executor();
 

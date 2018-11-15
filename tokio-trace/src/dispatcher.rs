@@ -18,12 +18,12 @@ mod tests {
             .exit(span::mock().named(Some("foo")))
             .done()
             .run();
-        let mut foo = Dispatch::to(subscriber1).as_default(|| {
+        let mut foo = Dispatch::new(subscriber1).as_default(|| {
             let mut foo = span!("foo");
             foo.enter(|| {});
             foo
         });
-        Dispatch::to(subscriber::mock().done().run())
+        Dispatch::new(subscriber::mock().done().run())
             .as_default(move || foo.enter(|| span!("bar").enter(|| {})))
     }
 
@@ -48,13 +48,13 @@ mod tests {
             .done()
             .run();
 
-        let mut foo = Dispatch::to(subscriber1).as_default(|| {
+        let mut foo = Dispatch::new(subscriber1).as_default(|| {
             let mut foo = span!("foo");
             foo.enter(|| {});
             foo
         });
-        let mut baz = Dispatch::to(subscriber2).as_default(|| span!("baz"));
-        Dispatch::to(subscriber::mock().run()).as_default(move || {
+        let mut baz = Dispatch::new(subscriber2).as_default(|| span!("baz"));
+        Dispatch::new(subscriber::mock().run()).as_default(move || {
             foo.enter(|| span!("bar").enter(|| {}));
             baz.enter(|| span!("quux").enter(|| {}))
         })

@@ -43,7 +43,7 @@ impl Dispatch {
     }
 
     /// Returns a `Dispatch` to the given [`Subscriber`](::Subscriber).
-    pub fn to<S>(subscriber: S) -> Self
+    pub fn new<S>(subscriber: S) -> Self
     // TODO: Add some kind of `UnsyncDispatch`?
     where
         S: Subscriber + Send + Sync + 'static,
