@@ -5,10 +5,12 @@ extern crate tokio_trace;
 extern crate futures;
 extern crate tokio_trace_futures;
 
+use std::marker::PhantomData;
+
 use futures::{Future, Poll};
 use tokio_trace::field::Value;
 use tokio_trace_futures::{Instrument, Instrumented};
-use tower_service::{NewService, Service};
+use tower_service::{MakeService, Service};
 
 #[derive(Debug)]
 pub struct InstrumentedHttpService<T> {
@@ -27,42 +29,48 @@ impl<T> InstrumentedHttpService<T> {
 }
 
 #[derive(Debug)]
-pub struct InstrumentedNewService<T> {
+pub struct InstrumentedMakeService<T, B> {
     inner: T,
+    _p: PhantomData<fn() -> B>,
 }
 
-impl<T> InstrumentedNewService<T> {
-    pub fn new<B>(inner: T) -> Self
+impl<T, B> InstrumentedMakeService<T, B> {
+    pub fn new<Target>(inner: T) -> Self
     where
-        T: NewService<http::Request<B>>,
+        T: MakeService<Target, http::Request<B>>,
     {
-        Self { inner }
+        Self {
+            inner,
+            _p: PhantomData,
+        }
     }
 }
 
-impl<T, B> NewService<http::Request<B>> for InstrumentedNewService<T>
+impl<T, Target, B> Service<Target> for InstrumentedMakeService<T, B>
 where
-    T: NewService<http::Request<B>>,
+    T: MakeService<Target, http::Request<B>>,
 {
-    type Response = T::Response;
-    type Error = T::Error;
-    type InitError = T::InitError;
-    type Service = InstrumentedHttpService<T::Service>;
-    type Future = InstrumentedNewServiceFuture<T::Future>;
+    type Response = InstrumentedHttpService<T::Service>;
+    type Error = T::MakeError;
+    type Future = InstrumentedMakeServiceFuture<T::Future>;
 
-    fn new_service(&self) -> Self::Future {
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.inner.poll_ready()
+    }
+
+    fn call(&mut self, req: Target) -> Self::Future {
         let span = tokio_trace::Span::current();
-        let inner = self.inner.new_service();
-        InstrumentedNewServiceFuture { inner, span }
+        let inner = self.inner.make_service(req);
+        InstrumentedMakeServiceFuture { inner, span }
     }
 }
 
-pub struct InstrumentedNewServiceFuture<T> {
+pub struct InstrumentedMakeServiceFuture<T> {
     inner: T,
     span: tokio_trace::Span,
 }
 
-impl<T> Future for InstrumentedNewServiceFuture<T>
+impl<T> Future for InstrumentedMakeServiceFuture<T>
 where
     T: Future,
 {
