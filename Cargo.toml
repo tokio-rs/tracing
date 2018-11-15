@@ -12,8 +12,3 @@ members = [
     "tokio-trace-macros",
     "tokio-trace-subscriber"
 ]
-
-[replace]
-# This replacement is necessary until all tower crates have been updated to
-# track the "NewService" -> "MakeService" change.
-"https://github.com/tower-rs/tower.git#tower-service:0.1.0" = { git = "https://github.com/tower-rs/tower", rev = "882fe7240bb1bd5e2de19f14ef1cb898cdd6a0e0" }

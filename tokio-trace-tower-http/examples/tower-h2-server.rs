@@ -21,7 +21,7 @@ use tokio::runtime::Runtime;
 use tokio_trace::{field::Value, Level};
 use tokio_trace_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
-use tower_service::{NewService, Service};
+use tower_service::{MakeService, Service};
 
 #[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
@@ -91,14 +91,15 @@ impl Service<Request<RecvBody>> for Svc {
 
 #[derive(Debug)]
 struct NewSvc;
-impl NewService<Request<RecvBody>> for NewSvc {
-    type Response = Response;
-    type Error = h2::Error;
-    type InitError = ::std::io::Error;
-    type Service = Svc;
-    type Future = future::FutureResult<Svc, Self::InitError>;
+impl tower_service::Service<()> for NewSvc {
+    type Response = Svc;
+    type Error = ::std::io::Error;
+    type Future = future::FutureResult<Svc, Self::Error>;
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        Ok(Async::Ready(()))
+    }
 
-    fn new_service(&self) -> Self::Future {
+    fn call(&mut self, target: ()) -> Self::Future {
         future::ok(Svc)
     }
 }
@@ -118,12 +119,12 @@ fn main() {
             local_ip = Value::debug(addr.ip()),
             local_port = addr.port() as u64
         ).enter(move || {
-            let new_svc = tokio_trace_tower_http::InstrumentedNewService::new(NewSvc);
+            let new_svc = tokio_trace_tower_http::InstrumentedMakeService::new(NewSvc);
             let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
             let serve = bind
                 .incoming()
-                .fold((h2, reactor), |(h2, reactor), sock| {
+                .fold((h2, reactor), |(mut h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
                     span!(
                         "conn",
