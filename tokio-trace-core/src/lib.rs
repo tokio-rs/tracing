@@ -132,24 +132,24 @@ pub use self::{
 /// [`Span`]: ::span::Span
 pub struct Event<'a> {
     /// The span ID of the span in which this event occurred.
-    pub parent: Option<SpanId>,
+    parent: Option<SpanId>,
 
     /// The IDs of a set of spans which are causally linked with this event, but
     /// are not its direct parent.
-    pub follows_from: &'a [SpanId],
+    follows_from: &'a [SpanId],
 
     /// Metadata describing this event.
-    pub meta: &'a Meta<'a>,
+    meta: &'a Meta<'a>,
 
     /// The values of the fields on this event.
     ///
     /// The names of these fields are defined in the event's metadata. Each
     /// index in this array corresponds to the name at the same index in
     /// `self.meta.field_names`.
-    pub field_values: &'a [&'a dyn Value],
+    field_values: &'a [&'a dyn Value],
 
     /// A textual message describing the event that occurred.
-    pub message: fmt::Arguments<'a>,
+    message: fmt::Arguments<'a>,
 }
 
 /// Metadata describing a [`Span`] or [`Event`].
@@ -368,6 +368,24 @@ impl<'a> Event<'a> {
     #[inline]
     pub fn has_field(&self, key: &field::Key) -> bool {
         self.meta.contains_key(key)
+    }
+
+    /// Returns a reference to the event's metadata.
+    #[inline]
+    pub fn metadata(&self) -> &Meta<'a> {
+        self.meta
+    }
+
+    /// Returns the ID of the event's parent span, if it has one.
+    #[inline]
+    pub fn parent(&self) -> Option<span::Id> {
+        self.parent.as_ref().cloned()
+    }
+
+    /// Returns the event's message.
+    #[inline]
+    pub fn message(&self) -> &fmt::Arguments<'a> {
+        &self.message
     }
 
     /// Borrows the value of the field named `name`, if it exists. Otherwise,
