@@ -269,19 +269,20 @@ impl Subscriber for TraceLogger {
     }
 
     fn observe_event<'a>(&self, event: &'a Event<'a>) {
-        let meta = event.meta.as_log();
+        let meta = event.metadata();
+        let log_meta = meta.as_log();
         let logger = log::logger();
-        if logger.enabled(&meta) {
+        if logger.enabled(&log_meta) {
             logger.log(
                 &log::Record::builder()
-                    .metadata(meta)
-                    .module_path(event.meta.module_path)
-                    .file(event.meta.file)
-                    .line(event.meta.line)
+                    .metadata(log_meta)
+                    .module_path(meta.module_path)
+                    .file(meta.file)
+                    .line(meta.line)
                     .args(format_args!(
                         "{}; in_span={:?}; {:?}",
-                        event.message,
-                        event.parent,
+                        event.message(),
+                        event.parent(),
                         LogFields(event),
                     )).build(),
             );

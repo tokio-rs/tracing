@@ -189,7 +189,7 @@ impl Subscriber for SloggishSubscriber {
         let stack = self.stack.lock().unwrap();
         if let Some(idx) = stack
             .iter()
-            .position(|id| event.parent.as_ref().map(|p| p == id).unwrap_or(false))
+            .position(|id| event.parent().as_ref().map(|p| p == id).unwrap_or(false))
         {
             self.print_indent(&mut stderr, idx + 1).unwrap();
         }
@@ -198,11 +198,11 @@ impl Subscriber for SloggishSubscriber {
             "{} ",
             humantime::format_rfc3339_seconds(SystemTime::now())
         ).unwrap();
-        self.print_meta(&mut stderr, event.meta).unwrap();
+        self.print_meta(&mut stderr, event.metadata()).unwrap();
         write!(
             &mut stderr,
             "{}",
-            Style::new().bold().paint(format!("{}", event.message))
+            Style::new().bold().paint(format!("{}", event.message()))
         ).unwrap();
         self.print_kvs(
             &mut stderr,
