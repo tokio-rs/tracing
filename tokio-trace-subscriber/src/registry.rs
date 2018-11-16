@@ -75,7 +75,39 @@ pub trait RegisterSpan {
     where
         F: for<'a> Fn(&'a SpanRef<'a>);
 
-    // TODO: Should the registry also be informed of span closure?
+    /// Notifies the subscriber that a [`Span`] handle with the given [`Id`] has
+    /// been cloned.
+    ///
+    /// This function is guaranteed to only be called with span IDs that were
+    /// returned by this subscriber's `new_span` function.
+    ///
+    /// Note that typically this is just the identity function, passing through
+    /// the identifier. For more unsafe situations, however, if `id` is itself a
+    /// pointer of some kind this can be used as a hook to "clone" the pointer,
+    /// depending on what that means for the specified pointer.
+    fn clone_span(&self, id: Id) -> Id {
+        id
+    }
+
+    /// Notifies the subscriber that a [`Span`] handle with the given [`Id`] has
+    /// been dropped.
+    ///
+    /// This function is guaranteed to only be called with span IDs that were
+    /// returned by this subscriber's `new_span` function.
+    ///
+    /// This function provides a hook for schemes which encode pointers in this
+    /// `id` argument to deallocate resources associated with the pointer. It's
+    /// guaranteed that if this function has been called once more than the
+    /// number of times `clone_span` was called with the same `id`, then no more
+    /// `Span`s using that `id` exist.
+    ///
+    /// **Note**: since this function is called when spans are dropped,
+    /// implementations should ensure that they are unwind-safe. Panicking from
+    /// inside of a `drop_span` function may cause a double panic, if the span
+    /// was dropped due to a thread unwinding.
+    fn drop_span(&self, id: Id) {
+        let _ = id;
+    }
 }
 
 #[derive(Debug)]

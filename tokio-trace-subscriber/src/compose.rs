@@ -136,4 +136,12 @@ where
             self.observer.close(span);
         });
     }
+
+    fn clone_span(&self, id: span::Id) -> span::Id {
+        self.registry.clone_span(id)
+    }
+
+    fn drop_span(&self, id: span::Id) {
+        self.registry.drop_span(id)
+    }
 }
