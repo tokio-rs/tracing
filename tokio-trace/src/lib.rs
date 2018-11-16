@@ -123,7 +123,7 @@ macro_rules! span {
 
 #[macro_export]
 macro_rules! event {
-    (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
+    (target: $target:expr, $lvl:expr, follows: [ $( $follows:expr),* ], { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
         {
             use $crate::{callsite, SpanAttributes, SpanId, Subscriber, Event, field::Value};
             use $crate::callsite::Callsite;
@@ -133,17 +133,24 @@ macro_rules! event {
                 $target, $( $k ),*
             };
             let field_values: &[ &dyn Value ] = &[ $( &$val ),* ];
+            let follows_from: &[SpanId] = &[ $( $follows ),* ];
             Event::observe(
                 callsite,
                 &field_values[..],
-                &[],
+                &follows_from[..],
                 format_args!( $($arg)+ ),
             );
         }
     });
+    (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
+        event!(target: $target, $lvl, follows: [],  { $($k = $val),* }, $($arg)+)
+    );
     ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
         event!(target: module_path!(), $lvl, { $($k = $val),* }, $($arg)+)
-    )
+    );
+    ($lvl:expr, follows: [ $( $follows:expr),* ], { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $lvl, follows: [ $( $follows ),* ], { $($k = $val),* }, $($arg)+)
+    );
 }
 
 mod dispatcher;
