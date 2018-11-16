@@ -404,6 +404,12 @@ impl<'a> Event<'a> {
             Some((key, val))
         })
     }
+
+    /// Returns a slice containing the IDs of the spans that this event follows
+    /// from.
+    pub fn follows(&self) -> &[SpanId] {
+        self.follows_from
+    }
 }
 
 impl<'a> IntoIterator for &'a Event<'a> {
