@@ -494,8 +494,9 @@ impl Enter {
     }
 
     fn duplicate(&self) -> Self {
+        let id = self.subscriber.clone_span(self.id.clone());
         Self {
-            id: self.id.clone(),
+            id,
             subscriber: self.subscriber.clone(),
             parent: self.parent.clone(),
             wants_close: AtomicBool::from(self.wants_close()),
@@ -547,6 +548,7 @@ impl Hash for Enter {
 
 impl Drop for Enter {
     fn drop(&mut self) {
+        self.subscriber.drop_span(self.id.clone());
         // If this handle wants to be closed, try to close it --- either by
         // closing it now if it is idle, or telling the current span to close
         // when it exits, if it is the current span.

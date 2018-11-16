@@ -139,6 +139,16 @@ impl Subscriber for Dispatch {
     fn close(&self, span: span::Id) {
         self.subscriber.close(span)
     }
+
+    #[inline]
+    fn clone_span(&self, id: span::Id) -> span::Id {
+        self.subscriber.clone_span(id)
+    }
+
+    #[inline]
+    fn drop_span(&self, id: span::Id) {
+        self.subscriber.drop_span(id)
+    }
 }
 
 struct NoSubscriber;

@@ -529,6 +529,79 @@ mod tests {
     }
 
     #[test]
+    fn dropping_a_span_calls_drop_span() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
+            .done()
+            .run();
+        Dispatch::new(subscriber).as_default(|| {
+            let mut span = span!("foo");
+            span.enter(|| {});
+            drop(span);
+        })
+    }
+
+    #[test]
+    fn span_current_calls_clone_span() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .clone_span(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .run();
+        Dispatch::new(subscriber).as_default(|| {
+            let mut span = span!("foo");
+            let _span2 = span.enter(|| Span::current());
+        })
+    }
+
+    #[test]
+    fn drop_span_when_exiting_dispatchers_context() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .clone_span(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
+            .run();
+        Dispatch::new(subscriber).as_default(|| {
+            let mut span = span!("foo");
+            let _span2 = span.enter(|| Span::current());
+            drop(span);
+        })
+    }
+
+    #[test]
+    fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
+        let subscriber1 = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .clone_span(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
+            .done();
+        let subscriber1 = Dispatch::new(subscriber1.run());
+        let subscriber2 = Dispatch::new(subscriber::mock().done().run());
+
+        let mut foo = subscriber1.as_default(|| {
+            let mut foo = span!("foo");
+            foo.enter(|| {});
+            foo
+        });
+        // Even though we enter subscriber 2's context, the subscriber that
+        // tagged the span should see the enter/exit.
+        subscriber2.as_default(move || {
+            let foo2 = foo.enter(|| Span::current());
+            drop(foo);
+            drop(foo2);
+        });
+    }
+
+    #[test]
     fn span_closes_when_idle() {
         let subscriber = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
@@ -605,6 +678,25 @@ mod tests {
             Dispatch::new(subscriber).as_default(|| {
                 let span = span!("foo").into_shared();
                 drop(span);
+            })
+        }
+
+        #[test]
+        fn shared_only_calls_drop_span_when_the_last_handle_is_dropped() {
+            let subscriber = subscriber::mock()
+                .enter(span::mock().named(Some("foo")))
+                .exit(span::mock().named(Some("foo")))
+                .close(span::mock().named(Some("foo")))
+                .drop_span(span::mock().named(Some("foo")))
+                .done()
+                .run();
+            Dispatch::new(subscriber).as_default(|| {
+                let span = span!("foo").into_shared();
+                let foo1 = span.clone();
+                let foo2 = span.clone();
+                drop(foo1);
+                drop(span);
+                foo2.enter(|| {})
             })
         }
 
