@@ -9,7 +9,7 @@ use std::{
 use {
     callsite::Callsite,
     field::{self, Key},
-    subscriber::{FollowsError, Interest, RecordError, Subscriber},
+    subscriber::{Interest, Subscriber},
     Dispatch, Meta,
 };
 
@@ -249,75 +249,44 @@ impl Span {
             .as_ref()
             .and_then(|inner| inner.meta.key_for(name))
     }
-
     /// Record a signed 64-bit integer value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_i64(&self, field: &Key, value: i64) -> Result<(), RecordError> {
+    pub fn record_value_i64(&mut self, field: &Key, value: i64) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_i64(field, value)?;
+            inner.record_value_i64(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record an umsigned 64-bit integer value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_u64(&self, field: &Key, value: u64) -> Result<(), RecordError> {
+    pub fn record_value_u64(&self, field: &Key, value: u64) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_u64(field, value)?;
+            inner.record_value_u64(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record a boolean value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_bool(&self, field: &Key, value: bool) -> Result<(), RecordError> {
+    pub fn record_value_bool(&self, field: &Key, value: bool) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_bool(field, value)?;
+            inner.record_value_bool(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record a string value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_str(&self, field: &Key, value: &str) -> Result<(), RecordError> {
+    pub fn record_value_str(&self, field: &Key, value: &str) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_str(field, value)?;
+            inner.record_value_str(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record a precompiled set of format arguments.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_fmt(&self, field: &Key, value: fmt::Arguments) -> Result<(), RecordError> {
+    pub fn record_value_fmt(&self, field: &Key, value: fmt::Arguments) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_fmt(field, value)?;
+            inner.record_value_fmt(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Signals that this span should close the next time it is exited, or when
@@ -355,14 +324,13 @@ impl Span {
     /// executing. This is used to model causal relationships such as when a
     /// single future spawns several related background tasks, et cetera.
     ///
-    /// If this span is disabled, this function will do nothing. Otherwise, it
-    /// returns `Ok(())` if the other span was added as a precedent of this
-    /// span, or an error if this was not possible.
-    pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
-        self.inner
-            .as_ref()
-            .map(move |inner| inner.follows_from(from))
-            .unwrap_or(Ok(()))
+    /// If this span is disabled, or the resulting follows-from relationship
+    /// would be invalid, this function will do nothing.
+    pub fn follows_from(&self, from: Id) -> &Self {
+        if let Some(ref inner) = self.inner {
+            inner.follows_from(from);
+        }
+        self
     }
 
     /// Returns this span's `Id`, if it is enabled.
@@ -432,85 +400,51 @@ impl<'a> Event<'a> {
     }
 
     /// Adds a formattable message describing the event that occurred.
-    pub fn message(
-        &mut self,
-        key: &field::Key,
-        message: fmt::Arguments,
-    ) -> Result<(), ::subscriber::RecordError> {
+    pub fn message(&mut self, key: &field::Key, message: fmt::Arguments) -> &mut Self {
         if let Some(ref mut inner) = self.inner {
-            inner.subscriber.record_fmt(&inner.id, key, message)?;
+            inner.subscriber.record_fmt(&inner.id, key, message);
         }
-        Ok(())
+        self
     }
 
     /// Record a signed 64-bit integer value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_i64(&mut self, field: &Key, value: i64) -> Result<(), RecordError> {
+    pub fn record_value_i64(&mut self, field: &Key, value: i64) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_i64(field, value)?;
+            inner.record_value_i64(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record an umsigned 64-bit integer value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_u64(&self, field: &Key, value: u64) -> Result<(), RecordError> {
+    pub fn record_value_u64(&self, field: &Key, value: u64) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_u64(field, value)?;
+            inner.record_value_u64(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record a boolean value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_bool(&self, field: &Key, value: bool) -> Result<(), RecordError> {
+    pub fn record_value_bool(&self, field: &Key, value: bool) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_bool(field, value)?;
+            inner.record_value_bool(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record a string value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_str(&self, field: &Key, value: &str) -> Result<(), RecordError> {
+    pub fn record_value_str(&self, field: &Key, value: &str) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_str(field, value)?;
+            inner.record_value_str(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Record a precompiled set of format arguments.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub fn record_value_fmt(&self, field: &Key, value: fmt::Arguments) -> Result<(), RecordError> {
+    pub fn record_value_fmt(&self, field: &Key, value: fmt::Arguments) -> &Self {
         if let Some(ref inner) = self.inner {
-            inner.record_value_fmt(field, value)?;
+            inner.record_value_fmt(field, value);
         }
-        Ok(())
+        self
     }
 
     /// Returns the `Id` of the parent of this span, if one exists.
@@ -536,7 +470,7 @@ impl<'a> Event<'a> {
     }
 
     /// Indicates that the span with the given ID has an indirect causal
-    /// relationship with this span.
+    /// relationship with this event.
     ///
     /// This relationship differs somewhat from the parent-child relationship: a
     /// span may have any number of prior spans, rather than a single one; and
@@ -547,14 +481,13 @@ impl<'a> Event<'a> {
     /// executing. This is used to model causal relationships such as when a
     /// single future spawns several related background tasks, et cetera.
     ///
-    /// If this span is disabled, this function will do nothing. Otherwise, it
-    /// returns `Ok(())` if the other span was added as a precedent of this
-    /// span, or an error if this was not possible.
-    pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
-        self.inner
-            .as_ref()
-            .map(move |inner| inner.follows_from(from))
-            .unwrap_or(Ok(()))
+    /// If this event is disabled, or the resulting follows-from relationship
+    /// would be invalid, this function will do nothing.
+    pub fn follows_from(&self, from: Id) -> &Self {
+        if let Some(ref inner) = self.inner {
+            inner.follows_from(from);
+        }
+        self
     }
 
     /// Returns this span's `Id`, if it is enabled.
@@ -652,7 +585,7 @@ impl<'a> Inner<'a> {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
+    pub fn follows_from(&self, from: Id) {
         self.subscriber.add_follows_from(&self.id, from)
     }
 
@@ -672,82 +605,38 @@ impl<'a> Inner<'a> {
     }
 
     /// Record a signed 64-bit integer value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub(crate) fn record_value_i64(&self, field: &Key, value: i64) -> Result<(), RecordError> {
-        if !self.meta.contains_key(field) {
-            return Err(RecordError::no_field());
+    pub(crate) fn record_value_i64(&self, field: &Key, value: i64) {
+        if self.meta.contains_key(field) {
+            self.subscriber.record_i64(&self.id, field, value)
         }
-
-        self.subscriber.record_i64(&self.id, field, value)
     }
 
     /// Record an umsigned 64-bit integer value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub(crate) fn record_value_u64(&self, field: &Key, value: u64) -> Result<(), RecordError> {
-        if !self.meta.contains_key(field) {
-            return Err(RecordError::no_field());
+    pub(crate) fn record_value_u64(&self, field: &Key, value: u64) {
+        if self.meta.contains_key(field) {
+            self.subscriber.record_u64(&self.id, field, value)
         }
-
-        self.subscriber.record_u64(&self.id, field, value)
     }
 
     /// Record a boolean value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub(crate) fn record_value_bool(&self, field: &Key, value: bool) -> Result<(), RecordError> {
-        if !self.meta.contains_key(field) {
-            return Err(RecordError::no_field());
+    pub(crate) fn record_value_bool(&self, field: &Key, value: bool) {
+        if self.meta.contains_key(field) {
+            self.subscriber.record_bool(&self.id, field, value)
         }
-
-        self.subscriber.record_bool(&self.id, field, value)
     }
 
     /// Record a string value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub(crate) fn record_value_str(&self, field: &Key, value: &str) -> Result<(), RecordError> {
-        if !self.meta.contains_key(field) {
-            return Err(RecordError::no_field());
+    pub(crate) fn record_value_str(&self, field: &Key, value: &str) {
+        if self.meta.contains_key(field) {
+            self.subscriber.record_str(&self.id, field, value)
         }
-
-        self.subscriber.record_str(&self.id, field, value)
     }
 
     /// Record a precompiled set of format arguments value.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    pub(crate) fn record_value_fmt(
-        &self,
-        field: &Key,
-        value: fmt::Arguments,
-    ) -> Result<(), RecordError> {
+    pub(crate) fn record_value_fmt(&self, field: &Key, value: fmt::Arguments) {
         if !self.meta.contains_key(field) {
-            return Err(RecordError::no_field());
+            self.subscriber.record_fmt(&self.id, field, value)
         }
-
-        self.subscriber.record_fmt(&self.id, field, value)
     }
 
     fn new(id: Id, parent: Option<Id>, subscriber: &Dispatch, meta: &'a Meta<'a>) -> Self {
