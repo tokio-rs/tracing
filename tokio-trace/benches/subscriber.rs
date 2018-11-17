@@ -1,35 +1,30 @@
 #![feature(test)]
-#[macro_use]
-extern crate tokio_trace;
 extern crate test;
 use test::Bencher;
 
 use std::sync::Mutex;
-use tokio_trace::{field, span, subscriber, Event, Meta};
+use tokio_trace::{field, span, subscriber, Id, Meta};
 
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
 
 impl tokio_trace::Subscriber for EnabledSubscriber {
-    fn new_span(&self, span: span::Attributes) -> span::Id {
+    fn new_id(&self, span: span::Attributes) -> Id {
         let _ = span;
-        span::Id::from_u64(0)
+        Id::from_u64(0)
     }
-    fn record(
+
+    fn record_fmt(
         &self,
-        span: &span::Id,
+        span: &Id,
         field: &field::Key,
-        value: &dyn field::Value,
+        value: ::std::fmt::Arguments,
     ) -> Result<(), tokio_trace::subscriber::RecordError> {
         let _ = (span, field, value);
         Ok(())
     }
 
-    fn add_follows_from(
-        &self,
-        span: &span::Id,
-        follows: span::Id,
-    ) -> Result<(), subscriber::FollowsError> {
+    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), subscriber::FollowsError> {
         let _ = (span, follows);
         Ok(())
     }
@@ -39,46 +34,43 @@ impl tokio_trace::Subscriber for EnabledSubscriber {
         true
     }
 
-    fn observe_event<'event>(&self, event: &'event Event<'event>) {
-        let _ = event;
-    }
-
-    fn enter(&self, span: span::Id) {
+    fn enter(&self, span: Id) {
         let _ = span;
     }
 
-    fn exit(&self, span: span::Id) {
+    fn exit(&self, span: Id) {
         let _ = span;
     }
 
-    fn close(&self, span: span::Id) {
+    fn close(&self, span: Id) {
         let _ = span;
     }
 }
 
-/// Simulates a subscriber that caches span data.
-struct AddAttributes(Mutex<Option<span::Attributes>>);
+/// Simulates a subscriber that records span data.
+struct Record(Mutex<Option<span::SpanAttributes>>);
 
-impl tokio_trace::Subscriber for AddAttributes {
-    fn new_span(&self, span: span::Attributes) -> span::Id {
+impl tokio_trace::Subscriber for Record {
+    fn new_span(&self, span: span::SpanAttributes) -> Id {
         *self.0.lock().unwrap() = Some(span.into());
-        span::Id::from_u64(0)
+        Id::from_u64(0)
     }
 
-    fn record(
+    fn new_id(&self, span: span::Attributes) -> Id {
+        Id::from_u64(0)
+    }
+
+    fn record_fmt(
         &self,
-        span: &span::Id,
-        field: &field::Key,
-        value: &dyn field::Value,
+        _span: &Id,
+        _field: &field::Key,
+        value: ::std::fmt::Arguments,
     ) -> Result<(), tokio_trace::subscriber::RecordError> {
-        unimplemented!("TODO: reimplement this")
+        let _ = ::std::fmt::format(value);
+        Ok(())
     }
 
-    fn add_follows_from(
-        &self,
-        span: &span::Id,
-        follows: span::Id,
-    ) -> Result<(), subscriber::FollowsError> {
+    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), subscriber::FollowsError> {
         let _ = (span, follows);
         Ok(())
     }
@@ -88,19 +80,15 @@ impl tokio_trace::Subscriber for AddAttributes {
         true
     }
 
-    fn observe_event<'event>(&self, event: &'event Event<'event>) {
-        let _ = event;
-    }
-
-    fn enter(&self, span: span::Id) {
+    fn enter(&self, span: Id) {
         let _ = span;
     }
 
-    fn exit(&self, span: span::Id) {
+    fn exit(&self, span: Id) {
         let _ = span;
     }
 
-    fn close(&self, span: span::Id) {
+    fn close(&self, span: Id) {
         let _ = span;
     }
 }
@@ -121,7 +109,7 @@ fn span_repeatedly(b: &mut Bencher) {
 
     let n = test::black_box(N_SPANS);
     tokio_trace::Dispatch::new(EnabledSubscriber)
-        .as_default(|| b.iter(|| (0..n).fold(mk_span(0), |span, i| mk_span(i as u64))));
+        .as_default(|| b.iter(|| (0..n).fold(mk_span(0), |_, i| mk_span(i as u64))));
 }
 
 #[bench]
@@ -142,7 +130,7 @@ fn span_with_fields(b: &mut Bencher) {
 // TODO: bring this back
 // #[bench]
 // fn span_with_fields_add_data(b: &mut Bencher) {
-//     tokio_trace::Dispatch::new(AddAttributes(Mutex::new(None))).as_default(|| {
+//     tokio_trace::Dispatch::new(Record(Mutex::new(None))).as_default(|| {
 //         b.iter(|| span!("span", foo = &"foo", bar = &"bar", baz = &3, quuux = &0.99))
 //     });
 // }

@@ -196,7 +196,7 @@
 //! [`Attributes`]: ::span::Attributes
 //! [shared span]: ::span::Shared
 //! [`IntoShared`]: ::span::IntoShared
-pub use tokio_trace_core::span::{Attributes, Id, Span};
+pub use tokio_trace_core::span::{Attributes, Id, Span, SpanAttributes};
 
 #[cfg(any(test, feature = "test-support"))]
 pub use tokio_trace_core::span::{mock, MockSpan};
@@ -525,6 +525,63 @@ mod tests {
             let mut span = span!("foo");
             span.enter(|| {});
             drop(span);
+        })
+    }
+
+    #[test]
+    fn span_closes_after_event() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .event()
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .done()
+            .run();
+        Dispatch::new(subscriber).as_default(|| {
+            span!("foo").enter(|| {
+                Span::current().close();
+                event!(::Level::Debug, {}, "my event!");
+            });
+        })
+    }
+
+    #[test]
+    fn new_span_after_event() {
+        let subscriber = subscriber::mock()
+            .enter(span::mock().named(Some("foo")))
+            .event()
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .enter(span::mock().named(Some("bar")))
+            .exit(span::mock().named(Some("bar")))
+            .close(span::mock().named(Some("bar")))
+            .done()
+            .run();
+        Dispatch::new(subscriber).as_default(|| {
+            span!("foo").enter(|| {
+                Span::current().close();
+                event!(::Level::Debug, {}, "my event!");
+            });
+            span!("bar").enter(|| {
+                Span::current().close();
+            });
+        })
+    }
+
+    #[test]
+    fn event_outside_of_span() {
+        let subscriber = subscriber::mock()
+            .event()
+            .enter(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
+            .close(span::mock().named(Some("foo")))
+            .done()
+            .run();
+        Dispatch::new(subscriber).as_default(|| {
+            event!(::Level::Debug, {}, "my event!");
+            span!("foo").enter(|| {
+                Span::current().close();
+            });
         })
     }
 

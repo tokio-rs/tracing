@@ -1,7 +1,7 @@
 //! Utilities and helpers for implementing and composing subscribers.
 
 extern crate tokio_trace;
-pub use tokio_trace::{Event, SpanId};
+pub use tokio_trace::{Event, Id};
 
 mod compose;
 pub use compose::Composed;

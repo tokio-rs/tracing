@@ -25,7 +25,7 @@ macro_rules! callsite {
             module_path: Some(module_path!()),
             file: Some(file!()),
             line: Some(line!()),
-            field_names: &[ $(stringify!($field_name)),* ],
+            field_names: &[ "message", $(stringify!($field_name)),* ],
             kind: $crate::MetaKind::EVENT,
         })
     });
@@ -123,33 +123,42 @@ macro_rules! span {
 
 #[macro_export]
 macro_rules! event {
-    (target: $target:expr, $lvl:expr, follows: [ $( $follows:expr),* ], { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => ({
+    (target: $target:expr, $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{callsite, SpanAttributes, SpanId, Subscriber, Event, field::Value};
+            use $crate::{callsite, SpanAttributes, Id, Subscriber, Event, field::Value};
             use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,
                 target:
                 $target, $( $k ),*
             };
-            let field_values: &[ &dyn Value ] = &[ $( &$val ),* ];
-            let follows_from: &[SpanId] = &[ $( $follows ),* ];
-            Event::observe(
-                callsite,
-                &field_values[..],
-                &follows_from[..],
-                format_args!( $($arg)+ ),
-            );
+            // Depending on how many fields are generated, this may or may
+            // not actually be used, but it doesn't make sense to repeat it.
+            #[allow(unused_variables, unused_mut)]
+            Event::new(callsite, |event| {
+                let mut keys = callsite.metadata().fields();
+                event.message(
+                    &keys.next().expect("event metadata should define a key for the message"),
+                    format_args!( $($arg)+ )
+                )
+                .expect("adding value for event message failed");
+                $(
+                    let key = keys.next()
+                        .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
+                    event!(@ record: event, $k, &key, $($val)*);
+                )*
+            })
         }
     });
-    (target: $target:expr, $lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
-        event!(target: $target, $lvl, follows: [],  { $($k = $val),* }, $($arg)+)
+    ( $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $lvl, { $($k $( = $val)* ),* }, $($arg)+)
     );
-    ($lvl:expr, { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $lvl, { $($k = $val),* }, $($arg)+)
+    (@ record: $ev:expr, $k:expr, $i:expr, $val:expr) => (
+        $ev.record($i, &$val)
+            .expect(concat!("adding value for field '", stringify!($k), "' failed"));
     );
-    ($lvl:expr, follows: [ $( $follows:expr),* ], { $($k:ident = $val:expr),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $lvl, follows: [ $( $follows ),* ], { $($k = $val),* }, $($arg)+)
+    (@ record: $ev:expr, $k:expr, $i:expr,) => (
+        // skip
     );
 }
 
@@ -161,7 +170,7 @@ pub mod subscriber;
 pub use self::{
     dispatcher::Dispatch,
     field::Value,
-    span::{Attributes as SpanAttributes, Id as SpanId, Span},
+    span::{Attributes, Id, Span, SpanAttributes},
     subscriber::Subscriber,
     tokio_trace_core::{
         callsite::{self, Callsite},

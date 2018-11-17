@@ -4,7 +4,7 @@ extern crate tokio_trace;
 use tokio_trace::{
     field, span,
     subscriber::{self, Subscriber},
-    Event, Level, Meta,
+    Id, Level, Meta,
 };
 
 use std::{
@@ -21,51 +21,6 @@ struct Counters(Arc<RwLock<HashMap<String, AtomicUsize>>>);
 struct CounterSubscriber {
     ids: AtomicUsize,
     counters: Counters,
-}
-
-impl<'a> field::Record for &'a Counters {
-    fn record_i64(
-        &mut self,
-        field: &field::Key,
-        value: i64,
-    ) -> Result<(), ::subscriber::RecordError> {
-        let registry = (*self).0.read().unwrap();
-        if let Some(counter) = field.name().and_then(|name| registry.get(name)) {
-            if value > 0 {
-                counter.fetch_add(value as usize, Ordering::Release);
-            } else {
-                counter.fetch_sub(value as usize, Ordering::Release);
-            }
-        };
-        Ok(())
-    }
-
-    fn record_u64(
-        &mut self,
-        field: &field::Key,
-        value: u64,
-    ) -> Result<(), ::subscriber::RecordError> {
-        let registry = (*self).0.read().unwrap();
-        if let Some(counter) = field.name().and_then(|name| registry.get(name)) {
-            counter.fetch_add(value as usize, Ordering::Release);
-        };
-        Ok(())
-    }
-
-    /// Adds a new field to an existing span observed by this `Subscriber`.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_fmt(
-        &mut self,
-        _field: &field::Key,
-        _value: ::std::fmt::Arguments,
-    ) -> Result<(), ::subscriber::RecordError> {
-        Ok(())
-    }
 }
 
 impl Subscriber for CounterSubscriber {
@@ -87,27 +42,60 @@ impl Subscriber for CounterSubscriber {
         interest
     }
 
-    fn new_span(&self, _new_span: span::Attributes) -> span::Id {
+    fn new_id(&self, _new_span: span::Attributes) -> Id {
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
-        span::Id::from_u64(id as u64)
+        Id::from_u64(id as u64)
     }
 
-    fn add_follows_from(
-        &self,
-        _span: &span::Id,
-        _follows: span::Id,
-    ) -> Result<(), subscriber::FollowsError> {
+    fn add_follows_from(&self, _span: &Id, _follows: Id) -> Result<(), subscriber::FollowsError> {
         // unimplemented
         Ok(())
     }
 
-    fn record(
+    fn record_i64(
         &self,
-        _span: &span::Id,
-        key: &field::Key,
-        value: &dyn field::Value,
+        _id: &Id,
+        field: &field::Key,
+        value: i64,
     ) -> Result<(), ::subscriber::RecordError> {
-        value.record(key, &mut &self.counters)
+        let registry = self.counters.0.read().unwrap();
+        if let Some(counter) = field.name().and_then(|name| registry.get(name)) {
+            if value > 0 {
+                counter.fetch_add(value as usize, Ordering::Release);
+            } else {
+                counter.fetch_sub(value as usize, Ordering::Release);
+            }
+        };
+        Ok(())
+    }
+
+    fn record_u64(
+        &self,
+        _id: &Id,
+        field: &field::Key,
+        value: u64,
+    ) -> Result<(), ::subscriber::RecordError> {
+        let registry = self.counters.0.read().unwrap();
+        if let Some(counter) = field.name().and_then(|name| registry.get(name)) {
+            counter.fetch_add(value as usize, Ordering::Release);
+        };
+        Ok(())
+    }
+
+    /// Adds a new field to an existing span observed by this `Subscriber`.
+    ///
+    /// This is expected to return an error under the following conditions:
+    /// - The span ID does not correspond to a span which currently exists.
+    /// - The span does not have a field with the given name.
+    /// - The span has a field with the given name, but the value has already
+    ///   been set.
+    fn record_fmt(
+        &self,
+        _id: &Id,
+        _field: &field::Key,
+        _value: ::std::fmt::Arguments,
+    ) -> Result<(), ::subscriber::RecordError> {
+        Ok(())
     }
 
     fn enabled(&self, metadata: &Meta) -> bool {
@@ -119,15 +107,9 @@ impl Subscriber for CounterSubscriber {
             .any(|f| f.name().map(|name| name.contains("count")).unwrap_or(false))
     }
 
-    fn observe_event<'a>(&self, event: &'a Event<'a>) {
-        for (key, value) in event.fields() {
-            value.record(&key, &mut &self.counters);
-        }
-    }
-
-    fn enter(&self, _span: span::Id) {}
-    fn exit(&self, _span: span::Id) {}
-    fn close(&self, _span: span::Id) {}
+    fn enter(&self, _span: Id) {}
+    fn exit(&self, _span: Id) {}
+    fn close(&self, _span: Id) {}
 }
 
 impl Counters {

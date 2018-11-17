@@ -1,6 +1,6 @@
 use tokio_trace::{
     field,
-    span::{Attributes, Id},
+    span::{self, Attributes, Id, SpanAttributes},
     subscriber::{FollowsError, RecordError},
 };
 
@@ -38,7 +38,11 @@ pub trait RegisterSpan {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span(&self, new_span: Attributes) -> Id;
+    fn new_span(&self, new_span: SpanAttributes) -> Id {
+        self.new_id(new_span)
+    }
+
+    fn new_id(&self, new_id: Attributes) -> Id;
 
     fn record(
         &self,
@@ -113,7 +117,7 @@ pub trait RegisterSpan {
 #[derive(Debug)]
 pub struct SpanRef<'a> {
     pub id: &'a Id,
-    pub data: Option<&'a Attributes>,
+    pub data: Option<&'a SpanAttributes>,
     // TODO: the registry can still have a concept of span states...
 }
 
@@ -155,7 +159,7 @@ impl<'a> cmp::Eq for SpanRef<'a> {}
 #[derive(Default)]
 pub struct IncreasingCounter {
     next_id: AtomicUsize,
-    spans: Mutex<HashMap<Id, Attributes>>,
+    spans: Mutex<HashMap<Id, SpanAttributes>>,
 }
 
 pub fn increasing_counter() -> IncreasingCounter {
@@ -165,12 +169,18 @@ pub fn increasing_counter() -> IncreasingCounter {
 impl RegisterSpan for IncreasingCounter {
     type PriorSpans = iter::Empty<Id>;
 
-    fn new_span(&self, new_span: Attributes) -> Id {
+    fn new_span(&self, new_span: SpanAttributes) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         if let Ok(mut spans) = self.spans.lock() {
             spans.insert(id.clone(), new_span);
         }
+        id
+    }
+
+    fn new_id(&self, _new_id: span::Attributes) -> Id {
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let id = Id::from_u64(id as u64);
         id
     }
 

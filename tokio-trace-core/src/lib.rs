@@ -29,9 +29,9 @@
 //! An [`Event`] represents a _point_ in time. It signifies something that
 //! happened while the trace was executing. `Event`s are comparable to the log
 //! records emitted by unstructured logging code, but unlike a typical log line,
-//! an `Event` always occurs within the context of a `Span`. Like a `Span`, it
+//! an `Event` may occur within the context of a `Span`. Like a `Span`, it
 //! may have fields, and implicitly inherits any of the fields present on its
-//! parent span. Additionally, it may be linked with one or more additional
+//! parent span, and it may be linked with one or more additional
 //! spans that are not its parent; in this case, the event is said to _follow
 //! from_ those spans.
 //!
@@ -42,6 +42,10 @@
 //! within the context of the tree of spans that comprise a trase. Thus,
 //! individual log record-like events can be pinpointed not only in time, but
 //! in the logical execution flow of the system.
+//!
+//! Events are represented as a special case of spans --- they are created, they
+//! may have fields added, and then they close immediately, without being
+//! entered.
 //!
 //! # `Subscriber`s
 //!
@@ -74,7 +78,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::{borrow::Borrow, fmt, slice};
+use std::borrow::Borrow;
 
 /// Describes the level of verbosity of a `Span` or `Event`.
 #[repr(usize)]
@@ -112,45 +116,9 @@ pub use self::{
     callsite::Callsite,
     dispatcher::Dispatch,
     field::{Key, Value},
-    span::{Attributes as SpanAttributes, Id as SpanId, Span},
+    span::{Attributes, Event, Id, Span, SpanAttributes},
     subscriber::{Interest, Subscriber},
 };
-
-/// `Event`s represent single points in time where something occurred during the
-/// execution of a program.
-///
-/// An event can be compared to a log record in unstructured logging, but with
-/// two key differences:
-/// - Events exist _within the context of a [`Span`]_. Unlike log lines, they may
-///   be located within the trace tree, allowing visibility into the context in
-///   which the event occurred.
-/// - Events have structured key-value data known as _fields_, as well as a
-///   textual message. In general, a majority of the data associated with an
-///   event should be in the event's fields rather than in the textual message,
-///   as the fields are more structed.
-///
-/// [`Span`]: ::span::Span
-pub struct Event<'a> {
-    /// The span ID of the span in which this event occurred.
-    parent: Option<SpanId>,
-
-    /// The IDs of a set of spans which are causally linked with this event, but
-    /// are not its direct parent.
-    follows_from: &'a [SpanId],
-
-    /// Metadata describing this event.
-    meta: &'a Meta<'a>,
-
-    /// The values of the fields on this event.
-    ///
-    /// The names of these fields are defined in the event's metadata. Each
-    /// index in this array corresponds to the name at the same index in
-    /// `self.meta.field_names`.
-    field_values: &'a [&'a dyn Value],
-
-    /// A textual message describing the event that occurred.
-    message: fmt::Arguments<'a>,
-}
 
 /// Metadata describing a [`Span`] or [`Event`].
 ///
@@ -229,8 +197,6 @@ enum KindInner {
     Event,
 }
 
-type StaticMeta = Meta<'static>;
-
 // ===== impl Meta =====
 
 impl<'a> Meta<'a> {
@@ -259,7 +225,7 @@ impl<'a> Meta<'a> {
 
     /// Construct new metadata for an event, with a target, level, field names,
     /// and optional source code location.
-    pub fn new_event(
+    pub fn new_id(
         target: &'a str,
         level: Level,
         module_path: Option<&'a str>,
@@ -317,106 +283,6 @@ impl<'a> PartialEq for Meta<'a> {
     #[inline]
     fn eq(&self, other: &Meta<'a>) -> bool {
         ::std::ptr::eq(self, other)
-    }
-}
-
-// ===== impl Event =====
-
-impl<'a> Event<'a> {
-    /// Notifies the currently active [`Subscriber`] of an `Event` at the given
-    /// [`Callsite`].
-    ///
-    /// If the given callsite is enabled, a  new `Event` will be constructed
-    /// with the provided `field_values` and `message`, following from the
-    /// provided span IDs. The subscriber will then observe that event.
-    ///
-    /// If the callsite is not enabled, this function does nothing.
-    ///
-    /// [`Subscriber`]: ::subscriber::Subscriber
-    /// [`Callsite`]: ::callsite::Callsite
-    pub fn observe(
-        callsite: &'a dyn callsite::Callsite,
-        field_values: &[&dyn field::Value],
-        follows_from: &[SpanId],
-        message: fmt::Arguments<'a>,
-    ) {
-        let interest = callsite.interest();
-        if interest == Interest::NEVER {
-            return;
-        }
-        Dispatch::with_current(|dispatch| {
-            let meta = callsite.metadata();
-            if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
-                return;
-            }
-            dispatch.observe_event(&Event {
-                parent: SpanId::current(),
-                follows_from,
-                meta,
-                field_values,
-                message,
-            });
-        })
-    }
-
-    /// Returns an iterator over the names of all the fields on this `Event`.
-    pub fn field_names(&self) -> slice::Iter<&'a str> {
-        self.meta.field_names.iter()
-    }
-
-    /// Returns true if this event has a field for the specified `key`.
-    #[inline]
-    pub fn has_field(&self, key: &field::Key) -> bool {
-        self.meta.contains_key(key)
-    }
-
-    /// Returns a reference to the event's metadata.
-    #[inline]
-    pub fn metadata(&self) -> &Meta<'a> {
-        self.meta
-    }
-
-    /// Returns the ID of the event's parent span, if it has one.
-    #[inline]
-    pub fn parent(&self) -> Option<span::Id> {
-        self.parent.as_ref().cloned()
-    }
-
-    /// Returns the event's message.
-    #[inline]
-    pub fn message(&self) -> &fmt::Arguments<'a> {
-        &self.message
-    }
-
-    /// Borrows the value of the field named `name`, if it exists. Otherwise,
-    /// returns `None`.
-    pub fn field(&self, key: &field::Key) -> Option<&dyn Value> {
-        if !self.has_field(key) {
-            return None;
-        }
-        self.field_values.get(key.as_usize()).map(|&v| v)
-    }
-
-    /// Returns an iterator over all the field names and values on this event.
-    pub fn fields<'b: 'a>(&'b self) -> impl Iterator<Item = (field::Key<'a>, &'a dyn Value)> {
-        self.meta.fields().filter_map(move |key| {
-            let val = self.field(&key)?;
-            Some((key, val))
-        })
-    }
-
-    /// Returns a slice containing the IDs of the spans that this event follows
-    /// from.
-    pub fn follows(&self) -> &[SpanId] {
-        self.follows_from
-    }
-}
-
-impl<'a> IntoIterator for &'a Event<'a> {
-    type Item = (field::Key<'a>, &'a dyn Value);
-    type IntoIter = Box<Iterator<Item = (field::Key<'a>, &'a dyn Value)> + 'a>; // TODO: unbox
-    fn into_iter(self) -> Self::IntoIter {
-        Box::new(self.fields())
     }
 }
 
