@@ -19,7 +19,7 @@ fn main() {
             let band = suggest_band();
             event!(
                 Level::Info,
-                { band_recommendation = field::Value::display(&band) },
+                { band_recommendation = field::display(&band) },
                 "Got a rec."
             );
         });

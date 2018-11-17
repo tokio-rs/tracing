@@ -97,7 +97,7 @@ macro_rules! span {
     ($name:expr) => { span!($name,) };
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
-            use $crate::{callsite, callsite::Callsite, Span};
+            use $crate::{callsite, callsite::Callsite, Span,  span::SpanExt, field::{Value, AsKey}};
             let callsite = callsite! { span: $name, $( $k ),* };
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
@@ -125,7 +125,7 @@ macro_rules! span {
 macro_rules! event {
     (target: $target:expr, $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => ({
         {
-            use $crate::{callsite, SpanAttributes, Id, Subscriber, Event, field::Value};
+            use $crate::{callsite, Id, Subscriber, Event, span::SpanExt, field::{Value, AsKey}};
             use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,
@@ -170,11 +170,11 @@ pub mod subscriber;
 pub use self::{
     dispatcher::Dispatch,
     field::Value,
-    span::{Attributes, Id, Span, SpanAttributes},
+    span::{Attributes, Event, Id, Span, SpanAttributes},
     subscriber::Subscriber,
     tokio_trace_core::{
         callsite::{self, Callsite},
-        Event, Level, Meta, MetaKind,
+        Level, Meta, MetaKind,
     },
 };
 

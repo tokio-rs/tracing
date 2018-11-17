@@ -18,7 +18,7 @@ use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio_trace::{field::Value, Level};
+use tokio_trace::{field, Level};
 use tokio_trace_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::{MakeService, Service};
@@ -75,7 +75,7 @@ impl Service<Request<RecvBody>> for Svc {
         if uri.path() != ROOT {
             let body = RspBody::empty();
             let rsp = rsp.status(404).body(body).unwrap();
-            event!(Level::Warn, { status_code = Value::display(404), path = Value::debug(uri.path()) }, "unrecognized URI");
+            event!(Level::Warn, { status_code = field::display(404), path = field::debug(uri.path()) }, "unrecognized URI");
             return future::ok(rsp);
         }
 
@@ -117,7 +117,7 @@ fn main() {
 
         span!(
             "serve",
-            local_ip = Value::debug(addr.ip()),
+            local_ip = field::debug(addr.ip()),
             local_port = addr.port() as u64
         ).enter(move || {
             let new_svc = tokio_trace_tower_http::InstrumentedMakeService::new(NewSvc);
@@ -129,7 +129,7 @@ fn main() {
                     let addr = sock.peer_addr().expect("can't get addr");
                     span!(
                         "conn",
-                        remote_ip = Value::debug(addr.ip()),
+                        remote_ip = field::debug(addr.ip()),
                         remote_port = addr.port() as u64
                     ).enter(|| {
                         if let Err(e) = sock.set_nodelay(true) {

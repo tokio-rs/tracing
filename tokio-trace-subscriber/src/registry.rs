@@ -1,7 +1,6 @@
 use tokio_trace::{
-    field,
     span::{self, Attributes, Id, SpanAttributes},
-    subscriber::{FollowsError, RecordError},
+    subscriber::FollowsError,
 };
 
 use std::{
@@ -43,13 +42,6 @@ pub trait RegisterSpan {
     }
 
     fn new_id(&self, new_id: Attributes) -> Id;
-
-    fn record(
-        &self,
-        span: &Id,
-        name: &field::Key,
-        value: &dyn field::Value,
-    ) -> Result<(), RecordError>;
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -182,15 +174,6 @@ impl RegisterSpan for IncreasingCounter {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         id
-    }
-
-    fn record(
-        &self,
-        _span: &Id,
-        _name: &field::Key,
-        _value: &dyn field::Value,
-    ) -> Result<(), RecordError> {
-        unimplemented!("TODO: figure out")
     }
 
     fn add_follows_from(&self, _span: &Id, _follows: Id) -> Result<(), FollowsError> {
