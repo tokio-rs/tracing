@@ -10,7 +10,7 @@ use {
     callsite::Callsite,
     field::{self, Key},
     subscriber::{FollowsError, Interest, RecordError, Subscriber},
-    Dispatch, Meta, StaticMeta,
+    Dispatch, Meta,
 };
 
 thread_local! {
@@ -39,17 +39,45 @@ pub struct Span {
     is_closed: bool,
 }
 
+/// `Event`s represent single points in time where something occurred during the
+/// execution of a program.
+///
+/// An event can be compared to a log record in unstructured logging, but with
+/// two key differences:
+/// - Events exist _within the context of a [`Span`]_. Unlike log lines, they may
+///   be located within the trace tree, allowing visibility into the context in
+///   which the event occurred.
+/// - Events have structured key-value data known as _fields_, as well as a
+///   textual message. In general, a majority of the data associated with an
+///   event should be in the event's fields rather than in the textual message,
+///   as the fields are more structed.
+///
+/// [`Span`]: ::span::Span
+#[derive(PartialEq, Hash)]
+pub struct Event<'a> {
+    /// A handle used to enter the span when it is not executing.
+    ///
+    /// If this is `None`, then the span has either closed or was never enabled.
+    inner: Option<Inner<'a>>,
+}
+
 /// A set of attributes describing a new `Span`.
 ///
 /// This may *not* be used to enter the span.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Attributes {
+pub struct Attributes<'a> {
     /// The span ID of the parent span, or `None` if that span does not exist.
     parent: Option<Id>,
 
     /// Metadata describing this span.
-    metadata: &'static Meta<'static>,
+    metadata: &'a Meta<'a>,
 }
+
+/// Unlike `Event` [`Attributes`], `Span` attributes are always constructed from
+/// metadata which is known to me valid for the `'static` lifetime.
+///
+/// [`Attributes`]: ::span::Attributes
+pub type SpanAttributes = Attributes<'static>;
 
 /// Identifies a span within the context of a process.
 ///
@@ -69,7 +97,7 @@ pub struct Id(u64);
 /// enabled by the current filter. This type is primarily used for implementing
 /// span handles; users should typically not need to interact with it directly.
 #[derive(Debug)]
-pub struct Enter {
+pub struct Inner<'a> {
     /// The span's ID, as provided by `subscriber`.
     id: Id,
 
@@ -98,8 +126,12 @@ pub struct Enter {
     /// dropped if this is the current span.
     handles: AtomicUsize,
 
-    meta: &'static StaticMeta,
+    meta: &'a Meta<'a>,
 }
+
+/// When an `Inner` corresponds to a `Span` rather than an `Event`, it can be
+/// used to enter that span.
+pub type Enter = Inner<'static>;
 
 /// A guard representing a span which has been entered and is currently
 /// executing.
@@ -156,7 +188,7 @@ impl Span {
             let parent = Id::current();
             let attrs = Attributes::new(parent.clone(), meta);
             let id = dispatch.new_span(attrs);
-            let inner = Some(Enter::new(id, dispatch, parent, meta));
+            let inner = Some(Enter::new(id, parent, dispatch, meta));
             let mut span = Self {
                 inner,
                 is_closed: false,
@@ -299,16 +331,140 @@ impl fmt::Debug for Span {
     }
 }
 
-// ===== impl Attributes =====
-
-impl Attributes {
-    fn new(parent: Option<Id>, metadata: &'static StaticMeta) -> Self {
-        Attributes { parent, metadata }
+// ===== impl Event =====
+impl<'a> Event<'a> {
+    /// Constructs a new `Span` originating from the given [`Callsite`].
+    ///
+    /// The new span will be constructed by the currently-active [`Subscriber`],
+    /// with the [current span] as its parent (if one exists).
+    ///
+    /// If the new span is enabled, then the provided function `if_enabled` is
+    /// envoked on it before it is returned. This allows [field values] and/or
+    /// [`follows_from` annotations] to be added to the span, but skips this
+    /// work for spans which are disabled.
+    ///
+    /// [`Callsite`]: ::callsite::Callsite
+    /// [`Subscriber`]: ::subscriber::Subscriber
+    /// [current span]: ::span::Span::current
+    /// [field values]: ::span::Span::record
+    /// [`follows_from` annotations]: ::span::Span::follows_from
+    #[inline]
+    pub fn new<F>(callsite: &'a dyn Callsite, if_enabled: F) -> Self
+    where
+        F: FnOnce(&mut Self),
+    {
+        let interest = callsite.interest();
+        if interest == Interest::NEVER {
+            return Self { inner: None };
+        }
+        Dispatch::with_current(|dispatch| {
+            let meta = callsite.metadata();
+            if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
+                return Self { inner: None };
+            }
+            let parent = Id::current();
+            let attrs = Attributes::new(parent.clone(), meta);
+            let id = dispatch.new_id(attrs);
+            let inner = Enter::new(id, parent, dispatch, meta);
+            inner.has_entered.store(true, Ordering::Relaxed);
+            inner.close();
+            let mut event = Self { inner: Some(inner) };
+            if_enabled(&mut event);
+            event
+        })
     }
 
-    /// Returns the name of this span, or `None` if it is unnamed,
+    /// Adds a formattable message describing the event that occurred.
+    pub fn message(
+        &mut self,
+        key: &field::Key,
+        message: fmt::Arguments,
+    ) -> Result<(), ::subscriber::RecordError> {
+        if let Some(ref mut inner) = self.inner {
+            inner.subscriber.record_fmt(&inner.id, key, message)?;
+        }
+        Ok(())
+    }
+
+    /// Returns the `Id` of the parent of this span, if one exists.
+    pub fn parent(&self) -> Option<Id> {
+        self.inner.as_ref().and_then(Enter::parent)
+    }
+
+    /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
+    /// one exists,
+    pub fn key_for<Q>(&self, name: &Q) -> Option<Key<'a>>
+    where
+        Q: Borrow<str>,
+    {
+        self.inner
+            .as_ref()
+            .and_then(|inner| inner.meta.key_for(name))
+    }
+
+    /// Sets the field on this span named `name` to the given `value`.
+    ///
+    /// `name` must name a field already defined by this span's metadata, and
+    /// the field must not already have a value. If this is not the case, this
+    /// function returns an [`RecordError`](::subscriber::RecordError).
+    pub fn record(&self, field: &Key, value: &dyn field::Value) -> Result<(), RecordError> {
+        if let Some(ref inner) = self.inner {
+            inner.record(field, value)?;
+        }
+        Ok(())
+    }
+
+    /// Returns `true` if this span was disabled by the subscriber and does not
+    /// exist.
+    pub fn is_disabled(&self) -> bool {
+        self.inner.is_none()
+    }
+
+    /// Indicates that the span with the given ID has an indirect causal
+    /// relationship with this span.
+    ///
+    /// This relationship differs somewhat from the parent-child relationship: a
+    /// span may have any number of prior spans, rather than a single one; and
+    /// spans are not considered to be executing _inside_ of the spans they
+    /// follow from. This means that a span may close even if subsequent spans
+    /// that follow from it are still open, and time spent inside of a
+    /// subsequent span should not be included in the time its precedents were
+    /// executing. This is used to model causal relationships such as when a
+    /// single future spawns several related background tasks, et cetera.
+    ///
+    /// If this span is disabled, this function will do nothing. Otherwise, it
+    /// returns `Ok(())` if the other span was added as a precedent of this
+    /// span, or an error if this was not possible.
+    pub fn follows_from(&self, from: Id) -> Result<(), FollowsError> {
+        self.inner
+            .as_ref()
+            .map(move |inner| inner.follows_from(from))
+            .unwrap_or(Ok(()))
+    }
+
+    /// Returns this span's `Id`, if it is enabled.
+    pub fn id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Enter::id)
+    }
+
+    /// Returns this span's `Meta`, if it is enabled.
+    pub fn metadata(&self) -> Option<&'a Meta<'a>> {
+        self.inner.as_ref().map(|inner| inner.metadata())
+    }
+}
+
+// ===== impl Attributes =====
+
+impl SpanAttributes {
+    /// Returns the name of this span, or `None` if it is unnamed.
     pub fn name(&self) -> Option<&'static str> {
         self.metadata.name
+    }
+}
+
+impl<'a> Attributes<'a> {
+    fn new(parent: Option<Id>, metadata: &'a Meta<'a>) -> Self {
+        Attributes { parent, metadata }
     }
 
     /// Returns the `Id` of the parent of this span, if one exists.
@@ -317,18 +473,18 @@ impl Attributes {
     }
 
     /// Borrows this span's metadata.
-    pub fn metadata(&self) -> &'static StaticMeta {
+    pub fn metadata(&self) -> &'a Meta<'a> {
         self.metadata
     }
 
     /// Returns an iterator over the names of all the fields on this span.
-    pub fn field_keys(&self) -> impl Iterator<Item = Key<'static>> {
+    pub fn field_keys(&self) -> impl Iterator<Item = Key<'a>> {
         self.metadata.fields()
     }
 
     /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
     /// one exists,
-    pub fn key_for<Q>(&self, name: &Q) -> Option<Key<'static>>
+    pub fn key_for<Q>(&self, name: &Q) -> Option<Key<'a>>
     where
         Q: Borrow<str>,
     {
@@ -359,83 +515,11 @@ impl Id {
 
 // ===== impl Enter =====
 
-impl Enter {
-    /// Consumes `span` and returns the inner entering handle, if the span is
-    /// enabled.
-    ///
-    /// The returned `Enter` has approximately the same behaviour to a `Span`.
-    /// However, it is primarily intended for use in libraries custom span
-    /// types; the `Span` handle will typically represent a more ergonomic API
-    /// for actually _using_ spans.
-    pub fn from_span(span: Span) -> Option<Self> {
-        span.inner
-    }
-
-    /// Enters the span, returning a guard that may be used to exit the span and
-    /// re-enter the prior span.
-    ///
-    /// This is used internally to implement `Span::enter`. It may be used for
-    /// writing custom span handles, but should generally not be called directly
-    /// when entering a span.
-    pub fn enter(&self) -> Entered {
-        // The current handle will no longer enter the span, since it has just
-        // been used to enter. Therefore, it will be safe to close the span if
-        // no additional handles exist when the span is exited.
-        self.handles.fetch_sub(1, Ordering::Release);
-        // The span has now been entered, so it's okay to close it.
-        self.has_entered.store(true, Ordering::Release);
-        self.subscriber.enter(self.id());
-        let prior = CURRENT_SPAN.with(|current_span| current_span.replace(Some(self.duplicate())));
-        self.wants_close.store(false, Ordering::Release);
-        Entered { prior }
-    }
-
+impl<'a> Inner<'a> {
     /// Indicates the span _should_ be closed the next time it exits or this
     /// handle is dropped.
     pub fn close(&self) {
         self.wants_close.store(true, Ordering::Release);
-    }
-
-    /// Exits the span entry represented by an `Entered` guard, consuming it,
-    /// and updates `self` to canonically represent the referenced span's state
-    /// after the other entry has exited.
-    ///
-    /// If the other handle to the span wanted to close the span on exit, it
-    /// will not do so. Instead, the responsibility for performing the `close`
-    /// will be transferred to `self` --- if `self` did not previously want to
-    /// close, but `other` did, `self` will now want to close.
-    ///
-    /// This means that dropping `other` will no longer close the span, even if
-    /// it previously would have.
-    ///
-    /// This function is intended to be used by span handle implementations to
-    /// ensuring that multiple entering handles are kept consistent. Probably
-    /// don't use this unless you know what you're doing.
-    pub fn exit_and_join(&self, other: Entered) {
-        if let Some(other) = other.exit() {
-            self.handles.store(other.handle_count(), Ordering::Release);
-            self.has_entered
-                .store(other.has_entered(), Ordering::Release);
-            self.wants_close
-                .store(other.take_close(), Ordering::Release);
-        }
-    }
-
-    /// Sets the field on this span named `name` to the given `value`.
-    ///
-    /// `name` must name a field already defined by this span's metadata, and
-    /// the field must not already have a value. If this is not the case, this
-    /// function returns an [`RecordError`](::subscriber::RecordError).
-    pub fn record(&self, field: &Key, value: &dyn field::Value) -> Result<(), RecordError> {
-        if !self.meta.contains_key(field) {
-            return Err(RecordError::no_field());
-        }
-
-        match self.subscriber.record(&self.id, field, value) {
-            Ok(()) => Ok(()),
-            Err(ref e) if e.is_no_span() => panic!("span should still exist!"),
-            Err(e) => Err(e),
-        }
     }
 
     /// Indicates that the span with the given ID has an indirect causal
@@ -468,11 +552,28 @@ impl Enter {
     }
 
     /// Returns the span's metadata.
-    pub fn metadata(&self) -> &'static Meta<'static> {
+    pub fn metadata(&self) -> &'a Meta<'a> {
         self.meta
     }
 
-    fn new(id: Id, subscriber: &Dispatch, parent: Option<Id>, meta: &'static StaticMeta) -> Self {
+    /// Sets the field on this span named `name` to the given `value`.
+    ///
+    /// `name` must name a field already defined by this span's metadata, and
+    /// the field must not already have a value. If this is not the case, this
+    /// function returns an [`RecordError`](::subscriber::RecordError).
+    pub fn record(&self, field: &Key, value: &dyn field::Value) -> Result<(), RecordError> {
+        if !self.meta.contains_key(field) {
+            return Err(RecordError::no_field());
+        }
+
+        match value.record(&self.id, field, &self.subscriber) {
+            Ok(()) => Ok(()),
+            Err(ref e) if e.is_no_span() => panic!("span should still exist!"),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn new(id: Id, parent: Option<Id>, subscriber: &Dispatch, meta: &'a Meta<'a>) -> Self {
         Self {
             id,
             subscriber: subscriber.clone(),
@@ -482,15 +583,6 @@ impl Enter {
             handles: AtomicUsize::from(1),
             meta,
         }
-    }
-
-    fn clone_current() -> Option<Self> {
-        CURRENT_SPAN.with(|current| {
-            current.borrow().as_ref().map(|ref current| {
-                current.handles.fetch_add(1, Ordering::Release);
-                current.duplicate()
-            })
-        })
     }
 
     fn duplicate(&self) -> Self {
@@ -534,19 +626,85 @@ impl Enter {
     }
 }
 
-impl cmp::PartialEq for Enter {
-    fn eq(&self, other: &Enter) -> bool {
+impl Enter {
+    /// Consumes `span` and returns the inner entering handle, if the span is
+    /// enabled.
+    ///
+    /// The returned `Enter` has approximately the same behaviour to a `Span`.
+    /// However, it is primarily intended for use in libraries custom span
+    /// types; the `Span` handle will typically represent a more ergonomic API
+    /// for actually _using_ spans.
+    pub fn from_span(span: Span) -> Option<Self> {
+        span.inner
+    }
+
+    /// Enters the span, returning a guard that may be used to exit the span and
+    /// re-enter the prior span.
+    ///
+    /// This is used internally to implement `Span::enter`. It may be used for
+    /// writing custom span handles, but should generally not be called directly
+    /// when entering a span.
+    pub fn enter(&self) -> Entered {
+        // The current handle will no longer enter the span, since it has just
+        // been used to enter. Therefore, it will be safe to close the span if
+        // no additional handles exist when the span is exited.
+        self.handles.fetch_sub(1, Ordering::Release);
+        // The span has now been entered, so it's okay to close it.
+        self.has_entered.store(true, Ordering::Release);
+        self.subscriber.enter(self.id());
+        let prior = CURRENT_SPAN.with(|current_span| current_span.replace(Some(self.duplicate())));
+        self.wants_close.store(false, Ordering::Release);
+        Entered { prior }
+    }
+
+    /// Exits the span entry represented by an `Entered` guard, consuming it,
+    /// and updates `self` to canonically represent the referenced span's state
+    /// after the other entry has exited.
+    ///
+    /// If the other handle to the span wanted to close the span on exit, it
+    /// will not do so. Instead, the responsibility for performing the `close`
+    /// will be transferred to `self` --- if `self` did not previously want to
+    /// close, but `other` did, `self` will now want to close.
+    ///
+    /// This means that dropping `other` will no longer close the span, even if
+    /// it previously would have.
+    ///
+    /// This function is intended to be used by span handle implementations to
+    /// ensuring that multiple entering handles are kept consistent. Probably
+    /// don't use this unless you know what you're doing.
+    pub fn exit_and_join(&self, other: Entered) {
+        if let Some(other) = other.exit() {
+            self.handles.store(other.handle_count(), Ordering::Release);
+            self.has_entered
+                .store(other.has_entered(), Ordering::Release);
+            self.wants_close
+                .store(other.take_close(), Ordering::Release);
+        }
+    }
+
+    fn clone_current() -> Option<Self> {
+        CURRENT_SPAN.with(|current| {
+            current.borrow().as_ref().map(|ref current| {
+                current.handles.fetch_add(1, Ordering::Release);
+                current.duplicate()
+            })
+        })
+    }
+}
+
+impl<'a> cmp::PartialEq for Inner<'a> {
+    fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Hash for Enter {
+impl<'a> Hash for Inner<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl Drop for Enter {
+impl<'a> Drop for Inner<'a> {
     fn drop(&mut self) {
         self.subscriber.drop_span(self.id.clone());
         // If this handle wants to be closed, try to close it --- either by

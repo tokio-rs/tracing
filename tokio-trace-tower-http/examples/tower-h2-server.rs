@@ -23,10 +23,6 @@ use tokio_trace_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::{MakeService, Service};
 
-#[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
-mod sloggish;
-use self::sloggish::SloggishSubscriber;
-
 type Response = http::Response<RspBody>;
 
 struct RspBody(Option<Bytes>);
@@ -105,7 +101,12 @@ impl tower_service::Service<()> for NewSvc {
 }
 
 fn main() {
-    let subscriber = SloggishSubscriber::new(2);
+    env_logger::Builder::new()
+        .parse("tower_h2_server=trace")
+        .init();
+    let subscriber = tokio_trace_log::TraceLogger::builder()
+        .with_parent_fields(true)
+        .finish();
 
     tokio_trace::Dispatch::new(subscriber).as_default(|| {
         let mut rt = Runtime::new().unwrap();
@@ -139,8 +140,9 @@ fn main() {
 
                         let serve = h2
                             .serve(sock)
-                            .map_err(|e| event!(Level::Error, {}, "error {:?}", e))
-                            .and_then(|_| {
+                            .map_err(|e| {
+                                event!(Level::Error, {}, "error {:?}", e);
+                            }).and_then(|_| {
                                 event!(Level::Debug, {}, "response finished");
                                 future::ok(())
                             }).in_current_span();
@@ -148,8 +150,9 @@ fn main() {
 
                         Ok((h2, reactor))
                     })
-                }).map_err(|e| event!(Level::Error, {}, "serve error {:?}", e))
-                .map(|_| {})
+                }).map_err(|e| {
+                    event!(Level::Error, {}, "serve error {:?}", e);
+                }).map(|_| {})
                 .in_current_span();
 
             rt.spawn(serve);

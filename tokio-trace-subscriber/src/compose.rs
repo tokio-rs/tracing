@@ -1,7 +1,7 @@
 use tokio_trace::{
-    field, span,
+    span,
     subscriber::{FollowsError, RecordError, Subscriber},
-    Event, Meta,
+    Id, Meta,
 };
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
@@ -98,50 +98,50 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_span(&self, new_span: span::Attributes) -> span::Id {
+    fn new_span(&self, new_span: span::SpanAttributes) -> Id {
         self.registry.new_span(new_span)
     }
 
-    fn record(
-        &self,
-        span: &span::Id,
-        name: &tokio_trace::field::Key,
-        value: &dyn field::Value,
-    ) -> Result<(), RecordError> {
-        self.registry.record(span, name, value)
+    fn new_id(&self, new_id: span::Attributes) -> Id {
+        self.registry.new_id(new_id)
     }
 
-    fn add_follows_from(&self, span: &span::Id, follows: span::Id) -> Result<(), FollowsError> {
+    fn record_fmt(
+        &self,
+        _span: &Id,
+        _name: &tokio_trace::field::Key,
+        _value: ::std::fmt::Arguments,
+    ) -> Result<(), RecordError> {
+        unimplemented!()
+    }
+
+    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), FollowsError> {
         self.registry.add_follows_from(span, follows)
     }
 
-    fn observe_event<'a>(&self, event: &'a Event<'a>) {
-        self.observer.observe_event(event)
-    }
-
-    fn enter(&self, id: span::Id) {
+    fn enter(&self, id: Id) {
         self.registry.with_span(&id, |span| {
             self.observer.enter(span);
         });
     }
 
-    fn exit(&self, id: span::Id) {
+    fn exit(&self, id: Id) {
         self.registry.with_span(&id, |span| {
             self.observer.exit(span);
         });
     }
 
-    fn close(&self, id: span::Id) {
+    fn close(&self, id: Id) {
         self.registry.with_span(&id, |span| {
             self.observer.close(span);
         });
     }
 
-    fn clone_span(&self, id: span::Id) -> span::Id {
+    fn clone_span(&self, id: Id) -> Id {
         self.registry.clone_span(id)
     }
 
-    fn drop_span(&self, id: span::Id) {
+    fn drop_span(&self, id: Id) {
         self.registry.drop_span(id)
     }
 }
