@@ -22,27 +22,27 @@ fn main() {
     let subscriber = SloggishSubscriber::new(2);
 
     tokio_trace::Dispatch::new(subscriber).as_default(|| {
-        span!("", version = &field::Value::display(5.0)).enter(|| {
-            span!("server", host = "localhost", port = 8080u64).enter(|| {
+        span!("", version = &field::display(5.0)).enter(|| {
+            span!("server", host = "localhost", port = 8080).enter(|| {
                 event!(Level::Info, {}, "starting");
                 event!(Level::Info, {}, "listening");
-                let mut peer1 = span!("conn", peer_addr = "82.9.9.9", port = 42381u64);
+                let mut peer1 = span!("conn", peer_addr = "82.9.9.9", port = 42381);
                 peer1.enter(|| {
                     event!(Level::Debug, {}, "connected");
-                    event!(Level::Debug, { length = 2u64 }, "message received");
+                    event!(Level::Debug, { length = 2 }, "message received");
                 });
-                let mut peer2 = span!("conn", peer_addr = "8.8.8.8", port = 18230u64);
+                let mut peer2 = span!("conn", peer_addr = "8.8.8.8", port = 18230);
                 peer2.enter(|| {
                     event!(Level::Debug, {}, "connected");
                 });
                 peer1.enter(|| {
                     event!(Level::Warn, { algo = "xor" }, "weak encryption requested");
-                    event!(Level::Debug, { length = 8u64 }, "response sent");
+                    event!(Level::Debug, { length = 8 }, "response sent");
                     event!(Level::Debug, {}, "disconnected");
                 });
                 peer2.enter(|| {
-                    event!(Level::Debug, { length = 5u64 }, "message received");
-                    event!(Level::Debug, { length = 8u64 }, "response sent");
+                    event!(Level::Debug, { length = 5 }, "message received");
+                    event!(Level::Debug, { length = 8 }, "response sent");
                     event!(Level::Debug, {}, "disconnected");
                 });
                 event!(Level::Error, {}, "internal error");

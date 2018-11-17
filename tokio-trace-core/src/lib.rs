@@ -115,7 +115,7 @@ pub mod subscriber;
 pub use self::{
     callsite::Callsite,
     dispatcher::Dispatch,
-    field::{Key, Value},
+    field::Key,
     span::{Attributes, Event, Id, Span, SpanAttributes},
     subscriber::{Interest, Subscriber},
 };

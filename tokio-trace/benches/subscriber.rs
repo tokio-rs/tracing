@@ -1,4 +1,7 @@
 #![feature(test)]
+
+#[macro_use]
+extern crate tokio_trace;
 extern crate test;
 use test::Bencher;
 
@@ -120,17 +123,24 @@ fn span_with_fields(b: &mut Bencher) {
                 "span",
                 foo = "foo",
                 bar = "bar",
-                baz = 3u64,
-                quuux = tokio_trace::Value::debug(0.99)
+                baz = 3,
+                quuux = tokio_trace::field::debug(0.99)
             )
         })
     });
 }
 
-// TODO: bring this back
-// #[bench]
-// fn span_with_fields_add_data(b: &mut Bencher) {
-//     tokio_trace::Dispatch::new(Record(Mutex::new(None))).as_default(|| {
-//         b.iter(|| span!("span", foo = &"foo", bar = &"bar", baz = &3, quuux = &0.99))
-//     });
-// }
+#[bench]
+fn span_with_fields_record(b: &mut Bencher) {
+    tokio_trace::Dispatch::new(Record(Mutex::new(None))).as_default(|| {
+        b.iter(|| {
+            span!(
+                "span",
+                foo = "foo",
+                bar = "bar",
+                baz = 3,
+                quuux = tokio_trace::field::debug(0.99)
+            )
+        })
+    });
+}

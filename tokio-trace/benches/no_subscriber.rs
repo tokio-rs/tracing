@@ -35,7 +35,7 @@ fn bench_costly_field_no_subscriber(b: &mut Bencher) {
         (0..n).fold(0, |old, new| {
             span!(
                 "span",
-                foo = tokio_trace::Value::display(format!("bar {:?}", 2))
+                foo = tokio_trace::field::display(format!("bar {:?}", 2))
             );
             old ^ new
         })

@@ -196,14 +196,17 @@
 //! [`Attributes`]: ::span::Attributes
 //! [shared span]: ::span::Shared
 //! [`IntoShared`]: ::span::IntoShared
-pub use tokio_trace_core::span::{Attributes, Id, Span, SpanAttributes};
+pub use tokio_trace_core::span::{Attributes, Event, Id, Span, SpanAttributes};
 
 #[cfg(any(test, feature = "test-support"))]
 pub use tokio_trace_core::span::{mock, MockSpan};
 
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 use tokio_trace_core::span::Enter;
-use {field, subscriber};
+use {
+    field,
+    subscriber::{self, RecordError},
+};
 
 /// Trait for converting a `Span` into a cloneable `Shared` span.
 pub trait IntoShared {
@@ -213,14 +216,11 @@ pub trait IntoShared {
     fn into_shared(self) -> Shared;
 }
 
-pub trait SpanExt: ::sealed::Sealed {
-    fn record_field<Q: ?Sized>(
-        &mut self,
-        field: &Q,
-        value: &dyn field::Value,
-    ) -> Result<(), subscriber::RecordError>
+pub trait SpanExt: field::Record + ::sealed::Sealed {
+    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> Result<(), RecordError>
     where
-        Q: field::AsKey;
+        Q: field::AsKey,
+        V: field::Value;
 
     fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
     where
@@ -300,26 +300,6 @@ impl Shared {
         self.inner.is_some()
     }
 
-    /// Sets the field on this span named `name` to the given `value`.
-    ///
-    /// `name` must name a field already defined by this span's metadata, and
-    /// the field must not already have a value. If this is not the case, this
-    /// function returns an [`RecordError`](::subscriber::RecordError).
-    pub fn record<Q: field::AsKey>(
-        &self,
-        field: &Q,
-        value: &dyn field::Value,
-    ) -> Result<(), subscriber::RecordError> {
-        if let Some(ref inner) = self.inner {
-            let field = field
-                .as_key(inner.metadata())
-                .ok_or_else(subscriber::RecordError::no_field)?;
-            inner.record(&field, value)
-        } else {
-            Ok(())
-        }
-    }
-
     /// Indicates that the span with the given ID has an indirect causal
     /// relationship with this span.
     ///
@@ -346,23 +326,6 @@ impl Shared {
 impl ::sealed::Sealed for Span {}
 
 impl SpanExt for Span {
-    fn record_field<Q: ?Sized>(
-        &mut self,
-        field: &Q,
-        value: &dyn field::Value,
-    ) -> Result<(), subscriber::RecordError>
-    where
-        Q: field::AsKey,
-    {
-        if let Some(meta) = self.metadata() {
-            let key = field
-                .as_key(meta)
-                .ok_or_else(subscriber::RecordError::no_field)?;
-            self.record(&key, value)
-        } else {
-            Ok(())
-        }
-    }
     fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
     where
         Q: field::AsKey,
@@ -370,6 +333,159 @@ impl SpanExt for Span {
         self.metadata()
             .and_then(|meta| field.as_key(meta))
             .is_some()
+    }
+
+    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+        V: field::Value,
+    {
+        value.record(field, self)
+    }
+}
+
+impl field::Record for Span {
+    #[inline]
+    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_i64(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_u64(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_bool(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_str(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_fmt(&key, value)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> field::Record for Event<'a> {
+    #[inline]
+    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_i64(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_u64(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_bool(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_str(&key, value)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+    {
+        if let Some(meta) = self.metadata() {
+            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
+            self.record_value_fmt(&key, value)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> ::sealed::Sealed for Event<'a> {}
+
+impl<'a> SpanExt for Event<'a> {
+    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
+    where
+        Q: field::AsKey,
+    {
+        self.metadata()
+            .and_then(|meta| field.as_key(meta))
+            .is_some()
+    }
+
+    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> Result<(), RecordError>
+    where
+        Q: field::AsKey,
+        V: field::Value,
+    {
+        value.record(field, self)
     }
 }
 

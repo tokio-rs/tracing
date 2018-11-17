@@ -8,7 +8,7 @@ extern crate tokio_trace_futures;
 use std::marker::PhantomData;
 
 use futures::{Future, Poll};
-use tokio_trace::field::Value;
+use tokio_trace::field;
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower_service::{MakeService, Service};
 
@@ -109,10 +109,10 @@ where
                 "request",
                 // TODO: custom `Value` impls for `http` types would be nicer
                 // than just sticking these in `debug`s...
-                method = &Value::debug(request.method()),
-                version = &Value::debug(request.version()),
-                uri = &Value::debug(request.uri()),
-                headers = &Value::debug(request.headers())
+                method = &field::debug(request.method()),
+                version = &field::debug(request.version()),
+                uri = &field::debug(request.uri()),
+                headers = &field::debug(request.headers())
             ).enter(move || inner.call(request).in_current_span())
         })
     }

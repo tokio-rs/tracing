@@ -3,7 +3,7 @@ extern crate tokio_trace;
 extern crate env_logger;
 extern crate tokio_trace_log;
 
-use tokio_trace::{Level, Span, Value};
+use tokio_trace::{field, Level, Span};
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
@@ -12,17 +12,17 @@ fn main() {
         .finish();
 
     tokio_trace::Dispatch::new(subscriber).as_default(|| {
-        let foo: u64 = 3;
+        let foo = 3;
         event!(Level::Info, { foo = foo, bar = "bar" }, "hello world");
 
-        span!("my_great_span", foo = 4u64, baz = 5u64).enter(|| {
+        span!("my_great_span", foo = 4, baz = 5).enter(|| {
             Span::current().close();
 
             event!(Level::Info, { yak_shaved = true }, "hi from inside my span");
             span!("my other span", quux = "quuuux").enter(|| {
                 event!(
                     Level::Debug,
-                    { depth = Value::display("very") },
+                    { depth = field::display("very") },
                     "hi from inside both my spans!"
                 );
             })

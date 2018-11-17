@@ -27,22 +27,7 @@
 //! their field names, rather than printing them.
 //
 use std::fmt;
-use {Id, Meta, Subscriber};
-
-/// A field value of an erased type.
-///
-/// Implementors of `Value` may call the appropriate typed recording methods on
-/// the `Subscriber` passed to `record` in order to indicate how their data
-/// should be recorded.
-pub trait Value: ::sealed::Sealed + Send {
-    /// Records this value with the given `Subscriber`.
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError>;
-}
+use Meta;
 
 /// An opaque key allowing _O_(1) access to a field in a `Span` or `Event`'s
 /// key-value data.
@@ -56,36 +41,6 @@ pub trait Value: ::sealed::Sealed + Send {
 pub struct Key<'a> {
     i: usize,
     metadata: &'a Meta<'a>,
-}
-
-/// A `Value` which serializes as a string using `fmt::Display`.
-#[derive(Clone)]
-pub struct DisplayValue<T: fmt::Display>(T);
-
-/// A `Value` which serializes as a string using `fmt::Debug`.
-#[derive(Clone)]
-pub struct DebugValue<T: fmt::Debug>(T);
-
-// ===== impl Value =====
-
-impl Value {
-    /// Wraps a type implementing `fmt::Display` as a `Value` that can be
-    /// recorded using its `Display` implementation.
-    pub fn display<'a, T>(t: T) -> DisplayValue<T>
-    where
-        T: fmt::Display,
-    {
-        DisplayValue(t)
-    }
-
-    /// Wraps a type implementing `fmt::Debug` as a `Value` that can be
-    /// recorded using its `Debug` implementation.
-    pub fn debug<T>(t: T) -> DebugValue<T>
-    where
-        T: fmt::Debug,
-    {
-        DebugValue(t)
-    }
 }
 
 // ===== impl Field =====
@@ -140,109 +95,5 @@ impl<'a> fmt::Display for Key<'a> {
 impl<'a> AsRef<str> for Key<'a> {
     fn as_ref(&self) -> &str {
         self.name().unwrap_or("???")
-    }
-}
-
-// ===== impl DisplayValue =====
-
-impl<T: fmt::Display> ::sealed::Sealed for DisplayValue<T> {}
-
-impl<T> Value for DisplayValue<T>
-where
-    T: fmt::Display + Send,
-{
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        recorder.record_fmt(id, key, format_args!("{}", self.0))
-    }
-}
-
-// ===== impl Value =====
-
-impl<T: fmt::Debug> ::sealed::Sealed for DebugValue<T> {}
-
-impl<T: fmt::Debug> Value for DebugValue<T>
-where
-    T: fmt::Debug + Send,
-{
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        recorder.record_fmt(id, key, format_args!("{:?}", self.0))
-    }
-}
-
-impl<'a> ::sealed::Sealed for &'a str {}
-
-impl<'a> Value for &'a str {
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        recorder.record_str(id, key, self)
-    }
-}
-
-impl ::sealed::Sealed for bool {}
-
-impl Value for bool {
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        recorder.record_bool(id, key, *self)
-    }
-}
-
-impl ::sealed::Sealed for i64 {}
-
-impl Value for i64 {
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        recorder.record_i64(id, key, *self)
-    }
-}
-
-impl ::sealed::Sealed for u64 {}
-
-impl Value for u64 {
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        recorder.record_u64(id, key, *self)
-    }
-}
-
-impl<'a, V> ::sealed::Sealed for &'a V where V: Value + ::sealed::Sealed + Send + Sync {}
-
-impl<'a, V> Value for &'a V
-where
-    V: Value + ::sealed::Sealed + Send + Sync,
-{
-    fn record(
-        &self,
-        id: &Id,
-        key: &Key,
-        recorder: &dyn Subscriber,
-    ) -> Result<(), ::subscriber::RecordError> {
-        (*self).record(id, key, recorder)
     }
 }
