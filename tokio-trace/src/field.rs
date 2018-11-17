@@ -1,7 +1,7 @@
 pub use tokio_trace_core::field::*;
 
 use std::fmt;
-use {subscriber::RecordError, Meta};
+use Meta;
 
 /// Trait implemented to allow a type to be used as a field key.
 ///
@@ -24,13 +24,7 @@ pub trait Record {
     /// This defaults to calling `self.record_fmt()`; implementations wishing to
     /// provide behaviour specific to signed integers may override the default
     /// implementation.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64) -> Result<(), RecordError>
+    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
     where
         Q: AsKey;
 
@@ -39,13 +33,7 @@ pub trait Record {
     /// This defaults to calling `self.record_fmt()`; implementations wishing to
     /// provide behaviour specific to unsigned integers may override the default
     /// implementation.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64) -> Result<(), RecordError>
+    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
     where
         Q: AsKey;
 
@@ -54,13 +42,7 @@ pub trait Record {
     /// This defaults to calling `self.record_fmt()`; implementations wishing to
     /// provide behaviour specific to booleans may override the default
     /// implementation.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool) -> Result<(), RecordError>
+    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
     where
         Q: AsKey;
 
@@ -69,28 +51,12 @@ pub trait Record {
     /// This defaults to calling `self.record_str()`; implementations wishing to
     /// provide behaviour specific to strings may override the default
     /// implementation.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str) -> Result<(), RecordError>
+    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
     where
         Q: AsKey;
 
     /// Record a set of pre-compiled format arguments.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_fmt<Q: ?Sized>(
-        &mut self,
-        field: &Q,
-        value: fmt::Arguments,
-    ) -> Result<(), RecordError>
+    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
     where
         Q: AsKey;
 }
@@ -102,11 +68,7 @@ pub trait Record {
 /// should be recorded.
 pub trait Value {
     /// Records this value with the given `Subscriber`.
-    fn record<Q: ?Sized, R>(
-        &self,
-        key: &Q,
-        recorder: &mut R,
-    ) -> Result<(), ::subscriber::RecordError>
+    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
         Q: AsKey,
         R: Record;
@@ -155,7 +117,7 @@ macro_rules! impl_value {
                     &self,
                     key: &Q,
                     recorder: &mut R,
-                ) -> Result<(), $crate::subscriber::RecordError>
+                )
                 where
                     Q: $crate::field::AsKey,
                     R: $crate::field::Record,
@@ -172,7 +134,7 @@ macro_rules! impl_value {
                     &self,
                     key: &Q,
                     recorder: &mut R,
-                ) -> Result<(), $crate::subscriber::RecordError>
+                )
                 where
                     Q: $crate::field::AsKey,
                     R: $crate::field::Record,
@@ -218,11 +180,7 @@ impl_values! {
 }
 
 impl Value for str {
-    fn record<Q: ?Sized, R>(
-        &self,
-        key: &Q,
-        recorder: &mut R,
-    ) -> Result<(), ::subscriber::RecordError>
+    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
         Q: AsKey,
         R: Record,
@@ -235,7 +193,7 @@ impl<'a, T: ?Sized> Value for &'a T
 where
     T: Value + 'a,
 {
-    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R) -> Result<(), RecordError>
+    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
         Q: AsKey,
         R: Record,
@@ -250,7 +208,7 @@ impl<T> Value for DisplayValue<T>
 where
     T: fmt::Display,
 {
-    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R) -> Result<(), RecordError>
+    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
         Q: AsKey,
         R: Record,
@@ -265,7 +223,7 @@ impl<T: fmt::Debug> Value for DebugValue<T>
 where
     T: fmt::Debug,
 {
-    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R) -> Result<(), RecordError>
+    fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
         Q: AsKey,
         R: Record,

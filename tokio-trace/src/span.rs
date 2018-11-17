@@ -201,12 +201,9 @@ pub use tokio_trace_core::span::{Attributes, Event, Id, Span, SpanAttributes};
 #[cfg(any(test, feature = "test-support"))]
 pub use tokio_trace_core::span::{mock, MockSpan};
 
+use field;
 use std::{fmt, sync::Arc};
 use tokio_trace_core::span::Enter;
-use {
-    field,
-    subscriber::{self, RecordError},
-};
 
 /// Trait for converting a `Span` into a cloneable `Shared` span.
 pub trait IntoShared {
@@ -217,7 +214,7 @@ pub trait IntoShared {
 }
 
 pub trait SpanExt: field::Record + ::sealed::Sealed {
-    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> Result<(), RecordError>
+    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
     where
         Q: field::AsKey,
         V: field::Value;
@@ -315,11 +312,11 @@ impl Shared {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    pub fn follows_from(&self, from: Id) -> Result<(), subscriber::FollowsError> {
-        self.inner
-            .as_ref()
-            .map(move |inner| inner.follows_from(from))
-            .unwrap_or(Ok(()))
+    pub fn follows_from(&self, from: Id) -> &Self {
+        if let Some(ref inner) = self.inner {
+            inner.follows_from(from);
+        }
+        self
     }
 }
 
@@ -335,136 +332,117 @@ impl SpanExt for Span {
             .is_some()
     }
 
-    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> Result<(), RecordError>
+    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
     where
         Q: field::AsKey,
         V: field::Value,
     {
-        value.record(field, self)
+        value.record(field, self);
+        self
     }
 }
 
 impl field::Record for Span {
     #[inline]
-    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64) -> Result<(), RecordError>
+    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_i64(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_i64(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64) -> Result<(), RecordError>
+    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_u64(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_u64(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool) -> Result<(), RecordError>
+    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_bool(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_bool(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str) -> Result<(), RecordError>
+    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_str(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_str(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments) -> Result<(), RecordError>
+    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_fmt(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_fmt(&key, value);
         }
-        Ok(())
     }
 }
 
 impl<'a> field::Record for Event<'a> {
     #[inline]
-    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64) -> Result<(), RecordError>
+    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_i64(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_i64(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64) -> Result<(), RecordError>
+    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_u64(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_u64(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool) -> Result<(), RecordError>
+    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_bool(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_bool(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str) -> Result<(), RecordError>
+    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_str(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_str(&key, value);
         }
-        Ok(())
     }
 
     #[inline]
-    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments) -> Result<(), RecordError>
+    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
     where
         Q: field::AsKey,
     {
-        if let Some(meta) = self.metadata() {
-            let key = field.as_key(meta).ok_or_else(RecordError::no_field)?;
-            self.record_value_fmt(&key, value)?;
+        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
+            self.record_value_fmt(&key, value);
         }
-        Ok(())
     }
 }
 
@@ -480,12 +458,13 @@ impl<'a> SpanExt for Event<'a> {
             .is_some()
     }
 
-    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> Result<(), RecordError>
+    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
     where
         Q: field::AsKey,
         V: field::Value,
     {
-        value.record(field, self)
+        value.record(field, self);
+        self
     }
 }
 

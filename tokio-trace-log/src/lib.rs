@@ -32,11 +32,7 @@ use std::{
         Mutex,
     },
 };
-use tokio_trace::{
-    field, span,
-    subscriber::{self, Subscriber},
-    Id, Meta,
-};
+use tokio_trace::{field, span, subscriber::Subscriber, Id, Meta};
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
@@ -63,7 +59,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let callsite = LogCallsite(record.as_trace());
     let k = callsite.0.key_for(&"message").unwrap();
     drop(tokio_trace::Event::new(&callsite, |event| {
-        event.message(&k, record.args().clone()).unwrap();
+        event.message(&k, record.args().clone());
     }));
     Ok(())
 }
@@ -398,26 +394,22 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn record_fmt(
-        &self,
-        span: &Id,
-        key: &field::Key,
-        val: fmt::Arguments,
-    ) -> Result<(), subscriber::RecordError> {
+    fn record_fmt(&self, span: &Id, key: &field::Key, val: fmt::Arguments) {
         let mut in_progress = self.in_progress.lock().unwrap();
         if let Some(span) = in_progress.spans.get_mut(span) {
-            span.record(key, val)?;
-            return Ok(());
+            if let Err(_e) = span.record(key, val) {
+                eprintln!("error formatting span");
+            }
+            return;
         }
         if let Some(event) = in_progress.events.get_mut(span) {
-            event.record(key, val)?;
-            Ok(())
-        } else {
-            Err(subscriber::RecordError::no_span(span.clone()))
+            if let Err(_e) = event.record(key, val) {
+                eprintln!("error formatting event");
+            }
         }
     }
 
-    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), subscriber::FollowsError> {
+    fn add_follows_from(&self, span: &Id, follows: Id) {
         // TODO: this should eventually track the relationship?
         log::logger().log(
             &log::Record::builder()
@@ -425,7 +417,6 @@ impl Subscriber for TraceLogger {
                 .args(format_args!("span {:?} follows_from={:?};", span, follows))
                 .build(),
         );
-        Ok(())
     }
 
     fn enter(&self, span: Id) {

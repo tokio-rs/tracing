@@ -95,7 +95,7 @@ impl tower_service::Service<()> for NewSvc {
         Ok(Async::Ready(()))
     }
 
-    fn call(&mut self, target: ()) -> Self::Future {
+    fn call(&mut self, _target: ()) -> Self::Future {
         future::ok(Svc)
     }
 }

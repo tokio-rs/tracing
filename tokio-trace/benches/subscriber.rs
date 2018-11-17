@@ -6,7 +6,7 @@ extern crate test;
 use test::Bencher;
 
 use std::sync::Mutex;
-use tokio_trace::{field, span, subscriber, Id, Meta};
+use tokio_trace::{field, span, Id, Meta};
 
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
@@ -17,19 +17,12 @@ impl tokio_trace::Subscriber for EnabledSubscriber {
         Id::from_u64(0)
     }
 
-    fn record_fmt(
-        &self,
-        span: &Id,
-        field: &field::Key,
-        value: ::std::fmt::Arguments,
-    ) -> Result<(), tokio_trace::subscriber::RecordError> {
+    fn record_fmt(&self, span: &Id, field: &field::Key, value: ::std::fmt::Arguments) {
         let _ = (span, field, value);
-        Ok(())
     }
 
-    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), subscriber::FollowsError> {
+    fn add_follows_from(&self, span: &Id, follows: Id) {
         let _ = (span, follows);
-        Ok(())
     }
 
     fn enabled(&self, metadata: &Meta) -> bool {
@@ -59,23 +52,16 @@ impl tokio_trace::Subscriber for Record {
         Id::from_u64(0)
     }
 
-    fn new_id(&self, span: span::Attributes) -> Id {
+    fn new_id(&self, _span: span::Attributes) -> Id {
         Id::from_u64(0)
     }
 
-    fn record_fmt(
-        &self,
-        _span: &Id,
-        _field: &field::Key,
-        value: ::std::fmt::Arguments,
-    ) -> Result<(), tokio_trace::subscriber::RecordError> {
+    fn record_fmt(&self, _span: &Id, _field: &field::Key, value: ::std::fmt::Arguments) {
         let _ = ::std::fmt::format(value);
-        Ok(())
     }
 
-    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), subscriber::FollowsError> {
+    fn add_follows_from(&self, span: &Id, follows: Id) {
         let _ = (span, follows);
-        Ok(())
     }
 
     fn enabled(&self, metadata: &Meta) -> bool {

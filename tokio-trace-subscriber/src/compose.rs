@@ -1,8 +1,4 @@
-use tokio_trace::{
-    span,
-    subscriber::{FollowsError, RecordError, Subscriber},
-    Id, Meta,
-};
+use tokio_trace::{span, subscriber::Subscriber, Id, Meta};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
@@ -111,11 +107,11 @@ where
         _span: &Id,
         _name: &tokio_trace::field::Key,
         _value: ::std::fmt::Arguments,
-    ) -> Result<(), RecordError> {
+    ) {
         unimplemented!()
     }
 
-    fn add_follows_from(&self, span: &Id, follows: Id) -> Result<(), FollowsError> {
+    fn add_follows_from(&self, span: &Id, follows: Id) {
         self.registry.add_follows_from(span, follows)
     }
 
