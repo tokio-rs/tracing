@@ -153,11 +153,64 @@ macro_rules! event {
     ( $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
         event!(target: module_path!(), $lvl, { $($k $( = $val)* ),* }, $($arg)+)
     );
+    ( $lvl:expr, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $lvl, { }, $($arg)+)
+    );
     (@ record: $ev:expr, $k:expr, $i:expr, $val:expr) => (
         $ev.record($i, &$val);
     );
     (@ record: $ev:expr, $k:expr, $i:expr,) => (
         // skip
+    );
+}
+
+#[macro_export]
+macro_rules! trace {
+    ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Trace, { $($k $( = $val)* ),* }, $($arg)+)
+    );
+    ( $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Trace, {}, $($arg)+)
+    );
+}
+
+#[macro_export]
+macro_rules! debug {
+    ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Debug, { $($k $( = $val)* ),* }, $($arg)+)
+    );
+    ( $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Debug, {}, $($arg)+)
+    );
+}
+
+#[macro_export]
+macro_rules! info {
+    ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Info, { $($k $( = $val)* ),* }, $($arg)+)
+    );
+    ( $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Info, {}, $($arg)+)
+    );
+}
+
+#[macro_export]
+macro_rules! warn {
+    ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Warn, { $($k $( = $val)* ),* }, $($arg)+)
+    );
+    ( $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Warn, {}, $($arg)+)
+    );
+}
+
+#[macro_export]
+macro_rules! error {
+    ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Error, { $($k $( = $val)* ),* }, $($arg)+)
+    );
+    ( $($arg:tt)+ ) => (
+        event!(target: module_path!(), $crate::Level::Error, {}, $($arg)+)
     );
 }
 

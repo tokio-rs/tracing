@@ -673,7 +673,7 @@ mod tests {
             .done()
             .run();
         Dispatch::new(subscriber).as_default(|| {
-            event!(::Level::Debug, {}, "my event!");
+            debug!("my event!");
             span!("foo").enter(|| {
                 Span::current().close();
             });

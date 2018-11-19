@@ -18,10 +18,10 @@ use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio_trace::{field, Level};
+use tokio_trace::field;
 use tokio_trace_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
-use tower_service::{MakeService, Service};
+use tower_service::Service;
 
 type Response = http::Response<RspBody>;
 
@@ -67,7 +67,7 @@ impl Service<Request<RecvBody>> for Svc {
     }
 
     fn call(&mut self, req: Request<RecvBody>) -> Self::Future {
-        event!(Level::Debug, {}, "received request");
+        debug!("received request");
         let mut rsp = http::Response::builder();
         rsp.version(http::Version::HTTP_2);
 
@@ -75,7 +75,7 @@ impl Service<Request<RecvBody>> for Svc {
         if uri.path() != ROOT {
             let body = RspBody::empty();
             let rsp = rsp.status(404).body(body).unwrap();
-            event!(Level::Warn, { status_code = field::display(404), path = field::debug(uri.path()) }, "unrecognized URI");
+            warn!({ status_code = field::display(404), path = field::debug(uri.path()) }, "unrecognized URI");
             return future::ok(rsp);
         }
 
@@ -136,14 +136,14 @@ fn main() {
                             return Err(e);
                         }
 
-                        event!(Level::Info, {}, "accepted connection");
+                        info!("accepted connection");
 
                         let serve = h2
                             .serve(sock)
                             .map_err(|e| {
-                                event!(Level::Error, {}, "error {:?}", e);
+                                error!("error {:?}", e);
                             }).and_then(|_| {
-                                event!(Level::Debug, {}, "response finished");
+                                debug!("response finished");
                                 future::ok(())
                             }).in_current_span();
                         reactor.spawn(Box::new(serve));
@@ -151,7 +151,7 @@ fn main() {
                         Ok((h2, reactor))
                     })
                 }).map_err(|e| {
-                    event!(Level::Error, {}, "serve error {:?}", e);
+                    error!("serve error {:?}", e);
                 }).map(|_| {})
                 .in_current_span();
 

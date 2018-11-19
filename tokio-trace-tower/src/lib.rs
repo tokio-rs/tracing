@@ -28,8 +28,8 @@ where
     Request: fmt::Debug + Clone + Send + Sync + 'static,
 {
     type Response = T::Response;
-    type Future = Instrumented<T::Future>;
     type Error = T::Error;
+    type Future = Instrumented<T::Future>;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
         let span = &mut self.span;

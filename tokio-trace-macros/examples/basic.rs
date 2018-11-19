@@ -5,7 +5,7 @@ extern crate tokio_trace_macros;
 extern crate env_logger;
 extern crate tokio_trace_log;
 
-use tokio_trace::{field, Level};
+use tokio_trace::field;
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
@@ -17,8 +17,7 @@ fn main() {
         let mut span = span!("Getting rec from another function.", number_of_recs = &num);
         span.enter(|| {
             let band = suggest_band();
-            event!(
-                Level::Info,
+            info!(
                 { band_recommendation = field::display(&band) },
                 "Got a rec."
             );

@@ -13,7 +13,7 @@
 #[macro_use]
 extern crate tokio_trace;
 
-use tokio_trace::{field, Level};
+use tokio_trace::field;
 
 mod sloggish_subscriber;
 use self::sloggish_subscriber::SloggishSubscriber;
@@ -24,29 +24,29 @@ fn main() {
     tokio_trace::Dispatch::new(subscriber).as_default(|| {
         span!("", version = &field::display(5.0)).enter(|| {
             span!("server", host = "localhost", port = 8080).enter(|| {
-                event!(Level::Info, {}, "starting");
-                event!(Level::Info, {}, "listening");
+                info!("starting");
+                info!("listening");
                 let mut peer1 = span!("conn", peer_addr = "82.9.9.9", port = 42381);
                 peer1.enter(|| {
-                    event!(Level::Debug, {}, "connected");
-                    event!(Level::Debug, { length = 2 }, "message received");
+                    debug!("connected");
+                    debug!({ length = 2 }, "message received");
                 });
                 let mut peer2 = span!("conn", peer_addr = "8.8.8.8", port = 18230);
                 peer2.enter(|| {
-                    event!(Level::Debug, {}, "connected");
+                    debug!("connected");
                 });
                 peer1.enter(|| {
-                    event!(Level::Warn, { algo = "xor" }, "weak encryption requested");
-                    event!(Level::Debug, { length = 8 }, "response sent");
-                    event!(Level::Debug, {}, "disconnected");
+                    warn!({ algo = "xor" }, "weak encryption requested");
+                    debug!({ length = 8 }, "response sent");
+                    debug!("disconnected");
                 });
                 peer2.enter(|| {
-                    event!(Level::Debug, { length = 5 }, "message received");
-                    event!(Level::Debug, { length = 8 }, "response sent");
-                    event!(Level::Debug, {}, "disconnected");
+                    debug!({ length = 5 }, "message received");
+                    debug!({ length = 8 }, "response sent");
+                    debug!("disconnected");
                 });
-                event!(Level::Error, {}, "internal error");
-                event!(Level::Info, {}, "exit");
+                warn!("internal error");
+                info!("exit");
             })
         });
     });
