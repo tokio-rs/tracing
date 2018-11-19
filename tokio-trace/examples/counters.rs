@@ -4,7 +4,7 @@ extern crate tokio_trace;
 use tokio_trace::{
     field, span,
     subscriber::{self, Subscriber},
-    Id, Level, Meta,
+    Id, Meta,
 };
 
 use std::{
@@ -116,9 +116,9 @@ fn main() {
         let mut foo: u64 = 2;
         span!("my_great_span", foo_count = &foo).enter(|| {
             foo += 1;
-            event!(Level::Info, { yak_shaved = true, yak_count = 1 }, "hi from inside my span");
+            info!({ yak_shaved = true, yak_count = 1 }, "hi from inside my span");
             span!("my other span", foo_count = &foo, baz_count = 5).enter(|| {
-                event!(Level::Warn, { yak_shaved = false, yak_count = -1 }, "failed to shave yak");
+                warn!({ yak_shaved = false, yak_count = -1 }, "failed to shave yak");
             });
         });
     });

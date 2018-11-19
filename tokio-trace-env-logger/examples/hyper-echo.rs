@@ -18,7 +18,7 @@ use std::str;
 mod sloggish;
 use self::sloggish::SloggishSubscriber;
 
-use tokio_trace::{field, Level};
+use tokio_trace::field;
 use tokio_trace_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
@@ -30,7 +30,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
         uri = &field::debug(req.uri()),
         headers = &field::debug(req.headers())
     ).enter(|| {
-        event!(Level::Info, {}, "received request");
+        info!("received request");
         let mut response = Response::new(Body::empty());
 
         let (rsp_span, fut): (_, BoxFut) = match (req.method(), req.uri().path()) {
@@ -59,8 +59,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                         .iter()
                         .map(|byte| byte.to_ascii_uppercase())
                         .collect::<Vec<u8>>();
-                    event!(
-                        Level::Debug,
+                    debug!(
                         {
                             chunk = field::debug(str::from_utf8(&chunk[..])),
                             uppercased = field::debug(str::from_utf8(&upper[..]))
@@ -88,7 +87,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 let reversed = span.enter(|| {
                     req.into_body().concat2().map(move |chunk| {
                         let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
-                        event!(Level::Debug,
+                        debug!(
                             {
                                 chunk = field::debug(str::from_utf8(&chunk[..])),
                                 body = field::debug(str::from_utf8(&body[..]))
@@ -137,16 +136,16 @@ fn main() {
                     hyper::rt::spawn(
                         http.serve_connection(sock, service_fn(echo))
                             .map_err(|e| {
-                                event!(Level::Error, { error = field::display(e) }, "serve error");
+                                error!({ error = field::display(e) }, "serve error");
                             }).instrument(span),
                     );
                     Ok::<_, ::std::io::Error>(http)
                 }).in_current_span()
                 .map(|_| ())
                 .map_err(|e| {
-                    event!(Level::Error, { error = field::display(e) }, "server error");
+                    error!({ error = field::display(e) }, "server error");
                 });
-            event!(Level::Info, {}, "listening...");
+            info!("listening...");
             hyper::rt::run(server);
         });
     })
