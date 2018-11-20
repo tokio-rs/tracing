@@ -634,7 +634,7 @@ impl<'a> Inner<'a> {
 
     /// Record a precompiled set of format arguments value.
     pub(crate) fn record_value_fmt(&self, field: &Key, value: fmt::Arguments) {
-        if !self.meta.contains_key(field) {
+        if self.meta.contains_key(field) {
             self.subscriber.record_fmt(&self.id, field, value)
         }
     }
