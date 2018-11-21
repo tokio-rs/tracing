@@ -592,7 +592,7 @@ impl Subscriber for TraceLogger {
 //         }
 //     }
 
-//     fn filter(&self) -> &dyn tokio_trace_subscriber::Filter {
+//     fn filter(&self) -> &tokio_trace_subscriber::Filter {
 //         self
 //     }
 // }

@@ -15,7 +15,7 @@ lazy_static! {
 }
 
 struct Registry {
-    callsites: Vec<&'static dyn Callsite>,
+    callsites: Vec<&'static Callsite>,
     dispatchers: Vec<dispatcher::Registrar>,
 }
 
@@ -49,7 +49,7 @@ pub trait Callsite: Sync {
 /// Register a new `Callsite` with the global registry.
 ///
 /// This should be called once per callsite after the callsite has been constructed.
-pub fn register(callsite: &'static dyn Callsite) {
+pub fn register(callsite: &'static Callsite) {
     let mut registry = REGISTRY.lock().unwrap();
     let meta = callsite.metadata();
     registry.dispatchers.retain(|registrar| {

@@ -15,7 +15,7 @@ pub trait Observe {
     fn exit(&self, span: &Span);
     fn close(&self, span: &SpanRef);
 
-    fn filter(&self) -> &dyn Filter {
+    fn filter(&self) -> &Filter {
         &filter::NoFilter
     }
 }
@@ -49,7 +49,7 @@ pub trait ObserveExt: Observe {
     /// # fn enter(&self, _: &Span) {}
     /// # fn exit(&self, _: &Span) {}
     /// # fn close(&self, _: &SpanRef) {}
-    /// # fn filter(&self) -> &dyn Filter { &NoFilter}
+    /// # fn filter(&self) -> &Filter { &NoFilter}
     /// }
     ///
     /// impl Observe for Bar {
@@ -58,7 +58,7 @@ pub trait ObserveExt: Observe {
     /// # fn enter(&self, _: &Span) {}
     /// # fn exit(&self, _: &Span) {}
     /// # fn close(&self, _: &SpanRef) {}
-    /// # fn filter(&self) -> &dyn Filter { &NoFilter}
+    /// # fn filter(&self) -> &Filter { &NoFilter}
     /// }
     ///
     /// let foo = Foo { };
@@ -159,7 +159,7 @@ pub struct NoObserver;
 /// `Observe`.
 ///
 /// This is intended to be used when an observer implementation is chosen
-/// conditionally, and the overhead of `Box<dyn Observe>` is unwanted.
+/// conditionally, and the overhead of `Box<Observe>` is unwanted.
 ///
 /// For example:
 /// ```
@@ -184,7 +184,7 @@ pub struct NoObserver;
 /// # fn enter(&self, _: &Span) {}
 /// # fn exit(&self, _: &Span) {}
 /// # fn close(&self, _: &SpanRef) {}
-/// # fn filter(&self) -> &dyn Filter { &NoFilter}
+/// # fn filter(&self) -> &Filter { &NoFilter}
 /// }
 ///
 /// impl Observe for Bar {
@@ -193,7 +193,7 @@ pub struct NoObserver;
 /// # fn enter(&self, _: &Span) {}
 /// # fn exit(&self, _: &Span) {}
 /// # fn close(&self, _: &SpanRef) {}
-/// # fn filter(&self) -> &dyn Filter { &NoFilter}
+/// # fn filter(&self) -> &Filter { &NoFilter}
 /// }
 ///
 /// fn foo_or_bar(foo: bool) -> observe::Either<Foo, Bar> {
@@ -276,7 +276,7 @@ where
         self.inner.close(span)
     }
 
-    fn filter(&self) -> &dyn Filter {
+    fn filter(&self) -> &Filter {
         self
     }
 }
@@ -323,7 +323,7 @@ where
         self.b.close(span);
     }
 
-    fn filter(&self) -> &dyn Filter {
+    fn filter(&self) -> &Filter {
         self
     }
 }
@@ -406,7 +406,7 @@ impl Observe for NoObserver {
 
     fn close(&self, _span: &SpanRef) {}
 
-    fn filter(&self) -> &dyn Filter {
+    fn filter(&self) -> &Filter {
         self
     }
 }
