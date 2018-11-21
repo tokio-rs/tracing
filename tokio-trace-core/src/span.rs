@@ -1,7 +1,6 @@
 //! Spans represent periods of time in the execution of a program.
 use std::{
     borrow::Borrow,
-    cell::RefCell,
     cmp, fmt,
     hash::{Hash, Hasher},
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -12,11 +11,6 @@ use {
     subscriber::{Interest, Subscriber},
     Dispatch, Meta,
 };
-
-thread_local! {
-    // TODO: can this be a `Cell`?
-    static CURRENT_SPAN: RefCell<Option<Enter>> = RefCell::new(None);
-}
 
 /// A handle representing a span, with the capability to enter the span if it
 /// exists.
