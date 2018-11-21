@@ -1,4 +1,7 @@
-use tokio_trace::span::{self, Attributes, Id, SpanAttributes};
+use tokio_trace::{
+    span::{self, Attributes, Id, Span, SpanAttributes},
+    subscriber,
+};
 
 use std::{
     cmp,
@@ -67,6 +70,12 @@ pub trait RegisterSpan {
     fn with_span<F>(&self, id: &Id, f: F)
     where
         F: for<'a> Fn(&'a SpanRef<'a>);
+
+    fn enter(&self, span: Span) -> Span;
+
+    fn exit(&self, span: Span) -> Span;
+
+    fn current_span(&self) -> &Span;
 
     /// Notifies the subscriber that a [`Span`] handle with the given [`Id`] has
     /// been cloned.
@@ -145,14 +154,24 @@ impl<'a> cmp::Eq for SpanRef<'a> {}
 //     Id::from_u64(next as u64)
 // }
 
-#[derive(Default)]
 pub struct IncreasingCounter {
     next_id: AtomicUsize,
     spans: Mutex<HashMap<Id, SpanAttributes>>,
+    current: subscriber::CurrentSpanPerThread,
 }
 
 pub fn increasing_counter() -> IncreasingCounter {
     IncreasingCounter::default()
+}
+
+impl Default for IncreasingCounter {
+    fn default() -> Self {
+        Self {
+            next_id: AtomicUsize::new(0),
+            spans: Mutex::new(HashMap::new()),
+            current: subscriber::CurrentSpanPerThread::new(),
+        }
+    }
 }
 
 impl RegisterSpan for IncreasingCounter {
@@ -179,6 +198,18 @@ impl RegisterSpan for IncreasingCounter {
 
     fn prior_spans(&self, _span: &Id) -> Self::PriorSpans {
         unimplemented!();
+    }
+
+    fn enter(&self, span: Span) -> Span {
+        self.current.set_current(span)
+    }
+
+    fn exit(&self, span: Span) -> Span {
+        self.current.set_current(span)
+    }
+
+    fn current_span(&self) -> &Span {
+        self.current.span()
     }
 
     fn with_span<F>(&self, id: &Id, f: F)

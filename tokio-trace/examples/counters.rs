@@ -19,6 +19,7 @@ use std::{
 struct Counters(Arc<RwLock<HashMap<String, AtomicUsize>>>);
 
 struct CounterSubscriber {
+    current: subscriber::CurrentSpanPerThread,
     ids: AtomicUsize,
     counters: Counters,
 }
@@ -87,8 +88,18 @@ impl Subscriber for CounterSubscriber {
             .any(|f| f.name().map(|name| name.contains("count")).unwrap_or(false))
     }
 
-    fn enter(&self, _span: Id) {}
-    fn exit(&self, _span: Id) {}
+    fn enter(&self, span: tokio_trace::Span) -> tokio_trace::Span {
+        self.current.set_current(span)
+    }
+
+    fn current_span(&self) -> &tokio_trace::Span {
+        self.current.span()
+    }
+
+    fn exit(&self, _span: Id, parent: tokio_trace::Span) -> tokio_trace::Span {
+        self.current.set_current(parent)
+    }
+
     fn close(&self, _span: Id) {}
 }
 
@@ -102,6 +113,7 @@ impl Counters {
     fn new() -> (Self, CounterSubscriber) {
         let counters = Counters(Arc::new(RwLock::new(HashMap::new())));
         let subscriber = CounterSubscriber {
+            current: subscriber::CurrentSpanPerThread::new(),
             ids: AtomicUsize::new(0),
             counters: counters.clone(),
         };

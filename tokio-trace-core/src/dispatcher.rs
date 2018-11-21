@@ -9,6 +9,7 @@ use std::{
     cell::RefCell,
     fmt,
     sync::{Arc, Weak},
+    thread,
 };
 
 thread_local! {
@@ -35,11 +36,16 @@ impl Dispatch {
     where
         F: FnOnce(&Dispatch) -> T,
     {
-        if let Some(c) = Span::current().dispatch() {
-            f(c)
-        } else {
-            CURRENT_DISPATCH.with(|current| f(&*current.borrow()))
+        // If we try to access the current dispatcher while it's being
+        // dropped, `LocalKey::with` would panic, causing a double panic.
+        // However, we can't use `try_with` as we still need to invoke `f`,
+        // which would be captured by the closure.
+        if thread::panicking() {
+            // It's better to fail to collect instrumentation than cause a
+            // SIGSEGV.
+            return f(&Dispatch::none());
         }
+        CURRENT_DISPATCH.with(|current| f(&*current.borrow()))
     }
 
     /// Returns a `Dispatch` to the given [`Subscriber`](::Subscriber).
@@ -66,6 +72,9 @@ impl Dispatch {
     /// [`Subscriber`]: ::Subscriber
     /// [`Event`]: ::Event
     pub fn as_default<T>(&self, f: impl FnOnce() -> T) -> T {
+        if thread::panicking() {
+            return f();
+        }
         CURRENT_DISPATCH.with(|current| {
             let prior = current.replace(self.clone());
             let result = f();
@@ -137,13 +146,18 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn enter(&self, span: Id) {
+    fn enter(&self, span: Span) -> Span {
         self.subscriber.enter(span)
     }
 
     #[inline]
-    fn exit(&self, span: Id) {
-        self.subscriber.exit(span)
+    fn exit(&self, span: Id, parent: Span) -> Span {
+        self.subscriber.exit(span, parent)
+    }
+
+    #[inline]
+    fn current_span(&self) -> &Span {
+        self.subscriber.current_span()
     }
 
     #[inline]
@@ -176,9 +190,17 @@ impl Subscriber for NoSubscriber {
         false
     }
 
-    fn enter(&self, _span: Id) {}
+    fn enter(&self, _span: Span) -> Span {
+        Span::new_disabled()
+    }
 
-    fn exit(&self, _span: Id) {}
+    fn current_span(&self) -> &Span {
+        &Span::NONE
+    }
+
+    fn exit(&self, _exited: Id, _parent: Span) -> Span {
+        Span::new_disabled()
+    }
 
     fn close(&self, _span: Id) {}
 }

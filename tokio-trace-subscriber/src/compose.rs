@@ -1,4 +1,8 @@
-use tokio_trace::{span, subscriber::Subscriber, Id, Meta};
+use tokio_trace::{
+    span::{self, Span},
+    subscriber::Subscriber,
+    Id, Meta,
+};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
@@ -115,16 +119,19 @@ where
         self.registry.add_follows_from(span, follows)
     }
 
-    fn enter(&self, id: Id) {
-        self.registry.with_span(&id, |span| {
-            self.observer.enter(span);
-        });
+    fn enter(&self, span: Span) -> Span {
+        self.observer.enter(&span);
+        self.registry.enter(span)
     }
 
-    fn exit(&self, id: Id) {
-        self.registry.with_span(&id, |span| {
-            self.observer.exit(span);
-        });
+    fn current_span(&self) -> &Span {
+        self.registry.current_span()
+    }
+
+    fn exit(&self, _id: Id, parent: Span) -> Span {
+        let span = self.registry.exit(parent);
+        self.observer.exit(&span);
+        span
     }
 
     fn close(&self, id: Id) {

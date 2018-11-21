@@ -610,39 +610,43 @@ mod tests {
 
     #[test]
     fn span_closes_on_drop() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             let mut span = span!("foo");
             span.enter(|| {});
             drop(span);
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn span_closes_after_event() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .event()
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             span!("foo").enter(|| {
                 Span::current().close();
                 event!(::Level::Debug, {}, "my event!");
             });
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn new_span_after_event() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .event()
             .exit(span::mock().named(Some("foo")))
@@ -651,7 +655,7 @@ mod tests {
             .exit(span::mock().named(Some("bar")))
             .close(span::mock().named(Some("bar")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             span!("foo").enter(|| {
                 Span::current().close();
@@ -660,83 +664,92 @@ mod tests {
             span!("bar").enter(|| {
                 Span::current().close();
             });
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn event_outside_of_span() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .event()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             debug!("my event!");
             span!("foo").enter(|| {
                 Span::current().close();
             });
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn dropping_a_span_calls_drop_span() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .close(span::mock().named(Some("foo")))
             .drop_span(span::mock().named(Some("foo")))
-            .done()
-            .run();
+            .drop_span(span::mock().named(Some("foo")))
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             let mut span = span!("foo");
             span.enter(|| {});
             drop(span);
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn span_current_calls_clone_span() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .clone_span(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             let mut span = span!("foo");
             let _span2 = span.enter(|| Span::current());
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn drop_span_when_exiting_dispatchers_context() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .clone_span(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .drop_span(span::mock().named(Some("foo")))
             .drop_span(span::mock().named(Some("foo")))
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             let mut span = span!("foo");
             let _span2 = span.enter(|| Span::current());
             drop(span);
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
-        let subscriber1 = subscriber::mock()
+        let (subscriber1, handle1) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
             .clone_span(span::mock().named(Some("foo")))
+            .exit(span::mock().named(Some("foo")))
             .drop_span(span::mock().named(Some("foo")))
             .drop_span(span::mock().named(Some("foo")))
-            .done();
-        let subscriber1 = Dispatch::new(subscriber1.run());
+            .run_with_handle();
+        let subscriber1 = Dispatch::new(subscriber1);
         let subscriber2 = Dispatch::new(subscriber::mock().done().run());
 
         let mut foo = subscriber1.as_default(|| {
@@ -751,11 +764,13 @@ mod tests {
             drop(foo);
             drop(foo2);
         });
+
+        handle1.assert_finished();
     }
 
     #[test]
     fn span_closes_when_idle() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             // A second span is entered so that the mock subscriber will
@@ -763,9 +778,7 @@ mod tests {
             .enter(span::mock().named(Some("bar")))
             .close(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("bar")))
-            .close(span::mock().named(Some("bar")))
-            .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             let mut foo = span!("foo");
             foo.enter(|| {});
@@ -776,17 +789,19 @@ mod tests {
             });
 
             assert!(foo.is_closed());
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn entering_a_closed_span_is_a_no_op() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             let mut foo = span!("foo");
             foo.enter(|| {});
@@ -798,7 +813,9 @@ mod tests {
                 // exit.
             });
             assert!(foo.is_closed());
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
@@ -815,13 +832,15 @@ mod tests {
 
         #[test]
         fn span_closes_on_drop() {
-            let subscriber = subscriber::mock()
+            let (subscriber, handle) = subscriber::mock()
                 .enter(span::mock().named(Some("foo")))
                 .exit(span::mock().named(Some("foo")))
                 .close(span::mock().named(Some("foo")))
                 .done()
-                .run();
-            Dispatch::new(subscriber).as_default(|| span!("foo").into_shared().enter(|| {}))
+                .run_with_handle();
+            Dispatch::new(subscriber).as_default(|| span!("foo").into_shared().enter(|| {}));
+
+            handle.assert_finished();
         }
 
         #[test]
@@ -835,13 +854,11 @@ mod tests {
 
         #[test]
         fn shared_only_calls_drop_span_when_the_last_handle_is_dropped() {
-            let subscriber = subscriber::mock()
+            let (subscriber, handle) = subscriber::mock()
                 .enter(span::mock().named(Some("foo")))
                 .exit(span::mock().named(Some("foo")))
-                .close(span::mock().named(Some("foo")))
                 .drop_span(span::mock().named(Some("foo")))
-                .done()
-                .run();
+                .run_with_handle();
             Dispatch::new(subscriber).as_default(|| {
                 let span = span!("foo").into_shared();
                 let foo1 = span.clone();
@@ -849,7 +866,9 @@ mod tests {
                 drop(foo1);
                 drop(span);
                 foo2.enter(|| {})
-            })
+            });
+
+            handle.assert_finished();
         }
 
         #[test]
@@ -858,7 +877,7 @@ mod tests {
             // threads are still executing inside that span.
             use std::sync::{Arc, Barrier};
 
-            let subscriber = subscriber::mock()
+            let (subscriber, handle) = subscriber::mock()
                 .enter(span::mock().named(Some("baz")))
                 // Main thread enters "quux".
                 .enter(span::mock().named(Some("quux")))
@@ -876,7 +895,7 @@ mod tests {
                 .exit(span::mock().named(Some("baz")))
                 .close(span::mock().named(Some("baz")))
                 .done()
-                .run();
+                .run_with_handle();
 
             Dispatch::new(subscriber).as_default(|| {
                 let barrier1 = Arc::new(Barrier::new(2));
@@ -910,13 +929,15 @@ mod tests {
                     handle.join().unwrap();
                 });
             });
+
+            handle.assert_finished();
         }
 
         #[test]
         fn exit_doesnt_finish_while_handles_still_exist() {
             // Test that exiting a span only marks it as "done" when no handles
             // that can re-enter the span exist.
-            let subscriber = subscriber::mock()
+            let (subscriber, handle) = subscriber::mock()
                 .enter(span::mock().named(Some("foo")))
                 .enter(span::mock().named(Some("bar")))
                 // The first time we exit "bar", there will be another handle with
@@ -929,8 +950,9 @@ mod tests {
                 .exit(span::mock().named(Some("bar")))
                 .close(span::mock().named(Some("bar")))
                 .exit(span::mock().named(Some("foo")))
+                .close(span::mock().named(Some("foo")))
                 .done()
-                .run();
+                .run_with_handle();
 
             Dispatch::new(subscriber).as_default(|| {
                 span!("foo").enter(|| {
@@ -944,6 +966,8 @@ mod tests {
                     bar.enter(|| {});
                 });
             });
+
+            handle.assert_finished();
         }
     }
 }

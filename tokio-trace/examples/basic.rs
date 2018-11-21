@@ -7,6 +7,8 @@ fn main() {
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::builder()
         .with_parent_fields(true)
+        .with_span_entry(true)
+        .with_span_exits(true)
         .finish();
 
     tokio_trace::Dispatch::new(subscriber).as_default(|| {
