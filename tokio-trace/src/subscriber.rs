@@ -1,5 +1,52 @@
 pub use tokio_trace_core::subscriber::*;
 
+use std::{cell::UnsafeCell, default::Default, thread};
+use {Id, Span};
+
+/// Tracks the currently executing span on a per-thread basis.
+///
+/// This is intended for use by `Subscriber` implementations.
+#[derive(Clone)]
+pub struct CurrentSpanPerThread {
+    current: &'static thread::LocalKey<UnsafeCell<Span>>,
+}
+
+impl CurrentSpanPerThread {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns the [`Id`](::Id) of the span in which the current thread is
+    /// executing, or `None` if it is not inside of a span.
+    pub fn id(&self) -> Option<Id> {
+        self.span().id()
+    }
+
+    /// Returns a [`Span`](::span::Span) handle to the span in which the current
+    /// thread is executing. If there is no current span, then a disabled
+    /// `Span` is returned.
+    pub fn span(&self) -> &Span {
+        self.current
+            .with(|current| unsafe { &*(current.get() as *const _) })
+    }
+
+    /// Sets the current thread to be inside of the provided span, returning the
+    /// current thread's prior current span.
+    pub fn set_current(&self, span: Span) -> Span {
+        self.current
+            .with(|current| unsafe { current.get().replace(span) })
+    }
+}
+
+impl Default for CurrentSpanPerThread {
+    fn default() -> Self {
+        thread_local! {
+            static CURRENT: UnsafeCell<Span> = UnsafeCell::new(Span::new_disabled());
+        };
+        Self { current: &CURRENT }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::{
@@ -17,7 +64,7 @@ mod tests {
         let alice_count2 = alice_count.clone();
         let bob_count2 = bob_count.clone();
 
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .with_filter(move |meta| match meta.name {
                 Some("alice") => {
                     alice_count2.fetch_add(1, Ordering::Relaxed);
@@ -28,7 +75,7 @@ mod tests {
                     true
                 }
                 _ => false,
-            }).run();
+            }).run_with_handle();
 
         Dispatch::new(subscriber).as_default(move || {
             // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
@@ -55,6 +102,7 @@ mod tests {
             assert_eq!(alice_count.load(Ordering::Relaxed), 1);
             assert_eq!(bob_count.load(Ordering::Relaxed), 1);
         });
+        handle.assert_finished();
     }
 
     // This is no longer testing the expected behaviour.
@@ -208,18 +256,6 @@ mod tests {
         let count2 = count.clone();
 
         let subscriber = subscriber::mock()
-            .enter(span::mock().named(Some("emily")))
-            .exit(span::mock().named(Some("emily")))
-            .enter(span::mock().named(Some("emily")))
-            .exit(span::mock().named(Some("emily")))
-            .enter(span::mock().named(Some("frank")))
-            .exit(span::mock().named(Some("frank")))
-            .enter(span::mock().named(Some("emily")))
-            .exit(span::mock().named(Some("emily")))
-            .enter(span::mock().named(Some("frank")))
-            .exit(span::mock().named(Some("frank")))
-            .enter(span::mock().named(Some("emily")))
-            .exit(span::mock().named(Some("emily")))
             .with_filter(move |meta| match meta.name {
                 Some("emily") | Some("frank") => {
                     count2.fetch_add(1, Ordering::Relaxed);

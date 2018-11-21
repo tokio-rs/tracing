@@ -125,83 +125,92 @@ impl<T> WithDispatch<T> {
 
 #[cfg(test)]
 mod tests {
+    extern crate tokio;
+
     use super::*;
     use futures::{future, stream, task};
     use tokio_trace::{span, subscriber, Dispatch};
 
-    #[test]
-    fn future_enter_exit_is_reasonable() {
-        struct MyFuture {
-            polls: usize,
-        }
+    struct PollN<T, E> {
+        and_return: Option<Result<T, E>>,
+        finish_at: usize,
+        polls: usize,
+    }
 
-        impl Future for MyFuture {
-            type Item = ();
-            type Error = ();
-            fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-                self.polls += 1;
-                if self.polls == 2 {
-                    Ok(Async::Ready(()))
-                } else {
-                    task::current().notify();
-                    Ok(Async::NotReady)
-                }
+    impl<T, E> Future for PollN<T, E> {
+        type Item = T;
+        type Error = E;
+        fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+            self.polls += 1;
+            if self.polls == self.finish_at {
+                self.and_return
+                    .take()
+                    .expect("polled after ready")
+                    .map(Async::Ready)
+            } else {
+                task::current().notify();
+                Ok(Async::NotReady)
             }
         }
-        let subscriber = subscriber::mock()
+    }
+
+    impl PollN<(), ()> {
+        fn new_ok(finish_at: usize) -> Self {
+            Self {
+                and_return: Some(Ok(())),
+                finish_at,
+                polls: 0,
+            }
+        }
+
+        fn new_err(finish_at: usize) -> Self {
+            Self {
+                and_return: Some(Err(())),
+                finish_at,
+                polls: 0,
+            }
+        }
+    }
+
+    #[test]
+    fn future_enter_exit_is_reasonable() {
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
-            MyFuture { polls: 0 }
-                .instrument(span!("foo"))
-                .wait()
-                .unwrap();
-        })
+            PollN::new_ok(2).instrument(span!("foo")).wait().unwrap();
+        });
+        handle.assert_finished();
     }
 
     #[test]
     fn future_error_ends_span() {
-        struct MyFuture {
-            polls: usize,
-        }
-
-        impl Future for MyFuture {
-            type Item = ();
-            type Error = ();
-            fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-                self.polls += 1;
-                if self.polls == 2 {
-                    Err(())
-                } else {
-                    task::current().notify();
-                    Ok(Async::NotReady)
-                }
-            }
-        }
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
             .done()
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
-            MyFuture { polls: 0 }
+            PollN::new_err(2)
                 .instrument(span!("foo"))
                 .wait()
                 .unwrap_err();
-        })
+        });
+
+        handle.assert_finished();
     }
 
     #[test]
     fn stream_enter_exit_is_reasonable() {
-        let subscriber = subscriber::mock()
+        let (subscriber, handle) = subscriber::mock()
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
@@ -211,13 +220,43 @@ mod tests {
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
             .close(span::mock().named(Some("foo")))
-            .run();
+            .run_with_handle();
         Dispatch::new(subscriber).as_default(|| {
             stream::iter_ok::<_, ()>(&[1, 2, 3])
                 .instrument(span!("foo"))
                 .for_each(|_| future::ok(()))
                 .wait()
                 .unwrap();
-        })
+        });
+        handle.assert_finished();
+    }
+
+    #[test]
+    fn span_follows_future_onto_threadpool() {
+        let (subscriber, handle) = subscriber::mock()
+            .enter(span::mock().named(Some("a")))
+            .enter(span::mock().named(Some("b")))
+            .exit(span::mock().named(Some("b")))
+            .enter(span::mock().named(Some("b")))
+            .exit(span::mock().named(Some("b")))
+            .close(span::mock().named(Some("b")))
+            .exit(span::mock().named(Some("a")))
+            .close(span::mock().named(Some("a")))
+            .done()
+            .run_with_handle();
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        Dispatch::new(subscriber).as_default(move || {
+            span!("a").enter(|| {
+                let future = PollN::new_ok(2).instrument(span!("b")).map(|_| {
+                    span!("c").enter(|| {
+                        // "c" happens _outside_ of the instrumented future's
+                        // spab, so we don't expect it.
+                    })
+                });
+                Span::current().close();
+                runtime.block_on(Box::new(future)).unwrap();
+            })
+        });
+        handle.assert_finished();
     }
 }

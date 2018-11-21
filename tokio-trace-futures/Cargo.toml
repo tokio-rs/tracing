@@ -9,3 +9,4 @@ tokio-trace = { path = "../tokio-trace" }
 
 [dev-dependencies]
 tokio-trace = { path = "../tokio-trace", features = ["test-support"] }
+tokio = "0.1"
