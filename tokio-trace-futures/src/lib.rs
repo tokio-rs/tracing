@@ -1,4 +1,5 @@
 extern crate futures;
+#[cfg_attr(test, macro_use)]
 extern crate tokio_trace;
 
 use futures::{Async, Future, Poll, Sink, StartSend, Stream};

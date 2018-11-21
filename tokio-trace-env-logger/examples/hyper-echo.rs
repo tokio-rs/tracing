@@ -21,7 +21,7 @@ use self::sloggish::SloggishSubscriber;
 use tokio_trace::field;
 use tokio_trace_futures::{Instrument, Instrumented};
 
-type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     span!(

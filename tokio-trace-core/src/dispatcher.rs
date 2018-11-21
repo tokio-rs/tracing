@@ -19,10 +19,10 @@ thread_local! {
 /// `Dispatch` trace data to a [`Subscriber`].
 #[derive(Clone)]
 pub struct Dispatch {
-    subscriber: Arc<dyn Subscriber + Send + Sync>,
+    subscriber: Arc<Subscriber + Send + Sync>,
 }
 
-pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
+pub(crate) struct Registrar(Weak<Subscriber + Send + Sync>);
 
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
