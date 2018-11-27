@@ -1,14 +1,14 @@
 pub use tokio_trace_core::subscriber::*;
 
-use std::{cell::UnsafeCell, default::Default, thread};
-use {Id, Span};
+use std::{cell::RefCell, default::Default, thread};
+use Id;
 
 /// Tracks the currently executing span on a per-thread basis.
 ///
 /// This is intended for use by `Subscriber` implementations.
 #[derive(Clone)]
 pub struct CurrentSpanPerThread {
-    current: &'static thread::LocalKey<UnsafeCell<Span>>,
+    current: &'static thread::LocalKey<RefCell<Vec<Id>>>,
 }
 
 impl CurrentSpanPerThread {
@@ -19,32 +19,47 @@ impl CurrentSpanPerThread {
     /// Returns the [`Id`](::Id) of the span in which the current thread is
     /// executing, or `None` if it is not inside of a span.
     pub fn id(&self) -> Option<Id> {
-        self.span().id()
+        self.current
+            .with(|current| current.borrow().last().cloned())
     }
 
-    /// Returns a [`Span`](::span::Span) handle to the span in which the current
-    /// thread is executing. If there is no current span, then a disabled
-    /// `Span` is returned.
-    pub fn span(&self) -> &Span {
-        self.current
-            .with(|current| unsafe { &*(current.get() as *const _) })
+    pub fn enter(&self, span: Id) {
+        self.current.with(|current| {
+            current.borrow_mut().push(span);
+        })
     }
 
-    /// Sets the current thread to be inside of the provided span, returning the
-    /// current thread's prior current span.
-    pub fn set_current(&self, span: Span) -> Span {
-        self.current
-            .with(|current| unsafe { current.get().replace(span) })
+    pub fn exit(&self) {
+        self.current.with(|current| {
+            let _ = current.borrow_mut().pop();
+        })
     }
 }
 
 impl Default for CurrentSpanPerThread {
     fn default() -> Self {
         thread_local! {
-            static CURRENT: UnsafeCell<Span> = UnsafeCell::new(Span::new_disabled());
+            static CURRENT: RefCell<Vec<Id>> = RefCell::new(vec![]);
         };
         Self { current: &CURRENT }
     }
+}
+
+/// Sets this dispatch as the default for the duration of a closure.
+///
+/// The default dispatcher is used when creating a new [`Span`] or
+/// [`Event`], _if no span is currently executing_. If a span is currently
+/// executing, new spans or events are dispatched to the subscriber that
+/// tagged that span, instead.
+///
+/// [`Span`]: ::span::Span
+/// [`Subscriber`]: ::Subscriber
+/// [`Event`]: ::Event
+pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
+where
+    S: Subscriber + Send + Sync + 'static,
+{
+    ::dispatcher::with_default(::Dispatch::new(subscriber), f)
 }
 
 #[cfg(test)]
@@ -53,7 +68,7 @@ mod tests {
         atomic::{AtomicUsize, Ordering},
         Arc,
     };
-    use {span, subscriber, Dispatch};
+    use {dispatcher, span, subscriber, Dispatch};
 
     #[test]
     fn filters_are_not_reevaluated_for_the_same_span() {
@@ -77,7 +92,7 @@ mod tests {
                 _ => false,
             }).run_with_handle();
 
-        Dispatch::new(subscriber).as_default(move || {
+        dispatcher::with_default(Dispatch::new(subscriber), move || {
             // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
             // not "alice."
             let mut alice = span!("alice");
@@ -206,7 +221,7 @@ mod tests {
                 }
             }).run();
 
-        Dispatch::new(subscriber).as_default(move || {
+        dispatcher::with_default(Dispatch::new(subscriber), move || {
             // Enter "charlie" and then "dave". The dispatcher expects to see "dave" but
             // not "charlie."
             let mut charlie = span!("charlie");
@@ -264,7 +279,7 @@ mod tests {
                 _ => false,
             }).run();
 
-        Dispatch::new(subscriber).as_default(|| {
+        dispatcher::with_default(Dispatch::new(subscriber), || {
             // Call the function once. The filter should be re-evaluated.
             assert!(my_great_function());
             assert_eq!(count.load(Ordering::Relaxed), 1);

@@ -11,7 +11,7 @@ fn main() {
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::new();
 
-    tokio_trace::Dispatch::new(subscriber).as_default(|| {
+    tokio_trace::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
 
         let mut span = span!("Getting rec from another function.", number_of_recs = &num);

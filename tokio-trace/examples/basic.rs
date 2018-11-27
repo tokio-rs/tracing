@@ -11,7 +11,7 @@ fn main() {
         .with_span_exits(true)
         .finish();
 
-    tokio_trace::Dispatch::new(subscriber).as_default(|| {
+    tokio_trace::dispatcher::with_default(tokio_trace::Dispatch::new(subscriber), || {
         let foo = 3;
         trace!({ foo = foo, bar = "bar" }, "hello! I'm gonna shave a yak.");
 

@@ -108,30 +108,35 @@ fn main() {
         .with_parent_fields(true)
         .finish();
 
-    tokio_trace::Dispatch::new(subscriber).as_default(|| {
+    tokio_trace::subscriber::with_default(subscriber, || {
         let mut rt = Runtime::new().unwrap();
         let reactor = rt.executor();
 
         let addr = "[::1]:8888".parse().unwrap();
         let bind = TcpListener::bind(&addr).expect("bind");
 
-        span!(
+        let mut serve_span = span!(
             "serve",
             local_ip = field::debug(addr.ip()),
             local_port = addr.port() as u64
-        ).enter(move || {
-            let new_svc = tokio_trace_tower_http::InstrumentedMakeService::new(NewSvc);
+        );
+        let new_svc =
+            tokio_trace_tower_http::InstrumentedMakeService::new(NewSvc, serve_span.clone());
+        let serve_span2 = serve_span.clone();
+        serve_span.enter(move || {
             let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
             let serve = bind
                 .incoming()
                 .fold((h2, reactor), |(mut h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
-                    span!(
+                    let mut conn_span = span!(
                         "conn",
                         remote_ip = field::debug(addr.ip()),
                         remote_port = addr.port() as u64
-                    ).enter(|| {
+                    );
+                    let conn_span2 = conn_span.clone();
+                    conn_span.enter(|| {
                         if let Err(e) = sock.set_nodelay(true) {
                             return Err(e);
                         }
@@ -145,7 +150,7 @@ fn main() {
                             }).and_then(|_| {
                                 debug!("response finished");
                                 future::ok(())
-                            }).in_current_span();
+                            }).instrument(conn_span2);
                         reactor.spawn(Box::new(serve));
 
                         Ok((h2, reactor))
@@ -153,7 +158,7 @@ fn main() {
                 }).map_err(|e| {
                     error!("serve error {:?}", e);
                 }).map(|_| {})
-                .in_current_span();
+                .instrument(serve_span2);
 
             rt.spawn(serve);
             rt.shutdown_on_idle().wait().unwrap();
