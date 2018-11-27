@@ -1010,7 +1010,7 @@ mod tests {
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
             span!("foo").enter(|| {
-                event!(::Level::Debug, {}, "my event!");
+                event!(::Level::DEBUG, {}, "my event!");
             });
         });
 
@@ -1031,7 +1031,7 @@ mod tests {
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
             span!("foo").enter(|| {
-                event!(::Level::Debug, {}, "my event!");
+                event!(::Level::DEBUG, {}, "my event!");
             });
             span!("bar").enter(|| {});
         });
