@@ -21,9 +21,6 @@ struct Registry {
 
 /// Trait implemented by callsites.
 pub trait Callsite: Sync {
-    /// Returns the callsite's current Interest.
-    fn interest(&self) -> Interest;
-
     /// Adds the [`Interest`] returned by [registering] the callsite with a
     /// [dispatcher].
     ///

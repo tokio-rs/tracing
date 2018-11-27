@@ -36,20 +36,26 @@ macro_rules! callsite {
         static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
         static REGISTRATION: Once = Once::new();
         struct MyCallsite;
-        impl callsite::Callsite for MyCallsite {
+        impl MyCallsite {
             #[inline]
             fn interest(&self) -> Interest {
-                Interest::from_usize(INTEREST.load(Ordering::Relaxed))
-                    .unwrap_or(Interest::SOMETIMES)
+                match INTEREST.load(Ordering::Relaxed) {
+                    0 => Interest::NEVER,
+                    2 => Interest::ALWAYS,
+                    _ => Interest::SOMETIMES,
+                }
             }
+        }
+        impl callsite::Callsite for MyCallsite {
             fn add_interest(&self, interest: Interest) {
-                let current_interest = INTEREST.load(Ordering::Relaxed);
-                match Interest::from_usize(current_interest) {
-                    Some(current) if interest > current =>
-                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
-                    None =>
-                        INTEREST.store(interest.as_usize(), Ordering::Relaxed),
-                    _ => {}
+                let current_interest = self.interest();
+                if interest > current_interest {
+                    let interest = match interest {
+                        Interest::NEVER => 0,
+                        Interest::ALWAYS => 2,
+                        _ => 1,
+                    };
+                    INTEREST.store(interest, Ordering::Relaxed);
                 }
             }
             fn remove_interest(&self) {
@@ -103,7 +109,7 @@ macro_rules! span {
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
             #[allow(unused_variables, unused_mut)]
-            Span::new(callsite, |span| {
+            Span::new(callsite.interest(), callsite.metadata(), |span| {
                 let mut keys = callsite.metadata().fields();
                 $(
                     let key = keys.next()
@@ -136,7 +142,7 @@ macro_rules! event {
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
             #[allow(unused_variables, unused_mut)]
-            Event::new(callsite, |event| {
+            Event::new(callsite.interest(), callsite.metadata(), |event| {
                 let mut keys = callsite.metadata().fields();
                 event.message(
                     &keys.next().expect("event metadata should define a key for the message"),

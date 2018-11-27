@@ -146,7 +146,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 use {
-    callsite::Callsite,
     dispatcher::{self, Dispatch},
     field,
     subscriber::{Interest, Subscriber},
@@ -256,16 +255,14 @@ impl Span {
     /// [field values]: ::span::Span::record
     /// [`follows_from` annotations]: ::span::Span::follows_from
     #[inline]
-    pub fn new<F>(callsite: &'static Callsite, if_enabled: F) -> Span
+    pub fn new<F>(interest: Interest, meta: &'static Meta<'static>, if_enabled: F) -> Span
     where
         F: FnOnce(&mut Span),
     {
-        let interest = callsite.interest();
         if interest == Interest::NEVER {
             return Span::new_disabled();
         }
         dispatcher::with_current(|dispatch| {
-            let meta = callsite.metadata();
             if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
                 return Span {
                     inner: None,
@@ -442,16 +439,14 @@ impl<'a> Event<'a> {
     /// [field values]: ::span::Span::record
     /// [`follows_from` annotations]: ::span::Span::follows_from
     #[inline]
-    pub fn new<F>(callsite: &'a Callsite, if_enabled: F) -> Self
+    pub fn new<F>(interest: Interest, meta: &'a Meta<'a>, if_enabled: F) -> Self
     where
         F: FnOnce(&mut Self),
     {
-        let interest = callsite.interest();
         if interest == Interest::NEVER {
             return Self { inner: None };
         }
         dispatcher::with_current(|dispatch| {
-            let meta = callsite.metadata();
             if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
                 return Self { inner: None };
             }

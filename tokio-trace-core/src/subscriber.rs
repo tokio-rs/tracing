@@ -348,22 +348,6 @@ impl Interest {
     /// If any subscriber expresses that it is `ALWAYS` interested in a given
     /// callsite, then the callsite will always be enabled.
     pub const ALWAYS: Interest = Interest(InterestKind::Always);
-
-    /// Constructs a new `Interest` from a `usize`.
-    #[inline]
-    pub fn from_usize(u: usize) -> Option<Self> {
-        match u {
-            0 => Some(Interest::NEVER),
-            1 => Some(Interest::SOMETIMES),
-            2 => Some(Interest::ALWAYS),
-            _ => None,
-        }
-    }
-
-    /// Returns an `usize` representing this `Interest`.
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
 }
 
 #[cfg(any(test, feature = "test-support"))]

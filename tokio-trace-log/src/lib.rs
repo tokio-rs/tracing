@@ -40,31 +40,15 @@ use tokio_trace::{
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
-    struct LogCallsite<'a>(tokio_trace::Meta<'a>);
-    impl<'a> tokio_trace::Callsite for LogCallsite<'a> {
-        fn interest(&self) -> tokio_trace::subscriber::Interest {
-            tokio_trace::subscriber::Interest::SOMETIMES
-        }
-
-        fn add_interest(&self, _interest: tokio_trace::subscriber::Interest) {
-            // Since these callsites can't be registered (they're not known to
-            // be valid for the 'static lifetime), we don't need to track
-            // interest --- do nothing.
-        }
-
-        fn remove_interest(&self) {
-            // Again, we don't cache interest for these.
-        }
-
-        fn metadata(&self) -> &Meta {
-            &self.0
-        }
-    }
-    let callsite = LogCallsite(record.as_trace());
-    let k = callsite.0.key_for(&"message").unwrap();
-    drop(tokio_trace::Event::new(&callsite, |event| {
-        event.message(&k, record.args().clone());
-    }));
+    let meta = record.as_trace();
+    let k = meta.key_for(&"message").unwrap();
+    drop(tokio_trace::Event::new(
+        subscriber::Interest::SOMETIMES,
+        &meta,
+        |event| {
+            event.message(&k, record.args().clone());
+        },
+    ));
     Ok(())
 }
 
