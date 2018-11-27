@@ -12,3 +12,8 @@ members = [
     "tokio-trace-macros",
     "tokio-trace-subscriber"
 ]
+
+[replace]
+# This replacement is necessary until tower-h2 has been updated to
+# track `NewService` moving to `tower-util`
+"https://github.com/tower-rs/tower.git#tower-service:0.1.0" = { git = "https://github.com/tower-rs/tower", rev = "c5cb47d612439093dc4d8f04e70ea50778d8b8f7" }
