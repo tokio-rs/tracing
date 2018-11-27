@@ -7,7 +7,7 @@ macro_rules! callsite {
         callsite!(@ $crate::Meta {
             name: Some($name),
             target: module_path!(),
-            level: $crate::Level::Trace,
+            level: $crate::Level::TRACE,
             module_path: Some(module_path!()),
             file: Some(file!()),
             line: Some(line!()),
@@ -173,50 +173,50 @@ macro_rules! event {
 #[macro_export]
 macro_rules! trace {
     ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Trace, { $($k $( = $val)* ),* }, $($arg)+)
+        event!(target: module_path!(), $crate::Level::TRACE, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Trace, {}, $($arg)+)
+        event!(target: module_path!(), $crate::Level::TRACE, {}, $($arg)+)
     );
 }
 
 #[macro_export]
 macro_rules! debug {
     ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Debug, { $($k $( = $val)* ),* }, $($arg)+)
+        event!(target: module_path!(), $crate::Level::DEBUG, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Debug, {}, $($arg)+)
+        event!(target: module_path!(), $crate::Level::DEBUG, {}, $($arg)+)
     );
 }
 
 #[macro_export]
 macro_rules! info {
     ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Info, { $($k $( = $val)* ),* }, $($arg)+)
+        event!(target: module_path!(), $crate::Level::INFO, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Info, {}, $($arg)+)
+        event!(target: module_path!(), $crate::Level::INFO, {}, $($arg)+)
     );
 }
 
 #[macro_export]
 macro_rules! warn {
     ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Warn, { $($k $( = $val)* ),* }, $($arg)+)
+        event!(target: module_path!(), $crate::Level::WARN, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Warn, {}, $($arg)+)
+        event!(target: module_path!(), $crate::Level::WARN, {}, $($arg)+)
     );
 }
 
 #[macro_export]
 macro_rules! error {
     ({ $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Error, { $($k $( = $val)* ),* }, $($arg)+)
+        event!(target: module_path!(), $crate::Level::ERROR, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::Error, {}, $($arg)+)
+        event!(target: module_path!(), $crate::Level::ERROR, {}, $($arg)+)
     );
 }
 

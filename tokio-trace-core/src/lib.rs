@@ -81,30 +81,8 @@ extern crate lazy_static;
 use std::borrow::Borrow;
 
 /// Describes the level of verbosity of a `Span` or `Event`.
-#[repr(usize)]
-#[derive(Copy, Eq, Debug, Hash)]
-pub enum Level {
-    /// The "error" level.
-    ///
-    /// Designates very serious errors.
-    Error = 1, // This way these line up with the discriminants for LevelFilter below
-    /// The "warn" level.
-    ///
-    /// Designates hazardous situations.
-    Warn,
-    /// The "info" level.
-    ///
-    /// Designates useful information.
-    Info,
-    /// The "debug" level.
-    ///
-    /// Designates lower priority information.
-    Debug,
-    /// The "trace" level.
-    ///
-    /// Designates very low priority, often extremely verbose, information.
-    Trace,
-}
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct Level(LevelInner);
 
 pub mod callsite;
 pub mod dispatcher;
@@ -288,18 +266,52 @@ impl<'a> PartialEq for Meta<'a> {
 
 // ===== impl Level =====
 
-impl Clone for Level {
-    #[inline]
-    fn clone(&self) -> Level {
-        *self
-    }
+impl Level {
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    pub const ERROR: Level = Level(LevelInner::Error);
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    pub const WARN: Level = Level(LevelInner::Warn);
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    pub const INFO: Level = Level(LevelInner::Info);
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    pub const DEBUG: Level = Level(LevelInner::Debug);
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    pub const TRACE: Level = Level(LevelInner::Trace);
 }
 
-impl PartialEq for Level {
-    #[inline]
-    fn eq(&self, other: &Level) -> bool {
-        *self as usize == *other as usize
-    }
+#[repr(usize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+enum LevelInner {
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    Error = 1, // This way these line up with the discriminants for LevelFilter below
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug,
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace,
 }
 
 // ===== impl MetaKind =====
