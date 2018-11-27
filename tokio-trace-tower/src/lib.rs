@@ -42,8 +42,9 @@ where
         let inner = &mut self.inner;
         span.enter(|| {
             // TODO: custom `Value` impls for `http` types would be nice...
-            span!("request", request = &field::debug(&req))
-                .enter(move || inner.call(req).in_current_span())
+            let mut span = span!("request", request = &field::debug(&req));
+            let span2 = span.clone();
+            span.enter(move || inner.call(req).instrument(span2))
         })
     }
 }

@@ -19,7 +19,6 @@ use std::{
 struct Counters(Arc<RwLock<HashMap<String, AtomicUsize>>>);
 
 struct CounterSubscriber {
-    current: subscriber::CurrentSpanPerThread,
     ids: AtomicUsize,
     counters: Counters,
 }
@@ -43,7 +42,7 @@ impl Subscriber for CounterSubscriber {
         interest
     }
 
-    fn new_id(&self, _new_span: span::Attributes) -> Id {
+    fn new_id(&self, _new_span: &Meta) -> Id {
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         Id::from_u64(id as u64)
     }
@@ -88,19 +87,8 @@ impl Subscriber for CounterSubscriber {
             .any(|f| f.name().map(|name| name.contains("count")).unwrap_or(false))
     }
 
-    fn enter(&self, span: tokio_trace::Span) -> tokio_trace::Span {
-        self.current.set_current(span)
-    }
-
-    fn current_span(&self) -> &tokio_trace::Span {
-        self.current.span()
-    }
-
-    fn exit(&self, _span: Id, parent: tokio_trace::Span) -> tokio_trace::Span {
-        self.current.set_current(parent)
-    }
-
-    fn close(&self, _span: Id) {}
+    fn enter(&self, _span: &Id) {}
+    fn exit(&self, _span: &Id) {}
 }
 
 impl Counters {
@@ -113,7 +101,6 @@ impl Counters {
     fn new() -> (Self, CounterSubscriber) {
         let counters = Counters(Arc::new(RwLock::new(HashMap::new())));
         let subscriber = CounterSubscriber {
-            current: subscriber::CurrentSpanPerThread::new(),
             ids: AtomicUsize::new(0),
             counters: counters.clone(),
         };
@@ -124,7 +111,7 @@ impl Counters {
 fn main() {
     let (counters, subscriber) = Counters::new();
 
-    tokio_trace::Dispatch::new(subscriber).as_default(|| {
+    tokio_trace::subscriber::with_default(subscriber, || {
         let mut foo: u64 = 2;
         span!("my_great_span", foo_count = &foo).enter(|| {
             foo += 1;

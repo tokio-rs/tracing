@@ -122,29 +122,29 @@ fn main() {
     let subscriber = SloggishSubscriber::new(2);
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
-    tokio_trace::Dispatch::new(subscriber).as_default(|| {
+    tokio_trace::dispatcher::with_default(tokio_trace::Dispatch::new(subscriber), || {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-        span!("server", local = &field::debug(addr)).enter(|| {
-            let server = tokio::net::TcpListener::bind(&addr)
-                .expect("bind")
-                .incoming()
-                .fold(Http::new(), move |http, sock| {
-                    let span = span!(
-                        "connection",
-                        remote = &field::debug(&sock.peer_addr().unwrap())
-                    );
-                    hyper::rt::spawn(
-                        http.serve_connection(sock, service_fn(echo))
-                            .map_err(|e| {
-                                error!({ error = field::display(e) }, "serve error");
-                            }).instrument(span),
-                    );
-                    Ok::<_, ::std::io::Error>(http)
-                }).in_current_span()
-                .map(|_| ())
-                .map_err(|e| {
-                    error!({ error = field::display(e) }, "server error");
-                });
+        let mut server_span = span!("server", local = &field::debug(addr));
+        let server = tokio::net::TcpListener::bind(&addr)
+            .expect("bind")
+            .incoming()
+            .fold(Http::new(), move |http, sock| {
+                let span = span!(
+                    "connection",
+                    remote = &field::debug(&sock.peer_addr().unwrap())
+                );
+                hyper::rt::spawn(
+                    http.serve_connection(sock, service_fn(echo))
+                        .map_err(|e| {
+                            error!({ error = field::display(e) }, "serve error");
+                        }).instrument(span),
+                );
+                Ok::<_, ::std::io::Error>(http)
+            }).map(|_| ())
+            .map_err(|e| {
+                error!({ error = field::display(e) }, "server error");
+            }).instrument(server_span.clone());
+        server_span.enter(|| {
             info!("listening...");
             hyper::rt::run(server);
         });

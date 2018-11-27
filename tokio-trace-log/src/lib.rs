@@ -34,7 +34,6 @@ use std::{
 };
 use tokio_trace::{
     field,
-    span::{self, Span},
     subscriber::{self, Subscriber},
     Id, Meta,
 };
@@ -248,33 +247,36 @@ impl TraceLoggerBuilder {
 }
 
 struct SpanLineBuilder {
-    attrs: span::SpanAttributes,
+    parent: Option<Id>,
+    ref_count: usize,
+    meta: &'static Meta<'static>,
     log_line: String,
     fields: String,
 }
 
 impl SpanLineBuilder {
     fn new(
-        attrs: span::SpanAttributes,
+        parent: Option<Id>,
+        meta: &'static Meta<'static>,
         fields: String,
         id: Id,
         settings: &TraceLoggerBuilder,
     ) -> Self {
         let mut log_line = String::new();
-        let meta = attrs.metadata();
         write!(&mut log_line, "{}", meta.name.unwrap_or("unknown span"),)
             .expect("write to string shouldn't fail");
         if settings.log_ids {
             write!(
                 &mut log_line,
-                "{}span={:?}; parent={:?};",
+                "{}span={:?}; ",
                 if meta.name.is_some() { " " } else { "" },
                 id,
-                attrs.parent(),
             ).expect("write to string shouldn't fail");
         }
         Self {
-            attrs,
+            parent,
+            ref_count: 1,
+            meta,
             log_line,
             fields,
         }
@@ -287,7 +289,7 @@ impl SpanLineBuilder {
     }
 
     fn finish(self) {
-        let meta = self.attrs.metadata();
+        let meta = self.meta;
         let log_meta = meta.as_log();
         let logger = log::logger();
         if logger.enabled(&log_meta) {
@@ -306,6 +308,7 @@ impl SpanLineBuilder {
 }
 
 struct EventLineBuilder {
+    ref_count: usize,
     level: tokio_trace::Level,
     file: Option<String>,
     line: Option<u32>,
@@ -316,18 +319,13 @@ struct EventLineBuilder {
 }
 
 impl EventLineBuilder {
-    fn new(attrs: span::Attributes, id: Id, settings: &TraceLoggerBuilder) -> Self {
+    fn new(meta: &Meta, id: Id, settings: &TraceLoggerBuilder) -> Self {
         let mut log_line = String::new();
-        let meta = attrs.metadata();
         if settings.log_ids {
-            write!(
-                &mut log_line,
-                "event={:?}; parent={:?}; ",
-                id,
-                attrs.parent(),
-            ).expect("write to string shouldn't fail");
+            write!(&mut log_line, "event={:?}; ", id,).expect("write to string shouldn't fail");
         }
         Self {
+            ref_count: 1,
             level: meta.level,
             file: meta.file.map(|s| s.to_owned()),
             line: meta.line,
@@ -355,6 +353,7 @@ impl EventLineBuilder {
             .target(self.target.as_ref())
             .build();
         if logger.enabled(&log_meta) {
+            let before_current = if current_span != "" { "; " } else { "" };
             logger.log(
                 &log::Record::builder()
                     .metadata(log_meta)
@@ -363,8 +362,8 @@ impl EventLineBuilder {
                     .file(self.file.as_ref().map(String::as_ref))
                     .line(self.line)
                     .args(format_args!(
-                        "{}; {}{}",
-                        self.message, current_span, self.log_line
+                        "{}{}{}{}",
+                        self.message, before_current, current_span, self.log_line
                     )).build(),
             );
         }
@@ -376,25 +375,26 @@ impl Subscriber for TraceLogger {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, new_span: span::SpanAttributes) -> Id {
+    fn new_span(&self, new_span: &'static Meta<'static>) -> Id {
         let id = self.next_id();
         let mut in_progress = self.in_progress.lock().unwrap();
         let mut fields = String::new();
+        let parent = self.current.id();
         if self.settings.parent_fields {
-            let mut next_parent = new_span.parent();
+            let mut next_parent = parent.as_ref();
             while let Some(ref parent) = next_parent.and_then(|p| in_progress.spans.get(&p)) {
                 write!(&mut fields, "{}", parent.fields).expect("write to string cannot fail");
-                next_parent = parent.attrs.parent();
+                next_parent = parent.parent.as_ref();
             }
         }
         in_progress.spans.insert(
             id.clone(),
-            SpanLineBuilder::new(new_span, fields, id.clone(), &self.settings),
+            SpanLineBuilder::new(parent, new_span, fields, id.clone(), &self.settings),
         );
         id
     }
 
-    fn new_id(&self, new_span: span::Attributes) -> Id {
+    fn new_id(&self, new_span: &Meta) -> Id {
         let id = self.next_id();
         self.in_progress.lock().unwrap().events.insert(
             id.clone(),
@@ -428,21 +428,22 @@ impl Subscriber for TraceLogger {
         );
     }
 
-    fn enter(&self, span: Span) -> Span {
+    fn enter(&self, id: &Id) {
+        self.current.enter(id.clone());
+        let in_progress = self.in_progress.lock().unwrap();
         if self.settings.log_enters {
-            if let Some(meta) = span.metadata() {
+            if let Some(span) = in_progress.spans.get(id) {
+                let meta = span.meta;
                 let log_meta = meta.as_log();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
                     let name = meta.name.unwrap_or("???");
                     let current_id = self.current.id();
-                    let in_progress = self.in_progress.lock().unwrap();
                     let current_fields = current_id
                         .as_ref()
                         .and_then(|id| in_progress.spans.get(&id))
                         .map(|span| span.fields.as_ref())
                         .unwrap_or("");
-                    let id = span.id();
                     if self.settings.log_ids {
                         logger.log(
                             &log::Record::builder()
@@ -471,14 +472,10 @@ impl Subscriber for TraceLogger {
                 }
             }
         }
-        self.current.set_current(span)
     }
 
-    fn current_span(&self) -> &Span {
-        self.current.span()
-    }
-
-    fn exit(&self, span: Id, parent: Span) -> Span {
+    fn exit(&self, span: &Id) {
+        self.current.exit();
         if self.settings.log_exits {
             let logger = log::logger();
             logger.log(
@@ -488,25 +485,49 @@ impl Subscriber for TraceLogger {
                     .build(),
             );
         }
-        self.current.set_current(parent)
     }
 
-    fn close(&self, id: Id) {
+    fn clone_span(&self, id: &Id) -> Id {
         let mut in_progress = self.in_progress.lock().unwrap();
-        if let Some(span) = in_progress.spans.remove(&id) {
-            if self.settings.log_span_closes {
-                span.finish();
+        if let Some(span) = in_progress.spans.get_mut(id) {
+            span.ref_count += 1;
+            return id.clone();
+        }
+
+        if let Some(event) = in_progress.events.get_mut(id) {
+            event.ref_count += 1;
+        }
+        id.clone()
+    }
+
+    fn drop_span(&self, id: Id) {
+        let mut in_progress = self.in_progress.lock().unwrap();
+        if in_progress.spans.contains_key(&id) {
+            if in_progress.spans.get(&id).unwrap().ref_count == 1 {
+                let span = in_progress.spans.remove(&id).unwrap();
+                if self.settings.log_span_closes {
+                    span.finish();
+                }
+            } else {
+                in_progress.spans.get_mut(&id).unwrap().ref_count -= 1;
             }
             return;
-        };
-        let event = in_progress.events.remove(&id);
-        if let Some(event) = event {
-            if let Some(id) = self.current.id() {
-                if let Some(ref span) = in_progress.spans.get(&id) {
-                    return event.finish(&span.fields);
-                }
+        }
+
+        if in_progress
+            .events
+            .get(&id)
+            .map(|event| event.ref_count == 1)
+            .unwrap_or(false)
+        {
+            let event = in_progress.events.remove(&id).unwrap();
+            if let Some(ref span) = self.current.id().and_then(|id| in_progress.spans.get(&id)) {
+                event.finish(&span.fields);
+            } else {
+                event.finish("");
             }
-            event.finish("")
+        } else if let Some(ref mut event) = in_progress.events.get_mut(&id) {
+            event.ref_count -= 1;
         }
     }
 }

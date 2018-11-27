@@ -1,9 +1,4 @@
-use tokio_trace::{
-    field,
-    span::{self, Span},
-    subscriber::Subscriber,
-    Id, Meta,
-};
+use tokio_trace::{field, subscriber::Subscriber, Id, Meta};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
@@ -99,12 +94,12 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_span(&self, new_span: span::SpanAttributes) -> Id {
-        self.registry.new_span(new_span)
+    fn new_span(&self, meta: &'static Meta<'static>) -> Id {
+        self.registry.new_span(meta)
     }
 
-    fn new_id(&self, new_id: span::Attributes) -> Id {
-        self.registry.new_id(new_id)
+    fn new_id(&self, meta: &Meta) -> Id {
+        self.registry.new_id(meta)
     }
 
     fn record_fmt(&self, _span: &Id, _name: &field::Key, _value: ::std::fmt::Arguments) {
@@ -115,28 +110,19 @@ where
         self.registry.add_follows_from(span, follows)
     }
 
-    fn enter(&self, span: Span) -> Span {
-        self.observer.enter(&span);
-        self.registry.enter(span)
-    }
-
-    fn current_span(&self) -> &Span {
-        self.registry.current_span()
-    }
-
-    fn exit(&self, _id: Id, parent: Span) -> Span {
-        let span = self.registry.exit(parent);
-        self.observer.exit(&span);
-        span
-    }
-
-    fn close(&self, id: Id) {
-        self.registry.with_span(&id, |span| {
-            self.observer.close(span);
+    fn enter(&self, id: &Id) {
+        self.registry.with_span(id, |span| {
+            self.observer.enter(span);
         });
     }
 
-    fn clone_span(&self, id: Id) -> Id {
+    fn exit(&self, id: &Id) {
+        self.registry.with_span(id, |span| {
+            self.observer.exit(span);
+        });
+    }
+
+    fn clone_span(&self, id: &Id) -> Id {
         self.registry.clone_span(id)
     }
 

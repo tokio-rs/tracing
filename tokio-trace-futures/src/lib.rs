@@ -3,7 +3,7 @@ extern crate futures;
 extern crate tokio_trace;
 
 use futures::{Async, Future, Poll, Sink, StartSend, Stream};
-use tokio_trace::{Dispatch, Span, Subscriber};
+use tokio_trace::{dispatcher, Dispatch, Span, Subscriber};
 
 pub mod executor;
 
@@ -13,10 +13,6 @@ pub trait Instrument: Sized {
     // `in_current_span`?
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
-    }
-
-    fn in_current_span(self) -> Instrumented<Self> {
-        self.instrument(Span::current())
     }
 }
 
@@ -53,15 +49,15 @@ impl<T: Future> Future for Instrumented<T> {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let span = &mut self.span;
         let inner = &mut self.inner;
-        span.enter(|| match inner.poll() {
+        match span.enter(|| inner.poll()) {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             done => {
                 // The future finished, either successfully or with an error.
                 // The span should now close.
-                Span::current().close();
+                span.close();
                 done
             }
-        })
+        }
     }
 }
 
@@ -72,16 +68,16 @@ impl<T: Stream> Stream for Instrumented<T> {
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         let span = &mut self.span;
         let inner = &mut self.inner;
-        span.enter(|| match inner.poll() {
+        match span.enter(|| inner.poll()) {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(Some(thing))) => Ok(Async::Ready(Some(thing))),
             done => {
                 // The stream finished, either with `Ready(None)` or with an error.
                 // The span should now close.
-                Span::current().close();
+                span.close();
                 done
             }
-        })
+        }
     }
 }
 
@@ -109,9 +105,8 @@ impl<T: Future> Future for WithDispatch<T> {
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let dispatch = &self.dispatch;
-        let inner = &mut self.inner;
-        dispatch.as_default(|| inner.poll())
+        let dispatch = self.dispatch.clone();
+        dispatcher::with_default(dispatch, || self.inner.poll())
     }
 }
 
@@ -130,7 +125,7 @@ mod tests {
 
     use super::*;
     use futures::{future, stream, task};
-    use tokio_trace::{span, subscriber, Dispatch};
+    use tokio_trace::{dispatcher, span, subscriber, Dispatch};
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,
@@ -180,10 +175,10 @@ mod tests {
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .close(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
             .done()
             .run_with_handle();
-        Dispatch::new(subscriber).as_default(|| {
+        dispatcher::with_default(Dispatch::new(subscriber), || {
             PollN::new_ok(2).instrument(span!("foo")).wait().unwrap();
         });
         handle.assert_finished();
@@ -196,10 +191,10 @@ mod tests {
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .close(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
             .done()
             .run_with_handle();
-        Dispatch::new(subscriber).as_default(|| {
+        dispatcher::with_default(Dispatch::new(subscriber), || {
             PollN::new_err(2)
                 .instrument(span!("foo"))
                 .wait()
@@ -220,9 +215,9 @@ mod tests {
             .exit(span::mock().named(Some("foo")))
             .enter(span::mock().named(Some("foo")))
             .exit(span::mock().named(Some("foo")))
-            .close(span::mock().named(Some("foo")))
+            .drop_span(span::mock().named(Some("foo")))
             .run_with_handle();
-        Dispatch::new(subscriber).as_default(|| {
+        dispatcher::with_default(Dispatch::new(subscriber), || {
             stream::iter_ok::<_, ()>(&[1, 2, 3])
                 .instrument(span!("foo"))
                 .for_each(|_| future::ok(()))
@@ -240,13 +235,13 @@ mod tests {
             .exit(span::mock().named(Some("b")))
             .enter(span::mock().named(Some("b")))
             .exit(span::mock().named(Some("b")))
-            .close(span::mock().named(Some("b")))
+            .drop_span(span::mock().named(Some("b")))
             .exit(span::mock().named(Some("a")))
-            .close(span::mock().named(Some("a")))
+            .drop_span(span::mock().named(Some("a")))
             .done()
             .run_with_handle();
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        Dispatch::new(subscriber).as_default(move || {
+        dispatcher::with_default(Dispatch::new(subscriber), || {
             span!("a").enter(|| {
                 let future = PollN::new_ok(2).instrument(span!("b")).map(|_| {
                     span!("c").enter(|| {
@@ -254,7 +249,6 @@ mod tests {
                         // spab, so we don't expect it.
                     })
                 });
-                Span::current().close();
                 runtime.block_on(Box::new(future)).unwrap();
             })
         });
