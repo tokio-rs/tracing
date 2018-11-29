@@ -1,6 +1,6 @@
 pub use tokio_trace_core::dispatcher::*;
 
-use std::{cell::RefCell, thread};
+use std::cell::RefCell;
 
 thread_local! {
     static CURRENT_DISPATCH: RefCell<Dispatch> = RefCell::new(Dispatch::none());
@@ -17,31 +17,23 @@ thread_local! {
 /// [`Subscriber`]: ::Subscriber
 /// [`Event`]: ::Event
 pub fn with_default<T>(dispatcher: Dispatch, f: impl FnOnce() -> T) -> T {
-    if thread::panicking() {
-        return f();
+    let prior = CURRENT_DISPATCH.try_with(|current| current.replace(dispatcher));
+    let result = f();
+    if let Ok(prior) = prior {
+        let _ = CURRENT_DISPATCH.try_with(|current| {
+            *current.borrow_mut() = prior;
+        });
     }
-    CURRENT_DISPATCH.with(|current| {
-        let prior = current.replace(dispatcher);
-        let result = f();
-        *current.borrow_mut() = prior;
-        result
-    })
+    result
 }
 
-pub(crate) fn with_current<T, F>(f: F) -> T
+pub(crate) fn with_current<T, F>(mut f: F) -> T
 where
-    F: FnOnce(&Dispatch) -> T,
+    F: FnMut(&Dispatch) -> T,
 {
-    // If we try to access the current dispatcher while it's being
-    // dropped, `LocalKey::with` would panic, causing a double panic.
-    // However, we can't use `try_with` as we still need to invoke `f`,
-    // which would be captured by the closure.
-    if thread::panicking() {
-        // It's better to fail to collect instrumentation than cause a
-        // SIGSEGV.
-        return f(&Dispatch::none());
-    }
-    CURRENT_DISPATCH.with(|current| f(&*current.borrow()))
+    CURRENT_DISPATCH
+        .try_with(|current| f(&*current.borrow()))
+        .unwrap_or_else(|_| f(&Dispatch::none()))
 }
 
 #[cfg(test)]
