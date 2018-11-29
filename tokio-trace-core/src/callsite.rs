@@ -96,7 +96,6 @@ pub fn reset_registry() {
 
 impl Callsite + 'static {
     /// Returns an `Identifier` unique to this `Callsite`.
-    // TODO: can this just be public API?
     pub(crate) fn id(&'static self) -> Identifier {
         Identifier::from_callsite(self)
     }
@@ -106,7 +105,6 @@ impl Callsite + 'static {
 
 impl Identifier {
     /// Returns an `Identifier` unique to the provided `Callsite`.
-    // TODO: can this just be public API?
     pub(crate) fn from_callsite(callsite: &'static Callsite) -> Self {
         Identifier(callsite)
     }
