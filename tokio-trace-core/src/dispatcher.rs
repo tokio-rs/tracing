@@ -1,7 +1,7 @@
 use {
     callsite, field,
     subscriber::{self, Subscriber},
-    Id, Meta,
+    Meta, Span,
 };
 
 use std::{
@@ -56,42 +56,42 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn new_span(&self, metadata: &'static Meta<'static>) -> Id {
+    fn new_static(&self, metadata: &'static Meta<'static>) -> Span {
+        self.subscriber.new_static(metadata)
+    }
+
+    #[inline]
+    fn new_span(&self, metadata: &Meta) -> Span {
         self.subscriber.new_span(metadata)
     }
 
     #[inline]
-    fn new_id(&self, metadata: &Meta) -> Id {
-        self.subscriber.new_id(metadata)
-    }
-
-    #[inline]
-    fn record_i64(&self, span: &Id, field: &field::Key, value: i64) {
+    fn record_i64(&self, span: &Span, field: &field::Key, value: i64) {
         self.subscriber.record_i64(span, field, value)
     }
 
     #[inline]
-    fn record_u64(&self, span: &Id, field: &field::Key, value: u64) {
+    fn record_u64(&self, span: &Span, field: &field::Key, value: u64) {
         self.subscriber.record_u64(span, field, value)
     }
 
     #[inline]
-    fn record_bool(&self, span: &Id, field: &field::Key, value: bool) {
+    fn record_bool(&self, span: &Span, field: &field::Key, value: bool) {
         self.subscriber.record_bool(span, field, value)
     }
 
     #[inline]
-    fn record_str(&self, span: &Id, field: &field::Key, value: &str) {
+    fn record_str(&self, span: &Span, field: &field::Key, value: &str) {
         self.subscriber.record_str(span, field, value)
     }
 
     #[inline]
-    fn record_fmt(&self, span: &Id, field: &field::Key, value: fmt::Arguments) {
+    fn record_fmt(&self, span: &Span, field: &field::Key, value: fmt::Arguments) {
         self.subscriber.record_fmt(span, field, value)
     }
 
     #[inline]
-    fn add_follows_from(&self, span: &Id, follows: Id) {
+    fn add_follows_from(&self, span: &Span, follows: Span) {
         self.subscriber.add_follows_from(span, follows)
     }
 
@@ -101,42 +101,42 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn enter(&self, span: &Id) {
+    fn enter(&self, span: &Span) {
         self.subscriber.enter(span)
     }
 
     #[inline]
-    fn exit(&self, span: &Id) {
+    fn exit(&self, span: &Span) {
         self.subscriber.exit(span)
     }
 
     #[inline]
-    fn clone_span(&self, id: &Id) -> Id {
+    fn clone_span(&self, id: &Span) -> Span {
         self.subscriber.clone_span(&id)
     }
 
     #[inline]
-    fn drop_span(&self, id: Id) {
+    fn drop_span(&self, id: Span) {
         self.subscriber.drop_span(id)
     }
 }
 
 struct NoSubscriber;
 impl Subscriber for NoSubscriber {
-    fn new_id(&self, _meta: &Meta) -> Id {
-        Id::from_u64(0)
+    fn new_span(&self, _meta: &Meta) -> Span {
+        Span::from_u64(0)
     }
 
-    fn record_fmt(&self, _span: &Id, _key: &field::Key, _value: fmt::Arguments) {}
+    fn record_fmt(&self, _span: &Span, _key: &field::Key, _value: fmt::Arguments) {}
 
-    fn add_follows_from(&self, _span: &Id, _follows: Id) {}
+    fn add_follows_from(&self, _span: &Span, _follows: Span) {}
 
     fn enabled(&self, _metadata: &Meta) -> bool {
         false
     }
 
-    fn enter(&self, _span: &Id) {}
-    fn exit(&self, _span: &Id) {}
+    fn enter(&self, _span: &Span) {}
+    fn exit(&self, _span: &Span) {}
 }
 
 impl Registrar {
