@@ -1,5 +1,5 @@
 //! Subscribers collect and record trace data.
-use {field, Id, Meta};
+use {field, Meta, Span};
 
 use std::fmt;
 
@@ -96,28 +96,28 @@ pub trait Subscriber {
         Interest::from_filter(self.enabled(metadata))
     }
 
-    /// Record the construction of a new [`Span`], returning a a new [span ID]
+    /// Record the construction of a new [`Span`], returning a new ID
     /// for the span being constructed.
     ///
-    /// Unlike [`new_id`], this function is always called with span
-    /// [`Attributes`] which are valid for the `'static` lifetime, rather than
-    /// `Event` `Attributes`, which only live for a generic lifetime.
+    /// Unlike [`new_span`], this function is always called with span
+    /// [metadata] which are valid for the `'static` lifetime.
     ///
-    /// his function defaults to simply calling `self.new_id`, but if the
+    /// This function defaults to simply calling `self.new_span()`, but if the
     /// subscriber wishes to do something with the the known-`'static` span
-    /// `Attributes` (such as storing a reference to them in some collection) it
+    /// metadata (such as storing a reference to them in some collection) it
     /// may override the default implementation to do so. It may then generate a
-    /// new ID for that span, either by calling `new_id`, or through a different
+    /// new ID for that span, either by calling `new_span`, or through a different
     /// method from the ID generation for events.
     ///
-    /// [span ID]: ::Id [`Span`]: ::span::Span [`new_id`]:
-    /// ::subscriber::Subscriber::new_id [`Attributes`]: ::span::Attributes
-    fn new_span(&self, metadata: &'static Meta<'static>) -> Id {
-        self.new_id(metadata)
+    /// [`Span`]: ::span::Span
+    /// [`new_span`]: ::subscriber::Subscriber::new_span
+    /// [metadata]: ::metadata::Meta
+    fn new_static(&self, metadata: &'static Meta<'static>) -> Span {
+        self.new_span(metadata)
     }
 
-    /// Record the construction of a new [`Span`] or [`Event`], returning a new
-    /// [ID] for the span or event being constructed.
+    /// Record the construction of a new [`Span`], returning a new ID for the
+    /// span being constructed.
     ///
     /// IDs are used to uniquely identify spans and events within the context of a
     /// subscriber, so span equality will be based on the returned ID. Thus, if
@@ -132,8 +132,8 @@ pub trait Subscriber {
     /// `Eq`, and `Hash` for `Span`s are free to return span IDs with value 0
     /// from all calls to this function, if they so choose.
     ///
-    /// [ID]: ::Id [`Span`]: ::span::Span [`Event`]: ::span::Event
-    fn new_id(&self, metadata: &Meta) -> Id;
+    /// [`Span`]: ::span::Span
+    fn new_span(&self, metadata: &Meta) -> Span;
 
     /// Record a signed 64-bit integer value.
     ///
@@ -144,7 +144,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_i64(&self, span: &Id, field: &field::Key, value: i64) {
+    fn record_i64(&self, span: &Span, field: &field::Key, value: i64) {
         self.record_fmt(span, field, format_args!("{}", value))
     }
 
@@ -157,7 +157,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_u64(&self, span: &Id, field: &field::Key, value: u64) {
+    fn record_u64(&self, span: &Span, field: &field::Key, value: u64) {
         self.record_fmt(span, field, format_args!("{}", value))
     }
 
@@ -170,7 +170,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_bool(&self, span: &Id, field: &field::Key, value: bool) {
+    fn record_bool(&self, span: &Span, field: &field::Key, value: bool) {
         self.record_fmt(span, field, format_args!("{}", value))
     }
 
@@ -183,7 +183,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_str(&self, span: &Id, field: &field::Key, value: &str) {
+    fn record_str(&self, span: &Span, field: &field::Key, value: &str) {
         self.record_fmt(span, field, format_args!("{}", value))
     }
 
@@ -192,7 +192,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_fmt(&self, span: &Id, field: &field::Key, value: fmt::Arguments);
+    fn record_fmt(&self, span: &Span, field: &field::Key, value: fmt::Arguments);
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -212,7 +212,7 @@ pub trait Subscriber {
     /// subscriber knows about, or if a cyclical relationship would be created
     /// (i.e., some span _a_ which proceeds some other span _b_ may not also
     /// follow from _b_), it may silently do nothing.
-    fn add_follows_from(&self, span: &Id, follows: Id);
+    fn add_follows_from(&self, span: &Span, follows: Span);
 
     // === Filtering methods ==================================================
 
@@ -237,7 +237,7 @@ pub trait Subscriber {
     /// [`Span`]: ::span::Span
     /// [`Id`]: ::Id
     /// [`State`]: ::span::State
-    fn enter(&self, span: &Id);
+    fn enter(&self, span: &Span);
 
     /// Records that a [`Span`] has been exited.
     ///
@@ -250,7 +250,7 @@ pub trait Subscriber {
     /// Exiting a span does not imply that the span will not be re-entered.
     /// [`Span`]: ::span::Span
     /// [`Id`]: ::Id
-    fn exit(&self, span: &Id);
+    fn exit(&self, span: &Span);
 
     /// Notifies the subscriber that a [`Span`] handle with the given [`Id`] has
     /// been cloned.
@@ -273,7 +273,7 @@ pub trait Subscriber {
     ///
     /// [`Id`]: ::span::Id,
     /// [`drop_span`]: ::subscriber::Subscriber::drop_span
-    fn clone_span(&self, id: &Id) -> Id {
+    fn clone_span(&self, id: &Span) -> Span {
         id.clone()
     }
 
@@ -300,7 +300,7 @@ pub trait Subscriber {
     ///
     /// [`Id`]: ::span::Id,
     /// [`drop_span`]: ::subscriber::Subscriber::drop_span
-    fn drop_span(&self, id: Id) {
+    fn drop_span(&self, id: Span) {
         let _ = id;
     }
 }
@@ -359,7 +359,7 @@ mod test_support {
 
     use super::*;
     use span::MockSpan;
-    use {field, Id, Meta};
+    use {field, Meta, Span};
 
     use std::{
         collections::{HashMap, VecDeque},
@@ -394,7 +394,7 @@ mod test_support {
     }
 
     struct Running<F: Fn(&Meta) -> bool> {
-        spans: Mutex<HashMap<Id, SpanOrEvent>>,
+        spans: Mutex<HashMap<Span, SpanOrEvent>>,
         expected: Arc<Mutex<VecDeque<Expect>>>,
         ids: AtomicUsize,
         filter: F,
@@ -488,18 +488,18 @@ mod test_support {
             (self.filter)(meta)
         }
 
-        fn record_fmt(&self, _id: &Id, _field: &field::Key, _value: ::std::fmt::Arguments) {
+        fn record_fmt(&self, _id: &Span, _field: &field::Key, _value: ::std::fmt::Arguments) {
             // TODO: it would be nice to be able to expect field values...
         }
 
-        fn add_follows_from(&self, _span: &Id, _follows: Id) {
+        fn add_follows_from(&self, _span: &Span, _follows: Span) {
             // TODO: it should be possible to expect spans to follow from other spans
         }
 
-        fn new_id(&self, _attrs: &Meta) -> Id {
+        fn new_span(&self, _attrs: &Meta) -> Span {
             let id = self.ids.fetch_add(1, Ordering::SeqCst);
-            let id = Id::from_u64(id as u64);
-            println!("new_id: id={:?};", id);
+            let id = Span::from_u64(id as u64);
+            println!("new_span: id={:?};", id);
             self.spans
                 .lock()
                 .unwrap()
@@ -507,10 +507,10 @@ mod test_support {
             id
         }
 
-        fn new_span(&self, span: &'static Meta<'static>) -> Id {
+        fn new_static(&self, span: &'static Meta<'static>) -> Span {
             let id = self.ids.fetch_add(1, Ordering::SeqCst);
-            let id = Id::from_u64(id as u64);
-            println!("new_span: {}; id={:?};", span.name, id);
+            let id = Span::from_u64(id as u64);
+            println!("new_static: {}; id={:?};", span.name, id);
             self.spans
                 .lock()
                 .unwrap()
@@ -518,7 +518,7 @@ mod test_support {
             id
         }
 
-        fn enter(&self, id: &Id) {
+        fn enter(&self, id: &Span) {
             let spans = self.spans.lock().unwrap();
             if let Some(span_or_event) = spans.get(id) {
                 println!("enter: {}; id={:?};", span_or_event.name(), id);
@@ -562,7 +562,7 @@ mod test_support {
             };
         }
 
-        fn exit(&self, id: &Id) {
+        fn exit(&self, id: &Span) {
             let spans = self.spans.lock().unwrap();
             let span = spans
                 .get(id)
@@ -603,7 +603,7 @@ mod test_support {
             };
         }
 
-        fn clone_span(&self, id: &Id) -> Id {
+        fn clone_span(&self, id: &Span) -> Span {
             let name = self.spans.lock().unwrap().get_mut(id).map(|span_or_event| {
                 if let SpanOrEvent::Span {
                     ref span,
@@ -635,7 +635,7 @@ mod test_support {
             id.clone()
         }
 
-        fn drop_span(&self, id: Id) {
+        fn drop_span(&self, id: Span) {
             let mut is_event = false;
             let name = if let Ok(mut spans) = self.spans.try_lock() {
                 spans.get_mut(&id).map(|span_or_event| match span_or_event {

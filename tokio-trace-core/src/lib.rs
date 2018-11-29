@@ -90,7 +90,7 @@ pub use self::{
     dispatcher::Dispatch,
     field::Key,
     metadata::{Level, Meta},
-    span::Id,
+    span::Span,
     subscriber::{Interest, Subscriber},
 };
 

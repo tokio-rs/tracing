@@ -94,11 +94,11 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_span(&self, meta: &'static Meta<'static>) -> Id {
+    fn new_static(&self, meta: &'static Meta<'static>) -> Id {
         self.registry.new_span(meta)
     }
 
-    fn new_id(&self, meta: &Meta) -> Id {
+    fn new_span(&self, meta: &Meta) -> Id {
         self.registry.new_id(meta)
     }
 

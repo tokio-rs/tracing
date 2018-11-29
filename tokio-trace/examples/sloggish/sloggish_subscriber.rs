@@ -160,7 +160,7 @@ impl Subscriber for SloggishSubscriber {
         true
     }
 
-    fn new_id(&self, span: &tokio_trace::Meta) -> tokio_trace::Id {
+    fn new_span(&self, span: &tokio_trace::Meta) -> tokio_trace::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
         let id = tokio_trace::Id::from_u64(next);
         self.events
@@ -170,7 +170,7 @@ impl Subscriber for SloggishSubscriber {
         id
     }
 
-    fn new_span(&self, span: &'static tokio_trace::Meta<'static>) -> tokio_trace::Id {
+    fn new_static(&self, span: &'static tokio_trace::Meta<'static>) -> tokio_trace::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
         let id = tokio_trace::Id::from_u64(next);
         self.spans

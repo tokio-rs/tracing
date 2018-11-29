@@ -379,7 +379,7 @@ impl Subscriber for TraceLogger {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, new_span: &'static Meta<'static>) -> Id {
+    fn new_static(&self, new_span: &'static Meta<'static>) -> Id {
         let id = self.next_id();
         let mut in_progress = self.in_progress.lock().unwrap();
         let mut fields = String::new();
@@ -398,7 +398,7 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn new_id(&self, new_span: &Meta) -> Id {
+    fn new_span(&self, new_span: &Meta) -> Id {
         let id = self.next_id();
         self.in_progress.lock().unwrap().events.insert(
             id.clone(),

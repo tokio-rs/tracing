@@ -135,7 +135,8 @@
 //! the data for future use, record it in some manner, or discard it completely.
 //!
 //! [`Subscriber`]: ::Subscriber
-pub use tokio_trace_core::span::Id;
+// TODO: remove this re-export?
+pub use tokio_trace_core::span::Span as Id;
 
 #[cfg(any(test, feature = "test-support"))]
 pub use tokio_trace_core::span::{mock, MockSpan};
@@ -269,7 +270,7 @@ impl Span {
                     is_closed: false,
                 };
             }
-            let id = dispatch.new_span(meta);
+            let id = dispatch.new_static(meta);
             let inner = Some(Enter::new(id, dispatch, meta));
             Self {
                 inner,
@@ -437,7 +438,7 @@ impl<'a> Event<'a> {
             if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
                 return Self { inner: None };
             }
-            let id = dispatch.new_id(meta);
+            let id = dispatch.new_span(meta);
             let inner = Inner::new(id, dispatch, meta);
             Self { inner: Some(inner) }
         });
