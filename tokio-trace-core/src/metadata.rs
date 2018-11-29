@@ -33,7 +33,7 @@ use std::fmt;
 // TODO: When `const fn` is stable, make this type's fields private.
 #[derive(Clone)]
 pub struct Meta<'a> {
-    /// If this metadata describes a span, the name of the span.
+    /// The name of the span described by this metadata.
     ///
     /// **Warning**: The fields on this type are currently `pub` because it must
     /// be able to be constructed statically by macros. However, when `const
@@ -43,7 +43,7 @@ pub struct Meta<'a> {
     /// new `Meta`s, use the `metadata!` macro or the `Meta::new_span` and
     /// `Meta::new_event` constructors instead!
     #[doc(hidden)]
-    pub name: Option<&'a str>,
+    pub name: &'a str,
 
     /// The part of the system that the span or event that this metadata
     /// describes occurred in.
@@ -164,7 +164,7 @@ impl<'a> Meta<'a> {
     /// Construct new metadata for a span, with a name, target, level, field
     /// names, and optional source code location.
     pub fn new_span(
-        name: Option<&'a str>,
+        name: &'a str,
         target: &'a str,
         level: Level,
         module_path: Option<&'a str>,
@@ -191,6 +191,7 @@ impl<'a> Meta<'a> {
     /// Construct new metadata for an event, with a target, level, field names,
     /// and optional source code location.
     pub fn new_event(
+        name: &'a str,
         target: &'a str,
         level: Level,
         module_path: Option<&'a str>,
@@ -200,7 +201,7 @@ impl<'a> Meta<'a> {
         callsite: &'static Callsite,
     ) -> Self {
         Self {
-            name: None,
+            name,
             target,
             level,
             module_path,
@@ -232,6 +233,11 @@ impl<'a> Meta<'a> {
     /// Returns the level of verbosity of the described span or event.
     pub fn level(&self) -> Level {
         self.level
+    }
+
+    /// Returns the name of the span.
+    pub fn name(&self) -> &'a str {
+        self.name
     }
 
     /// Returns a string describing the part of the system where the span or

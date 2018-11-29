@@ -726,12 +726,12 @@ mod tests {
         // Test that exiting a span only marks it as "done" when no handles
         // that can re-enter the span exist.
         let subscriber = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("bar")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .drop_span(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .drop_span(span::mock().named("bar"))
+            .enter(span::mock().named("bar"))
+            .exit(span::mock().named("bar"))
+            .drop_span(span::mock().named("bar"))
+            .exit(span::mock().named("foo"))
             .run();
 
         dispatcher::with_default(Dispatch::new(subscriber), || {
@@ -795,11 +795,11 @@ mod tests {
     #[test]
     fn spans_always_go_to_the_subscriber_that_tagged_them() {
         let subscriber1 = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done();
         let subscriber1 = Dispatch::new(subscriber1.run());
         let subscriber2 = Dispatch::new(subscriber::mock().run());
@@ -817,11 +817,11 @@ mod tests {
     #[test]
     fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
         let subscriber1 = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done();
         let subscriber1 = Dispatch::new(subscriber1.run());
         let mut foo = dispatcher::with_default(subscriber1, || {
@@ -843,9 +843,9 @@ mod tests {
     #[test]
     fn dropping_a_span_calls_drop_span() {
         let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
@@ -860,10 +860,10 @@ mod tests {
     #[test]
     fn span_closes_after_event() {
         let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
             .event()
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
@@ -878,13 +878,13 @@ mod tests {
     #[test]
     fn new_span_after_event() {
         let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
             .event()
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("bar")))
-            .exit(span::mock().named(Some("bar")))
-            .drop_span(span::mock().named(Some("bar")))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
+            .enter(span::mock().named("bar"))
+            .exit(span::mock().named("bar"))
+            .drop_span(span::mock().named("bar"))
             .done()
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
@@ -901,9 +901,9 @@ mod tests {
     fn event_outside_of_span() {
         let (subscriber, handle) = subscriber::mock()
             .event()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
@@ -917,7 +917,7 @@ mod tests {
     #[test]
     fn cloning_a_span_calls_clone_span() {
         let (subscriber, handle) = subscriber::mock()
-            .clone_span(span::mock().named(Some("foo")))
+            .clone_span(span::mock().named("foo"))
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
             let span = span!("foo");
@@ -930,9 +930,9 @@ mod tests {
     #[test]
     fn drop_span_when_exiting_dispatchers_context() {
         let (subscriber, handle) = subscriber::mock()
-            .clone_span(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .clone_span(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
             let span = span!("foo");
@@ -946,13 +946,13 @@ mod tests {
     #[test]
     fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
         let (subscriber1, handle1) = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .clone_span(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .clone_span(span::mock().named("foo"))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .run_with_handle();
         let subscriber1 = Dispatch::new(subscriber1);
         let subscriber2 = Dispatch::new(subscriber::mock().done().run());
@@ -977,11 +977,11 @@ mod tests {
     #[test]
     fn span_closes_when_exited() {
         let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {
@@ -1005,9 +1005,9 @@ mod tests {
     #[test]
     fn entering_a_closed_span_again_is_a_no_op() {
         let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named(Some("foo")))
-            .exit(span::mock().named(Some("foo")))
-            .drop_span(span::mock().named(Some("foo")))
+            .enter(span::mock().named("foo"))
+            .exit(span::mock().named("foo"))
+            .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
         dispatcher::with_default(Dispatch::new(subscriber), || {

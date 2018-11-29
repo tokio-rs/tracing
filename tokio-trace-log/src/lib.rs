@@ -84,7 +84,7 @@ impl<'a> AsTrace for log::Record<'a> {
                 // Since we never register the log callsite, this method is
                 // never actually called. So it's okay to return mostly empty metadata.
                 static EMPTY_META: Meta<'static> = Meta {
-                    name: None,
+                    name: "log record",
                     target: "log",
                     level: tokio_trace::Level::TRACE,
                     module_path: None,
@@ -100,6 +100,7 @@ impl<'a> AsTrace for log::Record<'a> {
             }
         }
         Meta::new_event(
+            "log record",
             self.target(),
             self.level().as_trace(),
             self.module_path(),
@@ -272,15 +273,9 @@ impl SpanLineBuilder {
         settings: &TraceLoggerBuilder,
     ) -> Self {
         let mut log_line = String::new();
-        write!(&mut log_line, "{}", meta.name.unwrap_or("unknown span"),)
-            .expect("write to string shouldn't fail");
+        write!(&mut log_line, "{}", meta.name).expect("write to string shouldn't fail");
         if settings.log_ids {
-            write!(
-                &mut log_line,
-                "{}span={:?}; ",
-                if meta.name.is_some() { " " } else { "" },
-                id,
-            ).expect("write to string shouldn't fail");
+            write!(&mut log_line, " span={:?}; ", id).expect("write to string shouldn't fail");
         }
         Self {
             parent,
@@ -446,7 +441,6 @@ impl Subscriber for TraceLogger {
                 let log_meta = meta.as_log();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
-                    let name = meta.name.unwrap_or("???");
                     let current_id = self.current.id();
                     let current_fields = current_id
                         .as_ref()
@@ -463,7 +457,7 @@ impl Subscriber for TraceLogger {
                                 .line(meta.line)
                                 .args(format_args!(
                                     "enter {}; id={:?}; in={:?}; {}",
-                                    name, id, current_id, current_fields
+                                    meta.name, id, current_id, current_fields
                                 )).build(),
                         );
                     } else {
@@ -474,7 +468,7 @@ impl Subscriber for TraceLogger {
                                 .module_path(meta.module_path)
                                 .file(meta.file)
                                 .line(meta.line)
-                                .args(format_args!("enter {}; {}", name, current_fields))
+                                .args(format_args!("enter {}; {}", meta.name, current_fields))
                                 .build(),
                         );
                     }
