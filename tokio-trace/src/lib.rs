@@ -5,7 +5,7 @@ extern crate tokio_trace_core;
 macro_rules! callsite {
     (span: $name:expr, $( $field_name:ident ),*) => ({
         callsite!(@
-            name: Some($name),
+            name: $name,
             target: module_path!(),
             level: $crate::Level::TRACE,
             kind: $crate::metadata::Kind::SPAN,
@@ -16,7 +16,7 @@ macro_rules! callsite {
         (callsite!(event: $lvl, target: module_path!(), $( $field_name ),* ));
     (event: $lvl:expr, target: $target:expr, $( $field_name:ident ),*) => ({
         callsite!(@
-            name: None,
+            name: concat!("event at ", file!(), ":", line!()),
             target: $target,
             level: $lvl,
             kind: $crate::metadata::Kind::EVENT,

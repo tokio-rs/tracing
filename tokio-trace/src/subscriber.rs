@@ -81,11 +81,11 @@ mod tests {
 
         let (subscriber, handle) = subscriber::mock()
             .with_filter(move |meta| match meta.name {
-                Some("alice") => {
+                "alice" => {
                     alice_count2.fetch_add(1, Ordering::Relaxed);
                     false
                 }
-                Some("bob") => {
+                "bob" => {
                     bob_count2.fetch_add(1, Ordering::Relaxed);
                     true
                 }
@@ -142,16 +142,16 @@ mod tests {
         let barrier1 = barrier.clone();
         let thread1 = thread::spawn(move || {
             let subscriber = subscriber::mock()
-                .enter(span::mock().named(Some("bar")))
-                .exit(span::mock().named(Some("bar")))
-                .enter(span::mock().named(Some("bar")))
-                .exit(span::mock().named(Some("bar")))
-                .enter(span::mock().named(Some("bar")))
-                .exit(span::mock().named(Some("bar")))
-                .enter(span::mock().named(Some("bar")))
-                .exit(span::mock().named(Some("bar")))
-                .enter(span::mock().named(Some("bar")))
-                .exit(span::mock().named(Some("bar")))
+                .enter(span::mock().named("bar")))
+                .exit(span::mock().named("bar")))
+                .enter(span::mock().named("bar")))
+                .exit(span::mock().named("bar")))
+                .enter(span::mock().named("bar")))
+                .exit(span::mock().named("bar")))
+                .enter(span::mock().named("bar")))
+                .exit(span::mock().named("bar")))
+                .enter(span::mock().named("bar")))
+                .exit(span::mock().named("bar")))
                 .with_filter(|meta| match meta.name {
                     Some("bar") => true,
                     _ => false,
@@ -165,16 +165,16 @@ mod tests {
 
         let thread2 = thread::spawn(move || {
             let subscriber = subscriber::mock()
-                .enter(span::mock().named(Some("foo")))
-                .exit(span::mock().named(Some("foo")))
-                .enter(span::mock().named(Some("foo")))
-                .exit(span::mock().named(Some("foo")))
-                .enter(span::mock().named(Some("foo")))
-                .exit(span::mock().named(Some("foo")))
-                .enter(span::mock().named(Some("foo")))
-                .exit(span::mock().named(Some("foo")))
-                .enter(span::mock().named(Some("foo")))
-                .exit(span::mock().named(Some("foo")))
+                .enter(span::mock().named("foo")))
+                .exit(span::mock().named("foo")))
+                .enter(span::mock().named("foo")))
+                .exit(span::mock().named("foo")))
+                .enter(span::mock().named("foo")))
+                .exit(span::mock().named("foo")))
+                .enter(span::mock().named("foo")))
+                .exit(span::mock().named("foo")))
+                .enter(span::mock().named("foo")))
+                .exit(span::mock().named("foo")))
                 .with_filter(move |meta| match meta.name {
                     Some("foo") => true,
                     _ => false,
@@ -209,11 +209,11 @@ mod tests {
             .with_filter(move |meta| {
                 println!("Filter: {:?}", meta.name);
                 match meta.name {
-                    Some("charlie") => {
+                    "charlie" => {
                         charlie_count2.fetch_add(1, Ordering::Relaxed);
                         false
                     }
-                    Some("dave") => {
+                    "dave" => {
                         dave_count2.fetch_add(1, Ordering::Relaxed);
                         true
                     }
@@ -272,7 +272,7 @@ mod tests {
 
         let subscriber = subscriber::mock()
             .with_filter(move |meta| match meta.name {
-                Some("emily") | Some("frank") => {
+                "emily" | "frank" => {
                     count2.fetch_add(1, Ordering::Relaxed);
                     true
                 }
