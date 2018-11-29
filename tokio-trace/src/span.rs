@@ -260,11 +260,11 @@ impl Span {
     where
         F: FnOnce(&mut Span),
     {
-        if interest == Interest::NEVER {
+        if interest.is_never() {
             return Span::new_disabled();
         }
         let mut span = dispatcher::with_current(|dispatch| {
-            if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
+            if interest.is_sometimes() && !dispatch.enabled(meta) {
                 return Span {
                     inner: None,
                     is_closed: false,
@@ -431,11 +431,11 @@ impl<'a> Event<'a> {
     where
         F: FnOnce(&mut Self),
     {
-        if interest == Interest::NEVER {
+        if interest.is_never() {
             return Self { inner: None };
         }
         let mut event = dispatcher::with_current(|dispatch| {
-            if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
+            if interest.is_sometimes() && !dispatch.enabled(meta) {
                 return Self { inner: None };
             }
             let id = dispatch.new_span(meta);

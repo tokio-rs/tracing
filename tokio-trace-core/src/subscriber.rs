@@ -306,7 +306,7 @@ pub trait Subscriber {
 }
 
 /// Indicates a `Subscriber`'s interest in a particular callsite.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Debug)]
 pub struct Interest(InterestKind);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -348,6 +348,33 @@ impl Interest {
     /// If any subscriber expresses that it is `ALWAYS` interested in a given
     /// callsite, then the callsite will always be enabled.
     pub const ALWAYS: Interest = Interest(InterestKind::Always);
+
+    /// Returns `true` if the subscriber is never interested in being notified
+    /// about this callsite.
+    pub fn is_never(&self) -> bool {
+        match self.0 {
+            InterestKind::Never => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the subscriber is sometimes interested in being notified
+    /// about this callsite.
+    pub fn is_sometimes(&self) -> bool {
+        match self.0 {
+            InterestKind::Sometimes => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the subscriber is always interested in being notified
+    /// about this callsite.
+    pub fn is_always(&self) -> bool {
+        match self.0 {
+            InterestKind::Always => true,
+            _ => false,
+        }
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]

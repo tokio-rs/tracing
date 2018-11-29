@@ -88,7 +88,7 @@ impl Event {
     fn new(meta: &tokio_trace::Meta) -> Self {
         Self {
             target: meta.target.to_owned(),
-            level: meta.level,
+            level: meta.level.clone(),
             message: String::new(),
             kvs: Vec::new(),
         }

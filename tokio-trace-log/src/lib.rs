@@ -330,7 +330,7 @@ impl EventLineBuilder {
         }
         Self {
             ref_count: 1,
-            level: meta.level,
+            level: meta.level.clone(),
             file: meta.file.map(|s| s.to_owned()),
             line: meta.line,
             module_path: meta.module_path.map(|s| s.to_owned()),

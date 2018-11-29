@@ -61,14 +61,22 @@ macro_rules! callsite {
         impl callsite::Callsite for MyCallsite {
             fn add_interest(&self, interest: Interest) {
                 let current_interest = self.interest();
-                if interest > current_interest {
-                    let interest = match interest {
-                        Interest::NEVER => 0,
-                        Interest::ALWAYS => 2,
-                        _ => 1,
-                    };
-                    INTEREST.store(interest, Ordering::Relaxed);
-                }
+                let interest = match () {
+                    // If the added interest is `NEVER`, don't change anything
+                    // --- either a different subscriber added a higher
+                    // interest, which we want to preserve, or the interest is 0
+                    // anyway (as it's initialized to 0).
+                    _ if interest.is_never() => return,
+                    // If the interest is `SOMETIMES`, that overwrites a `NEVER`
+                    // interest, but doesn't downgrade an `ALWAYS` interest.
+                    _ if interest.is_sometimes() && current_interest.is_never() => 1,
+                    // If the interest is `ALWAYS`, we overwrite the current
+                    // interest, as ALWAYS is the highest interest level and
+                    // should take precedent.
+                    _ if interest.is_always() => 2,
+                    _ => return,
+                };
+                INTEREST.store(interest, Ordering::Relaxed);
             }
             fn remove_interest(&self) {
                 INTEREST.store(0, Ordering::Relaxed);
