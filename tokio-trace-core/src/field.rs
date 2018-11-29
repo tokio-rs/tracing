@@ -42,7 +42,7 @@ use std::{
 /// field across all instances of a given span or event with the same metadata.
 /// Thus, when a subscriber observes a new span or event, it need only access a
 /// field by name _once_, and use the key for that name for all other accesses.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Key {
     i: usize,
     fields: Fields,
@@ -50,7 +50,6 @@ pub struct Key {
 
 /// Describes the fields present on a span.
 // TODO: When `const fn` is stable, make this type's fields private.
-#[derive(Clone)]
 pub struct Fields {
     /// The names of each field on the described span.
     ///
@@ -131,6 +130,18 @@ impl Hash for Key {
     }
 }
 
+impl Clone for Key {
+    fn clone(&self) -> Self {
+        Key {
+            i: self.i,
+            fields: Fields {
+                names: self.fields.names,
+                callsite: self.fields.callsite,
+            },
+        }
+    }
+}
+
 // ===== impl Fields =====
 
 impl Fields {
@@ -147,7 +158,10 @@ impl Fields {
         let name = &name.borrow();
         self.names.iter().position(|f| f == name).map(|i| Key {
             i,
-            fields: self.clone(),
+            fields: Fields {
+                names: self.names,
+                callsite: self.callsite,
+            },
         })
     }
 
@@ -161,7 +175,10 @@ impl Fields {
         let idxs = 0..self.names.len();
         Iter {
             idxs,
-            fields: self.clone(),
+            fields: Fields {
+                names: self.names,
+                callsite: self.callsite,
+            },
         }
     }
 }
@@ -189,7 +206,10 @@ impl Iterator for Iter {
         let i = self.idxs.next()?;
         Some(Key {
             i,
-            fields: self.fields.clone(),
+            fields: Fields {
+                names: self.fields.names,
+                callsite: self.fields.callsite,
+            },
         })
     }
 }

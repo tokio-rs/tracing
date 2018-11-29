@@ -31,7 +31,6 @@ use std::fmt;
 /// [`Meta::id()`]: ::metadata::Meta::id
 /// [callsite identifier]: ::callsite::Identifier
 // TODO: When `const fn` is stable, make this type's fields private.
-#[derive(Clone)]
 pub struct Meta<'a> {
     /// The name of the span described by this metadata.
     ///
@@ -141,7 +140,7 @@ pub struct Meta<'a> {
 }
 
 /// Describes the level of verbosity of a `Span` or `Event`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Level(LevelInner);
 
 /// Indicates whether a set of [metadata] describes a [`Span`] or an [`Event`].
@@ -149,7 +148,7 @@ pub struct Level(LevelInner);
 /// [metadata]: ::Meta
 /// [`Span`]: ::span::Span
 /// [`Event`]: ::Event
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug)]
 pub struct Kind(KindInner);
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -231,8 +230,8 @@ impl<'a> Meta<'a> {
     }
 
     /// Returns the level of verbosity of the described span or event.
-    pub fn level(&self) -> Level {
-        self.level
+    pub fn level(&self) -> &Level {
+        &self.level
     }
 
     /// Returns the name of the span.
