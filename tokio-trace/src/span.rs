@@ -262,7 +262,7 @@ impl Span {
         if interest == Interest::NEVER {
             return Span::new_disabled();
         }
-        dispatcher::with_current(|dispatch| {
+        let mut span = dispatcher::with_current(|dispatch| {
             if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
                 return Span {
                     inner: None,
@@ -271,13 +271,15 @@ impl Span {
             }
             let id = dispatch.new_span(meta);
             let inner = Some(Enter::new(id, dispatch, meta));
-            let mut span = Self {
+            Self {
                 inner,
                 is_closed: false,
-            };
+            }
+        });
+        if !span.is_disabled() {
             if_enabled(&mut span);
-            span
-        })
+        }
+        span
     }
 
     /// Constructs a new disabled span.
@@ -446,16 +448,18 @@ impl<'a> Event<'a> {
         if interest == Interest::NEVER {
             return Self { inner: None };
         }
-        dispatcher::with_current(|dispatch| {
+        let mut event = dispatcher::with_current(|dispatch| {
             if interest == Interest::SOMETIMES && !dispatch.enabled(meta) {
                 return Self { inner: None };
             }
             let id = dispatch.new_id(meta);
             let inner = Inner::new(id, dispatch, meta);
-            let mut event = Self { inner: Some(inner) };
+            Self { inner: Some(inner) }
+        });
+        if !event.is_disabled() {
             if_enabled(&mut event);
-            event
-        })
+        }
+        event
     }
 
     /// Adds a formattable message describing the event that occurred.
