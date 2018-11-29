@@ -15,7 +15,7 @@ pub trait AsKey {
     ///
     /// If `metadata` defines a key corresponding to this field, then the key is
     /// returned. Otherwise, this function returns `None`.
-    fn as_key<'a>(&self, metadata: &'a Meta<'a>) -> Option<Key<'a>>;
+    fn as_key(&self, metadata: &Meta) -> Option<Key>;
 }
 
 pub trait Record {
@@ -148,24 +148,32 @@ macro_rules! impl_value {
 
 // ===== impl AsKey =====
 
-impl<'f> AsKey for Key<'f> {
+impl AsKey for Key {
     #[inline]
-    fn as_key<'a>(&self, metadata: &'a Meta<'a>) -> Option<Key<'a>> {
-        self.with_metadata(metadata)
+    fn as_key(&self, metadata: &Meta) -> Option<Key> {
+        if self.id() == metadata.id() {
+            Some(self.clone())
+        } else {
+            None
+        }
     }
 }
 
-impl<'f> AsKey for &'f Key<'f> {
+impl<'a> AsKey for &'a Key {
     #[inline]
-    fn as_key<'a>(&self, metadata: &'a Meta<'a>) -> Option<Key<'a>> {
-        self.with_metadata(metadata)
+    fn as_key(&self, metadata: &Meta) -> Option<Key> {
+        if self.id() == metadata.id() {
+            Some((*self).clone())
+        } else {
+            None
+        }
     }
 }
 
 impl AsKey for str {
     #[inline]
-    fn as_key<'a>(&self, metadata: &'a Meta<'a>) -> Option<Key<'a>> {
-        metadata.key_for(&self)
+    fn as_key(&self, metadata: &Meta) -> Option<Key> {
+        metadata.fields().key_for(&self)
     }
 }
 

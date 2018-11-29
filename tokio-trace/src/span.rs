@@ -312,50 +312,34 @@ impl Span {
 
     /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
     /// one exists,
-    pub fn key_for<Q>(&self, name: &Q) -> Option<field::Key<'static>>
+    pub fn key_for<Q>(&self, name: &Q) -> Option<field::Key>
     where
         Q: Borrow<str>,
     {
         self.inner
             .as_ref()
-            .and_then(|inner| inner.meta.key_for(name))
-    }
-    /// Record a signed 64-bit integer value.
-    pub fn record_value_i64(&mut self, field: &field::Key, value: i64) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_i64(field, value);
-        }
-        self
+            .and_then(|inner| inner.meta.fields().key_for(name))
     }
 
-    /// Record an umsigned 64-bit integer value.
-    pub fn record_value_u64(&self, field: &field::Key, value: u64) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_u64(field, value);
-        }
-        self
+    /// Returns true if this `Span` has a field for the given
+    /// [`Key`](::field::Key) or field name.
+    pub fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
+    where
+        Q: field::AsKey,
+    {
+        self.metadata()
+            .and_then(|meta| field.as_key(meta))
+            .is_some()
     }
 
-    /// Record a boolean value.
-    pub fn record_value_bool(&self, field: &field::Key, value: bool) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_bool(field, value);
-        }
-        self
-    }
-
-    /// Record a string value.
-    pub fn record_value_str(&self, field: &field::Key, value: &str) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_str(field, value);
-        }
-        self
-    }
-
-    /// Record a precompiled set of format arguments.
-    pub fn record_value_fmt(&self, field: &field::Key, value: fmt::Arguments) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_fmt(field, value);
+    /// Records that the field described by `field` has the value `value`.
+    pub fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
+    where
+        Q: field::AsKey,
+        V: field::Value,
+    {
+        if let Some(ref mut inner) = self.inner {
+            value.record(field, inner);
         }
         self
     }
@@ -424,6 +408,7 @@ impl fmt::Debug for Span {
 }
 
 // ===== impl Event =====
+
 impl<'a> Event<'a> {
     /// Constructs a new `Span` originating from the given [`Callsite`].
     ///
@@ -470,55 +455,38 @@ impl<'a> Event<'a> {
         self
     }
 
-    /// Record a signed 64-bit integer value.
-    pub fn record_value_i64(&mut self, field: &field::Key, value: i64) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_i64(field, value);
-        }
-        self
-    }
-
-    /// Record an umsigned 64-bit integer value.
-    pub fn record_value_u64(&self, field: &field::Key, value: u64) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_u64(field, value);
-        }
-        self
-    }
-
-    /// Record a boolean value.
-    pub fn record_value_bool(&self, field: &field::Key, value: bool) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_bool(field, value);
-        }
-        self
-    }
-
-    /// Record a string value.
-    pub fn record_value_str(&self, field: &field::Key, value: &str) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_str(field, value);
-        }
-        self
-    }
-
-    /// Record a precompiled set of format arguments.
-    pub fn record_value_fmt(&self, field: &field::Key, value: fmt::Arguments) -> &Self {
-        if let Some(ref inner) = self.inner {
-            inner.record_value_fmt(field, value);
-        }
-        self
-    }
-
     /// Returns a [`Key`](::field::Key) for the field with the given `name`, if
     /// one exists,
-    pub fn key_for<Q>(&self, name: &Q) -> Option<field::Key<'a>>
+    pub fn key_for<Q>(&self, name: &Q) -> Option<field::Key>
     where
         Q: Borrow<str>,
     {
         self.inner
             .as_ref()
-            .and_then(|inner| inner.meta.key_for(name))
+            .and_then(|inner| inner.meta.fields().key_for(name))
+    }
+
+    /// Returns true if this `Event` has a field for the given
+    /// [`Key`](::field::Key) or field name.
+    pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
+    where
+        Q: field::AsKey,
+    {
+        self.metadata()
+            .and_then(|meta| field.as_key(meta))
+            .is_some()
+    }
+
+    /// Records that the field described by `field` has the value `value`.
+    pub fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
+    where
+        Q: field::AsKey,
+        V: field::Value,
+    {
+        if let Some(ref mut inner) = self.inner {
+            value.record(field, inner);
+        }
+        self
     }
 
     /// Returns `true` if this span was disabled by the subscriber and does not
@@ -559,18 +527,7 @@ impl<'a> Event<'a> {
     }
 }
 
-pub trait SpanExt: field::Record + ::sealed::Sealed {
-    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
-    where
-        Q: field::AsKey,
-        V: field::Value;
-
-    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
-    where
-        Q: field::AsKey;
-}
-
-// ===== impl Enter =====
+// ===== impl Inner =====
 
 impl<'a> Inner<'a> {
     /// Indicates that the span with the given ID has an indirect causal
@@ -603,38 +560,28 @@ impl<'a> Inner<'a> {
     }
 
     /// Record a signed 64-bit integer value.
-    pub(crate) fn record_value_i64(&self, field: &field::Key, value: i64) {
-        if self.meta.contains_key(field) {
-            self.subscriber.record_i64(&self.id, field, value)
-        }
+    fn record_value_i64(&self, field: &field::Key, value: i64) {
+        self.subscriber.record_i64(&self.id, field, value)
     }
 
-    /// Record an umsigned 64-bit integer value.
-    pub(crate) fn record_value_u64(&self, field: &field::Key, value: u64) {
-        if self.meta.contains_key(field) {
-            self.subscriber.record_u64(&self.id, field, value)
-        }
+    /// Record an unsigned 64-bit integer value.
+    fn record_value_u64(&self, field: &field::Key, value: u64) {
+        self.subscriber.record_u64(&self.id, field, value)
     }
 
     /// Record a boolean value.
-    pub(crate) fn record_value_bool(&self, field: &field::Key, value: bool) {
-        if self.meta.contains_key(field) {
-            self.subscriber.record_bool(&self.id, field, value)
-        }
+    fn record_value_bool(&self, field: &field::Key, value: bool) {
+        self.subscriber.record_bool(&self.id, field, value)
     }
 
     /// Record a string value.
-    pub(crate) fn record_value_str(&self, field: &field::Key, value: &str) {
-        if self.meta.contains_key(field) {
-            self.subscriber.record_str(&self.id, field, value)
-        }
+    fn record_value_str(&self, field: &field::Key, value: &str) {
+        self.subscriber.record_str(&self.id, field, value)
     }
 
     /// Record a precompiled set of format arguments value.
-    pub(crate) fn record_value_fmt(&self, field: &field::Key, value: fmt::Arguments) {
-        if self.meta.contains_key(field) {
-            self.subscriber.record_fmt(&self.id, field, value)
-        }
+    fn record_value_fmt(&self, field: &field::Key, value: fmt::Arguments) {
+        self.subscriber.record_fmt(&self.id, field, value)
     }
 
     fn new(id: Id, subscriber: &Dispatch, meta: &'a Meta<'a>) -> Self {
@@ -644,27 +591,6 @@ impl<'a> Inner<'a> {
             closed: false,
             meta,
         }
-    }
-}
-
-impl Enter {
-    /// Indicates that this handle will not be reused to enter the span again.
-    ///
-    /// After calling `close`, the `Entered` guard returned by `self.enter()`
-    /// will _drop_ this handle when it is exited.
-    fn close(&mut self) {
-        self.closed = true;
-    }
-
-    /// Enters the span, returning a guard that may be used to exit the span and
-    /// re-enter the prior span.
-    ///
-    /// This is used internally to implement `Span::enter`. It may be used for
-    /// writing custom span handles, but should generally not be called directly
-    /// when entering a span.
-    fn enter(self) -> Entered {
-        self.subscriber.enter(&self.id);
-        Entered { inner: self }
     }
 }
 
@@ -697,6 +623,82 @@ impl<'a> Clone for Inner<'a> {
     }
 }
 
+impl<'a> field::Record for Inner<'a> {
+    #[inline]
+    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
+    where
+        Q: field::AsKey,
+    {
+        if let Some(key) = field.as_key(self.metadata()) {
+            self.record_value_i64(&key, value);
+        }
+    }
+
+    #[inline]
+    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
+    where
+        Q: field::AsKey,
+    {
+        if let Some(key) = field.as_key(self.metadata()) {
+            self.record_value_u64(&key, value);
+        }
+    }
+
+    #[inline]
+    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
+    where
+        Q: field::AsKey,
+    {
+        if let Some(key) = field.as_key(self.metadata()) {
+            self.record_value_bool(&key, value);
+        }
+    }
+
+    #[inline]
+    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
+    where
+        Q: field::AsKey,
+    {
+        if let Some(key) = field.as_key(self.metadata()) {
+            self.record_value_str(&key, value);
+        }
+    }
+
+    #[inline]
+    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
+    where
+        Q: field::AsKey,
+    {
+        if let Some(key) = field.as_key(self.metadata()) {
+            self.record_value_fmt(&key, value);
+        }
+    }
+}
+
+// ===== impl Enter =====
+
+impl Enter {
+    /// Indicates that this handle will not be reused to enter the span again.
+    ///
+    /// After calling `close`, the `Entered` guard returned by `self.enter()`
+    /// will _drop_ this handle when it is exited.
+    fn close(&mut self) {
+        self.closed = true;
+    }
+
+    /// Enters the span, returning a guard that may be used to exit the span and
+    /// re-enter the prior span.
+    ///
+    /// This is used internally to implement `Span::enter`. It may be used for
+    /// writing custom span handles, but should generally not be called directly
+    /// when entering a span.
+    fn enter(self) -> Entered {
+        self.subscriber.enter(&self.id);
+        Entered { inner: self }
+    }
+}
+
+// ===== impl Entered =====
 impl Entered {
     /// Exit the `Entered` guard, returning an `Enter` handle that may be used
     /// to re-enter the span, or `None` if the span closed while performing the
@@ -710,154 +712,6 @@ impl Entered {
         } else {
             Some(self.inner)
         }
-    }
-}
-
-impl ::sealed::Sealed for Span {}
-
-impl SpanExt for Span {
-    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
-    where
-        Q: field::AsKey,
-    {
-        self.metadata()
-            .and_then(|meta| field.as_key(meta))
-            .is_some()
-    }
-
-    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
-    where
-        Q: field::AsKey,
-        V: field::Value,
-    {
-        value.record(field, self);
-        self
-    }
-}
-
-impl field::Record for Span {
-    #[inline]
-    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_i64(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_u64(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_bool(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_str(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_fmt(&key, value);
-        }
-    }
-}
-
-impl<'a> field::Record for Event<'a> {
-    #[inline]
-    fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_i64(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_u64(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_bool(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_str(&key, value);
-        }
-    }
-
-    #[inline]
-    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
-    where
-        Q: field::AsKey,
-    {
-        if let Some(key) = self.metadata().and_then(|meta| field.as_key(meta)) {
-            self.record_value_fmt(&key, value);
-        }
-    }
-}
-
-impl<'a> ::sealed::Sealed for Event<'a> {}
-
-impl<'a> SpanExt for Event<'a> {
-    fn has_field_for<Q: ?Sized>(&self, field: &Q) -> bool
-    where
-        Q: field::AsKey,
-    {
-        self.metadata()
-            .and_then(|meta| field.as_key(meta))
-            .is_some()
-    }
-
-    fn record<Q: ?Sized, V: ?Sized>(&mut self, field: &Q, value: &V) -> &mut Self
-    where
-        Q: field::AsKey,
-        V: field::Value,
-    {
-        value.record(field, self);
-        self
     }
 }
 

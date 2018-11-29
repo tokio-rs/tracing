@@ -4,38 +4,50 @@ extern crate tokio_trace_core;
 #[macro_export]
 macro_rules! callsite {
     (span: $name:expr, $( $field_name:ident ),*) => ({
-        callsite!(@ $crate::Meta {
+        callsite!(@
             name: Some($name),
             target: module_path!(),
             level: $crate::Level::TRACE,
-            module_path: Some(module_path!()),
-            file: Some(file!()),
-            line: Some(line!()),
-            field_names: &[ $(stringify!($field_name)),* ],
-            kind: $crate::MetaKind::SPAN,
-        })
+            kind: $crate::metadata::Kind::SPAN,
+            fields: &[ $(stringify!($field_name)),* ]
+        )
     });
     (event: $lvl:expr, $( $field_name:ident ),*) =>
         (callsite!(event: $lvl, target: module_path!(), $( $field_name ),* ));
     (event: $lvl:expr, target: $target:expr, $( $field_name:ident ),*) => ({
-        callsite!(@ $crate::Meta {
+        callsite!(@
             name: None,
+            target: $target,
+            level: $lvl,
+            kind: $crate::metadata::Kind::EVENT,
+            fields: &[ "message", $(stringify!($field_name)),* ]
+        )
+    });
+    (@
+        name: $name:expr,
+        target: $target:expr,
+        level: $lvl:expr,
+        kind: $kind:expr,
+        fields: $field_names:expr
+    ) => ({
+        use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
+        use $crate::{callsite, Meta, subscriber::{Interest}, field::Fields};
+        struct MyCallsite;
+        static META: Meta<'static> = $crate::Meta {
+            name: $name,
             target: $target,
             level: $lvl,
             module_path: Some(module_path!()),
             file: Some(file!()),
             line: Some(line!()),
-            field_names: &[ "message", $(stringify!($field_name)),* ],
-            kind: $crate::MetaKind::EVENT,
-        })
-    });
-    (@ $meta:expr ) => ({
-        use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
-        use $crate::{callsite, Meta, subscriber::{Interest}};
-        static META: Meta<'static> = $meta;
+            fields: Fields {
+                names: $field_names,
+                callsite: &MyCallsite,
+            },
+            kind: $kind,
+        };
         static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
         static REGISTRATION: Once = Once::new();
-        struct MyCallsite;
         impl MyCallsite {
             #[inline]
             fn interest(&self) -> Interest {
@@ -104,13 +116,13 @@ macro_rules! span {
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
             #[allow(unused_imports)]
-            use $crate::{callsite, callsite::Callsite, Span,  span::SpanExt, field::{Value, AsKey}};
+            use $crate::{callsite, callsite::Callsite, Span, field::{Value, AsKey}};
             let callsite = callsite! { span: $name, $( $k ),* };
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
             #[allow(unused_variables, unused_mut)]
             Span::new(callsite.interest(), callsite.metadata(), |span| {
-                let mut keys = callsite.metadata().fields();
+                let mut keys = callsite.metadata().fields().into_iter();
                 $(
                     let key = keys.next()
                         .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
@@ -132,7 +144,7 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => ({
         {
             #[allow(unused_imports)]
-            use $crate::{callsite, Id, Subscriber, Event, span::SpanExt, field::{Value, AsKey}};
+            use $crate::{callsite, Id, Subscriber, Event, field::{Value, AsKey}};
             use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,
@@ -143,7 +155,7 @@ macro_rules! event {
             // not actually be used, but it doesn't make sense to repeat it.
             #[allow(unused_variables, unused_mut)]
             Event::new(callsite.interest(), callsite.metadata(), |event| {
-                let mut keys = callsite.metadata().fields();
+                let mut keys = callsite.metadata().fields().into_iter();
                 event.message(
                     &keys.next().expect("event metadata should define a key for the message"),
                     format_args!( $($arg)+ )
@@ -232,7 +244,7 @@ pub use self::{
     subscriber::Subscriber,
     tokio_trace_core::{
         callsite::{self, Callsite},
-        Level, Meta, MetaKind,
+        metadata, Level, Meta,
     },
 };
 

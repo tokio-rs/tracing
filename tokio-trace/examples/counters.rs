@@ -84,6 +84,7 @@ impl Subscriber for CounterSubscriber {
         }
         metadata
             .fields()
+            .iter()
             .any(|f| f.name().map(|name| name.contains("count")).unwrap_or(false))
     }
 
