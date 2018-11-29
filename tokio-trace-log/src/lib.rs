@@ -33,6 +33,7 @@ use std::{
     },
 };
 use tokio_trace::{
+    callsite::Callsite,
     field,
     subscriber::{self, Subscriber},
     Id, Meta,
@@ -41,7 +42,7 @@ use tokio_trace::{
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let meta = record.as_trace();
-    let k = meta.key_for(&"message").unwrap();
+    let k = meta.fields().key_for(&"message").unwrap();
     drop(tokio_trace::Event::new(
         subscriber::Interest::SOMETIMES,
         &meta,
@@ -75,13 +76,37 @@ impl<'a> AsLog for Meta<'a> {
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Meta<'a>;
     fn as_trace(&self) -> Self::Trace {
-        Meta::new_id(
+        struct LogCallsite;
+        impl Callsite for LogCallsite {
+            fn add_interest(&self, _interest: subscriber::Interest) {}
+            fn remove_interest(&self) {}
+            fn metadata(&self) -> &Meta {
+                // Since we never register the log callsite, this method is
+                // never actually called. So it's okay to return mostly empty metadata.
+                static EMPTY_META: Meta<'static> = Meta {
+                    name: None,
+                    target: "log",
+                    level: tokio_trace::Level::TRACE,
+                    module_path: None,
+                    file: None,
+                    line: None,
+                    fields: field::Fields {
+                        names: &["message"],
+                        callsite: &LogCallsite,
+                    },
+                    kind: tokio_trace::metadata::Kind::EVENT,
+                };
+                &EMPTY_META
+            }
+        }
+        Meta::new_event(
             self.target(),
             self.level().as_trace(),
             self.module_path(),
             self.file(),
             self.line(),
             &["message"],
+            &LogCallsite,
         )
     }
 }
