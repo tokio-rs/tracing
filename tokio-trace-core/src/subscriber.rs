@@ -93,7 +93,10 @@ pub trait Subscriber {
     /// callsite, if another subscriber expressed interest in it.
     /// [metadata]: ::Meta [`enabled`]: ::Subscriber::enabled
     fn register_callsite(&self, metadata: &Meta) -> Interest {
-        Interest::from_filter(self.enabled(metadata))
+        match self.enabled(metadata) {
+            true => Interest::ALWAYS,
+            false => Interest::NEVER,
+        }
     }
 
     /// Record the construction of a new [`Span`], returning a new ID
@@ -317,14 +320,6 @@ enum InterestKind {
 }
 
 impl Interest {
-    /// Construct a new `Interest` from the result of evaluating a filter.
-    pub fn from_filter(filter: bool) -> Self {
-        match filter {
-            true => Interest::ALWAYS,
-            false => Interest::NEVER,
-        }
-    }
-
     /// Indicates that the subscriber is never interested in being notified
     /// about a callsite.
     ///

@@ -87,12 +87,6 @@ impl Key {
         self.fields.id()
     }
 
-    /// Return a `usize` representing the index into an array whose indices are
-    /// ordered the same as the set of fields that generated this `key`.
-    pub fn as_usize(&self) -> usize {
-        self.i
-    }
-
     /// Returns a string representing the name of the field, or `None` if the
     /// field does not exist.
     pub fn name(&self) -> Option<&'static str> {
@@ -167,7 +161,7 @@ impl Fields {
 
     /// Returns `true` if `self` contains a field for the given `key`.
     pub fn contains_key(&self, key: &Key) -> bool {
-        key.id() == self.id() && key.as_usize() <= self.names.len()
+        key.id() == self.id() && key.i <= self.names.len()
     }
 
     /// Returns an iterator over the `Key`s to this set of `Fields`.
