@@ -79,9 +79,6 @@ impl Subscriber for CounterSubscriber {
     fn record_fmt(&self, _id: &Id, _field: &field::Key, _value: ::std::fmt::Arguments) {}
 
     fn enabled(&self, metadata: &Meta) -> bool {
-        if !metadata.is_span() {
-            return false;
-        }
         metadata
             .fields()
             .iter()

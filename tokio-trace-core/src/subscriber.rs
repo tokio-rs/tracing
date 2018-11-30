@@ -219,7 +219,7 @@ pub trait Subscriber {
 
     // === Filtering methods ==================================================
 
-    /// Determines if a span or event with the specified [metadata] would be
+    /// Determines if a span with the specified [metadata] would be
     /// recorded.
     ///
     /// This is used by the dispatcher to avoid allocating for span construction
@@ -332,7 +332,7 @@ impl Interest {
     ///
     /// If all active subscribers are `sometimes` or `never` interested in a
     /// callsite, the currently active subscriber will be asked to filter that
-    /// callsite every time it creates a span or event. This will be the case
+    /// callsite every time it creates a span. This will be the case
     /// until a subscriber expresses that it is `always` interested in the
     /// callsite.
     pub const SOMETIMES: Interest = Interest(InterestKind::Sometimes);

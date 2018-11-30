@@ -182,16 +182,6 @@ where
     OnlyModules { modules }
 }
 
-/// A filter which only enables spans.
-pub fn spans_only<'a, 'b>(metadata: &'a Meta<'b>) -> bool {
-    metadata.is_span()
-}
-
-/// A filter which only enables events.
-pub fn events_only<'a, 'b>(metadata: &'a Meta<'b>) -> bool {
-    metadata.is_event()
-}
-
 /// Returns a filter that enables all spans and events, except those originating
 /// with a specified set of targets.
 pub fn except_targets<I>(targets: I) -> ExceptTargets

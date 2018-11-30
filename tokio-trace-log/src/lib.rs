@@ -94,12 +94,11 @@ impl<'a> AsTrace for log::Record<'a> {
                         names: &["message"],
                         callsite: &LogCallsite,
                     },
-                    kind: tokio_trace::metadata::Kind::EVENT,
                 };
                 &EMPTY_META
             }
         }
-        Meta::new_event(
+        Meta::new(
             "log record",
             self.target(),
             self.level().as_trace(),

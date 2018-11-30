@@ -1,21 +1,21 @@
-//! `Span` and `Event` key-value data.
+//! `Span` key-value data.
 //!
-//! Spans and events may be annotated with key-value data, referred to as known
-//! as _fields_. These fields consist of a mapping from a key (corresponding to
-//! a `&str` but represented internally as an array index) to a `Value`.
+//! Spans may be annotated with key-value data, referred to as known as
+//! _fields_. These fields consist of a mapping from a key (corresponding to a
+//! `&str` but represented internally as an array index) to a `Value`.
 //!
 //! # `Value`s and `Subscriber`s
 //!
-//! `Subscriber`s consume `Value`s as fields attached to `Event`s or `Span`s.
-//! The set of field keys on a given `Span` or `Event` is defined on its
-//! `Metadata`. Once the span or event has been created (i.e., the `new_id` or
-//! `new_span` methods on the `Subscriber` have been called), field values may
-//! be added by calls to the subscriber's `record_` methods.
+//! `Subscriber`s consume `Value`s as fields attached to `Span`s. The set of
+//! field keys on a given `Span` or is defined on its `Metadata`. Once the span
+//! has been created (i.e., the `new_id` or `new_span` methods on the
+//! `Subscriber` have been called), field values may be added by calls to the
+//! subscriber's `record_` methods.
 //!
 //! `tokio_trace` represents values as either one of a set of Rust primitives
 //! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
-//! implementation. The `record_` trait functions on the `Subscriber` trait allow
-//! `Subscriber` implementations to provide type-specific behaviour for
+//! implementation. The `record_` trait functions on the `Subscriber` trait
+//! allow `Subscriber` implementations to provide type-specific behaviour for
 //! consuming values of each type.
 //!
 //! The `Subscriber` trait provides default implementations of `record_u64`,
@@ -25,7 +25,7 @@
 //! as their types may override the `record` methods for any types they care
 //! about. For example, we might record integers by incrementing counters for
 //! their field names, rather than printing them.
-//
+//!
 use callsite::{self, Callsite};
 use std::{
     borrow::Borrow,
@@ -34,14 +34,14 @@ use std::{
     ops::Range,
 };
 
-/// An opaque key allowing _O_(1) access to a field in a `Span` or `Event`'s
-/// key-value data.
+/// An opaque key allowing _O_(1) access to a field in a `Span`'s key-value
+/// data.
 ///
-/// As keys are defined by the _metadata_ of a span or event, rather than by an
-/// individual instance of a span or event, a key may be used to access the same
-/// field across all instances of a given span or event with the same metadata.
-/// Thus, when a subscriber observes a new span or event, it need only access a
-/// field by name _once_, and use the key for that name for all other accesses.
+/// As keys are defined by the _metadata_ of a span, rather than by an
+/// individual instance of a span, a key may be used to access the same field
+/// across all instances of a given span with the same metadata. Thus, when a
+/// subscriber observes a new span, it need only access a field by name _once_,
+/// and use the key for that name for all other accesses.
 #[derive(Debug)]
 pub struct Key {
     i: usize,
