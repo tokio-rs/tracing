@@ -1,3 +1,4 @@
+use std::fmt;
 use tokio_trace::{field, subscriber::Subscriber, Id, Meta};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
@@ -102,7 +103,7 @@ where
         self.registry.new_id(meta)
     }
 
-    fn record_fmt(&self, _span: &Id, _name: &field::Key, _value: ::std::fmt::Arguments) {
+    fn record_debug(&self, _span: &Id, _name: &field::Key, _value: &fmt::Debug) {
         unimplemented!()
     }
 

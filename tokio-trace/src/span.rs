@@ -451,7 +451,7 @@ impl<'a> Event<'a> {
     /// Adds a formattable message describing the event that occurred.
     pub fn message(&mut self, key: &field::Key, message: fmt::Arguments) -> &mut Self {
         if let Some(ref mut inner) = self.inner {
-            inner.subscriber.record_fmt(&inner.id, key, message);
+            inner.subscriber.record_debug(&inner.id, key, &message);
         }
         self
     }
@@ -580,9 +580,9 @@ impl<'a> Inner<'a> {
         self.subscriber.record_str(&self.id, field, value)
     }
 
-    /// Record a precompiled set of format arguments value.
-    fn record_value_fmt(&self, field: &field::Key, value: fmt::Arguments) {
-        self.subscriber.record_fmt(&self.id, field, value)
+    /// Record a value implementing `fmt::Debug`.
+    fn record_value_debug(&self, field: &field::Key, value: &fmt::Debug) {
+        self.subscriber.record_debug(&self.id, field, value)
     }
 
     fn new(id: Id, subscriber: &Dispatch, meta: &'a Meta<'a>) -> Self {
@@ -666,12 +666,12 @@ impl<'a> field::Record for Inner<'a> {
     }
 
     #[inline]
-    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
+    fn record_debug<Q: ?Sized>(&mut self, field: &Q, value: &fmt::Debug)
     where
         Q: field::AsKey,
     {
         if let Some(key) = field.as_key(self.metadata()) {
-            self.record_value_fmt(&key, value);
+            self.record_value_debug(&key, value);
         }
     }
 }

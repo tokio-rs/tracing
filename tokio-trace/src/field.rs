@@ -20,43 +20,27 @@ pub trait AsKey {
 
 pub trait Record {
     /// Record a signed 64-bit integer value.
-    ///
-    /// This defaults to calling `self.record_fmt()`; implementations wishing to
-    /// provide behaviour specific to signed integers may override the default
-    /// implementation.
     fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
     where
         Q: AsKey;
 
     /// Record an umsigned 64-bit integer value.
-    ///
-    /// This defaults to calling `self.record_fmt()`; implementations wishing to
-    /// provide behaviour specific to unsigned integers may override the default
-    /// implementation.
     fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
     where
         Q: AsKey;
 
     /// Record a boolean value.
-    ///
-    /// This defaults to calling `self.record_fmt()`; implementations wishing to
-    /// provide behaviour specific to booleans may override the default
-    /// implementation.
     fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
     where
         Q: AsKey;
 
     /// Record a string value.
-    ///
-    /// This defaults to calling `self.record_str()`; implementations wishing to
-    /// provide behaviour specific to strings may override the default
-    /// implementation.
     fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
     where
         Q: AsKey;
 
-    /// Record a set of pre-compiled format arguments.
-    fn record_fmt<Q: ?Sized>(&mut self, field: &Q, value: fmt::Arguments)
+    /// Record a value implementing `fmt::Debug`.
+    fn record_debug<Q: ?Sized>(&mut self, field: &Q, value: &fmt::Debug)
     where
         Q: AsKey;
 }
@@ -221,7 +205,7 @@ where
         Q: AsKey,
         R: Record,
     {
-        recorder.record_fmt(key, format_args!("{}", self.0))
+        recorder.record_debug(key, &format_args!("{}", self.0))
     }
 }
 
@@ -236,6 +220,6 @@ where
         Q: AsKey,
         R: Record,
     {
-        recorder.record_fmt(key, format_args!("{:?}", self.0))
+        recorder.record_debug(key, &self.0)
     }
 }

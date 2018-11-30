@@ -148,7 +148,7 @@ pub trait Subscriber {
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
     fn record_i64(&self, span: &Span, field: &field::Key, value: i64) {
-        self.record_fmt(span, field, format_args!("{}", value))
+        self.record_debug(span, field, &value)
     }
 
     /// Record an umsigned 64-bit integer value.
@@ -161,7 +161,7 @@ pub trait Subscriber {
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
     fn record_u64(&self, span: &Span, field: &field::Key, value: u64) {
-        self.record_fmt(span, field, format_args!("{}", value))
+        self.record_debug(span, field, &value)
     }
 
     /// Record a boolean value.
@@ -174,7 +174,7 @@ pub trait Subscriber {
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
     fn record_bool(&self, span: &Span, field: &field::Key, value: bool) {
-        self.record_fmt(span, field, format_args!("{}", value))
+        self.record_debug(span, field, &value)
     }
 
     /// Record a string value.
@@ -187,15 +187,15 @@ pub trait Subscriber {
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
     fn record_str(&self, span: &Span, field: &field::Key, value: &str) {
-        self.record_fmt(span, field, format_args!("{}", value))
+        self.record_debug(span, field, &value)
     }
 
-    /// Record a set of pre-compiled format arguments.
+    /// Record a value implementing `fmt::Debug`.
     ///
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_fmt(&self, span: &Span, field: &field::Key, value: fmt::Arguments);
+    fn record_debug(&self, span: &Span, field: &field::Key, value: &fmt::Debug);
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -385,6 +385,7 @@ mod test_support {
 
     use std::{
         collections::{HashMap, VecDeque},
+        fmt,
         sync::{
             atomic::{AtomicUsize, Ordering},
             Arc, Mutex,
@@ -510,7 +511,7 @@ mod test_support {
             (self.filter)(meta)
         }
 
-        fn record_fmt(&self, _id: &Span, _field: &field::Key, _value: ::std::fmt::Arguments) {
+        fn record_debug(&self, span: &Span, field: &field::Key, value: &fmt::Debug) {
             // TODO: it would be nice to be able to expect field values...
         }
 

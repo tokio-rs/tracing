@@ -86,8 +86,8 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn record_fmt(&self, span: &Span, field: &field::Key, value: fmt::Arguments) {
-        self.subscriber.record_fmt(span, field, value)
+    fn record_debug(&self, span: &Span, field: &field::Key, value: &fmt::Debug) {
+        self.subscriber.record_debug(span, field, value)
     }
 
     #[inline]
@@ -127,7 +127,7 @@ impl Subscriber for NoSubscriber {
         Span::from_u64(0)
     }
 
-    fn record_fmt(&self, _span: &Span, _key: &field::Key, _value: fmt::Arguments) {}
+    fn record_debug(&self, _span: &Span, _field: &field::Key, _value: &fmt::Debug) {}
 
     fn add_follows_from(&self, _span: &Span, _follows: Span) {}
 
