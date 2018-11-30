@@ -285,10 +285,13 @@ impl SpanLineBuilder {
         }
     }
 
-    fn record(&mut self, key: &field::Key, val: fmt::Arguments) -> fmt::Result {
-        write!(&mut self.fields, "{}=", key.name().unwrap_or("???"))?;
-        self.fields.write_fmt(val)?;
-        self.fields.write_str("; ")
+    fn record(&mut self, key: &field::Key, value: &fmt::Debug) -> fmt::Result {
+        write!(
+            &mut self.fields,
+            "{}={:?}; ",
+            key.name().unwrap_or("???"),
+            value
+        )
     }
 
     fn finish(self) {
@@ -339,13 +342,16 @@ impl EventLineBuilder {
         }
     }
 
-    fn record(&mut self, key: &field::Key, val: fmt::Arguments) -> fmt::Result {
+    fn record(&mut self, key: &field::Key, value: &fmt::Debug) -> fmt::Result {
         if key.name() == Some("message") {
-            self.message.write_fmt(val)
+            write!(&mut self.message, "{:?}", value)
         } else {
-            write!(&mut self.log_line, "{}=", key.name().unwrap_or("???"))?;
-            self.log_line.write_fmt(val)?;
-            self.log_line.write_str("; ")
+            write!(
+                &mut self.log_line,
+                "{}={:?}; ",
+                key.name().unwrap_or("???"),
+                value
+            )
         }
     }
 
@@ -406,16 +412,16 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn record_fmt(&self, span: &Id, key: &field::Key, val: fmt::Arguments) {
+    fn record_debug(&self, span: &Id, key: &field::Key, value: &fmt::Debug) {
         let mut in_progress = self.in_progress.lock().unwrap();
         if let Some(span) = in_progress.spans.get_mut(span) {
-            if let Err(_e) = span.record(key, val) {
+            if let Err(_e) = span.record(key, value) {
                 eprintln!("error formatting span");
             }
             return;
         }
         if let Some(event) = in_progress.events.get_mut(span) {
-            if let Err(_e) = event.record(key, val) {
+            if let Err(_e) = event.record(key, value) {
                 eprintln!("error formatting event");
             }
         }

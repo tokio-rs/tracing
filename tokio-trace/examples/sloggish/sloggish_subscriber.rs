@@ -180,18 +180,18 @@ impl Subscriber for SloggishSubscriber {
         id
     }
 
-    fn record_fmt(
+    fn record_debug(
         &self,
         span: &tokio_trace::Id,
         name: &tokio_trace::field::Key,
-        value: fmt::Arguments,
+        value: &fmt::Debug,
     ) {
         if let Some(event) = self.events.lock().expect("mutex poisoned!").get_mut(span) {
-            return event.record(name, value);
+            return event.record(name, format_args!("{:?}", value));
         };
         let mut spans = self.spans.lock().expect("mutex poisoned!");
         if let Some(span) = spans.get_mut(span) {
-            span.record(name, value)
+            span.record(name, format_args!("{:?}", value))
         }
     }
 

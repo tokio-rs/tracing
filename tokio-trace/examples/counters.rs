@@ -69,14 +69,7 @@ impl Subscriber for CounterSubscriber {
         };
     }
 
-    /// Adds a new field to an existing span observed by this `Subscriber`.
-    ///
-    /// This is expected to return an error under the following conditions:
-    /// - The span ID does not correspond to a span which currently exists.
-    /// - The span does not have a field with the given name.
-    /// - The span has a field with the given name, but the value has already
-    ///   been set.
-    fn record_fmt(&self, _id: &Id, _field: &field::Key, _value: ::std::fmt::Arguments) {}
+    fn record_debug(&self, _id: &Id, _field: &field::Key, _value: &::std::fmt::Debug) {}
 
     fn enabled(&self, metadata: &Meta) -> bool {
         metadata
