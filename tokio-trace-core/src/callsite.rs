@@ -52,7 +52,18 @@ pub trait Callsite: Sync {
 ///
 /// Two `Identifier`s are equal if they both refer to the same callsite.
 #[derive(Clone)]
-pub struct Identifier(&'static Callsite);
+pub struct Identifier(
+    /// **Warning**: The fields on this type are currently `pub` because it must
+    /// be able to be constructed statically by macros. However, when `const
+    /// fn`s are available on stable Rust, this will no longer be necessary.
+    /// Thus, these fields are *not* considered stable public API, and they may
+    /// change warning. Do not rely on any fields on `Identifier`. When
+    /// constructing new `Identifier`s, use the `identify_callsite!` macro or
+    /// the `Callsite::id` function instead.
+    // TODO: When `Callsite::id` is a const fn, this need no longer be `pub`.
+    #[doc(hidden)]
+    pub &'static Callsite,
+);
 
 /// Register a new `Callsite` with the global registry.
 ///
@@ -94,21 +105,18 @@ pub fn reset_registry() {
 
 // ===== impl Callsite =====
 
+// TODO: when `const fn` is stable, we should add this and deprecate the
+// `identify_callsite!` macro.
+/*
 impl Callsite + 'static {
     /// Returns an `Identifier` unique to this `Callsite`.
-    pub(crate) fn id(&'static self) -> Identifier {
-        Identifier::from_callsite(self)
+    pub const fn id(&'static self) -> Identifier {
+        Identifier(self)
     }
 }
+*/
 
 // ===== impl Identifier =====
-
-impl Identifier {
-    /// Returns an `Identifier` unique to the provided `Callsite`.
-    pub(crate) fn from_callsite(callsite: &'static Callsite) -> Self {
-        Identifier(callsite)
-    }
-}
 
 impl PartialEq for Identifier {
     fn eq(&self, other: &Identifier) -> bool {

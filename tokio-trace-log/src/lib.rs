@@ -33,7 +33,7 @@ use std::{
     },
 };
 use tokio_trace::{
-    callsite::Callsite,
+    callsite::{self, Callsite},
     field,
     subscriber::{self, Subscriber},
     Id, Meta,
@@ -92,7 +92,7 @@ impl<'a> AsTrace for log::Record<'a> {
                     line: None,
                     fields: field::Fields {
                         names: &["message"],
-                        callsite: &LogCallsite,
+                        callsite: callsite::Identifier(&LogCallsite),
                     },
                 };
                 &EMPTY_META

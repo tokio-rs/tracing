@@ -135,7 +135,7 @@ macro_rules! impl_value {
 impl AsKey for Key {
     #[inline]
     fn as_key(&self, metadata: &Meta) -> Option<Key> {
-        if self.id() == metadata.id() {
+        if self.callsite() == metadata.callsite() {
             Some(self.clone())
         } else {
             None
@@ -146,7 +146,7 @@ impl AsKey for Key {
 impl<'a> AsKey for &'a Key {
     #[inline]
     fn as_key(&self, metadata: &Meta) -> Option<Key> {
-        if self.id() == metadata.id() {
+        if self.callsite() == metadata.callsite() {
             Some((*self).clone())
         } else {
             None
