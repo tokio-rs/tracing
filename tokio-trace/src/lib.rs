@@ -74,6 +74,22 @@
 //! [metadata]: struct.Meta.html
 extern crate tokio_trace_core;
 
+// Somehow this `use` statement is necessary for us to re-export the `core`
+// macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
+#[allow(unused_imports)]
+use tokio_trace_core::*;
+
+pub use self::{
+    dispatcher::Dispatch,
+    field::Value,
+    span::{Event, Id, Span},
+    subscriber::Subscriber,
+    tokio_trace_core::{
+        callsite::{self, Callsite},
+        metadata, Level, Meta,
+    },
+};
+
 /// Constructs a new static callsite for a span or event.
 #[macro_export]
 macro_rules! callsite {
@@ -102,19 +118,17 @@ macro_rules! callsite {
         fields: $field_names:expr
     ) => ({
         use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
-        use $crate::{callsite, Meta, subscriber::{Interest}, field::Fields};
+        use $crate::{callsite, Meta, subscriber::Interest};
         struct MyCallsite;
-        static META: Meta<'static> = $crate::Meta {
-            name: $name,
-            target: $target,
-            level: $lvl,
-            module_path: Some(module_path!()),
-            file: Some(file!()),
-            line: Some(line!()),
-            fields: Fields {
-                names: $field_names,
+        static META: Meta<'static> = {
+            use $crate::*;
+            metadata! {
+                name: $name,
+                target: $target,
+                level: $lvl,
+                fields: $field_names,
                 callsite: &MyCallsite,
-            },
+            }
         };
         static INTEREST: AtomicUsize = ATOMIC_USIZE_INIT;
         static REGISTRATION: Once = Once::new();
@@ -194,7 +208,8 @@ macro_rules! span {
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
             #[allow(unused_imports)]
-            use $crate::{callsite, callsite::Callsite, Span, field::{Value, AsKey}};
+            use $crate::{callsite, field::{Value, AsKey}, Span};
+            use $crate::callsite::Callsite;
             let callsite = callsite! { span: $name, $( $k ),* };
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
@@ -314,17 +329,6 @@ pub mod dispatcher;
 pub mod field;
 pub mod span;
 pub mod subscriber;
-
-pub use self::{
-    dispatcher::Dispatch,
-    field::Value,
-    span::{Event, Id, Span},
-    subscriber::Subscriber,
-    tokio_trace_core::{
-        callsite::{self, Callsite},
-        metadata, Level, Meta,
-    },
-};
 
 mod sealed {
     pub trait Sealed {}

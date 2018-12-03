@@ -155,7 +155,7 @@ impl<'a> Meta<'a> {
             line,
             fields: field::Fields {
                 names: field_names,
-                callsite,
+                callsite: callsite::Identifier(callsite),
             },
         }
     }
@@ -205,8 +205,8 @@ impl<'a> Meta<'a> {
     /// Returns an opaque `Identifier` that uniquely identifies the callsite
     /// this `Metadata` originated from.
     #[inline]
-    pub fn id(&self) -> callsite::Identifier {
-        self.fields.id()
+    pub fn callsite(&self) -> callsite::Identifier {
+        self.fields.callsite()
     }
 }
 

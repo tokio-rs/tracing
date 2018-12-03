@@ -26,7 +26,7 @@
 //! about. For example, we might record integers by incrementing counters for
 //! their field names, rather than printing them.
 //!
-use callsite::{self, Callsite};
+use callsite;
 use std::{
     borrow::Borrow,
     fmt,
@@ -68,7 +68,7 @@ pub struct Fields {
     /// fields are *not* considered stable public API, and they may change
     /// warning. Do not rely on any fields on `Fields`!
     #[doc(hidden)]
-    pub callsite: &'static Callsite,
+    pub callsite: callsite::Identifier,
 }
 
 /// An iterator over a set of fields.
@@ -83,8 +83,8 @@ impl Key {
     /// Returns an [`Identifier`](::metadata::Identifier) that uniquely
     /// identifies the callsite that defines the field this key refers to.
     #[inline]
-    pub fn id(&self) -> callsite::Identifier {
-        self.fields.id()
+    pub fn callsite(&self) -> callsite::Identifier {
+        self.fields.callsite()
     }
 
     /// Returns a string representing the name of the field, or `None` if the
@@ -108,7 +108,7 @@ impl AsRef<str> for Key {
 
 impl PartialEq for Key {
     fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id() && self.i == other.i
+        self.callsite() == other.callsite() && self.i == other.i
     }
 }
 
@@ -119,7 +119,7 @@ impl Hash for Key {
     where
         H: Hasher,
     {
-        self.id().hash(state);
+        self.callsite().hash(state);
         self.i.hash(state);
     }
 }
@@ -130,7 +130,7 @@ impl Clone for Key {
             i: self.i,
             fields: Fields {
                 names: self.fields.names,
-                callsite: self.fields.callsite,
+                callsite: self.fields.callsite(),
             },
         }
     }
@@ -139,8 +139,8 @@ impl Clone for Key {
 // ===== impl Fields =====
 
 impl Fields {
-    pub(crate) fn id(&self) -> callsite::Identifier {
-        self.callsite.id()
+    pub(crate) fn callsite(&self) -> callsite::Identifier {
+        callsite::Identifier(self.callsite.0)
     }
 
     /// Returns a [`Key`](::field::Key) to the field corresponding to `name`, if
@@ -154,14 +154,14 @@ impl Fields {
             i,
             fields: Fields {
                 names: self.names,
-                callsite: self.callsite,
+                callsite: self.callsite(),
             },
         })
     }
 
     /// Returns `true` if `self` contains a field for the given `key`.
     pub fn contains_key(&self, key: &Key) -> bool {
-        key.id() == self.id() && key.i <= self.names.len()
+        key.callsite() == self.callsite() && key.i <= self.names.len()
     }
 
     /// Returns an iterator over the `Key`s to this set of `Fields`.
@@ -171,7 +171,7 @@ impl Fields {
             idxs,
             fields: Fields {
                 names: self.names,
-                callsite: self.callsite,
+                callsite: self.callsite(),
             },
         }
     }
@@ -202,7 +202,7 @@ impl Iterator for Iter {
             i,
             fields: Fields {
                 names: self.fields.names,
-                callsite: self.fields.callsite,
+                callsite: self.fields.callsite(),
             },
         })
     }
