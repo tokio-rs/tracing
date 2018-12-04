@@ -71,7 +71,7 @@
 //! [`enter`]: subscriber/trait.Subscriber.html#tymethod.enter
 //! [`exit`]: subscriber/trait.Subscriber.html#tymethod.exit
 //! [`enabled`]: subscriber/trait.Subscriber.html#tymethod.enabled
-//! [metadata]: struct.Meta.html
+//! [metadata]: struct.Metadata.html
 extern crate tokio_trace_core;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
@@ -86,7 +86,7 @@ pub use self::{
     subscriber::Subscriber,
     tokio_trace_core::{
         callsite::{self, Callsite},
-        metadata, Level, Meta,
+        metadata, Level, Metadata,
     },
 };
 
@@ -118,9 +118,9 @@ macro_rules! callsite {
         fields: $field_names:expr
     ) => ({
         use std::sync::{Once, atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering}};
-        use $crate::{callsite, Meta, subscriber::Interest};
+        use $crate::{callsite, Metadata, subscriber::Interest};
         struct MyCallsite;
-        static META: Meta<'static> = {
+        static META: Metadata<'static> = {
             use $crate::*;
             metadata! {
                 name: $name,
@@ -165,7 +165,7 @@ macro_rules! callsite {
             fn remove_interest(&self) {
                 INTEREST.store(0, Ordering::Relaxed);
             }
-            fn metadata(&self) -> &Meta {
+            fn metadata(&self) -> &Metadata {
                 &META
             }
         }
@@ -208,7 +208,7 @@ macro_rules! span {
     ($name:expr, $($k:ident $( = $val:expr )* ) ,*) => {
         {
             #[allow(unused_imports)]
-            use $crate::{callsite, field::{Value, AsKey}, Span};
+            use $crate::{callsite, field::{Value, AsField}, Span};
             use $crate::callsite::Callsite;
             let callsite = callsite! { span: $name, $( $k ),* };
             // Depending on how many fields are generated, this may or may
@@ -237,7 +237,7 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => ({
         {
             #[allow(unused_imports)]
-            use $crate::{callsite, Id, Subscriber, Event, field::{Value, AsKey}};
+            use $crate::{callsite, Id, Subscriber, Event, field::{Value, AsField}};
             use $crate::callsite::Callsite;
             let callsite = callsite! { event:
                 $lvl,

@@ -1,7 +1,7 @@
 use {
     callsite, field,
     subscriber::{self, Subscriber},
-    Meta, Span,
+    Metadata, Span,
 };
 
 use std::{
@@ -51,42 +51,42 @@ impl fmt::Debug for Dispatch {
 
 impl Subscriber for Dispatch {
     #[inline]
-    fn register_callsite(&self, metadata: &Meta) -> subscriber::Interest {
+    fn register_callsite(&self, metadata: &Metadata) -> subscriber::Interest {
         self.subscriber.register_callsite(metadata)
     }
 
     #[inline]
-    fn new_static(&self, metadata: &'static Meta<'static>) -> Span {
+    fn new_static(&self, metadata: &'static Metadata<'static>) -> Span {
         self.subscriber.new_static(metadata)
     }
 
     #[inline]
-    fn new_span(&self, metadata: &Meta) -> Span {
+    fn new_span(&self, metadata: &Metadata) -> Span {
         self.subscriber.new_span(metadata)
     }
 
     #[inline]
-    fn record_i64(&self, span: &Span, field: &field::Key, value: i64) {
+    fn record_i64(&self, span: &Span, field: &field::Field, value: i64) {
         self.subscriber.record_i64(span, field, value)
     }
 
     #[inline]
-    fn record_u64(&self, span: &Span, field: &field::Key, value: u64) {
+    fn record_u64(&self, span: &Span, field: &field::Field, value: u64) {
         self.subscriber.record_u64(span, field, value)
     }
 
     #[inline]
-    fn record_bool(&self, span: &Span, field: &field::Key, value: bool) {
+    fn record_bool(&self, span: &Span, field: &field::Field, value: bool) {
         self.subscriber.record_bool(span, field, value)
     }
 
     #[inline]
-    fn record_str(&self, span: &Span, field: &field::Key, value: &str) {
+    fn record_str(&self, span: &Span, field: &field::Field, value: &str) {
         self.subscriber.record_str(span, field, value)
     }
 
     #[inline]
-    fn record_debug(&self, span: &Span, field: &field::Key, value: &fmt::Debug) {
+    fn record_debug(&self, span: &Span, field: &field::Field, value: &fmt::Debug) {
         self.subscriber.record_debug(span, field, value)
     }
 
@@ -96,7 +96,7 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.subscriber.enabled(metadata)
     }
 
@@ -123,15 +123,15 @@ impl Subscriber for Dispatch {
 
 struct NoSubscriber;
 impl Subscriber for NoSubscriber {
-    fn new_span(&self, _meta: &Meta) -> Span {
+    fn new_span(&self, _meta: &Metadata) -> Span {
         Span::from_u64(0)
     }
 
-    fn record_debug(&self, _span: &Span, _field: &field::Key, _value: &fmt::Debug) {}
+    fn record_debug(&self, _span: &Span, _field: &field::Field, _value: &fmt::Debug) {}
 
     fn add_follows_from(&self, _span: &Span, _follows: Span) {}
 
-    fn enabled(&self, _metadata: &Meta) -> bool {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
         false
     }
 
@@ -140,7 +140,7 @@ impl Subscriber for NoSubscriber {
 }
 
 impl Registrar {
-    pub(crate) fn try_register(&self, metadata: &Meta) -> Option<subscriber::Interest> {
+    pub(crate) fn try_register(&self, metadata: &Metadata) -> Option<subscriber::Interest> {
         self.0.upgrade().map(|s| s.register_callsite(metadata))
     }
 }

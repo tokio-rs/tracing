@@ -4,7 +4,7 @@ extern crate tokio_trace;
 use tokio_trace::{
     field, span,
     subscriber::{self, Subscriber},
-    Id, Meta,
+    Id, Metadata,
 };
 
 use std::{
@@ -24,7 +24,7 @@ struct CounterSubscriber {
 }
 
 impl Subscriber for CounterSubscriber {
-    fn register_callsite(&self, meta: &tokio_trace::Meta) -> subscriber::Interest {
+    fn register_callsite(&self, meta: &tokio_trace::Metadata) -> subscriber::Interest {
         let mut interest = subscriber::Interest::NEVER;
         for key in meta.fields() {
             if let Some(name) = key.name() {
@@ -42,7 +42,7 @@ impl Subscriber for CounterSubscriber {
         interest
     }
 
-    fn new_span(&self, _new_span: &Meta) -> Id {
+    fn new_span(&self, _new_span: &Metadata) -> Id {
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         Id::from_u64(id as u64)
     }
@@ -51,7 +51,7 @@ impl Subscriber for CounterSubscriber {
         // unimplemented
     }
 
-    fn record_i64(&self, _id: &Id, field: &field::Key, value: i64) {
+    fn record_i64(&self, _id: &Id, field: &field::Field, value: i64) {
         let registry = self.counters.0.read().unwrap();
         if let Some(counter) = field.name().and_then(|name| registry.get(name)) {
             if value > 0 {
@@ -62,16 +62,16 @@ impl Subscriber for CounterSubscriber {
         };
     }
 
-    fn record_u64(&self, _id: &Id, field: &field::Key, value: u64) {
+    fn record_u64(&self, _id: &Id, field: &field::Field, value: u64) {
         let registry = self.counters.0.read().unwrap();
         if let Some(counter) = field.name().and_then(|name| registry.get(name)) {
             counter.fetch_add(value as usize, Ordering::Release);
         };
     }
 
-    fn record_debug(&self, _id: &Id, _field: &field::Key, _value: &::std::fmt::Debug) {}
+    fn record_debug(&self, _id: &Id, _field: &field::Field, _value: &::std::fmt::Debug) {}
 
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         metadata
             .fields()
             .iter()

@@ -1,4 +1,4 @@
-use tokio_trace::{span::Id, Meta};
+use tokio_trace::{span::Id, Metadata};
 
 use std::{
     cmp,
@@ -34,11 +34,11 @@ pub trait RegisterSpan {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span(&self, new_span: &'static Meta<'static>) -> Id {
+    fn new_span(&self, new_span: &'static Metadata<'static>) -> Id {
         self.new_id(new_span)
     }
 
-    fn new_id(&self, new_id: &Meta) -> Id;
+    fn new_id(&self, new_id: &Metadata) -> Id;
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -106,7 +106,7 @@ pub trait RegisterSpan {
 #[derive(Debug)]
 pub struct SpanRef<'a> {
     pub id: &'a Id,
-    pub data: Option<&'a Meta<'a>>,
+    pub data: Option<&'a Metadata<'a>>,
     // TODO: the registry can still have a concept of span states...
 }
 
@@ -125,7 +125,7 @@ impl<'a, 'b> cmp::PartialEq<SpanRef<'b>> for SpanRef<'a> {
 impl<'a> cmp::Eq for SpanRef<'a> {}
 
 // impl<'a> IntoIterator for &'a SpanRef<'a> {
-//     type Item = (field::Key<'a>, &'a OwnedValue);
+//     type Item = (field::Field<'a>, &'a OwnedValue);
 //     type IntoIter = Box<Iterator<Item = Self::Item> + 'a>; // TODO: unbox
 //     fn into_iter(self) -> Self::IntoIter {
 //         self.data
@@ -147,7 +147,7 @@ impl<'a> cmp::Eq for SpanRef<'a> {}
 
 pub struct IncreasingCounter {
     next_id: AtomicUsize,
-    spans: Mutex<HashMap<Id, &'static Meta<'static>>>,
+    spans: Mutex<HashMap<Id, &'static Metadata<'static>>>,
 }
 
 pub fn increasing_counter() -> IncreasingCounter {
@@ -166,7 +166,7 @@ impl Default for IncreasingCounter {
 impl RegisterSpan for IncreasingCounter {
     type PriorSpans = iter::Empty<Id>;
 
-    fn new_span(&self, new_span: &'static Meta<'static>) -> Id {
+    fn new_span(&self, new_span: &'static Metadata<'static>) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         if let Ok(mut spans) = self.spans.lock() {
@@ -175,7 +175,7 @@ impl RegisterSpan for IncreasingCounter {
         id
     }
 
-    fn new_id(&self, _new: &Meta) -> Id {
+    fn new_id(&self, _new: &Metadata) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         id

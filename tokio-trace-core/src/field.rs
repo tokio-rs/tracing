@@ -43,21 +43,21 @@ use std::{
 /// subscriber observes a new span, it need only access a field by name _once_,
 /// and use the key for that name for all other accesses.
 #[derive(Debug)]
-pub struct Key {
+pub struct Field {
     i: usize,
-    fields: Fields,
+    fields: FieldSet,
 }
 
 /// Describes the fields present on a span.
 // TODO: When `const fn` is stable, make this type's fields private.
-pub struct Fields {
+pub struct FieldSet {
     /// The names of each field on the described span.
     ///
     /// **Warning**: The fields on this type are currently `pub` because it must be able
     /// to be constructed statically by macros. However, when `const fn`s are
     /// available on stable Rust, this will no longer be necessary. Thus, these
     /// fields are *not* considered stable public API, and they may change
-    /// warning. Do not rely on any fields on `Fields`!
+    /// warning. Do not rely on any fields on `FieldSet`!
     #[doc(hidden)]
     pub names: &'static [&'static str],
     /// The callsite where the described span originates.
@@ -66,7 +66,7 @@ pub struct Fields {
     /// to be constructed statically by macros. However, when `const fn`s are
     /// available on stable Rust, this will no longer be necessary. Thus, these
     /// fields are *not* considered stable public API, and they may change
-    /// warning. Do not rely on any fields on `Fields`!
+    /// warning. Do not rely on any fields on `FieldSet`!
     #[doc(hidden)]
     pub callsite: callsite::Identifier,
 }
@@ -74,12 +74,12 @@ pub struct Fields {
 /// An iterator over a set of fields.
 pub struct Iter {
     idxs: Range<usize>,
-    fields: Fields,
+    fields: FieldSet,
 }
 
-// ===== impl Key =====
+// ===== impl Field =====
 
-impl Key {
+impl Field {
     /// Returns an [`Identifier`](::metadata::Identifier) that uniquely
     /// identifies the callsite that defines the field this key refers to.
     #[inline]
@@ -94,27 +94,27 @@ impl Key {
     }
 }
 
-impl fmt::Display for Key {
+impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.name().unwrap_or("???"))
     }
 }
 
-impl AsRef<str> for Key {
+impl AsRef<str> for Field {
     fn as_ref(&self) -> &str {
         self.name().unwrap_or("???")
     }
 }
 
-impl PartialEq for Key {
+impl PartialEq for Field {
     fn eq(&self, other: &Self) -> bool {
         self.callsite() == other.callsite() && self.i == other.i
     }
 }
 
-impl Eq for Key {}
+impl Eq for Field {}
 
-impl Hash for Key {
+impl Hash for Field {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -124,11 +124,11 @@ impl Hash for Key {
     }
 }
 
-impl Clone for Key {
+impl Clone for Field {
     fn clone(&self) -> Self {
-        Key {
+        Field {
             i: self.i,
-            fields: Fields {
+            fields: FieldSet {
                 names: self.fields.names,
                 callsite: self.fields.callsite(),
             },
@@ -136,40 +136,46 @@ impl Clone for Key {
     }
 }
 
-// ===== impl Fields =====
+// ===== impl FieldSet =====
 
-impl Fields {
+impl FieldSet {
     pub(crate) fn callsite(&self) -> callsite::Identifier {
         callsite::Identifier(self.callsite.0)
     }
 
-    /// Returns a [`Key`](::field::Key) to the field corresponding to `name`, if
-    /// one exists, or `None` if no such field exists.
-    pub fn key_for<Q>(&self, name: &Q) -> Option<Key>
+    /// Returns the [`Field`](::field::Field) named `name`, or `None` if no such
+    /// field exists.
+    pub fn field_named<Q>(&self, name: &Q) -> Option<Field>
     where
         Q: Borrow<str>,
     {
         let name = &name.borrow();
-        self.names.iter().position(|f| f == name).map(|i| Key {
+        self.names.iter().position(|f| f == name).map(|i| Field {
             i,
-            fields: Fields {
+            fields: FieldSet {
                 names: self.names,
                 callsite: self.callsite(),
             },
         })
     }
 
-    /// Returns `true` if `self` contains a field for the given `key`.
-    pub fn contains_key(&self, key: &Key) -> bool {
-        key.callsite() == self.callsite() && key.i <= self.names.len()
+    /// Returns `true` if `self` contains the given `field`.
+    ///
+    /// **Note**: If `field` shares a name with a field in this `FieldSet`, but
+    /// was created by a `FieldSet` with a different callsite, this `FieldSet`
+    /// does _not_ contain it. This is so that if two separate span callsites
+    /// define a field named "foo", the `Field` corresponding to "foo" for each
+    /// of those callsites are not equivalent.
+    pub fn contains(&self, field: &Field) -> bool {
+        field.callsite() == self.callsite() && field.i <= self.names.len()
     }
 
-    /// Returns an iterator over the `Key`s to this set of `Fields`.
+    /// Returns an iterator over the `Field`s in this `FieldSet`.
     pub fn iter(&self) -> Iter {
         let idxs = 0..self.names.len();
         Iter {
             idxs,
-            fields: Fields {
+            fields: FieldSet {
                 names: self.names,
                 callsite: self.callsite(),
             },
@@ -177,16 +183,16 @@ impl Fields {
     }
 }
 
-impl<'a> IntoIterator for &'a Fields {
+impl<'a> IntoIterator for &'a FieldSet {
     type IntoIter = Iter;
-    type Item = Key;
+    type Item = Field;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl fmt::Debug for Fields {
+impl fmt::Debug for FieldSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_set().entries(self).finish()
     }
@@ -195,12 +201,12 @@ impl fmt::Debug for Fields {
 // ===== impl Iter =====
 
 impl Iterator for Iter {
-    type Item = Key;
-    fn next(&mut self) -> Option<Key> {
+    type Item = Field;
+    fn next(&mut self) -> Option<Field> {
         let i = self.idxs.next()?;
-        Some(Key {
+        Some(Field {
             i,
-            fields: Fields {
+            fields: FieldSet {
                 names: self.fields.names,
                 callsite: self.fields.callsite(),
             },
