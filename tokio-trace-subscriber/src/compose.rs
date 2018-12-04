@@ -1,5 +1,5 @@
 use std::fmt;
-use tokio_trace::{field, subscriber::Subscriber, Id, Meta};
+use tokio_trace::{field, subscriber::Subscriber, Id, Metadata};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
@@ -91,19 +91,19 @@ where
     O: Observe,
     R: RegisterSpan,
 {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_static(&self, meta: &'static Meta<'static>) -> Id {
+    fn new_static(&self, meta: &'static Metadata<'static>) -> Id {
         self.registry.new_span(meta)
     }
 
-    fn new_span(&self, meta: &Meta) -> Id {
+    fn new_span(&self, meta: &Metadata) -> Id {
         self.registry.new_id(meta)
     }
 
-    fn record_debug(&self, _span: &Id, _name: &field::Key, _value: &fmt::Debug) {
+    fn record_debug(&self, _span: &Id, _name: &field::Field, _value: &fmt::Debug) {
         unimplemented!()
     }
 

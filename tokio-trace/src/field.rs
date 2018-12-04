@@ -1,48 +1,48 @@
 pub use tokio_trace_core::field::*;
 
 use std::fmt;
-use Meta;
+use Metadata;
 
 /// Trait implemented to allow a type to be used as a field key.
 ///
-/// **Note**: Although this is implemented for both the [`Key`] type *and* any
-/// type that can be borrowed as an `&str`, only `Key` allows _O_(1) access.
+/// **Note**: Although this is implemented for both the [`Field`] type *and* any
+/// type that can be borrowed as an `&str`, only `Field` allows _O_(1) access.
 /// Indexing a field with a string results in an iterative search that performs
 /// string comparisons. Thus, if possible, once the key for a field is known, it
 /// should be used whenever possible.
-pub trait AsKey {
-    /// Attempts to convert `&self` into a `Key` with the specified `metadata`.
+pub trait AsField {
+    /// Attempts to convert `&self` into a `Field` with the specified `metadata`.
     ///
-    /// If `metadata` defines a key corresponding to this field, then the key is
-    /// returned. Otherwise, this function returns `None`.
-    fn as_key(&self, metadata: &Meta) -> Option<Key>;
+    /// If `metadata` defines this field, then the field is returned. Otherwise,
+    /// this returns `None`.
+    fn as_field(&self, metadata: &Metadata) -> Option<Field>;
 }
 
 pub trait Record {
     /// Record a signed 64-bit integer value.
     fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
     where
-        Q: AsKey;
+        Q: AsField;
 
     /// Record an umsigned 64-bit integer value.
     fn record_u64<Q: ?Sized>(&mut self, field: &Q, value: u64)
     where
-        Q: AsKey;
+        Q: AsField;
 
     /// Record a boolean value.
     fn record_bool<Q: ?Sized>(&mut self, field: &Q, value: bool)
     where
-        Q: AsKey;
+        Q: AsField;
 
     /// Record a string value.
     fn record_str<Q: ?Sized>(&mut self, field: &Q, value: &str)
     where
-        Q: AsKey;
+        Q: AsField;
 
     /// Record a value implementing `fmt::Debug`.
     fn record_debug<Q: ?Sized>(&mut self, field: &Q, value: &fmt::Debug)
     where
-        Q: AsKey;
+        Q: AsField;
 }
 
 /// A field value of an erased type.
@@ -54,7 +54,7 @@ pub trait Value {
     /// Records this value with the given `Subscriber`.
     fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
-        Q: AsKey,
+        Q: AsField,
         R: Record;
 }
 
@@ -103,7 +103,7 @@ macro_rules! impl_value {
                     recorder: &mut R,
                 )
                 where
-                    Q: $crate::field::AsKey,
+                    Q: $crate::field::AsField,
                     R: $crate::field::Record,
                 {
                     recorder.$record(key, *self)
@@ -120,7 +120,7 @@ macro_rules! impl_value {
                     recorder: &mut R,
                 )
                 where
-                    Q: $crate::field::AsKey,
+                    Q: $crate::field::AsField,
                     R: $crate::field::Record,
                 {
                     recorder.$record(key, *self as $as_ty)
@@ -130,11 +130,11 @@ macro_rules! impl_value {
     };
 }
 
-// ===== impl AsKey =====
+// ===== impl AsField =====
 
-impl AsKey for Key {
+impl AsField for Field {
     #[inline]
-    fn as_key(&self, metadata: &Meta) -> Option<Key> {
+    fn as_field(&self, metadata: &Metadata) -> Option<Field> {
         if self.callsite() == metadata.callsite() {
             Some(self.clone())
         } else {
@@ -143,9 +143,9 @@ impl AsKey for Key {
     }
 }
 
-impl<'a> AsKey for &'a Key {
+impl<'a> AsField for &'a Field {
     #[inline]
-    fn as_key(&self, metadata: &Meta) -> Option<Key> {
+    fn as_field(&self, metadata: &Metadata) -> Option<Field> {
         if self.callsite() == metadata.callsite() {
             Some((*self).clone())
         } else {
@@ -154,10 +154,10 @@ impl<'a> AsKey for &'a Key {
     }
 }
 
-impl AsKey for str {
+impl AsField for str {
     #[inline]
-    fn as_key(&self, metadata: &Meta) -> Option<Key> {
-        metadata.fields().key_for(&self)
+    fn as_field(&self, metadata: &Metadata) -> Option<Field> {
+        metadata.fields().field_named(&self)
     }
 }
 
@@ -174,7 +174,7 @@ impl_values! {
 impl Value for str {
     fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
-        Q: AsKey,
+        Q: AsField,
         R: Record,
     {
         recorder.record_str(key, &self)
@@ -187,7 +187,7 @@ where
 {
     fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
-        Q: AsKey,
+        Q: AsField,
         R: Record,
     {
         (*self).record(key, recorder)
@@ -202,7 +202,7 @@ where
 {
     fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
-        Q: AsKey,
+        Q: AsField,
         R: Record,
     {
         recorder.record_debug(key, &format_args!("{}", self.0))
@@ -217,7 +217,7 @@ where
 {
     fn record<Q: ?Sized, R>(&self, key: &Q, recorder: &mut R)
     where
-        Q: AsKey,
+        Q: AsField,
         R: Record,
     {
         recorder.record_debug(key, &self.0)

@@ -6,7 +6,7 @@ extern crate test;
 use test::Bencher;
 
 use std::sync::Mutex;
-use tokio_trace::{field, span, Id, Meta};
+use tokio_trace::{field, span, Id, Metadata};
 
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
@@ -17,7 +17,7 @@ impl tokio_trace::Subscriber for EnabledSubscriber {
         Id::from_u64(0)
     }
 
-    fn record_fmt(&self, span: &Id, field: &field::Key, value: ::std::fmt::Arguments) {
+    fn record_fmt(&self, span: &Id, field: &field::Field, value: ::std::fmt::Arguments) {
         let _ = (span, field, value);
     }
 
@@ -25,7 +25,7 @@ impl tokio_trace::Subscriber for EnabledSubscriber {
         let _ = (span, follows);
     }
 
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         let _ = metadata;
         true
     }
@@ -56,7 +56,7 @@ impl tokio_trace::Subscriber for Record {
         Id::from_u64(0)
     }
 
-    fn record_fmt(&self, _span: &Id, _field: &field::Key, value: ::std::fmt::Arguments) {
+    fn record_fmt(&self, _span: &Id, _field: &field::Field, value: ::std::fmt::Arguments) {
         let _ = ::std::fmt::format(value);
     }
 
@@ -64,7 +64,7 @@ impl tokio_trace::Subscriber for Record {
         let _ = (span, follows);
     }
 
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         let _ = metadata;
         true
     }

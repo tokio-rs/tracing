@@ -9,7 +9,7 @@ use std::{
 use {
     dispatcher::{self, Dispatch},
     subscriber::{Interest, Subscriber},
-    Meta,
+    Metadata,
 };
 
 lazy_static! {
@@ -44,8 +44,8 @@ pub trait Callsite: Sync {
 
     /// Returns the [metadata] associated with the callsite.
     ///
-    /// [metadata]: ::Meta
-    fn metadata(&self) -> &Meta;
+    /// [metadata]: ::Metadata
+    fn metadata(&self) -> &Metadata;
 }
 
 /// Uniquely identifies a [`Callsite`](::callsite::Callsite).

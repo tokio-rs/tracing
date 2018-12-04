@@ -36,13 +36,13 @@ use tokio_trace::{
     callsite::{self, Callsite},
     field,
     subscriber::{self, Subscriber},
-    Id, Meta,
+    Id, Metadata,
 };
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let meta = record.as_trace();
-    let k = meta.fields().key_for(&"message").unwrap();
+    let k = meta.fields().field_named(&"message").unwrap();
     drop(tokio_trace::Event::new(
         subscriber::Interest::SOMETIMES,
         &meta,
@@ -63,7 +63,7 @@ pub trait AsTrace {
     fn as_trace(&self) -> Self::Trace;
 }
 
-impl<'a> AsLog for Meta<'a> {
+impl<'a> AsLog for Metadata<'a> {
     type Log = log::Metadata<'a>;
     fn as_log(&self) -> Self::Log {
         log::Metadata::builder()
@@ -74,23 +74,23 @@ impl<'a> AsLog for Meta<'a> {
 }
 
 impl<'a> AsTrace for log::Record<'a> {
-    type Trace = Meta<'a>;
+    type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
         struct LogCallsite;
         impl Callsite for LogCallsite {
             fn add_interest(&self, _interest: subscriber::Interest) {}
             fn remove_interest(&self) {}
-            fn metadata(&self) -> &Meta {
+            fn metadata(&self) -> &Metadata {
                 // Since we never register the log callsite, this method is
                 // never actually called. So it's okay to return mostly empty metadata.
-                static EMPTY_META: Meta<'static> = Meta {
+                static EMPTY_META: Metadata<'static> = Metadata {
                     name: "log record",
                     target: "log",
                     level: tokio_trace::Level::TRACE,
                     module_path: None,
                     file: None,
                     line: None,
-                    fields: field::Fields {
+                    fields: field::FieldSet {
                         names: &["message"],
                         callsite: callsite::Identifier(&LogCallsite),
                     },
@@ -98,7 +98,7 @@ impl<'a> AsTrace for log::Record<'a> {
                 &EMPTY_META
             }
         }
-        Meta::new(
+        Metadata::new(
             "log record",
             self.target(),
             self.level().as_trace(),
@@ -258,7 +258,7 @@ impl TraceLoggerBuilder {
 struct SpanLineBuilder {
     parent: Option<Id>,
     ref_count: usize,
-    meta: &'static Meta<'static>,
+    meta: &'static Metadata<'static>,
     log_line: String,
     fields: String,
 }
@@ -266,7 +266,7 @@ struct SpanLineBuilder {
 impl SpanLineBuilder {
     fn new(
         parent: Option<Id>,
-        meta: &'static Meta<'static>,
+        meta: &'static Metadata<'static>,
         fields: String,
         id: Id,
         settings: &TraceLoggerBuilder,
@@ -285,7 +285,7 @@ impl SpanLineBuilder {
         }
     }
 
-    fn record(&mut self, key: &field::Key, value: &fmt::Debug) -> fmt::Result {
+    fn record(&mut self, key: &field::Field, value: &fmt::Debug) -> fmt::Result {
         write!(
             &mut self.fields,
             "{}={:?}; ",
@@ -325,7 +325,7 @@ struct EventLineBuilder {
 }
 
 impl EventLineBuilder {
-    fn new(meta: &Meta, id: Id, settings: &TraceLoggerBuilder) -> Self {
+    fn new(meta: &Metadata, id: Id, settings: &TraceLoggerBuilder) -> Self {
         let mut log_line = String::new();
         if settings.log_ids {
             write!(&mut log_line, "event={:?}; ", id,).expect("write to string shouldn't fail");
@@ -342,7 +342,7 @@ impl EventLineBuilder {
         }
     }
 
-    fn record(&mut self, key: &field::Key, value: &fmt::Debug) -> fmt::Result {
+    fn record(&mut self, key: &field::Field, value: &fmt::Debug) -> fmt::Result {
         if key.name() == Some("message") {
             write!(&mut self.message, "{:?}", value)
         } else {
@@ -380,11 +380,11 @@ impl EventLineBuilder {
 }
 
 impl Subscriber for TraceLogger {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_static(&self, new_span: &'static Meta<'static>) -> Id {
+    fn new_static(&self, new_span: &'static Metadata<'static>) -> Id {
         let id = self.next_id();
         let mut in_progress = self.in_progress.lock().unwrap();
         let mut fields = String::new();
@@ -403,7 +403,7 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn new_span(&self, new_span: &Meta) -> Id {
+    fn new_span(&self, new_span: &Metadata) -> Id {
         let id = self.next_id();
         self.in_progress.lock().unwrap().events.insert(
             id.clone(),
@@ -412,7 +412,7 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn record_debug(&self, span: &Id, key: &field::Key, value: &fmt::Debug) {
+    fn record_debug(&self, span: &Id, key: &field::Field, value: &fmt::Debug) {
         let mut in_progress = self.in_progress.lock().unwrap();
         if let Some(span) = in_progress.spans.get_mut(span) {
             if let Err(_e) = span.record(key, value) {
@@ -627,11 +627,11 @@ impl Subscriber for TraceLogger {
 // }
 
 impl tokio_trace_subscriber::Filter for TraceLogger {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         <Self as Subscriber>::enabled(&self, metadata)
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }

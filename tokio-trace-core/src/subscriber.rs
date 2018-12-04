@@ -1,5 +1,5 @@
 //! Subscribers collect and record trace data.
-use {field, Meta, Span};
+use {field, Metadata, Span};
 
 use std::fmt;
 
@@ -91,8 +91,8 @@ pub trait Subscriber {
     /// **Note**: If a subscriber returns `Interest::Never` for a particular
     /// callsite, it _may_ still see spans and events originating from that
     /// callsite, if another subscriber expressed interest in it.
-    /// [metadata]: ::Meta [`enabled`]: ::Subscriber::enabled
-    fn register_callsite(&self, metadata: &Meta) -> Interest {
+    /// [metadata]: ::Metadata [`enabled`]: ::Subscriber::enabled
+    fn register_callsite(&self, metadata: &Metadata) -> Interest {
         match self.enabled(metadata) {
             true => Interest::ALWAYS,
             false => Interest::NEVER,
@@ -114,8 +114,8 @@ pub trait Subscriber {
     ///
     /// [`Span`]: ::span::Span
     /// [`new_span`]: ::subscriber::Subscriber::new_span
-    /// [metadata]: ::metadata::Meta
-    fn new_static(&self, metadata: &'static Meta<'static>) -> Span {
+    /// [metadata]: ::metadata::Metadata
+    fn new_static(&self, metadata: &'static Metadata<'static>) -> Span {
         self.new_span(metadata)
     }
 
@@ -136,7 +136,7 @@ pub trait Subscriber {
     /// from all calls to this function, if they so choose.
     ///
     /// [`Span`]: ::span::Span
-    fn new_span(&self, metadata: &Meta) -> Span;
+    fn new_span(&self, metadata: &Metadata) -> Span;
 
     /// Record a signed 64-bit integer value.
     ///
@@ -147,7 +147,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_i64(&self, span: &Span, field: &field::Key, value: i64) {
+    fn record_i64(&self, span: &Span, field: &field::Field, value: i64) {
         self.record_debug(span, field, &value)
     }
 
@@ -160,7 +160,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_u64(&self, span: &Span, field: &field::Key, value: u64) {
+    fn record_u64(&self, span: &Span, field: &field::Field, value: u64) {
         self.record_debug(span, field, &value)
     }
 
@@ -173,7 +173,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_bool(&self, span: &Span, field: &field::Key, value: bool) {
+    fn record_bool(&self, span: &Span, field: &field::Field, value: bool) {
         self.record_debug(span, field, &value)
     }
 
@@ -186,7 +186,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_str(&self, span: &Span, field: &field::Key, value: &str) {
+    fn record_str(&self, span: &Span, field: &field::Field, value: &str) {
         self.record_debug(span, field, &value)
     }
 
@@ -195,7 +195,7 @@ pub trait Subscriber {
     /// If recording the field is invalid (i.e. the span ID doesn't exist, the
     /// field has already been recorded, and so on), the subscriber may silently
     /// do nothing.
-    fn record_debug(&self, span: &Span, field: &field::Key, value: &fmt::Debug);
+    fn record_debug(&self, span: &Span, field: &field::Field, value: &fmt::Debug);
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -225,8 +225,8 @@ pub trait Subscriber {
     /// This is used by the dispatcher to avoid allocating for span construction
     /// if the span would be discarded anyway.
     ///
-    /// [metadata]: ::Meta
-    fn enabled(&self, metadata: &Meta) -> bool;
+    /// [metadata]: ::Metadata
+    fn enabled(&self, metadata: &Metadata) -> bool;
 
     // === Notification methods ===============================================
 
@@ -381,7 +381,7 @@ mod test_support {
 
     use super::*;
     use span::MockSpan;
-    use {field, Meta, Span};
+    use {field, Metadata, Span};
 
     use std::{
         collections::{HashMap, VecDeque},
@@ -410,30 +410,30 @@ mod test_support {
 
     enum SpanOrEvent {
         Span {
-            span: &'static Meta<'static>,
+            span: &'static Metadata<'static>,
             refs: usize,
         },
         Event,
     }
 
-    struct Running<F: Fn(&Meta) -> bool> {
+    struct Running<F: Fn(&Metadata) -> bool> {
         spans: Mutex<HashMap<Span, SpanOrEvent>>,
         expected: Arc<Mutex<VecDeque<Expect>>>,
         ids: AtomicUsize,
         filter: F,
     }
 
-    pub struct MockSubscriber<F: Fn(&Meta) -> bool> {
+    pub struct MockSubscriber<F: Fn(&Metadata) -> bool> {
         expected: VecDeque<Expect>,
         filter: F,
     }
 
     pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>);
 
-    pub fn mock() -> MockSubscriber<fn(&Meta) -> bool> {
+    pub fn mock() -> MockSubscriber<fn(&Metadata) -> bool> {
         MockSubscriber {
             expected: VecDeque::new(),
-            filter: (|_: &Meta| true) as for<'r, 's> fn(&'r Meta<'s>) -> _,
+            filter: (|_: &Metadata| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
         }
     }
 
@@ -446,7 +446,7 @@ mod test_support {
         }
     }
 
-    impl<F: Fn(&Meta) -> bool> MockSubscriber<F> {
+    impl<F: Fn(&Metadata) -> bool> MockSubscriber<F> {
         pub fn enter(mut self, span: MockSpan) -> Self {
             self.expected.push_back(Expect::Enter(span));
             self
@@ -480,7 +480,7 @@ mod test_support {
 
         pub fn with_filter<G>(self, filter: G) -> MockSubscriber<G>
         where
-            G: Fn(&Meta) -> bool,
+            G: Fn(&Metadata) -> bool,
         {
             MockSubscriber {
                 filter,
@@ -506,12 +506,12 @@ mod test_support {
         }
     }
 
-    impl<F: Fn(&Meta) -> bool> Subscriber for Running<F> {
-        fn enabled(&self, meta: &Meta) -> bool {
+    impl<F: Fn(&Metadata) -> bool> Subscriber for Running<F> {
+        fn enabled(&self, meta: &Metadata) -> bool {
             (self.filter)(meta)
         }
 
-        fn record_debug(&self, span: &Span, field: &field::Key, value: &fmt::Debug) {
+        fn record_debug(&self, span: &Span, field: &field::Field, value: &fmt::Debug) {
             // TODO: it would be nice to be able to expect field values...
         }
 
@@ -519,7 +519,7 @@ mod test_support {
             // TODO: it should be possible to expect spans to follow from other spans
         }
 
-        fn new_span(&self, _attrs: &Meta) -> Span {
+        fn new_span(&self, _attrs: &Metadata) -> Span {
             let id = self.ids.fetch_add(1, Ordering::SeqCst);
             let id = Span::from_u64(id as u64);
             println!("new_span: id={:?};", id);
@@ -530,7 +530,7 @@ mod test_support {
             id
         }
 
-        fn new_static(&self, span: &'static Meta<'static>) -> Span {
+        fn new_static(&self, span: &'static Metadata<'static>) -> Span {
             let id = self.ids.fetch_add(1, Ordering::SeqCst);
             let id = Span::from_u64(id as u64);
             println!("new_static: {}; id={:?};", span.name, id);

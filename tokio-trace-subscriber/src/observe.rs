@@ -3,7 +3,7 @@ use {
     registry::SpanRef,
 };
 
-use tokio_trace::{Event, Meta};
+use tokio_trace::{Event, Metadata};
 
 /// The notification processing portion of the [`Subscriber`] trait.
 ///
@@ -32,7 +32,7 @@ pub trait ObserveExt: Observe {
     /// extern crate tokio_trace_subscriber;
     /// use tokio_trace_subscriber::{registry, Event, Observe, ObserveExt, SpanRef};
     /// # use tokio_trace_subscriber::filter::{Filter, NoFilter};
-    /// # use tokio_trace::{Level, Meta, Span};
+    /// # use tokio_trace::{Level, Metadata, Span};
     /// # fn main() {
     ///
     /// struct Foo {
@@ -106,12 +106,12 @@ pub trait ObserveExt: Observe {
     /// extern crate tokio_trace_log;
     /// extern crate tokio_trace_subscriber;
     /// use tokio_trace_subscriber::{registry, filter, Observe, ObserveExt, SpanRef};
-    /// # use tokio_trace::{Level, Meta, Span};
+    /// # use tokio_trace::{Level, Metadata, Span};
     /// # fn main() {
     ///
     /// let observer = tokio_trace_log::TraceLogger::new()
     ///     // Subscribe *only* to spans named "foo".
-    ///     .with_filter(|meta: &Meta| {
+    ///     .with_filter(|meta: &Metadata| {
     ///         meta.name == Some("foo")
     ///     });
     ///
@@ -240,12 +240,12 @@ where
     F: Filter,
 {
     #[inline]
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.filter.enabled(metadata) && self.inner.filter().enabled(metadata)
     }
 
     #[inline]
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, metadata: &Metadata) -> bool {
         self.filter.should_invalidate_filter(metadata)
             || self.inner.filter().should_invalidate_filter(metadata)
     }
@@ -333,11 +333,11 @@ where
     A: Observe,
     B: Observe,
 {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.a.filter().enabled(metadata) || self.b.filter().enabled(metadata)
     }
 
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, metadata: &Metadata) -> bool {
         self.a.filter().should_invalidate_filter(metadata)
             || self.b.filter().should_invalidate_filter(metadata)
     }
@@ -382,14 +382,14 @@ where
     A: Observe,
     B: Observe,
 {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         match self {
             Either::A(a) => a.filter().enabled(metadata),
             Either::B(b) => b.filter().enabled(metadata),
         }
     }
 
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, metadata: &Metadata) -> bool {
         match self {
             Either::A(a) => a.filter().should_invalidate_filter(metadata),
             Either::B(b) => b.filter().should_invalidate_filter(metadata),
@@ -412,11 +412,11 @@ impl Observe for NoObserver {
 }
 
 impl Filter for NoObserver {
-    fn enabled(&self, _metadata: &Meta) -> bool {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
         false
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }

@@ -1,4 +1,4 @@
-use tokio_trace::Meta;
+use tokio_trace::Metadata;
 
 use std::{
     collections::HashSet,
@@ -14,7 +14,7 @@ pub trait Filter {
     ///
     /// This is used by the dispatcher to avoid allocating for span construction
     /// if the span would be discarded anyway.
-    fn enabled(&self, metadata: &Meta) -> bool;
+    fn enabled(&self, metadata: &Metadata) -> bool;
 
     /// Returns `true` if the cached result to a call to `enabled` for a span
     /// with the given metadata is still valid.
@@ -43,7 +43,7 @@ pub trait Filter {
     /// only if _all_ such children return `false`. If the set of subscribers to
     /// which spans are broadcast may change dynamically, adding a new
     /// subscriber should also invalidate cached filters.
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool;
+    fn should_invalidate_filter(&self, metadata: &Metadata) -> bool;
 }
 
 /// Extension trait providing combinators and helper methods for working with
@@ -58,7 +58,7 @@ pub trait FilterExt: Filter {
     /// extern crate tokio_trace;
     /// extern crate tokio_trace_subscriber;
     /// use tokio_trace_subscriber::{Filter, FilterExt};
-    /// # use tokio_trace::{Level, Meta};
+    /// # use tokio_trace::{Level, Metadata};
     /// # fn main() {
     /// fn foo() {
     ///     // This span will not be enabled.
@@ -77,8 +77,8 @@ pub trait FilterExt: Filter {
     ///     }
     /// }
     ///
-    /// let name_filter = |meta: &Meta| { meta.name == "foo" };
-    /// let mod_filter = |meta: &Meta| { meta.module_path == Some("my_module") };
+    /// let name_filter = |meta: &Metadata| { meta.name == "foo" };
+    /// let mod_filter = |meta: &Metadata| { meta.module_path == Some("my_module") };
     ///
     /// let subscriber = tokio_trace_subscriber::Composed::builder()
     ///     .with_registry(tokio_trace_subscriber::registry::increasing_counter())
@@ -206,13 +206,13 @@ where
 
 impl<F> Filter for F
 where
-    F: for<'a, 'b> Fn(&'a Meta<'b>) -> bool,
+    F: for<'a, 'b> Fn(&'a Metadata<'b>) -> bool,
 {
-    fn enabled(&self, meta: &Meta) -> bool {
+    fn enabled(&self, meta: &Metadata) -> bool {
         self(meta)
     }
 
-    fn should_invalidate_filter(&self, _: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _: &Metadata) -> bool {
         // Since this implementation is for immutable closures only, we can
         // treat these functions as stateless and assume they remain valid.
         false
@@ -224,11 +224,11 @@ where
     A: Filter,
     B: Filter,
 {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.a.enabled(metadata) && self.b.enabled(metadata)
     }
 
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, metadata: &Metadata) -> bool {
         // Even though this is the `And` composition, that only applies to the
         // actual filter result, not whether or not the filter needs to be
         // invalidated. If either of the composed filters requests its cached
@@ -242,11 +242,11 @@ where
     A: Filter,
     B: Filter,
 {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.a.enabled(metadata) || self.b.enabled(metadata)
     }
 
-    fn should_invalidate_filter(&self, metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, metadata: &Metadata) -> bool {
         self.a.should_invalidate_filter(metadata) || self.b.should_invalidate_filter(metadata)
     }
 }
@@ -264,7 +264,7 @@ impl Sample {
 }
 
 impl Filter for Sample {
-    fn enabled(&self, _metadata: &Meta) -> bool {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
         // TODO: it would be nice to be able to have a definition of sampling
         // that also enables all the children of a sampled span...figure that out.
         let current = self.count.fetch_add(1, Ordering::Acquire);
@@ -276,7 +276,7 @@ impl Filter for Sample {
         }
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         // The filter _needs_ to be re-evaluated every time, or else the counter
         // won't be updated.
         true
@@ -284,57 +284,57 @@ impl Filter for Sample {
 }
 
 impl Filter for NoFilter {
-    fn enabled(&self, _metadata: &Meta) -> bool {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
         true
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }
 
 impl Filter for ExceptModules {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         metadata
             .module_path
             .map(|module| !self.modules.contains(module))
             .unwrap_or(true)
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }
 
 impl Filter for OnlyModules {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         metadata
             .module_path
             .map(|module| self.modules.contains(module))
             .unwrap_or(false)
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }
 
 impl Filter for ExceptTargets {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         !self.targets.contains(metadata.target)
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }
 
 impl Filter for OnlyTargets {
-    fn enabled(&self, metadata: &Meta) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         self.targets.contains(metadata.target)
     }
 
-    fn should_invalidate_filter(&self, _metadata: &Meta) -> bool {
+    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
         false
     }
 }
