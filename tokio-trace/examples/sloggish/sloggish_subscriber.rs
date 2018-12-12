@@ -64,7 +64,8 @@ impl fmt::Display for ColorLevel {
             Level::INFO => Color::Green.paint("INFO"),
             Level::WARN => Color::Yellow.paint("WARN "),
             Level::ERROR => Color::Red.paint("ERROR"),
-        }.fmt(f)
+        }
+        .fmt(f)
     }
 }
 
@@ -249,12 +250,14 @@ impl Subscriber for SloggishSubscriber {
                 level = ColorLevel(event.level),
                 target = &event.target,
                 message = Style::new().bold().paint(event.message),
-            ).unwrap();
+            )
+            .unwrap();
             self.print_kvs(
                 &mut stderr,
                 event.kvs.iter().map(|&(ref k, ref v)| (k, v)),
                 ", ",
-            ).unwrap();
+            )
+            .unwrap();
             write!(&mut stderr, "\n").unwrap();
         }
         // TODO: GC unneeded spans.

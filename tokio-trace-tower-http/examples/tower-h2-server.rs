@@ -147,17 +147,21 @@ fn main() {
                             .serve(sock)
                             .map_err(|e| {
                                 error!("error {:?}", e);
-                            }).and_then(|_| {
+                            })
+                            .and_then(|_| {
                                 debug!("response finished");
                                 future::ok(())
-                            }).instrument(conn_span2);
+                            })
+                            .instrument(conn_span2);
                         reactor.spawn(Box::new(serve));
 
                         Ok((h2, reactor))
                     })
-                }).map_err(|e| {
+                })
+                .map_err(|e| {
                     error!("serve error {:?}", e);
-                }).map(|_| {})
+                })
+                .map(|_| {})
                 .instrument(serve_span2);
 
             rt.spawn(serve);

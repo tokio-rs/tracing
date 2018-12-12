@@ -29,7 +29,8 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
         method = &field::debug(req.method()),
         uri = &field::debug(req.uri()),
         headers = &field::debug(req.headers())
-    ).enter(|| {
+    )
+    .enter(|| {
         info!("received request");
         let mut response = Response::new(Body::empty());
 
@@ -137,13 +138,16 @@ fn main() {
                     http.serve_connection(sock, service_fn(echo))
                         .map_err(|e| {
                             error!({ error = field::display(e) }, "serve error");
-                        }).instrument(span),
+                        })
+                        .instrument(span),
                 );
                 Ok::<_, ::std::io::Error>(http)
-            }).map(|_| ())
+            })
+            .map(|_| ())
             .map_err(|e| {
                 error!({ error = field::display(e) }, "server error");
-            }).instrument(server_span.clone());
+            })
+            .instrument(server_span.clone());
         server_span.enter(|| {
             info!("listening...");
             hyper::rt::run(server);

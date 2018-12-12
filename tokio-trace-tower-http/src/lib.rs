@@ -113,7 +113,8 @@ where
                 version = &field::debug(request.version()),
                 uri = &field::debug(request.uri()),
                 headers = &field::debug(request.headers())
-            ).enter(move || inner.call(request).instrument(span2))
+            )
+            .enter(move || inner.call(request).instrument(span2))
         })
     }
 }

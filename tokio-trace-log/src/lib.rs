@@ -373,7 +373,8 @@ impl EventLineBuilder {
                     .args(format_args!(
                         "{}{}{}{}",
                         self.message, before_current, current_span, self.log_line
-                    )).build(),
+                    ))
+                    .build(),
             );
         }
     }
@@ -463,7 +464,8 @@ impl Subscriber for TraceLogger {
                                 .args(format_args!(
                                     "enter {}; id={:?}; in={:?}; {}",
                                     meta.name, id, current_id, current_fields
-                                )).build(),
+                                ))
+                                .build(),
                         );
                     } else {
                         logger.log(
