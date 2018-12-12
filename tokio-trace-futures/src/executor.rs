@@ -32,7 +32,8 @@ impl<T, F> InstrumentExecutor<F> for T
 where
     T: Executor<Instrumented<F>>,
     F: Future<Item = (), Error = ()>,
-{}
+{
+}
 
 macro_rules! deinstrument_err {
     ($e:expr) => {

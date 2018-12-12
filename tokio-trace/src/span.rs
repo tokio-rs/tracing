@@ -404,7 +404,8 @@ impl fmt::Debug for Span {
             span.field("id", &inner.id())
         } else {
             span.field("disabled", &true)
-        }.finish()
+        }
+        .finish()
     }
 }
 
@@ -837,7 +838,8 @@ mod tests {
             dispatcher::with_default(Dispatch::new(subscriber::mock().run()), || {
                 foo.enter(|| {});
             })
-        }).join()
+        })
+        .join()
         .unwrap();
     }
 

@@ -90,7 +90,8 @@ mod tests {
                     true
                 }
                 _ => false,
-            }).run_with_handle();
+            })
+            .run_with_handle();
 
         dispatcher::with_default(Dispatch::new(subscriber), move || {
             // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
@@ -219,7 +220,8 @@ mod tests {
                     }
                     _ => false,
                 }
-            }).run();
+            })
+            .run();
 
         dispatcher::with_default(Dispatch::new(subscriber), move || {
             // Enter "charlie" and then "dave". The dispatcher expects to see "dave" but
@@ -277,7 +279,8 @@ mod tests {
                     true
                 }
                 _ => false,
-            }).run();
+            })
+            .run();
 
         dispatcher::with_default(Dispatch::new(subscriber), || {
             // Call the function once. The filter should be re-evaluated.
