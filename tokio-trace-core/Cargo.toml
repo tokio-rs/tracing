@@ -8,7 +8,7 @@ default = []
 test-support = []
 
 [dependencies]
-lazy_static = "1.2.0"
+lazy_static = "1.0.0"
 
 [dev-dependencies]
 futures = "0.1"
