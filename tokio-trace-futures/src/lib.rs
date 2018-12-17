@@ -120,12 +120,16 @@ impl<T> WithDispatch<T> {
 }
 
 #[cfg(test)]
+#[path = "../../tokio-trace/tests/support/mod.rs"]
+pub mod test_support;
+
+#[cfg(test)]
 mod tests {
     extern crate tokio;
 
-    use super::*;
+    use super::{test_support::*, *};
     use futures::{future, stream, task};
-    use tokio_trace::{dispatcher, span, subscriber, Dispatch};
+    use tokio_trace::Dispatch;
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,
