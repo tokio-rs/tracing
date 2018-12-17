@@ -37,12 +37,12 @@
 //! # extern crate tokio_trace;
 //! # extern crate futures;
 //! # use futures::{Future, Poll, Async};
-//! struct MyFuture {
+//! struct MyFuture<'a> {
 //!    // data
-//!    span: tokio_trace::Span,
+//!    span: tokio_trace::Span<'a>,
 //! }
 //!
-//! impl Future for MyFuture {
+//! impl<'a> Future for MyFuture<'a> {
 //!     type Item = ();
 //!     type Error = ();
 //!
@@ -160,11 +160,11 @@ use {
 /// span will silently do nothing. Thus, the handle can be used in the same
 /// manner regardless of whether or not the trace is currently being collected.
 #[derive(Clone, PartialEq, Hash)]
-pub struct Span {
+pub struct Span<'a> {
     /// A handle used to enter the span when it is not executing.
     ///
     /// If this is `None`, then the span has either closed or was never enabled.
-    inner: Option<Enter>,
+    inner: Option<Enter<'a>>,
 
     /// Set to `true` when the span closes.
     ///
@@ -193,7 +193,7 @@ pub struct Event<'a> {
     /// A handle used to enter the span when it is not executing.
     ///
     /// If this is `None`, then the span has either closed or was never enabled.
-    inner: Option<Inner<'a>>,
+    inner: Option<Enter<'a>>,
 }
 
 /// A handle representing the capacity to enter a span which is known to exist.
@@ -202,7 +202,7 @@ pub struct Event<'a> {
 /// enabled by the current filter. This type is primarily used for implementing
 /// span handles; users should typically not need to interact with it directly.
 #[derive(Debug)]
-pub(crate) struct Inner<'a> {
+pub(crate) struct Enter<'a> {
     /// The span's ID, as provided by `subscriber`.
     id: Id,
 
@@ -219,10 +219,6 @@ pub(crate) struct Inner<'a> {
     meta: &'a Metadata<'a>,
 }
 
-/// When an `Inner` corresponds to a `Span` rather than an `Event`, it can be
-/// used to enter that span.
-type Enter = Inner<'static>;
-
 /// A guard representing a span which has been entered and is currently
 /// executing.
 ///
@@ -233,13 +229,13 @@ type Enter = Inner<'static>;
 /// typically not need to interact with it directly.
 #[derive(Debug)]
 #[must_use = "once a span has been entered, it should be exited"]
-struct Entered {
-    inner: Enter,
+struct Entered<'a> {
+    inner: Enter<'a>,
 }
 
 // ===== impl Span =====
 
-impl Span {
+impl<'a> Span<'a> {
     /// Constructs a new `Span` originating from the given [`Callsite`].
     ///
     /// The new span will be constructed by the currently-active [`Subscriber`],
@@ -256,7 +252,7 @@ impl Span {
     /// [field values]: ::span::Span::record
     /// [`follows_from` annotations]: ::span::Span::follows_from
     #[inline]
-    pub fn new<F>(interest: Interest, meta: &'static Metadata<'static>, if_enabled: F) -> Span
+    pub fn new<F>(interest: Interest, meta: &'a Metadata<'a>, if_enabled: F) -> Span<'a>
     where
         F: FnOnce(&mut Span),
     {
@@ -270,7 +266,7 @@ impl Span {
                     is_closed: false,
                 };
             }
-            let id = dispatch.new_static(meta);
+            let id = dispatch.new_span(meta);
             let inner = Some(Enter::new(id, dispatch, meta));
             Self {
                 inner,
@@ -284,7 +280,7 @@ impl Span {
     }
 
     /// Constructs a new disabled span.
-    pub fn new_disabled() -> Span {
+    pub fn new_disabled() -> Span<'a> {
         Span {
             inner: None,
             is_closed: false,
@@ -392,12 +388,12 @@ impl Span {
     }
 
     /// Returns this span's `Metadata`, if it is enabled.
-    pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
+    pub fn metadata(&self) -> Option<&'a Metadata<'a>> {
         self.inner.as_ref().map(|inner| inner.metadata())
     }
 }
 
-impl fmt::Debug for Span {
+impl<'a> fmt::Debug for Span<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut span = f.debug_struct("Span");
         if let Some(ref inner) = self.inner {
@@ -440,7 +436,7 @@ impl<'a> Event<'a> {
                 return Self { inner: None };
             }
             let id = dispatch.new_span(meta);
-            let inner = Inner::new(id, dispatch, meta);
+            let inner = Enter::new(id, dispatch, meta);
             Self { inner: Some(inner) }
         });
         if !event.is_disabled() {
@@ -529,9 +525,28 @@ impl<'a> Event<'a> {
     }
 }
 
-// ===== impl Inner =====
+// ===== impl Enter =====
 
-impl<'a> Inner<'a> {
+impl<'a> Enter<'a> {
+    /// Indicates that this handle will not be reused to enter the span again.
+    ///
+    /// After calling `close`, the `Entered` guard returned by `self.enter()`
+    /// will _drop_ this handle when it is exited.
+    fn close(&mut self) {
+        self.closed = true;
+    }
+
+    /// Enters the span, returning a guard that may be used to exit the span and
+    /// re-enter the prior span.
+    ///
+    /// This is used internally to implement `Span::enter`. It may be used for
+    /// writing custom span handles, but should generally not be called directly
+    /// when entering a span.
+    fn enter(self) -> Entered<'a> {
+        self.subscriber.enter(&self.id);
+        Entered { inner: self }
+    }
+
     /// Indicates that the span with the given ID has an indirect causal
     /// relationship with this span.
     ///
@@ -596,25 +611,25 @@ impl<'a> Inner<'a> {
     }
 }
 
-impl<'a> cmp::PartialEq for Inner<'a> {
+impl<'a> cmp::PartialEq for Enter<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<'a> Hash for Inner<'a> {
+impl<'a> Hash for Enter<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl<'a> Drop for Inner<'a> {
+impl<'a> Drop for Enter<'a> {
     fn drop(&mut self) {
         self.subscriber.drop_span(self.id.clone());
     }
 }
 
-impl<'a> Clone for Inner<'a> {
+impl<'a> Clone for Enter<'a> {
     fn clone(&self) -> Self {
         Self {
             id: self.subscriber.clone_span(&self.id),
@@ -625,7 +640,7 @@ impl<'a> Clone for Inner<'a> {
     }
 }
 
-impl<'a> field::Record for Inner<'a> {
+impl<'a> field::Record for Enter<'a> {
     #[inline]
     fn record_i64<Q: ?Sized>(&mut self, field: &Q, value: i64)
     where
@@ -677,35 +692,13 @@ impl<'a> field::Record for Inner<'a> {
     }
 }
 
-// ===== impl Enter =====
-
-impl Enter {
-    /// Indicates that this handle will not be reused to enter the span again.
-    ///
-    /// After calling `close`, the `Entered` guard returned by `self.enter()`
-    /// will _drop_ this handle when it is exited.
-    fn close(&mut self) {
-        self.closed = true;
-    }
-
-    /// Enters the span, returning a guard that may be used to exit the span and
-    /// re-enter the prior span.
-    ///
-    /// This is used internally to implement `Span::enter`. It may be used for
-    /// writing custom span handles, but should generally not be called directly
-    /// when entering a span.
-    fn enter(self) -> Entered {
-        self.subscriber.enter(&self.id);
-        Entered { inner: self }
-    }
-}
-
 // ===== impl Entered =====
-impl Entered {
+
+impl<'a> Entered<'a> {
     /// Exit the `Entered` guard, returning an `Enter` handle that may be used
     /// to re-enter the span, or `None` if the span closed while performing the
     /// exit.
-    fn exit(self) -> Option<Enter> {
+    fn exit(self) -> Option<Enter<'a>> {
         self.inner.subscriber.exit(&self.inner.id);
         if self.inner.closed {
             // Dropping `inner` will allow it to perform the closure if
@@ -781,7 +774,7 @@ mod tests {
     fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
         // Every time time this function is called, it will return a _new
         // instance_ of a span with the same metadata, name, and fields.
-        fn make_span() -> Span {
+        fn make_span() -> Span<'static> {
             span!("foo", bar = 1u64, baz = false)
         }
 

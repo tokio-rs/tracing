@@ -15,26 +15,26 @@ use tower_service::Service;
 use tower_util::MakeService;
 
 #[derive(Debug)]
-pub struct InstrumentedHttpService<T> {
+pub struct InstrumentedHttpService<'span, T> {
     inner: T,
-    span: tokio_trace::Span,
+    span: Span<'span>,
 }
 
-impl<T> InstrumentedHttpService<T> {
-    pub fn new(inner: T, span: tokio_trace::Span) -> Self {
+impl<'span, T> InstrumentedHttpService<'span, T> {
+    pub fn new(inner: T, span: Span<'span>) -> Self {
         Self { inner, span }
     }
 }
 
 #[derive(Debug)]
-pub struct InstrumentedMakeService<T, B> {
+pub struct InstrumentedMakeService<'span, T, B> {
     inner: T,
-    span: Span,
+    span: Span<'span>,
     _p: PhantomData<fn() -> B>,
 }
 
-impl<T, B> InstrumentedMakeService<T, B> {
-    pub fn new<Target>(inner: T, span: Span) -> Self
+impl<'span, T, B> InstrumentedMakeService<'span, T, B> {
+    pub fn new<Target>(inner: T, span: Span<'span>) -> Self
     where
         T: MakeService<Target, http::Request<B>>,
     {
@@ -46,13 +46,13 @@ impl<T, B> InstrumentedMakeService<T, B> {
     }
 }
 
-impl<T, Target, B> Service<Target> for InstrumentedMakeService<T, B>
+impl<'span, T, Target, B> Service<Target> for InstrumentedMakeService<'span, T, B>
 where
     T: MakeService<Target, http::Request<B>>,
 {
-    type Response = InstrumentedHttpService<T::Service>;
+    type Response = InstrumentedHttpService<'span, T::Service>;
     type Error = T::MakeError;
-    type Future = InstrumentedMakeServiceFuture<T::Future>;
+    type Future = InstrumentedMakeServiceFuture<'span, T::Future>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.inner.poll_ready()
@@ -65,16 +65,16 @@ where
     }
 }
 
-pub struct InstrumentedMakeServiceFuture<T> {
+pub struct InstrumentedMakeServiceFuture<'span, T> {
     inner: T,
-    span: tokio_trace::Span,
+    span: Span<'span>,
 }
 
-impl<T> Future for InstrumentedMakeServiceFuture<T>
+impl<'span, T> Future for InstrumentedMakeServiceFuture<'span, T>
 where
     T: Future,
 {
-    type Item = InstrumentedHttpService<T::Item>;
+    type Item = InstrumentedHttpService<'span, T::Item>;
     type Error = T::Error;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let span2 = self.span.clone();
@@ -88,12 +88,12 @@ where
     }
 }
 
-impl<T, B> Service<http::Request<B>> for InstrumentedHttpService<T>
+impl<'span, T, B> Service<http::Request<B>> for InstrumentedHttpService<'span, T>
 where
     T: Service<http::Request<B>>,
 {
     type Response = T::Response;
-    type Future = Instrumented<T::Future>;
+    type Future = Instrumented<'span, T::Future>;
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {

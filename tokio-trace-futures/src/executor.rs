@@ -5,14 +5,14 @@ use futures::{
 use tokio_trace::Span;
 use {Instrument, Instrumented, WithDispatch};
 
-pub trait InstrumentExecutor<F>
+pub trait InstrumentExecutor<'a, F>
 where
-    Self: Executor<Instrumented<F>>,
+    Self: Executor<Instrumented<'a, F>>,
     F: Future<Item = (), Error = ()>,
 {
     fn instrument<G>(self, mk_span: G) -> InstrumentedExecutor<Self, G>
     where
-        G: Fn() -> Span,
+        G: Fn() -> Span<'a>,
         Self: Sized,
     {
         InstrumentedExecutor {
@@ -28,9 +28,9 @@ pub struct InstrumentedExecutor<T, G> {
     mk_span: G,
 }
 
-impl<T, F> InstrumentExecutor<F> for T
+impl<'a, T, F> InstrumentExecutor<'a, F> for T
 where
-    T: Executor<Instrumented<F>>,
+    T: Executor<Instrumented<'a, F>>,
     F: Future<Item = (), Error = ()>,
 {
 }
@@ -45,11 +45,11 @@ macro_rules! deinstrument_err {
     };
 }
 
-impl<T, F, N> Executor<F> for InstrumentedExecutor<T, N>
+impl<'a, T, F, N> Executor<F> for InstrumentedExecutor<T, N>
 where
-    T: Executor<Instrumented<F>>,
+    T: Executor<Instrumented<'a, F>>,
     F: Future<Item = (), Error = ()>,
-    N: Fn() -> Span,
+    N: Fn() -> Span<'a>,
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         let future = future.instrument((self.mk_span)());

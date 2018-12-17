@@ -70,7 +70,7 @@ impl fmt::Display for ColorLevel {
 }
 
 impl Span {
-    fn new(parent: Option<Id>, _meta: &'static tokio_trace::Metadata<'static>) -> Self {
+    fn new(parent: Option<Id>, _meta: &tokio_trace::Metadata) -> Self {
         Self {
             parent,
             kvs: Vec::new(),
@@ -164,20 +164,17 @@ impl Subscriber for SloggishSubscriber {
     fn new_span(&self, span: &tokio_trace::Metadata) -> tokio_trace::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
         let id = tokio_trace::Id::from_u64(next);
-        self.events
-            .lock()
-            .unwrap()
-            .insert(id.clone(), Event::new(span));
-        id
-    }
-
-    fn new_static(&self, span: &'static tokio_trace::Metadata<'static>) -> tokio_trace::Id {
-        let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
-        let id = tokio_trace::Id::from_u64(next);
-        self.spans
-            .lock()
-            .unwrap()
-            .insert(id.clone(), Span::new(self.current.id(), span));
+        if span.name.contains("event") {
+            self.events
+                .lock()
+                .unwrap()
+                .insert(id.clone(), Event::new(span));
+        } else {
+            self.spans
+                .lock()
+                .unwrap()
+                .insert(id.clone(), Span::new(self.current.id(), span));
+        }
         id
     }
 

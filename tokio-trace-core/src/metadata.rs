@@ -41,7 +41,7 @@ pub struct Metadata<'a> {
     /// constructing new `Metadata`, use the `metadata!` macro or the
     /// `Metadata::new` constructor instead!
     #[doc(hidden)]
-    pub name: &'a str,
+    pub name: &'static str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
@@ -134,7 +134,7 @@ impl<'a> Metadata<'a> {
     /// Construct new metadata for a span, with a name, target, level, field
     /// names, and optional source code location.
     pub fn new(
-        name: &'a str,
+        name: &'static str,
         target: &'a str,
         level: Level,
         module_path: Option<&'a str>,
@@ -168,7 +168,7 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the name of the span.
-    pub fn name(&self) -> &'a str {
+    pub fn name(&self) -> &'static str {
         self.name
     }
 
