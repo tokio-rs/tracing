@@ -95,13 +95,12 @@ pub(crate) fn register_dispatch(dispatch: &Dispatch) {
     }
 }
 
-/// Reset the registry. This is typically only useful in tests.
-#[cfg(any(test, feature = "test-support"))]
-pub fn reset_registry() {
-    let mut registry = REGISTRY.lock().unwrap();
-    registry.callsites.clear();
-    registry.dispatchers.clear();
-}
+// TODO: do we want to provide this functionality?
+// pub fn reset_registry() {
+//     let mut registry = REGISTRY.lock().unwrap();
+//     registry.callsites.clear();
+//     registry.dispatchers.clear();
+// }
 
 // ===== impl Callsite =====
 

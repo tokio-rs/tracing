@@ -3,10 +3,6 @@ name = "tokio-trace"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
-[features]
-default = []
-test-support = ["tokio-trace-core/test-support"]
-
 [dependencies]
 tokio-trace-core = { path = "../tokio-trace-core" }
 
@@ -16,5 +12,4 @@ humantime = "1.1.1"
 env_logger = "0.5"
 log = "0.4"
 tokio-trace-log = { path = "../tokio-trace-log" }
-tokio-trace-core = { path = "../tokio-trace-core", features = ["test-support"] }
 futures = "0.1"
