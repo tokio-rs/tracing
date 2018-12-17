@@ -11,7 +11,7 @@ pub mod executor;
 pub trait Instrument: Sized {
     // TODO: consider renaming to `in_span` for consistency w/
     // `in_current_span`?
-    fn instrument(self, span: Span) -> Instrumented<Self> {
+    fn instrument<'a>(self, span: Span<'a>) -> Instrumented<'a, Self> {
         Instrumented { inner: self, span }
     }
 }
@@ -29,9 +29,9 @@ pub trait WithSubscriber: Sized {
 }
 
 #[derive(Debug)]
-pub struct Instrumented<T> {
+pub struct Instrumented<'a, T> {
     inner: T,
-    span: Span,
+    span: Span<'a>,
 }
 
 #[derive(Clone, Debug)]
@@ -42,7 +42,7 @@ pub struct WithDispatch<T> {
 
 impl<T: Sized> Instrument for T {}
 
-impl<T: Future> Future for Instrumented<T> {
+impl<'a, T: Future> Future for Instrumented<'a, T> {
     type Item = T::Item;
     type Error = T::Error;
 
@@ -61,7 +61,7 @@ impl<T: Future> Future for Instrumented<T> {
     }
 }
 
-impl<T: Stream> Stream for Instrumented<T> {
+impl<'a, T: Stream> Stream for Instrumented<'a, T> {
     type Item = T::Item;
     type Error = T::Error;
 
@@ -81,7 +81,7 @@ impl<T: Stream> Stream for Instrumented<T> {
     }
 }
 
-impl<T: Sink> Sink for Instrumented<T> {
+impl<'a, T: Sink> Sink for Instrumented<'a, T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
 

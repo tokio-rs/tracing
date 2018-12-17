@@ -99,26 +99,6 @@ pub trait Subscriber {
         }
     }
 
-    /// Record the construction of a new [`Span`], returning a new ID
-    /// for the span being constructed.
-    ///
-    /// Unlike [`new_span`], this function is always called with span
-    /// [metadata] which are valid for the `'static` lifetime.
-    ///
-    /// This function defaults to simply calling `self.new_span()`, but if the
-    /// subscriber wishes to do something with the the known-`'static` span
-    /// metadata (such as storing a reference to them in some collection) it
-    /// may override the default implementation to do so. It may then generate a
-    /// new ID for that span, either by calling `new_span`, or through a different
-    /// method from the ID generation for events.
-    ///
-    /// [`Span`]: ::span::Span
-    /// [`new_span`]: ::subscriber::Subscriber::new_span
-    /// [metadata]: ::metadata::Metadata
-    fn new_static(&self, metadata: &'static Metadata<'static>) -> Span {
-        self.new_span(metadata)
-    }
-
     /// Record the construction of a new [`Span`], returning a new ID for the
     /// span being constructed.
     ///
@@ -408,16 +388,13 @@ mod test_support {
         Nothing,
     }
 
-    enum SpanOrEvent {
-        Span {
-            span: &'static Metadata<'static>,
-            refs: usize,
-        },
-        Event,
+    struct SpanState {
+        name: &'static str,
+        refs: usize,
     }
 
     struct Running<F: Fn(&Metadata) -> bool> {
-        spans: Mutex<HashMap<Span, SpanOrEvent>>,
+        spans: Mutex<HashMap<Span, SpanState>>,
         expected: Arc<Mutex<VecDeque<Expect>>>,
         ids: AtomicUsize,
         filter: F,
@@ -434,15 +411,6 @@ mod test_support {
         MockSubscriber {
             expected: VecDeque::new(),
             filter: (|_: &Metadata| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
-        }
-    }
-
-    impl SpanOrEvent {
-        fn name(&self) -> &str {
-            match self {
-                SpanOrEvent::Span { span, .. } => span.name,
-                SpanOrEvent::Event => "event",
-            }
         }
     }
 
@@ -519,65 +487,54 @@ mod test_support {
             // TODO: it should be possible to expect spans to follow from other spans
         }
 
-        fn new_span(&self, _attrs: &Metadata) -> Span {
+        fn new_span(&self, meta: &Metadata) -> Span {
             let id = self.ids.fetch_add(1, Ordering::SeqCst);
             let id = Span::from_u64(id as u64);
-            println!("new_span: id={:?};", id);
-            self.spans
-                .lock()
-                .unwrap()
-                .insert(id.clone(), SpanOrEvent::Event);
-            id
-        }
-
-        fn new_static(&self, span: &'static Metadata<'static>) -> Span {
-            let id = self.ids.fetch_add(1, Ordering::SeqCst);
-            let id = Span::from_u64(id as u64);
-            println!("new_static: {}; id={:?};", span.name, id);
-            self.spans
-                .lock()
-                .unwrap()
-                .insert(id.clone(), SpanOrEvent::Span { span, refs: 1 });
+            println!(
+                "new_span: name={:?}; target={:?}; id={:?};",
+                meta.name(),
+                meta.target(),
+                id
+            );
+            self.spans.lock().unwrap().insert(
+                id.clone(),
+                SpanState {
+                    name: meta.name(),
+                    refs: 1,
+                },
+            );
             id
         }
 
         fn enter(&self, id: &Span) {
             let spans = self.spans.lock().unwrap();
-            if let Some(span_or_event) = spans.get(id) {
-                println!("enter: {}; id={:?};", span_or_event.name(), id);
-                match (span_or_event, self.expected.lock().unwrap().pop_front()) {
-                    (_, None) => {}
-                    (SpanOrEvent::Event, _) => panic!("events should never be entered!"),
-                    (SpanOrEvent::Span { span, .. }, Some(Expect::Event(_))) => panic!(
+            if let Some(span) = spans.get(id) {
+                println!("enter: {}; id={:?};", span.name, id);
+                match self.expected.lock().unwrap().pop_front() {
+                    None => {}
+                    Some(Expect::Event(_)) => panic!(
                         "expected an event, but entered span {:?} instead",
                         span.name
                     ),
-                    (SpanOrEvent::Span { span, .. }, Some(Expect::Enter(ref expected_span))) => {
+                    Some(Expect::Enter(ref expected_span)) => {
                         if let Some(name) = expected_span.name {
                             assert_eq!(name, span.name);
                         }
                         // TODO: expect fields
                     }
-                    (SpanOrEvent::Span { span, .. }, Some(Expect::Exit(ref expected_span))) => {
-                        panic!(
-                            "expected to exit {}, but entered span {:?} instead",
-                            expected_span, span.name
-                        )
-                    }
-                    (
-                        SpanOrEvent::Span { span, .. },
-                        Some(Expect::CloneSpan(ref expected_span)),
-                    ) => panic!(
+                    Some(Expect::Exit(ref expected_span)) => panic!(
+                        "expected to exit {}, but entered span {:?} instead",
+                        expected_span, span.name
+                    ),
+                    Some(Expect::CloneSpan(ref expected_span)) => panic!(
                         "expected to clone {}, but entered span {:?} instead",
                         expected_span, span.name
                     ),
-                    (SpanOrEvent::Span { span, .. }, Some(Expect::DropSpan(ref expected_span))) => {
-                        panic!(
-                            "expected to drop {}, but entered span {:?} instead",
-                            expected_span, span.name
-                        )
-                    }
-                    (SpanOrEvent::Span { span, .. }, Some(Expect::Nothing)) => panic!(
+                    Some(Expect::DropSpan(ref expected_span)) => panic!(
+                        "expected to drop {}, but entered span {:?} instead",
+                        expected_span, span.name
+                    ),
+                    Some(Expect::Nothing) => panic!(
                         "expected nothing else to happen, but entered span {:?}",
                         span.name,
                     ),
@@ -590,36 +547,31 @@ mod test_support {
             let span = spans
                 .get(id)
                 .unwrap_or_else(|| panic!("no span for ID {:?}", id));
-            println!("exit: {}; id={:?};", span.name(), id);
-            match (span, self.expected.lock().unwrap().pop_front()) {
-                (_, None) => {}
-                (SpanOrEvent::Event, _) => panic!("events should never be exited!"),
-                (SpanOrEvent::Span { span, .. }, Some(Expect::Event(_))) => {
+            println!("exit: {}; id={:?};", span.name, id);
+            match self.expected.lock().unwrap().pop_front() {
+                None => {}
+                Some(Expect::Event(_)) => {
                     panic!("expected an event, but exited span {:?} instead", span.name)
                 }
-                (SpanOrEvent::Span { span, .. }, Some(Expect::Enter(ref expected_span))) => panic!(
+                Some(Expect::Enter(ref expected_span)) => panic!(
                     "expected to enter {}, but exited span {:?} instead",
                     expected_span, span.name
                 ),
-                (SpanOrEvent::Span { span, .. }, Some(Expect::Exit(ref expected_span))) => {
+                Some(Expect::Exit(ref expected_span)) => {
                     if let Some(name) = expected_span.name {
                         assert_eq!(name, span.name);
                     }
                     // TODO: expect fields
                 }
-                (SpanOrEvent::Span { span, .. }, Some(Expect::CloneSpan(ref expected_span))) => {
-                    panic!(
-                        "expected to clone {}, but exited span {:?} instead",
-                        expected_span, span.name
-                    )
-                }
-                (SpanOrEvent::Span { span, .. }, Some(Expect::DropSpan(ref expected_span))) => {
-                    panic!(
-                        "expected to drop {}, but exited span {:?} instead",
-                        expected_span, span.name
-                    )
-                }
-                (SpanOrEvent::Span { span, .. }, Some(Expect::Nothing)) => panic!(
+                Some(Expect::CloneSpan(ref expected_span)) => panic!(
+                    "expected to clone {}, but exited span {:?} instead",
+                    expected_span, span.name
+                ),
+                Some(Expect::DropSpan(ref expected_span)) => panic!(
+                    "expected to drop {}, but exited span {:?} instead",
+                    expected_span, span.name
+                ),
+                Some(Expect::Nothing) => panic!(
                     "expected nothing else to happen, but exited span {:?}",
                     span.name,
                 ),
@@ -627,20 +579,11 @@ mod test_support {
         }
 
         fn clone_span(&self, id: &Span) -> Span {
-            let name = self.spans.lock().unwrap().get_mut(id).map(|span_or_event| {
-                if let SpanOrEvent::Span {
-                    ref span,
-                    ref mut refs,
-                } = span_or_event
-                {
-                    let name = span.name;
-                    println!("clone_span: {}; id={:?}; refs={:?};", name, id, *refs);
-                    *refs += 1;
-                    name
-                } else {
-                    println!("clone_span: event; id={:?};", id);
-                    "event"
-                }
+            let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
+                let name = span.name;
+                println!("clone_span: {}; id={:?}; refs={:?};", name, id, span.refs);
+                span.refs += 1;
+                name
             });
             if name.is_none() {
                 println!("clone_span: id={:?};", id);
@@ -661,21 +604,14 @@ mod test_support {
         fn drop_span(&self, id: Span) {
             let mut is_event = false;
             let name = if let Ok(mut spans) = self.spans.try_lock() {
-                spans.get_mut(&id).map(|span_or_event| match span_or_event {
-                    SpanOrEvent::Span {
-                        ref span,
-                        ref mut refs,
-                    } => {
-                        let name = span.name;
-                        println!("drop_span: {}; id={:?}; refs={:?};", name, id, *refs);
-                        *refs -= 1;
-                        name
-                    }
-                    SpanOrEvent::Event => {
-                        println!("drop_span: event; id={:?}", id);
+                spans.get_mut(&id).map(|span| {
+                    let name = span.name;
+                    if name.contains("event") {
                         is_event = true;
-                        "event"
                     }
+                    println!("drop_span: {}; id={:?}; refs={:?};", name, id, span.refs);
+                    span.refs -= 1;
+                    name
                 })
             } else {
                 None

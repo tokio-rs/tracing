@@ -149,7 +149,7 @@ pub struct LogTracer {
 #[derive(Default)]
 pub struct TraceLogger {
     settings: TraceLoggerBuilder,
-    in_progress: Mutex<InProgress>,
+    in_progress: Mutex<HashMap<Id, SpanLineBuilder>>,
     current: subscriber::CurrentSpanPerThread,
 }
 
@@ -162,11 +162,6 @@ pub struct TraceLoggerBuilder {
     parent_fields: bool,
 }
 
-#[derive(Default)]
-struct InProgress {
-    spans: HashMap<Id, SpanLineBuilder>,
-    events: HashMap<Id, EventLineBuilder>,
-}
 // ===== impl LogTracer =====
 
 impl LogTracer {
@@ -208,10 +203,7 @@ impl TraceLogger {
         Self {
             settings,
             current: subscriber::CurrentSpanPerThread::new(),
-            in_progress: Mutex::new(InProgress {
-                spans: HashMap::new(),
-                events: HashMap::new(),
-            }),
+            in_progress: Mutex::new(HashMap::new()),
         }
     }
 
@@ -258,109 +250,76 @@ impl TraceLoggerBuilder {
 struct SpanLineBuilder {
     parent: Option<Id>,
     ref_count: usize,
-    meta: &'static Metadata<'static>,
     log_line: String,
     fields: String,
+    file: Option<String>,
+    line: Option<u32>,
+    module_path: Option<String>,
+    target: String,
+    level: log::Level,
+    name: String,
+    log_finish: bool,
 }
 
 impl SpanLineBuilder {
     fn new(
         parent: Option<Id>,
-        meta: &'static Metadata<'static>,
+        meta: &Metadata,
         fields: String,
         id: Id,
         settings: &TraceLoggerBuilder,
     ) -> Self {
         let mut log_line = String::new();
-        write!(&mut log_line, "{}", meta.name).expect("write to string shouldn't fail");
+        let name = meta.name();
+        let log_finish = if !name.contains("event") {
+            write!(&mut log_line, "close {}; ", name).expect("write to string shouldn't fail");
+            settings.log_span_closes
+        } else {
+            true
+        };
         if settings.log_ids {
-            write!(&mut log_line, " span={:?}; ", id).expect("write to string shouldn't fail");
+            write!(&mut log_line, "id={:?}; ", id).expect("write to string shouldn't fail");
         }
         Self {
             parent,
             ref_count: 1,
-            meta,
             log_line,
             fields,
-        }
-    }
-
-    fn record(&mut self, key: &field::Field, value: &fmt::Debug) -> fmt::Result {
-        write!(
-            &mut self.fields,
-            "{}={:?}; ",
-            key.name().unwrap_or("???"),
-            value
-        )
-    }
-
-    fn finish(self) {
-        let meta = self.meta;
-        let log_meta = meta.as_log();
-        let logger = log::logger();
-        if logger.enabled(&log_meta) {
-            logger.log(
-                &log::Record::builder()
-                    .metadata(log_meta)
-                    .target(meta.target)
-                    .module_path(meta.module_path)
-                    .file(meta.file)
-                    .line(meta.line)
-                    .args(format_args!("close {}; {}", self.log_line, self.fields))
-                    .build(),
-            );
-        }
-    }
-}
-
-struct EventLineBuilder {
-    ref_count: usize,
-    level: tokio_trace::Level,
-    file: Option<String>,
-    line: Option<u32>,
-    module_path: Option<String>,
-    target: String,
-    message: String,
-    log_line: String,
-}
-
-impl EventLineBuilder {
-    fn new(meta: &Metadata, id: Id, settings: &TraceLoggerBuilder) -> Self {
-        let mut log_line = String::new();
-        if settings.log_ids {
-            write!(&mut log_line, "event={:?}; ", id,).expect("write to string shouldn't fail");
-        }
-        Self {
-            ref_count: 1,
-            level: meta.level.clone(),
-            file: meta.file.map(|s| s.to_owned()),
-            line: meta.line,
-            module_path: meta.module_path.map(|s| s.to_owned()),
-            target: meta.target.to_owned(),
-            message: String::new(),
-            log_line,
+            file: meta.file().map(String::from),
+            line: meta.line(),
+            module_path: meta.module_path().map(String::from),
+            target: String::from(meta.target()),
+            level: meta.level().as_log(),
+            name: String::from(name),
+            log_finish,
         }
     }
 
     fn record(&mut self, key: &field::Field, value: &fmt::Debug) -> fmt::Result {
         if key.name() == Some("message") {
-            write!(&mut self.message, "{:?}", value)
+            write!(&mut self.log_line, "{:?} ", value)
         } else {
             write!(
-                &mut self.log_line,
+                &mut self.fields,
                 "{}={:?}; ",
                 key.name().unwrap_or("???"),
                 value
             )
         }
     }
+    fn log_meta(&self) -> log::Metadata {
+        log::MetadataBuilder::new()
+            .level(self.level)
+            .target(self.target.as_ref())
+            .build()
+    }
 
     fn finish(self, current_span: &str) {
+        if !self.log_finish {
+            return;
+        }
+        let log_meta = self.log_meta();
         let logger = log::logger();
-        let log_meta = log::MetadataBuilder::new()
-            .level(self.level.as_log())
-            .target(self.target.as_ref())
-            .build();
         if logger.enabled(&log_meta) {
             let before_current = if current_span != "" { "; " } else { "" };
             logger.log(
@@ -372,7 +331,7 @@ impl EventLineBuilder {
                     .line(self.line)
                     .args(format_args!(
                         "{}{}{}{}",
-                        self.message, before_current, current_span, self.log_line
+                        self.log_line, before_current, current_span, self.fields
                     ))
                     .build(),
             );
@@ -385,46 +344,30 @@ impl Subscriber for TraceLogger {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_static(&self, new_span: &'static Metadata<'static>) -> Id {
+    fn new_span(&self, new_span: &Metadata) -> Id {
         let id = self.next_id();
         let mut in_progress = self.in_progress.lock().unwrap();
         let mut fields = String::new();
         let parent = self.current.id();
         if self.settings.parent_fields {
             let mut next_parent = parent.as_ref();
-            while let Some(ref parent) = next_parent.and_then(|p| in_progress.spans.get(&p)) {
+            while let Some(ref parent) = next_parent.and_then(|p| in_progress.get(&p)) {
                 write!(&mut fields, "{}", parent.fields).expect("write to string cannot fail");
                 next_parent = parent.parent.as_ref();
             }
         }
-        in_progress.spans.insert(
-            id.clone(),
-            SpanLineBuilder::new(parent, new_span, fields, id.clone(), &self.settings),
-        );
-        id
-    }
-
-    fn new_span(&self, new_span: &Metadata) -> Id {
-        let id = self.next_id();
-        self.in_progress.lock().unwrap().events.insert(
-            id.clone(),
-            EventLineBuilder::new(new_span, id.clone(), &self.settings),
-        );
+        let span = SpanLineBuilder::new(parent, new_span, fields, id.clone(), &self.settings);
+        in_progress.insert(id.clone(), span);
         id
     }
 
     fn record_debug(&self, span: &Id, key: &field::Field, value: &fmt::Debug) {
         let mut in_progress = self.in_progress.lock().unwrap();
-        if let Some(span) = in_progress.spans.get_mut(span) {
+        if let Some(span) = in_progress.get_mut(span) {
             if let Err(_e) = span.record(key, value) {
                 eprintln!("error formatting span");
             }
             return;
-        }
-        if let Some(event) = in_progress.events.get_mut(span) {
-            if let Err(_e) = event.record(key, value) {
-                eprintln!("error formatting event");
-            }
         }
     }
 
@@ -442,28 +385,27 @@ impl Subscriber for TraceLogger {
         self.current.enter(id.clone());
         let in_progress = self.in_progress.lock().unwrap();
         if self.settings.log_enters {
-            if let Some(span) = in_progress.spans.get(id) {
-                let meta = span.meta;
-                let log_meta = meta.as_log();
+            if let Some(span) = in_progress.get(id) {
+                let log_meta = span.log_meta();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
                     let current_id = self.current.id();
                     let current_fields = current_id
                         .as_ref()
-                        .and_then(|id| in_progress.spans.get(&id))
+                        .and_then(|id| in_progress.get(&id))
                         .map(|span| span.fields.as_ref())
                         .unwrap_or("");
                     if self.settings.log_ids {
                         logger.log(
                             &log::Record::builder()
                                 .metadata(log_meta)
-                                .target(meta.target)
-                                .module_path(meta.module_path)
-                                .file(meta.file)
-                                .line(meta.line)
+                                .target(span.target.as_ref())
+                                .module_path(span.module_path.as_ref().map(String::as_ref))
+                                .file(span.file.as_ref().map(String::as_ref))
+                                .line(span.line)
                                 .args(format_args!(
-                                    "enter {}; id={:?}; in={:?}; {}",
-                                    meta.name, id, current_id, current_fields
+                                    "enter {}; in={:?}; {}",
+                                    span.name, current_id, current_fields
                                 ))
                                 .build(),
                         );
@@ -471,11 +413,11 @@ impl Subscriber for TraceLogger {
                         logger.log(
                             &log::Record::builder()
                                 .metadata(log_meta)
-                                .target(meta.target)
-                                .module_path(meta.module_path)
-                                .file(meta.file)
-                                .line(meta.line)
-                                .args(format_args!("enter {}; {}", meta.name, current_fields))
+                                .target(span.target.as_ref())
+                                .module_path(span.module_path.as_ref().map(String::as_ref))
+                                .file(span.file.as_ref().map(String::as_ref))
+                                .line(span.line)
+                                .args(format_args!("enter {}; {}", span.name, current_fields))
                                 .build(),
                         );
                     }
@@ -484,60 +426,47 @@ impl Subscriber for TraceLogger {
         }
     }
 
-    fn exit(&self, span: &Id) {
+    fn exit(&self, id: &Id) {
         self.current.exit();
         if self.settings.log_exits {
-            let logger = log::logger();
-            logger.log(
-                &log::Record::builder()
-                    .level(log::Level::Trace)
-                    .args(format_args!("exit: id={:?};", span))
-                    .build(),
-            );
+            let in_progress = self.in_progress.lock().unwrap();
+            if let Some(span) = in_progress.get(id) {
+                let log_meta = span.log_meta();
+                let logger = log::logger();
+                if logger.enabled(&log_meta) {
+                    logger.log(
+                        &log::Record::builder()
+                            .metadata(log_meta)
+                            .target(span.target.as_ref())
+                            .module_path(span.module_path.as_ref().map(String::as_ref))
+                            .file(span.file.as_ref().map(String::as_ref))
+                            .line(span.line)
+                            .args(format_args!("exit {}", span.name))
+                            .build(),
+                    );
+                }
+            }
         }
     }
 
     fn clone_span(&self, id: &Id) -> Id {
         let mut in_progress = self.in_progress.lock().unwrap();
-        if let Some(span) = in_progress.spans.get_mut(id) {
+        if let Some(span) = in_progress.get_mut(id) {
             span.ref_count += 1;
-            return id.clone();
-        }
-
-        if let Some(event) = in_progress.events.get_mut(id) {
-            event.ref_count += 1;
         }
         id.clone()
     }
 
     fn drop_span(&self, id: Id) {
         let mut in_progress = self.in_progress.lock().unwrap();
-        if in_progress.spans.contains_key(&id) {
-            if in_progress.spans.get(&id).unwrap().ref_count == 1 {
-                let span = in_progress.spans.remove(&id).unwrap();
-                if self.settings.log_span_closes {
-                    span.finish();
-                }
+        if in_progress.contains_key(&id) {
+            if in_progress.get(&id).unwrap().ref_count == 1 {
+                let span = in_progress.remove(&id).unwrap();
+                span.finish("");
             } else {
-                in_progress.spans.get_mut(&id).unwrap().ref_count -= 1;
+                in_progress.get_mut(&id).unwrap().ref_count -= 1;
             }
             return;
-        }
-
-        if in_progress
-            .events
-            .get(&id)
-            .map(|event| event.ref_count == 1)
-            .unwrap_or(false)
-        {
-            let event = in_progress.events.remove(&id).unwrap();
-            if let Some(ref span) = self.current.id().and_then(|id| in_progress.spans.get(&id)) {
-                event.finish(&span.fields);
-            } else {
-                event.finish("");
-            }
-        } else if let Some(ref mut event) = in_progress.events.get_mut(&id) {
-            event.ref_count -= 1;
         }
     }
 }

@@ -56,11 +56,6 @@ impl Subscriber for Dispatch {
     }
 
     #[inline]
-    fn new_static(&self, metadata: &'static Metadata<'static>) -> Span {
-        self.subscriber.new_static(metadata)
-    }
-
-    #[inline]
     fn new_span(&self, metadata: &Metadata) -> Span {
         self.subscriber.new_span(metadata)
     }

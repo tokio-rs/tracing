@@ -23,7 +23,7 @@ use tokio_trace_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
-fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
+fn echo(req: Request<Body>) -> Instrumented<'static, BoxFut> {
     span!(
         "request",
         method = &field::debug(req.method()),
