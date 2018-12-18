@@ -281,7 +281,7 @@ macro_rules! trace {
         event!(target: module_path!(), $crate::Level::TRACE, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::TRACE, {}, $($arg)+)
+        drop(event!(target: module_path!(), $crate::Level::TRACE, {}, $($arg)+));
     );
 }
 
@@ -291,7 +291,7 @@ macro_rules! debug {
         event!(target: module_path!(), $crate::Level::DEBUG, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::DEBUG, {}, $($arg)+)
+        drop(event!(target: module_path!(), $crate::Level::DEBUG, {}, $($arg)+));
     );
 }
 
@@ -301,7 +301,7 @@ macro_rules! info {
         event!(target: module_path!(), $crate::Level::INFO, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::INFO, {}, $($arg)+)
+        drop(event!(target: module_path!(), $crate::Level::INFO, {}, $($arg)+));
     );
 }
 
@@ -311,7 +311,7 @@ macro_rules! warn {
         event!(target: module_path!(), $crate::Level::WARN, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::WARN, {}, $($arg)+)
+        drop(event!(target: module_path!(), $crate::Level::WARN, {}, $($arg)+));
     );
 }
 
@@ -321,7 +321,7 @@ macro_rules! error {
         event!(target: module_path!(), $crate::Level::ERROR, { $($k $( = $val)* ),* }, $($arg)+)
     );
     ( $($arg:tt)+ ) => (
-        event!(target: module_path!(), $crate::Level::ERROR, {}, $($arg)+)
+        drop(event!(target: module_path!(), $crate::Level::ERROR, {}, $($arg)+));
     );
 }
 

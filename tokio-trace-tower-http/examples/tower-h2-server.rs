@@ -145,9 +145,7 @@ fn main() {
 
                         let serve = h2
                             .serve(sock)
-                            .map_err(|e| {
-                                error!("error {:?}", e);
-                            })
+                            .map_err(|e| error!("error {:?}", e))
                             .and_then(|_| {
                                 debug!("response finished");
                                 future::ok(())
