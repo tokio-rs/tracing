@@ -238,25 +238,20 @@ impl<'a> Span<'a> {
     /// The new span will be constructed by the currently-active [`Subscriber`],
     /// with the [current span] as its parent (if one exists).
     ///
-    /// If the new span is enabled, then the provided function `if_enabled` is
-    /// envoked on it before it is returned. This allows [field values] and/or
-    /// [`follows_from` annotations] to be added to the span, but skips this
-    /// work for spans which are disabled.
+    /// After the span is constructed, [field values] and/or [`follows_from`]
+    /// annotations may be added to it.
     ///
     /// [`Callsite`]: ::callsite::Callsite
     /// [`Subscriber`]: ::subscriber::Subscriber
     /// [current span]: ::span::Span::current
     /// [field values]: ::span::Span::record
-    /// [`follows_from` annotations]: ::span::Span::follows_from
+    /// [`follows_from`]: ::span::Span::follows_from
     #[inline]
-    pub fn new<F>(interest: Interest, meta: &'a Metadata<'a>, if_enabled: F) -> Span<'a>
-    where
-        F: FnOnce(&mut Span),
-    {
+    pub fn new(interest: Interest, meta: &'a Metadata<'a>) -> Span<'a> {
         if interest.is_never() {
             return Span::new_disabled();
         }
-        let mut span = dispatcher::with_current(|dispatch| {
+        dispatcher::with_current(|dispatch| {
             if interest.is_sometimes() && !dispatch.enabled(meta) {
                 return Span {
                     inner: None,
@@ -269,11 +264,7 @@ impl<'a> Span<'a> {
                 inner,
                 is_closed: false,
             }
-        });
-        if !span.is_disabled() {
-            if_enabled(&mut span);
-        }
-        span
+        })
     }
 
     /// Constructs a new disabled span.
@@ -405,41 +396,32 @@ impl<'a> fmt::Debug for Span<'a> {
 // ===== impl Event =====
 
 impl<'a> Event<'a> {
-    /// Constructs a new `Span` originating from the given [`Callsite`].
+    /// Constructs a new `Event` originating from the given [`Callsite`].
     ///
     /// The new span will be constructed by the currently-active [`Subscriber`],
     /// with the [current span] as its parent (if one exists).
     ///
-    /// If the new span is enabled, then the provided function `if_enabled` is
-    /// envoked on it before it is returned. This allows [field values] and/or
-    /// [`follows_from` annotations] to be added to the span, but skips this
-    /// work for spans which are disabled.
+    /// After the event is constructed, [field values] and/or [`follows_from`]
+    /// annotations may be added to it.
     ///
     /// [`Callsite`]: ::callsite::Callsite
     /// [`Subscriber`]: ::subscriber::Subscriber
     /// [current span]: ::span::Span::current
-    /// [field values]: ::span::Span::record
-    /// [`follows_from` annotations]: ::span::Span::follows_from
+    /// [field values]: ::span::Evemt::record
+    /// [`follows_from`]: ::span::Event::follows_from
     #[inline]
-    pub fn new<F>(interest: Interest, meta: &'a Metadata<'a>, if_enabled: F) -> Self
-    where
-        F: FnOnce(&mut Self),
-    {
+    pub fn new(interest: Interest, meta: &'a Metadata<'a>) -> Self {
         if interest.is_never() {
             return Self { inner: None };
         }
-        let mut event = dispatcher::with_current(|dispatch| {
+        dispatcher::with_current(|dispatch| {
             if interest.is_sometimes() && !dispatch.enabled(meta) {
                 return Self { inner: None };
             }
             let id = dispatch.new_span(meta);
             let inner = Enter::new(id, dispatch, meta);
             Self { inner: Some(inner) }
-        });
-        if !event.is_disabled() {
-            if_enabled(&mut event);
-        }
-        event
+        })
     }
 
     /// Adds a formattable message describing the event that occurred.
