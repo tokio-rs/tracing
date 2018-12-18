@@ -3,9 +3,14 @@ name = "tokio-trace-futures"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
+[features]
+default = ["with-tokio"]
+with-tokio = ["tokio"]
+
 [dependencies]
 futures = "0.1"
 tokio-trace = { path = "../tokio-trace" }
+tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1"
