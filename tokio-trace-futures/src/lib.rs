@@ -98,6 +98,25 @@ impl<'a, T: Sink> Sink for Instrumented<'a, T> {
     }
 }
 
+impl<'a, T> Instrumented<'a, T> {
+    /// Borrows the `Span` that this type is instrumented by.
+    pub fn span(&self) -> &Span<'a> {
+        &self.span
+    }
+
+    /// Mutably borrows the `Span` that this type is instrumented by.
+    pub fn span_mut(&self) -> &Span<'a> {
+        &self.span
+    }
+
+    /// Consumes the `Instrumented`, returning the wrapped type.
+    ///
+    /// Note that this drops the span.
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+}
+
 impl<T: Sized> WithSubscriber for T {}
 
 impl<T: Future> Future for WithDispatch<T> {
@@ -116,6 +135,16 @@ impl<T> WithDispatch<T> {
             dispatch: self.dispatch.clone(),
             inner,
         }
+    }
+
+    /// Borrows the `Dispatch` that this type is instrumented by.
+    pub fn dispatch(&self) -> &Dispatch {
+        &self.dispatch
+    }
+
+    /// Consumes the `WithDispatch`, returning the wrapped type.
+    pub fn into_inner(self) -> T {
+        self.inner
     }
 }
 
