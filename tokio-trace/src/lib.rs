@@ -211,17 +211,20 @@ macro_rules! span {
             use $crate::{callsite, field::{Value, AsField}, Span};
             use $crate::callsite::Callsite;
             let callsite = callsite! { span: $name, $( $k ),* };
+            let mut span = Span::new(callsite.interest(), callsite.metadata());
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
-            #[allow(unused_variables, unused_mut)]
-            Span::new(callsite.interest(), callsite.metadata(), |span| {
-                let mut keys = callsite.metadata().fields().into_iter();
-                $(
-                    let key = keys.next()
-                        .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
-                    span!(@ record: span, $k, &key, $($val)*);
-                )*
-            })
+            #[allow(unused_variables, unused_mut)] {
+                if !span.is_disabled() {
+                    let mut keys = callsite.metadata().fields().into_iter();
+                    $(
+                        let key = keys.next()
+                            .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
+                        span!(@ record: span, $k, &key, $($val)*);
+                    )*
+                };
+            }
+            span
         }
     };
     (@ record: $span:expr, $k:expr, $i:expr, $val:expr) => (
@@ -234,6 +237,9 @@ macro_rules! span {
 
 #[macro_export]
 macro_rules! event {
+    // (target: $target:expr, $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $fmt:expr ) => (
+    //     event!(target: $target, $lvl, { $($k $( = $val)* ),* }, $fmt, )
+    // );
     (target: $target:expr, $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => ({
         {
             #[allow(unused_imports)]
@@ -244,21 +250,23 @@ macro_rules! event {
                 target:
                 $target, $( $k ),*
             };
+            let mut event = Event::new(callsite.interest(), callsite.metadata());
             // Depending on how many fields are generated, this may or may
             // not actually be used, but it doesn't make sense to repeat it.
-            #[allow(unused_variables, unused_mut)]
-            Event::new(callsite.interest(), callsite.metadata(), |event| {
-                let mut keys = callsite.metadata().fields().into_iter();
-                event.message(
-                    &keys.next().expect("event metadata should define a key for the message"),
-                    format_args!( $($arg)+ )
-                );
-                $(
-                    let key = keys.next()
-                        .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
-                    event!(@ record: event, $k, &key, $($val)*);
-                )*
-            })
+            #[allow(unused_variables, unused_mut)] {
+                if !event.is_disabled() {
+                    let mut keys = callsite.metadata().fields().into_iter();
+                    let msg_key = keys.next()
+                        .expect("event metadata should define a key for the message");
+                    event.message(&msg_key, format_args!( $($arg)+ ));
+                    $(
+                        let key = keys.next()
+                            .expect(concat!("metadata should define a key for '", stringify!($k), "'"));
+                        event!(@ record: event, $k, &key, $($val)*);
+                    )*
+                }
+            }
+            event
         }
     });
     ( $lvl:expr, { $( $k:ident $( = $val:expr )* ),* }, $($arg:tt)+ ) => (
