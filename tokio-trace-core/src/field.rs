@@ -194,7 +194,10 @@ impl<'a> IntoIterator for &'a FieldSet {
 
 impl fmt::Debug for FieldSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_set().entries(self).finish()
+        f.debug_struct("FieldSet")
+            .field("names", &self.names)
+            .field("callsite", &self.callsite)
+            .finish()
     }
 }
 
