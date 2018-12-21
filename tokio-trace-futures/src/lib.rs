@@ -30,7 +30,7 @@ pub trait WithSubscriber: Sized {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Instrumented<'a, T> {
     inner: T,
     span: Span<'a>,
