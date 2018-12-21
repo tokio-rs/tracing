@@ -11,36 +11,6 @@ use tokio::{
     runtime::{current_thread, Runtime, TaskExecutor},
 };
 
-pub trait InstrumentExecutor<'a, F>
-where
-    Self: Executor<Instrumented<'a, F>>,
-    F: Future<Item = (), Error = ()>,
-{
-    fn instrument<G>(self, mk_span: G) -> InstrumentedExecutor<Self, G>
-    where
-        G: Fn() -> Span<'a>,
-        Self: Sized,
-    {
-        InstrumentedExecutor {
-            inner: self,
-            mk_span,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct InstrumentedExecutor<T, G> {
-    inner: T,
-    mk_span: G,
-}
-
-impl<'a, T, F> InstrumentExecutor<'a, F> for T
-where
-    T: Executor<Instrumented<'a, F>>,
-    F: Future<Item = (), Error = ()>,
-{
-}
-
 macro_rules! deinstrument_err {
     ($e:expr) => {
         $e.map_err(|e| {
@@ -51,39 +21,34 @@ macro_rules! deinstrument_err {
     };
 }
 
-impl<'a, T, F, N> Executor<F> for InstrumentedExecutor<T, N>
+impl<'a, T, F> Executor<F> for Instrumented<'a, T>
 where
     T: Executor<Instrumented<'a, F>>,
     F: Future<Item = (), Error = ()>,
-    N: Fn() -> Span<'a>,
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
-        let future = future.instrument((self.mk_span)());
+        let future = future.instrument(self.span.clone());
         deinstrument_err!(self.inner.execute(future))
     }
 }
 
 #[cfg(feature = "with-tokio")]
-impl<T, N> TokioExecutor for InstrumentedExecutor<T, N>
+impl<T> TokioExecutor for Instrumented<'static, T>
 where
     T: TokioExecutor,
-    N: Fn() -> Span<'static>,
 {
     fn spawn(
         &mut self,
         future: Box<Future<Error = (), Item = ()> + 'static + Send>,
     ) -> Result<(), SpawnError> {
         // TODO: get rid of double box somehow?
-        let future = Box::new(future.instrument((self.mk_span)()));
+        let future = Box::new(future.instrument(self.span.clone()));
         self.inner.spawn(future)
     }
 }
 
 #[cfg(feature = "with-tokio")]
-impl<N> InstrumentedExecutor<Runtime, N>
-where
-    N: Fn() -> Span<'static>,
-{
+impl Instrumented<'static, Runtime> {
     /// Spawn an instrumented future onto the Tokio runtime.
     ///
     /// This spawns the given future onto the runtime's executor, usually a
@@ -96,7 +61,7 @@ where
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
-        let future = future.instrument((self.mk_span)());
+        let future = future.instrument(self.span.clone());
         self.inner.spawn(future);
         self
     }
@@ -122,7 +87,7 @@ where
         R: Send + 'static,
         E: Send + 'static,
     {
-        let future = future.instrument((self.mk_span)());
+        let future = future.instrument(self.span.clone());
         self.inner.block_on(future)
     }
 
@@ -133,19 +98,13 @@ where
     /// The instrumented handle functions identically to a
     /// `tokio::runtime::TaskExecutor`, but instruments the spawned
     /// futures prior to spawning them.
-    pub fn executor(&self) -> InstrumentedExecutor<TaskExecutor, &N> {
-        InstrumentedExecutor {
-            inner: self.inner.executor(),
-            mk_span: &self.mk_span,
-        }
+    pub fn executor(&self) -> Instrumented<'static, TaskExecutor> {
+        self.inner.executor().instrument(self.span.clone())
     }
 }
 
 #[cfg(feature = "with-tokio")]
-impl<N> InstrumentedExecutor<current_thread::Runtime, N>
-where
-    N: Fn() -> Span<'static>,
-{
+impl Instrumented<'static, current_thread::Runtime> {
     /// Spawn an instrumented future onto the single-threaded Tokio runtime.
     ///
     /// This method simply wraps a call to `current_thread::Runtime::spawn`,
@@ -154,7 +113,7 @@ where
     where
         F: Future<Item = (), Error = ()> + 'static,
     {
-        let future = future.instrument((self.mk_span)());
+        let future = future.instrument(self.span.clone());
         self.inner.spawn(future);
         self
     }
@@ -189,7 +148,7 @@ where
         R: 'static,
         E: 'static,
     {
-        let future = future.instrument((self.mk_span)());
+        let future = future.instrument(self.span.clone());
         self.inner.block_on(future)
     }
 
@@ -202,11 +161,8 @@ where
     /// The instrumented handle functions identically to a
     /// `tokio::runtime::current_thread::Handle`, but instruments the spawned
     /// futures prior to spawning them.
-    pub fn handle(&self) -> InstrumentedExecutor<current_thread::Handle, &N> {
-        InstrumentedExecutor {
-            inner: self.inner.handle(),
-            mk_span: &self.mk_span,
-        }
+    pub fn handle(&self) -> Instrumented<'static, current_thread::Handle> {
+        self.inner.handle().instrument(self.span.clone())
     }
 }
 
