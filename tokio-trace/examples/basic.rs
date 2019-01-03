@@ -12,8 +12,9 @@ fn main() {
         .finish();
 
     tokio_trace::dispatcher::with_default(tokio_trace::Dispatch::new(subscriber), || {
-        let foo = 3;
-        trace!({ foo = foo, bar = "bar" }, "hello! I'm gonna shave a yak.");
+        let number_of_yaks = 3;
+        info!(yaks_to_shave = number_of_yaks);
+        info!({ yak = number_of_yaks, excitement = "yay!" }, "hello! I'm gonna shave a yak.");
 
         let mut span = span!("my_great_span", foo = &4, baz = &5);
         span.enter(|| {
