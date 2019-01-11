@@ -9,7 +9,7 @@ env_logger = "0.5"
 log = "0.4"
 
 [dev-dependencies]
-tokio-trace = { path = "../tokio-trace" }
+tokio-trace = "0.0.1"
 tokio-trace-futures = { path = "../tokio-trace-futures" }
 hyper = "0.12"
 futures = "0.1"

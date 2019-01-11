@@ -1,8 +1,6 @@
 [workspace]
 
 members = [
-    "tokio-trace",
-    "tokio-trace-core",
     "tokio-trace-futures",
     "tokio-trace-tower",
     "tokio-trace-tower-http",
@@ -12,3 +10,6 @@ members = [
     "tokio-trace-macros",
     "tokio-trace-subscriber"
 ]
+
+[patch.crates-io]
+tokio-trace = { git = "https://github.com/tokio-rs/tokio", branch = "eliza/tokio-trace" }

@@ -1,7 +1,0 @@
-[package]
-name = "tokio-trace-core"
-version = "0.1.0"
-authors = ["Eliza Weisman <eliza@buoyant.io>"]
-
-[dependencies]
-lazy_static = "1.0.0"
