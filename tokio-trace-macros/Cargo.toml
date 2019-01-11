@@ -7,13 +7,13 @@ authors = ["Eliza Weisman <eliza@buoyant.io>", "David Barsky <dbarsky@amazon.com
 proc-macro = true
 
 [dependencies]
-tokio-trace = { path = "../tokio-trace" }
+tokio-trace = "0.0.1"
 syn = { version = "0.15", features = ["full", "extra-traits"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
 
 [dev-dependencies]
-tokio-trace = { path = "../tokio-trace" }
+tokio-trace = "0.0.1"
 tokio-trace-log = { path = "../tokio-trace-log" }
 env_logger = "0.5"
 ansi_term = "0.11"

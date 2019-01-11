@@ -14,7 +14,6 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 
 use std::str;
 
-#[path = "../../tokio-trace/examples/sloggish/sloggish_subscriber.rs"]
 mod sloggish;
 use self::sloggish::SloggishSubscriber;
 

@@ -9,7 +9,7 @@ with-tokio = ["tokio"]
 
 [dependencies]
 futures = "0.1"
-tokio-trace = { path = "../tokio-trace" }
+tokio-trace = "0.0.1"
 tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]

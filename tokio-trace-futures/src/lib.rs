@@ -151,7 +151,6 @@ impl<T> WithDispatch<T> {
 }
 
 #[cfg(test)]
-#[path = "../../tokio-trace/tests/support/mod.rs"]
 pub mod test_support;
 
 #[cfg(test)]
