@@ -12,10 +12,12 @@
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 extern crate ansi_term;
 extern crate humantime;
+extern crate tokio_trace_subscriber;
+
 use self::ansi_term::{Color, Style};
 use super::tokio_trace::{
     self,
-    subscriber::{self, Subscriber},
+    Subscriber,
     Id, Level,
 };
 
@@ -33,7 +35,7 @@ use std::{
 pub struct SloggishSubscriber {
     // TODO: this can probably be unified with the "stack" that's used for
     // printing?
-    current: subscriber::CurrentSpanPerThread,
+    current: tokio_trace_subscriber::CurrentSpanPerThread,
     indent_amount: usize,
     stderr: io::Stderr,
     stack: Mutex<Vec<Id>>,
@@ -111,7 +113,7 @@ impl Event {
 impl SloggishSubscriber {
     pub fn new(indent_amount: usize) -> Self {
         Self {
-            current: subscriber::CurrentSpanPerThread::new(),
+            current: tokio_trace_subscriber::CurrentSpanPerThread::new(),
             indent_amount,
             stderr: io::stderr(),
             stack: Mutex::new(vec![]),
