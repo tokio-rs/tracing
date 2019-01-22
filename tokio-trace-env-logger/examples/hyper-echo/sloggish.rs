@@ -46,14 +46,14 @@ pub struct SloggishSubscriber {
 
 struct Span {
     parent: Option<Id>,
-    kvs: Vec<(String, String)>,
+    kvs: Vec<(&'static str, String)>,
 }
 
 struct Event {
     level: tokio_trace::Level,
     target: String,
     message: String,
-    kvs: Vec<(String, String)>,
+    kvs: Vec<(&'static str, String)>,
 }
 
 struct ColorLevel(Level);
@@ -80,10 +80,8 @@ impl Span {
     }
 
     fn record(&mut self, key: &tokio_trace::field::Field, value: fmt::Arguments) {
-        // TODO: shouldn't have to alloc the key...
-        let k = key.name().unwrap_or("???").to_owned();
         let v = fmt::format(value);
-        self.kvs.push((k, v));
+        self.kvs.push((key.name(), v));
     }
 }
 
@@ -98,15 +96,13 @@ impl Event {
     }
 
     fn record(&mut self, key: &tokio_trace::field::Field, value: fmt::Arguments) {
-        if key.name() == Some("message") {
+        if key.name() == "message" {
             self.message = fmt::format(value);
             return;
         }
 
-        // TODO: shouldn't have to alloc the key...
-        let k = key.name().unwrap_or("???").to_owned();
         let v = fmt::format(value);
-        self.kvs.push((k, v));
+        self.kvs.push((key.name(), v));
     }
 }
 
