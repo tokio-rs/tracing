@@ -10,7 +10,6 @@ rust:
 - nightly
 
 script:
-- cargo test --verbose -p tokio-trace
 - cargo test --verbose -p tokio-trace-futures
 - cargo test --verbose -p tokio-trace-subscriber
 - cargo test --verbose -p tokio-trace-tower
