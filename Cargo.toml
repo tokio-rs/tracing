@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "tokio-trace-derive",
     "tokio-trace-futures",
     "tokio-trace-tower",
     "tokio-trace-tower-http",
