@@ -14,11 +14,7 @@ pub use filter::{Filter, FilterExt};
 pub use observe::{Observe, ObserveExt};
 pub use registry::{RegisterSpan, SpanRef};
 
-use std::{
-    cell::RefCell,
-    default::Default,
-    thread,
-};
+use std::{cell::RefCell, default::Default, thread};
 
 /// Tracks the currently executing span on a per-thread basis.
 #[derive(Clone)]

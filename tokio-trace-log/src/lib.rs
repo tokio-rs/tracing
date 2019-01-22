@@ -297,12 +297,7 @@ impl SpanLineBuilder {
         if key.name() == "message" {
             write!(&mut self.log_line, "{:?} ", value)
         } else {
-            write!(
-                &mut self.fields,
-                "{}={:?}; ",
-                key.name(),
-                value
-            )
+            write!(&mut self.fields, "{}={:?}; ", key.name(), value)
         }
     }
     fn log_meta(&self) -> log::Metadata {
