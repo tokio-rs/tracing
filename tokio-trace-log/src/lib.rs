@@ -148,7 +148,7 @@ pub struct LogTracer {
 pub struct TraceLogger {
     settings: TraceLoggerBuilder,
     in_progress: Mutex<HashMap<Id, SpanLineBuilder>>,
-    current: subscriber::CurrentSpanPerThread,
+    current: tokio_trace_subscriber::CurrentSpanPerThread,
 }
 
 #[derive(Default)]
@@ -200,8 +200,7 @@ impl TraceLogger {
     fn from_builder(settings: TraceLoggerBuilder) -> Self {
         Self {
             settings,
-            current: subscriber::CurrentSpanPerThread::new(),
-            in_progress: Mutex::new(HashMap::new()),
+            ..Default::default()
         }
     }
 
