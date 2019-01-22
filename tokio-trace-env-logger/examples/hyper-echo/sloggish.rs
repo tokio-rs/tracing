@@ -15,11 +15,7 @@ extern crate humantime;
 extern crate tokio_trace_subscriber;
 
 use self::ansi_term::{Color, Style};
-use super::tokio_trace::{
-    self,
-    Subscriber,
-    Id, Level,
-};
+use super::tokio_trace::{self, Id, Level, Subscriber};
 
 use std::{
     collections::HashMap,
