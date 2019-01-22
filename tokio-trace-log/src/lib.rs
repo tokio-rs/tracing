@@ -32,6 +32,7 @@ use std::{
         Mutex,
     },
 };
+
 use tokio_trace::{
     callsite::{self, Callsite},
     field,
@@ -42,8 +43,8 @@ use tokio_trace::{
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let meta = record.as_trace();
-    let k = meta.fields().field_named(&"message").unwrap();
-    let mut event = tokio_trace::Event::new(subscriber::Interest::SOMETIMES, &meta);
+    let k = meta.fields().field(&"message").unwrap();
+    let mut event = tokio_trace::Event::new(subscriber::Interest::sometimes(), &meta);
     if !event.is_disabled() {
         event.message(&k, record.args().clone());
     }
@@ -77,7 +78,7 @@ impl<'a> AsTrace for log::Record<'a> {
         struct LogCallsite;
         impl Callsite for LogCallsite {
             fn add_interest(&self, _interest: subscriber::Interest) {}
-            fn remove_interest(&self) {}
+            fn clear_interest(&self) {}
             fn metadata(&self) -> &Metadata {
                 // Since we never register the log callsite, this method is
                 // never actually called. So it's okay to return mostly empty metadata.
@@ -293,13 +294,13 @@ impl SpanLineBuilder {
     }
 
     fn record(&mut self, key: &field::Field, value: &fmt::Debug) -> fmt::Result {
-        if key.name() == Some("message") {
+        if key.name() == "message" {
             write!(&mut self.log_line, "{:?} ", value)
         } else {
             write!(
                 &mut self.fields,
                 "{}={:?}; ",
-                key.name().unwrap_or("???"),
+                key.name(),
                 value
             )
         }
