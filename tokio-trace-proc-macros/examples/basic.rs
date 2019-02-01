@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tokio_trace;
 #[macro_use]
-extern crate tokio_trace_derive;
+extern crate tokio_trace_proc_macros;
 extern crate env_logger;
 extern crate tokio_trace_log;
 
