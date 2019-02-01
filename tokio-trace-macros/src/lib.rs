@@ -1,46 +1,66 @@
-extern crate proc_macro;
 #[macro_use]
-extern crate syn;
-#[macro_use]
-extern crate quote;
-extern crate proc_macro2;
+extern crate tokio_trace;
 
-use proc_macro::TokenStream;
-use proc_macro2::Span;
-use syn::token::{Async, Const, Unsafe};
-use syn::{Abi, Attribute, Block, Ident, ItemFn, Visibility};
+/// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
+#[macro_export(local_inner_macros)]
+macro_rules! trace_dbg {
+    (level: $level:expr, $ex:expr) => {
+        dbg!(level: $level, $ex)
+    };
+    (level: $level:expr, $ex:expr) => {
+        dbg!(target: module_path!(), level: $level, $ex)
+    };
+    (target: $level:expr, $ex:expr) => {
+        dbg!(target: $target, level: tokio_trace::Level::DEBUG, $ex)
+    };
+    ($ex:expr) => {
+        dbg!(level: tokio_trace::Level::DEBUG, $ex)
+    };
 
-#[proc_macro_attribute]
-pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
-    let input: ItemFn = parse_macro_input!(item as ItemFn);
-    let call_site = Span::call_site();
+}
 
-    // these are needed ahead of time, as ItemFn contains the function body _and_
-    // isn't representable inside a quote!/quote_spanned! macro
-    // (Syn's ToTokens isn't implemented for ItemFn)
-    let attrs: Vec<Attribute> = input.clone().attrs;
-    let vis: Visibility = input.clone().vis;
-    let constness: Option<Const> = input.clone().constness;
-    let unsafety: Option<Unsafe> = input.clone().unsafety;
-    let asyncness: Option<Async> = input.clone().asyncness;
-    let abi: Option<Abi> = input.clone().abi;
-
-    // function body
-    let block: Box<Block> = input.clone().block;
-    // function name
-    let ident: Ident = input.clone().ident;
-    let ident_str = ident.to_string();
-
-    let return_type = input.clone().decl.output;
-    let params = input.clone().decl.inputs;
-
-    quote_spanned!(call_site=>
-        #(#attrs) *
-        #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
-            span!(#ident_str, traced_function = &#ident_str).enter(move || {
-                #block
-            })
+/// Similar to the `std::dbg!` macro, but generates `tokio-trace` events rather
+/// than printing to stdout.
+///
+/// By default, the verbosity level for the generated events is `DEBUG`, but
+/// this can be customized.
+#[macro_export]
+macro_rules! dbg {
+    (target: $target:expr, level: $level:expr, $ex:expr) => {
+        {
+            #[allow(unused_imports)]
+            use tokio_trace::{callsite, Id, Subscriber, Event, field::{debug, Value}};
+            use tokio_trace::callsite::Callsite;
+            let callsite = callsite! {@
+                name: concat!("event:trace_dbg(", stringify!($ex), ")"),
+                target: $target,
+                level: $level,
+                fields: &[stringify!($ex)]
+            };
+            let interest = callsite.interest();
+            let val = $ex;
+            if interest.is_never() {
+                val
+            } else {
+                let meta = callsite.metadata();
+                let mut event = Event::new(interest, meta);
+                if !event.is_disabled() {
+                    let key = meta.fields().into_iter().next()
+                        .expect("trace_dbg event must have one field");
+                    event.record(&key, &debug(val));
+                }
+                drop(event);
+                val
+            }
         }
-    )
-    .into()
+    };
+    (level: $level:expr, $ex:expr) => {
+        dbg!(target: module_path!(), level: $level, $ex)
+    };
+    (target: $level:expr, $ex:expr) => {
+        dbg!(target: $target, level: tokio_trace::Level::DEBUG, $ex)
+    };
+    ($ex:expr) => {
+        dbg!(level: tokio_trace::Level::DEBUG, $ex)
+    };
 }
