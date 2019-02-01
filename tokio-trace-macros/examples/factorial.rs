@@ -7,10 +7,10 @@ extern crate env_logger;
 extern crate tokio_trace_log;
 
 fn factorial(n: u32) -> u32 {
-    if trace_dbg!(n <= 1) {
-        trace_dbg!(1)
+    if dbg!(n <= 1) {
+        dbg!(1)
     } else {
-        trace_dbg!(n * factorial(n - 1))
+        dbg!(n * factorial(n - 1))
     }
 }
 
@@ -19,6 +19,6 @@ fn main() {
     let subscriber = tokio_trace_log::TraceLogger::new();
 
     tokio_trace::subscriber::with_default(subscriber, || {
-        trace_dbg!(factorial(4))
+        dbg!(factorial(4))
     });
 }
