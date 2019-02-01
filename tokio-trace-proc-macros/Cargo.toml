@@ -1,5 +1,5 @@
 [package]
-name = "tokio-trace-derive"
+name = "tokio-trace-proc-macros"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "David Barsky <dbarsky@amazon.com>"]
 
