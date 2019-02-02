@@ -4,13 +4,13 @@ extern crate tokio_trace;
 /// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
 #[macro_export(local_inner_macros)]
 macro_rules! trace_dbg {
-    (level: $level:expr, $ex:expr) => {
-        dbg!(level: $level, $ex)
+    (target: $target:expr, level: $level:expr, $ex:expr) => {
+        dbg!(target: $target, level: $level, $ex)
     };
     (level: $level:expr, $ex:expr) => {
         dbg!(target: module_path!(), level: $level, $ex)
     };
-    (target: $level:expr, $ex:expr) => {
+    (target: $target:expr, $ex:expr) => {
         dbg!(target: $target, level: tokio_trace::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
@@ -57,7 +57,7 @@ macro_rules! dbg {
     (level: $level:expr, $ex:expr) => {
         dbg!(target: module_path!(), level: $level, $ex)
     };
-    (target: $level:expr, $ex:expr) => {
+    (target: $target:expr, $ex:expr) => {
         dbg!(target: $target, level: tokio_trace::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
