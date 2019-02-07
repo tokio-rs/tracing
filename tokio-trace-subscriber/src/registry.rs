@@ -58,7 +58,7 @@ pub trait RegisterSpan {
     /// registry knows about, or if a cyclical relationship would be created
     /// (i.e., some span _a_ which proceeds some other span _b_ may not also
     /// follow from _b_), it should do nothing.
-    fn add_follows_from(&self, span: &Id, follows: Id);
+    fn add_follows_from(&self, span: &Id, follows: &Id);
 
     /// Queries the registry for an iterator over the IDs of the spans that
     /// `span` follows from.
@@ -181,7 +181,7 @@ impl RegisterSpan for IncreasingCounter {
         id
     }
 
-    fn add_follows_from(&self, _span: &Id, _follows: Id) {
+    fn add_follows_from(&self, _span: &Id, _follows: &Id) {
         // unimplemented
     }
 
