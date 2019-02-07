@@ -153,13 +153,13 @@ pub struct TraceLogger {
     current: tokio_trace_subscriber::CurrentSpanPerThread,
 }
 
-#[derive(Default)]
 pub struct TraceLoggerBuilder {
     log_span_closes: bool,
     log_enters: bool,
     log_exits: bool,
     log_ids: bool,
     parent_fields: bool,
+    log_parent: bool,
 }
 
 // ===== impl LogTracer =====
@@ -241,8 +241,26 @@ impl TraceLoggerBuilder {
         Self { log_ids, ..self }
     }
 
+    pub fn with_parent_names(self, log_parent: bool) -> Self {
+        Self { log_parent, ..self }
+    }
+
+
     pub fn finish(self) -> TraceLogger {
         TraceLogger::from_builder(self)
+    }
+}
+
+impl Default for TraceLoggerBuilder {
+    fn default() -> Self {
+        TraceLoggerBuilder {
+            log_span_closes: false,
+            parent_fields: true,
+            log_exits: false,
+            log_ids: false,
+            log_parent: true,
+            log_enters: false,
+        }
     }
 }
 
@@ -423,12 +441,21 @@ impl Subscriber for TraceLogger {
         let logger = log::logger();
         if logger.enabled(&log_meta) {
             let spans = self.spans.lock().unwrap();
-            let current_fields = self.current.id()
+            let current = self.current.id()
                 .and_then(|id| {
                     spans.get(&id)
+                });
+            let (current_fields, parent) = current
+                .map(|span| {
+                    let fields = span.fields.as_ref();
+                    let parent = if self.settings.log_parent {
+                        Some(span.name)
+                    } else {
+                        None
+                    };
+                    (fields, parent)
                 })
-                .map(|span| span.fields.as_ref())
-                .unwrap_or("");
+                .unwrap_or(("", None));
             logger.log(
                 &log::Record::builder()
                     .metadata(log_meta)
@@ -436,7 +463,12 @@ impl Subscriber for TraceLogger {
                     .module_path(meta.module_path.as_ref().map(|&p| p))
                     .file(meta.file.as_ref().map(|&f| f))
                     .line(meta.line)
-                    .args(format_args!("{}{}", LogEvent(event), current_fields))
+                    .args(format_args!("{}{}{}{}",
+                        parent.unwrap_or(""),
+                        if parent.is_some() { ": " } else { "" },
+                        LogEvent(event),
+                        current_fields,
+                    ))
                     .build(),
             );
 
