@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate tokio_trace;
 
 /// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
@@ -28,30 +27,23 @@ macro_rules! trace_dbg {
 macro_rules! dbg {
     (target: $target:expr, level: $level:expr, $ex:expr) => {
         {
-            #[allow(unused_imports)]
             use tokio_trace::{callsite, Id, Subscriber, Event, field::{debug, Value}};
             use tokio_trace::callsite::Callsite;
-            let callsite = callsite! {@
+            let callsite = callsite! {
                 name: concat!("event:trace_dbg(", stringify!($ex), ")"),
                 target: $target,
                 level: $level,
-                fields: &[stringify!($ex)]
+                fields: $ex
             };
-            let interest = callsite.interest();
             let val = $ex;
-            if interest.is_never() {
-                val
-            } else {
+            if is_enabled!(callsite) {
                 let meta = callsite.metadata();
-                let mut event = Event::new(interest, meta);
-                if !event.is_disabled() {
-                    let key = meta.fields().into_iter().next()
-                        .expect("trace_dbg event must have one field");
-                    event.record(&key, &debug(val));
-                }
-                drop(event);
-                val
+                let fields = meta.fields();
+                let key = meta.fields().into_iter().next()
+                    .expect("trace_dbg event must have one field");
+                Event::observe(meta, &fields.value_set(&[(&key, Some(&debug(&val) as &Value))]));
             }
+            val
         }
     };
     (level: $level:expr, $ex:expr) => {
