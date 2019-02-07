@@ -1,5 +1,4 @@
-use std::fmt;
-use tokio_trace::{field, subscriber::Subscriber, Id, Metadata};
+use tokio_trace::{field, subscriber::Subscriber, Id, Metadata, Event};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
@@ -95,16 +94,20 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_span(&self, meta: &Metadata) -> Id {
+    fn new_span(&self, meta: &Metadata, _values: &field::ValueSet) -> Id {
         self.registry.new_id(meta)
     }
 
-    fn record_debug(&self, _span: &Id, _name: &field::Field, _value: &fmt::Debug) {
+    fn record(&self, _span: &Id, _values: &field::ValueSet) {
         unimplemented!()
     }
 
-    fn add_follows_from(&self, span: &Id, follows: Id) {
+    fn record_follows_from(&self, span: &Id, follows: &Id) {
         self.registry.add_follows_from(span, follows)
+    }
+
+    fn event(&self, _event: &Event) {
+        unimplemented!()
     }
 
     fn enter(&self, id: &Id) {
