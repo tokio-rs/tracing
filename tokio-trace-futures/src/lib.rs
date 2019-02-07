@@ -5,7 +5,7 @@ extern crate tokio;
 extern crate tokio_trace;
 
 use futures::{Async, Future, Poll, Sink, StartSend, Stream};
-use tokio_trace::{dispatcher, Dispatch, Span, Subscriber};
+use tokio_trace::{dispatcher, Dispatch, Span};
 
 pub mod executor;
 
@@ -21,11 +21,11 @@ pub trait Instrument: Sized {
 pub trait WithSubscriber: Sized {
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
-        S: Subscriber + Send + Sync + 'static,
+        S: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
-            dispatch: Dispatch::new(subscriber),
+            dispatch: subscriber.into(),
         }
     }
 }
