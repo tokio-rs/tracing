@@ -37,18 +37,19 @@ use tokio_trace::{
     callsite::{self, Callsite},
     field,
     subscriber::{self, Subscriber},
-    Id, Metadata,
+    Event, Id, Metadata,
 };
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let meta = record.as_trace();
-    let k = meta.fields().field(&"message").unwrap();
-    let mut event = tokio_trace::Event::new(subscriber::Interest::sometimes(), &meta);
-    if !event.is_disabled() {
-        event.message(&k, record.args().clone());
-    }
-    drop(event);
+    let fields = meta.fields();
+    let key = fields.field(&"message")
+        .expect("log record fields must have a message");
+    Event::observe(
+        &meta,
+        &fields.value_set(&[(&key, Some(record.args() as &field::Value))])
+    );
     Ok(())
 }
 
@@ -148,7 +149,7 @@ pub struct LogTracer {
 #[derive(Default)]
 pub struct TraceLogger {
     settings: TraceLoggerBuilder,
-    in_progress: Mutex<HashMap<Id, SpanLineBuilder>>,
+    spans: Mutex<HashMap<Id, SpanLineBuilder>>,
     current: tokio_trace_subscriber::CurrentSpanPerThread,
 }
 
@@ -248,15 +249,13 @@ impl TraceLoggerBuilder {
 struct SpanLineBuilder {
     parent: Option<Id>,
     ref_count: usize,
-    log_line: String,
     fields: String,
     file: Option<String>,
     line: Option<u32>,
     module_path: Option<String>,
     target: String,
     level: log::Level,
-    name: String,
-    log_finish: bool,
+    name: &'static str,
 }
 
 impl SpanLineBuilder {
@@ -264,42 +263,20 @@ impl SpanLineBuilder {
         parent: Option<Id>,
         meta: &Metadata,
         fields: String,
-        id: Id,
-        settings: &TraceLoggerBuilder,
     ) -> Self {
-        let mut log_line = String::new();
-        let name = meta.name();
-        let log_finish = if !name.contains("event") {
-            write!(&mut log_line, "close {}; ", name).expect("write to string shouldn't fail");
-            settings.log_span_closes
-        } else {
-            true
-        };
-        if settings.log_ids {
-            write!(&mut log_line, "id={:?}; ", id).expect("write to string shouldn't fail");
-        }
         Self {
             parent,
             ref_count: 1,
-            log_line,
             fields,
             file: meta.file().map(String::from),
             line: meta.line(),
             module_path: meta.module_path().map(String::from),
             target: String::from(meta.target()),
             level: meta.level().as_log(),
-            name: String::from(name),
-            log_finish,
+            name: meta.name(),
         }
     }
 
-    fn record(&mut self, key: &field::Field, value: &fmt::Debug) -> fmt::Result {
-        if key.name() == "message" {
-            write!(&mut self.log_line, "{:?} ", value)
-        } else {
-            write!(&mut self.fields, "{}={:?}; ", key.name(), value)
-        }
-    }
     fn log_meta(&self) -> log::Metadata {
         log::MetadataBuilder::new()
             .level(self.level)
@@ -307,14 +284,10 @@ impl SpanLineBuilder {
             .build()
     }
 
-    fn finish(self, current_span: &str) {
-        if !self.log_finish {
-            return;
-        }
+    fn finish(self) {
         let log_meta = self.log_meta();
         let logger = log::logger();
         if logger.enabled(&log_meta) {
-            let before_current = if current_span != "" { "; " } else { "" };
             logger.log(
                 &log::Record::builder()
                     .metadata(log_meta)
@@ -322,13 +295,17 @@ impl SpanLineBuilder {
                     .module_path(self.module_path.as_ref().map(String::as_ref))
                     .file(self.file.as_ref().map(String::as_ref))
                     .line(self.line)
-                    .args(format_args!(
-                        "{}{}{}{}",
-                        self.log_line, before_current, current_span, self.fields
-                    ))
+                    .args(format_args!("close {}; {}", self.name, self.fields))
                     .build(),
             );
         }
+    }
+}
+
+impl field::Record for SpanLineBuilder {
+    fn record_debug(&mut self, field: &field::Field,  value: &fmt::Debug) {
+        write!(self.fields, " {}={:?};", field.name(), value)
+            .expect("write to string should never fail")
     }
 }
 
@@ -337,34 +314,32 @@ impl Subscriber for TraceLogger {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, new_span: &Metadata) -> Id {
+    fn new_span(&self, meta: &Metadata, values: &field::ValueSet) -> Id {
         let id = self.next_id();
-        let mut in_progress = self.in_progress.lock().unwrap();
+        let mut spans = self.spans.lock().unwrap();
         let mut fields = String::new();
         let parent = self.current.id();
         if self.settings.parent_fields {
             let mut next_parent = parent.as_ref();
-            while let Some(ref parent) = next_parent.and_then(|p| in_progress.get(&p)) {
+            while let Some(ref parent) = next_parent.and_then(|p| spans.get(&p)) {
                 write!(&mut fields, "{}", parent.fields).expect("write to string cannot fail");
                 next_parent = parent.parent.as_ref();
             }
         }
-        let span = SpanLineBuilder::new(parent, new_span, fields, id.clone(), &self.settings);
-        in_progress.insert(id.clone(), span);
+        let mut span = SpanLineBuilder::new(parent, meta, fields);
+        values.record(&mut span);
+        spans.insert(id.clone(), span);
         id
     }
 
-    fn record_debug(&self, span: &Id, key: &field::Field, value: &fmt::Debug) {
-        let mut in_progress = self.in_progress.lock().unwrap();
-        if let Some(span) = in_progress.get_mut(span) {
-            if let Err(_e) = span.record(key, value) {
-                eprintln!("error formatting span");
-            }
-            return;
+    fn record(&self, span: &Id, values: &field::ValueSet) {
+        let mut spans = self.spans.lock().unwrap();
+        if let Some(span) = spans.get_mut(span) {
+            values.record(span);
         }
     }
 
-    fn add_follows_from(&self, span: &Id, follows: Id) {
+    fn record_follows_from(&self, span: &Id, follows: &Id) {
         // TODO: this should eventually track the relationship?
         log::logger().log(
             &log::Record::builder()
@@ -376,16 +351,16 @@ impl Subscriber for TraceLogger {
 
     fn enter(&self, id: &Id) {
         self.current.enter(id.clone());
-        let in_progress = self.in_progress.lock().unwrap();
+        let spans = self.spans.lock().unwrap();
         if self.settings.log_enters {
-            if let Some(span) = in_progress.get(id) {
+            if let Some(span) = spans.get(id) {
                 let log_meta = span.log_meta();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
                     let current_id = self.current.id();
                     let current_fields = current_id
                         .as_ref()
-                        .and_then(|id| in_progress.get(&id))
+                        .and_then(|id| spans.get(&id))
                         .map(|span| span.fields.as_ref())
                         .unwrap_or("");
                     if self.settings.log_ids {
@@ -422,8 +397,8 @@ impl Subscriber for TraceLogger {
     fn exit(&self, id: &Id) {
         self.current.exit();
         if self.settings.log_exits {
-            let in_progress = self.in_progress.lock().unwrap();
-            if let Some(span) = in_progress.get(id) {
+            let spans = self.spans.lock().unwrap();
+            if let Some(span) = spans.get(id) {
                 let log_meta = span.log_meta();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
@@ -442,25 +417,80 @@ impl Subscriber for TraceLogger {
         }
     }
 
+    fn event(&self, event: &Event) {
+        let meta = event.metadata();
+        let log_meta = meta.as_log();
+        let logger = log::logger();
+        if logger.enabled(&log_meta) {
+            let spans = self.spans.lock().unwrap();
+            let current_fields = self.current.id()
+                .and_then(|id| {
+                    spans.get(&id)
+                })
+                .map(|span| span.fields.as_ref())
+                .unwrap_or("");
+            logger.log(
+                &log::Record::builder()
+                    .metadata(log_meta)
+                    .target(meta.target)
+                    .module_path(meta.module_path.as_ref().map(|&p| p))
+                    .file(meta.file.as_ref().map(|&f| f))
+                    .line(meta.line)
+                    .args(format_args!("{}{}", LogEvent(event), current_fields))
+                    .build(),
+            );
+
+        }
+    }
+
     fn clone_span(&self, id: &Id) -> Id {
-        let mut in_progress = self.in_progress.lock().unwrap();
-        if let Some(span) = in_progress.get_mut(id) {
+        let mut spans = self.spans.lock().unwrap();
+        if let Some(span) = spans.get_mut(id) {
             span.ref_count += 1;
         }
         id.clone()
     }
 
     fn drop_span(&self, id: Id) {
-        let mut in_progress = self.in_progress.lock().unwrap();
-        if in_progress.contains_key(&id) {
-            if in_progress.get(&id).unwrap().ref_count == 1 {
-                let span = in_progress.remove(&id).unwrap();
-                span.finish("");
+
+        let mut spans = self.spans.lock().unwrap();
+        if spans.contains_key(&id) {
+            if spans.get(&id).unwrap().ref_count == 1 {
+                let span = spans.remove(&id).unwrap();
+                if self.settings.log_span_closes {
+                    span.finish();
+                }
             } else {
-                in_progress.get_mut(&id).unwrap().ref_count -= 1;
+                spans.get_mut(&id).unwrap().ref_count -= 1;
             }
             return;
         }
+    }
+}
+
+struct LogEvent<'a>(&'a Event<'a>);
+
+impl<'a> fmt::Display for LogEvent<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut has_logged = false;
+        let mut format_fields = |field: &field::Field, value: &fmt::Debug| {
+            let name = field.name();
+            let leading = if has_logged {
+                " "
+            } else {
+                ""
+            };
+            // TODO: handle fmt error?
+            let _ = if name == "message" {
+                write!(f, "{}{:?};", leading, value)
+            } else {
+                write!(f, "{}{}={:?};", leading, name, value)
+            };
+            has_logged = true;
+        };
+
+        self.0.record(&mut format_fields);
+        Ok(())
     }
 }
 
