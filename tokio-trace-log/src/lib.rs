@@ -44,11 +44,12 @@ use tokio_trace::{
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let meta = record.as_trace();
     let fields = meta.fields();
-    let key = fields.field(&"message")
+    let key = fields
+        .field(&"message")
         .expect("log record fields must have a message");
     Event::observe(
         &meta,
-        &fields.value_set(&[(&key, Some(record.args() as &field::Value))])
+        &fields.value_set(&[(&key, Some(record.args() as &field::Value))]),
     );
     Ok(())
 }
@@ -245,7 +246,6 @@ impl TraceLoggerBuilder {
         Self { log_parent, ..self }
     }
 
-
     pub fn finish(self) -> TraceLogger {
         TraceLogger::from_builder(self)
     }
@@ -277,11 +277,7 @@ struct SpanLineBuilder {
 }
 
 impl SpanLineBuilder {
-    fn new(
-        parent: Option<Id>,
-        meta: &Metadata,
-        fields: String,
-    ) -> Self {
+    fn new(parent: Option<Id>, meta: &Metadata, fields: String) -> Self {
         Self {
             parent,
             ref_count: 1,
@@ -321,7 +317,7 @@ impl SpanLineBuilder {
 }
 
 impl field::Record for SpanLineBuilder {
-    fn record_debug(&mut self, field: &field::Field,  value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &field::Field, value: &fmt::Debug) {
         write!(self.fields, " {}={:?};", field.name(), value)
             .expect("write to string should never fail")
     }
@@ -441,10 +437,7 @@ impl Subscriber for TraceLogger {
         let logger = log::logger();
         if logger.enabled(&log_meta) {
             let spans = self.spans.lock().unwrap();
-            let current = self.current.id()
-                .and_then(|id| {
-                    spans.get(&id)
-                });
+            let current = self.current.id().and_then(|id| spans.get(&id));
             let (current_fields, parent) = current
                 .map(|span| {
                     let fields = span.fields.as_ref();
@@ -463,7 +456,8 @@ impl Subscriber for TraceLogger {
                     .module_path(meta.module_path.as_ref().map(|&p| p))
                     .file(meta.file.as_ref().map(|&f| f))
                     .line(meta.line)
-                    .args(format_args!("{}{}{}{}",
+                    .args(format_args!(
+                        "{}{}{}{}",
                         parent.unwrap_or(""),
                         if parent.is_some() { ": " } else { "" },
                         LogEvent(event),
@@ -471,7 +465,6 @@ impl Subscriber for TraceLogger {
                     ))
                     .build(),
             );
-
         }
     }
 
@@ -484,7 +477,6 @@ impl Subscriber for TraceLogger {
     }
 
     fn drop_span(&self, id: Id) {
-
         let mut spans = self.spans.lock().unwrap();
         if spans.contains_key(&id) {
             if spans.get(&id).unwrap().ref_count == 1 {
@@ -507,11 +499,7 @@ impl<'a> fmt::Display for LogEvent<'a> {
         let mut has_logged = false;
         let mut format_fields = |field: &field::Field, value: &fmt::Debug| {
             let name = field.name();
-            let leading = if has_logged {
-                " "
-            } else {
-                ""
-            };
+            let leading = if has_logged { " " } else { "" };
             // TODO: handle fmt error?
             let _ = if name == "message" {
                 write!(f, "{}{:?};", leading, value)

@@ -1,4 +1,4 @@
-use tokio_trace::{field, subscriber::Subscriber, Id, Metadata, Event};
+use tokio_trace::{field, subscriber::Subscriber, Event, Id, Metadata};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
