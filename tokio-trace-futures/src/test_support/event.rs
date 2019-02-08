@@ -2,6 +2,7 @@
 use super::{field, metadata};
 
 use std::fmt;
+use tokio_trace;
 
 /// A mock event.
 ///
