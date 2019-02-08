@@ -8,7 +8,7 @@ extern crate proc_macro2;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::token::{Async, Const, Unsafe};
-use syn::{Abi, Attribute, Block, Ident, ItemFn, Visibility};
+use syn::{Abi, ArgCaptured, Attribute, Block, FnArg, Ident, ItemFn, Pat, PatIdent, Visibility};
 
 #[proc_macro_attribute]
 pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
@@ -33,11 +33,30 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
 
     let return_type = input.clone().decl.output;
     let params = input.clone().decl.inputs;
+    let param_names: Vec<Ident> = input
+        .clone()
+        .decl
+        .inputs
+        .into_iter()
+        .filter_map(|param| match param {
+            FnArg::Captured(ArgCaptured {
+                pat: Pat::Ident(PatIdent { ident, .. }),
+                ..
+            }) => Some(ident),
+            _ => None,
+        })
+        .collect();
+    let param_names_clone = param_names.clone();
 
     quote_spanned!(call_site=>
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
-            span!(#ident_str, traced_function = &#ident_str).enter(move || {
+            span!(
+                #ident_str,
+                traced_function = &#ident_str,
+                #(#param_names = tokio_trace::field::debug(&#param_names_clone)),*
+            )
+            .enter(move || {
                 #block
             })
         }
