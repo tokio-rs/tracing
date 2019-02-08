@@ -1,0 +1,10 @@
+[package]
+name = "tokio-trace-fmt"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+tokio-trace-core = { git = "https://github.com/tokio-rs/tokio", branch = "eliza/tokio-trace" }
+
+[dev-dependencies]
+tokio-trace = "0.0.1"
