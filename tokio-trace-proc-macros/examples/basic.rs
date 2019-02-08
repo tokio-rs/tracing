@@ -9,7 +9,10 @@ use tokio_trace::field;
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tokio_trace_log::TraceLogger::new();
+    let subscriber = tokio_trace_log::TraceLogger::builder()
+        .with_span_entry(true)
+        .with_span_exits(true)
+        .finish();
 
     tokio_trace::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
@@ -28,5 +31,6 @@ fn main() {
 #[trace]
 #[inline]
 fn suggest_band() -> String {
+    debug!("Suggesting a band.");
     format!("Wild Pink")
 }
