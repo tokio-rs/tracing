@@ -1,5 +1,8 @@
 extern crate tokio_trace_core;
 
+#[cfg(feature = "ansi")]
+extern crate ansi_term;
+
 use tokio_trace_core::{
     field,
     Event,
@@ -21,7 +24,7 @@ use std::{
 pub mod default;
 
 #[derive(Debug)]
-pub struct FmtSubscriber<S, E> {
+pub struct FmtSubscriber<S=(), E=fn(Context, &mut io::Write, &Event) -> io::Result<()>> {
     fmt_span: S,
     fmt_event: E,
     spans: RwLock<HashMap<Id, SpanData>>,
@@ -61,6 +64,23 @@ impl<S, E> FmtSubscriber<S, E> {
         let _ = CONTEXT.try_with(|current| {
             current.borrow_mut().pop()
         });
+    }
+}
+
+impl FmtSubscriber {
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl Default for FmtSubscriber {
+    fn default() -> Self {
+        FmtSubscriber {
+            fmt_span: (),
+            fmt_event: default::fmt_event,
+            spans: RwLock::new(HashMap::default()),
+            next_id: AtomicUsize::new(0),
+        }
     }
 }
 
