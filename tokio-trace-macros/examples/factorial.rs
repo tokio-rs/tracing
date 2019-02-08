@@ -18,7 +18,5 @@ fn main() {
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_log::TraceLogger::new();
 
-    tokio_trace::subscriber::with_default(subscriber, || {
-        dbg!(factorial(4))
-    });
+    tokio_trace::subscriber::with_default(subscriber, || dbg!(factorial(4)));
 }
