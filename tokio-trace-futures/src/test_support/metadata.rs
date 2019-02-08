@@ -1,5 +1,5 @@
 use std::fmt;
-use tokio_trace::Metadata;
+use tokio_trace::{self, Metadata};
 
 #[derive(Debug, Eq, PartialEq, Default)]
 pub struct Expect {

@@ -2,6 +2,8 @@
 use super::{field, metadata};
 use std::fmt;
 
+use tokio_trace;
+
 /// A mock span.
 ///
 /// This is intended for use with the mock subscriber API in the
