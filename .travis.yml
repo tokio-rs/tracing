@@ -16,6 +16,7 @@ script:
 - cargo test --verbose -p tokio-trace-tower-http
 - cargo test --verbose -p tokio-trace-log
 - cargo test --verbose -p tokio-trace-env-logger
+- cargo test --verbose -p tokio-trace-macros
 
 jobs:
   include:
@@ -24,7 +25,7 @@ jobs:
   - stage: test
     name: "test proc-macros"
     script:
-    - cargo test -p tokio-trace-macros
+    - cargo test -p tokio-trace-proc-macros
     rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview
