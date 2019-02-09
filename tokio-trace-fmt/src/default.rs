@@ -15,15 +15,15 @@ use ansi_term::{Colour, Style};
 
 pub fn fmt_event(ctx: Context, f: &mut Write, event: &Event) -> io::Result<()> {
     let meta = event.metadata();
-    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(ctx), meta.target())?;
+    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())?;
     event.record(&mut RecordWriter(f));
+    write!(f, "{}", FmtFields(&ctx));
     writeln!(f, "")
 }
 
-struct RecordWriter<'a>(&'a mut Write);
+pub(crate) struct RecordWriter<'a>(&'a mut Write);
 
 impl<'a> field::Record for RecordWriter<'a> {
-
     fn record_str(&mut self, field: &Field, value: &str) {
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))
@@ -43,38 +43,54 @@ impl<'a> field::Record for RecordWriter<'a> {
 
 }
 
-struct FmtCtx(Context);
+struct FmtCtx<'a>(&'a Context<'a>);
 
 #[cfg(feature = "ansi")]
-impl fmt::Display for FmtCtx {
+impl<'a> fmt::Display for FmtCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(|spans| {
-            let mut spans = spans.iter();
-            if let Some(&span) = spans.next() {
+        let mut seen = false;
+        self.0.fmt_spans(|span| {
+            if seen {
+                write!(f, ":{}", Style::new().bold().paint(span))?;
+            } else {
                 write!(f, "{}", Style::new().bold().paint(span))?;
-                for &span in spans {
-                    write!(f, ":{}", Style::new().bold().paint(span))?;
-                }
-                f.pad(" ")?;
-            };
+                seen = true;
+            }
             Ok(())
-        })
+        })?;
+        if seen {
+            f.pad(" ");
+        }
+        Ok(())
     }
 }
 
 #[cfg(not(feature = "ansi"))]
-impl fmt::Display for FmtCtx {
+impl<'a> fmt::Display for FmtCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(|spans| {
-            let mut spans = spans.iter();
-            if let Some(span) = spans.next() {
+        let mut seen = false;
+        self.0.fmt_spans(|span| {
+            if seen {
+                write!(f, ":{}", span)?;
+            } else {
                 write!(f, "{}", span)?;
-                for span in spans {
-                    write!(f, ":{}", span)?;
-                }
-                f.pad(" ")?;
-            };
+                seen = true;
+            }
             Ok(())
+        })?;
+        if seen {
+            f.pad(" ");
+        }
+        Ok(())
+    }
+}
+
+struct FmtFields<'a>(&'a Context<'a>);
+
+impl<'a> fmt::Display for FmtFields<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt_fields(|fields| {
+            write!(f, "{}", fields)
         })
     }
 }

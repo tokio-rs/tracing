@@ -31,39 +31,44 @@ pub struct FmtSubscriber<S=(), E=fn(Context, &mut io::Write, &Event) -> io::Resu
     next_id: AtomicUsize,
 }
 
-pub struct Context {
-    _p: (),
+pub struct Context<'a> {
+    lock: &'a RwLock<HashMap<Id, SpanData>>,
 }
 
 #[derive(Debug)]
 struct SpanData {
     name: &'static str,
+    fields: String,
+    ref_count: AtomicUsize,
 }
 
 thread_local! {
-    static CONTEXT: RefCell<Vec<&'static str>> = RefCell::new(vec![]);
+    static CONTEXT: RefCell<Vec<Id>> = RefCell::new(vec![]);
+}
+
+fn curr_id() -> Option<Id> {
+    CONTEXT.try_with(|current| current.borrow().last().cloned()).ok()?
 }
 
 impl<S, E> FmtSubscriber<S, E> {
+
     fn span_name(&self, id: &Id) -> Option<&'static str> {
         self.spans.read().ok()?
             .get(id).map(|span| span.name)
     }
 
     fn enter(&self, id: &Id) {
-        if let Some(span_name) = self.span_name(id) {
-            let _ = CONTEXT.try_with(|current| {
-                current.borrow_mut().push(span_name);
-            });
-        }
+        let _ = CONTEXT.try_with(|current| {
+            current.borrow_mut().push(id.clone());
+        });
     }
 
-    fn exit(&self) {
-        // TODO: do we need to actually make sure we popped the right thing
-        // here? or can we rely on `tokio-trace` to be sane?
-        let _ = CONTEXT.try_with(|current| {
+    fn exit(&self, id: &Id) {
+        if let Ok(popped) = CONTEXT.try_with(|current| {
             current.borrow_mut().pop()
-        });
+        }) {
+            debug_assert!(popped.as_ref() == Some(id));
+        }
     }
 }
 
@@ -95,15 +100,19 @@ where
 
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> Id {
         let id = Id::from_u64(self.next_id.fetch_add(1, Ordering::Relaxed) as u64);
-        let data = SpanData {
-            name: metadata.name(),
-        };
+        let mut data = SpanData::new(metadata.name());
+        values.record(&mut data);
         self.spans.write().expect("rwlock poisoned!")
             .insert(id.clone(), data);
         id
     }
 
-    fn record(&self, span: &Id, values: &field::ValueSet) {}
+    fn record(&self, span: &Id, values: &field::ValueSet) {
+        let mut spans = self.spans.write().expect("rwlock poisoned!");
+        if let Some(span) = spans.get_mut(span) {
+            values.record(span);
+        }
+    }
 
     fn record_follows_from(&self, span: &Id, follows: &Id) {}
 
@@ -111,7 +120,8 @@ where
         // TODO: better io generation!
         let stdout = io::stdout();
         let mut io = stdout.lock();
-        if let Err(e) = (self.fmt_event)(Context::new(), &mut io, event) {
+        let spans = self.spans.read().expect("rwlock poisoned!");
+        if let Err(e) = (self.fmt_event)(Context::new(&self.spans), &mut io, event) {
             eprintln!("error formatting event: {}", e);
         }
     }
@@ -121,26 +131,90 @@ where
         self.enter(span);
     }
 
-    fn exit(&self, _span: &Id)  {
+    fn exit(&self, span: &Id)  {
         // TODO: add on_exit hook
-        self.exit();
+        self.exit(span);
     }
 }
 
 
-impl Context {
-    pub fn fmt<F>(&self, f: F) -> fmt::Result
+impl<'a> Context<'a> {
+    pub fn fmt_spans<F>(&self, mut f: F) -> fmt::Result
     where
-        F: FnOnce(&[&str]) -> fmt::Result
+        F: FnMut(&str) -> fmt::Result
     {
         CONTEXT.try_with(|current| {
-            (f)(&current.borrow()[..])
+            let lock = self.lock.read().map_err(|_| fmt::Error)?;
+            let stack = current.borrow();
+            let spans = stack.iter().filter_map(|id| {
+                lock.get(id)
+            });
+            for span in spans {
+                (f)(span.name.as_ref())?;
+            }
+            Ok(())
         }).map_err(|_| fmt::Error)?
     }
 
-    fn new() -> Self {
+    pub fn fmt_fields<F>(&self, mut f: F) -> fmt::Result
+    where
+        F: FnMut(&str) -> fmt::Result
+    {
+        curr_id().map(|id| {
+            if let Some(span) = self.lock.read().map_err(|_| fmt::Error)?
+                .get(&id)
+            {
+                (f)(span.fields.as_ref())
+            } else {
+                Ok(())
+            }
+        }).unwrap_or(Ok(()))
+
+    }
+
+    fn new(lock: &'a RwLock<HashMap<Id, SpanData>>) -> Self {
         Self {
-            _p: ()
+            lock,
         }
+    }
+}
+
+// ===== impl SpanData =====
+
+impl SpanData {
+    fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            fields: String::new(),
+            ref_count: AtomicUsize::new(1),
+        }
+    }
+
+    #[inline]
+    fn clone_ref(&self) {
+        self.ref_count.fetch_add(1, Ordering::Release);
+    }
+
+    #[inline]
+    fn drop_ref(&self) -> bool {
+        self.ref_count.fetch_sub(1, Ordering::AcqRel) == 1
+    }
+}
+
+impl field::Record for SpanData {
+    #[inline]
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        use std::fmt::Write;
+        if field.name() == "message" {
+            let _ = write!(self.fields, " {}", value);
+        } else {
+            self.record_debug(field, &value)
+        }
+    }
+
+    #[inline]
+    fn record_debug(&mut self, field: &field::Field, value: &fmt::Debug) {
+        use std::fmt::Write;
+        let _ = write!(self.fields, " {}={:?}", field, value);
     }
 }
