@@ -53,8 +53,8 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
         #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
             span!(
                 #ident_str,
-                traced_function = &#ident_str,
-                #(#param_names = tokio_trace::field::debug(&#param_names_clone)),*
+                traced_function = &#ident_str
+                #(, #param_names = tokio_trace::field::debug(&#param_names_clone)),*
             )
             .enter(move || {
                 #block

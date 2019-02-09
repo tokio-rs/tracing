@@ -14,7 +14,7 @@ fn nth_fibonacci(n: u64) -> u64 {
         1
     } else {
         debug!("Recursing");
-        nth_fibonacci(n-1) + nth_fibonacci(n-2)
+        nth_fibonacci(n - 1) + nth_fibonacci(n - 2)
     }
 }
 
@@ -32,15 +32,13 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tokio_trace_log::TraceLogger::builder().with_parent_fields(false).finish();
+    let subscriber = tokio_trace_log::TraceLogger::builder()
+        .with_parent_fields(false)
+        .finish();
 
     tokio_trace::subscriber::with_default(subscriber, || {
         let n: u64 = 5;
         let sequence = fibonacci_seq(n);
-        info!(
-            "The first {} fibonacci numbers are {:?}",
-            n,
-            sequence
-        );
+        info!("The first {} fibonacci numbers are {:?}", n, sequence);
     })
 }
