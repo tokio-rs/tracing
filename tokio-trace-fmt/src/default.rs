@@ -13,17 +13,24 @@ use std::{
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event(ctx: Context, f: &mut Write, event: &Event) -> io::Result<()> {
+pub fn fmt_event(ctx: &Context, f: &mut Write, event: &Event) -> io::Result<()> {
     let meta = event.metadata();
-    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())?;
-    event.record(&mut RecordWriter(f));
-    write!(f, "{}", FmtFields(&ctx));
-    writeln!(f, "")
+    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())
 }
 
-pub(crate) struct RecordWriter<'a>(&'a mut Write);
+pub struct NewRecorder;
+pub struct Recorder<'a>(&'a mut Write);
 
-impl<'a> field::Record for RecordWriter<'a> {
+impl<'a> ::NewRecorder<'a> for NewRecorder {
+    type Recorder = Recorder<'a>;
+
+    #[inline]
+    fn make(&self, writer: &'a mut Write) -> Self::Recorder {
+        Recorder(writer)
+    }
+}
+
+impl<'a> field::Record for Recorder<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))
@@ -32,7 +39,6 @@ impl<'a> field::Record for RecordWriter<'a> {
         }
     }
 
-    /// Record a value implementing `fmt::Debug`.
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
         if field.name() == "message" {
             let _ = write!(self.0, " {:?}", value);
@@ -40,7 +46,6 @@ impl<'a> field::Record for RecordWriter<'a> {
             let _ = write!(self.0, " {}={:?}", field, value);
         }
     }
-
 }
 
 struct FmtCtx<'a>(&'a Context<'a>);
@@ -82,16 +87,6 @@ impl<'a> fmt::Display for FmtCtx<'a> {
             f.pad(" ");
         }
         Ok(())
-    }
-}
-
-struct FmtFields<'a>(&'a Context<'a>);
-
-impl<'a> fmt::Display for FmtFields<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt_fields(|fields| {
-            write!(f, "{}", fields)
-        })
     }
 }
 
