@@ -87,7 +87,7 @@ where
             };
         let mut data = span::Data::new(metadata.name(), fields);
         {
-            let mut recorder = self.new_recorder.make(&mut data);
+            let mut recorder = self.new_recorder.make(&mut data, true);
             values.record(&mut recorder);
         }
         self.spans.write().expect("rwlock poisoned!")
@@ -98,8 +98,7 @@ where
     fn record(&self, span: &span::Id, values: &field::ValueSet) {
         let mut spans = self.spans.write().expect("rwlock poisoned!");
         if let Some(mut span) = spans.get_mut(span) {
-
-            let mut recorder = self.new_recorder.make(&mut span);
+            let mut recorder = self.new_recorder.make(&mut span, false);
             values.record(&mut recorder);
         }
     }
@@ -133,19 +132,19 @@ where
 pub trait NewRecorder<'a> {
     type Recorder: field::Record + 'a;
 
-    fn make(&self, writer: &'a mut io::Write) -> Self::Recorder;
+    fn make(&self, writer: &'a mut io::Write, is_empty: bool) -> Self::Recorder;
 }
 
 impl<'a, F, R> NewRecorder<'a> for F
 where
-    F: Fn(&'a mut io::Write) -> R,
+    F: Fn(&'a mut io::Write, bool) -> R,
     R: field::Record + 'a,
 {
     type Recorder = R;
 
     #[inline]
-    fn make(&self, writer: &'a mut io::Write) -> Self::Recorder {
-        (self)(writer)
+    fn make(&self, writer: &'a mut io::Write, is_empty: bool) -> Self::Recorder {
+        (self)(writer, is_empty)
     }
 }
 
@@ -185,6 +184,14 @@ impl<N, E> Builder<N, E> {
         Builder {
             new_recorder,
             fmt_event: self.fmt_event,
+            settings: self.settings,
+        }
+    }
+
+    pub fn full(self) -> Builder<N> {
+        Builder {
+            fmt_event: default::fmt_verbose,
+            new_recorder: self.new_recorder,
             settings: self.settings,
         }
     }
