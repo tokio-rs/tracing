@@ -19,7 +19,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         RwLock
     },
-    marker::PhantomData,
 };
 
 pub mod default;
@@ -36,17 +35,17 @@ pub struct FmtSubscriber<
     next_id: AtomicUsize,
 }
 
-pub struct Context<'a> {
-    lock: &'a RwLock<HashMap<Id, span::Data>>,
-}
-
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
     E = fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
 > {
-    new_recorder: N
-    fmt_event: E
+    new_recorder: N,
+    fmt_event: E,
+}
+
+pub struct Context<'a> {
+    lock: &'a RwLock<HashMap<Id, span::Data>>,
 }
 
 thread_local! {
@@ -57,52 +56,23 @@ fn curr_id() -> Option<Id> {
     CONTEXT.try_with(|current| current.borrow().last().cloned()).ok()?
 }
 
-impl Default for Builder {
+
+impl FmtSubscriber {
+    pub fn builder() -> Builder {
+        Builder::default()
+    }
+
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl Default for FmtSubscriber {
     fn default() -> Self {
-        Builder {
-            new_recorder: default::NewRecorder,
-            fmt_event: default::fmt_event,
-        }
+        Builder::default().finish()
     }
 }
 
-impl<N, E> Builder<N, E> {
-    pub fn with_recorder<N2>(self, new_recorder: N2) -> Builder<N2, E>
-    where
-        N2: for<'a> NewRecorder<'a>,
-    {
-        Builder {
-            new_recorder,
-            fmt_event: self.fmt_event,
-        }
-    }
-
-    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2>
-    where
-        E2: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
-    {
-        Builder {
-            new_recorder: self.new_recorder,
-            fmt_event,
-        }
-    }
-
-}
-
-impl<N, E> Builder<N, E>
-where
-    N: for<'a> NewRecorder<'a>,
-    E: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
-{
-    pub fn finish(self) -> FmtSubscriber<N, E> {
-        FmtSubscriber {
-            new_recorder: self.new_recorder,
-            fmt_event: self.fmt_event,
-            spans: RwLock::new(HashMap::default()),
-            next_id: AtomicUsize::new(0),
-        }
-    }
-}
 
 impl<N, E> FmtSubscriber<N, E> {
     fn enter(&self, id: &Id) {
@@ -117,18 +87,6 @@ impl<N, E> FmtSubscriber<N, E> {
         }) {
             debug_assert!(popped.as_ref() == Some(id));
         }
-    }
-}
-
-impl FmtSubscriber {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
-impl Default for FmtSubscriber {
-    fn default() -> Self {
-        Builder::default().finish()
     }
 }
 
@@ -254,4 +212,53 @@ where
     fn make(&self, writer: &'a mut io::Write) -> Self::Recorder {
         (self)(writer)
     }
+}
+
+// ===== impl Builder =====
+
+impl Default for Builder {
+    fn default() -> Self {
+        Builder {
+            new_recorder: default::NewRecorder,
+            fmt_event: default::fmt_event,
+        }
+    }
+}
+
+impl<N, E> Builder<N, E>
+where
+    N: for<'a> NewRecorder<'a>,
+    E: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+{
+    pub fn finish(self) -> FmtSubscriber<N, E> {
+        FmtSubscriber {
+            new_recorder: self.new_recorder,
+            fmt_event: self.fmt_event,
+            spans: RwLock::new(HashMap::default()),
+            next_id: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl<N, E> Builder<N, E> {
+    pub fn with_recorder<N2>(self, new_recorder: N2) -> Builder<N2, E>
+    where
+        N2: for<'a> NewRecorder<'a>,
+    {
+        Builder {
+            new_recorder,
+            fmt_event: self.fmt_event,
+        }
+    }
+
+    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2>
+    where
+        E2: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+    {
+        Builder {
+            new_recorder: self.new_recorder,
+            fmt_event,
+        }
+    }
+
 }
