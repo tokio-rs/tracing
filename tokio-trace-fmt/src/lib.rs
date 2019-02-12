@@ -6,14 +6,12 @@ extern crate ansi_term;
 use tokio_trace_core::{
     field,
     Event,
-    Span as Id,
     Metadata,
 };
 
 use std::{
     fmt,
     io,
-    cell::RefCell,
     collections::HashMap,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -27,11 +25,11 @@ mod span;
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
-    E = fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+    E = fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
 > {
     new_recorder: N,
     fmt_event: E,
-    spans: RwLock<HashMap<Id, span::Data>>,
+    spans: RwLock<HashMap<span::Id, span::Data>>,
     next_id: AtomicUsize,
     settings: Settings,
 }
@@ -39,30 +37,17 @@ pub struct FmtSubscriber<
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
-    E = fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+    E = fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
 > {
     new_recorder: N,
     fmt_event: E,
     settings: Settings,
 }
 
-pub struct Context<'a> {
-    lock: &'a RwLock<HashMap<Id, span::Data>>,
-}
-
 #[derive(Debug, Default)]
 struct Settings {
     inherit_fields: bool,
 }
-
-thread_local! {
-    static CONTEXT: RefCell<Vec<Id>> = RefCell::new(vec![]);
-}
-
-fn curr_id() -> Option<Id> {
-    CONTEXT.try_with(|current| current.borrow().last().cloned()).ok()?
-}
-
 
 impl FmtSubscriber {
     pub fn builder() -> Builder {
@@ -80,50 +65,27 @@ impl Default for FmtSubscriber {
     }
 }
 
-
-impl<N, E> FmtSubscriber<N, E> {
-    fn enter(&self, id: &Id) {
-        let _ = CONTEXT.try_with(|current| {
-            current.borrow_mut().push(id.clone());
-        });
-    }
-
-    fn exit(&self, id: &Id) {
-        if let Ok(popped) = CONTEXT.try_with(|current| {
-            current.borrow_mut().pop()
-        }) {
-            debug_assert!(popped.as_ref() == Some(id));
-        }
-    }
-}
-
 impl<N, E> tokio_trace_core::Subscriber for FmtSubscriber<N, E>
 where
     N: for<'a> NewRecorder<'a>,
-    E: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+    E: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
 {
    fn enabled(&self, metadata: &Metadata) -> bool {
        // FIXME: filtering
        true
    }
 
-    fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> Id {
-        let id = self.next_id.fetch_add(1, Ordering::Relaxed) as u64;
+    fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
+        let id = span::Id::from_u64(self.next_id.fetch_add(1, Ordering::Relaxed) as u64);
         let fields =
             if self.settings.inherit_fields {
-                curr_id().and_then(|id| {
-                    self.spans.read().ok().and_then(|spans| {
-                        spans.get(&id)
-                            .map(|span| span.fields.to_owned())
-                    })
-
-                })
-                .unwrap_or_default()
+                span::Context::new(&self.spans)
+                    .with_current(|(_, span)| span.fields.to_owned())
+                    .unwrap_or_default()
             } else {
                 String::new()
             };
-        let mut data = span::Data::new(metadata.name(), fields, id);
-        let id = Id::from_u64(id);
+        let mut data = span::Data::new(metadata.name(), fields);
         {
             let mut recorder = self.new_recorder.make(&mut data);
             values.record(&mut recorder);
@@ -133,7 +95,7 @@ where
         id
     }
 
-    fn record(&self, span: &Id, values: &field::ValueSet) {
+    fn record(&self, span: &span::Id, values: &field::ValueSet) {
         let mut spans = self.spans.write().expect("rwlock poisoned!");
         if let Some(mut span) = spans.get_mut(span) {
 
@@ -142,79 +104,31 @@ where
         }
     }
 
-    fn record_follows_from(&self, span: &Id, follows: &Id) {}
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {}
 
     fn event(&self, event: &Event) {
-        use io::Write;
-        if let Err(e) = (|| -> io::Result<()> {
-            let stdout = io::stdout();
-            let mut io = stdout.lock();
-            let ctx = Context::new(&self.spans);
-            let _ = {
-                (self.fmt_event)(&ctx, &mut io, event)
-            }?;
-            {
-                let mut recorder = self.new_recorder.make(&mut io);
-                event.record(&mut recorder);
-            }
-            let _ = ctx.fmt_fields(&mut io)?;
-            let _ = io.write(b"\n")?;
-            Ok(())
-        })() {
+        // TODO: we should probably pass in a buffered writer type, and
+        // allow alternate IOs...
+        let stdout = io::stdout();
+        let mut io = stdout.lock();
+        let ctx = span::Context::new(&self.spans);
+        if let Err(e) = (self.fmt_event)(&ctx, &mut io, event) {
             eprintln!("error formatting event: {}", e);
         }
     }
 
-    fn enter(&self, span: &Id) {
+    fn enter(&self, span: &span::Id) {
         // TODO: add on_enter hook
-        self.enter(span);
+        span::Context::push(span.clone());
     }
 
-    fn exit(&self, span: &Id)  {
+    fn exit(&self, span: &span::Id)  {
         // TODO: add on_exit hook
-        self.exit(span);
-    }
-}
-
-
-impl<'a> Context<'a> {
-    pub fn fmt_spans<F>(&self, mut f: F) -> fmt::Result
-    where
-        F: FnMut((&tokio_trace_core::Span, &span::Data)) -> fmt::Result
-    {
-        CONTEXT.try_with(|current| {
-            let lock = self.lock.read().map_err(|_| fmt::Error)?;
-            let stack = current.borrow();
-            let spans = stack.iter().filter_map(|id| {
-                lock.get(id).map(|span| (id, span))
-            });
-            for span in spans {
-                (f)(span)?;
-            }
-            Ok(())
-        }).map_err(|_| fmt::Error)?
-    }
-
-    fn fmt_fields<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        curr_id().map(|id| {
-            if let Some(span) = self.lock.read()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, "rwlock poisoned"))?
-                .get(&id)
-            {
-                write!(writer, "{}", span.fields)
-            } else {
-                Ok(())
-            }
-        }).unwrap_or(Ok(()))
-    }
-
-    fn new(lock: &'a RwLock<HashMap<Id, span::Data>>) -> Self {
-        Self {
-            lock,
+        if let Some(ref popped) = span::Context::pop() {
+            debug_assert!(popped == span);
         }
     }
 }
-
 
 pub trait NewRecorder<'a> {
     type Recorder: field::Record + 'a;
@@ -250,7 +164,7 @@ impl Default for Builder {
 impl<N, E> Builder<N, E>
 where
     N: for<'a> NewRecorder<'a>,
-    E: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+    E: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
 {
     pub fn finish(self) -> FmtSubscriber<N, E> {
         FmtSubscriber {
@@ -277,7 +191,7 @@ impl<N, E> Builder<N, E> {
 
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2>
     where
-        E2: Fn(&Context, &mut io::Write, &Event) -> io::Result<()>,
+        E2: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
     {
         Builder {
             new_recorder: self.new_recorder,
