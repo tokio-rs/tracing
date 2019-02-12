@@ -33,6 +33,7 @@ pub struct FmtSubscriber<
     fmt_event: E,
     spans: RwLock<HashMap<Id, span::Data>>,
     next_id: AtomicUsize,
+    settings: Settings,
 }
 
 #[derive(Debug, Default)]
@@ -42,10 +43,16 @@ pub struct Builder<
 > {
     new_recorder: N,
     fmt_event: E,
+    settings: Settings,
 }
 
 pub struct Context<'a> {
     lock: &'a RwLock<HashMap<Id, span::Data>>,
+}
+
+#[derive(Debug, Default)]
+struct Settings {
+    inherit_fields: bool,
 }
 
 thread_local! {
@@ -102,7 +109,20 @@ where
 
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> Id {
         let id = Id::from_u64(self.next_id.fetch_add(1, Ordering::Relaxed) as u64);
-        let mut data = span::Data::new(metadata.name());
+        let fields =
+            if self.settings.inherit_fields {
+                curr_id().and_then(|id| {
+                    self.spans.read().ok().and_then(|spans| {
+                        spans.get(&id)
+                            .map(|span| span.fields.to_owned())
+                    })
+
+                })
+                .unwrap_or_default()
+            } else {
+                String::new()
+            };
+        let mut data = span::Data::new(metadata.name(), fields);
         {
             let mut recorder = self.new_recorder.make(&mut data);
             values.record(&mut recorder);
@@ -221,6 +241,7 @@ impl Default for Builder {
         Builder {
             new_recorder: default::NewRecorder,
             fmt_event: default::fmt_event,
+            settings: Settings::default(),
         }
     }
 }
@@ -236,6 +257,7 @@ where
             fmt_event: self.fmt_event,
             spans: RwLock::new(HashMap::default()),
             next_id: AtomicUsize::new(0),
+            settings: self.settings,
         }
     }
 }
@@ -248,6 +270,7 @@ impl<N, E> Builder<N, E> {
         Builder {
             new_recorder,
             fmt_event: self.fmt_event,
+            settings: self.settings,
         }
     }
 
@@ -258,6 +281,19 @@ impl<N, E> Builder<N, E> {
         Builder {
             new_recorder: self.new_recorder,
             fmt_event,
+            settings: self.settings,
+        }
+    }
+
+    /// Sets whether or not spans inherit their parents' field values (disabled
+    /// by default).
+    pub fn inherit_fields(self, inherit_fields: bool) -> Self {
+        Builder {
+            settings: Settings {
+                inherit_fields,
+                ..self.settings
+            },
+            ..self
         }
     }
 
