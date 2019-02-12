@@ -14,10 +14,10 @@ pub struct Data {
 // ===== impl Data =====
 
 impl Data {
-    pub(crate) fn new(name: &'static str) -> Self {
+    pub(crate) fn new(name: &'static str, fields: String) -> Self {
         Self {
             name,
-            fields: String::new(),
+            fields,
             ref_count: AtomicUsize::new(1),
         }
     }
