@@ -1,5 +1,4 @@
-use super::Context;
-
+use ::span;
 
 use tokio_trace_core::{
     Event, Level, field::{self, Field},
@@ -13,12 +12,21 @@ use std::{
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event(ctx: &Context, f: &mut Write, event: &Event) -> io::Result<()> {
+pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
     let meta = event.metadata();
-    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())
+    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())?;
+    {
+        let mut recorder = Recorder(f);
+        event.record(&mut recorder);
+    }
+    ctx.with_current(|(_, span)| {
+        write!(f, "{}", span.fields)
+    }).unwrap_or(Ok(()))?;
+    writeln!(f, "")
 }
 
 pub struct NewRecorder;
+
 pub struct Recorder<'a>(&'a mut Write);
 
 impl<'a> ::NewRecorder<'a> for NewRecorder {
@@ -48,13 +56,13 @@ impl<'a> field::Record for Recorder<'a> {
     }
 }
 
-struct FmtCtx<'a>(&'a Context<'a>);
+struct FmtCtx<'a>(&'a span::Context<'a>);
 
 #[cfg(feature = "ansi")]
 impl<'a> fmt::Display for FmtCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.fmt_spans(|(_, span)| {
+        self.0.with_spans(|(_, span)| {
             if seen {
                 write!(f, ":{}", Style::new().bold().paint(span.name()))?;
             } else {
@@ -64,7 +72,7 @@ impl<'a> fmt::Display for FmtCtx<'a> {
             Ok(())
         })?;
         if seen {
-            f.pad(" ");
+            f.pad(" ")?;
         }
         Ok(())
     }
@@ -84,7 +92,7 @@ impl<'a> fmt::Display for FmtCtx<'a> {
             Ok(())
         })?;
         if seen {
-            f.pad(" ");
+            f.pad(" ")?;
         }
         Ok(())
     }
