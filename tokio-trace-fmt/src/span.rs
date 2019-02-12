@@ -7,7 +7,7 @@ use std::{
 pub struct Data {
     pub(crate) name: &'static str,
     pub(crate) fields: String,
-    pub(crate) ref_count: AtomicUsize,
+    ref_count: AtomicUsize,
 }
 
 
@@ -20,6 +20,14 @@ impl Data {
             fields,
             ref_count: AtomicUsize::new(1),
         }
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn fields(&self) -> &str {
+        self.fields.as_ref()
     }
 
     #[inline]

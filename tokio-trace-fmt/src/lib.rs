@@ -108,7 +108,7 @@ where
    }
 
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> Id {
-        let id = Id::from_u64(self.next_id.fetch_add(1, Ordering::Relaxed) as u64);
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed) as u64;
         let fields =
             if self.settings.inherit_fields {
                 curr_id().and_then(|id| {
@@ -122,7 +122,8 @@ where
             } else {
                 String::new()
             };
-        let mut data = span::Data::new(metadata.name(), fields);
+        let mut data = span::Data::new(metadata.name(), fields, id);
+        let id = Id::from_u64(id);
         {
             let mut recorder = self.new_recorder.make(&mut data);
             values.record(&mut recorder);
@@ -179,16 +180,16 @@ where
 impl<'a> Context<'a> {
     pub fn fmt_spans<F>(&self, mut f: F) -> fmt::Result
     where
-        F: FnMut(&str) -> fmt::Result
+        F: FnMut((&tokio_trace_core::Span, &span::Data)) -> fmt::Result
     {
         CONTEXT.try_with(|current| {
             let lock = self.lock.read().map_err(|_| fmt::Error)?;
             let stack = current.borrow();
             let spans = stack.iter().filter_map(|id| {
-                lock.get(id)
+                lock.get(id).map(|span| (id, span))
             });
             for span in spans {
-                (f)(span.name.as_ref())?;
+                (f)(span)?;
             }
             Ok(())
         }).map_err(|_| fmt::Error)?

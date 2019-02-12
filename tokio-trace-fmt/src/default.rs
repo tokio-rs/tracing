@@ -54,11 +54,11 @@ struct FmtCtx<'a>(&'a Context<'a>);
 impl<'a> fmt::Display for FmtCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.fmt_spans(|span| {
+        self.0.fmt_spans(|(_, span)| {
             if seen {
-                write!(f, ":{}", Style::new().bold().paint(span))?;
+                write!(f, ":{}", Style::new().bold().paint(span.name()))?;
             } else {
-                write!(f, "{}", Style::new().bold().paint(span))?;
+                write!(f, "{}", Style::new().bold().paint(span.name()))?;
                 seen = true;
             }
             Ok(())
@@ -74,11 +74,11 @@ impl<'a> fmt::Display for FmtCtx<'a> {
 impl<'a> fmt::Display for FmtCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.fmt_spans(|span| {
+        self.0.fmt_spans(|(_, span)| {
             if seen {
-                write!(f, ":{}", span)?;
+                write!(f, ":{}", span.name())?;
             } else {
-                write!(f, "{}", span)?;
+                write!(f, "{}", span.name())?;
                 seen = true;
             }
             Ok(())
