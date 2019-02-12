@@ -3,7 +3,9 @@ extern crate tokio_trace;
 extern crate tokio_trace_fmt;
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::new();
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
+        .full()
+        .finish();
 
     tokio_trace::subscriber::with_default(subscriber, || {
         span!("yak_shave").enter(|| {

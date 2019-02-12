@@ -14,32 +14,63 @@ use ansi_term::{Colour, Style};
 
 pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
     let meta = event.metadata();
-    write!(f, "{} {}{}:", FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())?;
+    write!(f, "{} {}{}: " , FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())?;
     {
-        let mut recorder = Recorder(f);
+        let mut recorder = Recorder::new(f, true);
         event.record(&mut recorder);
     }
     ctx.with_current(|(_, span)| {
-        write!(f, "{}", span.fields)
+        write!(f, " {}", span.fields)
     }).unwrap_or(Ok(()))?;
+    writeln!(f, "")
+}
+
+pub fn fmt_verbose(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
+    let meta = event.metadata();
+    write!(f, "{} {}{}: ", FmtLevel(meta.level()), FullCtx(&ctx), meta.target())?;
+    {
+        let mut recorder = Recorder::new(f, true);
+        event.record(&mut recorder);
+    }
     writeln!(f, "")
 }
 
 pub struct NewRecorder;
 
-pub struct Recorder<'a>(&'a mut Write);
+pub struct Recorder<'a> {
+    writer: &'a mut Write,
+    is_empty: bool
+}
+
+impl<'a> Recorder<'a> {
+    pub fn new(writer: &'a mut Write, is_empty: bool) -> Self {
+        Self {
+            writer,
+            is_empty,
+        }
+    }
+
+    fn maybe_pad(&mut self) {
+        if self.is_empty {
+            self.is_empty = false;
+        } else {
+            let _ = write!(self.writer, " ");
+        }
+    }
+}
 
 impl<'a> ::NewRecorder<'a> for NewRecorder {
     type Recorder = Recorder<'a>;
 
     #[inline]
-    fn make(&self, writer: &'a mut Write) -> Self::Recorder {
-        Recorder(writer)
+    fn make(&self, writer: &'a mut Write, is_empty: bool) -> Self::Recorder {
+        Recorder::new(writer, is_empty)
     }
 }
 
 impl<'a> field::Record for Recorder<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
+        self.maybe_pad();
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))
         } else {
@@ -48,10 +79,11 @@ impl<'a> field::Record for Recorder<'a> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+        self.maybe_pad();
         if field.name() == "message" {
-            let _ = write!(self.0, " {:?}", value);
+            let _ = write!(self.writer, "{:?}", value);
         } else {
-            let _ = write!(self.0, " {}={:?}", field, value);
+            let _ = write!(self.writer, "{}={:?}", field, value);
         }
     }
 }
@@ -64,12 +96,10 @@ impl<'a> fmt::Display for FmtCtx<'a> {
         let mut seen = false;
         self.0.with_spans(|(_, span)| {
             if seen {
-                write!(f, ":{}", Style::new().bold().paint(span.name()))?;
-            } else {
-                write!(f, "{}", Style::new().bold().paint(span.name()))?;
-                seen = true;
+                f.pad(":")?;
             }
-            Ok(())
+            seen = true;
+            write!(f, "{}", Style::new().bold().paint(span.name()))
         })?;
         if seen {
             f.pad(" ")?;
@@ -84,12 +114,48 @@ impl<'a> fmt::Display for FmtCtx<'a> {
         let mut seen = false;
         self.0.fmt_spans(|(_, span)| {
             if seen {
-                write!(f, ":{}", span.name())?;
-            } else {
-                write!(f, "{}", span.name())?;
-                seen = true;
+                f.pad(":")?;
             }
-            Ok(())
+            seen = true;
+            write!(f, "{}", span.name())?
+        })?;
+        if seen {
+            f.pad(" ")?;
+        }
+        Ok(())
+    }
+}
+
+struct FullCtx<'a>(&'a span::Context<'a>);
+
+#[cfg(feature = "ansi")]
+impl<'a> fmt::Display for FullCtx<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut seen = false;
+        self.0.with_spans(|(_, span)| {
+            write!(f, "{}", Style::new().bold().paint(span.name()))?;
+            seen = true;
+
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(f, "={{{}}}", fields)?;
+            }
+            ":".fmt(f)
+        })?;
+        if seen {
+            f.pad(" ")?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "ansi"))]
+impl<'a> fmt::Display for FullCtx<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut seen = false;
+        self.0.with_spans(|(_, span)| {
+            seen = true;
+            write!(f, "{}={{{}}}", span.name(), span.fields())
         })?;
         if seen {
             f.pad(" ")?;
