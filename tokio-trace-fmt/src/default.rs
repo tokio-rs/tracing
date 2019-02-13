@@ -111,12 +111,12 @@ impl<'a> fmt::Display for FmtCtx<'a> {
 impl<'a> fmt::Display for FmtCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.fmt_spans(|_, span| {
+        self.0.visit_spans(|_, span| {
             if seen {
                 f.pad(":")?;
             }
             seen = true;
-            write!(f, "{}", span.name())?
+            write!(f, "{}", span.name())
         })?;
         if seen {
             f.pad(" ")?;
@@ -131,13 +131,14 @@ struct FullCtx<'a>(&'a span::Context<'a>);
 impl<'a> fmt::Display for FullCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
+        let style = Style::new().bold();
         self.0.visit_spans(|_, span| {
-            write!(f, "{}", Style::new().bold().paint(span.name()))?;
+            write!(f, "{}", style.paint(span.name()))?;
             seen = true;
 
             let fields = span.fields();
             if !fields.is_empty() {
-                write!(f, "={{{}}}", fields)?;
+                write!(f, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
             }
             ":".fmt(f)
         })?;
@@ -153,8 +154,14 @@ impl<'a> fmt::Display for FullCtx<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
         self.0.visit_spans(|_, span| {
+            write!(f, "{}", span.name())?;
             seen = true;
-            write!(f, "{}={{{}}}", span.name(), span.fields())
+
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(f, "{{{}}}", fields)?;
+            }
+            ":".fmt(f)
         })?;
         if seen {
             f.pad(" ")?;
