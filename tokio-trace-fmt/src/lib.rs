@@ -98,7 +98,8 @@ where
     fn record(&self, span: &span::Id, values: &field::ValueSet) {
         let mut spans = self.spans.write().expect("rwlock poisoned!");
         if let Some(mut span) = spans.get_mut(span) {
-            let mut recorder = self.new_recorder.make(&mut span, false);
+            let empty = span.fields.is_empty();
+            let mut recorder = self.new_recorder.make(&mut span, empty);
             values.record(&mut recorder);
         }
     }

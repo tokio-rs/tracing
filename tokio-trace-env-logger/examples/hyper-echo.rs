@@ -5,6 +5,7 @@ extern crate tokio_trace;
 extern crate tokio;
 extern crate tokio_trace_env_logger;
 extern crate tokio_trace_futures;
+extern crate tokio_trace_fmt;
 
 use futures::future;
 use hyper::rt::{Future, Stream};
@@ -15,7 +16,6 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 use std::str;
 
 mod sloggish;
-use self::sloggish::SloggishSubscriber;
 
 use tokio_trace::field;
 use tokio_trace_futures::{Instrument, Instrumented};
@@ -119,7 +119,9 @@ fn echo(req: Request<Body>) -> Instrumented<'static, BoxFut> {
 }
 
 fn main() {
-    let subscriber = SloggishSubscriber::new(2);
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
+        .full()
+        .finish();
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
     tokio_trace::dispatcher::with_default(tokio_trace::Dispatch::new(subscriber), || {
