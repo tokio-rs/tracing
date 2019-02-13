@@ -15,8 +15,6 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 
 use std::str;
 
-mod sloggish;
-
 use tokio_trace::field;
 use tokio_trace_futures::{Instrument, Instrumented};
 
