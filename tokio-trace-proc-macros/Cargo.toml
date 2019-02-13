@@ -14,7 +14,7 @@ proc-macro2 = { version = "0.4", features = ["nightly"] }
 
 [dev-dependencies]
 tokio-trace = "0.0.1"
-tokio-trace-log = { path = "../tokio-trace-log" }
+tokio-trace-fmt = { path = "../tokio-trace-fmt" }
 env_logger = "0.5"
 ansi_term = "0.11"
 humantime = "1.1.1"
