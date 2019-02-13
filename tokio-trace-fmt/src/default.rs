@@ -70,7 +70,6 @@ impl<'a> ::NewRecorder<'a> for NewRecorder {
 
 impl<'a> field::Record for Recorder<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
-        self.maybe_pad();
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))
         } else {
