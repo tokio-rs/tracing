@@ -7,6 +7,7 @@ use tokio_trace_core::{
     field,
     Event,
     Metadata,
+    subscriber::Interest,
 };
 
 use std::{
@@ -19,16 +20,21 @@ use std::{
     },
 };
 
+pub mod filter;
 pub mod default;
 mod span;
+
+pub use filter::Filter;
 
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
     E = fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    F = filter::EnvFilter,
 > {
     new_recorder: N,
     fmt_event: E,
+    filter: F,
     spans: RwLock<HashMap<span::Id, span::Data>>,
     next_id: AtomicUsize,
     settings: Settings,
@@ -38,9 +44,11 @@ pub struct FmtSubscriber<
 pub struct Builder<
     N = default::NewRecorder,
     E = fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    F = filter::EnvFilter,
 > {
     new_recorder: N,
     fmt_event: E,
+    filter: F,
     settings: Settings,
 }
 
@@ -65,21 +73,32 @@ impl Default for FmtSubscriber {
     }
 }
 
-impl<N, E> tokio_trace_core::Subscriber for FmtSubscriber<N, E>
+impl<N, E, F> FmtSubscriber<N, E, F> {
+    #[inline]
+    fn ctx(&self) -> span::Context {
+        span::Context::new(&self.spans)
+    }
+}
+
+impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewRecorder<'a>,
     E: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    F: Filter,
 {
+    fn register_callsite(&self, metadata: &Metadata) -> Interest {
+        self.filter.callsite_enabled(metadata, &self.ctx())
+    }
+
    fn enabled(&self, metadata: &Metadata) -> bool {
-       // FIXME: filtering
-       true
+       self.filter.enabled(metadata, &self.ctx())
    }
 
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
         let id = span::Id::from_u64(self.next_id.fetch_add(1, Ordering::Relaxed) as u64);
         let fields =
             if self.settings.inherit_fields {
-                span::Context::new(&self.spans)
+                self.ctx()
                     .with_current(|(_, span)| span.fields.to_owned())
                     .unwrap_or_default()
             } else {
@@ -154,6 +173,7 @@ where
 impl Default for Builder {
     fn default() -> Self {
         Builder {
+            filter: filter::EnvFilter::from_default_env(),
             new_recorder: default::NewRecorder,
             fmt_event: default::fmt_event,
             settings: Settings::default(),
@@ -161,15 +181,17 @@ impl Default for Builder {
     }
 }
 
-impl<N, E> Builder<N, E>
+impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewRecorder<'a>,
     E: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    F: Filter,
 {
-    pub fn finish(self) -> FmtSubscriber<N, E> {
+    pub fn finish(self) -> FmtSubscriber<N, E, F> {
         FmtSubscriber {
             new_recorder: self.new_recorder,
             fmt_event: self.fmt_event,
+            filter: self.filter,
             spans: RwLock::new(HashMap::default()),
             next_id: AtomicUsize::new(0),
             settings: self.settings,
@@ -177,33 +199,48 @@ where
     }
 }
 
-impl<N, E> Builder<N, E> {
-    pub fn with_recorder<N2>(self, new_recorder: N2) -> Builder<N2, E>
+impl<N, E, F> Builder<N, E, F> {
+    pub fn with_recorder<N2>(self, new_recorder: N2) -> Builder<N2, E, F>
     where
         N2: for<'a> NewRecorder<'a>,
     {
         Builder {
             new_recorder,
             fmt_event: self.fmt_event,
+            filter: self.filter,
             settings: self.settings,
         }
     }
 
-    pub fn full(self) -> Builder<N> {
+    pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2>
+    where
+        F2: Filter,
+    {
+        Builder {
+            new_recorder: self.new_recorder,
+            fmt_event: self.fmt_event,
+            filter,
+            settings: self.settings,
+        }
+    }
+
+    pub fn full(self) -> Builder<N, fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>, F> {
         Builder {
             fmt_event: default::fmt_verbose,
+            filter: self.filter,
             new_recorder: self.new_recorder,
             settings: self.settings,
         }
     }
 
-    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2>
+    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
         E2: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
     {
         Builder {
             new_recorder: self.new_recorder,
             fmt_event,
+            filter: self.filter,
             settings: self.settings,
         }
     }
