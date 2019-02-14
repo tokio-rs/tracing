@@ -202,7 +202,7 @@ impl Directive {
         }
 
         fn parse_span_target(from: &str) -> Option<(Option<String>, Option<String>)> {
-            let mut parts = from.split('{');
+            let mut parts = from.split('[');
             let target = parts.next().and_then(|part| if part.len() == 0 {
                 None
             } else {
@@ -213,7 +213,7 @@ impl Directive {
                 return None;
             }
             let in_span = if let Some(part) = span_part {
-                let mut parts = part.split('}');
+                let mut parts = part.split(']');
                 let (part0, part1) = (parts.next(), parts.next());
                 if part1 != Some("") {
                     return None
