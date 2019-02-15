@@ -64,11 +64,14 @@ impl EnvFilter {
         }
     }
 
-    fn directives_for<'a>(&'a self, target: &'a str) -> impl Iterator<Item = &'a Directive> + 'a {
+    fn directives_for<'a>(&'a self, metadata: &'a Metadata<'a>) -> impl Iterator<Item = &'a Directive> + 'a {
+        let target = metadata.target();
+        let name = metadata.name();
         self.directives.iter().rev().filter_map(move |d| match d.target.as_ref() {
             None => Some(d),
             Some(t) if target.starts_with(t) => Some(d),
-            _ => None,
+            _ => d.in_span.as_ref()
+                .and_then(|span| if span == name { Some(d) } else { None }),
         })
     }
 }
@@ -83,24 +86,29 @@ where
 }
 
 impl Filter for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context) -> Interest {
+    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
         if metadata.level() > &self.max_level {
             return Interest::never();
         }
 
         let mut interest = Interest::never();
-        for directive in self.directives_for(metadata.target()) {
-            if metadata.level() <= &directive.level {
-                if directive.in_span.is_some() {
-                    // The directive may accept this metadata, but
-                    // only within a particular span. Keep searching
-                    // to see if there's one that always applies.
-                    interest = Interest::sometimes();
-                } else {
-                    // The directive will accept this metadata regardless
-                    // of context, so we can cache that result forever.
-                    return Interest::always();
-                }
+        for directive in self.directives_for(metadata) {
+            let accepts_level = metadata.level() <= &directive.level;
+            match directive.in_span.as_ref() {
+                // The directive applies to anything within the span described
+                // by this metadata. The span must always be enabled.
+                Some(span) if span == metadata.name() => return Interest::always(),
+
+                // The directive may accept this metadata, but
+                // only within a particular span. Keep searching
+                // to see if there's one that always applies.
+                Some(_) if accepts_level => interest = Interest::sometimes(),
+
+                // The directive doesn't care about the current span, and the
+                // levels are compatible. We are always interested.
+                None if accepts_level => return Interest::always(),
+
+                _ => continue,
             }
         }
 
@@ -108,33 +116,37 @@ impl Filter for EnvFilter {
     }
 
     fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool {
-        if metadata.level() > &self.max_level {
-            return false;
-        }
+        for directive in self.directives_for(metadata) {
+            let accepts_level = metadata.level() <= &directive.level;
+            match directive.in_span.as_ref() {
+                // The directive applies to anything within the span described
+                // by this metadata. The span must always be enabled.
+                Some(span) if span == metadata.name() => return true,
 
-        for directive in self.directives_for(metadata.target()) {
-            if metadata.level() <= &directive.level {
-                if let Some(ref desired) = directive.in_span {
-                    // The directive only applies if we're in a particular span;
-                    // check if we're currently in that span.
-                    let in_span =
-                        // If this *is* the desired span, enable it.
-                        metadata.name() == desired ||
-                        // Return `Err` to short-circuit the span visitation.
-                        ctx.visit_spans(|_, span| {
+                // The directive doesn't care about the current span, and the
+                // levels are compatible. We are always interested.
+                None if accepts_level => return true,
+
+                // The directive only applies if we're in a particular span;
+                // check if we're currently in that span.
+                Some(desired) if accepts_level => {
+                    // Are we within the desired span?
+                    let in_span = ctx.visit_spans(|_, span| {
                             if span.name == desired {
+                                // Return `Err` to short-circuit the span visitation.
                                 Err(())
                             } else {
                                 Ok(())
                             }
                         })
                         .is_err();
+
                     if in_span {
                         return true;
                     }
-                } else {
-                    return true;
-                }
+                },
+
+                _ => continue,
             }
         }
 
