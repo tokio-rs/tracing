@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
     collections::HashMap,
-    fmt, io, str,
+    fmt, io, mem, str,
     sync::{
         atomic::{AtomicUsize, Ordering},
         RwLock,
@@ -9,6 +9,7 @@ use std::{
 };
 
 pub use tokio_trace_core::Span as Id;
+use tokio_trace_core::dispatcher;
 
 
 #[derive(Debug)]
@@ -20,7 +21,20 @@ pub struct Data {
 }
 
 pub struct Context<'a> {
-    lock: &'a RwLock<HashMap<Id, Data>>,
+    lock: &'a RwLock<Slab>,
+}
+
+#[derive(Debug)]
+pub(crate) struct Slab {
+    slab: Vec<Slot>,
+    next: usize,
+    count: usize,
+}
+
+#[derive(Debug)]
+enum Slot {
+    Full(Data),
+    Empty(usize),
 }
 
 thread_local! {
@@ -57,7 +71,8 @@ impl Data {
         self.ref_count.fetch_sub(1, Ordering::AcqRel) == 1
     }
 
-    fn with_parent<'store, F, E>(&self, my_id: &Id, f: &mut F, store: &'store HashMap<Id, Data>) -> Result<(), E>
+    #[inline(always)]
+    fn with_parent<'store, F, E>(&self, my_id: &Id, f: &mut F, store: &'store Slab) -> Result<(), E>
     where
         F: FnMut(&Id, &Data) -> Result<(), E>
     {
@@ -95,9 +110,15 @@ impl io::Write for Data {
 
 impl<'a> Context<'a> {
     pub(crate) fn current() -> Option<Id> {
-        CONTEXT.try_with(|current|
-            current.borrow().last().cloned()
-        ).ok()?
+        CONTEXT.try_with(|current| {
+            current.borrow()
+                .last()
+                .map(|id| {
+                    dispatcher::with(|subscriber| {
+                        subscriber.clone_span(id)
+                    })
+                })
+        }).ok()?
     }
 
     pub(crate) fn push(id: Id) {
@@ -159,9 +180,81 @@ impl<'a> Context<'a> {
         }).ok()?
     }
 
-    pub(crate) fn new(lock: &'a RwLock<HashMap<Id, Data>>) -> Self {
+    pub(crate) fn new(lock: &'a RwLock<Slab>) -> Self {
         Self {
             lock,
+        }
+    }
+}
+
+impl Slab {
+    pub fn new() -> Self {
+        Self::with_capacity(0)
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            slab: Vec::with_capacity(capacity),
+            count: 0,
+            next: 0,
+        }
+    }
+
+    #[inline(always)]
+    fn id_to_idx(id: &Id) -> usize {
+        // TODO: :(
+        (unsafe { mem::transmute::<_, u64>(id.clone()) }) as usize
+    }
+
+    #[inline]
+    pub fn insert(&mut self, span: Data) -> Id {
+        self.count += 1;
+        let id = Id::from_u64(self.next as u64);
+
+        if self.next == self.slab.len() {
+            self.slab.push(Slot::Full(span));
+            self.next += 1;
+            return id;
+        }
+
+        match mem::replace(&mut self.slab[self.next], Slot::Full(span)) {
+            Slot::Empty(next) => self.next = next,
+            Slot::Full(_) => unreachable!("slab.next pointed at full slot!"),
+        };
+
+        id
+    }
+
+    #[inline(always)]
+    pub fn get(&self, id: &Id) -> Option<&Data> {
+        // eprintln!("Slab::get: id={:?}; len={:?}; available={:?};", id, self.slab.len(), self.available);
+       match self.slab.get(Self::id_to_idx(id))? {
+           Slot::Full(span) => Some(span),
+           _ => None,
+       }
+    }
+
+    #[inline]
+    pub fn get_mut(&mut self, id: &Id) -> Option<&mut Data> {
+        // eprintln!("Slab::get_mut: id={:?}; len={:?}; available={:?};", id, self.slab.len(), self.available);
+        match self.slab.get_mut(Self::id_to_idx(id))? {
+            Slot::Full(span) => Some(span),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn remove(&mut self, id: &Id) {
+        // eprintln!("Slab::remove: id={:?}; len={:?}; available={:?};", id, self.slab.len(), self.available);
+        let idx = Self::id_to_idx(id);
+        match mem::replace(&mut self.slab[idx], Slot::Empty(self.next)) {
+            Slot::Full(_) => {
+                self.next = idx;
+                self.count -= 1;
+            },
+            entry =>
+                // slot was already emptied, do nothing.
+                self.slab[idx] = entry,
         }
     }
 }

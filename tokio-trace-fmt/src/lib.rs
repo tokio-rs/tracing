@@ -13,9 +13,7 @@ use tokio_trace_core::{
 use std::{
     fmt,
     io,
-    collections::HashMap,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         RwLock
     },
 };
@@ -35,8 +33,7 @@ pub struct FmtSubscriber<
     new_recorder: N,
     fmt_event: E,
     filter: F,
-    spans: RwLock<HashMap<span::Id, span::Data>>,
-    next_id: AtomicUsize,
+    spans: RwLock<span::Slab>,
     settings: Settings,
 }
 
@@ -95,23 +92,15 @@ where
    }
 
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
-        let id = span::Id::from_u64(self.next_id.fetch_add(1, Ordering::Relaxed) as u64);
-        let fields =
-            if self.settings.inherit_fields {
-                self.ctx()
-                    .with_current(|(_, span)| span.fields.to_owned())
-                    .unwrap_or_default()
-            } else {
-                String::new()
-            };
+        let fields = String::new();
         let mut data = span::Data::new(metadata.name(), fields);
         {
             let mut recorder = self.new_recorder.make(&mut data, true);
             values.record(&mut recorder);
         }
-        self.spans.write().expect("rwlock poisoned!")
-            .insert(id.clone(), data);
-        id
+        self.spans.write()
+            .expect("rwlock poisoned!")
+            .insert(data)
     }
 
     fn record(&self, span: &span::Id, values: &field::ValueSet) {
@@ -138,13 +127,36 @@ where
 
     fn enter(&self, span: &span::Id) {
         // TODO: add on_enter hook
-        span::Context::push(span.clone());
+        span::Context::push(self.clone_span(span));
     }
 
     fn exit(&self, span: &span::Id)  {
         // TODO: add on_exit hook
-        if let Some(ref popped) = span::Context::pop() {
-            debug_assert!(popped == span);
+        if let Some(popped) = span::Context::pop() {
+            debug_assert!(&popped == span);
+            self.drop_span(popped);
+        }
+    }
+
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        if let Ok(spans) = self.spans.read() {
+            if let Some(span) = spans.get(id) {
+                span.clone_ref()
+            }
+        }
+        id.clone()
+    }
+
+    fn drop_span(&self, id: span::Id) {
+        if self.spans.read()
+            .ok()
+            .and_then(|spans| spans.get(&id)
+            .map(|span| span.drop_ref()))
+            .unwrap_or(false)
+        {
+            if let Ok(mut spans) = self.spans.write() {
+                spans.remove(&id);
+            }
         }
     }
 }
@@ -192,8 +204,7 @@ where
             new_recorder: self.new_recorder,
             fmt_event: self.fmt_event,
             filter: self.filter,
-            spans: RwLock::new(HashMap::default()),
-            next_id: AtomicUsize::new(0),
+            spans: RwLock::new(span::Slab::with_capacity(32)),
             settings: self.settings,
         }
     }
