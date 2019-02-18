@@ -315,47 +315,18 @@ impl Slot {
         N: for<'a> ::NewRecorder<'a>,
     {
         let state = &mut self.span;
-        let mut buf = WriteString(&mut self.fields);
+        let buf = &mut self.fields;
         match state {
             State::Empty(_) => return,
             State::Full(ref mut data) => {
                 {
-                    let mut recorder = new_recorder.make(&mut buf, data.is_empty);
+                    let mut recorder = new_recorder.make(buf, data.is_empty);
                     fields.record(&mut recorder);
                 }
-                if buf.0.len() != 0 {
+                if buf.len() != 0 {
                     data.is_empty = false;
                 }
             }
         }
-    }
-}
-
-/// Wraps a `String` (which implements `fmt::Write`) so that it implements
-/// `io::Write` as well.
-///
-/// This is to allow us to pass the strings that hold span fields to
-/// `NewRecorder::make` (which requqires an `io::Write`).
-struct WriteString<'a>(&'a mut String);
-
-impl<'a> io::Write for WriteString<'a> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        // Hopefully consumers of this struct will only use the `write_fmt`
-        // impl, which should be much faster.
-        let string = str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        self.0.push_str(string);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
-        use fmt::Write;
-        self.0
-            .write_fmt(args)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }

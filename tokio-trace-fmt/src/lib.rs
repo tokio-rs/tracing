@@ -5,7 +5,7 @@ extern crate ansi_term;
 
 use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
 
-use std::{fmt, io, sync::RwLock};
+use std::{cell::RefCell, fmt, io, sync::RwLock};
 
 pub mod default;
 pub mod filter;
@@ -16,7 +16,7 @@ pub use filter::Filter;
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
-    E = fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    E = fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
     new_recorder: N,
@@ -29,7 +29,7 @@ pub struct FmtSubscriber<
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
-    E = fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    E = fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
     new_recorder: N,
@@ -69,7 +69,7 @@ impl<N, E, F> FmtSubscriber<N, E, F> {
 impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewRecorder<'a>,
-    E: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     F: Filter,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
@@ -98,14 +98,33 @@ where
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {}
 
     fn event(&self, event: &Event) {
-        // TODO: we should probably pass in a buffered writer type, and
-        // allow alternate IOs...
-        let stdout = io::stdout();
-        let mut io = stdout.lock();
-        let ctx = span::Context::new(&self.spans);
-        if let Err(e) = (self.fmt_event)(&ctx, &mut io, event) {
-            eprintln!("error formatting event: {}", e);
+        thread_local! {
+            static BUF: RefCell<String> = RefCell::new(String::new());
         }
+
+        BUF.with(|buf| {
+            let borrow = buf.try_borrow_mut();
+            let mut a;
+            let mut b;
+            let buf = match borrow {
+                Ok(buf) => {
+                    a = buf;
+                    &mut *a
+                },
+                _ => {
+                    b = String::new();
+                    &mut b
+                },
+            };
+            let ctx = span::Context::new(&self.spans);
+
+            if (self.fmt_event)(&ctx, buf, event).is_ok() {
+                // TODO: make the io object configurable
+                let _ = io::Write::write_all(&mut io::stdout(), buf.as_bytes());
+            }
+
+            buf.clear();
+        });
     }
 
     fn enter(&self, span: &span::Id) {
@@ -148,18 +167,18 @@ where
 pub trait NewRecorder<'a> {
     type Recorder: field::Record + 'a;
 
-    fn make(&self, writer: &'a mut io::Write, is_empty: bool) -> Self::Recorder;
+    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Recorder;
 }
 
 impl<'a, F, R> NewRecorder<'a> for F
 where
-    F: Fn(&'a mut io::Write, bool) -> R,
+    F: Fn(&'a mut fmt::Write, bool) -> R,
     R: field::Record + 'a,
 {
     type Recorder = R;
 
     #[inline]
-    fn make(&self, writer: &'a mut io::Write, is_empty: bool) -> Self::Recorder {
+    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Recorder {
         (self)(writer, is_empty)
     }
 }
@@ -180,7 +199,7 @@ impl Default for Builder {
 impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewRecorder<'a>,
-    E: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     F: Filter,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
@@ -221,7 +240,7 @@ impl<N, E, F> Builder<N, E, F> {
 
     pub fn full(
         self,
-    ) -> Builder<N, fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>, F> {
+    ) -> Builder<N, fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result, F> {
         Builder {
             fmt_event: default::fmt_verbose,
             filter: self.filter,
@@ -232,7 +251,7 @@ impl<N, E, F> Builder<N, E, F> {
 
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>,
+        E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     {
         Builder {
             new_recorder: self.new_recorder,

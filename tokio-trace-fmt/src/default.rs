@@ -5,15 +5,12 @@ use tokio_trace_core::{
     Event, Level,
 };
 
-use std::{
-    fmt,
-    io::{self, Write},
-};
+use std::fmt::{self, Write};
 
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
+pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Result {
     let meta = event.metadata();
     write!(
         f,
@@ -31,7 +28,7 @@ pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Resul
     writeln!(f, "")
 }
 
-pub fn fmt_verbose(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
+pub fn fmt_verbose(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Result {
     let meta = event.metadata();
     write!(
         f,
