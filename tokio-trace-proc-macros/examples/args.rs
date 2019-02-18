@@ -32,9 +32,7 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
-        .full()
-        .finish();
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
 
     tokio_trace::subscriber::with_default(subscriber, || {
         let n: u64 = 5;

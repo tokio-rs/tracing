@@ -9,9 +9,7 @@ use tokio_trace::field;
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
-        .full()
-        .finish();
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
 
