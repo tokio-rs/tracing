@@ -2,7 +2,7 @@ use std::{
     cell::RefCell,
     fmt, io, mem, str,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{self, AtomicUsize, Ordering},
         RwLock,
     },
 };
@@ -73,7 +73,14 @@ impl<'a> Span<'a> {
 
     #[inline]
     pub(crate) fn drop_ref(&self) -> bool {
-        self.data.ref_count.fetch_sub(1, Ordering::AcqRel) == 1
+        if self.data.ref_count.fetch_sub(1, Ordering::Release) != 1 {
+            return false;
+        }
+
+        // Synchronize only if we are actually removing the span (stolen
+        // from std::Arc);
+        atomic::fence(Ordering::Acquire);
+        true
     }
 
     #[inline(always)]
