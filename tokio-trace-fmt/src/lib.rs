@@ -3,23 +3,12 @@ extern crate tokio_trace_core;
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
 
-use tokio_trace_core::{
-    field,
-    Event,
-    Metadata,
-    subscriber::Interest,
-};
+use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
 
-use std::{
-    fmt,
-    io,
-    sync::{
-        RwLock
-    },
-};
+use std::{fmt, io, sync::RwLock};
 
-pub mod filter;
 pub mod default;
+pub mod filter;
 mod span;
 
 pub use filter::Filter;
@@ -87,29 +76,23 @@ where
         self.filter.callsite_enabled(metadata, &self.ctx())
     }
 
-   fn enabled(&self, metadata: &Metadata) -> bool {
-       self.filter.enabled(metadata, &self.ctx())
-   }
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        self.filter.enabled(metadata, &self.ctx())
+    }
 
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
-        let fields = String::new();
-        let mut data = span::Data::new(metadata.name(), fields);
-        {
-            let mut recorder = self.new_recorder.make(&mut data, true);
-            values.record(&mut recorder);
-        }
-        self.spans.write()
+        let span = span::Data::new(metadata);
+        self.spans
+            .write()
             .expect("rwlock poisoned!")
-            .insert(data)
+            .new_span(span, values, &self.new_recorder)
     }
 
     fn record(&self, span: &span::Id, values: &field::ValueSet) {
-        let mut spans = self.spans.write().expect("rwlock poisoned!");
-        if let Some(mut span) = spans.get_mut(span) {
-            let empty = span.fields.is_empty();
-            let mut recorder = self.new_recorder.make(&mut span, empty);
-            values.record(&mut recorder);
-        }
+        self.spans
+            .write()
+            .expect("rwlock poisoned!")
+            .record(span, values, &self.new_recorder)
     }
 
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {}
@@ -130,7 +113,7 @@ where
         span::Context::push(self.clone_span(span));
     }
 
-    fn exit(&self, span: &span::Id)  {
+    fn exit(&self, span: &span::Id) {
         // TODO: add on_exit hook
         if let Some(popped) = span::Context::pop() {
             debug_assert!(&popped == span);
@@ -148,10 +131,11 @@ where
     }
 
     fn drop_span(&self, id: span::Id) {
-        if self.spans.read()
+        if self
+            .spans
+            .read()
             .ok()
-            .and_then(|spans| spans.get(&id)
-            .map(|span| span.drop_ref()))
+            .and_then(|spans| spans.get(&id).map(|span| span.drop_ref()))
             .unwrap_or(false)
         {
             if let Ok(mut spans) = self.spans.write() {
@@ -235,7 +219,9 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
-    pub fn full(self) -> Builder<N, fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>, F> {
+    pub fn full(
+        self,
+    ) -> Builder<N, fn(&span::Context, &mut io::Write, &Event) -> io::Result<()>, F> {
         Builder {
             fmt_event: default::fmt_verbose,
             filter: self.filter,
@@ -267,5 +253,4 @@ impl<N, E, F> Builder<N, E, F> {
             ..self
         }
     }
-
 }

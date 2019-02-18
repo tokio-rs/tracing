@@ -1,6 +1,6 @@
-use ::span;
+use span;
 
-use tokio_trace_core::{Level, subscriber::Interest, Metadata};
+use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 
 use std::env;
 
@@ -46,13 +46,14 @@ impl EnvFilter {
     }
 
     fn new(mut directives: Vec<Directive>) -> Self {
-       if directives.is_empty() {
+        if directives.is_empty() {
             directives.push(Directive::default());
         } else {
             directives.sort_by_key(Directive::len);
         }
 
-        let max_level = directives.iter()
+        let max_level = directives
+            .iter()
             .map(|directive| &directive.level)
             .max()
             .cloned()
@@ -64,15 +65,23 @@ impl EnvFilter {
         }
     }
 
-    fn directives_for<'a>(&'a self, metadata: &'a Metadata<'a>) -> impl Iterator<Item = &'a Directive> + 'a {
+    fn directives_for<'a>(
+        &'a self,
+        metadata: &'a Metadata<'a>,
+    ) -> impl Iterator<Item = &'a Directive> + 'a {
         let target = metadata.target();
         let name = metadata.name();
-        self.directives.iter().rev().filter_map(move |d| match d.target.as_ref() {
-            None => Some(d),
-            Some(t) if target.starts_with(t) => Some(d),
-            _ => d.in_span.as_ref()
-                .and_then(|span| if span == name { Some(d) } else { None }),
-        })
+        self.directives
+            .iter()
+            .rev()
+            .filter_map(move |d| match d.target.as_ref() {
+                None => Some(d),
+                Some(t) if target.starts_with(t) => Some(d),
+                _ => d
+                    .in_span
+                    .as_ref()
+                    .and_then(|span| if span == name { Some(d) } else { None }),
+            })
     }
 }
 
@@ -131,8 +140,9 @@ impl Filter for EnvFilter {
                 // check if we're currently in that span.
                 Some(desired) if accepts_level => {
                     // Are we within the desired span?
-                    let in_span = ctx.visit_spans(|_, span| {
-                            if span.name == desired {
+                    let in_span = ctx
+                        .visit_spans(|_, span| {
+                            if span.name() == desired {
                                 // Return `Err` to short-circuit the span visitation.
                                 Err(())
                             } else {
@@ -144,7 +154,7 @@ impl Filter for EnvFilter {
                     if in_span {
                         return true;
                     }
-                },
+                }
 
                 _ => continue,
             }
@@ -175,14 +185,11 @@ fn parse_directives(spec: &str) -> Vec<Directive> {
 // ===== impl Directive =====
 
 impl Directive {
-
     fn len(&self) -> usize {
-        self.target.as_ref()
+        self.target
+            .as_ref()
             .map(String::len)
-            .or_else(|| {
-                self.in_span.as_ref()
-                    .map(String::len)
-            })
+            .or_else(|| self.in_span.as_ref().map(String::len))
             .unwrap_or(0)
     }
 
@@ -200,26 +207,22 @@ impl Directive {
                     5 => Some(Level::TRACE),
                     _ => None,
                 })
-                .or_else(|| {
-                    match from {
-                        "" => Some(Level::ERROR),
-                        s if s.eq_ignore_ascii_case("error") => Some(Level::ERROR),
-                        s if s.eq_ignore_ascii_case("warn") => Some(Level::WARN),
-                        s if s.eq_ignore_ascii_case("info") => Some(Level::INFO),
-                        s if s.eq_ignore_ascii_case("debug") => Some(Level::DEBUG),
-                        s if s.eq_ignore_ascii_case("trace") => Some(Level::TRACE),
-                        _ => None,
-                    }
+                .or_else(|| match from {
+                    "" => Some(Level::ERROR),
+                    s if s.eq_ignore_ascii_case("error") => Some(Level::ERROR),
+                    s if s.eq_ignore_ascii_case("warn") => Some(Level::WARN),
+                    s if s.eq_ignore_ascii_case("info") => Some(Level::INFO),
+                    s if s.eq_ignore_ascii_case("debug") => Some(Level::DEBUG),
+                    s if s.eq_ignore_ascii_case("trace") => Some(Level::TRACE),
+                    _ => None,
                 })
         }
 
         fn parse_span_target(from: &str) -> Option<(Option<String>, Option<String>)> {
             let mut parts = from.split('[');
-            let target = parts.next().and_then(|part| if part.len() == 0 {
-                None
-            } else {
-                Some(part)
-            });
+            let target = parts
+                .next()
+                .and_then(|part| if part.len() == 0 { None } else { Some(part) });
             let span_part = parts.next();
             if parts.next().is_some() {
                 return None;
@@ -228,7 +231,7 @@ impl Directive {
                 let mut parts = part.split(']');
                 let (part0, part1) = (parts.next(), parts.next());
                 if part1 != Some("") {
-                    return None
+                    return None;
                 }
                 part0
             } else {
@@ -246,21 +249,19 @@ impl Directive {
             return None;
         }
         match parse {
-            (part0, None) => {
-                Some(if let Some(level) = parse_level(part0) {
-                    Directive {
-                        level,
-                        ..Default::default()
-                    }
-                } else {
-                    let (target, in_span) = parse_span_target(part0)?;
-                    Directive {
-                        target,
-                        in_span,
-                        ..Default::default()
-                    }
-                })
-            },
+            (part0, None) => Some(if let Some(level) = parse_level(part0) {
+                Directive {
+                    level,
+                    ..Default::default()
+                }
+            } else {
+                let (target, in_span) = parse_span_target(part0)?;
+                Directive {
+                    target,
+                    in_span,
+                    ..Default::default()
+                }
+            }),
             (part0, Some(part1)) => {
                 let (target, in_span) = parse_span_target(part0)?;
                 let level = parse_level(part1)?;
@@ -385,6 +386,5 @@ mod tests {
         assert_eq!(dirs[2].level, Level::DEBUG);
         assert_eq!(dirs[2].in_span, Some("baz".to_string()));
     }
-
 
 }
