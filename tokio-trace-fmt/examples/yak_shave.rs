@@ -4,7 +4,10 @@ extern crate tokio_trace_fmt;
 
 fn shave(yak: usize) -> bool {
     span!("shave", yak = yak).enter(|| {
-        debug!(message = "hello! I'm gonna shave a yak.", excitement = "yay!");
+        debug!(
+            message = "hello! I'm gonna shave a yak.",
+            excitement = "yay!"
+        );
         if yak == 3 {
             warn!(target: "yak_events", "could not locate yak!");
             false
@@ -16,9 +19,7 @@ fn shave(yak: usize) -> bool {
 }
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
-        .full()
-        .finish();
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
 
     tokio_trace::subscriber::with_default(subscriber, || {
         let number_of_yaks = 3;

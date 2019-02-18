@@ -1,7 +1,8 @@
-use ::span;
+use span;
 
 use tokio_trace_core::{
-    Event, Level, field::{self, Field},
+    field::{self, Field},
+    Event, Level,
 };
 
 use std::{
@@ -14,20 +15,31 @@ use ansi_term::{Colour, Style};
 
 pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
     let meta = event.metadata();
-    write!(f, "{} {}{}: " , FmtLevel(meta.level()), FmtCtx(&ctx), meta.target())?;
+    write!(
+        f,
+        "{} {}{}: ",
+        FmtLevel(meta.level()),
+        FmtCtx(&ctx),
+        meta.target()
+    )?;
     {
         let mut recorder = Recorder::new(f, true);
         event.record(&mut recorder);
     }
-    ctx.with_current(|(_, span)| {
-        write!(f, " {}", span.fields)
-    }).unwrap_or(Ok(()))?;
+    ctx.with_current(|(_, span)| write!(f, " {}", span.fields()))
+        .unwrap_or(Ok(()))?;
     writeln!(f, "")
 }
 
 pub fn fmt_verbose(ctx: &span::Context, f: &mut Write, event: &Event) -> io::Result<()> {
     let meta = event.metadata();
-    write!(f, "{} {}{}: ", FmtLevel(meta.level()), FullCtx(&ctx), meta.target())?;
+    write!(
+        f,
+        "{} {}{}: ",
+        FmtLevel(meta.level()),
+        FullCtx(&ctx),
+        meta.target()
+    )?;
     {
         let mut recorder = Recorder::new(f, true);
         event.record(&mut recorder);
@@ -39,15 +51,12 @@ pub struct NewRecorder;
 
 pub struct Recorder<'a> {
     writer: &'a mut Write,
-    is_empty: bool
+    is_empty: bool,
 }
 
 impl<'a> Recorder<'a> {
     pub fn new(writer: &'a mut Write, is_empty: bool) -> Self {
-        Self {
-            writer,
-            is_empty,
-        }
+        Self { writer, is_empty }
     }
 
     fn maybe_pad(&mut self) {

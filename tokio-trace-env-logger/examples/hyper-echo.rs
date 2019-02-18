@@ -4,8 +4,8 @@ extern crate hyper;
 extern crate tokio_trace;
 extern crate tokio;
 extern crate tokio_trace_env_logger;
-extern crate tokio_trace_futures;
 extern crate tokio_trace_fmt;
+extern crate tokio_trace_futures;
 
 use futures::future;
 use hyper::rt::{Future, Stream};
@@ -117,9 +117,7 @@ fn echo(req: Request<Body>) -> Instrumented<'static, BoxFut> {
 }
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
-        .full()
-        .finish();
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
     tokio_trace::dispatcher::with_default(tokio_trace::Dispatch::new(subscriber), || {
