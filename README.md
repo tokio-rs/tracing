@@ -1,71 +1,161 @@
-# tokio-trace-nursery
+# tokio-trace
 
-Less-stable utility crates for [`tokio-trace`].
-
-[![MIT licensed][mit-badge]][mit-url]
-[![Build Status][travis-badge]][travis-url]
-[![Gitter chat][gitter-badge]][gitter-url]
-
-[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[mit-url]: LICENSE
-[travis-badge]: https://travis-ci.org/tokio-rs/tokio-trace-nursery.svg?branch=master
-[travis-url]: https://travis-ci.org/tokio-rs/tokio-trace-nursery/branches
-[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tokio.svg
-[gitter-url]: https://gitter.im/tokio-rs/tokio
-
-[Website](https://tokio.rs) |
-[Chat](https://gitter.im/tokio-rs/tokio)
+A scoped, structured logging and diagnostics system.
 
 ## Overview
 
-[`tokio-trace`] is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information. This repository contains a set
-of utility and compatibility crates for use with `tokio-trace`.
+`tokio-trace` is a framework for instrumenting Rust programs to collect
+structured, event-based diagnostic information.
 
-### Stability
+In asynchronous systems like Tokio, interpreting traditional log messages can
+often be quite challenging. Since individual tasks are multiplexed on the same
+thread, associated events and log lines are intermixed making it difficult to
+trace the logic flow. `tokio-trace` expands upon logging-style diagnostics by
+allowing libraries and applications to record structured events with additional
+information about *temporality* and *causality* — unlike a log message, a span
+in `tokio-trace` has a beginning and end time, may be entered and exited by the
+flow of execution, and may exist within a nested tree of similar spans. In
+addition, `tokio-trace` spans are *structured*, with the ability to record typed
+data as well as textual messages.
 
-While `tokio-trace` and `tokio-trace-core` have been published on crates.io and
-adhere to the same stability policies as the rest of the Tokio project, the
-crates in the nursery are generally less stable. Many of these crates are not
-yet released and are undergoing active development. Therefore, users are warned
-that breaking changes may occur.
+The `tokio-trace` crate provides the APIs necessary for instrumenting libraries
+and applications to emit trace data.
 
-In general, when depending on a crate from the nursery as a git dependency,
-users are advised to pin to a specific git revision using the [`rev`] Cargo key.
-This prevents your build from breaking should a breaking change to that crate be
-merged to master.
+## Usage
 
-[`rev`]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories
+First, add this to your `Cargo.toml`:
 
-## Getting Help
+```toml
+[dependencies]
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
+```
 
-First, see if the answer to your question can be found in the API documentation.
-If the answer is not there, there is an active community in
-the [Tokio Gitter channel][chat]. We would be happy to try to answer your
-question.  Last, if that doesn't work, try opening an [issue] with the question.
+Next, add this to your crate:
 
-[chat]: https://gitter.im/tokio-rs/tokio
-[issue]: https://github.com/tokio-rs/tokio-trace-nursery/issues/new
+```rust
+#[macro_use]
+extern crate tokio_trace;
+```
 
-## Contributing
+This crate provides macros for creating `Span`s and `Event`s, which represent
+periods of time and momentary events within the execution of a program,
+respectively.
 
-:balloon: Thanks for your help improving the project! We are so happy to have
-you! We have a [contributing guide][guide] to help you get involved in the Tokio
-project.
+As a rule of thumb, _spans_ should be used to represent discrete units of work
+(e.g., a given request's lifetime in a server) or periods of time spent in a
+given context (e.g., time spent interacting with an instance of an external
+system, such as a database). In contrast, _events_ should be used to represent
+points in time within a span — a request returned with a given status code,
+_n_ new items were taken from a queue, and so on.
 
-[guide]: CONTRIBUTING.md
-<!--
-## Project layout
- TODO: add this
--->
+`Span`s are constructed using the `span!` macro, and then _entered_
+to indicate that some code takes place within the context of that `Span`:
 
-## Supported Rust Versions
+```rust
+// Construct a new span named "my span".
+let mut span = span!("my span");
+span.enter(|| {
+    // Any trace events in this closure or code called by it will occur within
+    // the span.
+});
+// Dropping the span will close it, indicating that it has ended.
+```
 
-Tokio is built against the latest stable, nightly, and beta Rust releases. The
-minimum version supported is the stable release from three months before the
-current stable release version. For example, if the latest stable Rust is 1.29,
-the minimum version supported is 1.26. The current Tokio version is not
-guaranteed to build on Rust versions earlier than the minimum supported version.
+The `Event` type represent an event that occurs instantaneously, and is
+essentially a `Span` that cannot be entered. They are created using the `event!`
+macro:
+
+```rust
+use tokio_trace::Level;
+event!(Level::INFO, "something has happened!");
+```
+
+Users of the [`log`] crate should note that `tokio-trace` exposes a set of macros for
+creating `Event`s (`trace!`, `debug!`, `info!`, `warn!`, and `error!`) which may
+be invoked with the same syntax as the similarly-named macros from the `log`
+crate. Often, the process of converting a project to use `tokio-trace` can begin
+with a simple drop-in replacement.
+
+Let's consider the `log` crate's yak-shaving example:
+
+```rust
+#[macro_use]
+extern crate tokio_trace;
+use tokio_trace::field;
+
+pub fn shave_the_yak(yak: &mut Yak) {
+    // Create a new span for this invocation of `shave_the_yak`, annotated
+    // with  the yak being shaved as a *field* on the span.
+    span!("shave_the_yak", yak = field::debug(&yak)).enter(|| {
+        // Since the span is annotated with the yak, it is part of the context
+        // for everything happening inside the span. Therefore, we don't need
+        // to add it to the message for this event, as the `log` crate does.
+        info!(target: "yak_events", "Commencing yak shaving");
+
+        loop {
+            match find_a_razor() {
+                Ok(razor) => {
+                    // We can add the razor as a field rather than formatting it
+                    // as part of the message, allowing subscribers to consume it
+                    // in a more structured manner:
+                    info!({ razor = field::display(razor) }, "Razor located");
+                    yak.shave(razor);
+                    break;
+                }
+                Err(err) => {
+                    // However, we can also create events with formatted messages,
+                    // just as we would for log records.
+                    warn!("Unable to locate a razor: {}, retrying", err);
+                }
+            }
+        }
+    })
+}
+```
+
+You can find examples showing how to use this crate in the examples directory.
+
+### In libraries
+
+Libraries should link only to the `tokio-trace` crate, and use the provided
+macros to record whatever information will be useful to downstream consumers.
+
+### In executables
+
+In order to record trace events, executables have to use a `Subscriber`
+implementation compatible with `tokio-trace`. A `Subscriber` implements a way of
+collecting trace data, such as by logging it to standard output.
+
+Unlike the `log` crate, `tokio-trace` does *not* use a global `Subscriber` which
+is initialized once. Instead, it follows the `tokio` pattern of executing code
+in a context. For example:
+
+```rust
+#[macro_use]
+extern crate tokio_trace;
+
+let my_subscriber = FooSubscriber::new();
+
+tokio_trace::subscriber::with_default(subscriber, || {
+    // Any trace events generated in this closure or by functions it calls
+    // will be collected by `my_subscriber`.
+})
+```
+
+This approach allows trace data to be collected by multiple subscribers within
+different contexts in the program. Alternatively, a single subscriber may be
+constructed by the `main` function and all subsequent code executed with that
+subscriber as the default. Any trace events generated outside the context of a
+subscriber will not be collected.
+
+The executable itself may use the `tokio-trace` crate to instrument itself as
+well.
+
+The [`tokio-trace-nursery`] repository contains less stable crates designed to
+be used with the `tokio-trace` ecosystem. It includes a collection of
+`Subscriber` implementations, as well as utility and adapter crates.
+
+[`log`]: https://docs.rs/log/0.4.6/log/
 
 ## License
 
@@ -76,5 +166,3 @@ This project is licensed under the [MIT license](LICENSE).
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in Tokio by you, shall be licensed as MIT, without any additional
 terms or conditions.
-
-[`tokio-trace`]: https://github.com/tokio-rs/tokio/tree/master/tokio-trace
