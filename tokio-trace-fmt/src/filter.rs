@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn parse_directives_valid_with_spans() {
-        let dirs = parse_directives("crate1::mod1{foo}=error,crate1::mod2{bar},crate2{baz}=debug");
+        let dirs = parse_directives("crate1::mod1[foo]=error,crate1::mod2[bar],crate2[baz]=debug");
         assert_eq!(dirs.len(), 3);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, Level::ERROR);
