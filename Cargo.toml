@@ -13,4 +13,4 @@ members = [
 ]
 
 [patch.crates-io]
-tokio-trace = { git = "https://github.com/tokio-rs/tokio", branch = "eliza/tokio-trace" }
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
