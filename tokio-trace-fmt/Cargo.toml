@@ -8,7 +8,7 @@ default = ["ansi"]
 ansi = ["ansi_term"]
 
 [dependencies]
-tokio-trace-core = { git = "https://github.com/tokio-rs/tokio", branch = "eliza/tokio-trace" }
+tokio-trace-core = { git = "https://github.com/tokio-rs/tokio" }
 ansi_term = { version = "0.11", optional = true }
 
 [dev-dependencies]
