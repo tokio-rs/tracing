@@ -95,7 +95,9 @@ where
             .record(span, values, &self.new_recorder)
     }
 
-    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {}
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
+        // TODO: implement this please
+    }
 
     fn event(&self, event: &Event) {
         thread_local! {

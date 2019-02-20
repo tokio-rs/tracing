@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    fmt, io, mem, str,
+    mem, str,
     sync::{
         atomic::{self, AtomicUsize, Ordering},
         RwLock,
@@ -302,11 +302,9 @@ impl Slot {
     }
 
     fn fill(&mut self, data: Data) -> usize {
-        let span = &mut self.span;
-        let buf = &mut self.fields;
-        match mem::replace(span, State::Full(data)) {
+        match mem::replace(&mut self.span, State::Full(data)) {
             State::Empty(next) => next,
-            State::Full(_) => unreachable!(),
+            State::Full(_) => unreachable!("tried to fill a full slot"),
         }
     }
 
