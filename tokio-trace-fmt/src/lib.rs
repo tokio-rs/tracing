@@ -216,6 +216,8 @@ where
 }
 
 impl<N, E, F> Builder<N, E, F> {
+    /// Sets the recorder that the subscriber being built will use to record
+    /// fields.
     pub fn with_recorder<N2>(self, new_recorder: N2) -> Builder<N2, E, F>
     where
         N2: for<'a> NewRecorder<'a>,
@@ -228,6 +230,8 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
+    /// Sets the filter that the subscriber being built will use to determine if
+    /// a span or event is enabled.
     pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2>
     where
         F2: Filter,
@@ -240,6 +244,8 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
+    /// Sets the subscriber being built to use the default full span formatter.
+    // TODO: this should probably just become the default.
     pub fn full(self) -> Builder<N, fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result, F> {
         Builder {
             fmt_event: default::fmt_verbose,
@@ -249,6 +255,8 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
+    /// Sets the function that the subscriber being built should use to format
+    /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
         E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
