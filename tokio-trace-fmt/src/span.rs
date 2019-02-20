@@ -188,12 +188,6 @@ impl Slab {
         }
     }
 
-    #[inline(always)]
-    fn id_to_idx(id: &Id) -> usize {
-        // TODO: :(
-        (unsafe { mem::transmute::<_, u64>(id.clone()) }) as usize
-    }
-
     /// Inserts a new span with the given data and fields into the slab,
     /// returning an ID for that span.
     ///
@@ -230,7 +224,7 @@ impl Slab {
     #[inline]
     pub fn get(&self, id: &Id) -> Option<Span> {
         self.slab
-            .get(Self::id_to_idx(id))
+            .get(id.into_u64() as usize)
             .and_then(Slot::as_span_ref)
     }
 
@@ -240,7 +234,7 @@ impl Slab {
     where
         N: for<'a> ::NewRecorder<'a>,
     {
-        if let Some(slot) = self.slab.get_mut(Self::id_to_idx(id)) {
+        if let Some(slot) = self.slab.get_mut(id.into_u64() as usize) {
             slot.record(fields, new_recorder);
         }
     }
@@ -250,7 +244,7 @@ impl Slab {
     /// The allocated span slot will be reused when a new span is created.
     #[inline]
     pub fn remove(&mut self, id: &Id) {
-        let idx = Self::id_to_idx(id);
+        let idx = id.into_u64() as usize;
         if self.slab[idx].empty(self.next) {
             self.next = idx;
             self.count -= 1;
