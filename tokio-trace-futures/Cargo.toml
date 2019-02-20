@@ -14,3 +14,4 @@ tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1"
+tokio-trace-fmt = { path = "../tokio-trace-fmt" }

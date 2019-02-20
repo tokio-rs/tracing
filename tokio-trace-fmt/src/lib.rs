@@ -110,11 +110,11 @@ where
                 Ok(buf) => {
                     a = buf;
                     &mut *a
-                },
+                }
                 _ => {
                     b = String::new();
                     &mut b
-                },
+                }
             };
             let ctx = span::Context::new(&self.spans);
 
@@ -238,9 +238,7 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
-    pub fn full(
-        self,
-    ) -> Builder<N, fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result, F> {
+    pub fn full(self) -> Builder<N, fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result, F> {
         Builder {
             fmt_event: default::fmt_verbose,
             filter: self.filter,
