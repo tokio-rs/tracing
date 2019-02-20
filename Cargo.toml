@@ -2,6 +2,7 @@
 
 members = [
     "tokio-trace-proc-macros",
+    "tokio-trace-fmt",
     "tokio-trace-futures",
     "tokio-trace-tower",
     "tokio-trace-tower-http",
