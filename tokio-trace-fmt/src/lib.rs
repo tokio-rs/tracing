@@ -2,10 +2,11 @@ extern crate tokio_trace_core;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
+extern crate owning_ref;
 
 use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
 
-use std::{cell::RefCell, fmt, io, sync::RwLock};
+use std::{cell::RefCell, fmt, io};
 
 pub mod default;
 pub mod filter;
@@ -22,7 +23,7 @@ pub struct FmtSubscriber<
     new_recorder: N,
     fmt_event: E,
     filter: F,
-    spans: RwLock<span::Slab>,
+    spans: span::Store,
     settings: Settings,
 }
 
@@ -80,19 +81,15 @@ where
         self.filter.enabled(metadata, &self.ctx())
     }
 
+    #[inline]
     fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
         let span = span::Data::new(metadata);
-        self.spans
-            .write()
-            .expect("rwlock poisoned!")
-            .new_span(span, values, &self.new_recorder)
+        self.spans.new_span(span, values, &self.new_recorder)
     }
 
+    #[inline]
     fn record(&self, span: &span::Id, values: &field::ValueSet) {
-        self.spans
-            .write()
-            .expect("rwlock poisoned!")
-            .record(span, values, &self.new_recorder)
+        self.spans.record(span, values, &self.new_recorder)
     }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
@@ -143,10 +140,8 @@ where
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
-        if let Ok(spans) = self.spans.read() {
-            if let Some(span) = spans.get(id) {
-                span.clone_ref()
-            }
+        if let Some(span) = self.spans.get(id) {
+            span.clone_ref()
         }
         id.clone()
     }
@@ -154,13 +149,11 @@ where
     fn drop_span(&self, id: span::Id) {
         if self
             .spans
-            .read()
-            .ok()
-            .and_then(|spans| spans.get(&id).map(|span| span.drop_ref()))
+            .get(&id)
+            .map(|span| span.drop_ref())
             .unwrap_or(false)
         {
-            let data = self.spans.write().ok()
-                .and_then(|mut spans| spans.remove(&id));
+            let data = self.spans.remove(&id);
             // Drop the data only *after* releasing the write lock, as it may
             // cause the parent span to be dropped as well.
             drop(data);
@@ -213,7 +206,7 @@ where
             new_recorder: self.new_recorder,
             fmt_event: self.fmt_event,
             filter: self.filter,
-            spans: RwLock::new(span::Slab::with_capacity(32)),
+            spans: span::Store::with_capacity(32),
             settings: self.settings,
         }
     }

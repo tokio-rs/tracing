@@ -3,28 +3,31 @@ use std::{
     mem, str,
     sync::{
         atomic::{self, AtomicUsize, Ordering},
-        RwLock,
+        RwLock, RwLockReadGuard, RwLockWriteGuard,
     },
 };
 
+use owning_ref::OwningHandle;
 pub use tokio_trace_core::Span as Id;
 use tokio_trace_core::{dispatcher, field, Metadata};
 
-#[derive(Debug)]
 pub struct Span<'a> {
-    data: &'a Data,
-    fields: &'a str,
+    lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
 pub struct Context<'a> {
-    lock: &'a RwLock<Slab>,
+    store: &'a Store,
 }
 
 #[derive(Debug)]
-pub(crate) struct Slab {
-    slab: Vec<Slot>,
-    next: usize,
-    count: usize,
+pub(crate) struct Store {
+    inner: RwLock<Slab>,
+    next: AtomicUsize,
+}
+
+#[derive(Debug)]
+struct Slab {
+    slab: Vec<RwLock<Slot>>,
 }
 
 #[derive(Debug)]
@@ -55,40 +58,49 @@ thread_local! {
 
 impl<'a> Span<'a> {
     pub fn name(&self) -> &'static str {
-        self.data.name
+        match self.lock.span {
+            State::Full(ref data) => data.name.as_ref(),
+            State::Empty(_) => unreachable!(),
+        }
     }
 
     pub fn fields(&self) -> &str {
-        self.fields
+        self.lock.fields.as_ref()
     }
 
     pub fn parent(&self) -> Option<&Id> {
-        self.data.parent.as_ref()
+        match self.lock.span {
+            State::Full(ref data) => data.parent.as_ref(),
+            State::Empty(_) => unreachable!(),
+        }
     }
 
     #[inline]
     pub(crate) fn clone_ref(&self) {
-        self.data.ref_count.fetch_add(1, Ordering::Release);
+        if let State::Full(ref data) = self.lock.span {
+            data.ref_count.fetch_add(1, Ordering::Release);
+        }
     }
 
     #[inline]
     pub(crate) fn drop_ref(&self) -> bool {
-        if self.data.ref_count.fetch_sub(1, Ordering::Release) != 1 {
-            return false;
+        if let State::Full(ref data) = self.lock.span {
+            if data.ref_count.fetch_sub(1, Ordering::Release) == 1 {
+                // Synchronize only if we are actually removing the span (stolen
+                // from std::Arc);
+                atomic::fence(Ordering::Acquire);
+                return true;
+            }
         }
-
-        // Synchronize only if we are actually removing the span (stolen
-        // from std::Arc);
-        atomic::fence(Ordering::Acquire);
-        true
+        false
     }
 
     #[inline(always)]
-    fn with_parent<'store, F, E>(self, my_id: &Id, f: &mut F, store: &'store Slab) -> Result<(), E>
+    fn with_parent<'store, F, E>(self, my_id: &Id, f: &mut F, store: &'store Store) -> Result<(), E>
     where
         F: FnMut(&Id, Span) -> Result<(), E>,
     {
-        if let Some(parent_id) = self.data.parent.as_ref() {
+        if let Some(parent_id) = self.parent() {
             if let Some(parent) = store.get(parent_id) {
                 parent.with_parent(parent_id, f, store)?;
             }
@@ -140,13 +152,11 @@ impl<'a> Context<'a> {
         CONTEXT
             .try_with(|current| {
                 if let Some(id) = current.borrow().last() {
-                    if let Ok(store) = self.lock.read() {
-                        if let Some(span) = store.get(id) {
-                            // with_parent uses the call stack to visit the span
-                            // stack in reverse order, without having to allocate
-                            // a buffer.
-                            return span.with_parent(id, &mut f, &store);
-                        }
+                    if let Some(span) = self.store.get(id) {
+                        // with_parent uses the call stack to visit the span
+                        // stack in reverse order, without having to allocate
+                        // a buffer.
+                        return span.with_parent(id, &mut f, self.store);
                     }
                 }
                 Ok(())
@@ -164,8 +174,7 @@ impl<'a> Context<'a> {
         CONTEXT
             .try_with(|current| {
                 if let Some(id) = current.borrow().last() {
-                    let spans = self.lock.read().ok()?;
-                    if let Some(span) = spans.get(id) {
+                    if let Some(span) = self.store.get(id) {
                         return Some(f((id, span)));
                     }
                 }
@@ -174,17 +183,18 @@ impl<'a> Context<'a> {
             .ok()?
     }
 
-    pub(crate) fn new(lock: &'a RwLock<Slab>) -> Self {
-        Self { lock }
+    pub(crate) fn new(store: &'a Store) -> Self {
+        Self { store }
     }
 }
 
-impl Slab {
+impl Store {
     pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            slab: Vec::with_capacity(capacity),
-            count: 0,
-            next: 0,
+        Store {
+            inner: RwLock::new(Slab {
+                slab: Vec::with_capacity(capacity),
+            }),
+            next: AtomicUsize::new(0),
         }
     }
 
@@ -196,24 +206,27 @@ impl Slab {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&mut self, span: Data, fields: &field::ValueSet, new_recorder: &N) -> Id
+    pub fn new_span<N>(&self, span: Data, fields: &field::ValueSet, new_recorder: &N) -> Id
     where
         N: for<'a> ::NewRecorder<'a>,
     {
-        self.count += 1;
-        let idx = self.next;
-        if self.next == self.slab.len() {
+        let idx = self.next.load(Ordering::Acquire);
+
+        if idx == self.inner.read().unwrap().slab.len() {
             // The next index is the end of the slab, so we need to add a
             // new slot. This allocates an additional string and grows
             // the length of the slab by 1.
-            self.slab.push(Slot::new(span));
-            self.next += 1;
+            let mut slot = Slot::new(span);
+            slot.record(fields, new_recorder);
+            self.inner.write().unwrap().slab.push(RwLock::new(slot));
+            self.next.store(idx + 1, Ordering::Release);
         } else {
             // Place the new span in an existing slot in the slab.
-            self.next = self.slab[self.next].fill(span);
+            let inner = self.inner.read().unwrap();
+            let mut slot = inner.slab[idx].write().unwrap();
+            self.next.store(slot.fill(span), Ordering::Release);
+            slot.record(fields, new_recorder);
         }
-
-        self.slab[idx].record(fields, new_recorder);
 
         Id::from_u64(idx as u64)
     }
@@ -222,19 +235,23 @@ impl Slab {
     /// currently exists.
     #[inline]
     pub fn get(&self, id: &Id) -> Option<Span> {
-        self.slab
-            .get(id.into_u64() as usize)
-            .and_then(Slot::as_span_ref)
+        let lock = OwningHandle::try_new(self.inner.read().ok()?, |slab| {
+            unsafe { &*slab }.read_slot(id).ok_or(())
+        })
+        .ok()?;
+        Some(Span { lock })
     }
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub fn record<N>(&mut self, id: &Id, fields: &field::ValueSet, new_recorder: &N)
+    pub fn record<N>(&self, id: &Id, fields: &field::ValueSet, new_recorder: &N)
     where
         N: for<'a> ::NewRecorder<'a>,
     {
-        if let Some(slot) = self.slab.get_mut(id.into_u64() as usize) {
-            slot.record(fields, new_recorder);
+        if let Ok(slab) = self.inner.read() {
+            if let Some(mut slot) = slab.write_slot(id) {
+                slot.record(fields, new_recorder);
+            }
         }
     }
 
@@ -242,12 +259,12 @@ impl Slab {
     ///
     /// The allocated span slot will be reused when a new span is created.
     #[inline]
-    pub fn remove(&mut self, id: &Id) -> Option<Data> {
-        let idx = id.into_u64() as usize;
-        let data = self.slab[idx].empty(self.next)?;
-        self.next = idx;
-        self.count -= 1;
-        Some(data)
+    pub fn remove(&self, id: &Id) -> Option<Data> {
+        let slab = self.inner.read().ok()?;
+        let next = self.next.load(Ordering::Acquire);
+        let data = slab.write_slot(id).map(|mut slot| slot.empty(next))?;
+        self.next.store(id.into_u64() as usize, Ordering::Release);
+        data
     }
 }
 
@@ -280,28 +297,19 @@ impl Slot {
         }
     }
 
-    fn as_span_ref(&self) -> Option<Span> {
-        match self.span {
-            State::Full(ref data) => Some(Span {
-                data,
-                fields: self.fields.as_ref(),
-            }),
-            _ => None,
-        }
-    }
-
     fn empty(&mut self, next: usize) -> Option<Data> {
+        let mut was_cleared = false;
         match mem::replace(&mut self.span, State::Empty(next)) {
             State::Full(data) => {
                 // Reuse the already allocated string for the next span's
                 // fields, avoiding an additional allocation.
                 self.fields.clear();
                 Some(data)
-            },
+            }
             state => {
                 self.span = state;
                 None
-            },
+            }
         }
     }
 
@@ -330,5 +338,24 @@ impl Slot {
                 }
             }
         }
+    }
+}
+
+impl Slab {
+    #[inline]
+    fn write_slot(&self, id: &Id) -> Option<RwLockWriteGuard<Slot>> {
+        self.slab
+            .get(id.into_u64() as usize)
+            .and_then(|slot| slot.write().ok())
+    }
+
+    fn read_slot<'a>(&'a self, id: &Id) -> Option<RwLockReadGuard<'a, Slot>> {
+        self.slab
+            .get(id.into_u64() as usize)
+            .and_then(|slot| slot.read().ok())
+            .and_then(|lock| match lock.span {
+                State::Empty(_) => None,
+                State::Full(_) => Some(lock),
+            })
     }
 }
