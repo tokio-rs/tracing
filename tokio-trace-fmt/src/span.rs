@@ -202,7 +202,6 @@ impl Slab {
     {
         self.count += 1;
         let idx = self.next;
-
         if self.next == self.slab.len() {
             // The next index is the end of the slab, so we need to add a
             // new slot. This allocates an additional string and grows
@@ -243,12 +242,12 @@ impl Slab {
     ///
     /// The allocated span slot will be reused when a new span is created.
     #[inline]
-    pub fn remove(&mut self, id: &Id) {
+    pub fn remove(&mut self, id: &Id) -> Option<Data> {
         let idx = id.into_u64() as usize;
-        if self.slab[idx].empty(self.next) {
-            self.next = idx;
-            self.count -= 1;
-        }
+        let data = self.slab[idx].empty(self.next)?;
+        self.next = idx;
+        self.count -= 1;
+        Some(data)
     }
 }
 
@@ -260,6 +259,16 @@ impl Data {
             ref_count: AtomicUsize::new(1),
             is_empty: true,
         }
+    }
+}
+
+impl Drop for Data {
+    fn drop(&mut self) {
+        dispatcher::with(|subscriber| {
+            if let Some(parent) = self.parent.take() {
+                subscriber.drop_span(parent);
+            }
+        });
     }
 }
 
@@ -281,18 +290,19 @@ impl Slot {
         }
     }
 
-    fn empty(&mut self, next: usize) -> bool {
-        let mut was_cleared = false;
+    fn empty(&mut self, next: usize) -> Option<Data> {
         match mem::replace(&mut self.span, State::Empty(next)) {
-            State::Full(_) => {
+            State::Full(data) => {
                 // Reuse the already allocated string for the next span's
                 // fields, avoiding an additional allocation.
                 self.fields.clear();
-                was_cleared = true;
-            }
-            state => self.span = state,
-        };
-        was_cleared
+                Some(data)
+            },
+            state => {
+                self.span = state;
+                None
+            },
+        }
     }
 
     fn fill(&mut self, data: Data) -> usize {

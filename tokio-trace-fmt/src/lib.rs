@@ -159,9 +159,13 @@ where
             .and_then(|spans| spans.get(&id).map(|span| span.drop_ref()))
             .unwrap_or(false)
         {
-            if let Ok(mut spans) = self.spans.write() {
-                spans.remove(&id);
-            }
+            let data = self.spans.write().ok()
+                .and_then(|mut spans| spans.remove(&id));
+            // Drop the data only *after* releasing the write lock, as it may
+            // cause the parent span to be dropped as well.
+            drop(data);
+            // TODO: see if this can be rewritten to allow us to re-use the same
+            // write lock to drop any parent spans...
         }
     }
 }
