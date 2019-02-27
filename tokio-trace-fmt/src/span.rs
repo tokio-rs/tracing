@@ -85,10 +85,10 @@ impl<'a> Span<'a> {
     #[inline]
     pub(crate) fn drop_ref(&self) -> bool {
         if let State::Full(ref data) = self.lock.span {
-            if data.ref_count.fetch_sub(1, Ordering::Release) == 1 {
+            if data.ref_count.fetch_sub(1, Ordering::Relaxed) == 1 {
                 // Synchronize only if we are actually removing the span (stolen
                 // from std::Arc);
-                atomic::fence(Ordering::Acquire);
+                atomic::fence(Ordering::SeqCst);
                 return true;
             }
         }
@@ -125,13 +125,17 @@ impl<'a> Context<'a> {
 
     pub(crate) fn push(id: Id) {
         let _ = CONTEXT.try_with(|current| {
+            atomic::fence(Ordering::SeqCst);
             current.borrow_mut().push(id.clone());
         });
     }
 
     pub(crate) fn pop() -> Option<Id> {
         CONTEXT
-            .try_with(|current| current.borrow_mut().pop())
+            .try_with(|current| {
+                atomic::fence(Ordering::SeqCst);
+                current.borrow_mut().pop()
+            })
             .ok()?
     }
 
@@ -210,7 +214,7 @@ impl Store {
     where
         N: for<'a> ::NewRecorder<'a>,
     {
-        let idx = self.next.load(Ordering::Acquire);
+        let idx = self.next.load(Ordering::SeqCst);
 
         if idx == self.inner.read().unwrap().slab.len() {
             // The next index is the end of the slab, so we need to add a
