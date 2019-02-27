@@ -17,15 +17,19 @@ pub struct Context<'a> {
     store: &'a Store,
 }
 
+/// Stores data associated with currently-active spans.
 #[derive(Debug)]
 pub(crate) struct Store {
+    // Active span data is stored in a slab of span slots. Each slot has its own
+    // read-write lock to guard against concurrent modification to its data.
+    // Thus, we can modify any individual slot by acquiring a read lock on the
+    // slab, and using that lock to acquire a write lock on the slot we wish to
+    // modify. It is only necessary to acquire the write lock here when the
+    // slab itself has to be modified (i.e., to allocate more slots).
     inner: RwLock<Slab>,
-    next: AtomicUsize,
-}
 
-#[derive(Debug)]
-struct Slab {
-    slab: Vec<RwLock<Slot>>,
+    // The head of the slab's "free list".
+    next: AtomicUsize,
 }
 
 #[derive(Debug)]
@@ -34,6 +38,11 @@ pub(crate) struct Data {
     name: &'static str,
     ref_count: AtomicUsize,
     is_empty: bool,
+}
+
+#[derive(Debug)]
+struct Slab {
+    slab: Vec<RwLock<Slot>>,
 }
 
 #[derive(Debug)]
@@ -217,37 +226,60 @@ impl Store {
         N: for<'a> ::NewRecorder<'a>,
     {
         let mut span = Some(span);
+
+        // The slab's free list is a modification of Treiber's lock-free stack,
+        // using slab indices instead of pointers, and with a provison for
+        // growing the slab when needed.
+        //
+        // In order to insert a new span into the slab, we "pop" the next free
+        // index from the stack.
         loop {
+            // Acquire a snapshot of the head of the free list.
             let head = self.next.load(Ordering::Acquire);
+
             {
+                // Try to insert the span without modifying the overall
+                // structure of the stack.
                 let this = self.inner.read();
+
+                // Can we insert without reallocating?
                 if head < this.slab.len() {
-                    match this.slab[head].try_write() {
-                        // someone else is writing to the span --- spin a bit here.
-                        None => {
+                    // If someone else is writing to the head slot, we need to
+                    // acquire a new snapshot!
+                    let mut slot = match this.slab[head].try_write() {
+                        Some(lock) => lock,
+                        None => continue,
+                    };
+
+                    // Is the slot we locked actually empty? If not, fall
+                    // through and try to grow the slab.
+                    if let Some(next) = slot.next() {
+                        // Is our snapshot still valid?
+                        if self.next.compare_and_swap(head, next, Ordering::Release) == head {
+                            // We can finally fill the slot!
+                            slot.record(fields, new_recorder);
+                            slot.fill(span.take().unwrap());
+                            return Id::from_u64(head as u64);
+                        } else {
+                            // Our snapshot got stale, try again!
                             continue;
                         }
-                        Some(mut slot) => {
-                            if let Some(next) = slot.next() {
-                                if self.next.compare_and_swap(head, next, Ordering::Release) == head
-                                {
-                                    slot.record(fields, new_recorder);
-                                    slot.fill(span.take().unwrap());
-                                    return Id::from_u64(head as u64);
-                                } else {
-                                    continue;
-                                }
-                            }
-                        }
-                    };
+                    }
                 }
             }
 
+            // We need to grow the slab, and must acquire a write lock.
             if let Some(mut this) = self.inner.try_write() {
+                let len = this.slab.len();
+
+                // Insert the span into a new slot.
                 let mut slot = Slot::new(span.take().unwrap());
                 slot.record(fields, new_recorder);
-                let len = this.slab.len();
                 this.slab.push(RwLock::new(slot));
+                // TODO: can we grow the slab in chunks to avoid having to
+                // realloc as often?
+
+                // Update the head pointer and return.
                 self.next.store(len + 1, Ordering::Release);
                 return Id::from_u64(len as u64);
             }
@@ -278,43 +310,58 @@ impl Store {
         }
     }
 
-    /// Removes the span with the given `id`, if one exists.
+    /// Decrements the reference count of the the span with the given `id`, and
+    /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    #[inline]
-    pub fn remove(&self, id: &Id) -> Option<Data> {
-        let next = id.into_u64() as usize;
-        loop {
-            match self.inner.try_read() {
-                Some(this) => {
-                    let head = self.next.load(Ordering::Relaxed);
-
-                    let mut slot = this.slab[next].write();
-                    let data = match mem::replace(&mut slot.span, State::Empty(next)) {
-                        State::Full(data) => data,
-                        state => {
-                            slot.span = state;
-                            return None;
-                        }
-                    };
-                    if self.next.compare_and_swap(head, next, Ordering::Release) == head {
-                        slot.fields.clear();
-                        return Some(data);
-                    }
-                }
-                None => continue,
-            }
-        }
-    }
-
     pub fn drop_span(&self, id: Id) {
         if !self.get(&id).map(|span| span.drop_ref()).unwrap_or(false) {
             return;
         }
 
         let data = self.remove(&id);
+        // Continue propagating the drop up the span's parent tree, to avoid
+        // round-trips through the dispatcher.
         if let Some(parent) = data.and_then(|data| data.parent) {
             self.drop_span(parent)
+        }
+    }
+
+    /// Remove a span slot from the slab.
+    fn remove(&self, id: &Id) -> Option<Data> {
+        let next = id.into_u64() as usize;
+
+        // Again we are essentially implementing a variant of Treiber's stack
+        // algorith to push the removed span's index into the free list.
+        loop {
+            // Is someone currently growing the slab?
+            match self.inner.try_read() {
+                Some(this) => {
+                    // Get a snapshot of the current free-list head.
+                    let head = self.next.load(Ordering::Relaxed);
+
+                    // Empty the data stored at that slot.
+                    let mut slot = this.slab[next].write();
+                    let data = match mem::replace(&mut slot.span, State::Empty(next)) {
+                        State::Full(data) => data,
+                        state => {
+                            // The slot has already been emptied; leave
+                            // everything as it was and return `None`!
+                            slot.span = state;
+                            return None;
+                        }
+                    };
+
+                    // Is our snapshot still valid?
+                    if self.next.compare_and_swap(head, next, Ordering::Release) == head {
+                        // Empty the string but retain the allocated capacity
+                        // for future spans.
+                        slot.fields.clear();
+                        return Some(data);
+                    }
+                }
+                None => continue,
+            }
         }
     }
 }
