@@ -2,7 +2,9 @@ extern crate tokio_trace_core;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
+extern crate lock_api;
 extern crate owning_ref;
+extern crate parking_lot;
 
 use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
 
@@ -128,7 +130,8 @@ where
 
     fn enter(&self, span: &span::Id) {
         // TODO: add on_enter hook
-        span::Context::push(self.clone_span(span));
+        let span = self.clone_span(span);
+        span::Context::push(span);
     }
 
     fn exit(&self, span: &span::Id) {
@@ -147,19 +150,7 @@ where
     }
 
     fn drop_span(&self, id: span::Id) {
-        if self
-            .spans
-            .get(&id)
-            .map(|span| span.drop_ref())
-            .unwrap_or(false)
-        {
-            let data = self.spans.remove(&id);
-            // Drop the data only *after* releasing the write lock, as it may
-            // cause the parent span to be dropped as well.
-            drop(data);
-            // TODO: see if this can be rewritten to allow us to re-use the same
-            // write lock to drop any parent spans...
-        }
+        self.spans.drop_span(id);
     }
 }
 
