@@ -76,19 +76,17 @@ impl<'a> Span<'a> {
     #[inline]
     pub(crate) fn clone_ref(&self) {
         if let State::Full(ref data) = self.lock.span {
-            let refcount = data.ref_count.fetch_add(1, Ordering::SeqCst);
-            // println!("clone_ref {:?} ({:?})", self.name(), refcount);
+            data.ref_count.fetch_add(1, Ordering::Release);
         }
     }
 
     pub(crate) fn drop_ref(&self) -> bool {
         if let State::Full(ref data) = self.lock.span {
-            let refcount = data.ref_count.fetch_sub(1, Ordering::SeqCst);
-            // println!("drop_ref {:?} ({:?})", self.name(), refcount);
+            let refcount = data.ref_count.fetch_sub(1, Ordering::Release);
             if refcount == 1 {
                 // Synchronize only if we are actually removing the span (stolen
                 // from std::Arc);
-                // atomic::fence(Ordering::SeqCst);
+                atomic::fence(Ordering::Acquire);
                 return true;
             }
         }
@@ -133,17 +131,13 @@ impl<'a> Context<'a> {
 
     pub(crate) fn push(id: Id) {
         let _ = CONTEXT.try_with(|current| {
-            atomic::fence(Ordering::SeqCst);
             current.borrow_mut().push(id);
         });
     }
 
     pub(crate) fn pop() -> Option<Id> {
         CONTEXT
-            .try_with(|current| {
-                atomic::fence(Ordering::SeqCst);
-                current.borrow_mut().pop()
-            })
+            .try_with(|current| current.borrow_mut().pop())
             .ok()?
     }
 
@@ -225,13 +219,12 @@ impl Store {
         let mut span = Some(span);
         loop {
             let head = self.next.load(Ordering::Acquire);
-            // println!("try push {:?}; len={:?}", head, len);
             {
                 let this = self.inner.read();
                 if head < this.slab.len() {
                     match this.slab[head].try_write() {
+                        // someone else is writing to the span --- spin a bit here.
                         None => {
-                            // println!("-> no lock");
                             continue;
                         }
                         Some(mut slot) => {
@@ -240,7 +233,6 @@ impl Store {
                                 {
                                     slot.record(fields, new_recorder);
                                     slot.fill(span.take().unwrap());
-                                    // println!("-> filled {:?}", head);
                                     return Id::from_u64(head as u64);
                                 } else {
                                     continue;
@@ -251,20 +243,13 @@ impl Store {
                 }
             }
 
-            // println!("try grow slab");
-            match self.inner.try_write() {
-                None => {
-                    // println!(" -> no slab lock"),
-                }
-                Some(mut this) => {
-                    let mut slot = Slot::new(span.take().unwrap());
-                    slot.record(fields, new_recorder);
-                    let len = this.slab.len();
-                    this.slab.push(RwLock::new(slot));
-                    self.next.store(len + 1, Ordering::Release);
-                    // println!("--> pushed {:?}", len + 1);
-                    return Id::from_u64(len as u64);
-                }
+            if let Some(mut this) = self.inner.try_write() {
+                let mut slot = Slot::new(span.take().unwrap());
+                slot.record(fields, new_recorder);
+                let len = this.slab.len();
+                this.slab.push(RwLock::new(slot));
+                self.next.store(len + 1, Ordering::Release);
+                return Id::from_u64(len as u64);
             }
         }
     }
@@ -298,9 +283,7 @@ impl Store {
     /// The allocated span slot will be reused when a new span is created.
     #[inline]
     pub fn remove(&self, id: &Id) -> Option<Data> {
-        // println!("try_remove {:?}", id);
         let next = id.into_u64() as usize;
-        atomic::fence(Ordering::SeqCst);
         loop {
             match self.inner.try_read() {
                 Some(this) => {
@@ -316,7 +299,6 @@ impl Store {
                     };
                     if self.next.compare_and_swap(head, next, Ordering::Release) == head {
                         slot.fields.clear();
-                        // println!("removed {:?};", id);
                         return Some(data);
                     }
                 }
@@ -334,7 +316,6 @@ impl Store {
         if let Some(parent) = data.and_then(|data| data.parent) {
             self.drop_span(parent)
         }
-        atomic::fence(Ordering::SeqCst);
     }
 }
 
