@@ -224,44 +224,39 @@ impl Store {
     {
         let mut span = Some(span);
         loop {
-            let head = self.next.load(Ordering::Relaxed);
-            let len = self.inner.read().slab.len();
-            let mut current = Context::current();
+            let head = self.next.load(Ordering::Acquire);
             // println!("try push {:?}; len={:?}", head, len);
-
-            if head < len {
+            {
                 let this = self.inner.read();
-                match this.slab[head].try_write() {
-                    None => {
-                        // println!("-> no lock");
-                        continue;
-                    }
-                    Some(mut slot) => {
-                        if let Some(ref mut span) = &mut span {
-                            span.parent = current.take();
+                if head < this.slab.len() {
+                    match this.slab[head].try_write() {
+                        None => {
+                            // println!("-> no lock");
+                            continue;
                         }
-                        if let Some(next) = slot.next() {
-                            if self.next.compare_and_swap(head, next, Ordering::SeqCst) == head {
-                                slot.record(fields, new_recorder);
-                                slot.fill(span.take().unwrap());
-                                // println!("-> filled {:?}", head);
-                                return Id::from_u64(head as u64);
-                            } else {
-                                continue;
+                        Some(mut slot) => {
+                            if let Some(next) = slot.next() {
+                                if self.next.compare_and_swap(head, next, Ordering::Release) == head
+                                {
+                                    slot.record(fields, new_recorder);
+                                    slot.fill(span.take().unwrap());
+                                    // println!("-> filled {:?}", head);
+                                    return Id::from_u64(head as u64);
+                                } else {
+                                    continue;
+                                }
                             }
                         }
-                    }
-                };
+                    };
+                }
             }
+
             // println!("try grow slab");
             match self.inner.try_write() {
                 None => {
                     // println!(" -> no slab lock"),
                 }
                 Some(mut this) => {
-                    if let Some(ref mut span) = &mut span {
-                        span.parent = current.take();
-                    }
                     let mut slot = Slot::new(span.take().unwrap());
                     slot.record(fields, new_recorder);
                     let len = this.slab.len();
@@ -305,23 +300,27 @@ impl Store {
     pub fn remove(&self, id: &Id) -> Option<Data> {
         // println!("try_remove {:?}", id);
         let next = id.into_u64() as usize;
+        atomic::fence(Ordering::SeqCst);
         loop {
-            let head = self.next.load(Ordering::Relaxed);
+            match self.inner.try_read() {
+                Some(this) => {
+                    let head = self.next.load(Ordering::Relaxed);
 
-            let this = self.inner.read();
-            let mut slot = this.slab[next].write();
-            let data = match mem::replace(&mut slot.span, State::Empty(next)) {
-                State::Full(data) => data,
-                state => {
-                    slot.span = state;
-                    continue;
+                    let mut slot = this.slab[next].write();
+                    let data = match mem::replace(&mut slot.span, State::Empty(next)) {
+                        State::Full(data) => data,
+                        state => {
+                            slot.span = state;
+                            return None;
+                        }
+                    };
+                    if self.next.compare_and_swap(head, next, Ordering::Release) == head {
+                        slot.fields.clear();
+                        // println!("removed {:?};", id);
+                        return Some(data);
+                    }
                 }
-            };
-            if self.next.compare_and_swap(head, next, Ordering::SeqCst) == head {
-                slot.fields.clear();
-                // println!("removed {:?};", id);
-
-                return Some(data);
+                None => continue,
             }
         }
     }
@@ -335,7 +334,7 @@ impl Store {
         if let Some(parent) = data.and_then(|data| data.parent) {
             self.drop_span(parent)
         }
-        atomic::fence(Ordering::Acquire);
+        atomic::fence(Ordering::SeqCst);
     }
 }
 
@@ -343,7 +342,7 @@ impl Data {
     pub(crate) fn new(metadata: &Metadata) -> Self {
         Self {
             name: metadata.name(),
-            parent: None,
+            parent: Context::current(),
             ref_count: AtomicUsize::new(1),
             is_empty: true,
         }
