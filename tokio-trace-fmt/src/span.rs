@@ -6,6 +6,7 @@ use std::{
 
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
 pub use tokio_trace_core::Span as Id;
 use tokio_trace_core::{dispatcher, field, Metadata};
 
@@ -87,19 +88,6 @@ impl<'a> Span<'a> {
         if let State::Full(ref data) = self.lock.span {
             data.ref_count.fetch_add(1, Ordering::Release);
         }
-    }
-
-    pub(crate) fn drop_ref(&self) -> bool {
-        if let State::Full(ref data) = self.lock.span {
-            let refcount = data.ref_count.fetch_sub(1, Ordering::Release);
-            if refcount == 1 {
-                // Synchronize only if we are actually removing the span (stolen
-                // from std::Arc);
-                atomic::fence(Ordering::Acquire);
-                return true;
-            }
-        }
-        false
     }
 
     #[inline(always)]
@@ -291,7 +279,9 @@ impl Store {
     #[inline]
     pub fn get(&self, id: &Id) -> Option<Span> {
         let lock = OwningHandle::try_new(self.inner.read(), |slab| {
-            unsafe { &*slab }.read_slot(id).ok_or(())
+            unsafe { &*slab }
+                .read_slot(id.into_u64() as usize)
+                .ok_or(())
         })
         .ok()?;
         Some(Span { lock })
@@ -304,7 +294,7 @@ impl Store {
         N: for<'a> ::NewRecorder<'a>,
     {
         let slab = self.inner.read();
-        let slot = slab.write_slot(id);
+        let slot = slab.write_slot(id.into_u64() as usize);
         if let Some(mut slot) = slot {
             slot.record(fields, new_recorder);
         }
@@ -315,53 +305,27 @@ impl Store {
     ///
     /// The allocated span slot will be reused when a new span is created.
     pub fn drop_span(&self, id: Id) {
-        if !self.get(&id).map(|span| span.drop_ref()).unwrap_or(false) {
+        let this = self.inner.read();
+        let idx = id.into_u64() as usize;
+
+        if !this
+            .slab
+            .get(idx)
+            .map(|span| span.read().drop_ref())
+            .unwrap_or(false)
+        {
             return;
         }
 
-        let data = self.remove(&id);
+        // Synchronize only if we are actually removing the span (stolen
+        // from std::Arc);
+        atomic::fence(Ordering::Acquire);
+
+        let data = this.remove(&self.next, idx);
         // Continue propagating the drop up the span's parent tree, to avoid
         // round-trips through the dispatcher.
         if let Some(parent) = data.and_then(|data| data.parent) {
             self.drop_span(parent)
-        }
-    }
-
-    /// Remove a span slot from the slab.
-    fn remove(&self, id: &Id) -> Option<Data> {
-        let next = id.into_u64() as usize;
-
-        // Again we are essentially implementing a variant of Treiber's stack
-        // algorith to push the removed span's index into the free list.
-        loop {
-            // Is someone currently growing the slab?
-            match self.inner.try_read() {
-                Some(this) => {
-                    // Get a snapshot of the current free-list head.
-                    let head = self.next.load(Ordering::Relaxed);
-
-                    // Empty the data stored at that slot.
-                    let mut slot = this.slab[next].write();
-                    let data = match mem::replace(&mut slot.span, State::Empty(next)) {
-                        State::Full(data) => data,
-                        state => {
-                            // The slot has already been emptied; leave
-                            // everything as it was and return `None`!
-                            slot.span = state;
-                            return None;
-                        }
-                    };
-
-                    // Is our snapshot still valid?
-                    if self.next.compare_and_swap(head, next, Ordering::Release) == head {
-                        // Empty the string but retain the allocated capacity
-                        // for future spans.
-                        slot.fields.clear();
-                        return Some(data);
-                    }
-                }
-                None => continue,
-            }
         }
     }
 }
@@ -418,24 +382,60 @@ impl Slot {
             }
         }
     }
+
+    fn drop_ref(&self) -> bool {
+        match self.span {
+            State::Full(ref data) => data.ref_count.fetch_sub(1, Ordering::Release) == 1,
+            State::Empty(_) => false,
+        }
+    }
 }
 
 impl Slab {
     #[inline]
-    fn write_slot(&self, id: &Id) -> Option<RwLockWriteGuard<Slot>> {
-        self.slab
-            .get(id.into_u64() as usize)
-            .map(|slot| slot.write())
+    fn write_slot(&self, idx: usize) -> Option<RwLockWriteGuard<Slot>> {
+        self.slab.get(idx).map(|slot| slot.write())
     }
 
     #[inline]
-    fn read_slot<'a>(&'a self, id: &Id) -> Option<RwLockReadGuard<'a, Slot>> {
+    fn read_slot<'a>(&'a self, idx: usize) -> Option<RwLockReadGuard<'a, Slot>> {
         self.slab
-            .get(id.into_u64() as usize)
+            .get(idx)
             .map(|slot| slot.read())
             .and_then(|lock| match lock.span {
                 State::Empty(_) => None,
                 State::Full(_) => Some(lock),
             })
+    }
+
+    /// Remove a span slot from the slab.
+    fn remove(&self, next: &AtomicUsize, idx: usize) -> Option<Data> {
+        // Again we are essentially implementing a variant of Treiber's stack
+        // algorithm to push the removed span's index into the free list.
+        loop {
+            // Get a snapshot of the current free-list head.
+            let head = next.load(Ordering::Relaxed);
+
+            // Empty the data stored at that slot.
+            let mut slot = self.slab[idx].write();
+            let data = match mem::replace(&mut slot.span, State::Empty(idx)) {
+                State::Full(data) => data,
+                state => {
+                    // The slot has already been emptied; leave
+                    // everything as it was and return `None`!
+                    slot.span = state;
+                    return None;
+                }
+            };
+
+            // Is our snapshot still valid?
+            if next.compare_and_swap(head, idx, Ordering::Release) == head {
+                // Empty the string but retain the allocated capacity
+                // for future spans.
+                slot.fields.clear();
+                return Some(data);
+            }
+
+        }
     }
 }
