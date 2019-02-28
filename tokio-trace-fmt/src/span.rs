@@ -223,7 +223,7 @@ impl Store {
         // index from the stack.
         loop {
             // Acquire a snapshot of the head of the free list.
-            let head = self.next.load(Ordering::Acquire);
+            let head = self.next.load(Ordering::Relaxed);
 
             {
                 // Try to insert the span without modifying the overall
