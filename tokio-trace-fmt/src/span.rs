@@ -234,29 +234,23 @@ impl Store {
                 if head < this.slab.len() {
                     // If someone else is writing to the head slot, we need to
                     // acquire a new snapshot!
-                    let mut slot = match this.slab[head].try_write() {
-                        Some(lock) => lock,
-                        None => {
-                            atomic::spin_loop_hint();
-                            continue;
-                        }
-                    };
-
-                    // Is the slot we locked actually empty? If not, fall
-                    // through and try to grow the slab.
-                    if let Some(next) = slot.next() {
-                        // Is our snapshot still valid?
-                        if self.next.compare_and_swap(head, next, Ordering::Release) == head {
-                            // We can finally fill the slot!
-                            slot.record(fields, new_recorder);
-                            slot.fill(span.take().unwrap());
-                            return Id::from_u64(head as u64);
-                        } else {
-                            // Our snapshot got stale, try again!
-                            atomic::spin_loop_hint();
-                            continue;
+                    if let Some(mut slot) = this.slab[head].try_write() {
+                        // Is the slot we locked actually empty? If not, fall
+                        // through and try to grow the slab.
+                        if let Some(next) = slot.next() {
+                            // Is our snapshot still valid?
+                            if self.next.compare_and_swap(head, next, Ordering::Release) == head {
+                                // We can finally fill the slot!
+                                slot.record(fields, new_recorder);
+                                slot.fill(span.take().unwrap());
+                                return Id::from_u64(head as u64);
+                            }
                         }
                     }
+
+                    // Our snapshot got stale, try again!
+                    atomic::spin_loop_hint();
+                    continue;
                 }
             }
 
@@ -424,7 +418,7 @@ impl Slab {
 
             // Empty the data stored at that slot.
             let mut slot = self.slab[idx].write();
-            let data = match mem::replace(&mut slot.span, State::Empty(idx)) {
+            let data = match mem::replace(&mut slot.span, State::Empty(head)) {
                 State::Full(data) => data,
                 state => {
                     // The slot has already been emptied; leave
