@@ -1,30 +1,36 @@
 use std::{
     cell::RefCell,
     mem, str,
-    sync::{
-        atomic::{self, AtomicUsize, Ordering},
-        RwLock,
-    },
+    sync::atomic::{self, AtomicUsize, Ordering},
 };
+
+use owning_ref::OwningHandle;
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub use tokio_trace_core::Span as Id;
 use tokio_trace_core::{dispatcher, field, Metadata};
 
-#[derive(Debug)]
 pub struct Span<'a> {
-    data: &'a Data,
-    fields: &'a str,
+    lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
 pub struct Context<'a> {
-    lock: &'a RwLock<Slab>,
+    store: &'a Store,
 }
 
+/// Stores data associated with currently-active spans.
 #[derive(Debug)]
-pub(crate) struct Slab {
-    slab: Vec<Slot>,
-    next: usize,
-    count: usize,
+pub(crate) struct Store {
+    // Active span data is stored in a slab of span slots. Each slot has its own
+    // read-write lock to guard against concurrent modification to its data.
+    // Thus, we can modify any individual slot by acquiring a read lock on the
+    // slab, and using that lock to acquire a write lock on the slot we wish to
+    // modify. It is only necessary to acquire the write lock here when the
+    // slab itself has to be modified (i.e., to allocate more slots).
+    inner: RwLock<Slab>,
+
+    // The head of the slab's "free list".
+    next: AtomicUsize,
 }
 
 #[derive(Debug)]
@@ -33,6 +39,11 @@ pub(crate) struct Data {
     name: &'static str,
     ref_count: AtomicUsize,
     is_empty: bool,
+}
+
+#[derive(Debug)]
+struct Slab {
+    slab: Vec<RwLock<Slot>>,
 }
 
 #[derive(Debug)]
@@ -55,42 +66,46 @@ thread_local! {
 
 impl<'a> Span<'a> {
     pub fn name(&self) -> &'static str {
-        self.data.name
+        match self.lock.span {
+            State::Full(ref data) => data.name.as_ref(),
+            State::Empty(_) => unreachable!(),
+        }
     }
 
     pub fn fields(&self) -> &str {
-        self.fields
+        self.lock.fields.as_ref()
     }
 
     pub fn parent(&self) -> Option<&Id> {
-        self.data.parent.as_ref()
+        match self.lock.span {
+            State::Full(ref data) => data.parent.as_ref(),
+            State::Empty(_) => unreachable!(),
+        }
     }
 
     #[inline]
     pub(crate) fn clone_ref(&self) {
-        self.data.ref_count.fetch_add(1, Ordering::Release);
-    }
-
-    #[inline]
-    pub(crate) fn drop_ref(&self) -> bool {
-        if self.data.ref_count.fetch_sub(1, Ordering::Release) != 1 {
-            return false;
+        if let State::Full(ref data) = self.lock.span {
+            data.ref_count.fetch_add(1, Ordering::Release);
         }
-
-        // Synchronize only if we are actually removing the span (stolen
-        // from std::Arc);
-        atomic::fence(Ordering::Acquire);
-        true
     }
 
     #[inline(always)]
-    fn with_parent<'store, F, E>(self, my_id: &Id, f: &mut F, store: &'store Slab) -> Result<(), E>
+    fn with_parent<'store, F, E>(
+        self,
+        my_id: &Id,
+        last_id: Option<&Id>,
+        f: &mut F,
+        store: &'store Store,
+    ) -> Result<(), E>
     where
         F: FnMut(&Id, Span) -> Result<(), E>,
     {
-        if let Some(parent_id) = self.data.parent.as_ref() {
-            if let Some(parent) = store.get(parent_id) {
-                parent.with_parent(parent_id, f, store)?;
+        if let Some(parent_id) = self.parent() {
+            if Some(parent_id) != last_id {
+                if let Some(parent) = store.get(parent_id) {
+                    parent.with_parent(parent_id, Some(my_id), f, store)?;
+                }
             }
         }
         f(my_id, self)
@@ -113,7 +128,7 @@ impl<'a> Context<'a> {
 
     pub(crate) fn push(id: Id) {
         let _ = CONTEXT.try_with(|current| {
-            current.borrow_mut().push(id.clone());
+            current.borrow_mut().push(id);
         });
     }
 
@@ -140,13 +155,11 @@ impl<'a> Context<'a> {
         CONTEXT
             .try_with(|current| {
                 if let Some(id) = current.borrow().last() {
-                    if let Ok(store) = self.lock.read() {
-                        if let Some(span) = store.get(id) {
-                            // with_parent uses the call stack to visit the span
-                            // stack in reverse order, without having to allocate
-                            // a buffer.
-                            return span.with_parent(id, &mut f, &store);
-                        }
+                    if let Some(span) = self.store.get(id) {
+                        // with_parent uses the call stack to visit the span
+                        // stack in reverse order, without having to allocate
+                        // a buffer.
+                        return span.with_parent(id, None, &mut f, self.store);
                     }
                 }
                 Ok(())
@@ -164,8 +177,7 @@ impl<'a> Context<'a> {
         CONTEXT
             .try_with(|current| {
                 if let Some(id) = current.borrow().last() {
-                    let spans = self.lock.read().ok()?;
-                    if let Some(span) = spans.get(id) {
+                    if let Some(span) = self.store.get(id) {
                         return Some(f((id, span)));
                     }
                 }
@@ -174,17 +186,18 @@ impl<'a> Context<'a> {
             .ok()?
     }
 
-    pub(crate) fn new(lock: &'a RwLock<Slab>) -> Self {
-        Self { lock }
+    pub(crate) fn new(store: &'a Store) -> Self {
+        Self { store }
     }
 }
 
-impl Slab {
+impl Store {
     pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            slab: Vec::with_capacity(capacity),
-            count: 0,
-            next: 0,
+        Store {
+            inner: RwLock::new(Slab {
+                slab: Vec::with_capacity(capacity),
+            }),
+            next: AtomicUsize::new(0),
         }
     }
 
@@ -196,58 +209,123 @@ impl Slab {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&mut self, span: Data, fields: &field::ValueSet, new_recorder: &N) -> Id
+    pub fn new_span<N>(&self, span: Data, fields: &field::ValueSet, new_recorder: &N) -> Id
     where
         N: for<'a> ::NewRecorder<'a>,
     {
-        self.count += 1;
-        let idx = self.next;
+        let mut span = Some(span);
 
-        if self.next == self.slab.len() {
-            // The next index is the end of the slab, so we need to add a
-            // new slot. This allocates an additional string and grows
-            // the length of the slab by 1.
-            self.slab.push(Slot::new(span));
-            self.next += 1;
-        } else {
-            // Place the new span in an existing slot in the slab.
-            self.next = self.slab[self.next].fill(span);
+        // The slab's free list is a modification of Treiber's lock-free stack,
+        // using slab indices instead of pointers, and with a provison for
+        // growing the slab when needed.
+        //
+        // In order to insert a new span into the slab, we "pop" the next free
+        // index from the stack.
+        loop {
+            // Acquire a snapshot of the head of the free list.
+            let head = self.next.load(Ordering::Relaxed);
+
+            {
+                // Try to insert the span without modifying the overall
+                // structure of the stack.
+                let this = self.inner.read();
+
+                // Can we insert without reallocating?
+                if head < this.slab.len() {
+                    // If someone else is writing to the head slot, we need to
+                    // acquire a new snapshot!
+                    if let Some(mut slot) = this.slab[head].try_write() {
+                        // Is the slot we locked actually empty? If not, fall
+                        // through and try to grow the slab.
+                        if let Some(next) = slot.next() {
+                            // Is our snapshot still valid?
+                            if self.next.compare_and_swap(head, next, Ordering::Release) == head {
+                                // We can finally fill the slot!
+                                slot.record(fields, new_recorder);
+                                slot.fill(span.take().unwrap());
+                                return Id::from_u64(head as u64);
+                            }
+                        }
+                    }
+
+                    // Our snapshot got stale, try again!
+                    atomic::spin_loop_hint();
+                    continue;
+                }
+            }
+
+            // We need to grow the slab, and must acquire a write lock.
+            if let Some(mut this) = self.inner.try_write() {
+                let len = this.slab.len();
+
+                // Insert the span into a new slot.
+                let mut slot = Slot::new(span.take().unwrap());
+                slot.record(fields, new_recorder);
+                this.slab.push(RwLock::new(slot));
+                // TODO: can we grow the slab in chunks to avoid having to
+                // realloc as often?
+
+                // Update the head pointer and return.
+                self.next.store(len + 1, Ordering::Release);
+                return Id::from_u64(len as u64);
+            }
+
+            atomic::spin_loop_hint();
         }
-
-        self.slab[idx].record(fields, new_recorder);
-
-        Id::from_u64(idx as u64)
     }
 
     /// Returns a `Span` to the span with the specified `id`, if one
     /// currently exists.
     #[inline]
     pub fn get(&self, id: &Id) -> Option<Span> {
-        self.slab
-            .get(id.into_u64() as usize)
-            .and_then(Slot::as_span_ref)
+        let lock = OwningHandle::try_new(self.inner.read(), |slab| {
+            unsafe { &*slab }
+                .read_slot(id.into_u64() as usize)
+                .ok_or(())
+        })
+        .ok()?;
+        Some(Span { lock })
     }
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub fn record<N>(&mut self, id: &Id, fields: &field::ValueSet, new_recorder: &N)
+    pub fn record<N>(&self, id: &Id, fields: &field::ValueSet, new_recorder: &N)
     where
         N: for<'a> ::NewRecorder<'a>,
     {
-        if let Some(slot) = self.slab.get_mut(id.into_u64() as usize) {
+        let slab = self.inner.read();
+        let slot = slab.write_slot(id.into_u64() as usize);
+        if let Some(mut slot) = slot {
             slot.record(fields, new_recorder);
         }
     }
 
-    /// Removes the span with the given `id`, if one exists.
+    /// Decrements the reference count of the the span with the given `id`, and
+    /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    #[inline]
-    pub fn remove(&mut self, id: &Id) {
+    pub fn drop_span(&self, id: Id) {
+        let this = self.inner.read();
         let idx = id.into_u64() as usize;
-        if self.slab[idx].empty(self.next) {
-            self.next = idx;
-            self.count -= 1;
+
+        if !this
+            .slab
+            .get(idx)
+            .map(|span| span.read().drop_ref())
+            .unwrap_or(false)
+        {
+            return;
+        }
+
+        // Synchronize only if we are actually removing the span (stolen
+        // from std::Arc);
+        atomic::fence(Ordering::Acquire);
+
+        let data = this.remove(&self.next, idx);
+        // Continue propagating the drop up the span's parent tree, to avoid
+        // round-trips through the dispatcher.
+        if let Some(parent) = data.and_then(|data| data.parent) {
+            self.drop_span(parent)
         }
     }
 }
@@ -271,28 +349,11 @@ impl Slot {
         }
     }
 
-    fn as_span_ref(&self) -> Option<Span> {
+    fn next(&self) -> Option<usize> {
         match self.span {
-            State::Full(ref data) => Some(Span {
-                data,
-                fields: self.fields.as_ref(),
-            }),
+            State::Empty(next) => Some(next),
             _ => None,
         }
-    }
-
-    fn empty(&mut self, next: usize) -> bool {
-        let mut was_cleared = false;
-        match mem::replace(&mut self.span, State::Empty(next)) {
-            State::Full(_) => {
-                // Reuse the already allocated string for the next span's
-                // fields, avoiding an additional allocation.
-                self.fields.clear();
-                was_cleared = true;
-            }
-            state => self.span = state,
-        };
-        was_cleared
     }
 
     fn fill(&mut self, data: Data) -> usize {
@@ -319,6 +380,63 @@ impl Slot {
                     data.is_empty = false;
                 }
             }
+        }
+    }
+
+    fn drop_ref(&self) -> bool {
+        match self.span {
+            State::Full(ref data) => data.ref_count.fetch_sub(1, Ordering::Release) == 1,
+            State::Empty(_) => false,
+        }
+    }
+}
+
+impl Slab {
+    #[inline]
+    fn write_slot(&self, idx: usize) -> Option<RwLockWriteGuard<Slot>> {
+        self.slab.get(idx).map(|slot| slot.write())
+    }
+
+    #[inline]
+    fn read_slot<'a>(&'a self, idx: usize) -> Option<RwLockReadGuard<'a, Slot>> {
+        self.slab
+            .get(idx)
+            .map(|slot| slot.read())
+            .and_then(|lock| match lock.span {
+                State::Empty(_) => None,
+                State::Full(_) => Some(lock),
+            })
+    }
+
+    /// Remove a span slot from the slab.
+    fn remove(&self, next: &AtomicUsize, idx: usize) -> Option<Data> {
+        // Again we are essentially implementing a variant of Treiber's stack
+        // algorithm to push the removed span's index into the free list.
+        loop {
+            // Get a snapshot of the current free-list head.
+            let head = next.load(Ordering::Relaxed);
+
+            // Empty the data stored at that slot.
+            let mut slot = self.slab[idx].write();
+            let data = match mem::replace(&mut slot.span, State::Empty(head)) {
+                State::Full(data) => data,
+                state => {
+                    // The slot has already been emptied; leave
+                    // everything as it was and return `None`!
+                    slot.span = state;
+                    return None;
+                }
+            };
+
+            // Is our snapshot still valid?
+            if next.compare_and_swap(head, idx, Ordering::Release) == head {
+                // Empty the string but retain the allocated capacity
+                // for future spans.
+                slot.fields.clear();
+                return Some(data);
+            }
+
+            atomic::spin_loop_hint();
         }
     }
 }

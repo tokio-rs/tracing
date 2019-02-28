@@ -10,6 +10,10 @@ ansi = ["ansi_term"]
 [dependencies]
 tokio-trace-core = { git = "https://github.com/tokio-rs/tokio" }
 ansi_term = { version = "0.11", optional = true }
+owning_ref = "0.4.0"
+
+parking_lot = { version = "0.7"}
+lock_api = "0.1"
 
 [dev-dependencies]
 tokio-trace = "0.0.1"
