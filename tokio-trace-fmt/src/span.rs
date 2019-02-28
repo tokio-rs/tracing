@@ -236,7 +236,10 @@ impl Store {
                     // acquire a new snapshot!
                     let mut slot = match this.slab[head].try_write() {
                         Some(lock) => lock,
-                        None => continue,
+                        None => {
+                            atomic::spin_loop_hint();
+                            continue;
+                        }
                     };
 
                     // Is the slot we locked actually empty? If not, fall
@@ -250,6 +253,7 @@ impl Store {
                             return Id::from_u64(head as u64);
                         } else {
                             // Our snapshot got stale, try again!
+                            atomic::spin_loop_hint();
                             continue;
                         }
                     }
@@ -271,6 +275,8 @@ impl Store {
                 self.next.store(len + 1, Ordering::Release);
                 return Id::from_u64(len as u64);
             }
+
+            atomic::spin_loop_hint();
         }
     }
 
@@ -436,6 +442,7 @@ impl Slab {
                 return Some(data);
             }
 
+            atomic::spin_loop_hint();
         }
     }
 }
