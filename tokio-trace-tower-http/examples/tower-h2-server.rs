@@ -6,8 +6,8 @@ extern crate tokio;
 #[macro_use]
 extern crate tokio_trace;
 extern crate env_logger;
-extern crate tokio_trace_futures;
 extern crate tokio_trace_fmt;
+extern crate tokio_trace_futures;
 extern crate tokio_trace_tower_http;
 extern crate tower_h2;
 extern crate tower_service;
@@ -101,7 +101,9 @@ impl tower_service::Service<()> for NewSvc {
 
 fn main() {
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
-        .with_filter(tokio_trace_fmt::filter::EnvFilter::from("tower_h2_server=trace"))
+        .with_filter(tokio_trace_fmt::filter::EnvFilter::from(
+            "tower_h2_server=trace",
+        ))
         .full()
         .finish();
 
