@@ -6,7 +6,11 @@ extern crate lock_api;
 extern crate owning_ref;
 extern crate parking_lot;
 
-use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
+use tokio_trace_core::{
+    field,
+    subscriber::Interest,
+    Event, Metadata,
+};
 
 use std::{cell::RefCell, fmt, io};
 
@@ -84,9 +88,10 @@ where
     }
 
     #[inline]
-    fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
-        let span = span::Data::new(metadata);
-        self.spans.new_span(span, values, &self.new_recorder)
+    fn new_span(&self, attrs: &span::Attributes) -> span::Id {
+        let span = span::Data::new(attrs.metadata());
+        self.spans
+            .new_span(span, attrs.values(), &self.new_recorder)
     }
 
     #[inline]
