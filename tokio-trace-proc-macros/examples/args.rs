@@ -5,7 +5,6 @@ extern crate tokio_trace_proc_macros;
 extern crate env_logger;
 extern crate tokio_trace_fmt;
 
-
 #[trace]
 fn nth_fibonacci(n: u64) -> u64 {
     if n == 0 || n == 1 {

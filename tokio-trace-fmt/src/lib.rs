@@ -6,11 +6,7 @@ extern crate lock_api;
 extern crate owning_ref;
 extern crate parking_lot;
 
-use tokio_trace_core::{
-    field,
-    subscriber::Interest,
-    Event, Metadata,
-};
+use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{cell::RefCell, fmt, io};
 
