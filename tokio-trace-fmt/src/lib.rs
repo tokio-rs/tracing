@@ -84,9 +84,10 @@ where
     }
 
     #[inline]
-    fn new_span(&self, metadata: &Metadata, values: &field::ValueSet) -> span::Id {
-        let span = span::Data::new(metadata);
-        self.spans.new_span(span, values, &self.new_recorder)
+    fn new_span(&self, attrs: &span::Attributes) -> span::Id {
+        let span = span::Data::new(attrs.metadata());
+        self.spans
+            .new_span(span, attrs.values(), &self.new_recorder)
     }
 
     #[inline]

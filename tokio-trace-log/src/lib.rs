@@ -35,7 +35,7 @@ use std::{
 
 use tokio_trace::{
     callsite::{self, Callsite},
-    field,
+    field, span,
     subscriber::{self, Subscriber},
     Event, Id, Metadata,
 };
@@ -328,7 +328,7 @@ impl Subscriber for TraceLogger {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, meta: &Metadata, values: &field::ValueSet) -> Id {
+    fn new_span(&self, attrs: &span::Attributes) -> Id {
         let id = self.next_id();
         let mut spans = self.spans.lock().unwrap();
         let mut fields = String::new();
@@ -340,8 +340,8 @@ impl Subscriber for TraceLogger {
                 next_parent = parent.parent.as_ref();
             }
         }
-        let mut span = SpanLineBuilder::new(parent, meta, fields);
-        values.record(&mut span);
+        let mut span = SpanLineBuilder::new(parent, attrs.metadata(), fields);
+        attrs.values().record(&mut span);
         spans.insert(id.clone(), span);
         id
     }

@@ -7,7 +7,7 @@ use std::{
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-pub use tokio_trace_core::Span as Id;
+pub(crate) use tokio_trace_core::span::{Attributes, Id};
 use tokio_trace_core::{dispatcher, field, Metadata};
 
 pub struct Span<'a> {

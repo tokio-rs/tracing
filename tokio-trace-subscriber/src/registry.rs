@@ -1,4 +1,7 @@
-use tokio_trace::{span::Id, Metadata};
+use tokio_trace::{
+    span::{Attributes, Id},
+    Metadata,
+};
 
 use std::{
     cmp,
@@ -34,11 +37,11 @@ pub trait RegisterSpan {
     /// from all calls to this function, if they so choose.
     ///
     /// [span ID]: ../span/struct.Id.html
-    fn new_span(&self, new_span: &'static Metadata<'static>) -> Id {
+    fn new_span(&self, new_span: &Attributes) -> Id {
         self.new_id(new_span)
     }
 
-    fn new_id(&self, new_id: &Metadata) -> Id;
+    fn new_id(&self, new_id: &Attributes) -> Id;
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -166,16 +169,16 @@ impl Default for IncreasingCounter {
 impl RegisterSpan for IncreasingCounter {
     type PriorSpans = iter::Empty<Id>;
 
-    fn new_span(&self, new_span: &'static Metadata<'static>) -> Id {
+    fn new_span(&self, new_span: &Attributes) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         if let Ok(mut spans) = self.spans.lock() {
-            spans.insert(id.clone(), new_span);
+            // spans.insert(id.clone(), new_span);
         }
         id
     }
 
-    fn new_id(&self, _new: &Metadata) -> Id {
+    fn new_id(&self, _new: &Attributes) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         id
