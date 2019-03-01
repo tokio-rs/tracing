@@ -1,4 +1,9 @@
-use tokio_trace::{field, subscriber::Subscriber, Event, Id, Metadata};
+use tokio_trace::{
+    field,
+    span::{self, Id},
+    subscriber::Subscriber,
+    Event, Metadata,
+};
 use {filter::NoFilter, observe::NoObserver, Filter, Observe, RegisterSpan};
 
 #[derive(Debug, Clone)]
@@ -94,8 +99,8 @@ where
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
     }
 
-    fn new_span(&self, meta: &Metadata, _values: &field::ValueSet) -> Id {
-        self.registry.new_id(meta)
+    fn new_span(&self, attrs: &span::Attributes) -> Id {
+        self.registry.new_id(attrs)
     }
 
     fn record(&self, _span: &Id, _values: &field::ValueSet) {
