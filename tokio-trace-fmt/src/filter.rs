@@ -22,10 +22,11 @@ pub trait Filter {
 pub struct EnvFilter {
     directives: Vec<Directive>,
     max_level: Level,
+    includes_span_directive: bool,
 }
 
 #[derive(Debug)]
-struct Directive {
+pub(super) struct Directive {
     target: Option<String>,
     in_span: Option<String>,
     level: Level,
@@ -45,7 +46,7 @@ impl EnvFilter {
         Self::new(directives)
     }
 
-    fn new(mut directives: Vec<Directive>) -> Self {
+    pub(super) fn new(mut directives: Vec<Directive>) -> Self {
         if directives.is_empty() {
             directives.push(Directive::default());
         } else {
@@ -59,9 +60,14 @@ impl EnvFilter {
             .cloned()
             .unwrap_or(Level::ERROR);
 
+        let includes_span_directive = directives
+            .iter()
+            .fold(false, |_, directive| directive.in_span.is_some());
+
         EnvFilter {
             directives,
             max_level,
+            includes_span_directive,
         }
     }
 
@@ -96,6 +102,12 @@ where
 
 impl Filter for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
+        if !self.includes_span_directive {
+            if metadata.level() > &self.max_level {
+                return Interest::never();
+            }
+        }
+
         let mut interest = Interest::never();
         for directive in self.directives_for(metadata) {
             let accepts_level = metadata.level() <= &directive.level;
@@ -294,6 +306,42 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use span::*;
+    use tokio_trace_core::*;
+
+    struct Cs;
+
+    impl Callsite for Cs {
+        fn add_interest(&self, _interest: Interest) {}
+        fn clear_interest(&self) {}
+        fn metadata(&self) -> &Metadata {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn callsite_enabled_no_span_directive() {
+        let dirs = parse_directives("app=debug");
+        let filter = EnvFilter::new(dirs);
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store);
+        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_never());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive() {
+        let dirs = parse_directives("app[mySpan]=debug");
+        let filter = EnvFilter::new(dirs);
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store);
+        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
 
     #[test]
     fn parse_directives_valid() {
