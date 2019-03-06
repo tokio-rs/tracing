@@ -14,7 +14,7 @@ http = "0.1"
 [dev-dependencies]
 bytes = "0.4"
 h2 = "0.1.11"
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", rev = "b9feae345a72396d82dc23d52a5a62689178bc40" }
 string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"
 tokio-current-thread = "0.1.1"
@@ -24,5 +24,4 @@ tokio-trace-fmt = { path = "../tokio-trace-fmt" }
 tokio-io = "0.1"
 ansi_term = "0.11"
 humantime = "1.1.1"
-
 env_logger = "0.5"
