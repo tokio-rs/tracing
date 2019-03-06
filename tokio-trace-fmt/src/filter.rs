@@ -26,7 +26,7 @@ pub struct EnvFilter {
 }
 
 #[derive(Debug)]
-pub(super) struct Directive {
+struct Directive {
     target: Option<String>,
     in_span: Option<String>,
     level: Level,
@@ -46,7 +46,7 @@ impl EnvFilter {
         Self::new(directives)
     }
 
-    pub(super) fn new(mut directives: Vec<Directive>) -> Self {
+    fn new(mut directives: Vec<Directive>) -> Self {
         if directives.is_empty() {
             directives.push(Directive::default());
         } else {
@@ -62,7 +62,7 @@ impl EnvFilter {
 
         let includes_span_directive = directives
             .iter()
-            .fold(false, |_, directive| directive.in_span.is_some());
+            .any(|directive| directive.in_span.is_some());
 
         EnvFilter {
             directives,
@@ -102,10 +102,8 @@ where
 
 impl Filter for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
-        if !self.includes_span_directive {
-            if metadata.level() > &self.max_level {
-                return Interest::never();
-            }
+        if !self.includes_span_directive && metadata.level() > &self.max_level {
+            return Interest::never();
         }
 
         let mut interest = Interest::never();
@@ -321,8 +319,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_no_span_directive() {
-        let dirs = parse_directives("app=debug");
-        let filter = EnvFilter::new(dirs);
+        let filter = EnvFilter::from("app=debug");
         let store = Store::with_capacity(1);
         let ctx = Context::new(&store);
         let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
@@ -333,8 +330,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive() {
-        let dirs = parse_directives("app[mySpan]=debug");
-        let filter = EnvFilter::new(dirs);
+        let filter = EnvFilter::from("app[mySpan]=debug");
         let store = Store::with_capacity(1);
         let ctx = Context::new(&store);
         let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
