@@ -29,6 +29,7 @@ pub struct EnvFilter {
 struct Directive {
     target: Option<String>,
     in_span: Option<String>,
+    in_field_value: Option<(String, String)>,
     level: Level,
 }
 
@@ -149,8 +150,19 @@ impl Filter for EnvFilter {
                     let in_span = ctx
                         .visit_spans(|_, span| {
                             if span.name() == desired {
-                                // Return `Err` to short-circuit the span visitation.
-                                Err(())
+                                if let Some((ref field, ref val)) = directive.in_field_value {
+                                    let fields = span.fields();
+                                    let matcher = format!("{}={:?}", field, val);
+
+                                    if fields == matcher {
+                                        Err(())
+                                    } else {
+                                        Ok(())
+                                    }
+                                } else {
+                                    // Return `Err` to short-circuit the span visitation.
+                                    Err(())
+                                }
                             } else {
                                 Ok(())
                             }
@@ -224,7 +236,9 @@ impl Directive {
                 })
         }
 
-        fn parse_span_target(from: &str) -> Option<(Option<String>, Option<String>)> {
+        fn parse_span_target(
+            from: &str,
+        ) -> Option<(Option<String>, Option<String>, Option<(String, String)>)> {
             let mut parts = from.split('[');
             let target = parts
                 .next()
@@ -233,17 +247,53 @@ impl Directive {
             if parts.next().is_some() {
                 return None;
             }
-            let in_span = if let Some(part) = span_part {
+
+            let (in_span, field_value) = if let Some(part) = span_part {
                 let mut parts = part.split(']');
                 let (part0, part1) = (parts.next(), parts.next());
                 if part1 != Some("") {
                     return None;
                 }
-                part0
+                // part0
+
+                if let Some(part0) = part0 {
+                    let (span, field_value) = {
+                        let mut parts = part0.split("{");
+                        let span = parts.next();
+
+                        if let Some(fv_inner) = parts.next() {
+                            let mut parts = fv_inner.split("}");
+                            let fv_inner = parts.next()?;
+
+                            if let Some("") = parts.next() {
+                                let mut parts = fv_inner.split(":");
+                                let field = parts.next()?;
+                                if let Some(value) = parts.next() {
+                                    (span, Some((field, value)))
+                                } else {
+                                    (span, Some((field, "")))
+                                }
+                            } else {
+                                (span, None)
+                            }
+                        } else {
+                            (span, None)
+                        }
+                    };
+
+                    (span, field_value)
+                } else {
+                    (None, None)
+                }
             } else {
-                None
+                (None, None)
             };
-            Some((target.map(String::from), in_span.map(String::from)))
+
+            Some((
+                target.map(String::from),
+                in_span.map(String::from),
+                field_value.map(|(f, v)| (String::from(f), String::from(v))),
+            ))
         }
 
         if from.len() == 0 {
@@ -251,9 +301,11 @@ impl Directive {
         }
         let mut parts = from.split('=');
         let parse = (parts.next()?, parts.next().map(|s| s.trim()));
+
         if parts.next().is_some() {
             return None;
         }
+
         match parse {
             (part0, None) => Some(if let Some(level) = parse_level(part0) {
                 Directive {
@@ -261,21 +313,23 @@ impl Directive {
                     ..Default::default()
                 }
             } else {
-                let (target, in_span) = parse_span_target(part0)?;
+                let (target, in_span, in_field_value) = parse_span_target(part0)?;
                 Directive {
                     target,
                     in_span,
+                    in_field_value,
                     ..Default::default()
                 }
             }),
             (part0, Some(part1)) => {
-                let (target, in_span) = parse_span_target(part0)?;
+                let (target, in_span, in_field_value) = parse_span_target(part0)?;
                 let level = parse_level(part1)?;
 
                 Some(Directive {
                     level,
                     target,
                     in_span,
+                    in_field_value,
                 })
             }
         }
@@ -288,6 +342,7 @@ impl Default for Directive {
             level: Level::ERROR,
             target: None,
             in_span: None,
+            in_field_value: None,
         }
     }
 }
@@ -427,4 +482,16 @@ mod tests {
         assert_eq!(dirs[2].in_span, Some("baz".to_string()));
     }
 
+    #[test]
+    fn parse_directives_valid_with_span_values() {
+        let dirs = parse_directives("crate1::mod1[foo{bar:val}]=error");
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
+        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].in_span, Some("foo".to_string()));
+        assert_eq!(
+            dirs[0].in_field_value,
+            Some(("bar".to_string(), "val".to_string()))
+        );
+    }
 }
