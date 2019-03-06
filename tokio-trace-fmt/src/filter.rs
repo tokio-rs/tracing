@@ -96,10 +96,6 @@ where
 
 impl Filter for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
-        if metadata.level() > &self.max_level {
-            return Interest::never();
-        }
-
         let mut interest = Interest::never();
         for directive in self.directives_for(metadata) {
             let accepts_level = metadata.level() <= &directive.level;
