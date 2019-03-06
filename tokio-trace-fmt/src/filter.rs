@@ -22,6 +22,7 @@ pub trait Filter {
 pub struct EnvFilter {
     directives: Vec<Directive>,
     max_level: Level,
+    includes_span_directive: bool,
 }
 
 #[derive(Debug)]
@@ -59,9 +60,14 @@ impl EnvFilter {
             .cloned()
             .unwrap_or(Level::ERROR);
 
+        let includes_span_directive = directives
+            .iter()
+            .any(|directive| directive.in_span.is_some());
+
         EnvFilter {
             directives,
             max_level,
+            includes_span_directive,
         }
     }
 
@@ -96,7 +102,7 @@ where
 
 impl Filter for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
-        if metadata.level() > &self.max_level {
+        if !self.includes_span_directive && metadata.level() > &self.max_level {
             return Interest::never();
         }
 
@@ -298,6 +304,40 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use span::*;
+    use tokio_trace_core::*;
+
+    struct Cs;
+
+    impl Callsite for Cs {
+        fn add_interest(&self, _interest: Interest) {}
+        fn clear_interest(&self) {}
+        fn metadata(&self) -> &Metadata {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn callsite_enabled_no_span_directive() {
+        let filter = EnvFilter::from("app=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store);
+        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_never());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive() {
+        let filter = EnvFilter::from("app[mySpan]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store);
+        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
 
     #[test]
     fn parse_directives_valid() {
