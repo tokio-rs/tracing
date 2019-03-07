@@ -340,13 +340,13 @@ impl Data {
 }
 
 impl Slot {
-    fn new<N>(data: Data, attrs: &Attributes, new_visitor: &N) -> Self
+    fn new<N>(mut data: Data, attrs: &Attributes, new_visitor: &N) -> Self
     where
         N: for<'a> ::NewVisitor<'a>,
     {
         let mut fields = String::new();
         {
-            let mut recorder = new_visitor.make(fields, true);
+            let mut recorder = new_visitor.make(&mut fields, true);
             attrs.record(&mut recorder);
         }
         if fields.len() != 0 {
@@ -365,11 +365,10 @@ impl Slot {
         }
     }
 
-    fn fill<N>(&mut self, data: Data, attrs: &Attributes, new_visitor: &N) -> usize
+    fn fill<N>(&mut self, mut data: Data, attrs: &Attributes, new_visitor: &N) -> usize
     where
         N: for<'a> ::NewVisitor<'a>,
     {
-        let state = &mut self.span;
         let fields = &mut self.fields;
         {
             let mut recorder = new_visitor.make(fields, true);
