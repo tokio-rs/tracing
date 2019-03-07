@@ -316,7 +316,7 @@ impl SpanLineBuilder {
     }
 }
 
-impl field::Record for SpanLineBuilder {
+impl field::Visit for SpanLineBuilder {
     fn record_debug(&mut self, field: &field::Field, value: &fmt::Debug) {
         write!(self.fields, " {}={:?};", field.name(), value)
             .expect("write to string should never fail")
@@ -341,12 +341,12 @@ impl Subscriber for TraceLogger {
             }
         }
         let mut span = SpanLineBuilder::new(parent, attrs.metadata(), fields);
-        attrs.values().record(&mut span);
+        attrs.record(&mut span);
         spans.insert(id.clone(), span);
         id
     }
 
-    fn record(&self, span: &Id, values: &field::ValueSet) {
+    fn record(&self, span: &Id, values: &span::Record) {
         let mut spans = self.spans.lock().unwrap();
         if let Some(span) = spans.get_mut(span) {
             values.record(span);
