@@ -7,8 +7,8 @@ use std::{
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-pub(crate) use tokio_trace_core::span::{Attributes, Id};
-use tokio_trace_core::{dispatcher, field, Metadata};
+pub(crate) use tokio_trace_core::span::{Attributes, Id, Record};
+use tokio_trace_core::{dispatcher, Metadata};
 
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
@@ -209,9 +209,9 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&self, span: Data, fields: &field::ValueSet, new_recorder: &N) -> Id
+    pub fn new_span<N>(&self, span: Data, attrs: &Attributes, new_visitor: &N) -> Id
     where
-        N: for<'a> ::NewRecorder<'a>,
+        N: for<'a> ::NewVisitor<'a>,
     {
         let mut span = Some(span);
 
@@ -241,8 +241,7 @@ impl Store {
                             // Is our snapshot still valid?
                             if self.next.compare_and_swap(head, next, Ordering::Release) == head {
                                 // We can finally fill the slot!
-                                slot.record(fields, new_recorder);
-                                slot.fill(span.take().unwrap());
+                                slot.fill(span.take().unwrap(), attrs, new_visitor);
                                 return Id::from_u64(head as u64);
                             }
                         }
@@ -259,8 +258,7 @@ impl Store {
                 let len = this.slab.len();
 
                 // Insert the span into a new slot.
-                let mut slot = Slot::new(span.take().unwrap());
-                slot.record(fields, new_recorder);
+                let mut slot = Slot::new(span.take().unwrap(), attrs, new_visitor);
                 this.slab.push(RwLock::new(slot));
                 // TODO: can we grow the slab in chunks to avoid having to
                 // realloc as often?
@@ -289,9 +287,9 @@ impl Store {
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub fn record<N>(&self, id: &Id, fields: &field::ValueSet, new_recorder: &N)
+    pub fn record<N>(&self, id: &Id, fields: &Record, new_recorder: &N)
     where
-        N: for<'a> ::NewRecorder<'a>,
+        N: for<'a> ::NewVisitor<'a>,
     {
         let slab = self.inner.read();
         let slot = slab.write_slot(id.into_u64() as usize);
@@ -342,9 +340,20 @@ impl Data {
 }
 
 impl Slot {
-    fn new(data: Data) -> Self {
+    fn new<N>(data: Data, attrs: &Attributes, new_visitor: &N) -> Self
+    where
+        N: for<'a> ::NewVisitor<'a>,
+    {
+        let mut fields = String::new();
+        {
+            let mut recorder = new_visitor.make(fields, true);
+            attrs.record(&mut recorder);
+        }
+        if fields.len() != 0 {
+            data.is_empty = false;
+        }
         Self {
-            fields: String::new(),
+            fields,
             span: State::Full(data),
         }
     }
@@ -356,16 +365,28 @@ impl Slot {
         }
     }
 
-    fn fill(&mut self, data: Data) -> usize {
+    fn fill<N>(&mut self, data: Data, attrs: &Attributes, new_visitor: &N) -> usize
+    where
+        N: for<'a> ::NewVisitor<'a>,
+    {
+        let state = &mut self.span;
+        let fields = &mut self.fields;
+        {
+            let mut recorder = new_visitor.make(fields, true);
+            attrs.record(&mut recorder);
+        }
+        if fields.len() != 0 {
+            data.is_empty = false;
+        }
         match mem::replace(&mut self.span, State::Full(data)) {
             State::Empty(next) => next,
             State::Full(_) => unreachable!("tried to fill a full slot"),
         }
     }
 
-    fn record<N>(&mut self, fields: &field::ValueSet, new_recorder: &N)
+    fn record<N>(&mut self, fields: &Record, new_visitor: &N)
     where
-        N: for<'a> ::NewRecorder<'a>,
+        N: for<'a> ::NewVisitor<'a>,
     {
         let state = &mut self.span;
         let buf = &mut self.fields;
@@ -373,7 +394,7 @@ impl Slot {
             State::Empty(_) => return,
             State::Full(ref mut data) => {
                 {
-                    let mut recorder = new_recorder.make(buf, data.is_empty);
+                    let mut recorder = new_visitor.make(buf, data.is_empty);
                     fields.record(&mut recorder);
                 }
                 if buf.len() != 0 {

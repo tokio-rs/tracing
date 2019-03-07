@@ -103,7 +103,7 @@ where
         self.registry.new_id(attrs)
     }
 
-    fn record(&self, _span: &Id, _values: &field::ValueSet) {
+    fn record(&self, _span: &Id, _values: &span::Record) {
         unimplemented!()
     }
 
