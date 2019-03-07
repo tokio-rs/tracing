@@ -71,9 +71,9 @@ impl<N, E, F> FmtSubscriber<N, E, F> {
 
 impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
 where
-    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
-    F: Filter,
     N: for<'a> NewVisitor<'a> + 'static,
+    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    F: Filter + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
@@ -189,9 +189,9 @@ impl Default for Builder {
 
 impl<N, E, F> Builder<N, E, F>
 where
-    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
-    F: Filter,
     N: for<'a> NewVisitor<'a> + 'static,
+    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    F: Filter + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
         FmtSubscriber {
@@ -223,7 +223,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// a span or event is enabled.
     pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2>
     where
-        F2: Filter,
+        F2: Filter + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
@@ -248,7 +248,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
+        E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
