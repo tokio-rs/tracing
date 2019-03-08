@@ -1,7 +1,7 @@
 use span;
 
-use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 use regex::Regex;
+use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 
 use std::env;
 
@@ -172,13 +172,14 @@ impl Filter for EnvFilter {
 }
 
 fn parse_directives(spec: &str) -> Vec<Directive> {
-    spec.split(',').filter_map(|dir| {
-        Directive::parse(dir).or_else(|| {
-            eprintln!("ignoring invalid log directive '{}'", dir);
-            None
+    spec.split(',')
+        .filter_map(|dir| {
+            Directive::parse(dir).or_else(|| {
+                eprintln!("ignoring invalid log directive '{}'", dir);
+                None
+            })
         })
-    })
-    .collect()
+        .collect()
 }
 
 // ===== impl Directive =====
@@ -194,7 +195,8 @@ impl Directive {
 
     fn parse(from: &str) -> Option<Self> {
         lazy_static! {
-            static ref DIRECTIVE_RE: Regex = Regex::new(r"(?x)
+            static ref DIRECTIVE_RE: Regex = Regex::new(
+                r"(?x)
                 ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|[0-5])$ |
                 ^
                 (?: # target name or span name
@@ -205,7 +207,8 @@ impl Directive {
                 )?
                 $
                 "
-            ).unwrap();
+            )
+            .unwrap();
         }
 
         fn parse_level(from: &str) -> Option<Level> {
@@ -234,7 +237,8 @@ impl Directive {
 
         let caps = DIRECTIVE_RE.captures(from)?;
 
-        if let Some(level) = caps.name("global_level")
+        if let Some(level) = caps
+            .name("global_level")
             .and_then(|c| parse_level(c.as_str()))
         {
             return Some(Directive {
@@ -243,22 +247,20 @@ impl Directive {
             });
         }
 
-        let target = caps.name("target")
-            .and_then(|c| {
-                let s = c.as_str();
-                if parse_level(s).is_some() {
-                    None
-                } else {
-                    Some(s.to_owned())
-                }
-            });
+        let target = caps.name("target").and_then(|c| {
+            let s = c.as_str();
+            if parse_level(s).is_some() {
+                None
+            } else {
+                Some(s.to_owned())
+            }
+        });
 
-        let in_span = caps.name("span")
-            .map(|c| c.as_str()
-                .trim_matches(|c| c == '[' || c == ']')
-                .to_owned()
-            );
-        let level = caps.name("level")
+        let in_span = caps
+            .name("span")
+            .map(|c| c.as_str().trim_matches(|c| c == '[' || c == ']').to_owned());
+        let level = caps
+            .name("level")
             .and_then(|c| parse_level(c.as_str()))
             .unwrap_or(Level::ERROR);
 
