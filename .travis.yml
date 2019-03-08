@@ -12,20 +12,21 @@ rust:
 script:
 - cargo test --verbose -p tokio-trace-futures
 - cargo test --verbose -p tokio-trace-subscriber
-- cargo test --verbose -p tokio-trace-tower
-- cargo test --verbose -p tokio-trace-tower-http
 - cargo test --verbose -p tokio-trace-log
 - cargo test --verbose -p tokio-trace-env-logger
 - cargo test --verbose -p tokio-trace-macros
 
 jobs:
   include:
-  # The proc macros crate does _not_ build on Rust 1.26.0, so it is tested
-  # in a separate stage.
+  # Test stage for crates which don't build on Rust 1.26.0 for unavoidable reasons.
   - stage: test
-    name: "test proc-macros"
+    name: "test stable only"
     script:
+      # No stable proc macros on 1.26.0
     - cargo test -p tokio-trace-proc-macros
+      # Tower doesn't build on Rust 1.26.0.
+    - cargo test -p tokio-trace-tower
+    - cargo test -p tokio-trace-tower-http
     rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview

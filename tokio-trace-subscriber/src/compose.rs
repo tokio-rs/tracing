@@ -1,5 +1,4 @@
 use tokio_trace::{
-    field,
     span::{self, Id},
     subscriber::Subscriber,
     Event, Metadata,
@@ -31,7 +30,7 @@ impl<O, R> Composed<NoFilter, O, R> {
     /// [filter]: ../trait.Filter.html
     pub fn with_filter<F>(self, filter: F) -> Composed<F, O, R>
     where
-        F: Filter,
+        F: Filter + 'static,
     {
         Composed {
             filter,
@@ -47,7 +46,7 @@ impl<F, R> Composed<F, NoObserver, R> {
     /// [observer]: ../trait.Observe.html
     pub fn with_observer<O>(self, observer: O) -> Composed<F, O, R>
     where
-        O: Observe,
+        O: Observe + 'static,
     {
         Composed {
             filter: self.filter,
@@ -63,7 +62,7 @@ impl<F, O> Composed<F, O, ()> {
     /// [span registry]: ../trait.Register.html
     pub fn with_registry<R>(self, registry: R) -> Composed<F, O, R>
     where
-        R: RegisterSpan,
+        R: RegisterSpan + 'static,
     {
         Composed {
             filter: self.filter,
@@ -91,9 +90,9 @@ impl<F, O, R> Composed<F, O, R> {
 
 impl<F, O, R> Subscriber for Composed<F, O, R>
 where
-    F: Filter,
-    O: Observe,
-    R: RegisterSpan,
+    F: Filter + 'static,
+    O: Observe + 'static,
+    R: RegisterSpan + 'static,
 {
     fn enabled(&self, metadata: &Metadata) -> bool {
         self.filter.enabled(metadata) && self.observer.filter().enabled(metadata)
@@ -103,7 +102,7 @@ where
         self.registry.new_id(attrs)
     }
 
-    fn record(&self, _span: &Id, _values: &field::ValueSet) {
+    fn record(&self, _span: &Id, _values: &span::Record) {
         unimplemented!()
     }
 

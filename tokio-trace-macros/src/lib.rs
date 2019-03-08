@@ -46,7 +46,7 @@ macro_rules! dbg {
                 .into_iter()
                 .next()
                 .expect("trace_dbg event must have one field");
-            Event::observe(
+            Event::dispatch(
                 meta,
                 &fields.value_set(&[(&key, Some(&debug(&val) as &Value))]),
             );
