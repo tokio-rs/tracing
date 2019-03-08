@@ -1,5 +1,6 @@
 use span;
 
+use regex::Regex;
 use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 
 use std::env;
@@ -171,21 +172,14 @@ impl Filter for EnvFilter {
 }
 
 fn parse_directives(spec: &str) -> Vec<Directive> {
-    // N.B. that this is based pretty closely on the `env_logger` crate,
-    // since we want to accept a superset of their syntax. Refer to
-    // https://github.com/sebasmagri/env_logger/blob/master/src/filter/mod.rs
-
-    let mut dirs = Vec::new();
-
-    for dir in spec.split(',') {
-        if let Some(dir) = Directive::parse(dir) {
-            dirs.push(dir);
-        } else {
-            eprintln!("ignoring invalid log directive '{}'", dir);
-        }
-    }
-
-    dirs
+    spec.split(',')
+        .filter_map(|dir| {
+            Directive::parse(dir).or_else(|| {
+                eprintln!("ignoring invalid log directive '{}'", dir);
+                None
+            })
+        })
+        .collect()
 }
 
 // ===== impl Directive =====
@@ -200,6 +194,23 @@ impl Directive {
     }
 
     fn parse(from: &str) -> Option<Self> {
+        lazy_static! {
+            static ref DIRECTIVE_RE: Regex = Regex::new(
+                r"(?x)
+                ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|[0-5])$ |
+                ^
+                (?: # target name or span name
+                    (?P<target>[\w:]+)|(?P<span>\[[^\]]*\])
+                ){1,2}
+                (?: # level or nothing
+                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|[0-5])?
+                )?
+                $
+                "
+            )
+            .unwrap();
+        }
+
         fn parse_level(from: &str) -> Option<Level> {
             // TODO: maybe this whole function ought to be replaced by a
             // `FromStr` impl for `Level` in `tokio_trace_core`...?
@@ -224,61 +235,40 @@ impl Directive {
                 })
         }
 
-        fn parse_span_target(from: &str) -> Option<(Option<String>, Option<String>)> {
-            let mut parts = from.split('[');
-            let target = parts
-                .next()
-                .and_then(|part| if part.len() == 0 { None } else { Some(part) });
-            let span_part = parts.next();
-            if parts.next().is_some() {
-                return None;
-            }
-            let in_span = if let Some(part) = span_part {
-                let mut parts = part.split(']');
-                let (part0, part1) = (parts.next(), parts.next());
-                if part1 != Some("") {
-                    return None;
-                }
-                part0
-            } else {
+        let caps = DIRECTIVE_RE.captures(from)?;
+
+        if let Some(level) = caps
+            .name("global_level")
+            .and_then(|c| parse_level(c.as_str()))
+        {
+            return Some(Directive {
+                level,
+                ..Default::default()
+            });
+        }
+
+        let target = caps.name("target").and_then(|c| {
+            let s = c.as_str();
+            if parse_level(s).is_some() {
                 None
-            };
-            Some((target.map(String::from), in_span.map(String::from)))
-        }
-
-        if from.len() == 0 {
-            return None;
-        }
-        let mut parts = from.split('=');
-        let parse = (parts.next()?, parts.next().map(|s| s.trim()));
-        if parts.next().is_some() {
-            return None;
-        }
-        match parse {
-            (part0, None) => Some(if let Some(level) = parse_level(part0) {
-                Directive {
-                    level,
-                    ..Default::default()
-                }
             } else {
-                let (target, in_span) = parse_span_target(part0)?;
-                Directive {
-                    target,
-                    in_span,
-                    ..Default::default()
-                }
-            }),
-            (part0, Some(part1)) => {
-                let (target, in_span) = parse_span_target(part0)?;
-                let level = parse_level(part1)?;
-
-                Some(Directive {
-                    level,
-                    target,
-                    in_span,
-                })
+                Some(s.to_owned())
             }
-        }
+        });
+
+        let in_span = caps
+            .name("span")
+            .map(|c| c.as_str().trim_matches(|c| c == '[' || c == ']').to_owned());
+        let level = caps
+            .name("level")
+            .and_then(|c| parse_level(c.as_str()))
+            .unwrap_or(Level::ERROR);
+
+        Some(Directive {
+            level,
+            target,
+            in_span,
+        })
     }
 }
 
@@ -342,7 +332,7 @@ mod tests {
     #[test]
     fn parse_directives_valid() {
         let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug");
-        assert_eq!(dirs.len(), 3);
+        assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, Level::ERROR);
         assert_eq!(dirs[0].in_span, None);
@@ -360,7 +350,7 @@ mod tests {
     fn parse_directives_invalid_crate() {
         // test parse_directives with multiple = in specification
         let dirs = parse_directives("crate1::mod1=warn=info,crate2=debug");
-        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, Level::DEBUG);
         assert_eq!(dirs[0].in_span, None);
@@ -370,7 +360,7 @@ mod tests {
     fn parse_directives_invalid_level() {
         // test parse_directives with 'noNumber' as log level
         let dirs = parse_directives("crate1::mod1=noNumber,crate2=debug");
-        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, Level::DEBUG);
         assert_eq!(dirs[0].in_span, None);
@@ -380,7 +370,7 @@ mod tests {
     fn parse_directives_string_level() {
         // test parse_directives with 'warn' as log level
         let dirs = parse_directives("crate1::mod1=wrong,crate2=warn");
-        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, Level::WARN);
         assert_eq!(dirs[0].in_span, None);
@@ -390,7 +380,7 @@ mod tests {
     fn parse_directives_empty_level() {
         // test parse_directives with '' as log level
         let dirs = parse_directives("crate1::mod1=wrong,crate2=");
-        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, Level::ERROR);
         assert_eq!(dirs[0].in_span, None);
@@ -400,7 +390,7 @@ mod tests {
     fn parse_directives_global() {
         // test parse_directives with no crate
         let dirs = parse_directives("warn,crate2=debug");
-        assert_eq!(dirs.len(), 2);
+        assert_eq!(dirs.len(), 2, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, None);
         assert_eq!(dirs[0].level, Level::WARN);
         assert_eq!(dirs[1].in_span, None);
@@ -413,7 +403,7 @@ mod tests {
     #[test]
     fn parse_directives_valid_with_spans() {
         let dirs = parse_directives("crate1::mod1[foo]=error,crate1::mod2[bar],crate2[baz]=debug");
-        assert_eq!(dirs.len(), 3);
+        assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, Level::ERROR);
         assert_eq!(dirs[0].in_span, Some("foo".to_string()));
