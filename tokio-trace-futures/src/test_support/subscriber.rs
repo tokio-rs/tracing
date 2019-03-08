@@ -135,7 +135,7 @@ where
 
 impl<F> Subscriber for Running<F>
 where
-    F: Fn(&Metadata) -> bool + 'static
+    F: Fn(&Metadata) -> bool + 'static,
 {
     fn enabled(&self, meta: &Metadata) -> bool {
         (self.filter)(meta)

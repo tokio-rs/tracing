@@ -45,10 +45,13 @@ impl Body for RspBody {
     }
 
     fn poll_buf(&mut self) -> Poll<Option<Self::Item>, h2::Error> {
-        let data = self
-            .0
-            .take()
-            .and_then(|b| if b.is_empty() { None } else { Some(b.into_buf()) });
+        let data = self.0.take().and_then(|b| {
+            if b.is_empty() {
+                None
+            } else {
+                Some(b.into_buf())
+            }
+        });
         Ok(Async::Ready(data))
     }
 
