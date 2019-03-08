@@ -47,7 +47,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let key = fields
         .field(&"message")
         .expect("log record fields must have a message");
-    Event::observe(
+    Event::dispatch(
         &meta,
         &fields.value_set(&[(&key, Some(record.args() as &field::Value))]),
     );
