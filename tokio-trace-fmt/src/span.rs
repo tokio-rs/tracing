@@ -121,7 +121,7 @@ impl<'a> Context<'a> {
                 current
                     .borrow()
                     .last()
-                    .map(|id| dispatcher::with(|subscriber| subscriber.clone_span(id)))
+                    .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
             })
             .ok()?
     }

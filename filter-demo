@@ -1,0 +1,76 @@
+#!/bin/bash
+
+. demo-magic.sh
+
+clear
+
+PROMPT_TIMEOUT=1
+p "# filtering in tokio-trace-fmt"
+
+PROMPT_TIMEOUT=2
+wait
+clear
+
+PROMPT_TIMEOUT=1
+p "# running without a filter specified defaults to only enabling the ERROR level."
+echo -n '$ '
+pe "cargo run --example yak_shave"
+wait
+
+PROMPT_TIMEOUT=1
+echo ""
+p "# just like env-logger, we can set a log directive to enable more logs:"
+echo -n '$ '
+pe "RUST_LOG=yak_shave=trace cargo run --example yak_shave"
+PROMPT_TIMEOUT=3
+wait
+
+PROMPT_TIMEOUT=1
+echo ""
+p "# and we can set log directives for multiple targets:"
+echo -n '$ '
+pe "RUST_LOG=yak_shave=trace,yak_events=trace cargo run --example yak_shave"
+PROMPT_TIMEOUT=3
+wait
+
+echo ""
+p "# (again, just like env-logger)"
+
+PROMPT_TIMEOUT=3
+wait
+clear
+
+PROMPT_TIMEOUT=1
+echo ""
+p "# in tokio_trace, we can also filter by *spans*."
+p "# log directives with [ ] around a span name only apply when inside that span."
+PROMPT_TIMEOUT=3
+wait
+
+echo ""
+p '# for example, suppose we only care about the "shaving_yaks" span:'
+
+echo -n '$ '
+pe "RUST_LOG=[shaving_yaks]=trace cargo run --example yak_shave"
+PROMPT_TIMEOUT=3
+wait
+
+echo ""
+p '# we can enable the "shaving_yaks" span at one level, and the "shave" span at another:'
+
+echo -n '$ '
+pe "RUST_LOG=[shaving_yaks]=info,[shave]=trace cargo run --example yak_shave"
+PROMPT_TIMEOUT=3
+wait
+
+PROMPT_TIMEOUT=1
+echo ""
+p "# we can filter by spans and targets in the same directive."
+p "# so if we only want to see yak events in the 'shaving_yaks' span..."
+echo -n '$ '
+pe "RUST_LOG=yak_events[shaving_yaks]=trace cargo run --example yak_shave"
+
+PROMPT_TIMEOUT=3
+wait
+echo ""
+p '# thanks for watching <3'
