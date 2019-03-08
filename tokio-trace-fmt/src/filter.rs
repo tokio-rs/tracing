@@ -154,7 +154,7 @@ impl Filter for EnvFilter {
                                     let fields = span.fields();
                                     let matcher = format!("{}={:?}", field, val);
 
-                                    if fields == matcher {
+                                    if fields.contains(matcher) {
                                         Err(())
                                     } else {
                                         Ok(())
