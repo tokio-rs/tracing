@@ -12,7 +12,7 @@ extern crate tokio_trace_tower_http;
 extern crate tower_h2;
 extern crate tower_service;
 
-use bytes::Bytes;
+use bytes::{Bytes, IntoBuf};
 use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
@@ -37,18 +37,23 @@ impl RspBody {
 }
 
 impl Body for RspBody {
-    type Data = Bytes;
+    type Item = <Bytes as IntoBuf>::Buf;
+    type Error = h2::Error;
 
     fn is_end_stream(&self) -> bool {
         self.0.as_ref().map(|b| b.is_empty()).unwrap_or(false)
     }
 
-    fn poll_data(&mut self) -> Poll<Option<Bytes>, h2::Error> {
+    fn poll_buf(&mut self) -> Poll<Option<Self::Item>, h2::Error> {
         let data = self
             .0
             .take()
-            .and_then(|b| if b.is_empty() { None } else { Some(b) });
+            .and_then(|b| if b.is_empty() { None } else { Some(b.into_buf()) });
         Ok(Async::Ready(data))
+    }
+
+    fn poll_trailers(&mut self) -> Poll<Option<http::HeaderMap>, Self::Error> {
+        Ok(None.into())
     }
 }
 
