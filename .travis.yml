@@ -13,19 +13,22 @@ script:
 - cargo test --verbose -p tokio-trace-futures
 - cargo test --verbose -p tokio-trace-subscriber
 - cargo test --verbose -p tokio-trace-tower
-- cargo test --verbose -p tokio-trace-tower-http
+# Don't test `tokio-trace-tower-http`'s examples on 1.26.0 --- they depend on
+# `tower-h2` which uses the `dyn` keyword.
+- cargo test -p tokio-trace-tower-http --lib --tests
+- cargo test -p tokio-trace-tower-http --doc
 - cargo test --verbose -p tokio-trace-log
 - cargo test --verbose -p tokio-trace-env-logger
 - cargo test --verbose -p tokio-trace-macros
 
 jobs:
   include:
-  # The proc macros crate does _not_ build on Rust 1.26.0, so it is tested
-  # in a separate stage.
+  # Test stage for crates which don't build on Rust 1.26.0 for unavoidable reasons.
   - stage: test
-    name: "test proc-macros"
+    name: "test stable only"
     script:
     - cargo test -p tokio-trace-proc-macros
+    - cargo test -p tokio-trace-tower-http --examples
     rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview
