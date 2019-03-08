@@ -1,6 +1,6 @@
 use tokio_trace::{
     callsite::Callsite,
-    field::{self, Field, Record, Value},
+    field::{self, Field, Visit, Value},
 };
 
 use std::{collections::HashMap, fmt};
@@ -133,7 +133,7 @@ pub struct CheckRecorder<'a> {
     ctx: String,
 }
 
-impl<'a> Record for CheckRecorder<'a> {
+impl<'a> Visit for CheckRecorder<'a> {
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.expect
             .compare_or_panic(field.name(), &value, &self.ctx[..])
@@ -177,7 +177,7 @@ impl<'a> From<&'a Value> for MockValue {
             value: Option<MockValue>,
         }
 
-        impl Record for MockValueBuilder {
+        impl Visit for MockValueBuilder {
             fn record_i64(&mut self, _: &Field, value: i64) {
                 self.value = Some(MockValue::I64(value));
             }
