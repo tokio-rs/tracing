@@ -7,4 +7,4 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 tokio-trace = "0.0.1"
 tokio-trace-futures = { path = "../tokio-trace-futures" }
 futures = "0.1"
-tower-service = { git = "https://github.com/tower-rs/tower.git" }
+tower-service = "0.2"

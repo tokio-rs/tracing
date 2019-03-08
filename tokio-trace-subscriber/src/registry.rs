@@ -169,10 +169,10 @@ impl Default for IncreasingCounter {
 impl RegisterSpan for IncreasingCounter {
     type PriorSpans = iter::Empty<Id>;
 
-    fn new_span(&self, new_span: &Attributes) -> Id {
+    fn new_span(&self, _new_span: &Attributes) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
-        if let Ok(mut spans) = self.spans.lock() {
+        if let Ok(spans) = self.spans.lock() {
             // spans.insert(id.clone(), new_span);
         }
         id

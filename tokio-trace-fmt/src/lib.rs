@@ -22,7 +22,7 @@ pub struct FmtSubscriber<
     E = fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
-    new_recorder: N,
+    new_visitor: N,
     fmt_event: E,
     filter: F,
     spans: span::Store,
@@ -35,7 +35,7 @@ pub struct Builder<
     E = fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
-    new_recorder: N,
+    new_visitor: N,
     fmt_event: E,
     filter: F,
     settings: Settings,
@@ -71,9 +71,9 @@ impl<N, E, F> FmtSubscriber<N, E, F> {
 
 impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
 where
-    N: for<'a> NewRecorder<'a>,
-    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
-    F: Filter,
+    N: for<'a> NewVisitor<'a> + 'static,
+    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    F: Filter + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
@@ -86,13 +86,12 @@ where
     #[inline]
     fn new_span(&self, attrs: &span::Attributes) -> span::Id {
         let span = span::Data::new(attrs.metadata());
-        self.spans
-            .new_span(span, attrs.values(), &self.new_recorder)
+        self.spans.new_span(span, attrs, &self.new_visitor)
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &field::ValueSet) {
-        self.spans.record(span, values, &self.new_recorder)
+    fn record(&self, span: &span::Id, values: &span::Record) {
+        self.spans.record(span, values, &self.new_visitor)
     }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
@@ -155,21 +154,21 @@ where
     }
 }
 
-pub trait NewRecorder<'a> {
-    type Recorder: field::Record + 'a;
+pub trait NewVisitor<'a> {
+    type Visitor: field::Visit + 'a;
 
-    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Recorder;
+    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor;
 }
 
-impl<'a, F, R> NewRecorder<'a> for F
+impl<'a, F, R> NewVisitor<'a> for F
 where
     F: Fn(&'a mut fmt::Write, bool) -> R,
-    R: field::Record + 'a,
+    R: field::Visit + 'a,
 {
-    type Recorder = R;
+    type Visitor = R;
 
     #[inline]
-    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Recorder {
+    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor {
         (self)(writer, is_empty)
     }
 }
@@ -180,7 +179,7 @@ impl Default for Builder {
     fn default() -> Self {
         Builder {
             filter: filter::EnvFilter::from_default_env(),
-            new_recorder: default::NewRecorder,
+            new_visitor: default::NewRecorder,
             fmt_event: default::fmt_event,
             settings: Settings::default(),
         }
@@ -189,13 +188,13 @@ impl Default for Builder {
 
 impl<N, E, F> Builder<N, E, F>
 where
-    N: for<'a> NewRecorder<'a>,
-    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
-    F: Filter,
+    N: for<'a> NewVisitor<'a> + 'static,
+    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    F: Filter + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
         FmtSubscriber {
-            new_recorder: self.new_recorder,
+            new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
             filter: self.filter,
             spans: span::Store::with_capacity(32),
@@ -205,14 +204,14 @@ where
 }
 
 impl<N, E, F> Builder<N, E, F> {
-    /// Sets the recorder that the subscriber being built will use to record
+    /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
-    pub fn with_recorder<N2>(self, new_recorder: N2) -> Builder<N2, E, F>
+    pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F>
     where
-        N2: for<'a> NewRecorder<'a>,
+        N2: for<'a> NewVisitor<'a> + 'static,
     {
         Builder {
-            new_recorder,
+            new_visitor,
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
@@ -223,10 +222,10 @@ impl<N, E, F> Builder<N, E, F> {
     /// a span or event is enabled.
     pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2>
     where
-        F2: Filter,
+        F2: Filter + 'static,
     {
         Builder {
-            new_recorder: self.new_recorder,
+            new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
@@ -239,7 +238,7 @@ impl<N, E, F> Builder<N, E, F> {
         Builder {
             fmt_event: default::fmt_verbose,
             filter: self.filter,
-            new_recorder: self.new_recorder,
+            new_visitor: self.new_visitor,
             settings: self.settings,
         }
     }
@@ -248,10 +247,10 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
+        E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
     {
         Builder {
-            new_recorder: self.new_recorder,
+            new_visitor: self.new_visitor,
             fmt_event,
             filter: self.filter,
             settings: self.settings,

@@ -65,16 +65,16 @@ impl<'a> Recorder<'a> {
     }
 }
 
-impl<'a> ::NewRecorder<'a> for NewRecorder {
-    type Recorder = Recorder<'a>;
+impl<'a> ::NewVisitor<'a> for NewRecorder {
+    type Visitor = Recorder<'a>;
 
     #[inline]
-    fn make(&self, writer: &'a mut Write, is_empty: bool) -> Self::Recorder {
+    fn make(&self, writer: &'a mut Write, is_empty: bool) -> Self::Visitor {
         Recorder::new(writer, is_empty)
     }
 }
 
-impl<'a> field::Record for Recorder<'a> {
+impl<'a> field::Visit for Recorder<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))

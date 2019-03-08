@@ -2,7 +2,6 @@ use futures::{
     future::{ExecuteError, Executor},
     Future,
 };
-use tokio_trace::Span;
 use {Instrument, Instrumented, WithDispatch};
 
 #[cfg(feature = "with-tokio")]

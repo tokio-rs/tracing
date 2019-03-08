@@ -7,14 +7,14 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 tokio-trace = "0.0.1"
 tokio-trace-futures = { path = "../tokio-trace-futures" }
 futures = "0.1"
-tower-service   = { git = "https://github.com/tower-rs/tower.git" }
-tower-util      = { git = "https://github.com/tower-rs/tower.git" }
+tower-service = "0.2"
+tower-util = { git = "https://github.com/tower-rs/tower.git" }
 http = "0.1"
 
 [dev-dependencies]
 bytes = "0.4"
 h2 = "0.1.11"
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", rev = "b9feae345a72396d82dc23d52a5a62689178bc40" }
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
 string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"
 tokio-current-thread = "0.1.1"

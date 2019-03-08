@@ -13,7 +13,6 @@ use std::{
     },
 };
 use tokio_trace::{
-    field,
     span::{self, Id},
     Event, Metadata, Subscriber,
 };
@@ -56,7 +55,10 @@ pub fn mock() -> MockSubscriber<fn(&Metadata) -> bool> {
     }
 }
 
-impl<F: Fn(&Metadata) -> bool> MockSubscriber<F> {
+impl<F> MockSubscriber<F>
+where
+    F: Fn(&Metadata) -> bool + 'static,
+{
     pub fn enter(mut self, span: MockSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
         self
@@ -131,12 +133,15 @@ impl<F: Fn(&Metadata) -> bool> MockSubscriber<F> {
     }
 }
 
-impl<F: Fn(&Metadata) -> bool> Subscriber for Running<F> {
+impl<F> Subscriber for Running<F>
+where
+    F: Fn(&Metadata) -> bool + 'static,
+{
     fn enabled(&self, meta: &Metadata) -> bool {
         (self.filter)(meta)
     }
 
-    fn record(&self, id: &Id, values: &field::ValueSet) {
+    fn record(&self, id: &Id, values: &span::Record) {
         let spans = self.spans.lock().unwrap();
         let mut expected = self.expected.lock().unwrap();
         let span = spans
@@ -178,7 +183,6 @@ impl<F: Fn(&Metadata) -> bool> Subscriber for Running<F> {
 
     fn new_span(&self, attrs: &span::Attributes) -> Id {
         let meta = attrs.metadata();
-        let values = attrs.values();
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         println!(
@@ -200,7 +204,7 @@ impl<F: Fn(&Metadata) -> bool> Subscriber for Running<F> {
                     .metadata
                     .check(meta, format_args!("span `{}`", name));
                 let mut checker = expected.fields.checker(format!("{}", name));
-                values.record(&mut checker);
+                attrs.record(&mut checker);
                 checker.finish();
             }
         }
