@@ -1,5 +1,4 @@
 use tokio_trace::{
-    field,
     span::{self, Id},
     subscriber::Subscriber,
     Event, Metadata,
