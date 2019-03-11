@@ -191,6 +191,17 @@ impl<'a> Context<'a> {
     }
 }
 
+#[inline]
+fn idx_to_id(idx: usize) -> Id {
+    Id::from_u64(idx as u64 + 1)
+}
+
+#[inline]
+fn id_to_idx(id: &Id) -> usize {
+    id.into_u64() as usize - 1
+}
+
+
 impl Store {
     pub fn with_capacity(capacity: usize) -> Self {
         Store {
@@ -242,7 +253,7 @@ impl Store {
                             if self.next.compare_and_swap(head, next, Ordering::Release) == head {
                                 // We can finally fill the slot!
                                 slot.fill(span.take().unwrap(), attrs, new_visitor);
-                                return Id::from_u64(head as u64);
+                                return idx_to_id(head);
                             }
                         }
                     }
@@ -265,7 +276,7 @@ impl Store {
 
                 // Update the head pointer and return.
                 self.next.store(len + 1, Ordering::Release);
-                return Id::from_u64(len as u64);
+                return idx_to_id(len);
             }
 
             atomic::spin_loop_hint();
@@ -278,7 +289,7 @@ impl Store {
     pub fn get(&self, id: &Id) -> Option<Span> {
         let lock = OwningHandle::try_new(self.inner.read(), |slab| {
             unsafe { &*slab }
-                .read_slot(id.into_u64() as usize)
+                .read_slot(id_to_idx(id))
                 .ok_or(())
         })
         .ok()?;
@@ -292,7 +303,7 @@ impl Store {
         N: for<'a> ::NewVisitor<'a>,
     {
         let slab = self.inner.read();
-        let slot = slab.write_slot(id.into_u64() as usize);
+        let slot = slab.write_slot(id_to_idx(id));
         if let Some(mut slot) = slot {
             slot.record(fields, new_recorder);
         }
@@ -304,7 +315,7 @@ impl Store {
     /// The allocated span slot will be reused when a new span is created.
     pub fn drop_span(&self, id: Id) {
         let this = self.inner.read();
-        let idx = id.into_u64() as usize;
+        let idx = id_to_idx(&id);
 
         if !this
             .slab
