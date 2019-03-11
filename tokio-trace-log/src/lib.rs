@@ -28,7 +28,7 @@ use std::{
     fmt::{self, Write},
     io,
     sync::{
-        atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
+        atomic::{AtomicUsize, Ordering},
         Mutex,
     },
 };
@@ -147,11 +147,11 @@ pub struct LogTracer {
 
 /// A `tokio_trace_subscriber::Observe` implementation that logs all recorded
 /// trace events.
-#[derive(Default)]
 pub struct TraceLogger {
     settings: TraceLoggerBuilder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,
     current: tokio_trace_subscriber::CurrentSpanPerThread,
+    next_id: AtomicUsize,
 }
 
 pub struct TraceLoggerBuilder {
@@ -208,8 +208,7 @@ impl TraceLogger {
     }
 
     fn next_id(&self) -> Id {
-        static NEXT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
-        Id::from_u64(NEXT_ID.fetch_add(1, Ordering::SeqCst) as u64)
+        Id::from_u64(self.next_id.fetch_add(1, Ordering::SeqCst) as u64)
     }
 }
 
@@ -260,6 +259,17 @@ impl Default for TraceLoggerBuilder {
             log_ids: false,
             log_parent: true,
             log_enters: false,
+        }
+    }
+}
+
+impl Default for TraceLogger {
+    fn default() -> Self {
+        TraceLogger {
+            settings: Default::default(),
+            spans: Default::default(),
+            current: Default::default(),
+            next_id: AtomicUsize::new(1),
         }
     }
 }
