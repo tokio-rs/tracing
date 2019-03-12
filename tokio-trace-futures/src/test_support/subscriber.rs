@@ -126,7 +126,7 @@ where
         let subscriber = Running {
             spans: Mutex::new(HashMap::new()),
             expected,
-            ids: AtomicUsize::new(0),
+            ids: AtomicUsize::new(1),
             filter: self.filter,
         };
         (subscriber, handle)
