@@ -194,7 +194,7 @@ where
         Self { store, new_visitor }
     }
 
-    pub(crate) fn new_visitor(&self, writer: &'a mut fmt::Write, is_empty: bool) -> N::Visitor {
+    pub fn new_visitor(&self, writer: &'a mut fmt::Write, is_empty: bool) -> N::Visitor {
         self.new_visitor.make(writer, is_empty)
     }
 }
