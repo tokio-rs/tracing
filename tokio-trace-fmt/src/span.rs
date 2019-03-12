@@ -63,6 +63,29 @@ thread_local! {
     static CONTEXT: RefCell<Vec<Id>> = RefCell::new(vec![]);
 }
 
+pub(crate) fn current() -> Option<Id> {
+    CONTEXT
+        .try_with(|current| {
+            current
+                .borrow()
+                .last()
+                .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
+        })
+        .ok()?
+}
+
+pub(crate) fn push(id: Id) {
+    let _ = CONTEXT.try_with(|current| {
+        current.borrow_mut().push(id);
+    });
+}
+
+pub(crate) fn pop() -> Option<Id> {
+    CONTEXT
+        .try_with(|current| current.borrow_mut().pop())
+        .ok()?
+}
+
 // ===== impl Span =====
 
 impl<'a> Span<'a> {
@@ -114,29 +137,6 @@ impl<'a> Span<'a> {
 }
 
 // ===== impl Context =====
-
-pub(crate) fn current() -> Option<Id> {
-    CONTEXT
-        .try_with(|current| {
-            current
-                .borrow()
-                .last()
-                .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
-        })
-        .ok()?
-}
-
-pub(crate) fn push(id: Id) {
-    let _ = CONTEXT.try_with(|current| {
-        current.borrow_mut().push(id);
-    });
-}
-
-pub(crate) fn pop() -> Option<Id> {
-    CONTEXT
-        .try_with(|current| current.borrow_mut().pop())
-        .ok()?
-}
 
 impl<'a, N> Context<'a, N> {
     /// Applies a function to each span in the current trace context.
