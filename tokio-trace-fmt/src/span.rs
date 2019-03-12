@@ -191,9 +191,13 @@ impl<'a, N> Context<'a, N> {
         Self { store, new_visitor }
     }
 
-    pub fn new_visitor(&self, writer: &'a mut fmt::Write, is_empty: bool) -> N::Visitor
+    pub fn new_visitor<'writer>(
+        &self,
+        writer: &'writer mut fmt::Write,
+        is_empty: bool,
+    ) -> N::Visitor
     where
-        N: ::NewVisitor<'a>,
+        N: ::NewVisitor<'writer>,
     {
         self.new_visitor.make(writer, is_empty)
     }
