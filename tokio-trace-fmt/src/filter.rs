@@ -101,10 +101,7 @@ where
     }
 }
 
-impl<N> Filter<N> for EnvFilter
-where
-    N: for<'a> ::NewVisitor<'a>,
-{
+impl<N> Filter<N> for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context<N>) -> Interest {
         if !self.includes_span_directive && metadata.level() > &self.max_level {
             return Interest::never();

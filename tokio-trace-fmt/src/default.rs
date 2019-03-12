@@ -99,7 +99,7 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
-struct FmtCtx<'a, N>(&'a span::Context<'a, N>);
+struct FmtCtx<'a, N: 'a>(&'a span::Context<'a, N>);
 
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FmtCtx<'a, N>
@@ -140,7 +140,7 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     }
 }
 
-struct FullCtx<'a, N>(&'a span::Context<'a, N>);
+struct FullCtx<'a, N: 'a>(&'a span::Context<'a, N>);
 
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FullCtx<'a, N>

@@ -92,7 +92,7 @@ where
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes) -> span::Id {
-        let span = span::Data::new::<N>(attrs.metadata());
+        let span = span::Data::new(attrs.metadata());
         self.spans.new_span(span, attrs, &self.new_visitor)
     }
 
@@ -138,12 +138,12 @@ where
     fn enter(&self, span: &span::Id) {
         // TODO: add on_enter hook
         let span = self.clone_span(span);
-        span::Context::<N>::push(span);
+        span::push(span);
     }
 
     fn exit(&self, span: &span::Id) {
         // TODO: add on_exit hook
-        if let Some(popped) = span::Context::<N>::pop() {
+        if let Some(popped) = span::pop() {
             debug_assert!(&popped == span);
             self.drop_span(popped);
         }

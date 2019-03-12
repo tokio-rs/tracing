@@ -14,7 +14,7 @@ pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
-pub struct Context<'a, N> {
+pub struct Context<'a, N: 'a> {
     store: &'a Store,
     new_visitor: &'a N,
 }
@@ -115,33 +115,30 @@ impl<'a> Span<'a> {
 
 // ===== impl Context =====
 
-impl<'a, N> Context<'a, N>
-where
-    N: ::NewVisitor<'a>,
-{
-    pub(crate) fn current() -> Option<Id> {
-        CONTEXT
-            .try_with(|current| {
-                current
-                    .borrow()
-                    .last()
-                    .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
-            })
-            .ok()?
-    }
+pub(crate) fn current() -> Option<Id> {
+    CONTEXT
+        .try_with(|current| {
+            current
+                .borrow()
+                .last()
+                .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
+        })
+        .ok()?
+}
 
-    pub(crate) fn push(id: Id) {
-        let _ = CONTEXT.try_with(|current| {
-            current.borrow_mut().push(id);
-        });
-    }
+pub(crate) fn push(id: Id) {
+    let _ = CONTEXT.try_with(|current| {
+        current.borrow_mut().push(id);
+    });
+}
 
-    pub(crate) fn pop() -> Option<Id> {
-        CONTEXT
-            .try_with(|current| current.borrow_mut().pop())
-            .ok()?
-    }
+pub(crate) fn pop() -> Option<Id> {
+    CONTEXT
+        .try_with(|current| current.borrow_mut().pop())
+        .ok()?
+}
 
+impl<'a, N> Context<'a, N> {
     /// Applies a function to each span in the current trace context.
     ///
     /// The function is applied in order, beginning with the root of the trace,
@@ -194,7 +191,10 @@ where
         Self { store, new_visitor }
     }
 
-    pub fn new_visitor(&self, writer: &'a mut fmt::Write, is_empty: bool) -> N::Visitor {
+    pub fn new_visitor(&self, writer: &'a mut fmt::Write, is_empty: bool) -> N::Visitor
+    where
+        N: ::NewVisitor<'a>,
+    {
         self.new_visitor.make(writer, is_empty)
     }
 }
@@ -345,13 +345,10 @@ impl Store {
 }
 
 impl Data {
-    pub(crate) fn new<N>(metadata: &Metadata) -> Self
-    where
-        N: for<'a> ::NewVisitor<'a>,
-    {
+    pub(crate) fn new(metadata: &Metadata) -> Self {
         Self {
             name: metadata.name(),
-            parent: Context::<N>::current(),
+            parent: current(),
             ref_count: AtomicUsize::new(1),
             is_empty: true,
         }
