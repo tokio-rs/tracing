@@ -120,7 +120,7 @@ fn main() {
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace_env_logger::try_init().expect("init log adapter");
 
-    tokio_trace::dispatcher::with_default(tokio_trace::Dispatch::new(subscriber), || {
+    tokio_trace::subscriber::with_default(subscriber, || {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
         let mut server_span = span!("server", local = &field::debug(addr));
         let server = tokio::net::TcpListener::bind(&addr)

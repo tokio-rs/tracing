@@ -126,8 +126,8 @@ impl<T: Future> Future for WithDispatch<T> {
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let dispatch = self.dispatch.clone();
-        dispatcher::with_default(dispatch, || self.inner.poll())
+        let inner = &mut self.inner;
+        dispatcher::with_default(&self.dispatch, || inner.poll())
     }
 }
 
@@ -159,7 +159,7 @@ mod tests {
 
     use super::{test_support::*, *};
     use futures::{future, stream, task};
-    use tokio_trace::Dispatch;
+    use tokio_trace::subscriber::with_default;
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,
@@ -212,7 +212,7 @@ mod tests {
             .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
-        dispatcher::with_default(Dispatch::new(subscriber), || {
+        with_default(subscriber, || {
             PollN::new_ok(2).instrument(span!("foo")).wait().unwrap();
         });
         handle.assert_finished();
@@ -228,7 +228,7 @@ mod tests {
             .drop_span(span::mock().named("foo"))
             .done()
             .run_with_handle();
-        dispatcher::with_default(Dispatch::new(subscriber), || {
+        with_default(subscriber, || {
             PollN::new_err(2)
                 .instrument(span!("foo"))
                 .wait()
@@ -251,7 +251,7 @@ mod tests {
             .exit(span::mock().named("foo"))
             .drop_span(span::mock().named("foo"))
             .run_with_handle();
-        dispatcher::with_default(Dispatch::new(subscriber), || {
+        with_default(subscriber, || {
             stream::iter_ok::<_, ()>(&[1, 2, 3])
                 .instrument(span!("foo"))
                 .for_each(|_| future::ok(()))
@@ -275,7 +275,7 @@ mod tests {
             .done()
             .run_with_handle();
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        dispatcher::with_default(Dispatch::new(subscriber), || {
+        with_default(subscriber, || {
             span!("a").enter(|| {
                 let future = PollN::new_ok(2).instrument(span!("b")).map(|_| {
                     span!("c").enter(|| {
