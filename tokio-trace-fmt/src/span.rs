@@ -201,7 +201,6 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-
 impl Store {
     pub fn with_capacity(capacity: usize) -> Self {
         Store {
@@ -288,9 +287,7 @@ impl Store {
     #[inline]
     pub fn get(&self, id: &Id) -> Option<Span> {
         let lock = OwningHandle::try_new(self.inner.read(), |slab| {
-            unsafe { &*slab }
-                .read_slot(id_to_idx(id))
-                .ok_or(())
+            unsafe { &*slab }.read_slot(id_to_idx(id)).ok_or(())
         })
         .ok()?;
         Some(Span { lock })
