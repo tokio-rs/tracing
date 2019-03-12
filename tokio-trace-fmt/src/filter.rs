@@ -7,8 +7,8 @@ use std::env;
 
 pub const DEFAULT_FILTER_ENV: &'static str = "RUST_LOG";
 
-pub trait Filter {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context) -> Interest {
+pub trait Filter<N> {
+    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {
         if self.enabled(metadata, ctx) {
             Interest::always()
         } else {
@@ -16,7 +16,7 @@ pub trait Filter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool;
+    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool;
 }
 
 #[derive(Debug)]
@@ -101,8 +101,11 @@ where
     }
 }
 
-impl Filter for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
+impl<N> Filter<N> for EnvFilter
+where
+    N: for<'a> ::NewVisitor<'a>,
+{
+    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context<N>) -> Interest {
         if !self.includes_span_directive && metadata.level() > &self.max_level {
             return Interest::never();
         }
@@ -131,7 +134,7 @@ impl Filter for EnvFilter {
         interest
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool {
+    fn enabled<'a>(&self, metadata: &Metadata, ctx: &span::Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
             let accepts_level = metadata.level() <= &directive.level;
             match directive.in_span.as_ref() {
@@ -282,11 +285,12 @@ impl Default for Directive {
     }
 }
 
-impl<F> Filter for F
+impl<'a, F, N> Filter<N> for F
 where
-    F: Fn(&Metadata, &span::Context) -> bool,
+    F: Fn(&Metadata, &span::Context<N>) -> bool,
+    N: ::NewVisitor<'a>,
 {
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool {
+    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
         (self)(metadata, ctx)
     }
 }
@@ -294,6 +298,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use default::NewRecorder;
     use span::*;
     use tokio_trace_core::*;
 
@@ -311,7 +316,7 @@ mod tests {
     fn callsite_enabled_no_span_directive() {
         let filter = EnvFilter::from("app=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store);
+        let ctx = Context::new(&store, &NewRecorder);
         let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -322,7 +327,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive() {
         let filter = EnvFilter::from("app[mySpan]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store);
+        let ctx = Context::new(&store, &NewRecorder);
         let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
 
         let interest = filter.callsite_enabled(&meta, &ctx);

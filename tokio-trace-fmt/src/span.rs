@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    mem, str,
+    fmt, mem, str,
     sync::atomic::{self, AtomicUsize, Ordering},
 };
 
@@ -14,8 +14,9 @@ pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
-pub struct Context<'a> {
+pub struct Context<'a, N> {
     store: &'a Store,
+    new_visitor: &'a N,
 }
 
 /// Stores data associated with currently-active spans.
@@ -114,7 +115,10 @@ impl<'a> Span<'a> {
 
 // ===== impl Context =====
 
-impl<'a> Context<'a> {
+impl<'a, N> Context<'a, N>
+where
+    N: ::NewVisitor<'a>,
+{
     pub(crate) fn current() -> Option<Id> {
         CONTEXT
             .try_with(|current| {
@@ -186,8 +190,12 @@ impl<'a> Context<'a> {
             .ok()?
     }
 
-    pub(crate) fn new(store: &'a Store) -> Self {
-        Self { store }
+    pub(crate) fn new(store: &'a Store, new_visitor: &'a N) -> Self {
+        Self { store, new_visitor }
+    }
+
+    pub(crate) fn new_visitor(&self, writer: &'a mut fmt::Write, is_empty: bool) -> N::Visitor {
+        self.new_visitor.make(writer, is_empty)
     }
 }
 
@@ -337,10 +345,13 @@ impl Store {
 }
 
 impl Data {
-    pub(crate) fn new(metadata: &Metadata) -> Self {
+    pub(crate) fn new<N>(metadata: &Metadata) -> Self
+    where
+        N: for<'a> ::NewVisitor<'a>,
+    {
         Self {
             name: metadata.name(),
-            parent: Context::current(),
+            parent: Context::<N>::current(),
             ref_count: AtomicUsize::new(1),
             is_empty: true,
         }

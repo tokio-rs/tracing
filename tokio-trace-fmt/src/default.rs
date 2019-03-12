@@ -10,7 +10,10 @@ use std::fmt::{self, Write};
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Result {
+pub fn fmt_event<N>(ctx: &span::Context<N>, f: &mut Write, event: &Event) -> fmt::Result
+where
+    N: for<'a> ::NewVisitor<'a>,
+{
     let meta = event.metadata();
     write!(
         f,
@@ -20,7 +23,7 @@ pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Resu
         meta.target()
     )?;
     {
-        let mut recorder = Recorder::new(f, true);
+        let mut recorder = ctx.new_visitor(f, true);
         event.record(&mut recorder);
     }
     ctx.with_current(|(_, span)| write!(f, " {}", span.fields()))
@@ -28,7 +31,10 @@ pub fn fmt_event(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Resu
     writeln!(f, "")
 }
 
-pub fn fmt_verbose(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Result {
+pub fn fmt_verbose<N>(ctx: &span::Context<N>, f: &mut Write, event: &Event) -> fmt::Result
+where
+    N: for<'a> ::NewVisitor<'a>,
+{
     let meta = event.metadata();
     write!(
         f,
@@ -38,7 +44,7 @@ pub fn fmt_verbose(ctx: &span::Context, f: &mut Write, event: &Event) -> fmt::Re
         meta.target()
     )?;
     {
-        let mut recorder = Recorder::new(f, true);
+        let mut recorder = ctx.new_visitor(f, true);
         event.record(&mut recorder);
     }
     writeln!(f, "")
@@ -93,10 +99,13 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
-struct FmtCtx<'a>(&'a span::Context<'a>);
+struct FmtCtx<'a, N>(&'a span::Context<'a, N>);
 
 #[cfg(feature = "ansi")]
-impl<'a> fmt::Display for FmtCtx<'a> {
+impl<'a, N> fmt::Display for FmtCtx<'a, N>
+where
+    N: ::NewVisitor<'a>,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
         self.0.visit_spans(|_, span| {
@@ -114,7 +123,7 @@ impl<'a> fmt::Display for FmtCtx<'a> {
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a> fmt::Display for FmtCtx<'a> {
+impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
         self.0.visit_spans(|_, span| {
@@ -131,10 +140,13 @@ impl<'a> fmt::Display for FmtCtx<'a> {
     }
 }
 
-struct FullCtx<'a>(&'a span::Context<'a>);
+struct FullCtx<'a, N>(&'a span::Context<'a, N>);
 
 #[cfg(feature = "ansi")]
-impl<'a> fmt::Display for FullCtx<'a> {
+impl<'a, N> fmt::Display for FullCtx<'a, N>
+where
+    N: ::NewVisitor<'a>,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
         let style = Style::new().bold();
@@ -156,7 +168,7 @@ impl<'a> fmt::Display for FullCtx<'a> {
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a> fmt::Display for FullCtx<'a> {
+impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
         self.0.visit_spans(|_, span| {
