@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    mem, str,
+    fmt, mem, str,
     sync::atomic::{self, AtomicUsize, Ordering},
 };
 
@@ -14,8 +14,9 @@ pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
-pub struct Context<'a> {
+pub struct Context<'a, N: 'a> {
     store: &'a Store,
+    new_visitor: &'a N,
 }
 
 /// Stores data associated with currently-active spans.
@@ -60,6 +61,29 @@ enum State {
 
 thread_local! {
     static CONTEXT: RefCell<Vec<Id>> = RefCell::new(vec![]);
+}
+
+pub(crate) fn current() -> Option<Id> {
+    CONTEXT
+        .try_with(|current| {
+            current
+                .borrow()
+                .last()
+                .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
+        })
+        .ok()?
+}
+
+pub(crate) fn push(id: Id) {
+    let _ = CONTEXT.try_with(|current| {
+        current.borrow_mut().push(id);
+    });
+}
+
+pub(crate) fn pop() -> Option<Id> {
+    CONTEXT
+        .try_with(|current| current.borrow_mut().pop())
+        .ok()?
 }
 
 // ===== impl Span =====
@@ -114,30 +138,7 @@ impl<'a> Span<'a> {
 
 // ===== impl Context =====
 
-impl<'a> Context<'a> {
-    pub(crate) fn current() -> Option<Id> {
-        CONTEXT
-            .try_with(|current| {
-                current
-                    .borrow()
-                    .last()
-                    .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
-            })
-            .ok()?
-    }
-
-    pub(crate) fn push(id: Id) {
-        let _ = CONTEXT.try_with(|current| {
-            current.borrow_mut().push(id);
-        });
-    }
-
-    pub(crate) fn pop() -> Option<Id> {
-        CONTEXT
-            .try_with(|current| current.borrow_mut().pop())
-            .ok()?
-    }
-
+impl<'a, N> Context<'a, N> {
     /// Applies a function to each span in the current trace context.
     ///
     /// The function is applied in order, beginning with the root of the trace,
@@ -186,8 +187,19 @@ impl<'a> Context<'a> {
             .ok()?
     }
 
-    pub(crate) fn new(store: &'a Store) -> Self {
-        Self { store }
+    pub(crate) fn new(store: &'a Store, new_visitor: &'a N) -> Self {
+        Self { store, new_visitor }
+    }
+
+    pub fn new_visitor<'writer>(
+        &self,
+        writer: &'writer mut fmt::Write,
+        is_empty: bool,
+    ) -> N::Visitor
+    where
+        N: ::NewVisitor<'writer>,
+    {
+        self.new_visitor.make(writer, is_empty)
     }
 }
 
@@ -340,7 +352,7 @@ impl Data {
     pub(crate) fn new(metadata: &Metadata) -> Self {
         Self {
             name: metadata.name(),
-            parent: Context::current(),
+            parent: current(),
             ref_count: AtomicUsize::new(1),
             is_empty: true,
         }
