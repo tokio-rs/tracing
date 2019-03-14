@@ -30,6 +30,9 @@ pub struct EnvFilter {
 struct Directive {
     target: Option<String>,
     in_span: Option<String>,
+    // TODO: this can probably be a `SmallVec` someday, since a span won't have
+    // over 32 fields.
+    fields: Vec<String>,
     level: Level,
 }
 
@@ -209,6 +212,10 @@ impl Directive {
                 "
             )
             .unwrap();
+            static ref SPAN_PART_RE: Regex =
+                Regex::new(r#"(?P<name>\w+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
+            static ref FIELD_FILTER_RE: Regex =
+                Regex::new(r#"([\w_0-9]+(?:=(?:[\w0-9]+|".+"))?)(?: |$)"#).unwrap();
         }
 
         fn parse_level(from: &str) -> Option<Level> {
@@ -256,9 +263,28 @@ impl Directive {
             }
         });
 
-        let in_span = caps
+        let (in_span, fields) = caps
             .name("span")
-            .map(|c| c.as_str().trim_matches(|c| c == '[' || c == ']').to_owned());
+            .and_then(|cap| {
+                let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
+                let caps = SPAN_PART_RE.captures(cap)?;
+                let span = caps.name("name").map(|c| c.as_str().to_owned());
+                println!("SPAN PART IS {:?}", span);
+                let fields = caps
+                    .name("fields")
+                    .map(|c| {
+                        println!("filter PART IS {:?}", c.as_str());
+
+                        FIELD_FILTER_RE
+                            .find_iter(c.as_str())
+                            .map(|c| c.as_str().trim().to_owned())
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
+                Some((span, fields))
+            })
+            .unwrap_or_else(|| (None, Vec::new()));
+
         let level = caps
             .name("level")
             .and_then(|c| parse_level(c.as_str()))
@@ -268,6 +294,7 @@ impl Directive {
             level,
             target,
             in_span,
+            fields,
         })
     }
 }
@@ -278,6 +305,7 @@ impl Default for Directive {
             level: Level::ERROR,
             target: None,
             in_span: None,
+            fields: Vec::new(),
         }
     }
 }
@@ -417,6 +445,28 @@ mod tests {
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
         assert_eq!(dirs[2].level, Level::DEBUG);
         assert_eq!(dirs[2].in_span, Some("baz".to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_fields() {
+        let dirs = parse_directives(
+            "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug",
+        );
+        assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
+        assert_eq!(dirs[0].target, None);
+        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].in_span, Some("span1".to_string()));
+        assert_eq!(&dirs[0].fields[..], &["foo=1"]);
+
+        assert_eq!(dirs[1].target, None);
+        assert_eq!(dirs[1].level, Level::ERROR);
+        assert_eq!(dirs[1].in_span, Some("span2".to_string()));
+        assert_eq!(&dirs[1].fields[..], &["bar=2", "baz=false"]);
+
+        assert_eq!(dirs[2].target, Some("crate2".to_string()));
+        assert_eq!(dirs[2].level, Level::DEBUG);
+        assert_eq!(dirs[2].in_span, None);
+        assert_eq!(&dirs[2].fields[..], &["quux=\"quuux\""]);
     }
 
 }
