@@ -135,18 +135,13 @@ where
         });
     }
 
-    fn enter(&self, span: &span::Id) {
+    fn enter(&self, id: &span::Id) {
         // TODO: add on_enter hook
-        let span = self.clone_span(span);
-        span::push(span);
+        span::push(id);
     }
 
-    fn exit(&self, span: &span::Id) {
-        // TODO: add on_exit hook
-        if let Some(popped) = span::pop() {
-            debug_assert!(&popped == span);
-            self.drop_span(popped);
-        }
+    fn exit(&self, id: &span::Id) {
+        span::pop(id)
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
