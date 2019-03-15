@@ -153,7 +153,7 @@ impl<N> Filter<N> for EnvFilter {
                     let in_span = ctx
                         .visit_spans(|_, span| {
                             if span.name() == desired {
-                                // If there are no fields then lets exit
+                                // If there are no fields, then let's exit.
                                 // if there are fields and none of them match
                                 // try the next span
                                 if directive.fields.is_empty()
