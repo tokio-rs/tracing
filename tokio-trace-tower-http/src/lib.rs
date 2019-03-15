@@ -1,6 +1,6 @@
 extern crate http;
 extern crate tower_service;
-extern crate tower_util;
+extern crate tower;
 #[macro_use]
 extern crate tokio_trace;
 extern crate futures;
@@ -12,7 +12,7 @@ use futures::{Future, Poll};
 use tokio_trace::{field, Span};
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower_service::Service;
-use tower_util::MakeService;
+use tower::MakeService;
 
 #[derive(Debug)]
 pub struct InstrumentedHttpService<'span, T> {
