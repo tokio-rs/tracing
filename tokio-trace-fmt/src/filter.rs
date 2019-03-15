@@ -269,17 +269,14 @@ impl Directive {
                 let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
                 let caps = SPAN_PART_RE.captures(cap)?;
                 let span = caps.name("name").map(|c| c.as_str().to_owned());
-                println!("SPAN PART IS {:?}", span);
                 let fields = caps
                     .name("fields")
-                    .map(|c| {
-                        println!("filter PART IS {:?}", c.as_str());
-
+                    .map(|c|
                         FIELD_FILTER_RE
                             .find_iter(c.as_str())
                             .map(|c| c.as_str().trim().to_owned())
                             .collect::<Vec<_>>()
-                    })
+                    }
                     .unwrap_or_else(Vec::new);
                 Some((span, fields))
             })
