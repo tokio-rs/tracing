@@ -153,8 +153,20 @@ impl<N> Filter<N> for EnvFilter {
                     let in_span = ctx
                         .visit_spans(|_, span| {
                             if span.name() == desired {
-                                // Return `Err` to short-circuit the span visitation.
-                                Err(())
+                                // If there are no fields then lets exit
+                                // if there are fields and none of them match
+                                // try the next span
+                                if directive.fields.is_empty()
+                                    || directive
+                                        .fields
+                                        .iter()
+                                        .any(|field| span.fields().contains(field))
+                                {
+                                    // Return `Err` to short-circuit the span visitation.
+                                    Err(())
+                                } else {
+                                    Ok(())
+                                }
                             } else {
                                 Ok(())
                             }
@@ -354,6 +366,46 @@ mod tests {
 
         let interest = filter.callsite_enabled(&meta, &ctx);
         assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive_field() {
+        let filter = EnvFilter::from("app[mySpan{field=\"value\"}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_disabled_includes_directive_field() {
+        let filter = EnvFilter::from("app[{field=\"novalue\"}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_never());
     }
 
     #[test]
