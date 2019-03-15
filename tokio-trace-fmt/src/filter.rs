@@ -276,7 +276,7 @@ impl Directive {
                             .find_iter(c.as_str())
                             .map(|c| c.as_str().trim().to_owned())
                             .collect::<Vec<_>>()
-                    }
+                    )
                     .unwrap_or_else(Vec::new);
                 Some((span, fields))
             })
