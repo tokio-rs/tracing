@@ -74,17 +74,28 @@ pub(crate) fn current() -> Option<Id> {
         .ok()?
 }
 
-pub(crate) fn push(id: Id) {
+pub(crate) fn push(id: &Id) {
+    let id = dispatcher::get_default(|subscriber| {
+        subscriber.clone_span(id)
+    });
     let _ = CONTEXT.try_with(|current| {
         current.borrow_mut().push(id);
     });
 }
 
-pub(crate) fn pop() -> Option<Id> {
-    CONTEXT
+pub(crate) fn pop(expected_id: &Id) {
+    let mut id = CONTEXT
         .try_with(|current| current.borrow_mut().pop())
-        .ok()?
+        .ok()
+        .and_then(|i| i);
+    if id.is_some() {
+        debug_assert_eq!(Some(expected_id), id.as_ref());
+        dispatcher::get_default(|subscriber| {
+            subscriber.drop_span(id.take().unwrap());
+        })
+    }
 }
+
 
 // ===== impl Span =====
 
@@ -339,12 +350,7 @@ impl Store {
         // from std::Arc);
         atomic::fence(Ordering::Acquire);
 
-        let data = this.remove(&self.next, idx);
-        // Continue propagating the drop up the span's parent tree, to avoid
-        // round-trips through the dispatcher.
-        if let Some(parent) = data.and_then(|data| data.parent) {
-            self.drop_span(parent)
-        }
+        this.remove(&self.next, idx);
     }
 }
 
@@ -355,6 +361,22 @@ impl Data {
             parent: current(),
             ref_count: AtomicUsize::new(1),
             is_empty: true,
+        }
+    }
+}
+
+impl Drop for Data {
+    fn drop(&mut self) {
+        // We have to actually unpack the option inside the `get_default`
+        // closure, since it is a `FnMut`, but testing that there _is_ a value
+        // here lets us avoid the thread-local access if we don't need the
+        // dispatcher at all.
+        if self.parent.is_some() {
+            dispatcher::get_default(|subscriber| {
+                if let Some(parent) = self.parent.take() {
+                    subscriber.drop_span(parent);
+                }
+            })
         }
     }
 }
