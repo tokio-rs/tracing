@@ -141,7 +141,7 @@ where
     }
 
     fn exit(&self, id: &span::Id) {
-        span::pop(id)
+        span::pop(id);
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
