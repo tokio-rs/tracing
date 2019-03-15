@@ -409,6 +409,46 @@ mod tests {
     }
 
     #[test]
+    fn callsite_disabled_includes_directive_field_no_value() {
+        let filter = EnvFilter::from("app[mySpan{field}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive_multiple_fields() {
+        let filter = EnvFilter::from("app[mySpan{field=\"value\" field2=2}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
+
+    #[test]
     fn parse_directives_valid() {
         let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug");
         assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
