@@ -75,9 +75,7 @@ pub(crate) fn current() -> Option<Id> {
 }
 
 pub(crate) fn push(id: &Id) {
-    let id = dispatcher::get_default(|subscriber| {
-        subscriber.clone_span(id)
-    });
+    let id = dispatcher::get_default(|subscriber| subscriber.clone_span(id));
     let _ = CONTEXT.try_with(|current| {
         current.borrow_mut().push(id);
     });
@@ -95,7 +93,6 @@ pub(crate) fn pop(expected_id: &Id) {
         })
     }
 }
-
 
 // ===== impl Span =====
 
