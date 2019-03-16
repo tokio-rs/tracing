@@ -610,12 +610,12 @@ impl<'a> fmt::Display for LogEvent<'a> {
 //     }
 // }
 
-impl tokio_trace_subscriber::Filter for TraceLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        <Self as Subscriber>::enabled(&self, metadata)
-    }
+// impl tokio_trace_subscriber::Filter for TraceLogger {
+//     fn enabled(&self, metadata: &Metadata) -> bool {
+//         <Self as Subscriber>::enabled(&self, metadata)
+//     }
 
-    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
-        false
-    }
-}
+//     fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
+//         false
+//     }
+// }

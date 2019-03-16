@@ -1,7 +1,4 @@
-use {
-    // filter::{self, Filter},
-    registry::SpanRef,
-};
+use span;
 
 use std::any::{Any, TypeId};
 use tokio_trace_core::{Event, Metadata};
@@ -10,11 +7,15 @@ use tokio_trace_core::{Event, Metadata};
 ///
 /// Implementations of this trait describe the logic needed to process envent
 /// and span notifications, but don't implement span registration.
-pub trait Observe<S: SpanRef>: 'static {
-    fn event(&self, event: &Event);
-    fn enter(&self, span: &S);
-    fn exit(&self, span: &S);
-    fn close(&self, span: &S);
+pub trait Observe<R>: 'static
+where
+    R: for<'a> span::Registry<'a>,
+{
+    fn event(&self, event: &Event, registry: &R);
+    fn enter(&self, id: &span::Id, registry: &R);
+    fn exit(&self, id: &span::Id, registry: &R);
+    fn record(&self, id: &span::Id, record: &span::Record, registry: &R);
+    fn close(&self, id: &span::Id, registry: &R);
 
     // fn filter(&self) -> &Filter {
     //     &filter::NoFilter
@@ -69,7 +70,10 @@ pub trait Observe<S: SpanRef>: 'static {
 
 /// Extension trait providing combinators and helper methods for working with
 /// instances of `Observe`.
-pub trait ObserveExt<S: SpanRef>: Observe<S> {
+pub trait ObserveExt<R>: Observe<R>
+where
+    R: for<'a> span::Registry<'a>,
+{
     /// Construct a new observer that sends events to both `self` and `other`.
     ///
     /// For example:
@@ -90,22 +94,28 @@ pub trait ObserveExt<S: SpanRef>: Observe<S> {
     ///     // ...
     /// }
     ///
-    /// impl Observe for Foo {
+    /// impl<R> Observe<R> for Foo
+    /// where
+    ///    R: for<'a> span::Registry<'a>,
+    /// {
     ///     // ...
-    /// # fn observe_event<'a>(&self, _: &'a Event<'a>) {}
-    /// # fn enter(&self, _: &SpanRef) {}
-    /// # fn exit(&self, _: &SpanRef) {}
-    /// # fn close(&self, _: &SpanRef) {}
-    /// # fn filter(&self) -> &Filter { &NoFilter}
+    /// # fn event(&self, _: &Event, _: &R) {}
+    /// # fn enter(&self, _: &Id, _: &R) {}
+    /// # fn exit(&self, _: &Id, _: &R) {}
+    /// # fn close(&self, _: &Id, _: &R) {}
+    /// # fn record(&self, id: &span::Id, record: &span::Record, registry: &R);
     /// }
     ///
-    /// impl Observe for Bar {
+    /// impl<R> Observe<R> for Bar
+    /// where
+    ///    R: for<'a> span::Registry<'a>,
+    /// {
     ///     // ...
-    /// # fn observe_event<'a>(&self, _: &'a Event<'a>) {}
-    /// # fn enter(&self, _: &SpanRef) {}
-    /// # fn exit(&self, _: &SpanRef) {}
-    /// # fn close(&self, _: &SpanRef) {}
-    /// # fn filter(&self) -> &Filter { &NoFilter}
+    ///
+    /// # fn event(&self, _: &Event, _: &R) {}
+    /// # fn enter(&self, _: &Id, _: &R) {}
+    /// # fn exit(&self, _: &Id, _: &R) {}
+    /// # fn close(&self, _: &Id, _: &R) {}
     /// }
     ///
     /// let foo = Foo { };
@@ -127,7 +137,7 @@ pub trait ObserveExt<S: SpanRef>: Observe<S> {
     /// ```
     fn tee_to<I>(self, other: I) -> Tee<Self, I::Observer>
     where
-        I: IntoObserver<S>,
+        I: IntoObserver<R>,
         Self: Sized,
     {
         Tee {
@@ -194,8 +204,11 @@ pub trait ObserveExt<S: SpanRef>: Observe<S> {
     // }
 }
 
-pub trait IntoObserver<S: SpanRef> {
-    type Observer: Observe<S>;
+pub trait IntoObserver<R>
+where
+    R: for<'a> span::Registry<'a>,
+{
+    type Observer: Observe<R>;
     fn into_observer(self) -> Self::Observer;
 }
 
@@ -332,11 +345,17 @@ pub struct WithFilter<O, F> {
 //     NoObserver
 // }
 
-impl<T, S: SpanRef> ObserveExt<S> for T where T: Observe<S> {}
-
-impl<T, S: SpanRef> IntoObserver<S> for T
+impl<T, R> ObserveExt<R> for T
 where
-    T: Observe<S>,
+    T: Observe<R>,
+    R: for<'a> span::Registry<'a>,
+{
+}
+
+impl<T, R> IntoObserver<R> for T
+where
+    T: Observe<R>,
+    R: for<'a> span::Registry<'a>,
 {
     type Observer = Self;
     fn into_observer(self) -> Self::Observer {
@@ -345,30 +364,30 @@ where
 }
 
 // XXX: maybe this should just be an impl of `Observe` for tuples of `(Observe, Observe)`...?
-impl<A, B, S: SpanRef> Observe<S> for Tee<A, B>
+impl<A, B, R> Observe<R> for Tee<A, B>
 where
-    A: Observe<S>,
-    B: Observe<S>,
+    A: Observe<R>,
+    B: Observe<R>,
+    R: for<'a> span::Registry<'a>,
 {
-
-    fn event(&self, event: &Event) {
-        self.a.event(event);
-        self.b.event(event);
+    fn event(&self, event: &Event, registry: &R) {
+        self.a.event(event, registry);
+        self.b.event(event, registry);
     }
 
-    fn enter(&self, span: &S) {
-        self.a.enter(span);
-        self.b.enter(span);
+    fn enter(&self, span: &span::Id, registry: &R) {
+        self.a.enter(span, registry);
+        self.b.enter(span, registry);
     }
 
-    fn exit(&self, span: &S) {
-        self.a.exit(span);
-        self.b.exit(span);
+    fn exit(&self, span: &span::Id, registry: &R) {
+        self.a.exit(span, registry);
+        self.b.exit(span, registry);
     }
 
-    fn close(&self, span: &S) {
-        self.a.close(span);
-        self.b.close(span);
+    fn close(&self, span: &span::Id, registry: &R) {
+        self.a.close(span, registry);
+        self.b.close(span, registry);
     }
 
     // fn filter(&self) -> &Filter {
