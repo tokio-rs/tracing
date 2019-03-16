@@ -3,5 +3,11 @@ name = "tokio-trace-subscriber"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
+[features]
+default = ["store"]
+store = ["parking_lot", "owning_ref"]
+
 [dependencies]
 tokio-trace-core = "0.1"
+owning_ref = { version = "0.4.0", optional = true }
+parking_lot = { version = "0.7", optional = true}
