@@ -8,7 +8,7 @@ tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
 tokio-trace-futures = { path = "../tokio-trace-futures" }
 futures = "0.1"
 tower-service = "0.2"
-tower-util = { git = "https://github.com/tower-rs/tower.git" }
+tower = { git = "https://github.com/tower-rs/tower.git" }
 http = "0.1"
 
 [dev-dependencies]

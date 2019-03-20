@@ -7,8 +7,8 @@ use std::env;
 
 pub const DEFAULT_FILTER_ENV: &'static str = "RUST_LOG";
 
-pub trait Filter {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context) -> Interest {
+pub trait Filter<N> {
+    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {
         if self.enabled(metadata, ctx) {
             Interest::always()
         } else {
@@ -16,7 +16,7 @@ pub trait Filter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool;
+    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool;
 }
 
 #[derive(Debug)]
@@ -30,6 +30,9 @@ pub struct EnvFilter {
 struct Directive {
     target: Option<String>,
     in_span: Option<String>,
+    // TODO: this can probably be a `SmallVec` someday, since a span won't have
+    // over 32 fields.
+    fields: Vec<String>,
     level: Level,
 }
 
@@ -101,8 +104,8 @@ where
     }
 }
 
-impl Filter for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context) -> Interest {
+impl<N> Filter<N> for EnvFilter {
+    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context<N>) -> Interest {
         if !self.includes_span_directive && metadata.level() > &self.max_level {
             return Interest::never();
         }
@@ -131,7 +134,7 @@ impl Filter for EnvFilter {
         interest
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool {
+    fn enabled<'a>(&self, metadata: &Metadata, ctx: &span::Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
             let accepts_level = metadata.level() <= &directive.level;
             match directive.in_span.as_ref() {
@@ -150,8 +153,20 @@ impl Filter for EnvFilter {
                     let in_span = ctx
                         .visit_spans(|_, span| {
                             if span.name() == desired {
-                                // Return `Err` to short-circuit the span visitation.
-                                Err(())
+                                // If there are no fields, then let's exit.
+                                // if there are fields and none of them match
+                                // try the next span
+                                if directive.fields.is_empty()
+                                    || directive
+                                        .fields
+                                        .iter()
+                                        .any(|field| span.fields().contains(field))
+                                {
+                                    // Return `Err` to short-circuit the span visitation.
+                                    Err(())
+                                } else {
+                                    Ok(())
+                                }
                             } else {
                                 Ok(())
                             }
@@ -209,6 +224,10 @@ impl Directive {
                 "
             )
             .unwrap();
+            static ref SPAN_PART_RE: Regex =
+                Regex::new(r#"(?P<name>\w+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
+            static ref FIELD_FILTER_RE: Regex =
+                Regex::new(r#"([\w_0-9]+(?:=(?:[\w0-9]+|".+"))?)(?: |$)"#).unwrap();
         }
 
         fn parse_level(from: &str) -> Option<Level> {
@@ -256,9 +275,25 @@ impl Directive {
             }
         });
 
-        let in_span = caps
+        let (in_span, fields) = caps
             .name("span")
-            .map(|c| c.as_str().trim_matches(|c| c == '[' || c == ']').to_owned());
+            .and_then(|cap| {
+                let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
+                let caps = SPAN_PART_RE.captures(cap)?;
+                let span = caps.name("name").map(|c| c.as_str().to_owned());
+                let fields = caps
+                    .name("fields")
+                    .map(|c| {
+                        FIELD_FILTER_RE
+                            .find_iter(c.as_str())
+                            .map(|c| c.as_str().trim().to_owned())
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
+                Some((span, fields))
+            })
+            .unwrap_or_else(|| (None, Vec::new()));
+
         let level = caps
             .name("level")
             .and_then(|c| parse_level(c.as_str()))
@@ -268,6 +303,7 @@ impl Directive {
             level,
             target,
             in_span,
+            fields,
         })
     }
 }
@@ -278,15 +314,17 @@ impl Default for Directive {
             level: Level::ERROR,
             target: None,
             in_span: None,
+            fields: Vec::new(),
         }
     }
 }
 
-impl<F> Filter for F
+impl<'a, F, N> Filter<N> for F
 where
-    F: Fn(&Metadata, &span::Context) -> bool,
+    F: Fn(&Metadata, &span::Context<N>) -> bool,
+    N: ::NewVisitor<'a>,
 {
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context) -> bool {
+    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
         (self)(metadata, ctx)
     }
 }
@@ -294,6 +332,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use default::NewRecorder;
     use span::*;
     use tokio_trace_core::*;
 
@@ -311,7 +350,7 @@ mod tests {
     fn callsite_enabled_no_span_directive() {
         let filter = EnvFilter::from("app=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store);
+        let ctx = Context::new(&store, &NewRecorder);
         let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -322,8 +361,88 @@ mod tests {
     fn callsite_enabled_includes_span_directive() {
         let filter = EnvFilter::from("app[mySpan]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store);
+        let ctx = Context::new(&store, &NewRecorder);
         let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive_field() {
+        let filter = EnvFilter::from("app[mySpan{field=\"value\"}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_disabled_includes_directive_field() {
+        let filter = EnvFilter::from("app[{field=\"novalue\"}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_never());
+    }
+
+    #[test]
+    fn callsite_disabled_includes_directive_field_no_value() {
+        let filter = EnvFilter::from("app[mySpan{field}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive_multiple_fields() {
+        let filter = EnvFilter::from("app[mySpan{field=\"value\" field2=2}]=debug");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &["field=\"value\""],
+            &Cs,
+        );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
         assert!(interest.is_always());
@@ -415,6 +534,28 @@ mod tests {
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
         assert_eq!(dirs[2].level, Level::DEBUG);
         assert_eq!(dirs[2].in_span, Some("baz".to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_fields() {
+        let dirs = parse_directives(
+            "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug",
+        );
+        assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
+        assert_eq!(dirs[0].target, None);
+        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].in_span, Some("span1".to_string()));
+        assert_eq!(&dirs[0].fields[..], &["foo=1"]);
+
+        assert_eq!(dirs[1].target, None);
+        assert_eq!(dirs[1].level, Level::ERROR);
+        assert_eq!(dirs[1].in_span, Some("span2".to_string()));
+        assert_eq!(&dirs[1].fields[..], &["bar=2", "baz=false"]);
+
+        assert_eq!(dirs[2].target, Some("crate2".to_string()));
+        assert_eq!(dirs[2].level, Level::DEBUG);
+        assert_eq!(dirs[2].in_span, None);
+        assert_eq!(&dirs[2].fields[..], &["quux=\"quuux\""]);
     }
 
 }

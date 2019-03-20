@@ -9,11 +9,10 @@ use tokio_trace::field;
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower_service::Service;
 
-// TODO: Can this still be `Clone` (some kind of SharedSpan type?)
-#[derive(Debug)]
-pub struct InstrumentedService<'a, T> {
+#[derive(Clone, Debug)]
+pub struct InstrumentedService<T> {
     inner: T,
-    span: tokio_trace::Span<'a>,
+    span: tokio_trace::Span,
 }
 
 pub trait InstrumentableService<Request>: Service<Request> + Sized {
@@ -22,14 +21,14 @@ pub trait InstrumentableService<Request>: Service<Request> + Sized {
     }
 }
 
-impl<'a, T: Service<Request>, Request> Service<Request> for InstrumentedService<'a, T>
+impl<T: Service<Request>, Request> Service<Request> for InstrumentedService<T>
 where
     // TODO: it would be nice to do more for HTTP services...
     Request: fmt::Debug + Clone + Send + Sync + 'static,
 {
     type Response = T::Response;
     type Error = T::Error;
-    type Future = Instrumented<'a, T::Future>;
+    type Future = Instrumented<T::Future>;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
         let span = &mut self.span;

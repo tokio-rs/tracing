@@ -11,9 +11,7 @@ pub mod executor;
 
 // TODO: seal?
 pub trait Instrument: Sized {
-    // TODO: consider renaming to `in_span` for consistency w/
-    // `in_current_span`?
-    fn instrument<'a>(self, span: Span<'a>) -> Instrumented<'a, Self> {
+    fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
 }
@@ -31,9 +29,9 @@ pub trait WithSubscriber: Sized {
 }
 
 #[derive(Debug, Clone)]
-pub struct Instrumented<'a, T> {
+pub struct Instrumented<T> {
     inner: T,
-    span: Span<'a>,
+    span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -44,46 +42,29 @@ pub struct WithDispatch<T> {
 
 impl<T: Sized> Instrument for T {}
 
-impl<'a, T: Future> Future for Instrumented<'a, T> {
+impl<T: Future> Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let span = &mut self.span;
         let inner = &mut self.inner;
-        match span.enter(|| inner.poll()) {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            done => {
-                // The future finished, either successfully or with an error.
-                // The span should now close.
-                span.close();
-                done
-            }
-        }
+        span.enter(|| inner.poll())
     }
 }
 
-impl<'a, T: Stream> Stream for Instrumented<'a, T> {
+impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         let span = &mut self.span;
         let inner = &mut self.inner;
-        match span.enter(|| inner.poll()) {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(Some(thing))) => Ok(Async::Ready(Some(thing))),
-            done => {
-                // The stream finished, either with `Ready(None)` or with an error.
-                // The span should now close.
-                span.close();
-                done
-            }
-        }
+        span.enter(|| inner.poll())
     }
 }
 
-impl<'a, T: Sink> Sink for Instrumented<'a, T> {
+impl<T: Sink> Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
 
@@ -100,15 +81,15 @@ impl<'a, T: Sink> Sink for Instrumented<'a, T> {
     }
 }
 
-impl<'a, T> Instrumented<'a, T> {
+impl<T> Instrumented<T> {
     /// Borrows the `Span` that this type is instrumented by.
-    pub fn span(&self) -> &Span<'a> {
+    pub fn span(&self) -> &Span {
         &self.span
     }
 
     /// Mutably borrows the `Span` that this type is instrumented by.
-    pub fn span_mut(&self) -> &Span<'a> {
-        &self.span
+    pub fn span_mut(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.

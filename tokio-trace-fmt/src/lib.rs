@@ -23,7 +23,7 @@ pub use filter::Filter;
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
-    E = fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
+    E = fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -36,7 +36,7 @@ pub struct FmtSubscriber<
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
-    E = fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result,
+    E = fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -66,18 +66,21 @@ impl Default for FmtSubscriber {
     }
 }
 
-impl<N, E, F> FmtSubscriber<N, E, F> {
+impl<N, E, F> FmtSubscriber<N, E, F>
+where
+    N: for<'a> NewVisitor<'a>,
+{
     #[inline]
-    fn ctx(&self) -> span::Context {
-        span::Context::new(&self.spans)
+    fn ctx(&self) -> span::Context<N> {
+        span::Context::new(&self.spans, &self.new_visitor)
     }
 }
 
 impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
-    F: Filter + 'static,
+    E: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    F: Filter<N> + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
@@ -121,7 +124,7 @@ where
                     &mut b
                 }
             };
-            let ctx = span::Context::new(&self.spans);
+            let ctx = span::Context::new(&self.spans, &self.new_visitor);
 
             if (self.fmt_event)(&ctx, buf, event).is_ok() {
                 // TODO: make the io object configurable
@@ -132,18 +135,13 @@ where
         });
     }
 
-    fn enter(&self, span: &span::Id) {
+    fn enter(&self, id: &span::Id) {
         // TODO: add on_enter hook
-        let span = self.clone_span(span);
-        span::Context::push(span);
+        span::push(id);
     }
 
-    fn exit(&self, span: &span::Id) {
-        // TODO: add on_exit hook
-        if let Some(popped) = span::Context::pop() {
-            debug_assert!(&popped == span);
-            self.drop_span(popped);
-        }
+    fn exit(&self, id: &span::Id) {
+        span::pop(id);
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
@@ -193,8 +191,8 @@ impl Default for Builder {
 impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
-    F: Filter + 'static,
+    E: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    F: Filter<N> + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
         FmtSubscriber {
@@ -226,7 +224,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// a span or event is enabled.
     pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2>
     where
-        F2: Filter + 'static,
+        F2: Filter<N> + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
@@ -238,7 +236,12 @@ impl<N, E, F> Builder<N, E, F> {
 
     /// Sets the subscriber being built to use the default full span formatter.
     // TODO: this should probably just become the default.
-    pub fn full(self) -> Builder<N, fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result, F> {
+    pub fn full(
+        self,
+    ) -> Builder<N, fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result, F>
+    where
+        N: for<'a> NewVisitor<'a> + 'static,
+    {
         Builder {
             fmt_event: default::fmt_verbose,
             filter: self.filter,
@@ -251,7 +254,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+        E2: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
