@@ -9,7 +9,7 @@ with-tokio = ["tokio"]
 
 [dependencies]
 futures = "0.1"
-tokio-trace = "0.0.1"
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
 tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]
