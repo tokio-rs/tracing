@@ -5,7 +5,14 @@ https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 
 #![deny(warnings)]
 
+extern crate futures;
 extern crate tokio;
+#[macro_use]
+extern crate tokio_trace;
+extern crate tokio_trace_fmt;
+extern crate tokio_trace_futures;
+
+use tokio_trace_futures::Instrument;
 
 use std::env;
 use std::io::{self, Read, Write};
@@ -20,7 +27,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let listen_addr = env::args().nth(1).unwrap_or("127.0.0.1:8081".to_string());
     let listen_addr = listen_addr.parse::<SocketAddr>()?;
 
-    let server_addr = env::args().nth(2).unwrap_or("127.0.0.1:8080".to_string());
+    let server_addr = env::args().nth(2).unwrap_or("127.0.0.1:3000".to_string());
     let server_addr = server_addr.parse::<SocketAddr>()?;
 
     // Create a TCP listener which will listen for incoming connections.
@@ -30,9 +37,16 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let done = socket
         .incoming()
-        .map_err(|e| println!("error accepting socket; error = {:?}", e))
+        .map_err(|e| {
+            debug!("error accepting socket; error = {:?}", e)
+        })
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
+            match client.peer_addr() {
+                Ok(x) => info!("client connected {}", x), 
+                Err(e) => debug!("error, could not get client info: {}", e)
+            }
+            
             let amounts = server.and_then(move |server| {
                 // Create separate read/write handles for the TCP clients that we're
                 // proxying data between. Note that typically you'd use
@@ -52,32 +66,42 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 // After the copy is done we indicate to the remote side that we've
                 // finished by shutting down the connection.
                 let client_to_server = copy(client_reader, server_writer)
-                    .and_then(|(n, _, server_writer)| shutdown(server_writer).map(move |_| n));
+                    .and_then(|(n, _, server_writer)| {
+                        info!(size = n);
+                        shutdown(server_writer).map(move |_| n)
+                    }).instrument(span!(" client_to_server"));
 
                 let server_to_client = copy(server_reader, client_writer)
-                    .and_then(|(n, _, client_writer)| shutdown(client_writer).map(move |_| n));
+                    .and_then(|(n, _, client_writer)| {
+                        info!(size = n);
+                        shutdown(client_writer).map(move |_| n)
+                    }).instrument(span!(" server_to_client"));
 
                 client_to_server.join(server_to_client)
             });
 
             let msg = amounts
                 .map(move |(from_client, from_server)| {
-                    println!(
+                    info!(
                         "client wrote {} bytes and received {} bytes",
                         from_client, from_server
                     );
                 })
                 .map_err(|e| {
                     // Don't panic. Maybe the client just disconnected too soon.
-                    println!("error: {}", e);
-                });
+                    debug!("error: {}", e);
+                }).instrument(span!(" transfer_complete"));
 
             tokio::spawn(msg);
 
             Ok(())
         });
 
-    tokio::run(done);
+    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
+    tokio_trace::subscriber::with_default(subscriber, || {
+        tokio::run(done);
+    });
+
     Ok(())
 }
 
