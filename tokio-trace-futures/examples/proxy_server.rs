@@ -1,5 +1,5 @@
 /*
-This example has been taken and modified from here : 
+This example has been taken and modified from here :
 https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 */
 
@@ -12,8 +12,8 @@ extern crate tokio_trace;
 extern crate tokio_trace_fmt;
 extern crate tokio_trace_futures;
 
-use tokio_trace_futures::Instrument;
 use tokio_trace::field;
+use tokio_trace_futures::Instrument;
 
 use std::env;
 use std::io::{self, Read, Write};
@@ -38,16 +38,20 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let done = socket
         .incoming()
-        .map_err(|e| {
-            debug!(msg = "error accepting socket", error = field::display(e))
-        })
+        .map_err(|e| debug!(msg = "error accepting socket", error = field::display(e)))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
             match client.peer_addr() {
-                Ok(x) => info!(message = "client connected", client_addr = field::display(x)), 
-                Err(e) => debug!(message = "could not get client info", error = field::display(e))
+                Ok(x) => info!(
+                    message = "client connected",
+                    client_addr = field::display(x)
+                ),
+                Err(e) => debug!(
+                    message = "could not get client info",
+                    error = field::display(e)
+                ),
             }
-            
+
             let amounts = server.and_then(move |server| {
                 // Create separate read/write handles for the TCP clients that we're
                 // proxying data between. Note that typically you'd use
@@ -70,13 +74,15 @@ fn main() -> Result<(), Box<std::error::Error>> {
                     .and_then(|(n, _, server_writer)| {
                         info!(size = n);
                         shutdown(server_writer).map(move |_| n)
-                    }).instrument(span!("client_to_server"));
+                    })
+                    .instrument(span!("client_to_server"));
 
                 let server_to_client = copy(server_reader, client_writer)
                     .and_then(|(n, _, client_writer)| {
                         info!(size = n);
                         shutdown(client_writer).map(move |_| n)
-                    }).instrument(span!("server_to_client"));
+                    })
+                    .instrument(span!("server_to_client"));
 
                 client_to_server.join(server_to_client)
             });
@@ -84,19 +90,21 @@ fn main() -> Result<(), Box<std::error::Error>> {
             let msg = amounts
                 .map(move |(from_client, from_server)| {
                     info!(
-                        client_to_server = from_client, 
+                        client_to_server = from_client,
                         server_to_client = from_server
                     );
                 })
                 .map_err(|e| {
                     // Don't panic. Maybe the client just disconnected too soon.
                     debug!(error = field::display(e));
-                }).instrument(span!("transfer"));
+                })
+                .instrument(span!("transfer"));
 
             tokio::spawn(msg);
 
             Ok(())
-        }).instrument(span!("proxy", listen_addr = field::debug(&listen_addr)));
+        })
+        .instrument(span!("proxy", listen_addr = field::debug(&listen_addr)));
 
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace::subscriber::with_default(subscriber, || {
