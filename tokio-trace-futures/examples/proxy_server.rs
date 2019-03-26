@@ -3,8 +3,6 @@ This example has been taken and modified from here :
 https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 */
 
-#![deny(warnings)]
-
 extern crate futures;
 extern crate tokio;
 #[macro_use]
