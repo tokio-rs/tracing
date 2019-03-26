@@ -13,6 +13,7 @@ extern crate tokio_trace_fmt;
 extern crate tokio_trace_futures;
 
 use tokio_trace_futures::Instrument;
+use tokio_trace::field;
 
 use std::env;
 use std::io::{self, Read, Write};
@@ -38,13 +39,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let done = socket
         .incoming()
         .map_err(|e| {
-            debug!("error accepting socket; error = {:?}", e)
+            debug!(msg = "error accepting socket", error = field::display(e))
         })
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
             match client.peer_addr() {
-                Ok(x) => info!("client connected {}", x), 
-                Err(e) => debug!("error, could not get client info: {}", e)
+                Ok(x) => info!(message = "client connected", client_addr = field::display(x)), 
+                Err(e) => debug!(message = "could not get client info", error = field::display(e))
             }
             
             let amounts = server.and_then(move |server| {
@@ -69,13 +70,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
                     .and_then(|(n, _, server_writer)| {
                         info!(size = n);
                         shutdown(server_writer).map(move |_| n)
-                    }).instrument(span!(" client_to_server"));
+                    }).instrument(span!("client_to_server"));
 
                 let server_to_client = copy(server_reader, client_writer)
                     .and_then(|(n, _, client_writer)| {
                         info!(size = n);
                         shutdown(client_writer).map(move |_| n)
-                    }).instrument(span!(" server_to_client"));
+                    }).instrument(span!("server_to_client"));
 
                 client_to_server.join(server_to_client)
             });
@@ -83,19 +84,19 @@ fn main() -> Result<(), Box<std::error::Error>> {
             let msg = amounts
                 .map(move |(from_client, from_server)| {
                     info!(
-                        "client wrote {} bytes and received {} bytes",
-                        from_client, from_server
+                        client_to_server = from_client, 
+                        server_to_client = from_server
                     );
                 })
                 .map_err(|e| {
                     // Don't panic. Maybe the client just disconnected too soon.
-                    debug!("error: {}", e);
-                }).instrument(span!(" transfer_complete"));
+                    debug!(error = field::display(e));
+                }).instrument(span!("transfer"));
 
             tokio::spawn(msg);
 
             Ok(())
-        });
+        }).instrument(span!("proxy", listen_addr = field::debug(&listen_addr)));
 
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace::subscriber::with_default(subscriber, || {
