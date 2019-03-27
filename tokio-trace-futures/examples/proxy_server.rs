@@ -15,7 +15,7 @@ use tokio_trace_futures::Instrument;
 
 use std::env;
 use std::io::{self, Read, Write};
-use std::net::{Shutdown, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr};
 use std::sync::{Arc, Mutex};
 
 use tokio::io::{copy, shutdown};
@@ -39,15 +39,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
         .map_err(|e| debug!(msg = "error accepting socket", error = field::display(e)))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
-            let mut client_addr = String::new();
+            let mut client_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
             match client.peer_addr() {
                 Ok(x) => {
-                    let x = x.to_string();
                     client_addr = x;
-                    info!(
-                        message = "client connected",
-                        client_addr = field::display(&client_addr)
-                    )
+                    info!(message = "client connected", client_addr = field::debug(x))
                 }
                 Err(e) => debug!(
                     message = "could not get client info",
@@ -102,19 +98,19 @@ fn main() -> Result<(), Box<std::error::Error>> {
                     debug!(error = field::display(e));
                 })
                 .instrument(span!(
-                    "transfer",
+                    "transfer completed",
                     client_address = field::debug(&client_addr),
-                    server_address = field::debug(&server_addr.to_string())
+                    server_address = field::debug(&server_addr)
                 ));
 
             tokio::spawn(msg);
 
             Ok(())
-        })
-        .instrument(span!("proxy", listen_addr = field::debug(&listen_addr)));
+        });
 
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace::subscriber::with_default(subscriber, || {
+        let done = done.instrument(span!("proxy", listen_addr = field::debug(&listen_addr)));
         tokio::run(done);
     });
 
