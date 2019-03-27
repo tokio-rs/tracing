@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         .map_err(|e| debug!(msg = "error accepting socket", error = field::display(e)))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
-            let mut client_addr: Option<SocketAddr> = None;
+            let mut client_addr = None;
             match client.peer_addr() {
                 Ok(x) => {
                     client_addr = Some(x);
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 })
                 .instrument(span!(
                     "transfer completed",
-                    client_address = field::debug(&client_addr.unwrap()),
+                    client_address = field::debug(&client_addr),
                     server_address = field::debug(&server_addr)
                 ));
 
