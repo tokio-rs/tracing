@@ -15,7 +15,7 @@ use tokio_trace_futures::Instrument;
 
 use std::env;
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr};
+use std::net::{Shutdown, SocketAddr};
 use std::sync::{Arc, Mutex};
 
 use tokio::io::{copy, shutdown};
@@ -39,14 +39,14 @@ fn main() -> Result<(), Box<std::error::Error>> {
         .map_err(|e| debug!(msg = "error accepting socket", error = field::display(e)))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
-            let mut client_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+            let mut client_addr : Option<SocketAddr> = None;
             match client.peer_addr() {
                 Ok(x) => {
-                    client_addr = x;
+                    client_addr = Some(x);
                     info!(message = "client connected", client_addr = field::debug(x))
                 }
                 Err(e) => debug!(
-                    message = "could not get client info",
+                    message = "Could not get client information",
                     error = field::display(e)
                 ),
             }
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 })
                 .instrument(span!(
                     "transfer completed",
-                    client_address = field::debug(&client_addr),
+                    client_address = field::debug(&client_addr.unwrap()),
                     server_address = field::debug(&server_addr)
                 ));
 
