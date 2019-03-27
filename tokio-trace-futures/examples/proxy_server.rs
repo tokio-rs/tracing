@@ -39,11 +39,16 @@ fn main() -> Result<(), Box<std::error::Error>> {
         .map_err(|e| debug!(msg = "error accepting socket", error = field::display(e)))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
+            let mut client_addr = String::new();
             match client.peer_addr() {
-                Ok(x) => info!(
-                    message = "client connected",
-                    client_addr = field::display(x)
-                ),
+                Ok(x) => {
+                    let x = x.to_string();
+                    client_addr = x;
+                    info!(
+                        message = "client connected",
+                        client_addr = field::display(&client_addr)
+                    )
+                },
                 Err(e) => debug!(
                     message = "could not get client info",
                     error = field::display(e)
@@ -96,7 +101,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
                     // Don't panic. Maybe the client just disconnected too soon.
                     debug!(error = field::display(e));
                 })
-                .instrument(span!("transfer"));
+                .instrument(span!("transfer",
+                    client_address = field::debug(&client_addr),
+                    server_address = field::debug(&server_addr.to_string())
+                ));
 
             tokio::spawn(msg);
 
