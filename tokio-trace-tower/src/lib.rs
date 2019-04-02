@@ -5,7 +5,7 @@ extern crate futures;
 extern crate tokio_trace_futures;
 
 use std::fmt;
-use tokio_trace::field;
+use tokio_trace::{field, Level};
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower_service::Service;
 
@@ -41,7 +41,7 @@ where
         let inner = &mut self.inner;
         span.enter(|| {
             // TODO: custom `Value` impls for `http` types would be nice...
-            let mut span = span!("request", request = &field::debug(&req));
+            let mut span = span!(Level::TRACE, "request", request = &field::debug(&req));
             let span2 = span.clone();
             span.enter(move || inner.call(req).instrument(span2))
         })

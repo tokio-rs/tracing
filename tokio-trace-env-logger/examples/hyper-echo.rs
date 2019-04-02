@@ -15,13 +15,14 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 
 use std::str;
 
-use tokio_trace::field;
+use tokio_trace::{field, Level};
 use tokio_trace_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     span!(
+        Level::TRACE,
         "request",
         method = &field::debug(req.method()),
         uri = &field::debug(req.uri()),
@@ -37,7 +38,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 const BODY: &'static str = "Try POSTing data to /echo";
                 *response.body_mut() = Body::from(BODY);
                 (
-                    span!("response", body = &field::display(&BODY)),
+                    span!(Level::TRACE, "response", body = &field::display(&BODY)),
                     Box::new(future::ok(response)),
                 )
             }
@@ -45,7 +46,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // Simply echo the body back to the client.
             (&Method::POST, "/echo") => {
                 let body = req.into_body();
-                let span = span!("response", response_kind = &"echo");
+                let span = span!(Level::TRACE, "response", response_kind = &"echo");
                 *response.body_mut() = body;
                 (span, Box::new(future::ok(response)))
             }
@@ -69,7 +70,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 
                 *response.body_mut() = Body::wrap_stream(mapping);
                 (
-                    span!("response", response_kind = "uppercase"),
+                    span!(Level::TRACE, "response", response_kind = "uppercase"),
                     Box::new(future::ok(response)),
                 )
             }
@@ -81,7 +82,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // future, waiting on concatenating the full body, so that
             // it can be reversed. Only then can we return a `Response`.
             (&Method::POST, "/echo/reversed") => {
-                let mut span = span!("response", response_kind = "reversed");
+                let mut span = span!(Level::TRACE, "response", response_kind = "reversed");
                 let reversed = span.enter(|| {
                     req.into_body().concat2().map(move |chunk| {
                         let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
@@ -103,6 +104,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                 *response.status_mut() = StatusCode::NOT_FOUND;
                 (
                     span!(
+                        Level::TRACE,
                         "response",
                         body = &field::debug(()),
                         status = &field::debug(&StatusCode::NOT_FOUND)
@@ -122,12 +124,13 @@ fn main() {
 
     tokio_trace::subscriber::with_default(subscriber, || {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-        let mut server_span = span!("server", local = &field::debug(addr));
+        let mut server_span = span!(Level::TRACE, "server", local = &field::debug(addr));
         let server = tokio::net::TcpListener::bind(&addr)
             .expect("bind")
             .incoming()
             .fold(Http::new(), move |http, sock| {
                 let span = span!(
+                    Level::TRACE,
                     "connection",
                     remote = &field::debug(&sock.peer_addr().unwrap())
                 );

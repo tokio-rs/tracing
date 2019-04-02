@@ -6,6 +6,7 @@ extern crate tokio_trace_fmt;
 extern crate tokio_trace_futures;
 
 use futures::future::{self, Future};
+use tokio_trace::Level;
 use tokio_trace_futures::Instrument;
 
 fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
@@ -24,7 +25,7 @@ fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
         let sum: usize = result.into_iter().sum();
         info!(sum = sum);
     })
-    .instrument(span!("parent_task", subtasks = how_many))
+    .instrument(span!(Level::TRACE, "parent_task", subtasks = how_many))
 }
 
 fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
@@ -32,7 +33,7 @@ fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
         info!("polling subtask...");
         Ok(number)
     })
-    .instrument(span!("subtask", number = number))
+    .instrument(span!(Level::TRACE, "subtask", number = number))
 }
 
 fn main() {

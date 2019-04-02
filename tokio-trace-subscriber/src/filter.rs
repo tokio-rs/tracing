@@ -62,18 +62,20 @@ pub trait FilterExt: Filter {
     /// # fn main() {
     /// fn foo() {
     ///     // This span will not be enabled.
-    ///     span!("foo").enter(|| { })
+    ///     span!(Level::TRACE, "foo").enter(|| { })
     /// }
     ///
     /// pub mod my_module {
+    ///     use tokio_trace::Level;
+    ///
     ///     pub fn foo() {
     ///         // This span will be enabled.
-    ///         span!("foo").enter(|| { })
+    ///         span!(Level::TRACE, "foo").enter(|| { })
     ///     }
     ///
     ///     pub fn bar() {
     ///         // This span will not enabled.
-    ///         span!("foo").enter(|| { })
+    ///         span!(Level::TRACE, "foo").enter(|| { })
     ///     }
     /// }
     ///
