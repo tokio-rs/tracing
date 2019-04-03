@@ -17,7 +17,7 @@ use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio_trace::field;
+use tokio_trace::{field, Level};
 use tokio_trace_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
@@ -123,6 +123,7 @@ fn main() {
         let bind = TcpListener::bind(&addr).expect("bind");
 
         let mut serve_span = span!(
+            Level::TRACE,
             "serve",
             local_ip = field::debug(addr.ip()),
             local_port = addr.port() as u64
@@ -138,6 +139,7 @@ fn main() {
                 .fold((h2, reactor), |(mut h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
                     let mut conn_span = span!(
+                        Level::TRACE,
                         "conn",
                         remote_ip = field::debug(addr.ip()),
                         remote_port = addr.port() as u64

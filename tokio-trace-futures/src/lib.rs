@@ -4,7 +4,7 @@ extern crate tokio;
 #[cfg_attr(test, macro_use)]
 extern crate tokio_trace;
 
-use futures::{Async, Future, Poll, Sink, StartSend, Stream};
+use futures::{Future, Poll, Sink, StartSend, Stream};
 use tokio_trace::{dispatcher, Dispatch, Span};
 
 pub mod executor;
@@ -139,8 +139,8 @@ mod tests {
     extern crate tokio;
 
     use super::{test_support::*, *};
-    use futures::{future, stream, task};
-    use tokio_trace::subscriber::with_default;
+    use futures::{future, stream, task, Async};
+    use tokio_trace::{subscriber::with_default, Level};
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,
@@ -194,7 +194,10 @@ mod tests {
             .done()
             .run_with_handle();
         with_default(subscriber, || {
-            PollN::new_ok(2).instrument(span!("foo")).wait().unwrap();
+            PollN::new_ok(2)
+                .instrument(span!(Level::TRACE, "foo"))
+                .wait()
+                .unwrap();
         });
         handle.assert_finished();
     }
@@ -211,7 +214,7 @@ mod tests {
             .run_with_handle();
         with_default(subscriber, || {
             PollN::new_err(2)
-                .instrument(span!("foo"))
+                .instrument(span!(Level::TRACE, "foo"))
                 .wait()
                 .unwrap_err();
         });
@@ -234,7 +237,7 @@ mod tests {
             .run_with_handle();
         with_default(subscriber, || {
             stream::iter_ok::<_, ()>(&[1, 2, 3])
-                .instrument(span!("foo"))
+                .instrument(span!(Level::TRACE, "foo"))
                 .for_each(|_| future::ok(()))
                 .wait()
                 .unwrap();
@@ -257,13 +260,15 @@ mod tests {
             .run_with_handle();
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         with_default(subscriber, || {
-            span!("a").enter(|| {
-                let future = PollN::new_ok(2).instrument(span!("b")).map(|_| {
-                    span!("c").enter(|| {
-                        // "c" happens _outside_ of the instrumented future's
-                        // spab, so we don't expect it.
-                    })
-                });
+            span!(Level::TRACE, "a").enter(|| {
+                let future = PollN::new_ok(2)
+                    .instrument(span!(Level::TRACE, "b"))
+                    .map(|_| {
+                        span!(Level::TRACE, "c").enter(|| {
+                            // "c" happens _outside_ of the instrumented future's
+                            // spab, so we don't expect it.
+                        })
+                    });
                 runtime.block_on(Box::new(future)).unwrap();
             })
         });

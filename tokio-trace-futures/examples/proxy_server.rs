@@ -10,7 +10,7 @@ extern crate tokio_trace;
 extern crate tokio_trace_fmt;
 extern crate tokio_trace_futures;
 
-use tokio_trace::field;
+use tokio_trace::{field, Level};
 use tokio_trace_futures::Instrument;
 
 use std::env;
@@ -74,14 +74,14 @@ fn main() -> Result<(), Box<std::error::Error>> {
                         info!(size = n);
                         shutdown(server_writer).map(move |_| n)
                     })
-                    .instrument(span!("client_to_server"));
+                    .instrument(span!(Level::TRACE, "client_to_server"));
 
                 let server_to_client = copy(server_reader, client_writer)
                     .and_then(|(n, _, client_writer)| {
                         info!(size = n);
                         shutdown(client_writer).map(move |_| n)
                     })
-                    .instrument(span!("server_to_client"));
+                    .instrument(span!(Level::TRACE, "server_to_client"));
 
                 client_to_server.join(server_to_client)
             });
@@ -98,6 +98,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                     debug!(error = field::display(e));
                 })
                 .instrument(span!(
+                    Level::TRACE,
                     "transfer completed",
                     client_address = field::debug(&client_addr),
                     server_address = field::debug(&server_addr)
@@ -110,7 +111,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace::subscriber::with_default(subscriber, || {
-        let done = done.instrument(span!("proxy", listen_addr = field::debug(&listen_addr)));
+        let done = done.instrument(span!(
+            Level::TRACE,
+            "proxy",
+            listen_addr = field::debug(&listen_addr)
+        ));
         tokio::run(done);
     });
 

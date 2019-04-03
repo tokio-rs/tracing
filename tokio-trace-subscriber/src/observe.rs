@@ -72,7 +72,7 @@ pub trait ObserveExt: Observe {
     ///
     /// tokio_trace::subscriber::with_default(subscriber, || {
     ///     // This span will be seen by both `foo` and `bar`.
-    ///     span!("my great span").enter(|| {
+    ///     span!(Level::TRACE, "my great span").enter(|| {
     ///         // ...
     ///     })
     /// });
@@ -121,11 +121,11 @@ pub trait ObserveExt: Observe {
     ///
     /// tokio_trace::Dispatch::new(subscriber).as_default(|| {
     ///     /// // This span will be logged.
-    ///     span!("foo", enabled = &true) .enter(|| {
+    ///     span!(Level::TRACE, "foo", enabled = &true) .enter(|| {
     ///         // do work;
     ///     });
     ///     // This span will *not* be logged.
-    ///     span!("bar", enabled = &false).enter(|| {
+    ///     span!(Level::TRACE, "bar", enabled = &false).enter(|| {
     ///         // This event also will not be logged.
     ///         event!(Level::Debug, { enabled = false },"this won't be logged");
     ///     });
