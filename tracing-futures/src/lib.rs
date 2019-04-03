@@ -22,7 +22,12 @@ extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
 extern crate tracing;
 
-use futures::{Future, Poll, Sink, StartSend, Stream};
+use std::{
+  pin::Pin,
+  task::Context,
+};
+
+use futures::{Sink, StartSend, Stream};
 use tracing::{dispatcher, Dispatch, Span};
 
 pub mod executor;
@@ -31,6 +36,10 @@ pub mod executor;
 pub trait Instrument: Sized {
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
+    }
+
+    fn boxed_instrument(self, span: Span) -> Instrumented<Pin<Box<Self>>> {
+        Instrumented { inner: Box::pin(self), span }
     }
 }
 
@@ -60,11 +69,21 @@ pub struct WithDispatch<T> {
 
 impl<T: Sized> Instrument for T {}
 
-impl<T: Future> Future for Instrumented<T> {
+impl<P: std::future::Future + Unpin> std::future::Future for Instrumented<P> {
+    type Output = P::Output;
+
+    fn poll(self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+        let _enter = this.span.enter();
+        Pin::new(&mut this.inner).poll(lw)
+    }
+}
+
+impl<T: futures::Future> futures::Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
         let _enter = self.span.enter();
         self.inner.poll()
     }
@@ -74,7 +93,7 @@ impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> futures::Poll<Option<Self::Item>, Self::Error> {
         let _enter = self.span.enter();
         self.inner.poll()
     }
@@ -89,7 +108,7 @@ impl<T: Sink> Sink for Instrumented<T> {
         self.inner.start_send(item)
     }
 
-    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
+    fn poll_complete(&mut self) -> futures::Poll<(), Self::SinkError> {
         let _enter = self.span.enter();
         self.inner.poll_complete()
     }
@@ -116,11 +135,11 @@ impl<T> Instrumented<T> {
 
 impl<T: Sized> WithSubscriber for T {}
 
-impl<T: Future> Future for WithDispatch<T> {
+impl<T: futures::Future> futures::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
         dispatcher::with_default(&self.dispatch, || inner.poll())
     }
@@ -157,7 +176,7 @@ mod tests {
     extern crate tokio;
 
     use super::{test_support::*, *};
-    use futures::{future, stream, task, Async};
+    use futures::{future, stream, task, Async, Future};
     use tracing::{subscriber::with_default, Level};
 
     struct PollN<T, E> {
@@ -166,10 +185,10 @@ mod tests {
         polls: usize,
     }
 
-    impl<T, E> Future for PollN<T, E> {
+    impl<T, E> futures::Future for PollN<T, E> {
         type Item = T;
         type Error = E;
-        fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
             self.polls += 1;
             if self.polls == self.finish_at {
                 self.and_return
