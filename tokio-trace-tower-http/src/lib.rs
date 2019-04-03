@@ -9,7 +9,7 @@ extern crate tokio_trace_futures;
 use std::marker::PhantomData;
 
 use futures::{Future, Poll};
-use tokio_trace::{field, Span};
+use tokio_trace::{field, Level, Span};
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower::MakeService;
 use tower_service::Service;
@@ -108,6 +108,7 @@ where
         let inner = &mut self.inner;
         span.enter(move || {
             span!(
+                Level::TRACE,
                 "request",
                 // TODO: custom `Value` impls for `http` types would be nicer
                 // than just sticking these in `debug`s...

@@ -2,8 +2,10 @@
 extern crate tokio_trace;
 extern crate tokio_trace_fmt;
 
+use tokio_trace::Level;
+
 fn shave(yak: usize) -> bool {
-    span!("shave", yak = yak).enter(|| {
+    span!(Level::TRACE, "shave", yak = yak).enter(|| {
         debug!(
             message = "hello! I'm gonna shave a yak.",
             excitement = "yay!"
@@ -26,7 +28,7 @@ fn main() {
         let mut number_shaved = 0;
         debug!("preparing to shave {} yaks", number_of_yaks);
 
-        span!("shaving_yaks", yaks_to_shave = number_of_yaks).enter(|| {
+        span!(Level::TRACE, "shaving_yaks", yaks_to_shave = number_of_yaks).enter(|| {
             info!("shaving yaks");
 
             for yak in 1..=number_of_yaks {

@@ -4,6 +4,7 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 extern crate proc_macro2;
+extern crate tokio_trace;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -52,6 +53,7 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
             span!(
+                tokio_trace::Level::TRACE,
                 #ident_str,
                 traced_function = &#ident_str
                 #(, #param_names = tokio_trace::field::debug(&#param_names_clone)),*

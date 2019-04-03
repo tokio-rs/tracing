@@ -5,7 +5,7 @@ extern crate tokio_trace_proc_macros;
 extern crate env_logger;
 extern crate tokio_trace_fmt;
 
-use tokio_trace::field;
+use tokio_trace::{field, Level};
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
@@ -13,7 +13,11 @@ fn main() {
     tokio_trace::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
 
-        let mut span = span!("Getting rec from another function.", number_of_recs = &num);
+        let mut span = span!(
+            Level::TRACE,
+            "Getting rec from another function.",
+            number_of_recs = &num
+        );
         span.enter(|| {
             let band = suggest_band();
             info!(
