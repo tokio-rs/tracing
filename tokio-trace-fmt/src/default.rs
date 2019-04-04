@@ -91,11 +91,11 @@ impl<'a> field::Visit for Recorder<'a> {
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
         self.maybe_pad();
-        if field.name() == "message" {
-            let _ = write!(self.writer, "{:?}", value);
-        } else {
-            let _ = write!(self.writer, "{}={:?}", field, value);
-        }
+        let _ = match field.name() {
+            "message" => write!(self.writer, "{:?}", value),
+            name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
+            name => write!(self.writer, "{}={:?}", name, value),
+        };
     }
 }
 
