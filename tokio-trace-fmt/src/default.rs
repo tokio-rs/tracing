@@ -94,7 +94,12 @@ impl<'a> field::Visit for Recorder<'a> {
         if field.name() == "message" {
             let _ = write!(self.writer, "{:?}", value);
         } else {
-            let _ = write!(self.writer, "{}={:?}", field, value);
+            if field.name().starts_with("r#") {
+                let field = field.name();
+                let _ = write!(self.writer, "{}={:?}", &field[2..], value);
+            } else {
+                let _ = write!(self.writer, "{}={:?}", field, value);
+            }
         }
     }
 }
