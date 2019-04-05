@@ -7,8 +7,8 @@ use std::{
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+use tokio_trace_core::dispatcher;
 pub(crate) use tokio_trace_core::span::{Attributes, Id, Record};
-use tokio_trace_core::{dispatcher, Metadata};
 
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
@@ -65,13 +65,13 @@ thread_local! {
 
 pub(crate) fn current() -> Option<Id> {
     CONTEXT
-        .try_with(|current| {
-            current
-                .borrow()
-                .last()
-                .map(|id| dispatcher::get_default(|subscriber| subscriber.clone_span(id)))
-        })
+        .try_with(|current| current.borrow().last().map(clone_id))
         .ok()?
+}
+
+#[inline]
+fn clone_id(id: &Id) -> Id {
+    dispatcher::get_default(|subscriber| subscriber.clone_span(id))
 }
 
 pub(crate) fn push(id: &Id) {
@@ -82,7 +82,7 @@ pub(crate) fn push(id: &Id) {
             return;
         }
 
-        let id = dispatcher::get_default(|subscriber| subscriber.clone_span(id));
+        let id = clone_id(id);
         current.push(id);
     });
 }
@@ -364,10 +364,17 @@ impl Store {
 }
 
 impl Data {
-    pub(crate) fn new(metadata: &Metadata) -> Self {
+    pub(crate) fn new(attrs: &Attributes) -> Self {
+        let parent = if attrs.is_root() {
+            None
+        } else if attrs.is_contextual() {
+            current()
+        } else {
+            attrs.parent().map(clone_id)
+        };
         Self {
-            name: metadata.name(),
-            parent: current(),
+            name: attrs.metadata().name(),
+            parent,
             ref_count: AtomicUsize::new(1),
             is_empty: true,
         }
