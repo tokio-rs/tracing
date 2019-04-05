@@ -75,19 +75,31 @@ pub(crate) fn current() -> Option<Id> {
 }
 
 pub(crate) fn push(id: &Id) {
-    let id = dispatcher::get_default(|subscriber| subscriber.clone_span(id));
     let _ = CONTEXT.try_with(|current| {
-        current.borrow_mut().push(id);
+        let mut current = current.borrow_mut();
+        if current.contains(id) {
+            // Ignore duplicate enters.
+            return;
+        }
+
+        let id = dispatcher::get_default(|subscriber| subscriber.clone_span(id));
+        current.push(id);
     });
 }
 
 pub(crate) fn pop(expected_id: &Id) {
     let mut id = CONTEXT
-        .try_with(|current| current.borrow_mut().pop())
+        .try_with(|current| {
+            let mut current = current.borrow_mut();
+            if current.last() == Some(expected_id) {
+                current.pop()
+            } else {
+                None
+            }
+        })
         .ok()
         .and_then(|i| i);
     if id.is_some() {
-        debug_assert_eq!(Some(expected_id), id.as_ref());
         dispatcher::get_default(|subscriber| {
             subscriber.drop_span(id.take().unwrap());
         })
