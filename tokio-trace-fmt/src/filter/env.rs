@@ -1,50 +1,16 @@
-use span;
-
 use regex::Regex;
-use tokio_trace_core::{
-    dispatcher::{self, Dispatch},
-    subscriber::Interest,
-    Level, Metadata,
-};
+use tokio_trace_core::{subscriber::Interest, Level, Metadata};
+use {filter::Filter, span::Context};
 
-use parking_lot::RwLock;
-use std::{env, error, fmt, marker::PhantomData};
+use std::env;
 
 pub const DEFAULT_FILTER_ENV: &'static str = "RUST_LOG";
-
-pub trait Filter<N> {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {
-        if self.enabled(metadata, ctx) {
-            Interest::always()
-        } else {
-            Interest::never()
-        }
-    }
-
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool;
-}
 
 #[derive(Debug)]
 pub struct EnvFilter {
     directives: Vec<Directive>,
     max_level: Level,
     includes_span_directive: bool,
-}
-
-#[derive(Debug)]
-pub struct ReloadFilter<F> {
-    inner: RwLock<F>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ReloadHandle<F> {
-    dispatch: Dispatch,
-    _p: PhantomData<fn(F)>,
-}
-
-#[derive(Debug)]
-pub struct ReloadError {
-    _p: (),
 }
 
 #[derive(Debug)]
@@ -126,7 +92,7 @@ where
 }
 
 impl<N> Filter<N> for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context<N>) -> Interest {
+    fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
         if !self.includes_span_directive && metadata.level() > &self.max_level {
             return Interest::never();
         }
@@ -155,7 +121,7 @@ impl<N> Filter<N> for EnvFilter {
         interest
     }
 
-    fn enabled<'a>(&self, metadata: &Metadata, ctx: &span::Context<'a, N>) -> bool {
+    fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
             let accepts_level = metadata.level() <= &directive.level;
             match directive.in_span.as_ref() {
@@ -218,82 +184,7 @@ fn parse_directives(spec: &str) -> Vec<Directive> {
         .collect()
 }
 
-// ===== impl ReloadFilter =====
-
-impl<F, N> Filter<N> for ReloadFilter<F>
-where
-    F: Filter<N>,
-{
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {
-        self.inner.read().callsite_enabled(metadata, ctx)
-    }
-
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
-        self.inner.read().enabled(metadata, ctx)
-    }
-}
-
-impl<F: 'static> ReloadFilter<F> {
-    fn reload<N>(&self, new_filter: impl Into<F>)
-    where
-        F: Filter<N>,
-    {
-        *self.inner.write() = new_filter.into();
-    }
-
-    pub fn reload_current<N>(new_filter: impl Into<F>) -> Result<(), ReloadError>
-    where
-        F: Filter<N>,
-    {
-        let mut new_filter = Some(new_filter);
-        dispatcher::get_default(|current| {
-            let current = current
-                .downcast_ref::<ReloadFilter<F>>()
-                .ok_or(ReloadError { _p: () })?;
-            let new_filter = new_filter.take().expect("cannot be taken twice");
-            current.reload(new_filter);
-            Ok(())
-        })
-    }
-}
-
-// ===== impl ReloadHandle =====
-
-impl<F: 'static> ReloadHandle<F> {
-    pub fn try_from<N>(dispatch: Dispatch) -> Result<Self, ReloadError>
-    where
-        F: Filter<N>,
-    {
-        if dispatch.is::<ReloadFilter<F>>() {
-            Ok(Self {
-                dispatch,
-                _p: PhantomData,
-            })
-        } else {
-            Err(ReloadError { _p: () })
-        }
-    }
-
-    pub fn reload<N>(&self, new_filter: impl Into<F>)
-    where
-        F: Filter<N>,
-    {
-        self.dispatch
-            .downcast_ref::<ReloadFilter<F>>()
-            .expect("dispatch must still downcast to reload filter")
-            .reload(new_filter)
-    }
-}
-
-// ===== impl ReloadError =====
-
-impl fmt::Display for ReloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt("dispatcher could not be downcast to reloadable filter", f)
-    }
-}
-
-impl error::Error for ReloadError {}
+// ===== impl Directive =====
 
 impl Directive {
     fn len(&self) -> usize {
@@ -415,22 +306,12 @@ impl Default for Directive {
     }
 }
 
-impl<'a, F, N> Filter<N> for F
-where
-    F: Fn(&Metadata, &span::Context<N>) -> bool,
-    N: ::NewVisitor<'a>,
-{
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
-        (self)(metadata, ctx)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use default::NewRecorder;
-    use span::*;
     use tokio_trace_core::*;
+    use span::*;
 
     struct Cs;
 
