@@ -81,14 +81,17 @@ impl<F: 'static> Handle<F> {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.kind {
-            ErrorKind::SubscriberGone => "subscriber no longer exists".fmt(f),
-        }
+        error::Error::description(self).fmt(f)
     }
 }
 
-impl error::Error for Error {}
-
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        match self.kind {
+            ErrorKind::SubscriberGone => "subscriber no longer exists",
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
