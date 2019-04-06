@@ -310,8 +310,8 @@ impl Default for Directive {
 mod tests {
     use super::*;
     use default::NewRecorder;
-    use tokio_trace_core::*;
     use span::*;
+    use tokio_trace_core::*;
 
     struct Cs;
 
