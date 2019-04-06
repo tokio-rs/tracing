@@ -17,7 +17,10 @@ pub trait Filter<N> {
 pub mod env;
 pub mod reload;
 
-pub use self::env::EnvFilter;
+pub use self::{
+    env::EnvFilter,
+    reload::{reload_current, ReloadFilter},
+};
 
 impl<'a, F, N> Filter<N> for F
 where
