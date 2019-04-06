@@ -3,7 +3,7 @@ use std::{
     error, fmt,
     sync::{Arc, Weak},
 };
-use tokio_trace_core::{dispatcher, subscriber::Interest, Metadata};
+use tokio_trace_core::{subscriber::Interest, Metadata};
 use {filter::Filter, span::Context};
 
 #[derive(Debug)]
@@ -23,23 +23,7 @@ pub struct Error {
 
 #[derive(Debug)]
 enum ErrorKind {
-    Downcast,
     SubscriberGone,
-}
-
-pub fn reload_current<F, N>(new_filter: impl Into<F>) -> Result<(), Error>
-where
-    F: Filter<N> + 'static,
-{
-    let mut new_filter = Some(new_filter);
-    dispatcher::get_default(|current| {
-        let current = current.downcast_ref::<ReloadFilter<F>>().ok_or(Error {
-            kind: ErrorKind::Downcast,
-        })?;
-        let new_filter = new_filter.take().expect("cannot be taken twice");
-        current.reload(new_filter);
-        Ok(())
-    })
 }
 
 // ===== impl ReloadFilter =====
@@ -72,13 +56,6 @@ impl<F: 'static> ReloadFilter<F> {
             inner: Arc::downgrade(&self.inner),
         }
     }
-
-    fn reload<N>(&self, new_filter: impl Into<F>)
-    where
-        F: Filter<N>,
-    {
-        *self.inner.write() = new_filter.into();
-    }
 }
 
 // ===== impl Handle =====
@@ -101,7 +78,6 @@ impl<F: 'static> Handle<F> {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
-            ErrorKind::Downcast => "dispatcher could not be downcast to reloadable filter".fmt(f),
             ErrorKind::SubscriberGone => "subscriber no longer exists".fmt(f),
         }
     }
