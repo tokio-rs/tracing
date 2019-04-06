@@ -32,8 +32,10 @@ impl<F, N> Filter<N> for ReloadFilter<F>
 where
     F: Filter<N>,
 {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> Interest {
-        self.inner.read().callsite_enabled(metadata, ctx)
+    fn callsite_enabled(&self, _: &Metadata, _: &Context<N>) -> Interest {
+        // TODO(eliza): When tokio-rs/tokio#1039 lands, we can allow our
+        // interest to be cached. For now, we must always return `sometimes`.
+        Interest::sometimes()
     }
 
     fn enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> bool {
@@ -65,6 +67,8 @@ impl<F: 'static> Handle<F> {
     where
         F: Filter<N>,
     {
+        // TODO(eliza): When tokio-rs/tokio#1039 lands, this is where we would
+        // invalidate the callsite cache.
         let inner = self.inner.upgrade().ok_or(Error {
             kind: ErrorKind::SubscriberGone,
         })?;
@@ -89,7 +93,7 @@ impl error::Error for Error {}
 #[cfg(test)]
 mod test {
     use ::*;
-    use std::ync::atomic::{AtomicUsize, Ordering},
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio_trace_core::{dispatcher::{self, Dispatch}, Metadata};
 
     #[test]
