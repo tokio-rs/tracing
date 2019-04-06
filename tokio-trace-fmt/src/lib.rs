@@ -92,7 +92,7 @@ where
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes) -> span::Id {
-        let span = span::Data::new(attrs.metadata());
+        let span = span::Data::new(attrs);
         self.spans.new_span(span, attrs, &self.new_visitor)
     }
 
