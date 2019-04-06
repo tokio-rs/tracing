@@ -13,3 +13,5 @@ members = [
     "tokio-trace-subscriber"
 ]
 
+[patch.crates-io]
+tokio-trace-core = { git = "https://github.com/tokio-rs/tokio"}
