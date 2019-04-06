@@ -76,6 +76,17 @@ where
     }
 }
 
+impl<N, E, F> FmtSubscriber<N, E, filter::ReloadFilter<F>>
+where
+    F: Filter<N> + 'static,
+{
+    /// Returns a `Handle` that may be used to reload this subscriber's
+    /// filter.
+    pub fn reload_handle(&self) -> filter::reload::Handle<F> {
+        self.filter.handle()
+    }
+}
+
 impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
@@ -209,7 +220,6 @@ impl<N, E, F> Builder<N, E, F>
 where
     F: Filter<N> + 'static,
 {
-
     /// Configures the subscriber being built to allow filter reloading at
     /// runtime.
     pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F>> {
@@ -219,6 +229,17 @@ where
             filter: filter::ReloadFilter::new(self.filter),
             settings: self.settings,
         }
+    }
+}
+
+impl<N, E, F> Builder<N, E, filter::ReloadFilter<F>>
+where
+    F: Filter<N> + 'static,
+{
+    /// Returns a `Handle` that may be used to reload the constructed subscriber's
+    /// filter.
+    pub fn reload_handle(&self) -> filter::reload::Handle<F> {
+        self.filter.handle()
     }
 }
 
