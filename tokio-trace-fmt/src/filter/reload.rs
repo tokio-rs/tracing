@@ -54,6 +54,15 @@ where
 }
 
 impl<F: 'static> ReloadFilter<F> {
+    pub fn new<N>(f: F) -> Self
+    where
+        F: Filter<N>,
+    {
+        Self {
+            inner: RwLock::new(f),
+        }
+    }
+
     fn reload<N>(&self, new_filter: impl Into<F>)
     where
         F: Filter<N>,

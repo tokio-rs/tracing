@@ -205,6 +205,23 @@ where
     }
 }
 
+impl<N, E, F> Builder<N, E, F>
+where
+    F: Filter<N> + 'static,
+{
+
+    /// Configures the subscriber being built to allow filter reloading at
+    /// runtime.
+    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F>> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event,
+            filter: filter::ReloadFilter::new(self.filter),
+            settings: self.settings,
+        }
+    }
+}
+
 impl<N, E, F> Builder<N, E, F> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
