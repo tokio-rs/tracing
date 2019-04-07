@@ -95,9 +95,12 @@ impl error::Error for Error {
 
 #[cfg(test)]
 mod test {
-    use ::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use tokio_trace_core::{dispatcher::{self, Dispatch}, Metadata};
+    use tokio_trace_core::{
+        dispatcher::{self, Dispatch},
+        Metadata,
+    };
+    use *;
 
     #[test]
     fn reload_handle() {
