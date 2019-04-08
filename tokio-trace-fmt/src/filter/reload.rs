@@ -75,6 +75,15 @@ impl<F: 'static> Handle<F> {
         *inner.write() = new_filter.into();
         Ok(())
     }
+
+    /// Returns a clone of the filter's current value if it still exists.
+    /// Otherwise, if the filter has been dropped, returns `None`.
+    pub fn clone_current(&self) -> Option<F>
+    where
+        F: Clone,
+    {
+        self.inner.upgrade().map(|inner| inner.read().clone())
+    }
 }
 
 // ===== impl Error =====
