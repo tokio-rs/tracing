@@ -67,12 +67,24 @@ impl<F: 'static> Handle<F> {
     where
         F: Filter<N>,
     {
-        // TODO(eliza): When tokio-rs/tokio#1039 lands, this is where we would
-        // invalidate the callsite cache.
+        self.modify(|filter| {
+            *filter = new_filter.into();
+        })
+    }
+
+    /// Invokes a closure with a mutable reference to the current filter,
+    /// allowing it to be modified in place.
+    pub fn modify<N>(&self, f: impl FnOnce(&mut F)) -> Result<(), Error>
+    where
+        F: Filter<N>,
+    {
         let inner = self.inner.upgrade().ok_or(Error {
             kind: ErrorKind::SubscriberGone,
         })?;
-        *inner.write() = new_filter.into();
+        let mut inner = inner.write();
+        f(&mut *inner);
+        // TODO(eliza): When tokio-rs/tokio#1039 lands, this is where we would
+        // invalidate the callsite cache.
         Ok(())
     }
 
