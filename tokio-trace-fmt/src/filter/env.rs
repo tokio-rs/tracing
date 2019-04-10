@@ -1,23 +1,10 @@
-use span;
-
 use regex::Regex;
 use tokio_trace_core::{subscriber::Interest, Level, Metadata};
+use {filter::Filter, span::Context};
 
 use std::env;
 
 pub const DEFAULT_FILTER_ENV: &'static str = "RUST_LOG";
-
-pub trait Filter<N> {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {
-        if self.enabled(metadata, ctx) {
-            Interest::always()
-        } else {
-            Interest::never()
-        }
-    }
-
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool;
-}
 
 #[derive(Debug)]
 pub struct EnvFilter {
@@ -105,7 +92,7 @@ where
 }
 
 impl<N> Filter<N> for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context<N>) -> Interest {
+    fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
         if !self.includes_span_directive && metadata.level() > &self.max_level {
             return Interest::never();
         }
@@ -134,7 +121,7 @@ impl<N> Filter<N> for EnvFilter {
         interest
     }
 
-    fn enabled<'a>(&self, metadata: &Metadata, ctx: &span::Context<'a, N>) -> bool {
+    fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
             let accepts_level = metadata.level() <= &directive.level;
             match directive.in_span.as_ref() {
@@ -316,16 +303,6 @@ impl Default for Directive {
             in_span: None,
             fields: Vec::new(),
         }
-    }
-}
-
-impl<'a, F, N> Filter<N> for F
-where
-    F: Fn(&Metadata, &span::Context<N>) -> bool,
-    N: ::NewVisitor<'a>,
-{
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
-        (self)(metadata, ctx)
     }
 }
 

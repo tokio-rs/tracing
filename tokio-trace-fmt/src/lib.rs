@@ -1,4 +1,7 @@
 extern crate tokio_trace_core;
+#[cfg(test)]
+#[macro_use]
+extern crate tokio_trace;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
@@ -73,6 +76,17 @@ where
     #[inline]
     fn ctx(&self) -> span::Context<N> {
         span::Context::new(&self.spans, &self.new_visitor)
+    }
+}
+
+impl<N, E, F> FmtSubscriber<N, E, filter::ReloadFilter<F>>
+where
+    F: Filter<N> + 'static,
+{
+    /// Returns a `Handle` that may be used to reload this subscriber's
+    /// filter.
+    pub fn reload_handle(&self) -> filter::reload::Handle<F> {
+        self.filter.handle()
     }
 }
 
@@ -202,6 +216,33 @@ where
             spans: span::Store::with_capacity(32),
             settings: self.settings,
         }
+    }
+}
+
+impl<N, E, F> Builder<N, E, F>
+where
+    F: Filter<N> + 'static,
+{
+    /// Configures the subscriber being built to allow filter reloading at
+    /// runtime.
+    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F>> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event,
+            filter: filter::ReloadFilter::new(self.filter),
+            settings: self.settings,
+        }
+    }
+}
+
+impl<N, E, F> Builder<N, E, filter::ReloadFilter<F>>
+where
+    F: Filter<N> + 'static,
+{
+    /// Returns a `Handle` that may be used to reload the constructed subscriber's
+    /// filter.
+    pub fn reload_handle(&self) -> filter::reload::Handle<F> {
+        self.filter.handle()
     }
 }
 
