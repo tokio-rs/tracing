@@ -23,10 +23,14 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let listen_addr = env::args().nth(1).unwrap_or("127.0.0.1:8081".to_string());
+    let listen_addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:8081".to_string());
     let listen_addr = listen_addr.parse::<SocketAddr>()?;
 
-    let server_addr = env::args().nth(2).unwrap_or("127.0.0.1:3000".to_string());
+    let server_addr = env::args()
+        .nth(2)
+        .unwrap_or_else(|| "127.0.0.1:3000".to_string());
     let server_addr = server_addr.parse::<SocketAddr>()?;
 
     // Create a TCP listener which will listen for incoming connections.

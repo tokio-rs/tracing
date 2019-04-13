@@ -118,12 +118,12 @@ impl<'a> AsTrace for log::Record<'a> {
 impl AsLog for tokio_trace::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
-        match self {
-            &tokio_trace::Level::ERROR => log::Level::Error,
-            &tokio_trace::Level::WARN => log::Level::Warn,
-            &tokio_trace::Level::INFO => log::Level::Info,
-            &tokio_trace::Level::DEBUG => log::Level::Debug,
-            &tokio_trace::Level::TRACE => log::Level::Trace,
+        match *self {
+            tokio_trace::Level::ERROR => log::Level::Error,
+            tokio_trace::Level::WARN => log::Level::Warn,
+            tokio_trace::Level::INFO => log::Level::Info,
+            tokio_trace::Level::DEBUG => log::Level::Debug,
+            tokio_trace::Level::TRACE => log::Level::Trace,
         }
     }
 }
@@ -466,8 +466,8 @@ impl Subscriber for TraceLogger {
                 &log::Record::builder()
                     .metadata(log_meta)
                     .target(meta.target)
-                    .module_path(meta.module_path.as_ref().map(|&p| p))
-                    .file(meta.file.as_ref().map(|&f| f))
+                    .module_path(meta.module_path.as_ref().cloned())
+                    .file(meta.file.as_ref().cloned())
                     .line(meta.line)
                     .args(format_args!(
                         "{}{}{}{}",

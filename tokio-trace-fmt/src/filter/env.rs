@@ -4,7 +4,7 @@ use {filter::Filter, span::Context};
 
 use std::env;
 
-pub const DEFAULT_FILTER_ENV: &'static str = "RUST_LOG";
+pub const DEFAULT_FILTER_ENV: &str = "RUST_LOG";
 
 #[derive(Debug)]
 pub struct EnvFilter {
@@ -93,13 +93,13 @@ where
 
 impl<N> Filter<N> for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
-        if !self.includes_span_directive && metadata.level() > &self.max_level {
+        if !self.includes_span_directive && *metadata.level() > self.max_level {
             return Interest::never();
         }
 
         let mut interest = Interest::never();
         for directive in self.directives_for(metadata) {
-            let accepts_level = metadata.level() <= &directive.level;
+            let accepts_level = *metadata.level() <= directive.level;
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
@@ -123,7 +123,7 @@ impl<N> Filter<N> for EnvFilter {
 
     fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
-            let accepts_level = metadata.level() <= &directive.level;
+            let accepts_level = *metadata.level() <= directive.level;
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
