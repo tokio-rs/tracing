@@ -277,6 +277,7 @@ impl<N, E, F> Builder<N, E, F> {
 
     /// Sets the subscriber being built to use the default full span formatter.
     // TODO: this should probably just become the default.
+    #[allow(clippy::type_complexity)]
     pub fn full(
         self,
     ) -> Builder<N, fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result, F>
