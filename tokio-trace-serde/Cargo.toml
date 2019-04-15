@@ -1,0 +1,9 @@
+[package]
+name = "tokio-trace-serde"
+version = "0.1.0"
+authors = ["J Haigh <debugsteven@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde = "1.0.90"
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
