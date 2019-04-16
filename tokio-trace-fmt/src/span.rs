@@ -60,9 +60,9 @@ enum State {
     Empty(usize),
 }
 
-struct MapVisitor<'a, N> {
-    new_visitor: N,
-    map: &'a mut HashMap<Field, String>,
+struct MapVisitor<'map, 'visitor, N> {
+    map: &'map mut HashMap<Field, String>,
+    new_visitor: &'visitor N,
 }
 
 thread_local! {
@@ -403,20 +403,20 @@ impl Drop for Data {
     }
 }
 
-impl<'a, N> MapVisitor<'a, N>
+impl<'map, 'visitor, N> MapVisitor<'map, 'visitor, N>
 where
-    N: ::NewVisitor<'a>,
+    N: for<'a> ::NewVisitor<'a>,
 {
-    fn visitor(&'a mut self, field: &Field) -> N::Visitor {
-        let mut entry = self.map.entry(field.clone()).or_insert_with(String::new);
+    fn visitor<'a>(&'a mut self, field: &Field) -> <N as ::NewVisitor<'a>>::Visitor {
+        let entry: &'map mut String = self.map.entry(field.clone()).or_insert_with(String::new);
         entry.clear();
         self.new_visitor.make(&mut entry)
     }
 }
 
-impl<'a, N> field::Visit for MapVisitor<'a, N>
+impl<'map, 'visitor, N> field::Visit for MapVisitor<'map, 'visitor, N>
 where
-    N: ::NewVisitor<'a>,
+    N: for<'a> ::NewVisitor<'a>,
 {
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.visitor(field).record_i64(field, value)
