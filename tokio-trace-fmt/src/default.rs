@@ -23,11 +23,14 @@ where
         meta.target()
     )?;
     {
-        let mut recorder = ctx.new_visitor(f, true);
+        let mut recorder = ctx.new_visitor(f);
         event.record(&mut recorder);
     }
-    ctx.with_current(|(_, span)| write!(f, " {}", span.fields()))
-        .unwrap_or(Ok(()))?;
+    ctx.with_current(|(_, span)| {
+        span.fields()
+            .try_for_each(|(_, value)| write!(f, " {}", value))
+    })
+    .unwrap_or(Ok(()))?;
     writeln!(f)
 }
 
@@ -44,7 +47,7 @@ where
         meta.target()
     )?;
     {
-        let mut recorder = ctx.new_visitor(f, true);
+        let mut recorder = ctx.new_visitor(f);
         event.record(&mut recorder);
     }
     writeln!(f)
@@ -54,20 +57,11 @@ pub struct NewRecorder;
 
 pub struct Recorder<'a> {
     writer: &'a mut Write,
-    is_empty: bool,
 }
 
 impl<'a> Recorder<'a> {
-    pub fn new(writer: &'a mut Write, is_empty: bool) -> Self {
-        Self { writer, is_empty }
-    }
-
-    fn maybe_pad(&mut self) {
-        if self.is_empty {
-            self.is_empty = false;
-        } else {
-            let _ = write!(self.writer, " ");
-        }
+    pub fn new(writer: &'a mut Write) -> Self {
+        Self { writer }
     }
 }
 
@@ -75,8 +69,8 @@ impl<'a> ::NewVisitor<'a> for NewRecorder {
     type Visitor = Recorder<'a>;
 
     #[inline]
-    fn make(&self, writer: &'a mut Write, is_empty: bool) -> Self::Visitor {
-        Recorder::new(writer, is_empty)
+    fn make(&self, writer: &'a mut fmt::Write) -> Self::Visitor {
+        Recorder::new(writer)
     }
 }
 
@@ -90,7 +84,6 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
-        self.maybe_pad();
         let _ = match field.name() {
             "message" => write!(self.writer, "{:?}", value),
             name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
@@ -154,10 +147,9 @@ where
             write!(f, "{}", style.paint(span.name()))?;
             seen = true;
 
-            let fields = span.fields();
-            if !fields.is_empty() {
-                write!(f, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
-            }
+            span.fields().try_for_each(|(_, value)| {
+                write!(f, " {}{}{}", style.paint("{"), value, style.paint("}"))
+            });
             ":".fmt(f)
         })?;
         if seen {

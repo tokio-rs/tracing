@@ -173,19 +173,19 @@ where
 pub trait NewVisitor<'a> {
     type Visitor: field::Visit + 'a;
 
-    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor;
+    fn make(&self, writer: &'a mut fmt::Write) -> Self::Visitor;
 }
 
 impl<'a, F, R> NewVisitor<'a> for F
 where
-    F: Fn(&'a mut fmt::Write, bool) -> R,
+    F: Fn(&'a mut fmt::Write) -> R,
     R: field::Visit + 'a,
 {
     type Visitor = R;
 
     #[inline]
-    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor {
-        (self)(writer, is_empty)
+    fn make(&self, writer: &'a mut fmt::Write) -> Self::Visitor {
+        (self)(writer)
     }
 }
 

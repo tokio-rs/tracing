@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{
     cell::RefCell,
     fmt, mem, str,
@@ -7,8 +8,8 @@ use std::{
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use tokio_trace_core::dispatcher;
 pub(crate) use tokio_trace_core::span::{Attributes, Id, Record};
+use tokio_trace_core::{dispatcher, field, Field};
 
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
@@ -49,7 +50,7 @@ struct Slab {
 
 #[derive(Debug)]
 struct Slot {
-    fields: String,
+    fields: HashMap<Field, String>,
     span: State,
 }
 
@@ -57,6 +58,11 @@ struct Slot {
 enum State {
     Full(Data),
     Empty(usize),
+}
+
+struct MapVisitor<'a, N> {
+    new_visitor: N,
+    map: &'a mut HashMap<Field, String>,
 }
 
 thread_local! {
@@ -116,8 +122,12 @@ impl<'a> Span<'a> {
         }
     }
 
-    pub fn fields(&self) -> &str {
-        self.lock.fields.as_ref()
+    pub fn fields<'b>(&'b self) -> impl Iterator<Item = (&'b Field, &'b String)> + 'b {
+        self.lock.fields.iter()
+    }
+
+    pub fn has_field(&self, field: &str) -> bool {
+        self.lock.fields.keys().any(|key| key.name() == field)
     }
 
     pub fn parent(&self) -> Option<&Id> {
@@ -211,15 +221,11 @@ impl<'a, N> Context<'a, N> {
         Self { store, new_visitor }
     }
 
-    pub fn new_visitor<'writer>(
-        &self,
-        writer: &'writer mut fmt::Write,
-        is_empty: bool,
-    ) -> N::Visitor
+    pub fn new_visitor<'writer>(&self, writer: &'writer mut fmt::Write) -> N::Visitor
     where
         N: ::NewVisitor<'writer>,
     {
-        self.new_visitor.make(writer, is_empty)
+        self.new_visitor.make(writer)
     }
 }
 
@@ -397,14 +403,53 @@ impl Drop for Data {
     }
 }
 
+impl<'a, N> MapVisitor<'a, N>
+where
+    N: ::NewVisitor<'a>,
+{
+    fn visitor(&'a mut self, field: &Field) -> N::Visitor {
+        let mut entry = self.map.entry(field.clone()).or_insert_with(String::new);
+        entry.clear();
+        self.new_visitor.make(&mut entry)
+    }
+}
+
+impl<'a, N> field::Visit for MapVisitor<'a, N>
+where
+    N: ::NewVisitor<'a>,
+{
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.visitor(field).record_i64(field, value)
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.visitor(field).record_u64(field, value)
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        self.visitor(field).record_bool(field, value)
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.visitor(field).record_str(field, value)
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+        self.visitor(field).record_debug(field, value)
+    }
+}
+
 impl Slot {
     fn new<N>(mut data: Data, attrs: &Attributes, new_visitor: &N) -> Self
     where
         N: for<'a> ::NewVisitor<'a>,
     {
-        let mut fields = String::new();
+        let mut fields = HashMap::new();
         {
-            let mut recorder = new_visitor.make(&mut fields, true);
+            let mut recorder = MapVisitor {
+                new_visitor,
+                map: &mut fields,
+            };
             attrs.record(&mut recorder);
         }
         if fields.is_empty() {
@@ -429,7 +474,10 @@ impl Slot {
     {
         let fields = &mut self.fields;
         {
-            let mut recorder = new_visitor.make(fields, true);
+            let mut recorder = MapVisitor {
+                new_visitor,
+                map: &mut fields,
+            };
             attrs.record(&mut recorder);
         }
         if fields.is_empty() {
@@ -446,15 +494,18 @@ impl Slot {
         N: for<'a> ::NewVisitor<'a>,
     {
         let state = &mut self.span;
-        let buf = &mut self.fields;
         match state {
             State::Empty(_) => return,
             State::Full(ref mut data) => {
                 {
-                    let mut recorder = new_visitor.make(buf, data.is_empty);
+                    let mut recorder = MapVisitor {
+                        new_visitor,
+                        map: &mut self.fields,
+                    };
+                    // let mut recorder = new_visitor.make(buf, data.is_empty);
                     fields.record(&mut recorder);
                 }
-                if buf.is_empty() {
+                if self.fields.is_empty() {
                     data.is_empty = false;
                 }
             }

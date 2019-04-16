@@ -147,7 +147,7 @@ impl<N> Filter<N> for EnvFilter {
                                     || directive
                                         .fields
                                         .iter()
-                                        .any(|field| span.fields().contains(field))
+                                        .any(|field| span.has_field(field.as_ref()))
                                 {
                                     // Return `Err` to short-circuit the span visitation.
                                     Err(())
