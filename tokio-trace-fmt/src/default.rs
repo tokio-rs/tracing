@@ -149,7 +149,7 @@ where
 
             span.fields().try_for_each(|(_, value)| {
                 write!(f, " {}{}{}", style.paint("{"), value, style.paint("}"))
-            });
+            })?;
             ":".fmt(f)
         })?;
         if seen {

@@ -403,39 +403,51 @@ impl Drop for Data {
     }
 }
 
-impl<'map, 'visitor, N> MapVisitor<'map, 'visitor, N>
-where
-    N: for<'a> ::NewVisitor<'a>,
-{
-    fn visitor<'a>(&'a mut self, field: &Field) -> <N as ::NewVisitor<'a>>::Visitor {
-        let entry: &'map mut String = self.map.entry(field.clone()).or_insert_with(String::new);
-        entry.clear();
-        self.new_visitor.make(&mut entry)
-    }
-}
+// impl<'map, 'visitor, N> MapVisitor<'map, 'visitor, N>
+// where
+//     N: for<'a> ::NewVisitor<'a>,
+// {
+//     fn visitor<'a>(&'a mut self, field: &Field) -> <N as ::NewVisitor<'a>>::Visitor {
+//         let mut entry = self.map.entry(field.clone()).or_insert_with(String::new);
+//         entry.clear();
+//         self.new_visitor.make(&mut entry)
+//     }
+// }
 
 impl<'map, 'visitor, N> field::Visit for MapVisitor<'map, 'visitor, N>
 where
     N: for<'a> ::NewVisitor<'a>,
 {
     fn record_i64(&mut self, field: &Field, value: i64) {
-        self.visitor(field).record_i64(field, value)
+        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
+        entry.clear();
+        self.new_visitor.make(entry).record_i64(field, value)
+        // self.visitor(field).record_i64(field, value)
     }
 
     fn record_u64(&mut self, field: &Field, value: u64) {
-        self.visitor(field).record_u64(field, value)
+        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
+        entry.clear();
+        self.new_visitor.make(entry).record_u64(field, value)
+        // self.visitor(field).record_u64(field, value)
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
-        self.visitor(field).record_bool(field, value)
+        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
+        entry.clear();
+        self.new_visitor.make(entry).record_bool(field, value)
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
-        self.visitor(field).record_str(field, value)
+        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
+        entry.clear();
+        self.new_visitor.make(entry).record_str(field, value)
     }
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
-        self.visitor(field).record_debug(field, value)
+        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
+        entry.clear();
+        self.new_visitor.make(entry).record_debug(field, value)
     }
 }
 
@@ -472,15 +484,14 @@ impl Slot {
     where
         N: for<'a> ::NewVisitor<'a>,
     {
-        let fields = &mut self.fields;
         {
             let mut recorder = MapVisitor {
                 new_visitor,
-                map: &mut fields,
+                map: &mut self.fields,
             };
             attrs.record(&mut recorder);
         }
-        if fields.is_empty() {
+        if self.fields.is_empty() {
             data.is_empty = false;
         }
         match mem::replace(&mut self.span, State::Full(data)) {
