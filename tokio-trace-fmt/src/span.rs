@@ -221,11 +221,15 @@ impl<'a, N> Context<'a, N> {
         Self { store, new_visitor }
     }
 
-    pub fn new_visitor<'writer>(&self, writer: &'writer mut fmt::Write) -> N::Visitor
+    pub fn new_visitor<'writer>(
+        &self,
+        writer: &'writer mut fmt::Write,
+        is_empty: bool,
+    ) -> N::Visitor
     where
         N: ::NewVisitor<'writer>,
     {
-        self.new_visitor.make(writer)
+        self.new_visitor.make(writer, is_empty)
     }
 }
 
@@ -403,51 +407,68 @@ impl Drop for Data {
     }
 }
 
-// impl<'map, 'visitor, N> MapVisitor<'map, 'visitor, N>
-// where
-//     N: for<'a> ::NewVisitor<'a>,
-// {
-//     fn visitor<'a>(&'a mut self, field: &Field) -> <N as ::NewVisitor<'a>>::Visitor {
-//         let mut entry = self.map.entry(field.clone()).or_insert_with(String::new);
-//         entry.clear();
-//         self.new_visitor.make(&mut entry)
-//     }
-// }
-
 impl<'map, 'visitor, N> field::Visit for MapVisitor<'map, 'visitor, N>
 where
     N: for<'a> ::NewVisitor<'a>,
 {
     fn record_i64(&mut self, field: &Field, value: i64) {
-        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
-        entry.clear();
-        self.new_visitor.make(entry).record_i64(field, value)
-        // self.visitor(field).record_i64(field, value)
+        self.new_visitor
+            .make(
+                self.map
+                    .entry(field.clone())
+                    .and_modify(String::clear)
+                    .or_insert_with(String::new),
+                true,
+            )
+            .record_i64(field, value)
     }
 
     fn record_u64(&mut self, field: &Field, value: u64) {
-        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
-        entry.clear();
-        self.new_visitor.make(entry).record_u64(field, value)
-        // self.visitor(field).record_u64(field, value)
+        self.new_visitor
+            .make(
+                self.map
+                    .entry(field.clone())
+                    .and_modify(String::clear)
+                    .or_insert_with(String::new),
+                true,
+            )
+            .record_u64(field, value)
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
-        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
-        entry.clear();
-        self.new_visitor.make(entry).record_bool(field, value)
+        self.new_visitor
+            .make(
+                self.map
+                    .entry(field.clone())
+                    .and_modify(String::clear)
+                    .or_insert_with(String::new),
+                true,
+            )
+            .record_bool(field, value)
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
-        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
-        entry.clear();
-        self.new_visitor.make(entry).record_str(field, value)
+        self.new_visitor
+            .make(
+                self.map
+                    .entry(field.clone())
+                    .and_modify(String::clear)
+                    .or_insert_with(String::new),
+                true,
+            )
+            .record_str(field, value)
     }
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
-        let entry = self.map.entry(field.clone()).or_insert_with(String::new);
-        entry.clear();
-        self.new_visitor.make(entry).record_debug(field, value)
+        self.new_visitor
+            .make(
+                self.map
+                    .entry(field.clone())
+                    .and_modify(String::clear)
+                    .or_insert_with(String::new),
+                true,
+            )
+            .record_debug(field, value)
     }
 }
 

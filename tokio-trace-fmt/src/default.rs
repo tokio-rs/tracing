@@ -17,13 +17,13 @@ where
     let meta = event.metadata();
     write!(
         f,
-        "{} {}{}: ",
+        "{} {}{}:",
         FmtLevel(meta.level()),
         FmtCtx(&ctx),
         meta.target()
     )?;
     {
-        let mut recorder = ctx.new_visitor(f);
+        let mut recorder = ctx.new_visitor(f, false);
         event.record(&mut recorder);
     }
     ctx.with_current(|(_, span)| {
@@ -41,13 +41,13 @@ where
     let meta = event.metadata();
     write!(
         f,
-        "{} {}{}: ",
+        "{} {}{}:",
         FmtLevel(meta.level()),
         FullCtx(&ctx),
         meta.target()
     )?;
     {
-        let mut recorder = ctx.new_visitor(f);
+        let mut recorder = ctx.new_visitor(f, false);
         event.record(&mut recorder);
     }
     writeln!(f)
@@ -57,11 +57,20 @@ pub struct NewRecorder;
 
 pub struct Recorder<'a> {
     writer: &'a mut Write,
+    is_empty: bool,
 }
 
 impl<'a> Recorder<'a> {
-    pub fn new(writer: &'a mut Write) -> Self {
-        Self { writer }
+    pub fn new(writer: &'a mut Write, is_empty: bool) -> Self {
+        Self { writer, is_empty }
+    }
+
+    fn maybe_pad(&mut self) {
+        if self.is_empty {
+            self.is_empty = false;
+        } else {
+            let _ = write!(self.writer, " ");
+        }
     }
 }
 
@@ -69,8 +78,8 @@ impl<'a> ::NewVisitor<'a> for NewRecorder {
     type Visitor = Recorder<'a>;
 
     #[inline]
-    fn make(&self, writer: &'a mut fmt::Write) -> Self::Visitor {
-        Recorder::new(writer)
+    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor {
+        Recorder::new(writer, is_empty)
     }
 }
 
@@ -84,6 +93,7 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+        self.maybe_pad();
         let _ = match field.name() {
             "message" => write!(self.writer, "{:?}", value),
             name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
@@ -148,7 +158,7 @@ where
             seen = true;
 
             span.fields().try_for_each(|(_, value)| {
-                write!(f, " {}{}{}", style.paint("{"), value, style.paint("}"))
+                write!(f, "{}{}{}", style.paint("{"), value, style.paint("}"))
             })?;
             ":".fmt(f)
         })?;
