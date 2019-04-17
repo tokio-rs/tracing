@@ -9,7 +9,7 @@ extern crate tokio_trace_futures;
 use std::marker::PhantomData;
 
 use futures::{Future, Poll};
-use tokio_trace::{field, Level, Span};
+use tokio_trace::{field, Span};
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower::MakeService;
 use tower_service::Service;
@@ -17,12 +17,19 @@ use tower_service::Service;
 #[derive(Debug)]
 pub struct InstrumentedHttpService<T> {
     inner: T,
-    span: Span,
+    span: Option<Span>,
 }
 
 impl<T> InstrumentedHttpService<T> {
-    pub fn new(inner: T, span: Span) -> Self {
-        Self { inner, span }
+    pub fn new(inner: T) -> Self {
+        Self { inner, span: None }
+    }
+
+    pub fn with_span(inner: T, span: Span) -> Self {
+        Self {
+            inner,
+            span: Some(span),
+        }
     }
 }
 
@@ -83,7 +90,7 @@ where
         span.enter(move || {
             inner
                 .poll()
-                .map(|ready| ready.map(|svc| InstrumentedHttpService::new(svc, span2)))
+                .map(|ready| ready.map(|svc| InstrumentedHttpService::with_span(svc, span2)))
         })
     }
 }
@@ -97,27 +104,50 @@ where
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(move || inner.poll_ready())
+        // let span = &mut self.span;
+        // let inner = &mut self.inner;
+        // span.enter(move || inner.poll_ready())
+        self.inner.poll_ready()
     }
 
     fn call(&mut self, request: http::Request<B>) -> Self::Future {
-        let span2 = self.span.clone();
-        let span = &mut self.span;
+        // let span2 = self.span.clone();
+        // let span = &mut self.span;
+        // let inner = &mut self.inner;
+        // span.enter(move || {
+        //     trace_span!(
+        //         "request",
+        //         // TODO: custom `Value` impls for `http` types would be nicer
+        //         // than just sticking these in `debug`s...
+        //         method = &field::debug(request.method()),
+        //         version = &field::debug(request.version()),
+        //         uri = &field::debug(request.uri()),
+        //         headers = &field::debug(request.headers())
+        //     )
+        //     .enter(move || inner.call(request).instrument(span2))
+        // })
+
+        let span = debug_span!(
+            "request",
+            // TODO: custom `Value` impls for `http` types would be nicer
+            // than just sticking these in `debug`s...
+            method = &field::debug(request.method()),
+            version = &field::debug(request.version()),
+            uri = &field::debug(request.uri()),
+            headers = &field::debug(request.headers())
+        );
+        let span2 = span.clone();
+
         let inner = &mut self.inner;
-        span.enter(move || {
-            span!(
-                Level::TRACE,
-                "request",
-                // TODO: custom `Value` impls for `http` types would be nicer
-                // than just sticking these in `debug`s...
-                method = &field::debug(request.method()),
-                version = &field::debug(request.version()),
-                uri = &field::debug(request.uri()),
-                headers = &field::debug(request.headers())
-            )
-            .enter(move || inner.call(request).instrument(span2))
-        })
+        span.enter(move || inner.call(request).instrument(span2))
+    }
+}
+
+impl<T: Clone> Clone for InstrumentedHttpService<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            span: self.span.clone(),
+        }
     }
 }
