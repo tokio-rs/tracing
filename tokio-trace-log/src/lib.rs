@@ -35,9 +35,11 @@ use std::{
 
 use tokio_trace::{
     callsite::{self, Callsite},
-    field, span,
+    field,
+    metadata::{Kind, Metadata},
+    span,
     subscriber::{self, Subscriber},
-    Event, Id, Metadata,
+    Event, Id,
 };
 
 /// Format a log record as a trace event in the current span.
@@ -79,8 +81,7 @@ impl<'a> AsTrace for log::Record<'a> {
     fn as_trace(&self) -> Self::Trace {
         struct LogCallsite;
         impl Callsite for LogCallsite {
-            fn add_interest(&self, _interest: subscriber::Interest) {}
-            fn clear_interest(&self) {}
+            fn set_interest(&self, _interest: subscriber::Interest) {}
             fn metadata(&self) -> &Metadata {
                 // Since we never register the log callsite, this method is
                 // never actually called. So it's okay to return mostly empty metadata.
@@ -89,6 +90,7 @@ impl<'a> AsTrace for log::Record<'a> {
                     target: "log",
                     level: tokio_trace::Level::TRACE,
                     module_path: None,
+                    kind: Kind::EVENT,
                     file: None,
                     line: None,
                     fields: field::FieldSet {
@@ -108,6 +110,7 @@ impl<'a> AsTrace for log::Record<'a> {
             self.line(),
             &["message"],
             &LogCallsite,
+            Kind::EVENT,
         )
     }
 }
