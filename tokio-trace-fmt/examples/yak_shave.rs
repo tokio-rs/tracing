@@ -28,7 +28,9 @@ fn main() {
         let mut number_shaved = 0;
         debug!("preparing to shave {} yaks", number_of_yaks);
 
-        span!(Level::TRACE, "shaving_yaks", yaks_to_shave = number_of_yaks).enter(|| {
+        let s = span!(Level::TRACE, "shaving_yaks", yaks_to_shave = number_of_yaks);
+
+        s.enter(|| {
             info!("shaving yaks");
 
             for yak in 1..=number_of_yaks {
@@ -44,6 +46,13 @@ fn main() {
                 trace!(target: "yak_events", yaks_shaved = number_shaved);
             }
         });
+
+        s.record("yaks_to_shave", &10);
+
+        s.enter(|| {
+            info!("shaving yaks");
+        });
+
 
         debug!(
             message = "yak shaving completed.",

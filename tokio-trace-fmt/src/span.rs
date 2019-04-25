@@ -407,69 +407,31 @@ impl Drop for Data {
     }
 }
 
+macro_rules! whytho {
+    ($fn_name:ident, $input:ty) => {
+        fn $fn_name(&mut self, field: &Field, value: $input) {
+            self.new_visitor
+                .make(
+                    self.map
+                        .entry(field.clone())
+                        .and_modify(String::clear)
+                        .or_insert_with(String::new),
+                    true,
+                )
+                .$fn_name(field, value)
+        }
+    };
+}
+
 impl<'map, 'visitor, N> field::Visit for MapVisitor<'map, 'visitor, N>
 where
     N: for<'a> ::NewVisitor<'a>,
 {
-    fn record_i64(&mut self, field: &Field, value: i64) {
-        self.new_visitor
-            .make(
-                self.map
-                    .entry(field.clone())
-                    .and_modify(String::clear)
-                    .or_insert_with(String::new),
-                true,
-            )
-            .record_i64(field, value)
-    }
-
-    fn record_u64(&mut self, field: &Field, value: u64) {
-        self.new_visitor
-            .make(
-                self.map
-                    .entry(field.clone())
-                    .and_modify(String::clear)
-                    .or_insert_with(String::new),
-                true,
-            )
-            .record_u64(field, value)
-    }
-
-    fn record_bool(&mut self, field: &Field, value: bool) {
-        self.new_visitor
-            .make(
-                self.map
-                    .entry(field.clone())
-                    .and_modify(String::clear)
-                    .or_insert_with(String::new),
-                true,
-            )
-            .record_bool(field, value)
-    }
-
-    fn record_str(&mut self, field: &Field, value: &str) {
-        self.new_visitor
-            .make(
-                self.map
-                    .entry(field.clone())
-                    .and_modify(String::clear)
-                    .or_insert_with(String::new),
-                true,
-            )
-            .record_str(field, value)
-    }
-
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
-        self.new_visitor
-            .make(
-                self.map
-                    .entry(field.clone())
-                    .and_modify(String::clear)
-                    .or_insert_with(String::new),
-                true,
-            )
-            .record_debug(field, value)
-    }
+    whytho!(record_i64, i64);
+    whytho!(record_u64, u64);
+    whytho!(record_bool, bool);
+    whytho!(record_str, &str);
+    whytho!(record_debug, &fmt::Debug);
 }
 
 impl Slot {
