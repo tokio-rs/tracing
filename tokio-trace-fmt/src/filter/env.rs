@@ -316,8 +316,7 @@ mod tests {
     struct Cs;
 
     impl Callsite for Cs {
-        fn add_interest(&self, _interest: Interest) {}
-        fn clear_interest(&self) {}
+        fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata {
             unimplemented!()
         }
@@ -328,7 +327,17 @@ mod tests {
         let filter = EnvFilter::from("app=debug");
         let store = Store::with_capacity(1);
         let ctx = Context::new(&store, &NewRecorder);
-        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &[],
+            &Cs,
+            Kind::SPAN,
+        );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
         assert!(interest.is_never());
@@ -339,7 +348,17 @@ mod tests {
         let filter = EnvFilter::from("app[mySpan]=debug");
         let store = Store::with_capacity(1);
         let ctx = Context::new(&store, &NewRecorder);
-        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &[],
+            &Cs,
+            Kind::SPAN,
+        );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
         assert!(interest.is_always());
@@ -359,6 +378,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -379,6 +399,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -399,6 +420,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -419,6 +441,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
