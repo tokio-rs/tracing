@@ -9,7 +9,7 @@ env_logger = "0.5"
 log = "0.4"
 
 [dev-dependencies]
-tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
+tokio-trace = "0.1.0"
 tokio-trace-fmt = { path = "../tokio-trace-fmt" }
 tokio-trace-futures = { path = "../tokio-trace-futures" }
 tokio-trace-subscriber = { path = "../tokio-trace-subscriber" }
