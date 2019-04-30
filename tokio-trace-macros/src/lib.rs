@@ -33,6 +33,7 @@ macro_rules! dbg {
         };
         let callsite = callsite! {
             name: concat!("event:trace_dbg(", stringify!($ex), ")"),
+            kind: tokio_trace::metadata::Kind::EVENT,
             target: $target,
             level: $level,
             fields: $ex
