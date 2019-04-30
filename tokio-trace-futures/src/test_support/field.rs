@@ -1,6 +1,10 @@
-use tokio_trace::{callsite::Callsite, field::{self, Field, Value, Visit}, metadata::Kind};
+use tokio_trace::{
+    callsite::Callsite,
+    field::{self, Field, Value, Visit},
+    metadata::Kind,
+};
 
-use std::{fmt, collections::HashMap};
+use std::{collections::HashMap, fmt};
 
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct Expect {
@@ -47,15 +51,17 @@ impl MockField {
         Expect {
             fields: HashMap::new(),
             only: false,
-        }.and(self)
-            .and(other)
+        }
+        .and(self)
+        .and(other)
     }
 
     pub fn only(self) -> Expect {
         Expect {
             fields: HashMap::new(),
             only: true,
-        }.and(self)
+        }
+        .and(self)
     }
 }
 
@@ -64,7 +70,8 @@ impl Into<Expect> for MockField {
         Expect {
             fields: HashMap::new(),
             only: false,
-        }.and(self)
+        }
+        .and(self)
     }
 }
 
@@ -209,7 +216,8 @@ impl<'a> From<&'a Value> for MockValue {
 impl fmt::Display for Expect {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "fields ")?;
-        let entries = self.fields
+        let entries = self
+            .fields
             .iter()
             .map(|(k, v)| (field::display(k), field::display(v)));
         f.debug_map().entries(entries).finish()
