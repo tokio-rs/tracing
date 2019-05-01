@@ -205,6 +205,7 @@ impl<'a> From<&'a Value> for MockValue {
             .fields()
             .field("fake_field")
             .unwrap();
+
         let mut builder = MockValueBuilder { value: None };
         value.record(&fake_field, &mut builder);
         builder

@@ -111,7 +111,7 @@ pub(crate) fn pop(expected_id: &Id) {
 impl<'a> Span<'a> {
     pub fn name(&self) -> &'static str {
         match self.lock.span {
-            State::Full(ref data) => data.name.as_ref(),
+            State::Full(ref data) => data.name,
             State::Empty(_) => unreachable!(),
         }
     }
@@ -407,7 +407,7 @@ impl Slot {
             let mut recorder = new_visitor.make(&mut fields, true);
             attrs.record(&mut recorder);
         }
-        if fields.len() != 0 {
+        if fields.is_empty() {
             data.is_empty = false;
         }
         Self {
@@ -432,7 +432,7 @@ impl Slot {
             let mut recorder = new_visitor.make(fields, true);
             attrs.record(&mut recorder);
         }
-        if fields.len() != 0 {
+        if fields.is_empty() {
             data.is_empty = false;
         }
         match mem::replace(&mut self.span, State::Full(data)) {
@@ -454,7 +454,7 @@ impl Slot {
                     let mut recorder = new_visitor.make(buf, data.is_empty);
                     fields.record(&mut recorder);
                 }
-                if buf.len() != 0 {
+                if buf.is_empty() {
                     data.is_empty = false;
                 }
             }
@@ -472,14 +472,14 @@ impl Slot {
 impl Slab {
     #[inline]
     fn write_slot(&self, idx: usize) -> Option<RwLockWriteGuard<Slot>> {
-        self.slab.get(idx).map(|slot| slot.write())
+        self.slab.get(idx).map(RwLock::write)
     }
 
     #[inline]
-    fn read_slot<'a>(&'a self, idx: usize) -> Option<RwLockReadGuard<'a, Slot>> {
+    fn read_slot(&self, idx: usize) -> Option<RwLockReadGuard<'_, Slot>> {
         self.slab
             .get(idx)
-            .map(|slot| slot.read())
+            .map(RwLock::read)
             .and_then(|lock| match lock.span {
                 State::Empty(_) => None,
                 State::Full(_) => Some(lock),

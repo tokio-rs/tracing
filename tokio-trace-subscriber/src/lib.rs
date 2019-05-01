@@ -3,16 +3,16 @@
 extern crate tokio_trace;
 pub use tokio_trace::{Event, Id};
 
-mod compose;
-pub use compose::Composed;
+// mod compose;
+// pub use compose::Composed;
 
-pub mod filter;
-pub mod observe;
-pub mod registry;
+// pub mod filter;
+// pub mod observe;
+// pub mod registry;
 
-pub use filter::{Filter, FilterExt};
-pub use observe::{Observe, ObserveExt};
-pub use registry::{RegisterSpan, SpanRef};
+// pub use filter::{Filter, FilterExt};
+// pub use observe::{Observe, ObserveExt};
+// pub use registry::{RegisterSpan, SpanRef};
 
 use std::{cell::RefCell, default::Default, thread};
 

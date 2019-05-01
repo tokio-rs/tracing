@@ -41,7 +41,7 @@ where
         let inner = &mut self.inner;
         span.enter(|| {
             // TODO: custom `Value` impls for `http` types would be nice...
-            let mut span = span!(Level::TRACE, "request", request = &field::debug(&req));
+            let span = span!(Level::TRACE, "request", request = &field::debug(&req));
             let span2 = span.clone();
             span.enter(move || inner.call(req).instrument(span2))
         })

@@ -28,7 +28,7 @@ where
     }
     ctx.with_current(|(_, span)| write!(f, " {}", span.fields()))
         .unwrap_or(Ok(()))?;
-    writeln!(f, "")
+    writeln!(f)
 }
 
 pub fn fmt_verbose<N>(ctx: &span::Context<N>, f: &mut Write, event: &Event) -> fmt::Result
@@ -47,7 +47,7 @@ where
         let mut recorder = ctx.new_visitor(f, true);
         event.record(&mut recorder);
     }
-    writeln!(f, "")
+    writeln!(f)
 }
 
 pub struct NewRecorder;
@@ -193,12 +193,12 @@ struct FmtLevel<'a>(&'a Level);
 #[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.0 {
-            &Level::TRACE => f.pad("TRACE"),
-            &Level::DEBUG => f.pad("DEBUG"),
-            &Level::INFO => f.pad("INFO"),
-            &Level::WARN => f.pad("WARN"),
-            &Level::ERROR => f.pad("ERROR"),
+        match *self.0 {
+            Level::TRACE => f.pad("TRACE"),
+            Level::DEBUG => f.pad("DEBUG"),
+            Level::INFO => f.pad("INFO"),
+            Level::WARN => f.pad("WARN"),
+            Level::ERROR => f.pad("ERROR"),
         }
     }
 }
@@ -206,12 +206,12 @@ impl<'a> fmt::Display for FmtLevel<'a> {
 #[cfg(feature = "ansi")]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.0 {
-            &Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
-            &Level::DEBUG => write!(f, "{}", Colour::Blue.paint("DEBUG")),
-            &Level::INFO => write!(f, "{}", Colour::Green.paint(" INFO")),
-            &Level::WARN => write!(f, "{}", Colour::Yellow.paint(" WARN")),
-            &Level::ERROR => write!(f, "{}", Colour::Red.paint("ERROR")),
+        match *self.0 {
+            Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
+            Level::DEBUG => write!(f, "{}", Colour::Blue.paint("DEBUG")),
+            Level::INFO => write!(f, "{}", Colour::Green.paint(" INFO")),
+            Level::WARN => write!(f, "{}", Colour::Yellow.paint(" WARN")),
+            Level::ERROR => write!(f, "{}", Colour::Red.paint("ERROR")),
         }
     }
 }

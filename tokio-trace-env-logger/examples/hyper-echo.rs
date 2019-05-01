@@ -124,7 +124,7 @@ fn main() {
 
     tokio_trace::subscriber::with_default(subscriber, || {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
-        let mut server_span = span!(Level::TRACE, "server", local = &field::debug(addr));
+        let server_span = span!(Level::TRACE, "server", local = &field::debug(addr));
         let server = tokio::net::TcpListener::bind(&addr)
             .expect("bind")
             .incoming()
