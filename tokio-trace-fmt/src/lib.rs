@@ -309,10 +309,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// by default).
     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
         Builder {
-            settings: Settings {
-                inherit_fields,
-                ..self.settings
-            },
+            settings: Settings { inherit_fields },
             ..self
         }
     }

@@ -122,7 +122,7 @@ fn main() {
         let addr = "[::1]:8888".parse().unwrap();
         let bind = TcpListener::bind(&addr).expect("bind");
 
-        let mut serve_span = span!(
+        let serve_span = span!(
             Level::TRACE,
             "serve",
             local_ip = field::debug(addr.ip()),
@@ -138,7 +138,7 @@ fn main() {
                 .incoming()
                 .fold((h2, reactor), |(mut h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
-                    let mut conn_span = span!(
+                    let conn_span = span!(
                         Level::TRACE,
                         "conn",
                         remote_ip = field::debug(addr.ip()),
