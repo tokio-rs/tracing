@@ -27,8 +27,10 @@ where
         event.record(&mut recorder);
     }
     ctx.with_current(|(_, span)| {
-        span.fields()
-            .try_for_each(|(_, value)| write!(f, " {}", value))
+        for (_, value) in span.fields() {
+            write!(f, " {}", value)?;
+        }
+        Ok(())
     })
     .unwrap_or(Ok(()))?;
     writeln!(f)
@@ -157,9 +159,10 @@ where
             write!(f, "{}", style.paint(span.name()))?;
             seen = true;
 
-            span.fields().try_for_each(|(_, value)| {
-                write!(f, "{}{}{}", style.paint("{"), value, style.paint("}"))
-            })?;
+            for (_, value) in span.fields() {
+                write!(f, "{}{}{}", style.paint("{"), value, style.paint("}"))?;
+            }
+
             ":".fmt(f)
         })?;
         if seen {

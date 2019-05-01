@@ -60,7 +60,7 @@ enum State {
     Empty(usize),
 }
 
-struct MapVisitor<'map, 'visitor, N> {
+struct MapVisitor<'map, 'visitor, N: 'visitor> {
     map: &'map mut HashMap<Field, String>,
     new_visitor: &'visitor N,
 }
