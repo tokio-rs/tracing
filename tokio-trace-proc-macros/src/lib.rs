@@ -32,14 +32,14 @@ pub fn trace(_args: TokenStream, function: TokenStream) -> TokenStream {
         .collect();
     let param_names_clone = param_names.clone();
 
-    let span = quote! {
+    let span = quote_spanned!(call_site =>
         span!(
             tokio_trace::Level::TRACE,
             #ident_str,
             traced_function = &#ident_str
             #(, #param_names = tokio_trace::field::debug(&#param_names_clone)),*
         )
-    };
+    );
 
     function.block.stmts = quote_spanned!(call_site =>
         #span.enter(move || {
@@ -47,5 +47,5 @@ pub fn trace(_args: TokenStream, function: TokenStream) -> TokenStream {
         })
     );
 
-    quote!(#function).into()
+    quote_spanned!(call_site => #function).into()
 }
