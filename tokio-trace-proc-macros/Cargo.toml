@@ -8,9 +8,10 @@ proc-macro = true
 
 [dependencies]
 tokio-trace = "0.1.0"
-syn = { version = "0.15", features = ["full", "extra-traits"] }
+syn = { version = "0.15", features = ["derive"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
+syn-mid = "0.3.0"
 
 [dev-dependencies]
 tokio-trace-fmt = { path = "../tokio-trace-fmt" }
