@@ -8,6 +8,7 @@ extern crate tokio_trace_fmt;
 use tokio_trace::{field, Level};
 
 fn main() {
+    std::env::set_var("RUST_LOG", "trace");
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
     tokio_trace::subscriber::with_default(subscriber, || {

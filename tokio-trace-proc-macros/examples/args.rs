@@ -29,6 +29,7 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 }
 
 fn main() {
+    std::env::set_var("RUST_LOG", "trace");
     env_logger::Builder::new().parse("trace").init();
     let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
 
