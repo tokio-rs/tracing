@@ -15,7 +15,7 @@ use tokio_trace::{
     event::Event,
     field::{Field, FieldSet, Visit},
     metadata::Metadata,
-    span::{Attributes, Id, Parent, Record},
+    span::{Attributes, Id, Record},
 };
 
 #[derive(Debug)]
@@ -155,7 +155,7 @@ impl<'a> Serialize for RecordValues<'a> {
     where S: Serializer {
         // values: &'a field::ValueSet<'a>
         let mut state = serializer.serialize_struct("RecordValues", 1)?;
-        state.serialize_field("values", &format!("{}", self.0.record(SerdeVisitor(serializer))))?;
+        state.serialize_field("values", &format!("{:?}", self.0.record(&mut SerdeVisitor(serializer))))?;
         state.end()
     }
 }
@@ -171,7 +171,7 @@ struct SerdeVisitor<S>(S) where S: Serializer;
 
 impl<S> Visit for SerdeVisitor<S> where S: Serializer {
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
-        self.0.serialize_field(field.name(), &format!("{}", value));
+        self.0.serialize_field(field.name(), &format!("{:?}", value));
     }
 }
 
