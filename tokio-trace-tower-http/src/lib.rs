@@ -14,7 +14,7 @@ use tokio_trace_futures::{Instrument, Instrumented};
 use tower::MakeService;
 use tower_service::Service;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InstrumentedHttpService<T> {
     inner: T,
     span: Option<Span>,
@@ -33,7 +33,7 @@ impl<T> InstrumentedHttpService<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InstrumentedMakeService<T, B> {
     inner: T,
     span: Option<Span>,
