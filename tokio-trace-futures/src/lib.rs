@@ -1,5 +1,5 @@
 extern crate futures;
-#[cfg(feature = "with-tokio")]
+#[cfg(feature = "tokio")]
 extern crate tokio;
 #[cfg_attr(test, macro_use)]
 extern crate tokio_trace;

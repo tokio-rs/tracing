@@ -4,8 +4,7 @@ version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [features]
-default = ["with-tokio"]
-with-tokio = ["tokio"]
+default = ["tokio"]
 
 [dependencies]
 futures = "0.1"
