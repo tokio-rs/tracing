@@ -11,6 +11,9 @@
 //!    This is intended primarily for use in crates which depend on
 //!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
 //!    should be used instead.
+//!
+//! [`Instrument`]: trait.Instrument.html
+//! [`WithSubscriber`]: trait.WithSubscriber.html
 extern crate futures;
 #[cfg(feature = "tokio")]
 extern crate tokio;
