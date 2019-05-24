@@ -37,6 +37,9 @@ use tracing::{Dispatch, Span};
 #[cfg(feature = "tokio")]
 pub mod executor;
 
+#[macro_use]
+pub mod macros;
+
 // TODO: seal?
 pub trait Instrument: Sized {
     fn instrument(self, span: Span) -> Instrumented<Self> {
