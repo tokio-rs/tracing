@@ -27,10 +27,17 @@ pub use tracing::{span as __span, Level as __Level};
 ///
 /// # Span Customization
 ///
-/// By default, the span created by this macro has no fields, is at the
-/// [`TRACE` verbosity level], and is named by stringifying the expression
-/// providing the future to spawn. However, if desired, all of these may be
-/// overridden. For example:
+/// By default, the span created by this macro is named by stringifying the
+/// expression providing the future to spawn, is at the [`TRACE`] verbosity
+/// level, and has the current module path as its target. However, if desired,
+/// all of these may be overridden.
+///
+/// In addition, the span will always have a field `tokio.task.is_spawned` set
+/// to `true`. This is intended for use by subscribers which wish to identify
+/// what spans correspond to spawned tasks, regardless of other span metadata
+/// (such as the name) which may be user-customizable. Additional information
+/// about the task may be added in the future, in fields under the
+/// `tokio.task.` namespace.
 ///
 /// Overriding the name of the span:
 ///
@@ -170,7 +177,14 @@ macro_rules! spawn {
     (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {{
         use $crate::macros::__spawn;
         use $crate::Instrument;
-        let fut = Box::new($fut.instrument($crate::macros::__span!($lvl, target: $tgt, $name, $($field)*)));
+        let span = $crate::macros::__span!(
+            $lvl,
+            target: $tgt,
+            $name,
+            tokio.task.is_spawned = true,
+            $($field)*
+        );
+        let fut = Box::new($fut.instrument(span));
         __spawn(fut)
     }};
     (level: $lvl:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {
