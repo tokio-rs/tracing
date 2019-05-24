@@ -9,6 +9,161 @@ pub use tokio_executor::spawn as __spawn;
 #[doc(hidden)]
 pub use tracing::{span as __span, Level as __Level};
 
+/// Spawns a future on the default executor, instrumented with its own span.
+///
+/// # Spawning
+///
+/// This macro behaves similarly to the [`tokio::spawn`] function, but the
+/// spawned future is instrumented with a new `tokio-trace` span prior to
+/// spawning. This macro may be used as a drop-in replacement for `tokio::spawn`
+/// in projects using `tokio-trace`.
+///
+/// In order for a future to do work, it must be spawned on an executor. The
+/// `spawn` function is the easiest way to do this. It spawns a future on the
+/// [default executor] for the current execution context (tracked using a
+/// thread-local variable).
+///
+/// The default executor is **usually** a thread pool.
+///
+/// # Span Customization
+///
+/// By default, the span created by this macro has no fields, is at the
+/// [`TRACE` verbosity level], and is named by stringifying the expression
+/// providing the future to spawn. However, if desired, all of these may be
+/// overridden. For example:
+///
+/// Overriding the name of the span:
+///
+/// ```rust
+/// # extern crate futures;
+/// #[macro_use]
+/// extern crate tokio_trace_futures;
+/// # use futures::future;
+/// # fn main() {
+/// let fut = future::lazy(|| {
+///     // ...
+/// #    Ok(())
+/// });
+/// spawn!(name: "my_future", fut);
+/// # }
+/// ```
+///
+/// Overriding the target:
+///
+///```rust
+/// # extern crate futures;
+/// # #[macro_use]
+/// # extern crate tokio_trace_futures;
+/// # use futures::future;
+/// # fn main() {
+/// # let fut = future::lazy(|| { Ok(()) });
+/// spawn!(target: "spawned_futures", fut);
+/// # }
+/// ```
+/// Overriding the level:
+///
+///```rust
+/// # extern crate futures;
+/// # #[macro_use]
+/// # extern crate tokio_trace_futures;
+/// # extern crate tokio_trace;
+/// # use futures::future;
+/// use tokio_trace::Level;
+///
+/// # fn main() {
+/// # let fut = future::lazy(|| { Ok(()) });
+/// spawn!(level: Level::INFO, fut);
+/// # }
+/// ```
+///
+/// Any number of metadata items may be overridden:
+///
+///```rust
+/// # extern crate futures;
+/// # #[macro_use]
+/// # extern crate tokio_trace_futures;
+/// # extern crate tokio_trace;
+/// # use futures::future;
+/// # use tokio_trace::Level;
+/// # fn main() {
+/// # let fut = future::lazy(|| { Ok(()) });
+/// spawn!(level: Level::WARN, target: "spawned_futures", name: "a_bad_future", fut);
+/// # }
+/// ```
+///
+/// Adding fields to the span:
+///
+///```rust
+/// # extern crate futures;
+/// # #[macro_use]
+/// # extern crate tokio_trace_futures;
+/// # extern crate tokio_trace;
+/// # use futures::future;
+/// # fn main() {
+/// # let fut = future::lazy(|| { Ok(()) });
+/// spawn!(fut, foo = "bar", baz = 42);
+/// # }
+/// ```
+///
+///```rust
+/// # extern crate futures;
+/// # #[macro_use]
+/// # extern crate tokio_trace_futures;
+/// # extern crate tokio_trace;
+/// # use futures::future;
+/// # fn main() {
+/// for i in 0..10 {
+///     let fut = future::lazy(|| {
+///         // ...
+///         # Ok(())
+///     });
+///     spawn!(fut, number = 1);
+/// }
+// # }
+/// # }
+/// ```
+/// # Examples
+///
+/// In this example, based on the example in the documentation for
+/// [`tokio::spawn`], a server is started and `spawn!` is used to start
+/// a new task that processes each received connection.
+///
+/// ```rust
+/// # extern crate tokio;
+/// # extern crate futures;
+/// #[macro_use]
+/// extern crate tokio_trace_futures;
+/// # use futures::{Future, Stream};
+/// use tokio::net::TcpListener;
+///
+/// # fn process<T>(_: T) -> Box<Future<Item = (), Error = ()> + Send> {
+/// # unimplemented!();
+/// # }
+/// # fn dox() {
+/// # let addr = "127.0.0.1:8080".parse().unwrap();
+/// let listener = TcpListener::bind(&addr).unwrap();
+///
+/// let server = listener.incoming()
+///     .map_err(|e| println!("error = {:?}", e))
+///     .for_each(|socket| {
+///         spawn!(process(socket))
+///     });
+///
+/// tokio::run(server);
+/// # }
+/// # pub fn main() {}
+/// ```
+///
+/// # Panics
+///
+/// This function will panic if the default executor is not set or if spawning
+/// onto the default executor returns an error. To avoid the panic, use
+/// [`DefaultExecutor`].
+///
+/// [default executor]: https://docs.rs/tokio/latest/tokio/executor/struct.DefaultExecutor.html
+/// [`DefaultExecutor`]: https://docs.rs/tokio/latest/tokio/executor/struct.DefaultExecutor.html
+/// [`tokio::spawn`]: https://docs.rs/tokio/latest/tokio/executor/fn.spawn.html
+/// [`TRACE` verbosity level]: https://docs.rs/tokio-trace/latest/tokio_trace/struct.Level.html#associatedconstant.TRACE
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[macro_export(inner_local_macros)]
 macro_rules! spawn {
