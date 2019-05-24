@@ -44,7 +44,7 @@ pub use tracing::{span as __span, Level as __Level};
 /// ```rust
 /// # extern crate futures;
 /// #[macro_use]
-/// extern crate tokio_trace_futures;
+/// extern crate tracing_futures;
 /// # use futures::future;
 /// # fn main() {
 /// let fut = future::lazy(|| {
@@ -60,7 +60,7 @@ pub use tracing::{span as __span, Level as __Level};
 ///```rust
 /// # extern crate futures;
 /// # #[macro_use]
-/// # extern crate tokio_trace_futures;
+/// # extern crate tracing_futures;
 /// # use futures::future;
 /// # fn main() {
 /// # let fut = future::lazy(|| { Ok(()) });
@@ -72,10 +72,10 @@ pub use tracing::{span as __span, Level as __Level};
 ///```rust
 /// # extern crate futures;
 /// # #[macro_use]
-/// # extern crate tokio_trace_futures;
-/// # extern crate tokio_trace;
+/// # extern crate tracing_futures;
+/// # extern crate tracing;
 /// # use futures::future;
-/// use tokio_trace::Level;
+/// use tracing::Level;
 ///
 /// # fn main() {
 /// # let fut = future::lazy(|| { Ok(()) });
@@ -88,10 +88,10 @@ pub use tracing::{span as __span, Level as __Level};
 ///```rust
 /// # extern crate futures;
 /// # #[macro_use]
-/// # extern crate tokio_trace_futures;
-/// # extern crate tokio_trace;
+/// # extern crate tracing_futures;
+/// # extern crate tracing;
 /// # use futures::future;
-/// # use tokio_trace::Level;
+/// # use tracing::Level;
 /// # fn main() {
 /// # let fut = future::lazy(|| { Ok(()) });
 /// spawn!(level: Level::WARN, target: "spawned_futures", name: "a_bad_future", fut);
@@ -103,8 +103,8 @@ pub use tracing::{span as __span, Level as __Level};
 ///```rust
 /// # extern crate futures;
 /// # #[macro_use]
-/// # extern crate tokio_trace_futures;
-/// # extern crate tokio_trace;
+/// # extern crate tracing_futures;
+/// # extern crate tracing;
 /// # use futures::future;
 /// # fn main() {
 /// # let fut = future::lazy(|| { Ok(()) });
@@ -115,8 +115,8 @@ pub use tracing::{span as __span, Level as __Level};
 ///```rust
 /// # extern crate futures;
 /// # #[macro_use]
-/// # extern crate tokio_trace_futures;
-/// # extern crate tokio_trace;
+/// # extern crate tracing_futures;
+/// # extern crate tracing;
 /// # use futures::future;
 /// # fn main() {
 /// for i in 0..10 {
@@ -139,7 +139,7 @@ pub use tracing::{span as __span, Level as __Level};
 /// # extern crate tokio;
 /// # extern crate futures;
 /// #[macro_use]
-/// extern crate tokio_trace_futures;
+/// extern crate tracing_futures;
 /// # use futures::{Future, Stream};
 /// use tokio::net::TcpListener;
 ///
@@ -170,14 +170,14 @@ pub use tracing::{span as __span, Level as __Level};
 /// [default executor]: https://docs.rs/tokio/latest/tokio/executor/struct.DefaultExecutor.html
 /// [`DefaultExecutor`]: https://docs.rs/tokio/latest/tokio/executor/struct.DefaultExecutor.html
 /// [`tokio::spawn`]: https://docs.rs/tokio/latest/tokio/executor/fn.spawn.html
-/// [`TRACE` verbosity level]: https://docs.rs/tokio-trace/latest/tokio_trace/struct.Level.html#associatedconstant.TRACE
+/// [`TRACE` verbosity level]: https://docs.rs/tokio-trace/latest/tracing/struct.Level.html#associatedconstant.TRACE
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[macro_export(inner_local_macros)]
 macro_rules! spawn {
     (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {{
         use $crate::macros::__spawn;
         use $crate::Instrument;
-        let span = $crate::macros::__span!(
+        let span = __tracing_futures_span!(
             $lvl,
             target: $tgt,
             $name,
@@ -190,7 +190,7 @@ macro_rules! spawn {
     (level: $lvl:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
             level: $lvl,
-            target: __tokio_trace_futures_module_path!(),
+            target: __tracing_futures_module_path!(),
             name: $name,
             $fut,
             $($field)*
@@ -200,7 +200,7 @@ macro_rules! spawn {
         spawn!(
             level: $lvl,
             target: $tgt,
-            name: __tokio_trace_futures_stringify!($fut),
+            name: __tracing_futures_stringify!($fut),
             $fut,
             $($field)*
         )
@@ -256,6 +256,7 @@ macro_rules! spawn {
     };
 }
 
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_futures_module_path {
@@ -264,10 +265,20 @@ macro_rules! __tracing_futures_module_path {
     };
 }
 
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_futures_stringify {
     ($ex:expr) => {
         stringify!($ex)
+    };
+}
+
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_futures_span {
+    ($lvl:expr, target: $tgt:expr, $name:expr, $($field:tt)*) => {
+        span!($lvl, target: $tgt, $name, $($field)*)
     };
 }
