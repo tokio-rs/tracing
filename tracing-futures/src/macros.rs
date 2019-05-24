@@ -46,26 +46,28 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// #[macro_use]
 /// extern crate tracing_futures;
 /// # use futures::future;
-/// # fn main() {
+/// # fn doc() {
 /// let fut = future::lazy(|| {
 ///     // ...
 /// #    Ok(())
 /// });
 /// spawn!(name: "my_future", fut);
 /// # }
+///  # fn main() {}
 /// ```
 ///
 /// Overriding the target:
 ///
 ///```rust
-/// # extern crate futures;
 /// # #[macro_use]
 /// # extern crate tracing_futures;
+/// # extern crate futures;
 /// # use futures::future;
-/// # fn main() {
+/// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
 /// spawn!(target: "spawned_futures", fut);
 /// # }
+///  # fn main() {}
 /// ```
 /// Overriding the level:
 ///
@@ -77,10 +79,11 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// # use futures::future;
 /// use tracing::Level;
 ///
-/// # fn main() {
+/// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
 /// spawn!(level: Level::INFO, fut);
 /// # }
+///  # fn main() {}
 /// ```
 ///
 /// Any number of metadata items may be overridden:
@@ -92,10 +95,11 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// # extern crate tracing;
 /// # use futures::future;
 /// # use tracing::Level;
-/// # fn main() {
+/// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
 /// spawn!(level: Level::WARN, target: "spawned_futures", name: "a_bad_future", fut);
 /// # }
+/// # fn main() {}
 /// ```
 ///
 /// Adding fields to the span:
@@ -106,10 +110,11 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// # extern crate tracing_futures;
 /// # extern crate tracing;
 /// # use futures::future;
-/// # fn main() {
+/// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
 /// spawn!(fut, foo = "bar", baz = 42);
 /// # }
+///  # fn main() {}
 /// ```
 ///
 ///```rust
@@ -118,7 +123,7 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// # extern crate tracing_futures;
 /// # extern crate tracing;
 /// # use futures::future;
-/// # fn main() {
+/// # fn docs() {
 /// for i in 0..10 {
 ///     let fut = future::lazy(|| {
 ///         // ...
@@ -126,8 +131,8 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 ///     });
 ///     spawn!(fut, number = 1);
 /// }
-// # }
 /// # }
+/// # fn main() {}
 /// ```
 /// # Examples
 ///
@@ -177,7 +182,7 @@ macro_rules! spawn {
     (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {{
         use $crate::macros::__spawn;
         use $crate::Instrument;
-        let span = $crate::macros::__tokio_trace_futures_span!(
+        let span = $crate::macros::__tracing_futures_span!(
             $lvl,
             target: $tgt,
             $name,
@@ -196,6 +201,9 @@ macro_rules! spawn {
             $($field)*
         )
     };
+    (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr) => {
+        spawn!(level: $lvl, target: $tgt, name: $name, $fut,)
+    };
     (level: $lvl:expr, target: $tgt:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
             level: $lvl,
@@ -204,6 +212,9 @@ macro_rules! spawn {
             $fut,
             $($field)*
         )
+    };
+    (level: $lvl:expr, name: $name:expr, $fut:expr) => {
+        spawn!(level: $lvl, name: $name, $fut,)
     };
     (target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
@@ -230,20 +241,14 @@ macro_rules! spawn {
             $($field)*
         )
     };
-    ($fut:expr, $($field:tt)*) => {
-        spawn!(name: __tracing_futures_stringify!($fut), $fut, $($field)*)
-    };
-    (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr) => {
-        spawn!(level: $lvl, target: $tgt, name: $name, $fut,)
-    };
-    (level: $lvl:expr, name: $name:expr, $fut:expr) => {
-        spawn!(level: $lvl, name: $name, $fut,)
-    };
     (level: $lvl:expr, target: $tgt:expr, $fut:expr) => {
         spawn!(level: $lvl, target: $tgt, $fut,)
     };
     (target: $tgt:expr, name: $name:expr, $fut:expr) => {
         spawn!(target: $tgt, name: $name, $fut,)
+    };
+    (level: $lvl:expr, $fut:expr) => {
+        spawn!(level: $lvl, name: __tracing_futures_stringify!($fut), $fut,)
     };
     (target: $tgt:expr, $fut:expr) => {
         spawn!(target: $tgt, $fut,)
@@ -251,9 +256,23 @@ macro_rules! spawn {
     (name: $name:expr, $fut:expr) => {
         spawn!(name: $name, $fut,)
     };
+    (level: $lvl:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            level: $lvl,
+            target: __tracing_futures_module_path!(),
+            name: __tracing_futures_stringify!($fut),
+            $fut,
+            $($field)*
+        )
+    };
+    ($fut:expr, $($field:tt)*) => {
+        spawn!(name: __tracing_futures_stringify!($fut), $fut, $($field)*)
+    };
+
     ($fut:expr) => {
         spawn!($fut,)
     };
+
 }
 
 #[doc(hidden)]
