@@ -4,13 +4,13 @@ version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [features]
-default = ["with-tokio"]
-with-tokio = ["tokio"]
+default = ["tokio"]
 
 [dependencies]
 futures = "0.1"
 tokio-trace = "0.1.0"
 tokio = { version = "0.1", optional = true }
+tokio-executor = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1"
