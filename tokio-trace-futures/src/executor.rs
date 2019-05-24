@@ -4,11 +4,12 @@ use futures::{
 };
 use {Instrument, Instrumented, WithDispatch};
 
+#[cfg(all(feature = "tokio", not(feature = "tokio-executor")))]
+use tokio::executor::{Executor as TokioExecutor, SpawnError};
 #[cfg(feature = "tokio")]
-use tokio::{
-    executor::{Executor as TokioExecutor, SpawnError},
-    runtime::{current_thread, Runtime, TaskExecutor},
-};
+use tokio::runtime::{current_thread, Runtime, TaskExecutor};
+#[cfg(feature = "tokio-executor")]
+use tokio_executor::{Executor as TokioExecutor, SpawnError};
 
 macro_rules! deinstrument_err {
     ($e:expr) => {
@@ -31,7 +32,7 @@ where
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 impl<T> TokioExecutor for Instrumented<T>
 where
     T: TokioExecutor,
@@ -176,7 +177,7 @@ where
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 impl<T> TokioExecutor for WithDispatch<T>
 where
     T: TokioExecutor,

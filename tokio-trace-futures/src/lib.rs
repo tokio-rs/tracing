@@ -1,6 +1,21 @@
+//! Futures compatibility for `tokio-trace`
+//!
+//! # Feature flags
+//! - `tokio`: Enables compatibility with the `tokio` crate, including
+//!    [`Instrument`] and [`WithSubscriber`] implementations for
+//!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
+//!    `tokio::runtime::current_thread`. Enabled by default.
+//! - `tokio-executor`: Enables compatibility with the `tokio-executor`
+//!    crate, including  [`Instrument`] and [`WithSubscriber`]
+//!    implementations for types implementing `tokio_executor::Executor`.
+//!    This is intended primarily for use in crates which depend on
+//!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
+//!    should be used instead.
 extern crate futures;
 #[cfg(feature = "tokio")]
 extern crate tokio;
+#[cfg(feature = "tokio-executor")]
+extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
 extern crate tokio_trace;
 
