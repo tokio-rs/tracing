@@ -11,7 +11,7 @@ use futures::future::{self, Future};
 fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
     future::lazy(move || {
         info!("spawning subtasks...");
-        for i in (1..=how_many) {
+        for i in 1..=how_many {
             debug!(message = "spawning subtask;", number = i);
             spawn!(subtask(i), number = i);
         }
