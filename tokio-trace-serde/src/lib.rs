@@ -24,36 +24,35 @@ pub struct FieldVisitor(pub (crate) Field);
 impl Serialize for FieldVisitor {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
-        // i: usize
+        // i: usize we don't want to use this
         // fields: FieldSet
-        let mut state = serializer.serialize_struct("Field", 2)?;
-        state.serialize_field("i", &self.0.callsite())?;
-        state.serialize_field("fields", &FieldSetVisitor(self.0.fields))?;
+        let mut state = serializer.serialize_struct("Field", 1)?;
+        state.serialize_field("name", self.0.name())?;
         state.end()
     }
 }
 
-#[derive(Debug)]
-pub struct FieldSetVisitor(pub (crate) FieldSet);
-
-impl Serialize for FieldSetVisitor {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
-        // pub names: [&'static str]
-        // pub callsite: callsite::Identifier
-        //self.callsite.metadata()
-        let mut state = serializer.serialize_struct("FieldSet", 2)?;
-        let mut seq = serializer.serialize_seq(Some(self.0.names.len()))?;
-        for e in self.0.names {
-            seq.serialize_element(e)?;
-        }
-        seq.end();
-        state.serialize_field("names", &seq)?;
-        let metadata = self.0.callsite.metadata();
-        state.serialize_field("callsite", metadata)?;
-        state.end()
-    }
-}
+//#[derive(Debug)]
+//pub struct FieldSetVisitor(pub (crate) FieldSet);
+//
+//impl Serialize for FieldSetVisitor {
+//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//    where S: Serializer {
+//        // pub names: [&'static str]
+//        // pub callsite: callsite::Identifier
+//        //self.callsite.metadata()
+//        let mut state = serializer.serialize_struct("FieldSet", 2)?;
+//        let mut seq = serializer.serialize_seq(Some(self.0.names.len()))?;
+//        for e in self.0.names {
+//            seq.serialize_element(e)?;
+//        }
+//        seq.end();
+//        state.serialize_field("names", &seq)?;
+//        let metadata = self.0.callsite.metadata();
+//        state.serialize_field("callsite", metadata)?;
+//        state.end()
+//    }
+//}
 
 #[derive(Debug)]
 pub struct SerializeMetadata<'a>(pub (crate) Metadata<'a>);
@@ -118,17 +117,19 @@ impl<'a> Serialize for SerializeAttributes<'a> {
         let mut state = serializer.serialize_struct("SerializeAttributes", 3)?;
         state.serialize_field("metadata", &SerializeMetadata(*self.0.metadata()))?;
         //state.serialize_field("values", &ValueSetVisitor(*self.0.values()))?;
-        match self.0.parent() {
-            Root => {
-                state.serialize_field("parent", "Root")?;
-            }
-            Current => {
-                state.serialize_field("parent", "Current")?;
-            }
-            Explicit(ref id) => {
-                state.serialize_field("parent", &format!("Explicit: {}", id))?;
-            }
+        if let Some(id) = self.0.parent() {
+            // TODO this probably isn't how we want it
+            state.serialize_field("parent", &format!("Explicit: {:?}", id))?;
         }
+
+        else if self.0.is_root() {
+            state.serialize_field("parent", "Root")?;
+        }
+
+        else {
+            state.serialize_field("parent", "Current")?;
+        }
+
         state.end()
     }
 }
@@ -171,7 +172,14 @@ struct SerdeVisitor<S>(S) where S: Serializer;
 
 impl<S> Visit for SerdeVisitor<S> where S: Serializer {
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
-        self.0.serialize_field(field.name(), &format!("{:?}", value));
+        // TODO this will not work because all the Serializer methods take self by-value but the
+        // Visit methods take self by `&mut`
+        let mut map = self.0.serialize_map(Some(1)).unwrap();
+        map.serialize_entry(field.name(), &format!("{:?}", value)).unwrap();
+        map.end().unwrap();
+        // YOLO
+        // serialize_map
+        // use a map with 1 value
     }
 }
 
