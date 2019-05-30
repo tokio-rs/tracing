@@ -1,13 +1,13 @@
 #[cfg(feature = "tokio")]
 #[doc(hidden)]
-pub use tokio::spawn as __spawn;
+pub use tokio::executor::{Executor as __Executor, DefaultExecutor as DefaultExecutor};
 #[cfg(all(feature = "tokio-executor", not(feature = "tokio")))]
 #[doc(hidden)]
-pub use tokio_executor::spawn as __spawn;
+pub use tokio_executor::executor::{Executor as __Executor, DefaultExecutor as DefaultExecutor};
 
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[doc(hidden)]
-pub use tracing::{span as __tracing_futures_span, Level as __Level};
+pub use tracing::{span as __tracing_futures_span, Level as Level, field::debug};
 
 /// Spawns a future on the default executor, instrumented with its own span.
 ///
@@ -19,9 +19,8 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// in projects using `tokio-trace`.
 ///
 /// In order for a future to do work, it must be spawned on an executor. The
-/// `spawn` function is the easiest way to do this. It spawns a future on the
-/// [default executor] for the current execution context (tracked using a
-/// thread-local variable).
+/// `spawn!` macro spawns a future on the provided executor, or using the
+/// [default executor] for the current execution context if none is provided.
 ///
 /// The default executor is **usually** a thread pool.
 ///
@@ -166,6 +165,34 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 /// # pub fn main() {}
 /// ```
 ///
+/// # Providing an Executor
+///
+/// By default, `spawn!` uses the [`DefaultExecutor`]. However, an alternative
+/// executor can be provided using the `on:` macro field. For example,
+///
+/// ```rust
+/// # extern crate futures;
+/// # extern crate tokio
+/// #[macro_use]
+/// extern crate tracing_futures;
+/// # use futures::future;
+/// # fn doc() {
+/// let fut = future::lazy(|| {
+///     // ...
+/// #    Ok(())
+/// });
+/// # fn get_custom_executor() -> tokio::executor::DefaultExecutor {
+/// #    tokio::executor::DefaultExecutor::current()
+/// #}
+/// let my_executor = get_custom_executor();
+/// spawn!(name: "my_future", on: my_executor, fut);
+/// # }
+///  # fn main() {}
+/// ```
+///
+/// The executor that spawned the future is recorded in the
+/// `tokio.task.executor` field on the generated span.
+///
 /// # Panics
 ///
 /// This function will panic if the default executor is not set or if spawning
@@ -179,18 +206,129 @@ pub use tracing::{span as __tracing_futures_span, Level as __Level};
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[macro_export(inner_local_macros)]
 macro_rules! spawn {
-    (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {{
-        use $crate::macros::__spawn;
-        use $crate::Instrument;
+    (level: $lvl:expr, target: $tgt:expr, name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {{
+        use $crate::{Instrument, macros::__Executor};
         let span = $crate::macros::__tracing_futures_span!(
             $lvl,
             target: $tgt,
             $name,
             tokio.task.is_spawned = true,
+            tokio.task.executor = $crate::macros::debug(&$ex),
             $($field)*
         );
-        let fut = Box::new($fut.instrument(span));
-        __spawn(fut)
+        $ex.spawn(Box::new($fut.instrument(span))).unwrap();
+    }};
+    (level: $lvl:expr, name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            level: $lvl,
+            target: __tracing_futures_module_path!(),
+            name: $name,
+            on:  $ex,
+            $fut,
+            $($field)*
+        )
+    };
+    (level: $lvl:expr, target: $tgt:expr, name: $name:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(level: $lvl, target: $tgt, name: $name, on:  $ex, $fut,)
+    };
+    (level: $lvl:expr, target: $tgt:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            level: $lvl,
+            target: $tgt,
+            name: __tracing_futures_stringify!($fut),
+            $fut,
+            $($field)*
+        )
+    };
+    (level: $lvl:expr, name: $name:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(level: $lvl, name: $name, on:  $ex, $fut,)
+    };
+    (target: $tgt:expr, name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            level: $crate::macros::Level::TRACE,
+            target: $tgt,
+            name: $name,
+            on:  $ex,
+            $fut,
+            $($field)*
+        )
+    };
+    (target: $tgt:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            level: $crate::macros::Level::TRACE,
+            target: $tgt,
+            on:  $ex,
+            $fut,
+            $($field)*
+        )
+    };
+    (name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            target: __tracing_futures_module_path!(),
+            name: $name,
+            on:  $ex,
+            $fut,
+            $($field)*
+        )
+    };
+    (level: $lvl:expr, target: $tgt:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(level: $lvl, target: $tgt, on:  $ex, $fut,)
+    };
+    (target: $tgt:expr, name: $name:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(
+            target: $tgt,
+            name: $name,
+            on:  $ex,
+            $fut,
+        )
+    };
+    (level: $lvl:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(
+            level: $lvl,
+            name: __tracing_futures_stringify!($fut),
+            on:  $ex,
+            $fut,
+        )
+    };
+    (target: $tgt:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(target: $tgt, on:  $ex, $fut,)
+    };
+    (name: $name:expr, on:  $ex:expr, $fut:expr) => {
+        spawn!(name: $name, on:  $ex, $fut,)
+    };
+    (level: $lvl:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            level: $lvl,
+            target: __tracing_futures_module_path!(),
+            name: __tracing_futures_stringify!($fut),
+            on:  $ex,
+            $fut,
+            $($field)*
+        )
+    };
+    (on:  $ex:expr, $fut:expr, $($field:tt)*) => {
+        spawn!(
+            name: __tracing_futures_stringify!($fut),
+            on:  $ex,
+            $fut,
+            $($field)*,
+        )
+    };
+    (on:  $ex:expr, $fut:expr) => {
+        spawn!(on:  $ex, $fut,)
+    };
+
+    // === default executor ===
+
+    (level: $lvl:expr, target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {{
+        spawn!(
+            level: $lvl,
+            target: $tgt,
+            name: $name,
+            on:  $crate::macros::DefaultExecutor::current(),
+            $fut,
+            $($field)*
+        )
     }};
     (level: $lvl:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
@@ -218,7 +356,7 @@ macro_rules! spawn {
     };
     (target: $tgt:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
-            level: $crate::macros::__Level::TRACE,
+            level: $crate::macros::Level::TRACE,
             target: $tgt,
             name: $name,
             $fut,
@@ -227,7 +365,7 @@ macro_rules! spawn {
     };
     (target: $tgt:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
-            level: $crate::macros::__Level::TRACE,
+            level: $crate::macros::Level::TRACE,
             target: $tgt,
             $fut,
             $($field)*
