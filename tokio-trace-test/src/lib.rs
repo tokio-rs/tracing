@@ -12,9 +12,11 @@ pub enum ApplicationKind {
     YakShave,
 }
 
-pub fn emit(kind: &ApplicationKind) {
-    match kind {
-        ApplicationKind::Server => server::incoming_connection(),
-        ApplicationKind::YakShave => yak_shave::yak_shave(),
+impl ApplicationKind {
+    pub fn emit(&self) {
+        match self {
+            ApplicationKind::Server => server::incoming_connection(),
+            ApplicationKind::YakShave => yak_shave::yak_shave(),
+        }
     }
 }

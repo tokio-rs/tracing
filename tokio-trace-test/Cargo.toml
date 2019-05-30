@@ -1,5 +1,5 @@
 [package]
-name = "tokio-trace-beacon"
+name = "tokio-trace-test"
 version = "0.1.0"
 authors = ["Matthias Prechtl <m.sleepypanda@gmail.com>"]
 
