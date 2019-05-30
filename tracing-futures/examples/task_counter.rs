@@ -254,7 +254,8 @@ fn main() {
 
     tokio_trace::subscriber::with_default(TaskCounter::new(), || {
         tokio::run(future::lazy(|| {
-            spawn!(parent_task(10))
+            spawn!(parent_task(10));
+            Ok(())
         }))
     });
 
