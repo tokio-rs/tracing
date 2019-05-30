@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "tokio-trace-beacon",
+    "tokio-trace-test",
     "tokio-trace-proc-macros",
     "tokio-trace-fmt",
     "tokio-trace-futures",
