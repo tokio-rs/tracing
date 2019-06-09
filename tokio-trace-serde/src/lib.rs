@@ -168,32 +168,51 @@ impl<'a> Serialize for RecordValues<'a> {
     }
 }
 
-struct SerdeVisitor<S: SerializeMap> {
+struct SerdeMapVisitor<S: SerializeMap> {
     serializer: S,
     state: Result<(), S::Error>
 }
 
-impl<S> Visit for SerdeVisitor<S> where S: SerializeMap {
+impl<S> Visit for SerdeMapVisitor<S> where S: SerializeMap {
     fn record_bool(&mut self, field: &Field, value: bool) {
         // If previous fields serialized successfully, continue serializing,
         // otherwise, short-circuit and do nothing.
         if self.state.is_ok() {
             self.state = self.serializer
                 .serialize_entry(field.name(), &value)
-                .map(|_| ());
         }
     }
 
     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_entry(field.name(), &format!("{:?}", value))
-                .map(|_| ());
+                .serialize_entry(field.name(), &format_args!("{:?}", value))
+        }
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_entry(field.name(), &format_args!("{:?}", value))
+        }
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_entry(field.name(), &format_args!("{:?}", value))
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_entry(field.name(), &format_args!("{:?}", value))
         }
     }
 }
 
-impl<S: SerializeMap> SerdeVisitor<S> {
+impl<S: SerializeMap> SerdeMapVisitor<S> {
 
     /// Completes serializing the visited object, returning `Ok(())` if all
     /// fields were serialized correctly, or `Error(S::Error)` if a field could
@@ -201,5 +220,77 @@ impl<S: SerializeMap> SerdeVisitor<S> {
     fn finish(self) -> Result<S::Ok, S::Error> {
         self.state?;
         self.serializer.end()
+    }
+}
+
+struct SerdeStructVisitor<S: SerializeStruct> {
+    serializer: S,
+    state: Result<(), S::Error>
+}
+
+impl<S> Visit for SerdeStructVisitor<S> where S: SerializeStruct {
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        // If previous fields serialized successfully, continue serializing,
+        // otherwise, short-circuit and do nothing.
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_field(field.name(), &value)
+        }
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_field(field.name(), &format_args!("{:?}", value))
+        }
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_field(field.name(), &format_args!("{:?}", value))
+        }
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_field(field.name(), &format_args!("{:?}", value))
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if self.state.is_ok() {
+            self.state = self.serializer
+                .serialize_field(field.name(), &format_args!("{:?}", value))
+        }
+    }
+}
+
+impl<S: SerializeStruct> SerdeStructVisitor<S> {
+
+    /// Completes serializing the visited object, returning `Ok(())` if all
+    /// fields were serialized correctly, or `Error(S::Error)` if a field could
+    /// not be serialized.
+    fn finish(self) -> Result<S::Ok, S::Error> {
+        self.state?;
+        self.serializer.end()
+    }
+}
+
+/// `AsSerde` is a trait that provides the `as_serde` function to types in
+/// `tokio-trace` to allow users to serialize their values.
+pub trait AsSerde<'a> {
+    type Serializable: serde::Serialize + 'a;
+
+    /// `as_serde` borrows a `tokio-trace` value and returns the serialized value.
+    fn as_serde(&'a self) -> Self::Serializable;
+}
+
+impl<'a> AsSerde<'a> for tokio_trace_core::Metadata<'a> {
+    type Serializable = SerializeMetadata<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeMetadata(self)
     }
 }
