@@ -1,9 +1,10 @@
 [package]
 name = "tokio-trace-serde"
 version = "0.1.0"
-authors = ["J Haigh <debugsteven@gmail.com>"]
+authors = ["Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
-serde = "1.0.90"
-tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
+serde = "1"
+tokio-trace-core = "0.2.0"
