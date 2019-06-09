@@ -87,9 +87,9 @@ pub struct RecordValues<'a>(pub (crate) Record<'a>);
 impl<'a> Serialize for RecordValues<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
-        let our_state = serializer.serialize_map(Some(1))?;
-        let mut visitor = SerdeVisitor {
-                            serializer: our_state,
+        let serializer = serializer.serialize_map(None)?;
+        let mut visitor = SerdeMapVisitor {
+                            serializer,
                             state: Ok(()),
                           };
         self.0.record(&mut visitor);
