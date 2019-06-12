@@ -17,4 +17,4 @@ parking_lot = { version = "0.7"}
 lock_api = "0.1"
 
 [dev-dependencies]
-tokio-trace = "0.1.0"
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }

@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tokio-trace = "0.1.0"
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
 
 [dev-dependencies]
 tokio-trace-log = { path = "../tokio-trace-log" }
