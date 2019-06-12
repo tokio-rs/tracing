@@ -37,14 +37,14 @@ impl RspBody {
 }
 
 impl Body for RspBody {
-    type Data = <Bytes as IntoBuf>::Buf;
+    type Item = <Bytes as IntoBuf>::Buf;
     type Error = h2::Error;
 
     fn is_end_stream(&self) -> bool {
         self.0.as_ref().map(|b| b.is_empty()).unwrap_or(false)
     }
 
-    fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
+    fn poll_buf(&mut self) -> Poll<Option<Self::Item>, h2::Error> {
         let data = self.0.take().and_then(|b| {
             if b.is_empty() {
                 None
@@ -125,54 +125,49 @@ fn main() {
         let serve_span = span!(
             Level::TRACE,
             "serve",
-            local_ip = field::debug(addr.ip()),
-            local_port = addr.port() as u64
+            local.ip = field::debug(addr.ip()),
+            local.port = addr.port() as u64
         );
         let new_svc =
             tokio_trace_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
-        let serve_span2 = serve_span.clone();
-        serve_span.enter(move || {
-            let h2 = Server::new(new_svc, Default::default(), reactor.clone());
+        let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
-            let serve = bind
-                .incoming()
-                .fold((h2, reactor), |(mut h2, reactor), sock| {
-                    let addr = sock.peer_addr().expect("can't get addr");
-                    let conn_span = span!(
-                        Level::TRACE,
-                        "conn",
-                        remote_ip = field::debug(addr.ip()),
-                        remote_port = addr.port() as u64
-                    );
-                    let conn_span2 = conn_span.clone();
-                    conn_span.enter(|| {
-                        if let Err(e) = sock.set_nodelay(true) {
-                            return Err(e);
-                        }
+        let serve = bind
+            .incoming()
+            .fold((h2, reactor), |(mut h2, reactor), sock| {
+                let addr = sock.peer_addr().expect("can't get addr");
+                let conn_span = span!(
+                    Level::TRACE,
+                    "conn",
+                    remote.ip = field::debug(addr.ip()),
+                    remote.port = addr.port() as u64
+                );
+                let _enter = conn_span.enter();
+                if let Err(e) = sock.set_nodelay(true) {
+                    return Err(e);
+                }
 
-                        info!("accepted connection");
+                info!("accepted connection");
 
-                        let serve = h2
-                            .serve(sock)
-                            .map_err(|e| error!("error {:?}", e))
-                            .and_then(|_| {
-                                debug!("response finished");
-                                future::ok(())
-                            })
-                            .instrument(conn_span2);
-                        reactor.spawn(Box::new(serve));
-
-                        Ok((h2, reactor))
+                let serve = h2
+                    .serve(sock)
+                    .map_err(|e| error!("error {:?}", e))
+                    .and_then(|_| {
+                        debug!("response finished");
+                        future::ok(())
                     })
-                })
-                .map_err(|e| {
-                    error!("serve error {:?}", e);
-                })
-                .map(|_| {})
-                .instrument(serve_span2);
+                    .instrument(conn_span.clone());
+                reactor.spawn(Box::new(serve));
 
-            rt.spawn(serve);
-            rt.shutdown_on_idle().wait().unwrap();
-        });
+                Ok((h2, reactor))
+            })
+            .map_err(|e| {
+                error!("serve error {:?}", e);
+            })
+            .map(|_| {})
+            .instrument(serve_span);
+
+        rt.spawn(serve);
+        rt.shutdown_on_idle().wait().unwrap();
     });
 }

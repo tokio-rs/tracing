@@ -18,13 +18,12 @@ fn main() {
             "Getting rec from another function.",
             number_of_recs = &num
         );
-        span.enter(|| {
-            let band = suggest_band();
-            info!(
-                { band_recommendation = field::display(&band) },
-                "Got a rec."
-            );
-        });
+        let _enter = span.enter();
+        let band = suggest_band();
+        info!(
+            { band_recommendation = field::display(&band) },
+            "Got a rec."
+        );
     });
 }
 

@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["David Barsky <dbarsky@amazon.com>"]
 
 [dependencies]
-tokio-trace = "0.1.0"
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }

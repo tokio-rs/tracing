@@ -52,15 +52,14 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
     quote_spanned!(call_site=>
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
-            span!(
+            let __tokio_trace_attr_span = span!(
                 tokio_trace::Level::TRACE,
                 #ident_str,
                 traced_function = &#ident_str
                 #(, #param_names = tokio_trace::field::debug(&#param_names_clone)),*
-            )
-            .enter(move || {
-                #block
-            })
+            );
+            let __tokio_trace_attr_guard = __tokio_trace_attr_span.enter();
+            #block
         }
     )
     .into()

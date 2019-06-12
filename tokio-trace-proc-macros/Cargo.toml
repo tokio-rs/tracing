@@ -7,7 +7,7 @@ authors = ["Eliza Weisman <eliza@buoyant.io>", "David Barsky <dbarsky@amazon.com
 proc-macro = true
 
 [dependencies]
-tokio-trace = "0.1.0"
+tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
 syn = { version = "0.15", features = ["full", "extra-traits"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
