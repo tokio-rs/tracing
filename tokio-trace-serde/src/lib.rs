@@ -115,7 +115,7 @@ impl<'a> Serialize for SerializeMetadata<'a> {
 
 /// Implements `serde::Serialize` to write `Event` data to a serializer.
 #[derive(Debug)]
-pub struct SerializeEvent<'a>(pub (crate) Event<'a>);
+pub struct SerializeEvent<'a>(pub (crate) &'a Event<'a>);
 
 impl<'a> Serialize for SerializeEvent<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -132,7 +132,7 @@ impl<'a> Serialize for SerializeEvent<'a> {
 
 /// A Serde visitor to pull `Attributes` data out of a serialized stream
 #[derive(Debug)]
-pub struct SerializeAttributes<'a>(pub (crate) Attributes<'a>);
+pub struct SerializeAttributes<'a>(pub (crate) &'a Attributes<'a>);
 
 impl<'a> Serialize for SerializeAttributes<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
