@@ -294,3 +294,24 @@ impl<'a> AsSerde<'a> for tokio_trace_core::Metadata<'a> {
         SerializeMetadata(self)
     }
 }
+
+impl<'a> AsSerde<'a> for tokio_trace_core::Event<'a> {
+    type Serializable = SerializeEvent<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeEvent(self)
+    }
+}
+
+impl<'a> AsSerde<'a> for tokio_trace_core::span::Attributes<'a> {
+    type Serializable = SerializeAttributes<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeAttributes(self)
+    }
+}
+
+// TODO all of the other types my dude
+mod sealed {
+    pub trait Sealed {}
+}
