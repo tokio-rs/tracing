@@ -193,21 +193,21 @@ impl<S> Visit for SerdeMapVisitor<S> where S: SerializeMap {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_entry(field.name(), &format_args!("{:?}", value))
+                .serialize_entry(field.name(), &value)
         }
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_entry(field.name(), &format_args!("{:?}", value))
+                .serialize_entry(field.name(), &value)
         }
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_entry(field.name(), &format_args!("{:?}", value))
+                .serialize_entry(field.name(), &value)
         }
     }
 }
@@ -248,21 +248,21 @@ impl<S> Visit for SerdeStructVisitor<S> where S: SerializeStruct {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_field(field.name(), &format_args!("{:?}", value))
+                .serialize_field(field.name(), &value)
         }
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_field(field.name(), &format_args!("{:?}", value))
+                .serialize_field(field.name(), &value)
         }
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
             self.state = self.serializer
-                .serialize_field(field.name(), &format_args!("{:?}", value))
+                .serialize_field(field.name(), &value)
         }
     }
 }
