@@ -13,7 +13,7 @@ use tokio_trace_core::{
 };
 
 #[derive(Debug)]
-pub struct SerializeField(pub(crate) Field);
+pub struct SerializeField(Field);
 
 impl Serialize for SerializeField {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -25,7 +25,7 @@ impl Serialize for SerializeField {
 }
 
 #[derive(Debug)]
-pub struct SerializeFieldSet<'a>(pub(crate) &'a FieldSet);
+pub struct SerializeFieldSet<'a>(&'a FieldSet);
 
 impl<'a> Serialize for SerializeFieldSet<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -41,7 +41,7 @@ impl<'a> Serialize for SerializeFieldSet<'a> {
 }
 
 #[derive(Debug)]
-pub struct SerializeLevel<'a>(pub(crate) &'a Level);
+pub struct SerializeLevel<'a>(&'a Level);
 
 impl<'a> Serialize for SerializeLevel<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -65,7 +65,7 @@ impl<'a> Serialize for SerializeLevel<'a> {
 }
 
 #[derive(Debug)]
-pub struct SerializeId<'a>(pub(crate) &'a Id);
+pub struct SerializeId<'a>(&'a Id);
 
 impl<'a> Serialize for SerializeId<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -79,7 +79,7 @@ impl<'a> Serialize for SerializeId<'a> {
 }
 
 #[derive(Debug)]
-pub struct SerializeMetadata<'a>(pub(crate) &'a Metadata<'a>);
+pub struct SerializeMetadata<'a>(&'a Metadata<'a>);
 
 impl<'a> Serialize for SerializeMetadata<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -102,7 +102,7 @@ impl<'a> Serialize for SerializeMetadata<'a> {
 
 /// Implements `serde::Serialize` to write `Event` data to a serializer.
 #[derive(Debug)]
-pub struct SerializeEvent<'a>(pub(crate) &'a Event<'a>);
+pub struct SerializeEvent<'a>(&'a Event<'a>);
 
 impl<'a> Serialize for SerializeEvent<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -121,7 +121,7 @@ impl<'a> Serialize for SerializeEvent<'a> {
 
 /// A Serde visitor to pull `Attributes` data out of a serialized stream
 #[derive(Debug)]
-pub struct SerializeAttributes<'a>(pub(crate) &'a Attributes<'a>);
+pub struct SerializeAttributes<'a>(&'a Attributes<'a>);
 
 impl<'a> Serialize for SerializeAttributes<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -144,7 +144,7 @@ impl<'a> Serialize for SerializeAttributes<'a> {
 
 /// A Serde visitor to pull `Record` data out of a serialized stream
 #[derive(Debug)]
-pub struct SerializeRecord<'a>(pub(crate) &'a Record<'a>);
+pub struct SerializeRecord<'a>(&'a Record<'a>);
 
 impl<'a> Serialize for SerializeRecord<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
