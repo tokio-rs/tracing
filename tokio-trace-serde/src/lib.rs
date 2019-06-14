@@ -320,3 +320,16 @@ impl<'a> AsSerde<'a> for tokio_trace_core::span::Record<'a> {
     }
 }
 
+impl<'a> self::sealed::Sealed for tokio_trace_core::Metadata<'a> {}
+
+impl<'a> self::sealed::Sealed for tokio_trace_core::Event<'a> {}
+
+impl<'a> self::sealed::Sealed for tokio_trace_core::span::Attributes<'a> {}
+
+impl<'a> self::sealed::Sealed for tokio_trace_core::span::Id {}
+
+impl<'a> self::sealed::Sealed for tokio_trace_core::span::Record<'a> {}
+
+mod sealed {
+    pub trait Sealed {}
+}
