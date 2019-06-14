@@ -146,9 +146,9 @@ impl<'a> Serialize for SerializeAttributes<'a> {
 
 /// A Serde visitor to pull `Record` data out of a serialized stream
 #[derive(Debug)]
-pub struct RecordValues<'a>(pub (crate) Record<'a>);
+pub struct SerializeRecord<'a>(pub (crate) &'a Record<'a>);
 
-impl<'a> Serialize for RecordValues<'a> {
+impl<'a> Serialize for SerializeRecord<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
         let serializer = serializer.serialize_map(None)?;
