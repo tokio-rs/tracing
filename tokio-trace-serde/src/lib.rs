@@ -274,7 +274,7 @@ impl<S: SerializeStruct> SerdeStructVisitor<S> {
 /// `AsSerde` is a trait that provides the `as_serde` function to types in
 /// `tokio-trace` to allow users to serialize their values.
 pub trait AsSerde<'a> {
-    type Serializable: serde::Serialize + 'a;
+    type Serializable: serde::Serialize + self::sealed::Sealed + 'a;
 
     /// `as_serde` borrows a `tokio-trace` value and returns the serialized value.
     fn as_serde(&'a self) -> Self::Serializable;
@@ -320,16 +320,15 @@ impl<'a> AsSerde<'a> for tokio_trace_core::span::Record<'a> {
     }
 }
 
-impl<'a> self::sealed::Sealed for tokio_trace_core::Metadata<'a> {}
+impl<'a> self::sealed::Sealed for SerializeMetadata<'a> {}
 
-impl<'a> self::sealed::Sealed for tokio_trace_core::Event<'a> {}
+impl<'a> self::sealed::Sealed for SerializeEvent<'a> {}
 
-impl<'a> self::sealed::Sealed for tokio_trace_core::span::Attributes<'a> {}
+impl<'a> self::sealed::Sealed for SerializeAttributes<'a> {}
 
-impl<'a> self::sealed::Sealed for tokio_trace_core::span::Id {}
+impl<'a> self::sealed::Sealed for SerializeId<'a> {}
 
-impl<'a> self::sealed::Sealed for tokio_trace_core::span::Record<'a> {}
-
+impl<'a> self::sealed::Sealed for SerializeRecord<'a> {}
 mod sealed {
     pub trait Sealed {}
 }
