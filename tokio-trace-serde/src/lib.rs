@@ -304,7 +304,19 @@ impl<'a> AsSerde<'a> for tokio_trace_core::span::Attributes<'a> {
     }
 }
 
-// TODO all of the other types my dude
-mod sealed {
-    pub trait Sealed {}
+impl<'a> AsSerde<'a> for tokio_trace_core::span::Id {
+    type Serializable = SerializeId<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeId(self)
+    }
 }
+
+impl<'a> AsSerde<'a> for tokio_trace_core::span::Record<'a> {
+    type Serializable = SerializeRecord<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeRecord(self)
+    }
+}
+
