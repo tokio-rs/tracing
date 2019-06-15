@@ -3,6 +3,8 @@
 extern crate tracing;
 pub use tracing::{Event, Id};
 
+pub mod layer;
+
 // mod compose;
 // pub use compose::Composed;
 
