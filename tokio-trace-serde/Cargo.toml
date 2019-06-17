@@ -1,0 +1,9 @@
+[package]
+name = "tokio-trace-serde"
+version = "0.1.0"
+authors = ["Tokio Contributors <team@tokio.rs>"]
+license = "MIT"
+
+[dependencies]
+serde = "1"
+tokio-trace-core = "0.2.0"
