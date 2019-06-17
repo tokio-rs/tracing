@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
+tokio-trace = "0.1.0"
 tokio-trace-futures = { path = "../tokio-trace-futures" }
 futures = "0.1"
 tower-service = "0.2"
@@ -13,7 +13,7 @@ http = "0.1"
 
 [dev-dependencies]
 bytes = "0.4"
-h2 = "0.1.11"
+h2 = "=0.1.11"
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
 string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"

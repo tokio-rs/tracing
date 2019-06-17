@@ -13,4 +13,3 @@ members = [
     "tokio-trace-subscriber",
     "tokio-trace-serde",
 ]
-

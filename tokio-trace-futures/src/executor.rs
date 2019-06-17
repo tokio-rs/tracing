@@ -4,11 +4,12 @@ use futures::{
 };
 use {Instrument, Instrumented, WithDispatch};
 
-#[cfg(feature = "with-tokio")]
-use tokio::{
-    executor::{Executor as TokioExecutor, SpawnError},
-    runtime::{current_thread, Runtime, TaskExecutor},
-};
+#[cfg(all(feature = "tokio", not(feature = "tokio-executor")))]
+use tokio::executor::{Executor as TokioExecutor, SpawnError};
+#[cfg(feature = "tokio")]
+use tokio::runtime::{current_thread, Runtime, TaskExecutor};
+#[cfg(feature = "tokio-executor")]
+use tokio_executor::{Executor as TokioExecutor, SpawnError};
 
 macro_rules! deinstrument_err {
     ($e:expr) => {
@@ -31,7 +32,7 @@ where
     }
 }
 
-#[cfg(feature = "with-tokio")]
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 impl<T> TokioExecutor for Instrumented<T>
 where
     T: TokioExecutor,
@@ -46,7 +47,7 @@ where
     }
 }
 
-#[cfg(feature = "with-tokio")]
+#[cfg(feature = "tokio")]
 impl Instrumented<Runtime> {
     /// Spawn an instrumented future onto the Tokio runtime.
     ///
@@ -102,7 +103,7 @@ impl Instrumented<Runtime> {
     }
 }
 
-#[cfg(feature = "with-tokio")]
+#[cfg(feature = "tokio")]
 impl Instrumented<current_thread::Runtime> {
     /// Spawn an instrumented future onto the single-threaded Tokio runtime.
     ///
@@ -176,7 +177,7 @@ where
     }
 }
 
-#[cfg(feature = "with-tokio")]
+#[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 impl<T> TokioExecutor for WithDispatch<T>
 where
     T: TokioExecutor,
@@ -191,7 +192,7 @@ where
     }
 }
 
-#[cfg(feature = "with-tokio")]
+#[cfg(feature = "tokio")]
 impl WithDispatch<Runtime> {
     /// Spawn a future onto the Tokio runtime, in the context of this
     /// `WithDispatch`'s trace dispatcher.
@@ -250,7 +251,7 @@ impl WithDispatch<Runtime> {
     }
 }
 
-#[cfg(feature = "with-tokio")]
+#[cfg(feature = "tokio")]
 impl WithDispatch<current_thread::Runtime> {
     /// Spawn a future onto the single-threaded Tokio runtime, in the context
     /// of this `WithDispatch`'s trace dispatcher.

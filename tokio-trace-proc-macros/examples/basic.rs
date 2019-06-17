@@ -13,7 +13,7 @@ fn main() {
     tokio_trace::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
 
-        let mut span = span!(
+        let span = span!(
             Level::TRACE,
             "Getting rec from another function.",
             number_of_recs = &num

@@ -16,6 +16,8 @@ script:
 - cargo test --verbose -p tokio-trace-env-logger
 - cargo test --verbose -p tokio-trace-macros
 - cargo test --verbose -p tokio-trace-serde
+- cargo test --verbose -p tokio-trace-fmt
+- cargo test --verbose -p tokio-trace-slog
 
 jobs:
   include:

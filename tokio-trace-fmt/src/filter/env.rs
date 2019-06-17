@@ -1,23 +1,10 @@
-use span;
-
 use regex::Regex;
 use tokio_trace_core::{subscriber::Interest, Level, Metadata};
+use {filter::Filter, span::Context};
 
 use std::env;
 
-pub const DEFAULT_FILTER_ENV: &'static str = "RUST_LOG";
-
-pub trait Filter<N> {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {
-        if self.enabled(metadata, ctx) {
-            Interest::always()
-        } else {
-            Interest::never()
-        }
-    }
-
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool;
-}
+pub const DEFAULT_FILTER_ENV: &str = "RUST_LOG";
 
 #[derive(Debug)]
 pub struct EnvFilter {
@@ -105,14 +92,14 @@ where
 }
 
 impl<N> Filter<N> for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &span::Context<N>) -> Interest {
-        if !self.includes_span_directive && metadata.level() > &self.max_level {
+    fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
+        if !self.includes_span_directive && *metadata.level() > self.max_level {
             return Interest::never();
         }
 
         let mut interest = Interest::never();
         for directive in self.directives_for(metadata) {
-            let accepts_level = metadata.level() <= &directive.level;
+            let accepts_level = *metadata.level() <= directive.level;
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
@@ -134,9 +121,9 @@ impl<N> Filter<N> for EnvFilter {
         interest
     }
 
-    fn enabled<'a>(&self, metadata: &Metadata, ctx: &span::Context<'a, N>) -> bool {
+    fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
-            let accepts_level = metadata.level() <= &directive.level;
+            let accepts_level = *metadata.level() <= directive.level;
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
@@ -319,16 +306,6 @@ impl Default for Directive {
     }
 }
 
-impl<'a, F, N> Filter<N> for F
-where
-    F: Fn(&Metadata, &span::Context<N>) -> bool,
-    N: ::NewVisitor<'a>,
-{
-    fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
-        (self)(metadata, ctx)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,8 +316,7 @@ mod tests {
     struct Cs;
 
     impl Callsite for Cs {
-        fn add_interest(&self, _interest: Interest) {}
-        fn clear_interest(&self) {}
+        fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata {
             unimplemented!()
         }
@@ -351,7 +327,17 @@ mod tests {
         let filter = EnvFilter::from("app=debug");
         let store = Store::with_capacity(1);
         let ctx = Context::new(&store, &NewRecorder);
-        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &[],
+            &Cs,
+            Kind::SPAN,
+        );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
         assert!(interest.is_never());
@@ -362,7 +348,17 @@ mod tests {
         let filter = EnvFilter::from("app[mySpan]=debug");
         let store = Store::with_capacity(1);
         let ctx = Context::new(&store, &NewRecorder);
-        let meta = Metadata::new("mySpan", "app", Level::TRACE, None, None, None, &[], &Cs);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            &[],
+            &Cs,
+            Kind::SPAN,
+        );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
         assert!(interest.is_always());
@@ -382,6 +378,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -402,6 +399,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -422,6 +420,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);
@@ -442,6 +441,7 @@ mod tests {
             None,
             &["field=\"value\""],
             &Cs,
+            Kind::SPAN,
         );
 
         let interest = filter.callsite_enabled(&meta, &ctx);

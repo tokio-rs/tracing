@@ -37,14 +37,14 @@ impl RspBody {
 }
 
 impl Body for RspBody {
-    type Item = <Bytes as IntoBuf>::Buf;
+    type Data = <Bytes as IntoBuf>::Buf;
     type Error = h2::Error;
 
     fn is_end_stream(&self) -> bool {
         self.0.as_ref().map(|b| b.is_empty()).unwrap_or(false)
     }
 
-    fn poll_buf(&mut self) -> Poll<Option<Self::Item>, h2::Error> {
+    fn poll_data(&mut self) -> Poll<Option<Self::Data>, h2::Error> {
         let data = self.0.take().and_then(|b| {
             if b.is_empty() {
                 None
@@ -122,14 +122,14 @@ fn main() {
         let addr = "[::1]:8888".parse().unwrap();
         let bind = TcpListener::bind(&addr).expect("bind");
 
-        let mut serve_span = span!(
+        let serve_span = span!(
             Level::TRACE,
             "serve",
             local_ip = field::debug(addr.ip()),
             local_port = addr.port() as u64
         );
         let new_svc =
-            tokio_trace_tower_http::InstrumentedMakeService::new(NewSvc, serve_span.clone());
+            tokio_trace_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
         let serve_span2 = serve_span.clone();
         serve_span.enter(move || {
             let h2 = Server::new(new_svc, Default::default(), reactor.clone());
@@ -138,7 +138,7 @@ fn main() {
                 .incoming()
                 .fold((h2, reactor), |(mut h2, reactor), sock| {
                     let addr = sock.peer_addr().expect("can't get addr");
-                    let mut conn_span = span!(
+                    let conn_span = span!(
                         Level::TRACE,
                         "conn",
                         remote_ip = field::debug(addr.ip()),
