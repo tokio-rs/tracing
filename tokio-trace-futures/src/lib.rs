@@ -274,11 +274,11 @@ mod tests {
             .run_with_handle();
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         with_default(subscriber, || {
-            span!(Level::TRACE, "a").enter(|| {
+            span!(Level::TRACE, "a").in_scope(|| {
                 let future = PollN::new_ok(2)
                     .instrument(span!(Level::TRACE, "b"))
                     .map(|_| {
-                        span!(Level::TRACE, "c").enter(|| {
+                        span!(Level::TRACE, "c").in_scope(|| {
                             // "c" happens _outside_ of the instrumented future's
                             // spab, so we don't expect it.
                         })
