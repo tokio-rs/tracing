@@ -39,6 +39,6 @@ where
         // TODO: custom `Value` impls for `http` types would be nice...
         let span = span!(Level::TRACE, parent: &self.span, "request", request = &field::debug(&req));
         let enter = span.enter();
-        self.inner.call(req).instrument(span2)
+        self.inner.call(req).instrument(span.clone())
     }
 }
