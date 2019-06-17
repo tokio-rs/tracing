@@ -1,19 +1,28 @@
 use parking_lot::RwLock;
 use std::{
     error, fmt,
+    marker::PhantomData,
     sync::{Arc, Weak},
 };
 use tokio_trace_core::{subscriber::Interest, Metadata};
 use {filter::Filter, span::Context};
 
 #[derive(Debug)]
-pub struct ReloadFilter<F> {
+pub struct ReloadFilter<F, N>
+where
+    F: Filter<N>,
+{
     inner: Arc<RwLock<F>>,
+    _f: PhantomData<fn(N)>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Handle<F> {
+pub struct Handle<F, N>
+where
+    F: Filter<N>,
+{
     inner: Weak<RwLock<F>>,
+    _f: PhantomData<fn(N)>,
 }
 
 #[derive(Debug)]
@@ -28,7 +37,7 @@ enum ErrorKind {
 
 // ===== impl ReloadFilter =====
 
-impl<F, N> Filter<N> for ReloadFilter<F>
+impl<F, N> Filter<N> for ReloadFilter<F, N>
 where
     F: Filter<N>,
 {
@@ -43,30 +52,35 @@ where
     }
 }
 
-impl<F: 'static> ReloadFilter<F> {
-    pub fn new<N>(f: F) -> Self
+impl<F, N> ReloadFilter<F, N>
+where
+    F: Filter<N> + 'static,
+{
+    pub fn new(f: F) -> Self
     where
         F: Filter<N>,
     {
         Self {
             inner: Arc::new(RwLock::new(f)),
+            _f: PhantomData,
         }
     }
 
-    pub fn handle(&self) -> Handle<F> {
+    pub fn handle(&self) -> Handle<F, N> {
         Handle {
             inner: Arc::downgrade(&self.inner),
+            _f: PhantomData,
         }
     }
 }
 
 // ===== impl Handle =====
 
-impl<F: 'static> Handle<F> {
-    pub fn reload<N>(&self, new_filter: impl Into<F>) -> Result<(), Error>
-    where
-        F: Filter<N>,
-    {
+impl<F, N> Handle<F, N>
+where
+    F: Filter<N> + 'static,
+{
+    pub fn reload(&self, new_filter: impl Into<F>) -> Result<(), Error> {
         self.modify(|filter| {
             *filter = new_filter.into();
         })
@@ -74,10 +88,7 @@ impl<F: 'static> Handle<F> {
 
     /// Invokes a closure with a mutable reference to the current filter,
     /// allowing it to be modified in place.
-    pub fn modify<N>(&self, f: impl FnOnce(&mut F)) -> Result<(), Error>
-    where
-        F: Filter<N>,
-    {
+    pub fn modify(&self, f: impl FnOnce(&mut F)) -> Result<(), Error> {
         let inner = self.inner.upgrade().ok_or(Error {
             kind: ErrorKind::SubscriberGone,
         })?;
@@ -167,4 +178,16 @@ mod test {
             assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 1);
         })
     }
+
+    #[test]
+    fn reload_from_env() {
+        use filter::EnvFilter;
+        let subscriber = FmtSubscriber::builder()
+            .with_filter_reloading()
+            .full()
+            .finish();
+        let reload_handle = subscriber.reload_handle();
+        reload_handle.reload(EnvFilter::from_default_env());
+    }
+
 }

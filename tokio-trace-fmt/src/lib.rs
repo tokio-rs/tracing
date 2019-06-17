@@ -79,13 +79,13 @@ where
     }
 }
 
-impl<N, E, F> FmtSubscriber<N, E, filter::ReloadFilter<F>>
+impl<N, E, F> FmtSubscriber<N, E, filter::ReloadFilter<F, N>>
 where
     F: Filter<N> + 'static,
 {
     /// Returns a `Handle` that may be used to reload this subscriber's
     /// filter.
-    pub fn reload_handle(&self) -> filter::reload::Handle<F> {
+    pub fn reload_handle(&self) -> filter::reload::Handle<F, N> {
         self.filter.handle()
     }
 }
@@ -235,7 +235,7 @@ where
 {
     /// Configures the subscriber being built to allow filter reloading at
     /// runtime.
-    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F>> {
+    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F, N>> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
@@ -245,13 +245,13 @@ where
     }
 }
 
-impl<N, E, F> Builder<N, E, filter::ReloadFilter<F>>
+impl<N, E, F> Builder<N, E, filter::ReloadFilter<F, N>>
 where
     F: Filter<N> + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed subscriber's
     /// filter.
-    pub fn reload_handle(&self) -> filter::reload::Handle<F> {
+    pub fn reload_handle(&self) -> filter::reload::Handle<F, N> {
         self.filter.handle()
     }
 }
