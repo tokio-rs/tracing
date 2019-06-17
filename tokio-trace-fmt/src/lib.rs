@@ -22,6 +22,7 @@ pub mod filter;
 mod span;
 
 pub use filter::Filter;
+pub use span::Context;
 
 #[derive(Debug)]
 pub struct FmtSubscriber<
