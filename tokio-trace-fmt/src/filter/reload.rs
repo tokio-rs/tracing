@@ -94,8 +94,7 @@ where
         })?;
         let mut inner = inner.write();
         f(&mut *inner);
-        // TODO(eliza): When tokio-rs/tokio#1039 lands, this is where we would
-        // invalidate the callsite cache.
+        tokio_trace::callsite::rebuild_interest_cache();
         Ok(())
     }
 
