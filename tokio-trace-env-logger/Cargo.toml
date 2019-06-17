@@ -15,4 +15,4 @@ tokio-trace-futures = { path = "../tokio-trace-futures" }
 tokio-trace-subscriber = { path = "../tokio-trace-subscriber" }
 hyper = "=0.12.25"
 futures = "0.1"
-tokio = "0.1"
+tokio = "0.1.21"
