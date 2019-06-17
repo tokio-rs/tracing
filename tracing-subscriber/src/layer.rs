@@ -1,13 +1,19 @@
-use tokio_trace::{
+use trace::{
     metadata::Metadata,
     span,
     subscriber::{Interest, Subscriber},
     Event,
 };
 
-use std::any::TypeId;
 
-pub trait Layer<S: Subscriber>: 'static {
+use crate::filter;
+use std::any::TypeId;
+pub trait Layer<S>: 'static {
+    /// Registers a new callsite with this layer, returning whether or not
+    /// the subscriber is interested in being notified about the callsite.
+    ///
+    /// This function is provided with the `Interest` returned by the wrapped
+    /// subscriber. The layer may then choose to return
     fn register_callsite(&self, _metadata: &Metadata, prev: Interest) -> Interest {
         prev
     }
@@ -23,12 +29,84 @@ pub trait Layer<S: Subscriber>: 'static {
     fn clone_span(&self, _id: &span::Id, _new: Option<&span::Id>) {}
     fn drop_span(&self, _id: &span::Id) {}
 
+    /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
+    ///
+    /// The returned `Layered` subscriber will call the methods on this `Layer`
+    /// and then those of the wrapped subscriber. Multiple layers may be
+    /// composed in this manner. For example:
+    /// ```rust
+    /// # extern crate tokio_trace_core;
+    /// # extern crate tokio_trace_subscriber;
+    /// # use tokio_trace_subscriber::layer::Layer;
+    /// # fn main() {
+    /// pub struct FooLayer {
+    ///     // ...
+    /// }
+    ///
+    // /// pub struct BarLayer {
+    // ///     // ...
+    // /// }
+    // ///
+    /// pub struct MySubscriber {
+    ///     // ...
+    /// }
+    ///
+    /// impl<S> Layer<S> for FooLayer {
+    ///     // ...
+    /// }
+    ///
+    /// # impl FooLayer {
+    /// # fn new() -> Self { Self {} }
+    /// # }
+    /// # impl MySubscriber {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # use tokio_trace_core::{span::{Id, Attributes, Record}, Metadata};
+    /// # impl tokio_trace_core::Subscriber for MySubscriber {
+    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+    /// #   fn record(&self, _: &Id, _: &Record) {}
+    /// #   fn event(&self, _: &tokio_trace_core::Event) {}
+    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
+    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
+    /// #   fn enter(&self, _: &Id) {}
+    /// #   fn exit(&self, _: &Id) {}
+    /// # }
+    /// let subscriber = FooLayer::new()
+    // ///     .and_then(BarLayer::new()
+    ///     .and_then(MySubscriber::new());
+    /// # }
     fn and_then(self, inner: S) -> Layered<Self, S>
     where
         Self: Sized,
     {
         Layered { layer: self, inner }
     }
+}
+
+pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
+    fn with<L>(self, layer: L) -> Layered<L, Self>
+    where
+        L: Layer<Self>,
+        Self: Sized,
+    {
+        Layered { layer, inner: self }
+    }
+
+    // fn with_enabled<F>(self, f: F) -> Layered<filter::EnabledFn<F>, Self>
+    // where
+    //     F: Fn(&Metadata) -> bool + 'static,
+    //     Self: Sized,
+    // {
+    //     self.layer(filter::enabled_fn(f))
+    // }
+
+    // fn with_callsite_filter<F>(self, f: F) -> Layered<filter::InterestFn<F>, Self>
+    // where
+    //     F: Fn(&Metadata) -> Interest + 'static,
+    //     Self: Sized,
+    // {
+    //     self.layer(filter::enabled_fn(f))
+    // }
 }
 
 #[derive(Clone, Debug)]
@@ -38,6 +116,72 @@ pub struct Layered<L, S> {
 }
 
 // === impl Layered ===
+
+impl<A, B> Layered<A, B> {
+    /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
+    ///
+    /// The returned `Layered` subscriber will call the methods on this `Layer`
+    /// and then those of the wrapped subscriber. Multiple layers may be
+    /// composed in this manner. For example:
+    /// ```rust
+    /// # extern crate tokio_trace_core;
+    /// # extern crate tokio_trace_subscriber;
+    /// # use tokio_trace_subscriber::layer::Layer;
+    /// # fn main() {
+    /// pub struct FooLayer {
+    ///     // ...
+    /// }
+    ///
+    /// pub struct BarLayer {
+    ///     // ...
+    /// }
+    ///
+    /// pub struct MySubscriber {
+    ///     // ...
+    /// }
+    ///
+    /// impl<S> Layer<S> for FooLayer {
+    ///     // ...
+    /// }
+    ///
+    /// impl<S> Layer<S> for BarLayer {
+    ///     // ...
+    /// }
+    ///
+    /// # impl FooLayer {
+    /// # fn new() -> Self { Self {} }
+    /// # }
+    /// # impl BarLayer {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # impl MySubscriber {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # use tokio_trace_core::{span::{Id, Attributes, Record}, Metadata};
+    /// # impl tokio_trace_core::Subscriber for MySubscriber {
+    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+    /// #   fn record(&self, _: &Id, _: &Record) {}
+    /// #   fn event(&self, _: &tokio_trace_core::Event) {}
+    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
+    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
+    /// #   fn enter(&self, _: &Id) {}
+    /// #   fn exit(&self, _: &Id) {}
+    /// # }
+    /// let subscriber = FooLayer::new()
+    ///     .and_then(BarLayer::new())
+    ///     .and_then(MySubscriber::new());
+    /// # }
+    pub fn and_then<C>(self, inner: C) -> Layered<A, Layered<B, C>> {
+        let inner = Layered {
+            layer: self.inner,
+            inner,
+        };
+        Layered {
+            layer: self.layer,
+            inner,
+        }
+    }
+}
 
 impl<L, S> Subscriber for Layered<L, S>
 where
@@ -108,3 +252,8 @@ where
         }
     }
 }
+
+// === impl SubscriberExt ===
+
+impl<S: Subscriber> crate::sealed::Sealed for S {}
+impl<S: Subscriber> SubscriberExt for S {}
