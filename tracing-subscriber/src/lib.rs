@@ -1,11 +1,11 @@
 //! Utilities and helpers for implementing and composing subscribers.
+extern crate tracing_core as trace;
+use trace::span::Id;
 
-extern crate tracing;
-pub use tracing::{Event, Id};
 
+pub mod filter;
 pub mod layer;
-
-// mod compose;
+pub mod prelude;
 // pub use compose::Composed;
 
 // pub mod filter;
@@ -56,4 +56,8 @@ impl Default for CurrentSpanPerThread {
     fn default() -> Self {
         Self::new()
     }
+}
+
+mod sealed {
+    pub trait Sealed {}
 }
