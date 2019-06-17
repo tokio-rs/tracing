@@ -35,7 +35,9 @@ use std::{
 
 use tokio_trace::{
     callsite::{self, Callsite},
-    field, span,
+    field,
+    metadata::Kind,
+    span,
     subscriber::{self, Subscriber},
     Event, Id, Metadata,
 };
@@ -79,8 +81,7 @@ impl<'a> AsTrace for log::Record<'a> {
     fn as_trace(&self) -> Self::Trace {
         struct LogCallsite;
         impl Callsite for LogCallsite {
-            fn add_interest(&self, _interest: subscriber::Interest) {}
-            fn clear_interest(&self) {}
+            fn set_interest(&self, _interest: subscriber::Interest) {}
             fn metadata(&self) -> &Metadata {
                 // Since we never register the log callsite, this method is
                 // never actually called. So it's okay to return mostly empty metadata.
@@ -95,6 +96,7 @@ impl<'a> AsTrace for log::Record<'a> {
                         names: &["message"],
                         callsite: callsite::Identifier(&LogCallsite),
                     },
+                    kind: Kind::SPAN,
                 };
                 &EMPTY_META
             }
@@ -108,6 +110,7 @@ impl<'a> AsTrace for log::Record<'a> {
             self.line(),
             &["message"],
             &LogCallsite,
+            Kind::SPAN,
         )
     }
 }
@@ -115,12 +118,12 @@ impl<'a> AsTrace for log::Record<'a> {
 impl AsLog for tokio_trace::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
-        match self {
-            &tokio_trace::Level::ERROR => log::Level::Error,
-            &tokio_trace::Level::WARN => log::Level::Warn,
-            &tokio_trace::Level::INFO => log::Level::Info,
-            &tokio_trace::Level::DEBUG => log::Level::Debug,
-            &tokio_trace::Level::TRACE => log::Level::Trace,
+        match *self {
+            tokio_trace::Level::ERROR => log::Level::Error,
+            tokio_trace::Level::WARN => log::Level::Warn,
+            tokio_trace::Level::INFO => log::Level::Info,
+            tokio_trace::Level::DEBUG => log::Level::Debug,
+            tokio_trace::Level::TRACE => log::Level::Trace,
         }
     }
 }
@@ -463,8 +466,8 @@ impl Subscriber for TraceLogger {
                 &log::Record::builder()
                     .metadata(log_meta)
                     .target(meta.target)
-                    .module_path(meta.module_path.as_ref().map(|&p| p))
-                    .file(meta.file.as_ref().map(|&f| f))
+                    .module_path(meta.module_path.as_ref().cloned())
+                    .file(meta.file.as_ref().cloned())
                     .line(meta.line)
                     .args(format_args!(
                         "{}{}{}{}",
@@ -609,13 +612,3 @@ impl<'a> fmt::Display for LogEvent<'a> {
 //         self
 //     }
 // }
-
-impl tokio_trace_subscriber::Filter for TraceLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        <Self as Subscriber>::enabled(&self, metadata)
-    }
-
-    fn should_invalidate_filter(&self, _metadata: &Metadata) -> bool {
-        false
-    }
-}

@@ -1,4 +1,7 @@
 extern crate tokio_trace_core;
+#[cfg(test)]
+#[macro_use]
+extern crate tokio_trace;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
@@ -12,7 +15,7 @@ extern crate regex;
 
 use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
 
-use std::{cell::RefCell, fmt, io};
+use std::{any::TypeId, cell::RefCell, fmt, io};
 
 pub mod default;
 pub mod filter;
@@ -73,6 +76,17 @@ where
     #[inline]
     fn ctx(&self) -> span::Context<N> {
         span::Context::new(&self.spans, &self.new_visitor)
+    }
+}
+
+impl<N, E, F> FmtSubscriber<N, E, filter::ReloadFilter<F, N>>
+where
+    F: Filter<N> + 'static,
+{
+    /// Returns a `Handle` that may be used to reload this subscriber's
+    /// filter.
+    pub fn reload_handle(&self) -> filter::reload::Handle<F, N> {
+        self.filter.handle()
     }
 }
 
@@ -154,6 +168,16 @@ where
     fn drop_span(&self, id: span::Id) {
         self.spans.drop_span(id);
     }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        match () {
+            _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
+            _ if id == TypeId::of::<F>() => Some(&self.filter as *const F as *const ()),
+            _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
+            _ if id == TypeId::of::<N>() => Some(&self.new_visitor as *const N as *const ()),
+            _ => None,
+        }
+    }
 }
 
 pub trait NewVisitor<'a> {
@@ -202,6 +226,33 @@ where
             spans: span::Store::with_capacity(32),
             settings: self.settings,
         }
+    }
+}
+
+impl<N, E, F> Builder<N, E, F>
+where
+    F: Filter<N> + 'static,
+{
+    /// Configures the subscriber being built to allow filter reloading at
+    /// runtime.
+    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F, N>> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event,
+            filter: filter::ReloadFilter::new(self.filter),
+            settings: self.settings,
+        }
+    }
+}
+
+impl<N, E, F> Builder<N, E, filter::ReloadFilter<F, N>>
+where
+    F: Filter<N> + 'static,
+{
+    /// Returns a `Handle` that may be used to reload the constructed subscriber's
+    /// filter.
+    pub fn reload_handle(&self) -> filter::reload::Handle<F, N> {
+        self.filter.handle()
     }
 }
 
@@ -268,11 +319,33 @@ impl<N, E, F> Builder<N, E, F> {
     /// by default).
     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
         Builder {
-            settings: Settings {
-                inherit_fields,
-                ..self.settings
-            },
+            settings: Settings { inherit_fields },
             ..self
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::fmt;
+    use tokio_trace_core::Dispatch;
+
+    #[test]
+    fn subscriber_downcasts() {
+        let subscriber = FmtSubscriber::new();
+        let dispatch = Dispatch::new(subscriber);
+        assert!(dispatch.downcast_ref::<FmtSubscriber>().is_some());
+    }
+
+    #[test]
+    fn subscriber_downcasts_to_parts() {
+        type FmtEvent =
+            fn(&span::Context<default::NewRecorder>, &mut fmt::Write, &Event) -> fmt::Result;
+        let subscriber = FmtSubscriber::new();
+        let dispatch = Dispatch::new(subscriber);
+        assert!(dispatch.downcast_ref::<default::NewRecorder>().is_some());
+        assert!(dispatch.downcast_ref::<filter::EnvFilter>().is_some());
+        assert!(dispatch.downcast_ref::<FmtEvent>().is_some())
     }
 }

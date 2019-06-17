@@ -8,39 +8,57 @@ extern crate tokio_trace_futures;
 
 use std::marker::PhantomData;
 
-use futures::{Future, Poll};
-use tokio_trace::{field, Level, Span};
+use futures::{Async, Future, Poll};
+use tokio_trace::{field, Span};
 use tokio_trace_futures::{Instrument, Instrumented};
 use tower::MakeService;
 use tower_service::Service;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InstrumentedHttpService<T> {
     inner: T,
-    span: Span,
+    span: Option<Span>,
 }
 
 impl<T> InstrumentedHttpService<T> {
-    pub fn new(inner: T, span: Span) -> Self {
-        Self { inner, span }
+    pub fn new(inner: T) -> Self {
+        Self { inner, span: None }
+    }
+
+    pub fn with_span(inner: T, span: impl Into<Option<Span>>) -> Self {
+        Self {
+            inner,
+            span: span.into(),
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InstrumentedMakeService<T, B> {
     inner: T,
-    span: Span,
+    span: Option<Span>,
     _p: PhantomData<fn() -> B>,
 }
 
 impl<T, B> InstrumentedMakeService<T, B> {
-    pub fn new<Target>(inner: T, span: Span) -> Self
+    pub fn new<Target>(inner: T) -> Self
     where
         T: MakeService<Target, http::Request<B>>,
     {
         Self {
             inner,
-            span,
+            span: None,
+            _p: PhantomData,
+        }
+    }
+
+    pub fn with_span<Target>(inner: T, span: impl Into<Option<Span>>) -> Self
+    where
+        T: MakeService<Target, http::Request<B>>,
+    {
+        Self {
+            inner,
+            span: span.into(),
             _p: PhantomData,
         }
     }
@@ -55,7 +73,12 @@ where
     type Future = InstrumentedMakeServiceFuture<T::Future>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        self.inner.poll_ready()
+        if let Some(span) = &mut self.span {
+            let inner = &mut self.inner;
+            span.enter(move || inner.poll_ready())
+        } else {
+            self.inner.poll_ready()
+        }
     }
 
     fn call(&mut self, req: Target) -> Self::Future {
@@ -67,7 +90,7 @@ where
 
 pub struct InstrumentedMakeServiceFuture<T> {
     inner: T,
-    span: Span,
+    span: Option<Span>,
 }
 
 impl<T> Future for InstrumentedMakeServiceFuture<T>
@@ -77,14 +100,18 @@ where
     type Item = InstrumentedHttpService<T::Item>;
     type Error = T::Error;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let span2 = self.span.clone();
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(move || {
-            inner
-                .poll()
-                .map(|ready| ready.map(|svc| InstrumentedHttpService::new(svc, span2)))
-        })
+        match self.inner.poll()? {
+            Async::Ready(svc) => {
+                let svc = InstrumentedHttpService::with_span(
+                    svc,
+                    self.span
+                        .take()
+                        .expect("Future was polled after Ready was returned."),
+                );
+                Ok(Async::Ready(svc))
+            }
+            Async::NotReady => Ok(Async::NotReady),
+        }
     }
 }
 
@@ -97,27 +124,28 @@ where
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(move || inner.poll_ready())
+        if let Some(span) = &mut self.span {
+            let inner = &mut self.inner;
+            span.enter(move || inner.poll_ready())
+        } else {
+            self.inner.poll_ready()
+        }
     }
 
     fn call(&mut self, request: http::Request<B>) -> Self::Future {
-        let span2 = self.span.clone();
-        let span = &mut self.span;
         let inner = &mut self.inner;
-        span.enter(move || {
-            span!(
-                Level::TRACE,
-                "request",
-                // TODO: custom `Value` impls for `http` types would be nicer
-                // than just sticking these in `debug`s...
-                method = &field::debug(request.method()),
-                version = &field::debug(request.version()),
-                uri = &field::debug(request.uri()),
-                headers = &field::debug(request.headers())
-            )
-            .enter(move || inner.call(request).instrument(span2))
-        })
+        let span = trace_span!(
+            parent: self.span.as_ref(),
+            "request",
+            // TODO: custom `Value` impls for `http` types would be nicer
+            // than just sticking these in `debug`s...
+            method = &field::debug(request.method()),
+            version = &field::debug(request.version()),
+            uri = &field::debug(request.uri()),
+            headers = &field::debug(request.headers())
+        );
+
+        let span2 = span.clone();
+        span.enter(move || inner.call(request).instrument(span2))
     }
 }
