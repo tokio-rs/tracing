@@ -1,3 +1,6 @@
+extern crate serde;
+extern crate tokio_trace_core;
+
 use std::fmt;
 
 use serde::{
