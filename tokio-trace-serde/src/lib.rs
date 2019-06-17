@@ -1,7 +1,7 @@
 use std::fmt;
 
 use serde::{
-    ser::{SerializeMap, SerializeSeq, SerializeStruct, Serializer},
+    ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},
     Serialize,
 };
 
@@ -72,8 +72,8 @@ impl<'a> Serialize for SerializeId<'a> {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Id", 1)?;
-        state.serialize_field("u64", &self.0.into_u64())?;
+        let mut state = serializer.serialize_tuple_struct("Id", 1)?;
+        state.serialize_field(&self.0.into_u64())?;
         state.end()
     }
 }
@@ -109,7 +109,8 @@ impl<'a> Serialize for SerializeEvent<'a> {
     where
         S: Serializer,
     {
-        let serializer = serializer.serialize_struct("Event", 2)?;
+        let mut serializer = serializer.serialize_struct("Event", 2)?;
+        serializer.serialize_field("metadata", &SerializeMetadata(self.0.metadata()))?;
         let mut visitor = SerdeStructVisitor {
             serializer,
             state: Ok(()),
@@ -119,7 +120,7 @@ impl<'a> Serialize for SerializeEvent<'a> {
     }
 }
 
-/// A Serde visitor to pull `Attributes` data out of a serialized stream
+/// Implements `serde::Serialize` to write `Attributes` data to a serializer.
 #[derive(Debug)]
 pub struct SerializeAttributes<'a>(&'a Attributes<'a>);
 
@@ -142,7 +143,7 @@ impl<'a> Serialize for SerializeAttributes<'a> {
     }
 }
 
-/// A Serde visitor to pull `Record` data out of a serialized stream
+/// Implements `serde::Serialize` to write `Record` data to a serializer.
 #[derive(Debug)]
 pub struct SerializeRecord<'a>(&'a Record<'a>);
 
@@ -269,10 +270,8 @@ impl<S: SerializeStruct> SerdeStructVisitor<S> {
     }
 }
 
-/// `AsSerde` is a trait that provides the `as_serde` function to types in
-/// `tokio-trace` to allow users to serialize their values.
-pub trait AsSerde<'a> {
-    type Serializable: serde::Serialize + self::sealed::Sealed + 'a;
+pub trait AsSerde<'a>: self::sealed::Sealed {
+    type Serializable: serde::Serialize + 'a;
 
     /// `as_serde` borrows a `tokio-trace` value and returns the serialized value.
     fn as_serde(&'a self) -> Self::Serializable;
@@ -318,15 +317,16 @@ impl<'a> AsSerde<'a> for tokio_trace_core::span::Record<'a> {
     }
 }
 
-impl<'a> self::sealed::Sealed for SerializeMetadata<'a> {}
+impl<'a> self::sealed::Sealed for Event<'a> {}
 
-impl<'a> self::sealed::Sealed for SerializeEvent<'a> {}
+impl<'a> self::sealed::Sealed for Attributes<'a> {}
 
-impl<'a> self::sealed::Sealed for SerializeAttributes<'a> {}
+impl self::sealed::Sealed for Id {}
 
-impl<'a> self::sealed::Sealed for SerializeId<'a> {}
+impl<'a> self::sealed::Sealed for Record<'a> {}
 
-impl<'a> self::sealed::Sealed for SerializeRecord<'a> {}
+impl<'a> self::sealed::Sealed for Metadata<'a> {}
+
 mod sealed {
     pub trait Sealed {}
 }
