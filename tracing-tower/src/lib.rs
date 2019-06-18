@@ -1,3 +1,5 @@
+
+extern crate tower_layer;
 extern crate tower_service;
 #[macro_use]
 extern crate tracing;
@@ -8,6 +10,8 @@ use std::fmt;
 use tower_service::Service;
 use tracing::Level;
 use tracing_futures::{Instrument, Instrumented};
+
+pub mod instrument;
 
 #[derive(Clone, Debug)]
 pub struct InstrumentedService<T> {
