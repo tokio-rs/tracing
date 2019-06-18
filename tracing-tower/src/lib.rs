@@ -11,10 +11,11 @@ use tower_service::Service;
 use tracing::Level;
 use tracing_futures::{Instrument, Instrumented};
 
+pub mod layer;
 pub mod instrument;
 
 #[derive(Clone, Debug)]
-pub struct InstrumentedService<T> {
+pub struct InstrumentedService<S, F> {
     inner: T,
     span: tracing::Span,
 }
