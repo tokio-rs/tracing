@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Weak},
 };
-use tokio_trace_core::{subscriber::Interest, Metadata};
+use tokio_trace_core::{callsite, subscriber::Interest, Metadata};
 use {filter::Filter, span::Context};
 
 #[derive(Debug)]
@@ -41,10 +41,8 @@ impl<F, N> Filter<N> for ReloadFilter<F, N>
 where
     F: Filter<N>,
 {
-    fn callsite_enabled(&self, _: &Metadata, _: &Context<N>) -> Interest {
-        // TODO(eliza): When tokio-rs/tokio#1039 lands, we can allow our
-        // interest to be cached. For now, we must always return `sometimes`.
-        Interest::sometimes()
+    fn callsite_enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> Interest {
+        self.inner.read().callsite_enabled(metadata, ctx)
     }
 
     fn enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> bool {
@@ -94,7 +92,7 @@ where
         })?;
         let mut inner = inner.write();
         f(&mut *inner);
-        tokio_trace::callsite::rebuild_interest_cache();
+        callsite::rebuild_interest_cache();
         Ok(())
     }
 
