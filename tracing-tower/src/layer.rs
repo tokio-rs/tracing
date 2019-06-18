@@ -5,7 +5,7 @@ pub struct RequestLayer<F> {
 
 pub fn instrument_request<F, R>(f: F) -> Layer<F>
 where
-    F: Fn() -> tokio_trace::Span,
+    F: Fn() -> tracing::Span,
 {
     Layer {
         f,

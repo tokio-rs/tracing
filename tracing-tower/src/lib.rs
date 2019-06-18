@@ -1,8 +1,8 @@
-
 extern crate tower_layer;
 extern crate tower_service;
 #[macro_use]
 extern crate tracing;
+#[macro_use]
 extern crate futures;
 extern crate tracing_futures;
 
@@ -11,12 +11,12 @@ use tower_service::Service;
 use tracing::Level;
 use tracing_futures::{Instrument, Instrumented};
 
-pub mod layer;
 pub mod instrument;
+pub mod request;
 
 #[derive(Clone, Debug)]
-pub struct InstrumentedService<S, F> {
-    inner: T,
+pub struct InstrumentedService<S> {
+    inner: S,
     span: tracing::Span,
 }
 
@@ -42,7 +42,8 @@ where
 
     fn call(&mut self, req: Request) -> Self::Future {
         // TODO: custom `Value` impls for `http` types would be nice...
-        let span = span!(parent: &self.span, Level::TRACE, "request", request = ?req);
+        let span =
+            span!(parent: &self.span, Level::TRACE, "request", request = ?req);
         let _enter = span.enter();
         self.inner.call(req).instrument(span.clone())
     }
