@@ -9,8 +9,6 @@ extern crate tokio_trace_serde;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use serde_json::json;
-
 use tokio_trace_core::{
     event::Event,
     metadata::{Level, Metadata},
