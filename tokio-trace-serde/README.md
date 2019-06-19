@@ -53,7 +53,7 @@ This crate provides the `as_serde` function, via the `AsSerde` trait,
 which enables serializing the `Attributes`, `Event`, `Id`, `Metadata`,
 and `Record` `tokio-trace` values.
 
-For the full example, please see the examples folder.
+For the full example, please see the [examples](../examples) folder.
 
 Implement a `Subscriber` to format the serialization of `tokio-trace`
 types how you'd like.
