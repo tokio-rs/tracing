@@ -22,7 +22,7 @@ this information is using `cargo-tree`.
 
 Then:
 
-`cargo tree | grep tokio`
+`cargo tree | grep tokio-trace`
 -->
 
 ### Platform
