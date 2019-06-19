@@ -81,7 +81,7 @@ impl Subscriber for JsonSubscriber {
 ```
 
 After you implement your `Subscriber`, you can use your `tokio-trace`
-subscriber, `JsonSubscriber` in the above example, to record serialized
+subscriber (`JsonSubscriber` in the above example) to record serialized
 trace data.
 
 ## License
