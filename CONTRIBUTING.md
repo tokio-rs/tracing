@@ -80,7 +80,7 @@ cases should be limited, as much as possible, to using only Tokio APIs.
 See [How to create a Minimal, Complete, and Verifiable example][mcve].
 
 [mcve]: https://stackoverflow.com/help/mcve
-[template]: .github/PULL_REQUEST_TEMPLATE.md
+[template]: .github/ISSUE_TEMPLATE/bug_report.md
 
 ### Triaging a Bug Report
 
