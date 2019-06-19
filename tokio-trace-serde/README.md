@@ -38,7 +38,7 @@ tokio-trace-serde = "0.1"
 
 Next, add this to your crate:
 
-```toml
+```rust
 #[macro_use]
 extern crate tokio_trace;
 extern crate tokio_trace_serde;
@@ -53,7 +53,7 @@ This crate provides the `as_serde` function, via the `AsSerde` trait,
 which enables serializing the `Attributes`, `Event`, `Id`, `Metadata`,
 and `Record` `tokio-trace` values.
 
-For the full example, please see the examples folder.
+For the full example, please see the [examples](../examples) folder.
 
 Implement a `Subscriber` to format the serialization of `tokio-trace`
 types how you'd like.
@@ -81,7 +81,7 @@ impl Subscriber for JsonSubscriber {
 ```
 
 After you implement your `Subscriber`, you can use your `tokio-trace`
-subscriber, `JsonSubscriber` in the above example, to record serialized
+subscriber (`JsonSubscriber` in the above example) to record serialized
 trace data.
 
 ## License
