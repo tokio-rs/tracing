@@ -37,7 +37,6 @@ merged to master.
 
 [`rev`]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories
 
-
 ## Getting Help
 
 First, see if the answer to your question can be found in the API documentation.
@@ -77,3 +76,5 @@ This project is licensed under the [MIT license](LICENSE).
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in Tokio by you, shall be licensed as MIT, without any additional
 terms or conditions.
+
+[`tokio-trace`]: https://github.com/tokio-rs/tokio/tree/master/tokio-trace
