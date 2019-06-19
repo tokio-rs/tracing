@@ -38,7 +38,7 @@ tokio-trace-serde = "0.1"
 
 Next, add this to your crate:
 
-```toml
+```rust
 #[macro_use]
 extern crate tokio_trace;
 extern crate tokio_trace_serde;
