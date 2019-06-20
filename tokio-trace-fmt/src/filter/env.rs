@@ -2,14 +2,14 @@ use regex::Regex;
 use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 use {filter::Filter, span::Context};
 
-use std::env;
+use std::{cmp::Ordering, env};
 
 pub const DEFAULT_FILTER_ENV: &str = "RUST_LOG";
 
 #[derive(Debug)]
 pub struct EnvFilter {
     directives: Vec<Directive>,
-    max_level: Level,
+    max_level: LevelFilter,
     includes_span_directive: bool,
 }
 
@@ -20,7 +20,13 @@ struct Directive {
     // TODO: this can probably be a `SmallVec` someday, since a span won't have
     // over 32 fields.
     fields: Vec<String>,
-    level: Level,
+    level: LevelFilter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum LevelFilter {
+    Off,
+    Level(Level),
 }
 
 // ===== impl EnvFilter =====
@@ -49,7 +55,7 @@ impl EnvFilter {
             .map(|directive| &directive.level)
             .max()
             .cloned()
-            .unwrap_or(Level::ERROR);
+            .unwrap_or(LevelFilter::Level(Level::ERROR));
 
         let includes_span_directive = directives
             .iter()
@@ -93,13 +99,13 @@ where
 
 impl<N> Filter<N> for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
-        if !self.includes_span_directive && *metadata.level() > self.max_level {
+        if !self.includes_span_directive && self.max_level <= *metadata.level() {
             return Interest::never();
         }
 
         let mut interest = Interest::never();
         for directive in self.directives_for(metadata) {
-            let accepts_level = *metadata.level() <= directive.level;
+            let accepts_level = directive.level > *metadata.level();
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
@@ -123,7 +129,7 @@ impl<N> Filter<N> for EnvFilter {
 
     fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
-            let accepts_level = *metadata.level() <= directive.level;
+            let accepts_level = directive.level > *metadata.level();
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
@@ -199,13 +205,13 @@ impl Directive {
         lazy_static! {
             static ref DIRECTIVE_RE: Regex = Regex::new(
                 r"(?x)
-                ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|[0-5])$ |
+                ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF[0-5])$ |
                 ^
                 (?: # target name or span name
                     (?P<target>[\w:]+)|(?P<span>\[[^\]]*\])
                 ){1,2}
                 (?: # level or nothing
-                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|[0-5])?
+                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF[0-5])?
                 )?
                 $
                 "
@@ -217,26 +223,28 @@ impl Directive {
                 Regex::new(r#"([\w_0-9]+(?:=(?:[\w0-9]+|".+"))?)(?: |$)"#).unwrap();
         }
 
-        fn parse_level(from: &str) -> Option<Level> {
+        fn parse_level(from: &str) -> Option<LevelFilter> {
             // TODO: maybe this whole function ought to be replaced by a
             // `FromStr` impl for `Level` in `tokio_trace_core`...?
             from.parse::<usize>()
                 .ok()
                 .and_then(|num| match num {
-                    1 => Some(Level::ERROR),
-                    2 => Some(Level::WARN),
-                    3 => Some(Level::INFO),
-                    4 => Some(Level::DEBUG),
-                    5 => Some(Level::TRACE),
+                    0 => Some(LevelFilter::Off),
+                    1 => Some(LevelFilter::Level(Level::ERROR)),
+                    2 => Some(LevelFilter::Level(Level::WARN)),
+                    3 => Some(LevelFilter::Level(Level::INFO)),
+                    4 => Some(LevelFilter::Level(Level::DEBUG)),
+                    5 => Some(LevelFilter::Level(Level::TRACE)),
                     _ => None,
                 })
                 .or_else(|| match from {
-                    "" => Some(Level::ERROR),
-                    s if s.eq_ignore_ascii_case("error") => Some(Level::ERROR),
-                    s if s.eq_ignore_ascii_case("warn") => Some(Level::WARN),
-                    s if s.eq_ignore_ascii_case("info") => Some(Level::INFO),
-                    s if s.eq_ignore_ascii_case("debug") => Some(Level::DEBUG),
-                    s if s.eq_ignore_ascii_case("trace") => Some(Level::TRACE),
+                    "" => Some(LevelFilter::Level(Level::ERROR)),
+                    s if s.eq_ignore_ascii_case("error") => Some(LevelFilter::Level(Level::ERROR)),
+                    s if s.eq_ignore_ascii_case("warn") => Some(LevelFilter::Level(Level::WARN)),
+                    s if s.eq_ignore_ascii_case("info") => Some(LevelFilter::Level(Level::INFO)),
+                    s if s.eq_ignore_ascii_case("debug") => Some(LevelFilter::Level(Level::DEBUG)),
+                    s if s.eq_ignore_ascii_case("trace") => Some(LevelFilter::Level(Level::TRACE)),
+                    s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::Off),
                     _ => None,
                 })
         }
@@ -284,7 +292,7 @@ impl Directive {
         let level = caps
             .name("level")
             .and_then(|c| parse_level(c.as_str()))
-            .unwrap_or(Level::ERROR);
+            .unwrap_or(LevelFilter::Level(Level::ERROR));
 
         Some(Directive {
             level,
@@ -298,10 +306,29 @@ impl Directive {
 impl Default for Directive {
     fn default() -> Self {
         Self {
-            level: Level::ERROR,
+            level: LevelFilter::Level(Level::ERROR),
             target: None,
             in_span: None,
             fields: Vec::new(),
+        }
+    }
+}
+
+impl PartialEq<Level> for LevelFilter {
+    fn eq(&self, other: &Level) -> bool {
+        match self {
+            LevelFilter::Off => false,
+            LevelFilter::Level(l) => l == other,
+        }
+    }
+}
+
+
+impl PartialOrd<Level> for LevelFilter {
+    fn partial_cmp(&self, other: &Level) -> Option<Ordering> {
+        match self {
+            LevelFilter::Off => Some(Ordering::Less),
+            LevelFilter::Level(l) => l.partial_cmp(other),
         }
     }
 }
@@ -331,6 +358,27 @@ mod tests {
             "mySpan",
             "app",
             Level::TRACE,
+            None,
+            None,
+            None,
+            &[],
+            &Cs,
+            Kind::SPAN,
+        );
+
+        let interest = filter.callsite_enabled(&meta, &ctx);
+        assert!(interest.is_never());
+    }
+
+    #[test]
+    fn callsite_off() {
+        let filter = EnvFilter::from("app=off");
+        let store = Store::with_capacity(1);
+        let ctx = Context::new(&store, &NewRecorder);
+        let meta = Metadata::new(
+            "mySpan",
+            "app",
+            Level::ERROR,
             None,
             None,
             None,
@@ -450,19 +498,23 @@ mod tests {
 
     #[test]
     fn parse_directives_valid() {
-        let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug");
-        assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
+        let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
+        assert_eq!(dirs.len(), 4, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
-        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[0].in_span, None);
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
-        assert_eq!(dirs[1].level, Level::ERROR);
+        assert_eq!(dirs[1].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[1].in_span, None);
 
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
-        assert_eq!(dirs[2].level, Level::DEBUG);
+        assert_eq!(dirs[2].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[2].in_span, None);
+
+        assert_eq!(dirs[3].target, Some("crate3".to_string()));
+        assert_eq!(dirs[3].level, LevelFilter::Off);
+        assert_eq!(dirs[3].in_span, None);
     }
 
     #[test]
@@ -471,7 +523,7 @@ mod tests {
         let dirs = parse_directives("crate1::mod1=warn=info,crate2=debug");
         assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
-        assert_eq!(dirs[0].level, Level::DEBUG);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[0].in_span, None);
     }
 
@@ -481,7 +533,7 @@ mod tests {
         let dirs = parse_directives("crate1::mod1=noNumber,crate2=debug");
         assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
-        assert_eq!(dirs[0].level, Level::DEBUG);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[0].in_span, None);
     }
 
@@ -491,7 +543,7 @@ mod tests {
         let dirs = parse_directives("crate1::mod1=wrong,crate2=warn");
         assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
-        assert_eq!(dirs[0].level, Level::WARN);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::WARN));
         assert_eq!(dirs[0].in_span, None);
     }
 
@@ -501,7 +553,7 @@ mod tests {
         let dirs = parse_directives("crate1::mod1=wrong,crate2=");
         assert_eq!(dirs.len(), 1, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
-        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[0].in_span, None);
     }
 
@@ -511,11 +563,11 @@ mod tests {
         let dirs = parse_directives("warn,crate2=debug");
         assert_eq!(dirs.len(), 2, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, None);
-        assert_eq!(dirs[0].level, Level::WARN);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::WARN));
         assert_eq!(dirs[1].in_span, None);
 
         assert_eq!(dirs[1].target, Some("crate2".to_string()));
-        assert_eq!(dirs[1].level, Level::DEBUG);
+        assert_eq!(dirs[1].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[1].in_span, None);
     }
 
@@ -524,15 +576,15 @@ mod tests {
         let dirs = parse_directives("crate1::mod1[foo]=error,crate1::mod2[bar],crate2[baz]=debug");
         assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
-        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[0].in_span, Some("foo".to_string()));
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
-        assert_eq!(dirs[1].level, Level::ERROR);
+        assert_eq!(dirs[1].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[1].in_span, Some("bar".to_string()));
 
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
-        assert_eq!(dirs[2].level, Level::DEBUG);
+        assert_eq!(dirs[2].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[2].in_span, Some("baz".to_string()));
     }
 
@@ -543,17 +595,17 @@ mod tests {
         );
         assert_eq!(dirs.len(), 3, "\ngot: {:?}", dirs);
         assert_eq!(dirs[0].target, None);
-        assert_eq!(dirs[0].level, Level::ERROR);
+        assert_eq!(dirs[0].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[0].in_span, Some("span1".to_string()));
         assert_eq!(&dirs[0].fields[..], &["foo=1"]);
 
         assert_eq!(dirs[1].target, None);
-        assert_eq!(dirs[1].level, Level::ERROR);
+        assert_eq!(dirs[1].level, LevelFilter::Level(Level::ERROR));
         assert_eq!(dirs[1].in_span, Some("span2".to_string()));
         assert_eq!(&dirs[1].fields[..], &["bar=2", "baz=false"]);
 
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
-        assert_eq!(dirs[2].level, Level::DEBUG);
+        assert_eq!(dirs[2].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[2].in_span, None);
         assert_eq!(&dirs[2].fields[..], &["quux=\"quuux\""]);
     }
