@@ -35,8 +35,7 @@ use std::{
 
 use tokio_trace::{
     callsite::{self, Callsite},
-    dispatcher,
-    field,
+    dispatcher, field,
     metadata::Kind,
     span,
     subscriber::{self, Subscriber},
