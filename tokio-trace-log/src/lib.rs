@@ -35,7 +35,7 @@ use std::{
 
 use tokio_trace::{
     callsite::{self, Callsite},
-    field,
+    dispatcher, field,
     metadata::Kind,
     span,
     subscriber::{self, Subscriber},
@@ -186,7 +186,19 @@ impl log::Log for LogTracer {
     }
 
     fn log(&self, record: &log::Record) {
-        format_trace(record).unwrap();
+        let enabled = dispatcher::get_default(|dispatch| {
+            // TODO: can we cache this for each log record, so we can get
+            // similar to the callsite cache?
+            dispatch.enabled(&record.as_trace())
+        });
+
+        if enabled {
+            // TODO: if the record is enabled, we'll get the current dispatcher
+            // twice --- once to check if enabled, and again to dispatch the event.
+            // If we could construct events without dispatching them, we could
+            // re-use the dispatcher reference...
+            format_trace(record).unwrap();
+        }
     }
 
     fn flush(&self) {}
