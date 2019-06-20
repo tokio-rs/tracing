@@ -323,7 +323,6 @@ impl PartialEq<Level> for LevelFilter {
     }
 }
 
-
 impl PartialOrd<Level> for LevelFilter {
     fn partial_cmp(&self, other: &Level) -> Option<Ordering> {
         match self {
