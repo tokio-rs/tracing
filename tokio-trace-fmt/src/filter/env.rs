@@ -406,7 +406,15 @@ impl fmt::Display for FromEnvError {
 }
 
 impl Error for FromEnvError {
-    fn source(&self) -> Option<&(Error + 'static)> {
+    fn description(&self) -> &str {
+        match self.kind {
+            ErrorKind::Parse(ref p) => p.description(),
+            ErrorKind::Env(ref e) => e.description(),
+        }
+    }
+
+    #[allow(deprecated)] // for compatibility with minimum Rust version 1.26.0
+    fn cause(&self) -> Option<&Error> {
         match self.kind {
             ErrorKind::Parse(ref p) => Some(p),
             ErrorKind::Env(ref e) => Some(e),
@@ -430,7 +438,11 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl Error for ParseError {}
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        "invalid filter directive"
+    }
+}
 
 // ===== impl LevelFilter =====
 
