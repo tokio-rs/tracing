@@ -2,7 +2,7 @@ use regex::Regex;
 use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 use {filter::Filter, span::Context};
 
-use std::{cmp::Ordering, env};
+use std::{cmp::Ordering, env, error::Error, fmt, str::FromStr};
 
 pub const DEFAULT_FILTER_ENV: &str = "RUST_LOG";
 
@@ -11,6 +11,16 @@ pub struct EnvFilter {
     directives: Vec<Directive>,
     max_level: LevelFilter,
     includes_span_directive: bool,
+}
+
+#[derive(Debug)]
+pub struct FromEnvError {
+    kind: ErrorKind,
+}
+
+#[derive(Debug)]
+pub struct ParseError {
+    directive: String,
 }
 
 #[derive(Debug)]
@@ -29,21 +39,56 @@ enum LevelFilter {
     Level(Level),
 }
 
+#[derive(Debug)]
+enum ErrorKind {
+    Parse(ParseError),
+    Env(env::VarError),
+}
+
 // ===== impl EnvFilter =====
 
 impl EnvFilter {
+    /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
+    /// variable, ignoring any invalid filter directives.
     pub fn from_default_env() -> Self {
         Self::from_env(DEFAULT_FILTER_ENV)
     }
 
+    /// Returns a new `EnvFilter` from the value of the given environment
+    /// variable, ignoring any invalid filter directives.
     pub fn from_env<A: AsRef<str>>(env: A) -> Self {
-        let directives = env::var(env.as_ref())
-            .map(|ref var| parse_directives(var))
-            .unwrap_or_default();
-        Self::new(directives)
+        env::var(env.as_ref())
+            .map(|ref var| Self::new(var))
+            .unwrap_or_default()
     }
 
-    fn new(mut directives: Vec<Directive>) -> Self {
+    /// Returns a new `EnvFilter` from the directives in the given string,
+    /// ignoring any that are invalid.
+    pub fn new<S: AsRef<str>>(dirs: S) -> Self {
+        Self::new2(parse_directives(dirs.as_ref()))
+    }
+
+    /// Returns a new `EnvFilter` from the directives in the given string,
+    /// or an error if any are invalid.
+    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
+        Ok(Self::new2(try_parse_directives(dirs.as_ref())?))
+    }
+
+    /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
+    /// variable, or an error if the environment variable contains any invalid
+    /// filter directives.
+    pub fn try_from_default_env() -> Result<Self, FromEnvError> {
+        Self::try_from_env(DEFAULT_FILTER_ENV)
+    }
+
+    /// Returns a new `EnvFilter` from the value of the given environment
+    /// variable, or an error if the environment variable is unset or contains
+    /// any invalid filter directives.
+    pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
+        env::var(env.as_ref())?.parse().map_err(Into::into)
+    }
+
+    fn new2(mut directives: Vec<Directive>) -> Self {
         if directives.is_empty() {
             directives.push(Directive::default());
         } else {
@@ -88,12 +133,25 @@ impl EnvFilter {
     }
 }
 
-impl<A> From<A> for EnvFilter
+impl<S> From<S> for EnvFilter
 where
-    A: AsRef<str>,
+    S: AsRef<str>,
 {
-    fn from(env: A) -> Self {
-        Self::new(parse_directives(env.as_ref()))
+    fn from(s: S) -> Self {
+        Self::new(s)
+    }
+}
+
+impl FromStr for EnvFilter {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_new(s)
+    }
+}
+
+impl Default for EnvFilter {
+    fn default() -> Self {
+        Self::new2(Default::default())
     }
 }
 
@@ -183,10 +241,16 @@ fn parse_directives(spec: &str) -> Vec<Directive> {
     spec.split(',')
         .filter_map(|dir| {
             Directive::parse(dir).or_else(|| {
-                eprintln!("ignoring invalid log directive '{}'", dir);
+                eprintln!("ignoring invalid filter directive '{}'", dir);
                 None
             })
         })
+        .collect()
+}
+
+fn try_parse_directives(spec: &str) -> Result<Vec<Directive>, ParseError> {
+    spec.split(',')
+        .map(|dir| Directive::parse(dir).ok_or_else(|| ParseError::new(dir)))
         .collect()
 }
 
@@ -313,6 +377,74 @@ impl Default for Directive {
         }
     }
 }
+
+// ===== impl FromEnvError =====
+
+impl From<ParseError> for FromEnvError {
+    fn from(p: ParseError) -> Self {
+        Self {
+            kind: ErrorKind::Parse(p),
+        }
+    }
+}
+
+impl From<env::VarError> for FromEnvError {
+    fn from(v: env::VarError) -> Self {
+        Self {
+            kind: ErrorKind::Env(v),
+        }
+    }
+}
+
+impl fmt::Display for FromEnvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.kind {
+            ErrorKind::Parse(ref p) => p.fmt(f),
+            ErrorKind::Env(ref e) => e.fmt(f),
+        }
+    }
+}
+
+impl Error for FromEnvError {
+    fn description(&self) -> &str {
+        match self.kind {
+            ErrorKind::Parse(ref p) => p.description(),
+            ErrorKind::Env(ref e) => e.description(),
+        }
+    }
+
+    #[allow(deprecated)] // for compatibility with minimum Rust version 1.26.0
+    fn cause(&self) -> Option<&Error> {
+        match self.kind {
+            ErrorKind::Parse(ref p) => Some(p),
+            ErrorKind::Env(ref e) => Some(e),
+        }
+    }
+}
+
+// ===== impl ParseError =====
+
+impl ParseError {
+    fn new(directive: &str) -> Self {
+        ParseError {
+            directive: directive.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid filter directive '{}'", self.directive)
+    }
+}
+
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        "invalid filter directive"
+    }
+}
+
+// ===== impl LevelFilter =====
 
 impl PartialEq<Level> for LevelFilter {
     fn eq(&self, other: &Level) -> bool {
