@@ -99,13 +99,13 @@ where
 
 impl<N> Filter<N> for EnvFilter {
     fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
-        if !self.includes_span_directive && self.max_level <= *metadata.level() {
+        if !self.includes_span_directive && self.max_level < *metadata.level() {
             return Interest::never();
         }
 
         let mut interest = Interest::never();
         for directive in self.directives_for(metadata) {
-            let accepts_level = directive.level > *metadata.level();
+            let accepts_level = directive.level >= *metadata.level();
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
@@ -129,7 +129,7 @@ impl<N> Filter<N> for EnvFilter {
 
     fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
-            let accepts_level = directive.level > *metadata.level();
+            let accepts_level = directive.level >= *metadata.level();
             match directive.in_span.as_ref() {
                 // The directive applies to anything within the span described
                 // by this metadata. The span must always be enabled.
