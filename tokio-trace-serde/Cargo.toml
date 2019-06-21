@@ -7,3 +7,7 @@ license = "MIT"
 [dependencies]
 serde = "1"
 tokio-trace-core = "0.2.0"
+
+[dev-dependencies]
+serde_json = "1.0"
+tokio-trace = "0.1"
