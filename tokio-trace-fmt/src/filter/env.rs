@@ -2,7 +2,7 @@ use regex::Regex;
 use tokio_trace_core::{subscriber::Interest, Level, Metadata};
 use {filter::Filter, span::Context};
 
-use std::{cmp::Ordering, env, error::Error, str::FromStr, fmt};
+use std::{cmp::Ordering, env, error::Error, fmt, str::FromStr};
 
 pub const DEFAULT_FILTER_ENV: &str = "RUST_LOG";
 
@@ -133,19 +133,19 @@ impl EnvFilter {
     }
 }
 
-impl<A> From<A> for EnvFilter
+impl<S> From<S> for EnvFilter
 where
-    A: AsRef<str>,
+    S: AsRef<str>,
 {
-    fn from(env: A) -> Self {
-        Self::new(env)
+    fn from(s: S) -> Self {
+        Self::new(s)
     }
 }
 
 impl FromStr for EnvFilter {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_new(env)
+        Self::try_new(s)
     }
 }
 
@@ -250,11 +250,7 @@ fn parse_directives(spec: &str) -> Vec<Directive> {
 
 fn try_parse_directives(spec: &str) -> Result<Vec<Directive>, ParseError> {
     spec.split(',')
-        .map(|dir| {
-            Directive::parse(dir).ok_or_else(|| {
-                ParseError::new(dir)
-            })
-        })
+        .map(|dir| Directive::parse(dir).ok_or_else(|| ParseError::new(dir)))
         .collect()
 }
 
@@ -403,8 +399,8 @@ impl From<env::VarError> for FromEnvError {
 impl fmt::Display for FromEnvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
-            ErrorKind::Parse(p) => p.fmt(f),
-            ErrorKind::Env(e) => e.fmt(f),
+            ErrorKind::Parse(ref p) => p.fmt(f),
+            ErrorKind::Env(ref e) => e.fmt(f),
         }
     }
 }
@@ -412,8 +408,8 @@ impl fmt::Display for FromEnvError {
 impl Error for FromEnvError {
     fn source(&self) -> Option<&(Error + 'static)> {
         match self.kind {
-            ErrorKind::Parse(p) => Some(p),
-            ErrorKind::Env(e) => Some(e),
+            ErrorKind::Parse(ref p) => Some(p),
+            ErrorKind::Env(ref e) => Some(e),
         }
     }
 }
