@@ -16,7 +16,7 @@ where
     _f: PhantomData<fn(N)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Handle<F, N>
 where
     F: Filter<N>,
@@ -113,6 +113,18 @@ where
         })?;
         let inner = inner.read();
         Ok(f(&*inner))
+    }
+}
+
+impl<F, N> Clone for Handle<F, N>
+where
+    F: Filter<N>,
+{
+    fn clone(&self) -> Self {
+        Handle {
+            inner: self.inner.clone(),
+            _f: PhantomData,
+        }
     }
 }
 
