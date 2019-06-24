@@ -90,8 +90,13 @@ where
         let inner = self.inner.upgrade().ok_or(Error {
             kind: ErrorKind::SubscriberGone,
         })?;
-        let mut inner = inner.write();
-        f(&mut *inner);
+
+        let mut lock = inner.write();
+        f(&mut *lock);
+        // Release the lock before rebuilding the interest cache, as that
+        // function will lock the new filter.
+        drop(lock);
+
         callsite::rebuild_interest_cache();
         Ok(())
     }
