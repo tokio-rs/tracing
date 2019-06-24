@@ -105,7 +105,20 @@ where
     where
         F: Clone,
     {
-        self.inner.upgrade().map(|inner| inner.read().clone())
+        self.with_current(F::clone).ok()
+    }
+
+    /// Invokes a closure with a borrowed reference to the current filter,
+    /// returning the result (or an error if the filter no longer exists).
+    pub fn with_current<T>(&self, f: impl FnOnce(&F) -> T) -> Result<T, Error> {
+        let inner = self
+            .inner
+            .upgrade()
+            .ok_or(Error {
+                kind: ErrorKind::SubscriberGone,
+            })?;
+        let inner = inner.read();
+        Ok(f(&*inner))
     }
 }
 
