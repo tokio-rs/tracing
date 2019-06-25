@@ -423,7 +423,6 @@ impl fmt::Display for Directive {
         }
 
         self.level.fmt(f)
-
     }
 }
 
@@ -526,7 +525,6 @@ impl fmt::Display for LevelFilter {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
