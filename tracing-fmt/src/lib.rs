@@ -28,8 +28,8 @@ pub use span::Context;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`FmtSubscribe`]. Each time an event is
-/// dispatched to [`FmtSubscribe`], the subscriber forwards it to its associated `FormatEvent` to
+/// `FormatEvent` is primarily used in the context of [`FmtSubscriber`]. Each time an event is
+/// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
 /// emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same signature as `format`.
