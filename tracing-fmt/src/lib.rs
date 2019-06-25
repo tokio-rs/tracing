@@ -55,7 +55,7 @@ impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt
 }
 
 #[derive(Debug)]
-pub struct FmtSubscriber<N = default::NewRecorder, E = default::Standard, F = filter::EnvFilter> {
+pub struct FmtSubscriber<N = default::NewRecorder, E = default::Format, F = filter::EnvFilter> {
     new_visitor: N,
     fmt_event: E,
     filter: F,
@@ -64,7 +64,7 @@ pub struct FmtSubscriber<N = default::NewRecorder, E = default::Standard, F = fi
 }
 
 #[derive(Debug, Default)]
-pub struct Builder<N = default::NewRecorder, E = default::Standard, F = filter::EnvFilter> {
+pub struct Builder<N = default::NewRecorder, E = default::Format, F = filter::EnvFilter> {
     new_visitor: N,
     fmt_event: E,
     filter: F,
@@ -229,7 +229,7 @@ impl Default for Builder {
         Builder {
             filter: filter::EnvFilter::from_default_env(),
             new_visitor: default::NewRecorder,
-            fmt_event: default::Standard::default(),
+            fmt_event: default::Format::default(),
             settings: Settings::default(),
         }
     }
@@ -310,7 +310,7 @@ impl<N, E, F> Builder<N, E, F> {
 
     /// Sets the subscriber being built to use the default full span formatter.
     // TODO: this should probably just become the default.
-    pub fn full(self) -> Builder<N, default::Standard, F>
+    pub fn full(self) -> Builder<N, default::Format, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
@@ -364,6 +364,6 @@ mod test {
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<default::NewRecorder>().is_some());
         assert!(dispatch.downcast_ref::<filter::EnvFilter>().is_some());
-        assert!(dispatch.downcast_ref::<default::Standard>().is_some())
+        assert!(dispatch.downcast_ref::<default::Format>().is_some())
     }
 }

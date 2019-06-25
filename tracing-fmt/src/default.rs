@@ -16,7 +16,7 @@ use ansi_term::{Colour, Style};
 
 /// A type that can measure and format the current time.
 ///
-/// This trait is used by `Standard` to include a timestamp with each `Event` when it is logged.
+/// This trait is used by `Format` to include a timestamp with each `Event` when it is logged.
 ///
 /// Notable default implementations of this trait are `SystemTime` and `()`. The former prints the
 /// current time as reported by `std::time::SystemTime`, and the latter does not print the current
@@ -63,7 +63,7 @@ impl FormatTime for SystemTime {
     }
 }
 
-/// Builder for a `Standard` formatter.
+/// Builder for a `Format` formatter.
 #[derive(Default, Debug, Clone)]
 pub struct Builder<T = SystemTime> {
     full: bool,
@@ -96,9 +96,9 @@ impl<T> Builder<T> {
         }
     }
 
-    /// Produce a `Standard` event formatter from this `Builder`'s configuration.
-    pub fn build(self) -> Standard<T> {
-        Standard {
+    /// Produce a `Format` event formatter from this `Builder`'s configuration.
+    pub fn build(self) -> Format<T> {
+        Format {
             full: self.full,
             timer: self.timer,
         }
@@ -109,12 +109,12 @@ impl<T> Builder<T> {
 ///
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
 #[derive(Debug, Clone)]
-pub struct Standard<T = SystemTime> {
+pub struct Format<T = SystemTime> {
     full: bool,
     timer: T,
 }
 
-impl<T> Default for Standard<T>
+impl<T> Default for Format<T>
 where
     T: Default,
 {
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<N, T> FormatEvent<N> for Standard<T>
+impl<N, T> FormatEvent<N> for Format<T>
 where
     N: for<'a> ::NewVisitor<'a>,
     T: FormatTime,
