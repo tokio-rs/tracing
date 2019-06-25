@@ -20,7 +20,8 @@ use ansi_term::{Colour, Style};
 ///
 /// Notable default implementations of this trait are `SystemTime` and `()`. The former prints the
 /// current time as reported by `std::time::SystemTime`, and the latter does not print the current
-/// time at all.
+/// time at all. `FormatTime` is also automatically implemented for any free-standing function with
+/// the appropriate signature.
 pub trait FormatTime {
     /// Measure and write out the current time.
     ///
@@ -33,6 +34,12 @@ pub trait FormatTime {
 impl FormatTime for () {
     fn format_time(&self, _: &mut fmt::Write) -> fmt::Result {
         Ok(())
+    }
+}
+
+impl FormatTime for fn(&mut fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+        (*self)(w)
     }
 }
 
