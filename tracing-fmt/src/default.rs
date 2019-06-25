@@ -4,15 +4,23 @@ use FormatEvent;
 #[cfg(feature = "chrono")]
 use chrono;
 
+use std::fmt::{self, Write};
+use std::marker::PhantomData;
 use tracing_core::{
     field::{self, Field},
     Event, Level,
 };
 
-use std::fmt::{self, Write};
-
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
+
+/// Marker for `Format` and `Builder` that indicates that the compact log format should be used.
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Compact;
+
+/// Marker for `Format` and `Builder` that indicates that the verbose log format should be used.
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Full;
 
 /// A type that can measure and format the current time.
 ///
@@ -64,42 +72,53 @@ impl FormatTime for SystemTime {
 }
 
 /// Builder for a `Format` formatter.
-#[derive(Default, Debug, Clone)]
-pub struct Builder<T = SystemTime> {
-    full: bool,
+#[derive(Debug, Clone)]
+pub struct Builder<F = Compact, T = SystemTime> {
+    format: PhantomData<F>,
     timer: T,
 }
 
-impl<T> Builder<T> {
+impl<T: Default> Default for Builder<Compact, T> {
+    fn default() -> Self {
+        Builder {
+            format: PhantomData,
+            timer: T::default(),
+        }
+    }
+}
+
+impl<F, T> Builder<F, T> {
     /// Use a more verbose output format.
-    pub fn full(mut self) -> Self {
-        self.full = true;
-        self
+    pub fn full(self) -> Builder<Full, T> {
+        Builder {
+            format: PhantomData,
+            timer: self.timer,
+        }
     }
 
     /// Use the given `timer` for log message timestamps.
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<T2>
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<F, T2>
     where
         T2: FormatTime,
     {
         Builder {
-            full: self.full,
+            format: self.format,
             timer,
         }
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Builder<()> {
+    pub fn without_time(self) -> Builder<F, ()> {
         Builder {
-            full: self.full,
+            format: self.format,
             timer: (),
         }
     }
 
     /// Produce a `Format` event formatter from this `Builder`'s configuration.
-    pub fn build(self) -> Format<T> {
+    pub fn build(self) -> Format<F, T> {
         Format {
-            full: self.full,
+            format: self.format,
             timer: self.timer,
         }
     }
@@ -109,21 +128,35 @@ impl<T> Builder<T> {
 ///
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
 #[derive(Debug, Clone)]
-pub struct Format<T = SystemTime> {
-    full: bool,
+pub struct Format<F = Compact, T = SystemTime> {
+    format: PhantomData<F>,
     timer: T,
 }
 
-impl<T> Default for Format<T>
-where
-    T: Default,
-{
+impl<T: Default> Default for Format<Compact, T> {
     fn default() -> Self {
         Builder::default().build()
     }
 }
 
-impl<N, T> FormatEvent<N> for Format<T>
+impl<F, T> Format<F, T>
+where
+    T: FormatTime,
+{
+    #[inline(always)]
+    fn time(&self, writer: &mut fmt::Write) -> fmt::Result {
+        #[cfg(feature = "ansi")]
+        let style = Style::new().dimmed();
+        #[cfg(feature = "ansi")]
+        write!(writer, "{}", style.prefix())?;
+        self.timer.format_time(writer)?;
+        #[cfg(feature = "ansi")]
+        write!(writer, "{}", style.suffix())?;
+        Ok(())
+    }
+}
+
+impl<N, T> FormatEvent<N> for Format<Full, T>
 where
     N: for<'a> ::NewVisitor<'a>,
     T: FormatTime,
@@ -135,40 +168,48 @@ where
         event: &Event,
     ) -> fmt::Result {
         let meta = event.metadata();
-        {
-            #[cfg(feature = "ansi")]
-            let style = Style::new().dimmed();
-            #[cfg(feature = "ansi")]
-            write!(writer, "{}", style.prefix())?;
-            self.timer.format_time(writer)?;
-            #[cfg(feature = "ansi")]
-            write!(writer, "{}", style.suffix())?;
-        }
-        if self.full {
-            write!(
-                writer,
-                "{} {}{}: ",
-                FmtLevel(meta.level()),
-                FullCtx(&ctx),
-                meta.target()
-            )?;
-        } else {
-            write!(
-                writer,
-                "{} {}{}: ",
-                FmtLevel(meta.level()),
-                FmtCtx(&ctx),
-                meta.target()
-            )?;
-        }
+        self.time(writer)?;
+        write!(
+            writer,
+            "{} {}{}: ",
+            FmtLevel(meta.level()),
+            FullCtx(&ctx),
+            meta.target()
+        )?;
         {
             let mut recorder = ctx.new_visitor(writer, true);
             event.record(&mut recorder);
         }
-        if !self.full {
-            ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
-                .unwrap_or(Ok(()))?;
+        writeln!(writer)
+    }
+}
+
+impl<N, T> FormatEvent<N> for Format<Compact, T>
+where
+    N: for<'a> ::NewVisitor<'a>,
+    T: FormatTime,
+{
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        let meta = event.metadata();
+        self.time(writer)?;
+        write!(
+            writer,
+            "{} {}{}: ",
+            FmtLevel(meta.level()),
+            FmtCtx(&ctx),
+            meta.target()
+        )?;
+        {
+            let mut recorder = ctx.new_visitor(writer, true);
+            event.record(&mut recorder);
         }
+        ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
+            .unwrap_or(Ok(()))?;
         writeln!(writer)
     }
 }
