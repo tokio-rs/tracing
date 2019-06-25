@@ -1,4 +1,4 @@
-# tokio-trace-core 0.2.0 (April 21, 2019)
+# tracing-core 0.2.0 (April 21, 2019)
 
 ### Breaking Changes
 - Remove `Callsite::clear_interest` and `Callsite::add_interest` (#1039)
@@ -17,6 +17,6 @@
   of the function (so that events inside the subscriber cannot cause infinite
   loops) (#1033)
 
-# tokio-trace-core 0.2.0 0.1.0 (March 13, 2019)
+# tracing-core 0.2.0 0.1.0 (March 13, 2019)
 
 - Initial release

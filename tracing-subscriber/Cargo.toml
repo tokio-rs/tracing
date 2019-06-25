@@ -1,0 +1,10 @@
+[package]
+name = "tracing-subscriber"
+version = "0.0.1"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+tracing = { git = "https://github.com/tokio-rs/tokio" }
+
+[dev-dependencies]
+tracing-log = { path = "../tracing-log" }

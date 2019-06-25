@@ -31,7 +31,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tokio-trace = { version = "0.1", features = ["max_level_debug", "release_max_level_warn"] }
+//! tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_warn"] }
 //! ```
 //!
 //! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters

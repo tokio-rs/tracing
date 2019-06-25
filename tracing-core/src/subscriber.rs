@@ -228,7 +228,7 @@ pub trait Subscriber: 'static {
     ///
     /// This method will be invoked when an Event is constructed by
     /// the `Event`'s [`dispatch` method]. For example, this happens internally
-    /// when an event macro from `tokio-trace` is called.
+    /// when an event macro from `tracing` is called.
     ///
     /// The key difference between this method and `record` is that `record` is
     /// called when a value is recorded for a field defined by a span,

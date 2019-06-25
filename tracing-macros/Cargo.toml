@@ -1,0 +1,11 @@
+[package]
+name = "tracing-macros"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+tracing = { git = "https://github.com/tokio-rs/tokio" }
+
+[dev-dependencies]
+tracing-log = { path = "../tracing-log" }
+env_logger = "0.5"

@@ -1,14 +1,14 @@
-# tokio-trace-core
+# tracing-core
 
-Core primitives for `tokio-trace`.
+Core primitives for `tracing`.
 
-[Documentation](https://docs.rs/tokio-trace-core/0.2.0/tracing_core/index.html)
+[Documentation](https://docs.rs/tracing-core/0.2.0/tracing_core/index.html)
 
 ## Overview
 
-`tokio-trace` is a framework for instrumenting Rust programs to collect
+`tracing` is a framework for instrumenting Rust programs to collect
 structured, event-based diagnostic information. This crate defines the core
-primitives of `tokio-trace`.
+primitives of `tracing`.
 
 The crate provides:
 
@@ -29,21 +29,21 @@ In addition, it defines the global callsite registry and per-thread current
 dispatcher which other components of the tracing system rely on.
 
 Application authors will typically not use this crate directly. Instead, they
-will use the [`tokio-trace`] crate, which provides a much more fully-featured
+will use the [`tracing`] crate, which provides a much more fully-featured
 API. However, this crate's API will change very infrequently, so it may be used
 when dependencies must be very stable.
 
-[`tokio-trace`]: ../
-[`Span`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/span/struct.Span.html
-[`Event`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/event/struct.Event.html
-[`Subscriber`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/subscriber/trait.Subscriber.html
-[`Metadata`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/metadata/struct.Metadata.html
-[`Callsite`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/callsite/trait.Callsite.html
-[`Field`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/field/struct.Field.html
-[`FieldSet`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/field/struct.FieldSet.html
-[`Value`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/field/trait.Value.html
-[`ValueSet`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/field/struct.ValueSet.html
-[`Dispatch`]: https://docs.rs/tokio-trace-core/0.2.0/tracing_core/dispatcher/struct.Dispatch.html
+[`tracing`]: ../
+[`Span`]: https://docs.rs/tracing-core/0.2.0/tracing_core/span/struct.Span.html
+[`Event`]: https://docs.rs/tracing-core/0.2.0/tracing_core/event/struct.Event.html
+[`Subscriber`]: https://docs.rs/tracing-core/0.2.0/tracing_core/subscriber/trait.Subscriber.html
+[`Metadata`]: https://docs.rs/tracing-core/0.2.0/tracing_core/metadata/struct.Metadata.html
+[`Callsite`]: https://docs.rs/tracing-core/0.2.0/tracing_core/callsite/trait.Callsite.html
+[`Field`]: https://docs.rs/tracing-core/0.2.0/tracing_core/field/struct.Field.html
+[`FieldSet`]: https://docs.rs/tracing-core/0.2.0/tracing_core/field/struct.FieldSet.html
+[`Value`]: https://docs.rs/tracing-core/0.2.0/tracing_core/field/trait.Value.html
+[`ValueSet`]: https://docs.rs/tracing-core/0.2.0/tracing_core/field/struct.ValueSet.html
+[`Dispatch`]: https://docs.rs/tracing-core/0.2.0/tracing_core/dispatcher/struct.Dispatch.html
 
 ## License
 

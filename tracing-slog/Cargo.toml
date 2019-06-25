@@ -1,0 +1,7 @@
+[package]
+name = "tracing-slog"
+version = "0.1.0"
+authors = ["David Barsky <dbarsky@amazon.com>"]
+
+[dependencies]
+tracing = { git = "https://github.com/tokio-rs/tokio" }

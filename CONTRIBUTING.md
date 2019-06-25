@@ -36,7 +36,7 @@ For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
    have uncovered a bug in a nursery crate, creating a new issue in the
-   tokio-rs/tokio-trace-nursery [issue tracker][issues] is the way to report it.
+   tokio-rs/tracing-nursery [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
    supporting details (a test case that demonstrates a bug), providing
@@ -51,7 +51,7 @@ For any issue, there are fundamentally three ways an individual can contribute:
 **Anybody can participate in any stage of contribution**. We urge you to
 participate in the discussion around bugs and participate in reviewing PRs.
 
-[issues]: https://github.com/tokio-rs/tokio-trace-nursery/issues
+[issues]: https://github.com/tokio-rs/tracing-nursery/issues
 
 ### Asking for General Help
 
@@ -63,7 +63,7 @@ PR that helps others avoid the problems that you encountered.
 
 ### Submitting a Bug Report
 
-When opening a new issue in the `tokio-trace-nursery` issue tracker, users will
+When opening a new issue in the `tracing-nursery` issue tracker, users will
 be presented with a [basic template][template] that should be filled in. If you
 believe that you have uncovered a bug, please fill out this form, following the
 template to the best of your ability. Do not worry if you cannot answer every
@@ -112,7 +112,7 @@ functional guidelines of the Tokio project.
 ## Pull Requests
 
 Pull Requests are the way concrete changes are made to the code, documentation,
-and dependencies in the `tokio-trace-nursery` repository.
+and dependencies in the `tracing-nursery` repository.
 
 Even tiny pull requests (e.g., one character pull request fixing a typo in API
 documentation) are greatly appreciated. Before making a large change, it is
@@ -132,8 +132,8 @@ There are two ways to write tests: integration tests and documentation tests
 #### Integration tests
 
 Integration tests go in the same crate as the code they are testing. Each sub
-crate should have a `dev-dependency` on `tokio-trace` itself. This makes all
-`tokio-trace` utilities available to use in tests, no matter the crate being
+crate should have a `dev-dependency` on `tracing` itself. This makes all
+`tracing` utilities available to use in tests, no matter the crate being
 tested.
 
 The best strategy for writing a new integration test is to look at existing
@@ -229,7 +229,7 @@ A good commit message should describe what changed and why.
   * be entirely in lowercase with the exception of proper nouns, acronyms, and
     the words that refer to code, like function/variable names
   * be prefixed with the name of the crate being changed (without the
-    `tokio-trace` prefix) and start with an imperative verb.
+    `tracing` prefix) and start with an imperative verb.
 
   Examples:
 
@@ -361,8 +361,8 @@ with the appropriate reason to keep the conversation flow concise and relevant.
 
 Be aware that *how* you communicate requests and reviews in your feedback can
 have a significant impact on the success of the Pull Request. Yes, we may land
-a particular change that makes `tokio-trace` better, but the individual might
-just notwant to have anything to do with `tokio-trace` ever again. The goal is
+a particular change that makes `tracing` better, but the individual might
+just notwant to have anything to do with `tracing` ever again. The goal is
 not just having good code.
 
 ### Abandoned or Stalled Pull Requests

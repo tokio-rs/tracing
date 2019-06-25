@@ -1,0 +1,13 @@
+[package]
+name = "tracing-serde"
+version = "0.1.0"
+authors = ["Tokio Contributors <team@tokio.rs>"]
+license = "MIT"
+
+[dependencies]
+serde = "1"
+tracing-core = "0.2.0"
+
+[dev-dependencies]
+serde_json = "1.0"
+tracing = "0.1"

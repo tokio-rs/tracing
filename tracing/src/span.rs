@@ -3,7 +3,7 @@
 //!
 //! A span consists of [fields], user-defined key-value pairs of arbitrary data
 //! that describe the context the span represents, and [metadata], a fixed set
-//! of attributes that describe all `tokio-trace` spans and events. Each span is
+//! of attributes that describe all `tracing` spans and events. Each span is
 //! assigned an [`Id` ] by the subscriber that uniquely identifies it in relation
 //! to other spans.
 //!

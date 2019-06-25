@@ -10,14 +10,14 @@ rust:
 - nightly
 
 script:
-- cargo test --verbose -p tokio-trace-futures
-- cargo test --verbose -p tokio-trace-subscriber
-- cargo test --verbose -p tokio-trace-log
-- cargo test --verbose -p tokio-trace-env-logger
-- cargo test --verbose -p tokio-trace-macros
-- cargo test --verbose -p tokio-trace-serde
-- cargo test --verbose -p tokio-trace-fmt
-- cargo test --verbose -p tokio-trace-slog
+- cargo test --verbose -p tracing-futures
+- cargo test --verbose -p tracing-subscriber
+- cargo test --verbose -p tracing-log
+- cargo test --verbose -p tracing-env-logger
+- cargo test --verbose -p tracing-macros
+- cargo test --verbose -p tracing-serde
+- cargo test --verbose -p tracing-fmt
+- cargo test --verbose -p tracing-slog
 
 jobs:
   include:
@@ -26,10 +26,10 @@ jobs:
     name: "test stable only"
     script:
       # No stable proc macros on 1.26.0
-    - cargo test -p tokio-trace-proc-macros
+    - cargo test -p tracing-proc-macros
       # Tower doesn't build on Rust 1.26.0.
-    - cargo test -p tokio-trace-tower
-    - cargo test -p tokio-trace-tower-http
+    - cargo test -p tracing-tower
+    - cargo test -p tracing-tower-http
     rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview

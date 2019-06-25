@@ -175,7 +175,7 @@ pub struct Iter {
 /// sum of all the numeric values it records, and ignores all other values. A
 /// more practical example of recording typed values is presented in
 /// `examples/counters.rs`, which demonstrates a very simple metrics system
-/// implemented using `tokio-trace`.
+/// implemented using `tracing`.
 ///
 /// [`Value`]: trait.Value.html
 /// [recorded]: trait.Value.html#method.record

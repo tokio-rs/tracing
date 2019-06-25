@@ -1,0 +1,10 @@
+[package]
+name = "tracing-tower"
+version = "0.1.0"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies]
+tracing = { git = "https://github.com/tokio-rs/tokio" }
+tracing-futures = { path = "../tracing-futures" }
+futures = "0.1"
+tower-service = "0.2"

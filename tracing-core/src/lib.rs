@@ -1,12 +1,12 @@
-#![doc(html_root_url = "https://docs.rs/tokio-trace-core/0.2.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.2.0")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
-//! Core primitives for `tokio-trace`.
+//! Core primitives for `tracing`.
 //!
-//! `tokio-trace` is a framework for instrumenting Rust programs to collect
+//! `tracing` is a framework for instrumenting Rust programs to collect
 //! structured, event-based diagnostic information. This crate defines the core
-//! primitives of `tokio-trace`.
+//! primitives of `tracing`.
 //!
 //! This crate provides:
 //!
@@ -27,12 +27,12 @@
 //! dispatcher which other components of the tracing system rely on.
 //!
 //! Application authors will typically not use this crate directly. Instead,
-//! they will use the `tokio-trace` crate, which provides a much more
+//! they will use the `tracing` crate, which provides a much more
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
 //!
-//! The [`tokio-trace-nursery`] repository contains less stable crates designed to
-//! be used with the `tokio-trace` ecosystem. It includes a collection of
+//! The [`tracing-nursery`] repository contains less stable crates designed to
+//! be used with the `tracing` ecosystem. It includes a collection of
 //! `Subscriber` implementations, as well as utility and adapter crates.
 //!
 //! [`Span`]: span/struct.Span.html
@@ -45,7 +45,7 @@
 //! [`Value`]: field/trait.Value.html
 //! [`ValueSet`]: field/struct.ValueSet.html
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
-//! [`tokio-trace-nursery`]: https://github.com/tokio-rs/tokio-trace-nursery
+//! [`tracing-nursery`]: https://github.com/tokio-rs/tracing-nursery
 #[macro_use]
 extern crate lazy_static;
 
