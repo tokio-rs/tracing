@@ -1,8 +1,6 @@
 use span;
 use Formatter;
 
-const TIMESTAMP_FORMAT: &'static str = "%b %d %H:%M:%S%.3f";
-
 use tracing_core::{
     field::{self, Field},
     Event, Level,
@@ -13,45 +11,89 @@ use std::fmt::{self, Write};
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-#[derive(Default, Debug, Clone)]
-pub struct Builder {
-    full: bool,
-    include_time: bool,
+pub trait FormatTime {
+    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result;
 }
 
-impl Builder {
-    pub fn full(&mut self) -> &mut Self {
-        self.full = true;
-        self
+impl FormatTime for () {
+    fn format_time(&self, _: &mut fmt::Write) -> fmt::Result {
+        Ok(())
     }
+}
 
-    pub fn with_time(&mut self) -> &mut Self {
-        self.include_time = true;
-        self
+#[cfg(feature = "chrono")]
+pub struct SystemTime;
+
+#[cfg(feature = "chrono")]
+const TIMESTAMP_FORMAT: &'static str = "%b %d %H:%M:%S%.3f";
+
+#[cfg(feature = "chrono")]
+impl FormatTime for SystemTime {
+    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+        write!(w, "{} ", chrono::Local::now().format(TIMESTAMP_FORMAT))
     }
+}
 
-    pub fn build(&self) -> Standard {
-        Standard {
-            full: self.full,
-            include_time: self.include_time,
+#[derive(Debug, Clone)]
+pub struct Builder<T = ()> {
+    full: bool,
+    timer: T,
+}
+
+impl<T> Default for Builder<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Builder {
+            full: false,
+            timer: T::default(),
         }
     }
 }
 
-pub struct Standard {
-    full: bool,
-    include_time: bool,
+impl<T> Builder<T> {
+    pub fn full(mut self) -> Self {
+        self.full = true;
+        self
+    }
+
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<T2>
+    where
+        T2: FormatTime,
+    {
+        Builder {
+            full: self.full,
+            timer,
+        }
+    }
+
+    pub fn build(self) -> Standard<T> {
+        Standard {
+            full: self.full,
+            timer: self.timer,
+        }
+    }
 }
 
-impl Default for Standard {
+pub struct Standard<T = ()> {
+    full: bool,
+    timer: T,
+}
+
+impl<T> Default for Standard<T>
+where
+    T: Default,
+{
     fn default() -> Self {
         Builder::default().build()
     }
 }
 
-impl<N> Formatter<N> for Standard
+impl<N, T> Formatter<N> for Standard<T>
 where
     N: for<'a> ::NewVisitor<'a>,
+    T: FormatTime,
 {
     fn format(
         &self,
@@ -60,12 +102,12 @@ where
         event: &Event,
     ) -> fmt::Result {
         let meta = event.metadata();
-        if self.include_time {
+        {
             #[cfg(feature = "ansi")]
             let style = Style::new().dimmed();
             #[cfg(feature = "ansi")]
             write!(writer, "{}", style.prefix())?;
-            write!(writer, "{} ", chrono::Local::now().format(TIMESTAMP_FORMAT))?;
+            self.timer.format_time(writer)?;
             #[cfg(feature = "ansi")]
             write!(writer, "{}", style.suffix())?;
         }
