@@ -32,8 +32,7 @@ pub use span::Context;
 /// dispatched to [`FmtSubscribe`], the subscriber forwards it to its associated `Formatter` to
 /// emit a log message.
 ///
-/// This trait is already implemented for any free-standing function with the same signature as
-/// `format`.
+/// This trait is already implemented for function pointers with the same signature as `format`.
 pub trait Formatter<N> {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format(&self, ctx: &span::Context<N>, writer: &mut fmt::Write, event: &Event)
