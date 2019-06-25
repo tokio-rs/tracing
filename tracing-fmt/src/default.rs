@@ -1,6 +1,9 @@
 use span;
 use Formatter;
 
+#[cfg(feature = "chrono")]
+use chrono;
+
 use tracing_core::{
     field::{self, Field},
     Event, Level,
