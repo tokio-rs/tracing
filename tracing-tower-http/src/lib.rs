@@ -134,7 +134,7 @@ where
 
     fn call(&mut self, request: http::Request<B>) -> Self::Future {
         let span = trace_span!(
-            parent: self.span.as_ref(),
+            parent: self.span.as_ref().and_then(Span::id),
             "request",
             // TODO: custom `Value` impls for `http` types would be nicer
             // than just sticking these in `debug`s...

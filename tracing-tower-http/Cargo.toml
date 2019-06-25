@@ -8,7 +8,7 @@ tracing = { path = "../tracing" }
 tracing-futures = { path = "../tracing-futures" }
 futures = "0.1"
 tower-service = "0.2"
-tower = { git = "https://github.com/tower-rs/tower.git" }
+tower = "0.1"
 http = "0.1"
 
 [dev-dependencies]

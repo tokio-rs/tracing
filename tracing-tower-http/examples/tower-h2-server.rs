@@ -37,14 +37,10 @@ impl RspBody {
 }
 
 impl Body for RspBody {
-    type Item = <Bytes as IntoBuf>::Buf;
+    type Data = <Bytes as IntoBuf>::Buf;
     type Error = h2::Error;
 
-    fn is_end_stream(&self) -> bool {
-        self.0.as_ref().map(|b| b.is_empty()).unwrap_or(false)
-    }
-
-    fn poll_buf(&mut self) -> Poll<Option<Self::Item>, h2::Error> {
+    fn poll_data(&mut self) -> Poll<Option<Self::Data>, Self::Error> {
         let data = self.0.take().and_then(|b| {
             if b.is_empty() {
                 None
