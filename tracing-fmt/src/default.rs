@@ -1,4 +1,5 @@
 use span;
+use Formatter;
 
 use tracing_core::{
     field::{self, Field},
@@ -10,44 +11,70 @@ use std::fmt::{self, Write};
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event<N>(ctx: &span::Context<N>, f: &mut dyn Write, event: &Event) -> fmt::Result
-where
-    N: for<'a> ::NewVisitor<'a>,
-{
-    let meta = event.metadata();
-    write!(
-        f,
-        "{} {}{}: ",
-        FmtLevel(meta.level()),
-        FmtCtx(&ctx),
-        meta.target()
-    )?;
-    {
-        let mut recorder = ctx.new_visitor(f, true);
-        event.record(&mut recorder);
-    }
-    ctx.with_current(|(_, span)| write!(f, " {}", span.fields()))
-        .unwrap_or(Ok(()))?;
-    writeln!(f)
+#[derive(Default, Debug, Clone)]
+pub struct Builder {
+    full: bool,
 }
 
-pub fn fmt_verbose<N>(ctx: &span::Context<N>, f: &mut dyn Write, event: &Event) -> fmt::Result
+impl Builder {
+    pub fn full(&mut self) -> &mut Self {
+        self.full = true;
+        self
+    }
+
+    pub fn build(&self) -> Standard {
+        Standard { full: self.full }
+    }
+}
+
+pub struct Standard {
+    full: bool,
+}
+
+impl Default for Standard {
+    fn default() -> Self {
+        Builder::default().build()
+    }
+}
+
+impl<N> Formatter<N> for Standard
 where
     N: for<'a> ::NewVisitor<'a>,
 {
-    let meta = event.metadata();
-    write!(
-        f,
-        "{} {}{}: ",
-        FmtLevel(meta.level()),
-        FullCtx(&ctx),
-        meta.target()
-    )?;
-    {
-        let mut recorder = ctx.new_visitor(f, true);
-        event.record(&mut recorder);
+    fn format(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut dyn fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        let meta = event.metadata();
+        if self.full {
+            write!(
+                writer,
+                "{} {}{}: ",
+                FmtLevel(meta.level()),
+                FullCtx(&ctx),
+                meta.target()
+            )?;
+        } else {
+            write!(
+                writer,
+                "{} {}{}: ",
+                FmtLevel(meta.level()),
+                FmtCtx(&ctx),
+                meta.target()
+            )?;
+        }
+        {
+            let mut recorder = ctx.new_visitor(writer, true);
+            event.record(&mut recorder);
+        }
+        if !self.full {
+            ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
+                .unwrap_or(Ok(()))?;
+        }
+        writeln!(writer)
     }
-    writeln!(f)
 }
 
 pub struct NewRecorder;

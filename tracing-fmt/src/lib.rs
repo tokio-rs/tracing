@@ -24,12 +24,24 @@ mod span;
 pub use filter::Filter;
 pub use span::Context;
 
+pub trait Formatter<N> {
+    fn format(&self, ctx: &span::Context<N>, writer: &mut fmt::Write, event: &Event)
+        -> fmt::Result;
+}
+
+impl<N> Formatter<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result {
+    fn format(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        (*self)(ctx, writer, event)
+    }
+}
+
 #[derive(Debug)]
-pub struct FmtSubscriber<
-    N = default::NewRecorder,
-    E = fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result,
-    F = filter::EnvFilter,
-> {
+pub struct FmtSubscriber<N = default::NewRecorder, E = default::Standard, F = filter::EnvFilter> {
     new_visitor: N,
     fmt_event: E,
     filter: F,
@@ -38,11 +50,7 @@ pub struct FmtSubscriber<
 }
 
 #[derive(Debug, Default)]
-pub struct Builder<
-    N = default::NewRecorder,
-    E = fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result,
-    F = filter::EnvFilter,
-> {
+pub struct Builder<N = default::NewRecorder, E = default::Standard, F = filter::EnvFilter> {
     new_visitor: N,
     fmt_event: E,
     filter: F,
@@ -94,7 +102,7 @@ where
 impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
+    E: Formatter<N> + 'static,
     F: Filter<N> + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
@@ -141,7 +149,7 @@ where
             };
             let ctx = span::Context::new(&self.spans, &self.new_visitor);
 
-            if (self.fmt_event)(&ctx, buf, event).is_ok() {
+            if self.fmt_event.format(&ctx, buf, event).is_ok() {
                 // TODO: make the io object configurable
                 let _ = io::Write::write_all(&mut io::stdout(), buf.as_bytes());
             }
@@ -207,7 +215,7 @@ impl Default for Builder {
         Builder {
             filter: filter::EnvFilter::from_default_env(),
             new_visitor: default::NewRecorder,
-            fmt_event: default::fmt_event,
+            fmt_event: default::Standard::default(),
             settings: Settings::default(),
         }
     }
@@ -216,7 +224,7 @@ impl Default for Builder {
 impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
+    E: Formatter<N> + 'static,
     F: Filter<N> + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
@@ -288,14 +296,12 @@ impl<N, E, F> Builder<N, E, F> {
 
     /// Sets the subscriber being built to use the default full span formatter.
     // TODO: this should probably just become the default.
-    pub fn full(
-        self,
-    ) -> Builder<N, fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result, F>
+    pub fn full(self) -> Builder<N, default::Standard, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
         Builder {
-            fmt_event: default::fmt_verbose,
+            fmt_event: default::Builder::default().full().build(),
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,
@@ -306,7 +312,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
+        E2: Formatter<N> + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
@@ -329,8 +335,7 @@ impl<N, E, F> Builder<N, E, F> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fmt;
-    use tracing_core::Dispatch;
+    use tracing_core::dispatcher::Dispatch;
 
     #[test]
     fn subscriber_downcasts() {
@@ -341,12 +346,10 @@ mod test {
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        type FmtEvent =
-            fn(&span::Context<default::NewRecorder>, &mut dyn fmt::Write, &Event) -> fmt::Result;
         let subscriber = FmtSubscriber::new();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<default::NewRecorder>().is_some());
         assert!(dispatch.downcast_ref::<filter::EnvFilter>().is_some());
-        assert!(dispatch.downcast_ref::<FmtEvent>().is_some())
+        assert!(dispatch.downcast_ref::<default::Standard>().is_some())
     }
 }
