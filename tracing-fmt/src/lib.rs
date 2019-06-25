@@ -5,6 +5,7 @@ extern crate tracing;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
+extern crate chrono;
 extern crate lock_api;
 extern crate owning_ref;
 extern crate parking_lot;

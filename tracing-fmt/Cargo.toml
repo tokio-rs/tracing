@@ -14,6 +14,7 @@ lazy_static = "1"
 owning_ref = "0.4.0"
 parking_lot = { version = "0.7"}
 lock_api = "0.1"
+chrono = "0.4"
 
 [dependencies.tracing-core]
 # TODO: replace this with a path dependency on the local `tracing-core`.

@@ -1,6 +1,8 @@
 use span;
 use Formatter;
 
+const TIMESTAMP_FORMAT: &'static str = "%b %d %H:%M:%S%.3f";
+
 use tracing_core::{
     field::{self, Field},
     Event, Level,
@@ -14,6 +16,7 @@ use ansi_term::{Colour, Style};
 #[derive(Default, Debug, Clone)]
 pub struct Builder {
     full: bool,
+    include_time: bool,
 }
 
 impl Builder {
@@ -22,13 +25,22 @@ impl Builder {
         self
     }
 
+    pub fn with_time(&mut self) -> &mut Self {
+        self.include_time = true;
+        self
+    }
+
     pub fn build(&self) -> Standard {
-        Standard { full: self.full }
+        Standard {
+            full: self.full,
+            include_time: self.include_time,
+        }
     }
 }
 
 pub struct Standard {
     full: bool,
+    include_time: bool,
 }
 
 impl Default for Standard {
@@ -48,6 +60,15 @@ where
         event: &Event,
     ) -> fmt::Result {
         let meta = event.metadata();
+        if self.include_time {
+            #[cfg(feature = "ansi")]
+            let style = Style::new().dimmed();
+            #[cfg(feature = "ansi")]
+            write!(writer, "{}", style.prefix())?;
+            write!(writer, "{} ", chrono::Local::now().format(TIMESTAMP_FORMAT))?;
+            #[cfg(feature = "ansi")]
+            write!(writer, "{}", style.suffix())?;
+        }
         if self.full {
             write!(
                 writer,
