@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "tokio-trace",
+    "tracing",
     "tokio-trace-core",
     "tokio-trace-proc-macros",
     "tokio-trace-fmt",
