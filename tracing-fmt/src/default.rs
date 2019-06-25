@@ -71,6 +71,13 @@ impl<T> Builder<T> {
         }
     }
 
+    pub fn without_time(self) -> Builder<()> {
+        Builder {
+            full: self.full,
+            timer: (),
+        }
+    }
+
     pub fn build(self) -> Standard<T> {
         Standard {
             full: self.full,
