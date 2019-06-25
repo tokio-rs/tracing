@@ -1,5 +1,5 @@
 use span;
-use Formatter;
+use FormatEvent;
 
 #[cfg(feature = "chrono")]
 use chrono;
@@ -107,7 +107,7 @@ impl<T> Builder<T> {
 
 /// A pre-configured event formatter.
 ///
-/// You will usually want to use this as the `Formatter` for a `FmtSubscriber`.
+/// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
 #[derive(Debug, Clone)]
 pub struct Standard<T = SystemTime> {
     full: bool,
@@ -123,12 +123,12 @@ where
     }
 }
 
-impl<N, T> Formatter<N> for Standard<T>
+impl<N, T> FormatEvent<N> for Standard<T>
 where
     N: for<'a> ::NewVisitor<'a>,
     T: FormatTime,
 {
-    fn format(
+    fn format_event(
         &self,
         ctx: &span::Context<N>,
         writer: &mut dyn fmt::Write,

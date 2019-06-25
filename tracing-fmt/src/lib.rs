@@ -28,19 +28,23 @@ pub use span::Context;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `Formatter` is primarily used in the context of [`FmtSubscribe`]. Each time an event is
-/// dispatched to [`FmtSubscribe`], the subscriber forwards it to its associated `Formatter` to
+/// `FormatEvent` is primarily used in the context of [`FmtSubscribe`]. Each time an event is
+/// dispatched to [`FmtSubscribe`], the subscriber forwards it to its associated `FormatEvent` to
 /// emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same signature as `format`.
-pub trait Formatter<N> {
+pub trait FormatEvent<N> {
     /// Write a log message for `Event` in `Context` to the given `Write`.
-    fn format(&self, ctx: &span::Context<N>, writer: &mut fmt::Write, event: &Event)
-        -> fmt::Result;
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut fmt::Write,
+        event: &Event,
+    ) -> fmt::Result;
 }
 
-impl<N> Formatter<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result {
-    fn format(
+impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result {
+    fn format_event(
         &self,
         ctx: &span::Context<N>,
         writer: &mut fmt::Write,
@@ -112,7 +116,7 @@ where
 impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Formatter<N> + 'static,
+    E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
@@ -159,7 +163,7 @@ where
             };
             let ctx = span::Context::new(&self.spans, &self.new_visitor);
 
-            if self.fmt_event.format(&ctx, buf, event).is_ok() {
+            if self.fmt_event.format_event(&ctx, buf, event).is_ok() {
                 // TODO: make the io object configurable
                 let _ = io::Write::write_all(&mut io::stdout(), buf.as_bytes());
             }
@@ -234,7 +238,7 @@ impl Default for Builder {
 impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Formatter<N> + 'static,
+    E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
@@ -322,7 +326,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Formatter<N> + 'static,
+        E2: FormatEvent<N> + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
