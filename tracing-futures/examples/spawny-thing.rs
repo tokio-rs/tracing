@@ -37,7 +37,7 @@ fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
 }
 
 fn main() {
-    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
     tracing::subscriber::with_default(subscriber, || {
         tokio::run(parent_task(10));
     });

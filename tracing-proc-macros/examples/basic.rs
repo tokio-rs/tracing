@@ -9,7 +9,7 @@ use tracing::{field, Level};
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
     tracing::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
 

@@ -113,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         });
 
-    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
     tracing::subscriber::with_default(subscriber, || {
         let done = done.instrument(span!(
             Level::TRACE,

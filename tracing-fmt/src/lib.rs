@@ -57,7 +57,7 @@ impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
-    E = default::Format<default::Compact>,
+    E = default::Format<default::Full>,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -70,7 +70,7 @@ pub struct FmtSubscriber<
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
-    E = default::Format<default::Compact>,
+    E = default::Format<default::Full>,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -316,14 +316,13 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
-    /// Sets the subscriber being built to use the default full span formatter.
-    // TODO: this should probably just become the default.
-    pub fn full(self) -> Builder<N, default::Format<default::Full>, F>
+    /// Sets the subscriber being built to use a less verbose formatter.
+    pub fn compact(self) -> Builder<N, default::Format<default::Compact>, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
         Builder {
-            fmt_event: default::Builder::default().full().build(),
+            fmt_event: default::Builder::default().compact().build(),
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,

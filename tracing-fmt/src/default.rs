@@ -73,12 +73,12 @@ impl FormatTime for SystemTime {
 
 /// Builder for a `Format` formatter.
 #[derive(Debug, Clone)]
-pub struct Builder<F = Compact, T = SystemTime> {
+pub struct Builder<F = Full, T = SystemTime> {
     format: PhantomData<F>,
     timer: T,
 }
 
-impl<T: Default> Default for Builder<Compact, T> {
+impl<T: Default> Default for Builder<Full, T> {
     fn default() -> Self {
         Builder {
             format: PhantomData,
@@ -88,8 +88,8 @@ impl<T: Default> Default for Builder<Compact, T> {
 }
 
 impl<F, T> Builder<F, T> {
-    /// Use a more verbose output format.
-    pub fn full(self) -> Builder<Full, T> {
+    /// Use a less verbose output format.
+    pub fn compact(self) -> Builder<Compact, T> {
         Builder {
             format: PhantomData,
             timer: self.timer,
@@ -128,12 +128,12 @@ impl<F, T> Builder<F, T> {
 ///
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
 #[derive(Debug, Clone)]
-pub struct Format<F = Compact, T = SystemTime> {
+pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
     timer: T,
 }
 
-impl<T: Default> Default for Format<Compact, T> {
+impl<T: Default> Default for Format<Full, T> {
     fn default() -> Self {
         Builder::default().build()
     }
