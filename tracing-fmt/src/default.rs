@@ -21,21 +21,24 @@ impl FormatTime for () {
     }
 }
 
-#[cfg(feature = "chrono")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct SystemTime;
-
-#[cfg(feature = "chrono")]
-const TIMESTAMP_FORMAT: &'static str = "%b %d %H:%M:%S%.3f";
 
 #[cfg(feature = "chrono")]
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
-        write!(w, "{} ", chrono::Local::now().format(TIMESTAMP_FORMAT))
+        write!(w, "{} ", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
+    }
+}
+#[cfg(not(feature = "chrono"))]
+impl FormatTime for SystemTime {
+    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+        write!(w, "{:?} ", std::time::SystemTime::now())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Builder<T = ()> {
+pub struct Builder<T = SystemTime> {
     full: bool,
     timer: T,
 }
@@ -76,7 +79,7 @@ impl<T> Builder<T> {
     }
 }
 
-pub struct Standard<T = ()> {
+pub struct Standard<T = SystemTime> {
     full: bool,
     timer: T,
 }
