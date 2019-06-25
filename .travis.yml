@@ -10,14 +10,16 @@ rust:
 - nightly
 
 script:
-- cargo test --verbose -p tracing-futures
-- cargo test --verbose -p tracing-subscriber
-- cargo test --verbose -p tracing-log
-- cargo test --verbose -p tracing-env-logger
-- cargo test --verbose -p tracing-macros
-- cargo test --verbose -p tracing-serde
-- cargo test --verbose -p tracing-fmt
-- cargo test --verbose -p tracing-slog
+- cargo test -p tracing
+- cargo test -p tracing-core
+- cargo test -p tracing-futures
+- cargo test -p tracing-subscriber
+- cargo test -p tracing-log
+- cargo test -p tracing-env-logger
+- cargo test -p tracing-macros
+- cargo test -p tracing-serde
+- cargo test -p tracing-fmt
+- cargo test -p tracing-slog
 
 jobs:
   include:
