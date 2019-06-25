@@ -14,7 +14,19 @@ use std::fmt::{self, Write};
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
+/// A type that can measure and format the current time.
+///
+/// This trait is used by `Standard` to include a timestamp with each `Event` when it is logged.
+///
+/// Notable default implementations of this trait are `SystemTime` and `()`. The former prints the
+/// current time as reported by `std::time::SystemTime`, and the latter does not print the current
+/// time at all.
 pub trait FormatTime {
+    /// Measure and write out the current time.
+    ///
+    /// When `format_time` is called, implementors should get the current time using their desired
+    /// mechanism, and write it out to the given `fmt::Write`. Implementors must insert a trailing
+    /// space themselves if they wish to separate the time from subsequent log message text.
     fn format_time(&self, w: &mut fmt::Write) -> fmt::Result;
 }
 
@@ -24,6 +36,10 @@ impl FormatTime for () {
     }
 }
 
+/// Retrieve and print the current wall-clock time.
+///
+/// If the `chrono` feature is enabled, the current time is printed in a human-readable format like
+/// "Jun 25 14:27:12.955". Otherwise the `Debug` implementation of `std::time::SystemTime` is used.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct SystemTime;
 
@@ -40,30 +56,21 @@ impl FormatTime for SystemTime {
     }
 }
 
-#[derive(Debug, Clone)]
+/// Builder for a `Standard` formatter.
+#[derive(Default, Debug, Clone)]
 pub struct Builder<T = SystemTime> {
     full: bool,
     timer: T,
 }
 
-impl<T> Default for Builder<T>
-where
-    T: Default,
-{
-    fn default() -> Self {
-        Builder {
-            full: false,
-            timer: T::default(),
-        }
-    }
-}
-
 impl<T> Builder<T> {
+    /// Use a more verbose output format.
     pub fn full(mut self) -> Self {
         self.full = true;
         self
     }
 
+    /// Use the given `timer` for log message timestamps.
     pub fn with_timer<T2>(self, timer: T2) -> Builder<T2>
     where
         T2: FormatTime,
@@ -74,6 +81,7 @@ impl<T> Builder<T> {
         }
     }
 
+    /// Do not emit timestamps with log messages.
     pub fn without_time(self) -> Builder<()> {
         Builder {
             full: self.full,
@@ -81,6 +89,7 @@ impl<T> Builder<T> {
         }
     }
 
+    /// Produce a `Standard` event formatter from this `Builder`'s configuration.
     pub fn build(self) -> Standard<T> {
         Standard {
             full: self.full,
@@ -89,6 +98,10 @@ impl<T> Builder<T> {
     }
 }
 
+/// A pre-configured event formatter.
+///
+/// You will usually want to use this as the `Formatter` for a `FmtSubscriber`.
+#[derive(Debug, Clone)]
 pub struct Standard<T = SystemTime> {
     full: bool,
     timer: T,

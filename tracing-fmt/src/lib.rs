@@ -26,7 +26,16 @@ mod span;
 pub use filter::Filter;
 pub use span::Context;
 
+/// A type that can format a tracing `Event` for a `fmt::Write`.
+///
+/// `Formatter` is primarily used in the context of [`FmtSubscribe`]. Each time an event is
+/// dispatched to [`FmtSubscribe`], the subscriber forwards it to its associated `Formatter` to
+/// emit a log message.
+///
+/// This trait is already implemented for any free-standing function with the same signature as
+/// `format`.
 pub trait Formatter<N> {
+    /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format(&self, ctx: &span::Context<N>, writer: &mut fmt::Write, event: &Event)
         -> fmt::Result;
 }
