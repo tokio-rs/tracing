@@ -254,6 +254,19 @@ fn try_parse_directives(spec: &str) -> Result<Vec<Directive>, ParseError> {
         .collect()
 }
 
+impl fmt::Display for EnvFilter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut directives = self.directives.iter();
+        if let Some(d) = directives.next() {
+            write!(f, "{}", d)?;
+            for d in directives {
+                write!(f, ",{}", d)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 // ===== impl Directive =====
 
 impl Directive {
@@ -378,6 +391,42 @@ impl Default for Directive {
     }
 }
 
+impl fmt::Display for Directive {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut write_equals = false;
+
+        if let Some(ref tgt) = self.target {
+            write!(f, "{}", tgt)?;
+            write_equals = true;
+        }
+
+        if self.in_span.is_some() || !self.fields.is_empty() {
+            "[".fmt(f)?;
+            if let Some(ref span) = self.in_span {
+                write!(f, "{}", span)?;
+            }
+
+            let mut fields = self.fields.iter();
+            if let Some(field) = fields.next() {
+                write!(f, "{{{}", field)?;
+                for field in fields {
+                    write!(f, " {}", field)?;
+                }
+                "}".fmt(f)?;
+            }
+            "]".fmt(f)?;
+            write_equals = true;
+        }
+
+        if write_equals {
+            "=".fmt(f)?;
+        }
+
+        self.level.fmt(f)
+
+    }
+}
+
 // ===== impl FromEnvError =====
 
 impl From<ParseError> for FromEnvError {
@@ -463,6 +512,21 @@ impl PartialOrd<Level> for LevelFilter {
         }
     }
 }
+
+impl fmt::Display for LevelFilter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LevelFilter::Off => f.pad("off"),
+            LevelFilter::Level(Level::ERROR) => f.pad("error"),
+            LevelFilter::Level(Level::WARN) => f.pad("warn"),
+            LevelFilter::Level(Level::INFO) => f.pad("info"),
+            LevelFilter::Level(Level::DEBUG) => f.pad("debug"),
+            LevelFilter::Level(Level::TRACE) => f.pad("trace"),
+            LevelFilter::Level(_) => f.pad("???"),
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -739,6 +803,15 @@ mod tests {
         assert_eq!(dirs[2].level, LevelFilter::Level(Level::DEBUG));
         assert_eq!(dirs[2].in_span, None);
         assert_eq!(&dirs[2].fields[..], &["quux=\"quuux\""]);
+    }
+
+    #[test]
+    fn roundtrip() {
+        let f1: EnvFilter =
+            "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug"
+                .parse()
+                .unwrap();
+        let _: EnvFilter = format!("{}", f1).parse().unwrap();
     }
 
 }
