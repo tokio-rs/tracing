@@ -22,6 +22,7 @@ use std::{any::TypeId, cell::RefCell, fmt, io};
 pub mod default;
 pub mod filter;
 mod span;
+pub mod time;
 
 pub use filter::Filter;
 pub use span::Context;
