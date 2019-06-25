@@ -6,8 +6,9 @@ extern crate tracing_futures;
 
 use std::fmt;
 use tower_service::Service;
-use tracing_futures::{Instrument, Instrumented};
 
+use tracing::{field, Level};
+use tracing_futures::{Instrument, Instrumented};
 
 #[derive(Clone, Debug)]
 pub struct InstrumentedService<T> {
@@ -39,7 +40,7 @@ where
         // TODO: custom `Value` impls for `http` types would be nice...
         let span =
             span!(Level::TRACE, parent: &self.span, "request", request = &field::debug(&req));
-        let enter = span.enter();
+        let _enter = span.enter();
         self.inner.call(req).instrument(span.clone())
     }
 }
