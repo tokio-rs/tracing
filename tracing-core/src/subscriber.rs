@@ -186,7 +186,7 @@ pub trait Subscriber: 'static {
     ///
     /// ```rust,ignore
     /// #[macro_use]
-    /// extern crate tokio_trace;
+    /// extern crate tracing;
     ///
     /// let mut span = span!("my_span", foo = 3, bar, baz);
     ///

@@ -57,9 +57,9 @@ extern crate lazy_static;
 /// For example:
 /// ```rust
 /// # #[macro_use]
-/// # extern crate tokio_trace_core;
-/// use tokio_trace_core::callsite;
-/// # use tokio_trace_core::{Metadata, subscriber::Interest};
+/// # extern crate tracing_core;
+/// use tracing_core::callsite;
+/// # use tracing_core::{Metadata, subscriber::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
 ///    // ...
@@ -96,9 +96,9 @@ macro_rules! identify_callsite {
 /// /// For example:
 /// ```rust
 /// # #[macro_use]
-/// # extern crate tokio_trace_core;
-/// # use tokio_trace_core::{callsite::Callsite, subscriber::Interest};
-/// use tokio_trace_core::metadata::{Kind, Level, Metadata};
+/// # extern crate tracing_core;
+/// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
 /// # impl Callsite for MyCallsite {
@@ -154,9 +154,9 @@ macro_rules! metadata {
             name: $name,
             target: $target,
             level: $level,
-            file: Some(__tokio_trace_core_file!()),
-            line: Some(__tokio_trace_core_line!()),
-            module_path: Some(__tokio_trace_core_module_path!()),
+            file: Some(__tracing_core_file!()),
+            line: Some(__tracing_core_line!()),
+            module_path: Some(__tracing_core_module_path!()),
             fields: $crate::field::FieldSet {
                 names: $fields,
                 callsite: identify_callsite!($callsite),
@@ -168,7 +168,7 @@ macro_rules! metadata {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __tokio_trace_core_module_path {
+macro_rules! __tracing_core_module_path {
     () => {
         module_path!()
     };
@@ -176,7 +176,7 @@ macro_rules! __tokio_trace_core_module_path {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __tokio_trace_core_file {
+macro_rules! __tracing_core_file {
     () => {
         file!()
     };
@@ -184,7 +184,7 @@ macro_rules! __tokio_trace_core_file {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __tokio_trace_core_line {
+macro_rules! __tracing_core_line {
     () => {
         line!()
     };

@@ -1,6 +1,6 @@
 #[macro_use]
-extern crate tokio_trace_core;
-use tokio_trace_core::{
+extern crate tracing_core;
+use tracing_core::{
     callsite::Callsite,
     metadata::{Kind, Level, Metadata},
     subscriber::Interest,

@@ -1,5 +1,5 @@
 [package]
-name = "tokio-trace-core"
+name = "tracing-core"
 # When releasing to crates.io:
 # - Remove path dependencies
 # - Update html_root_url.
@@ -7,15 +7,15 @@ name = "tokio-trace-core"
 #   - Cargo.toml
 #   - README.md
 # - Update CHANGELOG.md.
-# - Create "v0.2.x" git tag.
-version = "0.2.0"
+# - Create "v0.1.x" git tag.
+version = "0.1.0"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
-repository = "https://github.com/tokio-rs/tokio"
+repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tokio-trace-core/0.2.0/tokio_trace_core"
+documentation = "https://docs.rs/tracing-core/0.2.0/tracing_core"
 description = """
-Core primitives for tokio-trace.
+Core primitives for tracing subscribers.
 """
 categories = ["development-tools::debugging"]
 keywords = ["logging", "tracing"]
