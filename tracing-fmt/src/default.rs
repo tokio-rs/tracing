@@ -6,6 +6,7 @@ use chrono;
 
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
+use std::time::Instant;
 use tracing_core::{
     field::{self, Field},
     Event, Level,
@@ -58,6 +59,28 @@ impl FormatTime for fn(&mut fmt::Write) -> fmt::Result {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct SystemTime;
 
+/// Retrieve and print the relative elapsed wall-clock time since an epoch.
+///
+/// The `Default` implementation for `Uptime` makes the epoch the current time.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Uptime {
+    epoch: Instant,
+}
+
+impl Default for Uptime {
+    fn default() -> Self {
+        Uptime {
+            epoch: Instant::now(),
+        }
+    }
+}
+
+impl From<Instant> for Uptime {
+    fn from(epoch: Instant) -> Self {
+        Uptime { epoch }
+    }
+}
+
 #[cfg(feature = "chrono")]
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
@@ -68,6 +91,13 @@ impl FormatTime for SystemTime {
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
         write!(w, "{:?} ", std::time::SystemTime::now())
+    }
+}
+
+impl FormatTime for Uptime {
+    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+        let e = self.epoch.elapsed();
+        write!(w, "{}.{:09} ", e.as_secs(), e.subsec_nanos())
     }
 }
 
