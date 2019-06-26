@@ -41,10 +41,7 @@ fn event_without_message() {
 fn event_with_message() {
     let (subscriber, handle) = subscriber::mock()
         .event(event::mock().with_fields(field::mock("message").with_value(
-            &tracing::field::debug(format_args!(
-                "hello from my event! yak shaved = {:?}",
-                true
-            )),
+            &tracing::field::debug(format_args!("hello from my event! yak shaved = {:?}", true)),
         )))
         .done()
         .run_with_handle();
