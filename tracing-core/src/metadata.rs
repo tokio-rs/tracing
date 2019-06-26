@@ -1,8 +1,5 @@
 //! Metadata describing trace data.
-use super::{
-    callsite::{self, Callsite},
-    field,
-};
+use super::{callsite, field};
 use std::fmt;
 
 /// Metadata describing a [span] or [event].
@@ -50,111 +47,35 @@ use std::fmt;
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`id`]: struct.Metadata.html#method.id
 /// [callsite identifier]: ../callsite/struct.Identifier.html
-// TODO: When `const fn` is stable, make this type's fields private.
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub name: &'static str,
+    name: &'static str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
-    ///
-    /// Typically, this is the module path, but alternate targets may be set
-    /// when spans or events are constructed.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub target: &'a str,
+    target: &'a str,
 
     /// The level of verbosity of the described span.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub level: Level,
+    level: Level,
 
     /// The name of the Rust module where the span occurred, or `None` if this
     /// could not be determined.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub module_path: Option<&'a str>,
+    module_path: Option<&'a str>,
 
     /// The name of the source code file where the span occurred, or `None` if
     /// this could not be determined.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub file: Option<&'a str>,
+    file: Option<&'a str>,
 
     /// The line number in the source code file where the span occurred, or
     /// `None` if this could not be determined.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub line: Option<u32>,
+    line: Option<u32>,
 
     /// The names of the key-value fields attached to the described span or
     /// event.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub fields: field::FieldSet,
+    fields: field::FieldSet,
 
     /// The kind of the callsite.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Metadata`. When
-    /// constructing new `Metadata`, use the `metadata!` macro or the
-    /// `Metadata::new` constructor instead!
-    #[doc(hidden)]
-    pub kind: Kind,
+    kind: Kind,
 }
 
 /// Indicates whether the callsite is a span or event.
@@ -168,17 +89,16 @@ pub struct Level(LevelInner);
 // ===== impl Metadata =====
 
 impl<'a> Metadata<'a> {
-    /// Construct new metadata for a span, with a name, target, level, field
+    /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
-    pub fn new(
+    pub const fn new(
         name: &'static str,
         target: &'a str,
         level: Level,
-        module_path: Option<&'a str>,
         file: Option<&'a str>,
         line: Option<u32>,
-        field_names: &'static [&'static str],
-        callsite: &'static dyn Callsite,
+        module_path: Option<&'a str>,
+        fields: field::FieldSet,
         kind: Kind,
     ) -> Self {
         Metadata {
@@ -188,10 +108,7 @@ impl<'a> Metadata<'a> {
             module_path,
             file,
             line,
-            fields: field::FieldSet {
-                names: field_names,
-                callsite: callsite::Identifier(callsite),
-            },
+            fields,
             kind,
         }
     }

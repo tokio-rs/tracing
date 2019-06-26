@@ -28,8 +28,8 @@ fn filters_are_reevaluated_for_different_call_sites() {
 
     let subscriber = subscriber::mock()
         .with_filter(move |meta| {
-            println!("Filter: {:?}", meta.name);
-            match meta.name {
+            println!("Filter: {:?}", meta.name());
+            match meta.name() {
                 "charlie" => {
                     charlie_count2.fetch_add(1, Ordering::Relaxed);
                     false

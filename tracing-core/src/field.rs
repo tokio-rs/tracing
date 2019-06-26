@@ -62,26 +62,11 @@ pub struct Field {
 }
 
 /// Describes the fields present on a span.
-// TODO: When `const fn` is stable, make this type's fields private.
 pub struct FieldSet {
     /// The names of each field on the described span.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must be able
-    /// to be constructed statically by macros. However, when `const fn`s are
-    /// available on stable Rust, this will no longer be necessary. Thus, these
-    /// fields are *not* considered stable public API, and they may change
-    /// warning. Do not rely on any fields on `FieldSet`!
-    #[doc(hidden)]
-    pub names: &'static [&'static str],
+    names: &'static [&'static str],
     /// The callsite where the described span originates.
-    ///
-    /// **Warning**: The fields on this type are currently `pub` because it must be able
-    /// to be constructed statically by macros. However, when `const fn`s are
-    /// available on stable Rust, this will no longer be necessary. Thus, these
-    /// fields are *not* considered stable public API, and they may change
-    /// warning. Do not rely on any fields on `FieldSet`!
-    #[doc(hidden)]
-    pub callsite: callsite::Identifier,
+    callsite: callsite::Identifier,
 }
 
 /// A set of fields and values for a span.
@@ -449,6 +434,11 @@ impl Clone for Field {
 // ===== impl FieldSet =====
 
 impl FieldSet {
+    /// Constructs a new `FieldSet` with the given array of field names and callsite.
+    pub const fn new(names: &'static [&'static str], callsite: callsite::Identifier) -> Self {
+        Self { names, callsite }
+    }
+
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// which defines this set of fields..
     ///
