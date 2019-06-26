@@ -1,3 +1,4 @@
+#![deny(warnings)]
 use tracing::Level;
 
 #[macro_use]

@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, metadata};
+use super::{field, metadata, Parent};
 use std::fmt;
 
 /// A mock span.
@@ -9,14 +9,6 @@ use std::fmt;
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct MockSpan {
     pub(in support) metadata: metadata::Expect,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub(in support) enum Parent {
-    ContextualRoot,
-    Contextual(String),
-    ExplicitRoot,
-    Explicit(String),
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]
