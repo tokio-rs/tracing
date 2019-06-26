@@ -211,7 +211,9 @@ mod test {
             .full()
             .finish();
         let reload_handle = subscriber.reload_handle();
-        reload_handle.reload(EnvFilter::from_default_env());
+        reload_handle
+            .reload(EnvFilter::from_default_env())
+            .expect("should reload");
     }
 
 }
