@@ -531,6 +531,7 @@ mod tests {
     use default::NewRecorder;
     use span::*;
     use tracing_core::*;
+    use tracing_core::field::FieldSet;
 
     struct Cs;
 
@@ -553,8 +554,7 @@ mod tests {
             None,
             None,
             None,
-            &[],
-            &Cs,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
@@ -574,8 +574,7 @@ mod tests {
             None,
             None,
             None,
-            &[],
-            &Cs,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
@@ -595,8 +594,7 @@ mod tests {
             None,
             None,
             None,
-            &[],
-            &Cs,
+            FieldSet::new(&[], identify_callsite!(&Cs)s),
             Kind::SPAN,
         );
 
@@ -616,8 +614,7 @@ mod tests {
             None,
             None,
             None,
-            &["field=\"value\""],
-            &Cs,
+            FieldSet::new(&["field=\"value\""], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
@@ -637,8 +634,7 @@ mod tests {
             None,
             None,
             None,
-            &["field=\"value\""],
-            &Cs,
+            FieldSet::new(&["field=\"value\""], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
@@ -658,8 +654,7 @@ mod tests {
             None,
             None,
             None,
-            &["field=\"value\""],
-            &Cs,
+            FieldSet::new(&["field=\"value\""], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
@@ -679,8 +674,7 @@ mod tests {
             None,
             None,
             None,
-            &["field=\"value\""],
-            &Cs,
+            FieldSet::new(&["field=\"value\""], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
