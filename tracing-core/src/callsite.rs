@@ -20,12 +20,12 @@ lazy_static! {
 }
 
 struct Registry {
-    callsites: Vec<&'static Callsite>,
+    callsites: Vec<&'static dyn Callsite>,
     dispatchers: Vec<dispatcher::Registrar>,
 }
 
 impl Registry {
-    fn rebuild_callsite_interest(&self, callsite: &'static Callsite) {
+    fn rebuild_callsite_interest(&self, callsite: &'static dyn Callsite) {
         let meta = callsite.metadata();
 
         let mut interest = Interest::never();
@@ -80,7 +80,7 @@ pub struct Identifier(
     /// the `Callsite::id` function instead.
     // TODO: When `Callsite::id` is a const fn, this need no longer be `pub`.
     #[doc(hidden)]
-    pub &'static Callsite,
+    pub &'static dyn Callsite,
 );
 
 /// Clear and reregister interest on every [`Callsite`]
@@ -104,7 +104,7 @@ pub fn rebuild_interest_cache() {
 ///
 /// This should be called once per callsite after the callsite has been
 /// constructed.
-pub fn register(callsite: &'static Callsite) {
+pub fn register(callsite: &'static dyn Callsite) {
     let mut registry = REGISTRY.lock().unwrap();
     registry.rebuild_callsite_interest(callsite);
     registry.callsites.push(callsite);
@@ -137,6 +137,6 @@ impl Hash for Identifier {
     where
         H: Hasher,
     {
-        (self.0 as *const Callsite).hash(state)
+        (self.0 as *const dyn Callsite).hash(state)
     }
 }

@@ -22,7 +22,7 @@ use tokio::io::{copy, shutdown};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listen_addr = env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:8081".to_string());

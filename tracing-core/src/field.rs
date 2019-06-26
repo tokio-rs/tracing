@@ -86,7 +86,7 @@ pub struct FieldSet {
 
 /// A set of fields and values for a span.
 pub struct ValueSet<'a> {
-    values: &'a [(&'a Field, Option<&'a (Value + 'a)>)],
+    values: &'a [(&'a Field, Option<&'a (dyn Value + 'a)>)],
     fields: &'a FieldSet,
 }
 
@@ -206,7 +206,7 @@ pub trait Visit {
     }
 
     /// Visit a value implementing `fmt::Debug`.
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug);
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug);
 }
 
 /// A field value of an erased type.
@@ -218,7 +218,7 @@ pub trait Visit {
 /// [visitor]: trait.Visit.html
 pub trait Value: ::sealed::Sealed {
     /// Visits this value with the given `Visitor`.
-    fn record(&self, key: &Field, visitor: &mut Visit);
+    fn record(&self, key: &Field, visitor: &mut dyn Visit);
 }
 
 /// A `Value` which serializes as a string using `fmt::Display`.
@@ -250,22 +250,22 @@ where
 // ===== impl Visit =====
 
 impl<'a, 'b> Visit for fmt::DebugStruct<'a, 'b> {
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.field(field.name(), value);
     }
 }
 
 impl<'a, 'b> Visit for fmt::DebugMap<'a, 'b> {
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.entry(&format_args!("{}", field), value);
     }
 }
 
 impl<F> Visit for F
 where
-    F: FnMut(&Field, &fmt::Debug),
+    F: FnMut(&Field, &dyn fmt::Debug),
 {
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         (self)(field, value)
     }
 }
@@ -287,7 +287,7 @@ macro_rules! impl_value {
                 fn record(
                     &self,
                     key: &$crate::field::Field,
-                    visitor: &mut $crate::field::Visit,
+                    visitor: &mut dyn $crate::field::Visit,
                 ) {
                     visitor.$record(key, *self)
                 }
@@ -301,7 +301,7 @@ macro_rules! impl_value {
                 fn record(
                     &self,
                     key: &$crate::field::Field,
-                    visitor: &mut $crate::field::Visit,
+                    visitor: &mut dyn $crate::field::Visit,
                 ) {
                     visitor.$record(key, *self as $as_ty)
                 }
@@ -323,7 +323,7 @@ impl_values! {
 impl ::sealed::Sealed for str {}
 
 impl Value for str {
-    fn record(&self, key: &Field, visitor: &mut Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_str(key, &self)
     }
 }
@@ -334,7 +334,7 @@ impl<'a, T: ?Sized> Value for &'a T
 where
     T: Value + 'a,
 {
-    fn record(&self, key: &Field, visitor: &mut Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         (*self).record(key, visitor)
     }
 }
@@ -342,7 +342,7 @@ where
 impl<'a> ::sealed::Sealed for fmt::Arguments<'a> {}
 
 impl<'a> Value for fmt::Arguments<'a> {
-    fn record(&self, key: &Field, visitor: &mut Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, self)
     }
 }
@@ -355,7 +355,7 @@ impl<T> Value for DisplayValue<T>
 where
     T: fmt::Display,
 {
-    fn record(&self, key: &Field, visitor: &mut Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, &format_args!("{}", self.0))
     }
 }
@@ -374,7 +374,7 @@ impl<T: fmt::Debug> Value for DebugValue<T>
 where
     T: fmt::Debug,
 {
-    fn record(&self, key: &Field, visitor: &mut Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, &self.0)
     }
 }
@@ -578,7 +578,7 @@ impl<'a> ValueSet<'a> {
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
     /// [visitor]: ../trait.Visit.html
-    pub(crate) fn record(&self, visitor: &mut Visit) {
+    pub(crate) fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
             if field.callsite() != my_callsite {
@@ -653,14 +653,14 @@ mod private {
     /// elements, to ensure the array is small enough to always be allocated on the
     /// stack. This trait is only implemented by arrays of an appropriate length,
     /// ensuring that the correct size arrays are used at compile-time.
-    pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (Value + 'a)>)]> {}
+    pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (dyn Value + 'a)>)]> {}
 }
 
 macro_rules! impl_valid_len {
     ( $( $len:tt ),+ ) => {
         $(
             impl<'a> private::ValidLen<'a> for
-                [(&'a Field, Option<&'a (Value + 'a)>); $len] {}
+                [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
         )+
     }
 }
@@ -740,9 +740,9 @@ mod test {
     fn value_sets_with_fields_from_other_callsites_are_empty() {
         let fields = TEST_META_1.fields();
         let values = &[
-            (&fields.field("foo").unwrap(), Some(&1 as &Value)),
-            (&fields.field("bar").unwrap(), Some(&2 as &Value)),
-            (&fields.field("baz").unwrap(), Some(&3 as &Value)),
+            (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
         ];
         let valueset = TEST_META_2.fields().value_set(values);
         assert!(valueset.is_empty())
@@ -753,7 +753,7 @@ mod test {
         let fields = TEST_META_1.fields();
         let values = &[
             (&fields.field("foo").unwrap(), None),
-            (&fields.field("bar").unwrap(), Some(&57 as &Value)),
+            (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
             (&fields.field("baz").unwrap(), None),
         ];
         let valueset = fields.value_set(values);
@@ -767,14 +767,14 @@ mod test {
             (&fields.field("foo").unwrap(), None),
             (
                 &TEST_META_2.fields().field("bar").unwrap(),
-                Some(&57 as &Value),
+                Some(&57 as &dyn Value),
             ),
             (&fields.field("baz").unwrap(), None),
         ];
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &::std::fmt::Debug) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (::std::fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -786,13 +786,13 @@ mod test {
     fn record_debug_fn() {
         let fields = TEST_META_1.fields();
         let values = &[
-            (&fields.field("foo").unwrap(), Some(&1 as &Value)),
-            (&fields.field("bar").unwrap(), Some(&2 as &Value)),
-            (&fields.field("baz").unwrap(), Some(&3 as &Value)),
+            (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
         ];
         let valueset = fields.value_set(values);
         let mut result = String::new();
-        valueset.record(&mut |_: &Field, value: &fmt::Debug| {
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
             use std::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });

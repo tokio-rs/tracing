@@ -352,7 +352,7 @@ pub trait Subscriber: 'static {
     }
 }
 
-impl Subscriber {
+impl dyn Subscriber {
     /// Returns `true` if this `Subscriber` is the same type as `T`.
     pub fn is<T: Any>(&self) -> bool {
         self.downcast_ref::<T>().is_some()

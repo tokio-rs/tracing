@@ -27,7 +27,7 @@ pub use span::Context;
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
-    E = fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result,
+    E = fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -40,7 +40,7 @@ pub struct FmtSubscriber<
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
-    E = fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result,
+    E = fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -94,7 +94,7 @@ where
 impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    E: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
     F: Filter<N> + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
@@ -184,18 +184,18 @@ where
 pub trait NewVisitor<'a> {
     type Visitor: field::Visit + 'a;
 
-    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor;
+    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor;
 }
 
 impl<'a, F, R> NewVisitor<'a> for F
 where
-    F: Fn(&'a mut fmt::Write, bool) -> R,
+    F: Fn(&'a mut dyn fmt::Write, bool) -> R,
     R: field::Visit + 'a,
 {
     type Visitor = R;
 
     #[inline]
-    fn make(&self, writer: &'a mut fmt::Write, is_empty: bool) -> Self::Visitor {
+    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor {
         (self)(writer, is_empty)
     }
 }
@@ -216,7 +216,7 @@ impl Default for Builder {
 impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+    E: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
     F: Filter<N> + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
@@ -290,7 +290,7 @@ impl<N, E, F> Builder<N, E, F> {
     // TODO: this should probably just become the default.
     pub fn full(
         self,
-    ) -> Builder<N, fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result, F>
+    ) -> Builder<N, fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
@@ -306,7 +306,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
+        E2: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
@@ -342,7 +342,7 @@ mod test {
     #[test]
     fn subscriber_downcasts_to_parts() {
         type FmtEvent =
-            fn(&span::Context<default::NewRecorder>, &mut fmt::Write, &Event) -> fmt::Result;
+            fn(&span::Context<default::NewRecorder>, &mut dyn fmt::Write, &Event) -> fmt::Result;
         let subscriber = FmtSubscriber::new();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<default::NewRecorder>().is_some());

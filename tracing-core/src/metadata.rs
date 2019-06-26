@@ -178,7 +178,7 @@ impl<'a> Metadata<'a> {
         file: Option<&'a str>,
         line: Option<u32>,
         field_names: &'static [&'static str],
-        callsite: &'static Callsite,
+        callsite: &'static dyn Callsite,
         kind: Kind,
     ) -> Self {
         Metadata {

@@ -18,7 +18,7 @@ use std::str;
 use tracing::{field, Level};
 use tracing_futures::{Instrument, Instrumented};
 
-type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     span!(
@@ -82,7 +82,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             // future, waiting on concatenating the full body, so that
             // it can be reversed. Only then can we return a `Response`.
             (&Method::POST, "/echo/reversed") => {
-                let mut span = span!(Level::TRACE, "response", response_kind = "reversed");
+                let span = span!(Level::TRACE, "response", response_kind = "reversed");
                 let reversed = span.enter(|| {
                     req.into_body().concat2().map(move |chunk| {
                         let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();

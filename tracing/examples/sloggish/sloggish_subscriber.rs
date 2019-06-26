@@ -114,13 +114,13 @@ impl Span {
 }
 
 impl Visit for Span {
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.kvs.push((field.name(), format!("{:?}", value)))
     }
 }
 
 impl<'a> Visit for Event<'a> {
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         write!(
             &mut self.stderr,
             "{comma} ",

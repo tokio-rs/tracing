@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Weak},
 };
-use tracing_core::{callsite, subscriber::Interest, Metadata};
+use tracing_core::{subscriber::Interest, Metadata};
 use {filter::Filter, span::Context};
 
 #[derive(Debug)]
