@@ -246,3 +246,43 @@ fn both_shorthands() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn explicit_child() {
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span::mock().named("foo"))
+        .event(event::mock().with_explicit_parent(Some("foo")))
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        let foo = span!(Level::TRACE, "foo");
+        event!(Level::TRACE, parent: foo.id(), "bar");
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn explicit_child_at_levels() {
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span::mock().named("foo"))
+        .event(event::mock().with_explicit_parent(Some("foo")))
+        .event(event::mock().with_explicit_parent(Some("foo")))
+        .event(event::mock().with_explicit_parent(Some("foo")))
+        .event(event::mock().with_explicit_parent(Some("foo")))
+        .event(event::mock().with_explicit_parent(Some("foo")))
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        let foo = span!(Level::TRACE, "foo");
+        trace!(parent: foo.id(), "a");
+        debug!(parent: foo.id(), "b");
+        info!(parent: foo.id(), "c");
+        warn!(parent: foo.id(), "d");
+        error!(parent: foo.id(), "e");
+    });
+
+    handle.assert_finished();
+}

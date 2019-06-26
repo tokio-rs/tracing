@@ -871,7 +871,7 @@ macro_rules! event {
                 };
                 if is_enabled!(callsite) {
                     let meta = callsite.metadata();
-                    Event::dispatch(meta, &valueset!(meta.fields(), $($fields)*) );
+                    Event::child_of($parent, meta, &valueset!(meta.fields(), $($fields)*) );
                 }
             }
         }
