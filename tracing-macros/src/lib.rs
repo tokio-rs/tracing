@@ -36,7 +36,7 @@ macro_rules! dbg {
             kind: tracing::metadata::Kind::EVENT,
             target: $target,
             level: $level,
-            fields: $ex
+            fields: value,
         };
         let val = $ex;
         if is_enabled!(callsite) {
