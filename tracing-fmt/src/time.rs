@@ -90,7 +90,7 @@ impl FormatTime for SystemTime {
 impl FormatTime for Uptime {
     fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
         let e = self.epoch.elapsed();
-        write!(w, "{}.{:09} ", e.as_secs(), e.subsec_nanos())
+        write!(w, "{:4}.{:09}s ", e.as_secs(), e.subsec_nanos())
     }
 }
 
