@@ -3,6 +3,7 @@ use super::{
     event::MockEvent,
     field as mock_field,
     span::{MockSpan, NewSpan},
+    Parent,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -173,7 +174,60 @@ where
         println!("event: {};", name);
         match self.expected.lock().unwrap().pop_front() {
             None => {}
-            Some(Expect::Event(expected)) => expected.check(event),
+            Some(Expect::Event(mut expected)) => {
+                let spans = self.spans.lock().unwrap();
+                expected.check(event);
+                match expected.parent {
+                    Some(Parent::ExplicitRoot) => {
+                        assert!(
+                            event.is_root(),
+                            "expected {:?} to be an explicit root event",
+                            name
+                        );
+                    }
+                    Some(Parent::Explicit(expected_parent)) => {
+                        let actual_parent =
+                            event.parent().and_then(|id| spans.get(id)).map(|s| s.name);
+                        assert_eq!(
+                            Some(expected_parent.as_ref()),
+                            actual_parent,
+                            "expected {:?} to have explicit parent {:?}",
+                            name,
+                            expected_parent,
+                        );
+                    }
+                    Some(Parent::ContextualRoot) => {
+                        assert!(
+                            event.is_contextual(),
+                            "expected {:?} to have a contextual parent",
+                            name
+                        );
+                        assert!(
+                            self.current.lock().unwrap().last().is_none(),
+                            "expected {:?} to be a root, but we were inside a span",
+                            name
+                        );
+                    }
+                    Some(Parent::Contextual(expected_parent)) => {
+                        assert!(
+                            event.is_contextual(),
+                            "expected {:?} to have a contextual parent",
+                            name
+                        );
+                        let stack = self.current.lock().unwrap();
+                        let actual_parent =
+                            stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
+                        assert_eq!(
+                            Some(expected_parent.as_ref()),
+                            actual_parent,
+                            "expected {:?} to have contextual parent {:?}",
+                            name,
+                            expected_parent,
+                        );
+                    }
+                    None => {}
+                }
+            },
             Some(ex) => ex.bad(format_args!("observed event {:?}", event)),
         }
     }
@@ -183,7 +237,6 @@ where
     }
 
     fn new_span(&self, span: &Attributes) -> Id {
-        use span::Parent;
         let meta = span.metadata();
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);

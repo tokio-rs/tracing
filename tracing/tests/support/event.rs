@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, metadata};
+use super::{field, metadata, Parent};
 
 use std::fmt;
 
@@ -10,6 +10,7 @@ use std::fmt;
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct MockEvent {
     pub fields: Option<field::Expect>,
+    pub(in support) parent: Option<Parent>,
     metadata: metadata::Expect,
 }
 
@@ -66,12 +67,24 @@ impl MockEvent {
         }
     }
 
-    pub(in support) fn check(self, event: &tracing::Event) {
+    pub fn with_explicit_parent(self, parent: Option<&str>) -> MockEvent {
+        let parent = match parent {
+            Some(name) => Parent::Explicit(name.into()),
+            None => Parent::ExplicitRoot,
+        };
+        Self {
+            parent: Some(parent),
+            ..self
+        }
+    }
+
+
+    pub(in support) fn check(&mut self, event: &tracing::Event) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata.check(meta, format_args!("event {}", name));
         assert!(meta.is_event(), "expected an event but got {:?}", event);
-        if let Some(mut expected_fields) = self.fields {
+        if let Some(ref mut expected_fields) = self.fields {
             let mut checker = expected_fields.checker(format!("{}", name));
             event.record(&mut checker);
             checker.finish();
