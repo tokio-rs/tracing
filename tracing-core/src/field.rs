@@ -435,10 +435,7 @@ impl Clone for Field {
 
 impl FieldSet {
     /// Constructs a new `FieldSet` with the given array of field names and callsite.
-    pub const fn new(
-        names: &'static [&'static str],
-        callsite: callsite::Identifier,
-    ) -> Self {
+    pub const fn new(names: &'static [&'static str], callsite: callsite::Identifier) -> Self {
         Self { names, callsite }
     }
 

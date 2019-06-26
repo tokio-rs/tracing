@@ -818,8 +818,7 @@ impl<'a> Drop for Entered<'a> {
         if let Some(inner) = self.span.inner.as_ref() {
             inner.subscriber.exit(&inner.id);
         }
-        self.span
-            .log(format_args!("<- {}", self.span.meta.name()));
+        self.span.log(format_args!("<- {}", self.span.meta.name()));
     }
 }
 
