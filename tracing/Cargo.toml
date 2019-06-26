@@ -32,7 +32,7 @@ humantime = "1.1.1"
 futures = "0.1"
 log = "0.4"
 criterion = { version = "0.2", default_features = false }
-# These are used for the "basic" example from the tokio-trace-prototype repo,
+# These are used for the "basic" example from the tracing-prototype repo,
 # which is currently not included as it used the `tracing-log` crate, and
 # that crate is currently unstable.
 # env_logger = "0.5"

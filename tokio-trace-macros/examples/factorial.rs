@@ -1,10 +1,10 @@
 //! Compare to the example given in the documentation for the `std::dbg` macro.
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 #[macro_use]
-extern crate tokio_trace_macros;
+extern crate tracing_macros;
 extern crate env_logger;
-extern crate tokio_trace_log;
+extern crate tracing_log;
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {
@@ -16,7 +16,7 @@ fn factorial(n: u32) -> u32 {
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tokio_trace_log::TraceLogger::new();
+    let subscriber = tracing_log::TraceLogger::new();
 
-    tokio_trace::subscriber::with_default(subscriber, || dbg!(factorial(4)));
+    tracing::subscriber::with_default(subscriber, || dbg!(factorial(4)));
 }

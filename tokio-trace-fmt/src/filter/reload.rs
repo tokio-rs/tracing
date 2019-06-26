@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Weak},
 };
-use tokio_trace_core::{subscriber::Interest, Metadata};
+use tracing_core::{callsite, subscriber::Interest, Metadata};
 use {filter::Filter, span::Context};
 
 #[derive(Debug)]
@@ -138,7 +138,7 @@ impl error::Error for Error {
 #[cfg(test)]
 mod test {
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use tokio_trace_core::{
+    use tracing_core::{
         dispatcher::{self, Dispatch},
         Metadata,
     };

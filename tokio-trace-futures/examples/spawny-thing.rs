@@ -1,13 +1,13 @@
 extern crate futures;
 extern crate tokio;
 #[macro_use]
-extern crate tokio_trace;
-extern crate tokio_trace_fmt;
-extern crate tokio_trace_futures;
+extern crate tracing;
+extern crate tracing_fmt;
+extern crate tracing_futures;
 
 use futures::future::{self, Future};
-use tokio_trace::Level;
-use tokio_trace_futures::Instrument;
+use tracing::Level;
+use tracing_futures::Instrument;
 
 fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
     future::lazy(move || {
@@ -37,8 +37,8 @@ fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
 }
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
-    tokio_trace::subscriber::with_default(subscriber, || {
+    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    tracing::subscriber::with_default(subscriber, || {
         tokio::run(parent_task(10));
     });
 }

@@ -1,16 +1,16 @@
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 #[macro_use]
-extern crate tokio_trace_proc_macros;
+extern crate tracing_proc_macros;
 extern crate env_logger;
-extern crate tokio_trace_fmt;
+extern crate tracing_fmt;
 
-use tokio_trace::{field, Level};
+use tracing::{field, Level};
 
 fn main() {
     env_logger::Builder::new().parse("trace").init();
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
-    tokio_trace::subscriber::with_default(subscriber, || {
+    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    tracing::subscriber::with_default(subscriber, || {
         let num: u64 = 1;
 
         let span = span!(

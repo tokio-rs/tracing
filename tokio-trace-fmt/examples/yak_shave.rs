@@ -1,8 +1,8 @@
 #[macro_use]
-extern crate tokio_trace;
-extern crate tokio_trace_fmt;
+extern crate tracing;
+extern crate tracing_fmt;
 
-use tokio_trace::Level;
+use tracing::Level;
 
 fn shave(yak: usize) -> bool {
     span!(Level::TRACE, "shave", yak = yak).enter(|| {
@@ -21,9 +21,9 @@ fn shave(yak: usize) -> bool {
 }
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
 
-    tokio_trace::subscriber::with_default(subscriber, || {
+    tracing::subscriber::with_default(subscriber, || {
         let number_of_yaks = 3;
         let mut number_shaved = 0;
         debug!("preparing to shave {} yaks", number_of_yaks);

@@ -1,11 +1,11 @@
 extern crate futures;
 extern crate hyper;
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 extern crate tokio;
-extern crate tokio_trace_env_logger;
-extern crate tokio_trace_fmt;
-extern crate tokio_trace_futures;
+extern crate tracing_env_logger;
+extern crate tracing_fmt;
+extern crate tracing_futures;
 
 use futures::future;
 use hyper::rt::{Future, Stream};
@@ -15,8 +15,8 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 
 use std::str;
 
-use tokio_trace::{field, Level};
-use tokio_trace_futures::{Instrument, Instrumented};
+use tracing::{field, Level};
+use tracing_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
@@ -119,10 +119,10 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 }
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
-    tokio_trace_env_logger::try_init().expect("init log adapter");
+    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    tracing_env_logger::try_init().expect("init log adapter");
 
-    tokio_trace::subscriber::with_default(subscriber, || {
+    tracing::subscriber::with_default(subscriber, || {
         let addr: ::std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
         let server_span = span!(Level::TRACE, "server", local = &field::debug(addr));
         let server = tokio::net::TcpListener::bind(&addr)

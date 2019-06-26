@@ -6,12 +6,12 @@ https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 extern crate futures;
 extern crate tokio;
 #[macro_use]
-extern crate tokio_trace;
-extern crate tokio_trace_fmt;
-extern crate tokio_trace_futures;
+extern crate tracing;
+extern crate tracing_fmt;
+extern crate tracing_futures;
 
-use tokio_trace::{field, Level};
-use tokio_trace_futures::Instrument;
+use tracing::{field, Level};
+use tracing_futures::Instrument;
 
 use std::env;
 use std::io::{self, Read, Write};
@@ -113,8 +113,8 @@ fn main() -> Result<(), Box<std::error::Error>> {
             Ok(())
         });
 
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder().full().finish();
-    tokio_trace::subscriber::with_default(subscriber, || {
+    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    tracing::subscriber::with_default(subscriber, || {
         let done = done.instrument(span!(
             Level::TRACE,
             "proxy",

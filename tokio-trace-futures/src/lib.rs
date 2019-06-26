@@ -1,4 +1,4 @@
-//! Futures compatibility for `tokio-trace`
+//! Futures compatibility for `tracing`
 //!
 //! # Feature flags
 //! - `tokio`: Enables compatibility with the `tokio` crate, including
@@ -20,10 +20,10 @@ extern crate tokio;
 #[cfg(feature = "tokio-executor")]
 extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
-extern crate tokio_trace;
+extern crate tracing;
 
 use futures::{Future, Poll, Sink, StartSend, Stream};
-use tokio_trace::{dispatcher, Dispatch, Span};
+use tracing::{dispatcher, Dispatch, Span};
 
 pub mod executor;
 
@@ -158,7 +158,7 @@ mod tests {
 
     use super::{test_support::*, *};
     use futures::{future, stream, task, Async};
-    use tokio_trace::{subscriber::with_default, Level};
+    use tracing::{subscriber::with_default, Level};
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,

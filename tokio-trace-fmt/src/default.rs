@@ -1,6 +1,6 @@
 use span;
 
-use tokio_trace_core::{
+use tracing_core::{
     field::{self, Field},
     Event, Level,
 };

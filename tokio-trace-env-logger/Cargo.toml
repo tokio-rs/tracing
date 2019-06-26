@@ -1,18 +1,22 @@
 [package]
-name = "tokio-trace-env-logger"
+name = "tracing-env-logger"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tokio-trace-log = { path = "../tokio-trace-log" }
+tracing-log = { path = "../tokio-trace-log" }
 env_logger = "0.5"
 log = "0.4"
 
 [dev-dependencies]
-tokio-trace = "0.1.0"
-tokio-trace-fmt = { path = "../tokio-trace-fmt" }
-tokio-trace-futures = { path = "../tokio-trace-futures" }
-tokio-trace-subscriber = { path = "../tokio-trace-subscriber" }
+tracing-fmt = { path = "../tokio-trace-fmt" }
+tracing-futures = { path = "../tokio-trace-futures" }
+tracing-subscriber = { path = "../tokio-trace-subscriber" }
 hyper = "=0.12.25"
 futures = "0.1"
 tokio = "0.1.21"
+
+[dev-dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"

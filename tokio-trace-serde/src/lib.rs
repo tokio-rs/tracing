@@ -1,5 +1,5 @@
 extern crate serde;
-extern crate tokio_trace_core;
+extern crate tracing_core;
 
 use std::fmt;
 
@@ -8,7 +8,7 @@ use serde::{
     Serialize,
 };
 
-use tokio_trace_core::{
+use tracing_core::{
     event::Event,
     field::{Field, FieldSet, Visit},
     metadata::{Level, Metadata},
@@ -276,11 +276,11 @@ impl<S: SerializeStruct> SerdeStructVisitor<S> {
 pub trait AsSerde<'a>: self::sealed::Sealed {
     type Serializable: serde::Serialize + 'a;
 
-    /// `as_serde` borrows a `tokio-trace` value and returns the serialized value.
+    /// `as_serde` borrows a `tracing` value and returns the serialized value.
     fn as_serde(&'a self) -> Self::Serializable;
 }
 
-impl<'a> AsSerde<'a> for tokio_trace_core::Metadata<'a> {
+impl<'a> AsSerde<'a> for tracing_core::Metadata<'a> {
     type Serializable = SerializeMetadata<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
@@ -288,7 +288,7 @@ impl<'a> AsSerde<'a> for tokio_trace_core::Metadata<'a> {
     }
 }
 
-impl<'a> AsSerde<'a> for tokio_trace_core::Event<'a> {
+impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     type Serializable = SerializeEvent<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
@@ -296,7 +296,7 @@ impl<'a> AsSerde<'a> for tokio_trace_core::Event<'a> {
     }
 }
 
-impl<'a> AsSerde<'a> for tokio_trace_core::span::Attributes<'a> {
+impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
     type Serializable = SerializeAttributes<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
@@ -304,7 +304,7 @@ impl<'a> AsSerde<'a> for tokio_trace_core::span::Attributes<'a> {
     }
 }
 
-impl<'a> AsSerde<'a> for tokio_trace_core::span::Id {
+impl<'a> AsSerde<'a> for tracing_core::span::Id {
     type Serializable = SerializeId<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
@@ -312,7 +312,7 @@ impl<'a> AsSerde<'a> for tokio_trace_core::span::Id {
     }
 }
 
-impl<'a> AsSerde<'a> for tokio_trace_core::span::Record<'a> {
+impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     type Serializable = SerializeRecord<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {

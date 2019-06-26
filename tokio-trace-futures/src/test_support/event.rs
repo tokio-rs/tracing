@@ -2,7 +2,7 @@
 use super::{field, metadata};
 
 use std::fmt;
-use tokio_trace;
+use tracing;
 
 /// A mock event.
 ///
@@ -44,7 +44,7 @@ impl MockEvent {
         }
     }
 
-    pub fn at_level(self, level: tokio_trace::Level) -> Self {
+    pub fn at_level(self, level: tracing::Level) -> Self {
         Self {
             metadata: metadata::Expect {
                 level: Some(level),
@@ -67,7 +67,7 @@ impl MockEvent {
         }
     }
 
-    pub(in test_support) fn check(self, event: &tokio_trace::Event) {
+    pub(in test_support) fn check(self, event: &tracing::Event) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata.check(meta, format_args!("event {}", name));

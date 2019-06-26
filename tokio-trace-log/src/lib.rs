@@ -1,9 +1,9 @@
 //! Adapters for connecting unstructured log records from the `log` crate into
-//! the `tokio_trace` ecosystem.
+//! the `tracing` ecosystem.
 //!
 //! This conversion does not convert unstructured data in log records (such as
 //! values passed as format arguments to the `log!` macro) to structured
-//! `tokio_trace` fields. However, it *does* attach these new events to to the
+//! `tracing` fields. However, it *does* attach these new events to to the
 //! span that was currently executing when the record was logged. This is the
 //! primary use-case for this library: making it possible to locate the log
 //! records emitted by dependencies which use `log` within the context of a
@@ -20,8 +20,8 @@
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 extern crate log;
-extern crate tokio_trace;
-extern crate tokio_trace_subscriber;
+extern crate tracing;
+extern crate tracing_subscriber;
 
 use std::{
     collections::HashMap,
@@ -33,7 +33,7 @@ use std::{
     },
 };
 
-use tokio_trace::{
+use tracing::{
     callsite::{self, Callsite},
     dispatcher, field,
     metadata::Kind,
@@ -88,7 +88,7 @@ impl<'a> AsTrace for log::Record<'a> {
                 static EMPTY_META: Metadata<'static> = Metadata {
                     name: "log record",
                     target: "log",
-                    level: tokio_trace::Level::TRACE,
+                    level: tracing::Level::TRACE,
                     module_path: None,
                     file: None,
                     line: None,
@@ -115,45 +115,45 @@ impl<'a> AsTrace for log::Record<'a> {
     }
 }
 
-impl AsLog for tokio_trace::Level {
+impl AsLog for tracing::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
         match *self {
-            tokio_trace::Level::ERROR => log::Level::Error,
-            tokio_trace::Level::WARN => log::Level::Warn,
-            tokio_trace::Level::INFO => log::Level::Info,
-            tokio_trace::Level::DEBUG => log::Level::Debug,
-            tokio_trace::Level::TRACE => log::Level::Trace,
+            tracing::Level::ERROR => log::Level::Error,
+            tracing::Level::WARN => log::Level::Warn,
+            tracing::Level::INFO => log::Level::Info,
+            tracing::Level::DEBUG => log::Level::Debug,
+            tracing::Level::TRACE => log::Level::Trace,
         }
     }
 }
 
 impl AsTrace for log::Level {
-    type Trace = tokio_trace::Level;
-    fn as_trace(&self) -> tokio_trace::Level {
+    type Trace = tracing::Level;
+    fn as_trace(&self) -> tracing::Level {
         match self {
-            log::Level::Error => tokio_trace::Level::ERROR,
-            log::Level::Warn => tokio_trace::Level::WARN,
-            log::Level::Info => tokio_trace::Level::INFO,
-            log::Level::Debug => tokio_trace::Level::DEBUG,
-            log::Level::Trace => tokio_trace::Level::TRACE,
+            log::Level::Error => tracing::Level::ERROR,
+            log::Level::Warn => tracing::Level::WARN,
+            log::Level::Info => tracing::Level::INFO,
+            log::Level::Debug => tracing::Level::DEBUG,
+            log::Level::Trace => tracing::Level::TRACE,
         }
     }
 }
 
-/// A simple "logger" that converts all log records into `tokio_trace` `Event`s,
+/// A simple "logger" that converts all log records into `tracing` `Event`s,
 /// with an optional level filter.
 #[derive(Debug)]
 pub struct LogTracer {
     filter: log::LevelFilter,
 }
 
-/// A `tokio_trace_subscriber::Observe` implementation that logs all recorded
+/// A `tracing_subscriber::Observe` implementation that logs all recorded
 /// trace events.
 pub struct TraceLogger {
     settings: TraceLoggerBuilder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,
-    current: tokio_trace_subscriber::CurrentSpanPerThread,
+    current: tracing_subscriber::CurrentSpanPerThread,
     next_id: AtomicUsize,
 }
 
@@ -539,7 +539,7 @@ impl<'a> fmt::Display for LogEvent<'a> {
     }
 }
 
-// impl tokio_trace_subscriber::Observe for TraceLogger {
+// impl tracing_subscriber::Observe for TraceLogger {
 //     fn observe_event<'a>(&self, event: &'a Event<'a>) {
 //         <Self as Subscriber>::observe_event(&self, event)
 //     }
@@ -620,7 +620,7 @@ impl<'a> fmt::Display for LogEvent<'a> {
 //         }
 //     }
 
-//     fn filter(&self) -> &tokio_trace_subscriber::Filter {
+//     fn filter(&self) -> &tracing_subscriber::Filter {
 //         self
 //     }
 // }

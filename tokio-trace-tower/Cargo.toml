@@ -1,10 +1,14 @@
 [package]
-name = "tokio-trace-tower"
+name = "tracing-tower"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tokio-trace = "0.1.0"
-tokio-trace-futures = { path = "../tokio-trace-futures" }
+tracing-futures = { path = "../tokio-trace-futures" }
 futures = "0.1"
 tower-service = "0.2"
+
+[dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"

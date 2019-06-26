@@ -2,15 +2,15 @@ extern crate http;
 extern crate tower;
 extern crate tower_service;
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 extern crate futures;
-extern crate tokio_trace_futures;
+extern crate tracing_futures;
 
 use std::marker::PhantomData;
 
 use futures::{Async, Future, Poll};
-use tokio_trace::{field, Span};
-use tokio_trace_futures::{Instrument, Instrumented};
+use tracing::{field, Span};
+use tracing_futures::{Instrument, Instrumented};
 use tower::MakeService;
 use tower_service::Service;
 

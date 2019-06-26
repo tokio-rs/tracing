@@ -4,11 +4,11 @@ extern crate h2;
 extern crate http;
 extern crate tokio;
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 extern crate env_logger;
-extern crate tokio_trace_fmt;
-extern crate tokio_trace_futures;
-extern crate tokio_trace_tower_http;
+extern crate tracing_fmt;
+extern crate tracing_futures;
+extern crate tracing_tower_http;
 extern crate tower_h2;
 extern crate tower_service;
 
@@ -17,8 +17,8 @@ use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio_trace::{field, Level};
-use tokio_trace_futures::Instrument;
+use tracing::{field, Level};
+use tracing_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
 
@@ -108,14 +108,14 @@ impl tower_service::Service<()> for NewSvc {
 }
 
 fn main() {
-    let subscriber = tokio_trace_fmt::FmtSubscriber::builder()
-        .with_filter(tokio_trace_fmt::filter::EnvFilter::from(
+    let subscriber = tracing_fmt::FmtSubscriber::builder()
+        .with_filter(tracing_fmt::filter::EnvFilter::from(
             "tower_h2_server=trace",
         ))
         .full()
         .finish();
 
-    tokio_trace::subscriber::with_default(subscriber, || {
+    tracing::subscriber::with_default(subscriber, || {
         let mut rt = Runtime::new().unwrap();
         let reactor = rt.executor();
 
@@ -129,7 +129,7 @@ fn main() {
             local_port = addr.port() as u64
         );
         let new_svc =
-            tokio_trace_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
+            tracing_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
         let serve_span2 = serve_span.clone();
         serve_span.enter(move || {
             let h2 = Server::new(new_svc, Default::default(), reactor.clone());

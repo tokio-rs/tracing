@@ -1,22 +1,23 @@
 extern crate tower_service;
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 extern crate futures;
-extern crate tokio_trace_futures;
+extern crate tracing_futures;
 
 use std::fmt;
-use tokio_trace::{field, Level};
-use tokio_trace_futures::{Instrument, Instrumented};
 use tower_service::Service;
+use tracing_futures::{Instrument, Instrumented};
+use tracing::{field, Level};
+
 
 #[derive(Clone, Debug)]
 pub struct InstrumentedService<T> {
     inner: T,
-    span: tokio_trace::Span,
+    span: tracing::Span,
 }
 
 pub trait InstrumentableService<Request>: Service<Request> + Sized {
-    fn instrument(self, span: tokio_trace::Span) -> InstrumentedService<Self> {
+    fn instrument(self, span: tracing::Span) -> InstrumentedService<Self> {
         InstrumentedService { inner: self, span }
     }
 }

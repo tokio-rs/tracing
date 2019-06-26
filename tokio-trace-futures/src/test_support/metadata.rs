@@ -1,10 +1,10 @@
 use std::fmt;
-use tokio_trace::{self, Metadata};
+use tracing::{self, Metadata};
 
 #[derive(Debug, Eq, PartialEq, Default)]
 pub struct Expect {
     pub name: Option<String>,
-    pub level: Option<tokio_trace::Level>,
+    pub level: Option<tracing::Level>,
     pub target: Option<String>,
 }
 

@@ -1,5 +1,5 @@
 use regex::Regex;
-use tokio_trace_core::{subscriber::Interest, Level, Metadata};
+use tracing_core::{subscriber::Interest, Level, Metadata};
 use {filter::Filter, span::Context};
 
 use std::{cmp::Ordering, env, error::Error, fmt, str::FromStr};
@@ -302,7 +302,7 @@ impl Directive {
 
         fn parse_level(from: &str) -> Option<LevelFilter> {
             // TODO: maybe this whole function ought to be replaced by a
-            // `FromStr` impl for `Level` in `tokio_trace_core`...?
+            // `FromStr` impl for `Level` in `tracing_core`...?
             from.parse::<usize>()
                 .ok()
                 .and_then(|num| match num {
@@ -531,7 +531,7 @@ mod tests {
     use super::*;
     use default::NewRecorder;
     use span::*;
-    use tokio_trace_core::*;
+    use tracing_core::*;
 
     struct Cs;
 

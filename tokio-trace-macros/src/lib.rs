@@ -1,4 +1,4 @@
-extern crate tokio_trace;
+extern crate tracing;
 
 /// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
 #[macro_export(local_inner_macros)]
@@ -10,14 +10,14 @@ macro_rules! trace_dbg {
         dbg!(target: module_path!(), level: $level, $ex)
     };
     (target: $target:expr, $ex:expr) => {
-        dbg!(target: $target, level: tokio_trace::Level::DEBUG, $ex)
+        dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
-        dbg!(level: tokio_trace::Level::DEBUG, $ex)
+        dbg!(level: tracing::Level::DEBUG, $ex)
     };
 }
 
-/// Similar to the `std::dbg!` macro, but generates `tokio-trace` events rather
+/// Similar to the `std::dbg!` macro, but generates `tracing` events rather
 /// than printing to stdout.
 ///
 /// By default, the verbosity level for the generated events is `DEBUG`, but
@@ -25,15 +25,15 @@ macro_rules! trace_dbg {
 #[macro_export]
 macro_rules! dbg {
     (target: $target:expr, level: $level:expr, $ex:expr) => {{
-        use tokio_trace::callsite::Callsite;
-        use tokio_trace::{
+        use tracing::callsite::Callsite;
+        use tracing::{
             callsite,
             field::{debug, Value},
             Event, Id, Subscriber,
         };
         let callsite = callsite! {
             name: concat!("event:trace_dbg(", stringify!($ex), ")"),
-            kind: tokio_trace::metadata::Kind::EVENT,
+            kind: tracing::metadata::Kind::EVENT,
             target: $target,
             level: $level,
             fields: $ex
@@ -58,9 +58,9 @@ macro_rules! dbg {
         dbg!(target: module_path!(), level: $level, $ex)
     };
     (target: $target:expr, $ex:expr) => {
-        dbg!(target: $target, level: tokio_trace::Level::DEBUG, $ex)
+        dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
-        dbg!(level: tokio_trace::Level::DEBUG, $ex)
+        dbg!(level: tracing::Level::DEBUG, $ex)
     };
 }

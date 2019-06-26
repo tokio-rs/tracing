@@ -1,6 +1,6 @@
 use span;
 
-use tokio_trace_core::{subscriber::Interest, Metadata};
+use tracing_core::{subscriber::Interest, Metadata};
 
 pub trait Filter<N> {
     fn callsite_enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> Interest {

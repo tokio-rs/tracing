@@ -1,7 +1,7 @@
-extern crate tokio_trace_core;
+extern crate tracing_core;
 #[cfg(test)]
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
@@ -13,7 +13,7 @@ extern crate parking_lot;
 extern crate lazy_static;
 extern crate regex;
 
-use tokio_trace_core::{field, subscriber::Interest, Event, Metadata};
+use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
 
@@ -91,7 +91,7 @@ where
     }
 }
 
-impl<N, E, F> tokio_trace_core::Subscriber for FmtSubscriber<N, E, F>
+impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
     E: Fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result + 'static,
@@ -330,7 +330,7 @@ impl<N, E, F> Builder<N, E, F> {
 mod test {
     use super::*;
     use std::fmt;
-    use tokio_trace_core::Dispatch;
+    use tracing_core::Dispatch;
 
     #[test]
     fn subscriber_downcasts() {

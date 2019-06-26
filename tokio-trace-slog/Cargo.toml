@@ -1,7 +1,9 @@
 [package]
-name = "tokio-trace-slog"
+name = "tracing-slog"
 version = "0.1.0"
 authors = ["David Barsky <dbarsky@amazon.com>"]
 
-[dependencies]
-tokio-trace = "0.1.0"
+[dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"

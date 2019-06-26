@@ -2,21 +2,21 @@
 extern crate serde_json;
 
 #[macro_use]
-extern crate tokio_trace;
-extern crate tokio_trace_core;
-extern crate tokio_trace_serde;
+extern crate tracing;
+extern crate tracing_core;
+extern crate tracing_serde;
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use tokio_trace_core::{
+use tracing_core::{
     event::Event,
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
     subscriber::Subscriber,
 };
 
-use tokio_trace_serde::AsSerde;
+use tracing_serde::AsSerde;
 
 pub struct JsonSubscriber {
     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
@@ -105,7 +105,7 @@ fn main() {
         next_id: AtomicUsize::new(1),
     };
 
-    tokio_trace::subscriber::with_default(subscriber, || {
+    tracing::subscriber::with_default(subscriber, || {
         let number_of_yaks = 3;
         let mut number_shaved = 0;
         debug!("preparing to shave {} yaks", number_of_yaks);

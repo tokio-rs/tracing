@@ -1,5 +1,5 @@
 [package]
-name = "tokio-trace-futures"
+name = "tracing-futures"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
@@ -8,10 +8,14 @@ default = ["tokio"]
 
 [dependencies]
 futures = "0.1"
-tokio-trace = "0.1.0"
 tokio = { version = "0.1", optional = true }
 tokio-executor = { version = "0.1", optional = true }
 
+[dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"
+
 [dev-dependencies]
 tokio = "0.1.21"
-tokio-trace-fmt = { path = "../tokio-trace-fmt" }
+tracing-fmt = { path = "../tokio-trace-fmt" }

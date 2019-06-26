@@ -1,11 +1,13 @@
 [package]
-name = "tokio-trace-macros"
+name = "tracing-macros"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
-[dependencies]
-tokio-trace = "0.1.0"
+[dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"
 
 [dev-dependencies]
-tokio-trace-log = { path = "../tokio-trace-log" }
+tracing-log = { path = "../tokio-trace-log" }
 env_logger = "0.5"

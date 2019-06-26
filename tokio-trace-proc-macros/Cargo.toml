@@ -1,5 +1,5 @@
 [package]
-name = "tokio-trace-proc-macros"
+name = "tracing-proc-macros"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "David Barsky <dbarsky@amazon.com>"]
 
@@ -7,13 +7,17 @@ authors = ["Eliza Weisman <eliza@buoyant.io>", "David Barsky <dbarsky@amazon.com
 proc-macro = true
 
 [dependencies]
-tokio-trace = "0.1.0"
 syn = { version = "0.15", features = ["full", "extra-traits"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
 
+[dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"
+
 [dev-dependencies]
-tokio-trace-fmt = { path = "../tokio-trace-fmt" }
+tracing-fmt = { path = "../tokio-trace-fmt" }
 env_logger = "0.5"
 ansi_term = "0.11"
 humantime = "1.1.1"
