@@ -9,10 +9,10 @@ extern crate tracing_futures;
 use std::marker::PhantomData;
 
 use futures::{Async, Future, Poll};
-use tracing::{field, Span};
-use tracing_futures::{Instrument, Instrumented};
 use tower::MakeService;
 use tower_service::Service;
+use tracing::{field, Span};
+use tracing_futures::{Instrument, Instrumented};
 
 #[derive(Debug, Clone)]
 pub struct InstrumentedHttpService<T> {
