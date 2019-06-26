@@ -15,7 +15,7 @@
 //! Similarly, the [`Event`] type passed to the subscriber's [`event`] method
 //! will contain any fields attached to each event.
 //!
-//! `tokio_trace` represents values as either one of a set of Rust primitives
+//! `tracing` represents values as either one of a set of Rust primitives
 //! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
 //! implementation. The [`record`] trait method on the `Subscriber` trait
 //! allow `Subscriber` implementations to provide type-specific behaviour for
@@ -114,9 +114,9 @@ pub struct Iter {
 ///
 /// A simple visitor that writes to a string might be implemented like so:
 /// ```
-/// # extern crate tokio_trace_core as tokio_trace;
+/// # extern crate tracing_core as tracing;
 /// use std::fmt::{self, Write};
-/// use tokio_trace::field::{Value, Visit, Field};
+/// use tracing::field::{Value, Visit, Field};
 /// # fn main() {
 /// pub struct StringVisitor<'a> {
 ///     string: &'a mut String,
@@ -147,9 +147,9 @@ pub struct Iter {
 /// visitor which only records numeric data might look like this:
 ///
 /// ```
-/// # extern crate tokio_trace_core as tokio_trace;
+/// # extern crate tracing_core as tracing;
 /// # use std::fmt::{self, Write};
-/// # use tokio_trace::field::{Value, Visit, Field};
+/// # use tracing::field::{Value, Visit, Field};
 /// # fn main() {
 /// pub struct SumVisitor {
 ///     sum: i64,
@@ -175,7 +175,7 @@ pub struct Iter {
 /// sum of all the numeric values it records, and ignores all other values. A
 /// more practical example of recording typed values is presented in
 /// `examples/counters.rs`, which demonstrates a very simple metrics system
-/// implemented using `tokio-trace`.
+/// implemented using `tracing`.
 ///
 /// [`Value`]: trait.Value.html
 /// [recorded]: trait.Value.html#method.record

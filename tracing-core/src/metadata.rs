@@ -10,7 +10,7 @@ use std::fmt;
 /// All spans and events have the following metadata:
 /// - A [name], represented as a static string.
 /// - A [target], a string that categorizes part of the system where the span
-///   or event occurred. The `tokio_trace` macros default to using the module
+///   or event occurred. The `tracing` macros default to using the module
 ///   path where the span or event originated as the target, but it may be
 ///   overridden.
 /// - A [verbosity level].

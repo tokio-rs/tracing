@@ -2,7 +2,7 @@
 
 members = [
     "tokio-trace",
-    "tokio-trace-core",
+    "tracing-core",
     "tokio-trace-proc-macros",
     "tokio-trace-fmt",
     "tokio-trace-futures",
