@@ -18,4 +18,4 @@ version = "0.1"
 
 [dev-dependencies]
 tokio = "0.1.21"
-tracing-fmt = { path = "../tokio-trace-fmt" }
+tracing-fmt = { path = "../tracing-fmt" }

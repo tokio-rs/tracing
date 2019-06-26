@@ -9,4 +9,4 @@ package = "tokio-trace"
 version = "0.1"
 
 [dev-dependencies]
-tracing-log = { path = "../tokio-trace-log" }
+tracing-log = { path = "../tracing-log" }

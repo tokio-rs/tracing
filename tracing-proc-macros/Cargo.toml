@@ -17,7 +17,7 @@ package = "tokio-trace"
 version = "0.1"
 
 [dev-dependencies]
-tracing-fmt = { path = "../tokio-trace-fmt" }
+tracing-fmt = { path = "../tracing-fmt" }
 env_logger = "0.5"
 ansi_term = "0.11"
 humantime = "1.1.1"

@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tracing-subscriber = { path = "../tokio-trace-subscriber" }
+tracing-subscriber = { path = "../tracing-subscriber" }
 log = "0.4"
 
 [dependencies.tracing]

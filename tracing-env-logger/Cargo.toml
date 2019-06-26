@@ -4,14 +4,14 @@ version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tracing-log = { path = "../tokio-trace-log" }
+tracing-log = { path = "../tracing-log" }
 env_logger = "0.5"
 log = "0.4"
 
 [dev-dependencies]
-tracing-fmt = { path = "../tokio-trace-fmt" }
-tracing-futures = { path = "../tokio-trace-futures" }
-tracing-subscriber = { path = "../tokio-trace-subscriber" }
+tracing-fmt = { path = "../tracing-fmt" }
+tracing-futures = { path = "../tracing-futures" }
+tracing-subscriber = { path = "../tracing-subscriber" }
 hyper = "=0.12.25"
 futures = "0.1"
 tokio = "0.1.21"

@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
-tracing-futures = { path = "../tokio-trace-futures" }
+tracing-futures = { path = "../tracing-futures" }
 futures = "0.1"
 tower-service = "0.2"
 tower = { git = "https://github.com/tower-rs/tower.git" }
@@ -23,8 +23,8 @@ string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"
 tokio-current-thread = "0.1.1"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tracing-subscriber = { path = "../tokio-trace-subscriber" }
-tracing-fmt = { path = "../tokio-trace-fmt" }
+tracing-subscriber = { path = "../tracing-subscriber" }
+tracing-fmt = { path = "../tracing-fmt" }
 tokio-io = "0.1"
 ansi_term = "0.11"
 humantime = "1.1.1"
