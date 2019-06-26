@@ -1,0 +1,12 @@
+[package]
+name = "tracing-subscriber"
+version = "0.0.1"
+authors = ["Eliza Weisman <eliza@buoyant.io>"]
+
+[dependencies.tracing]
+# TODO: replace this with a path dependency on the local `tracing`.
+package = "tokio-trace"
+version = "0.1"
+
+[dev-dependencies]
+tracing-log = { path = "../tracing-log" }

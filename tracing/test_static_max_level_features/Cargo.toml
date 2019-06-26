@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "test_cargo_max_level_features"
+version = "0.1.0"
+publish = false
+
+[dependencies.tracing]
+path = ".."
+features = ["max_level_debug", "release_max_level_info"]
