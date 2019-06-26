@@ -323,7 +323,7 @@ impl<N, E, F> Builder<N, E, F> {
         N: for<'a> NewVisitor<'a> + 'static,
     {
         Builder {
-            fmt_event: default::Builder::default().compact().build(),
+            fmt_event: default::Format::default().compact(),
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,

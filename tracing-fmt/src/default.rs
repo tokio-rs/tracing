@@ -12,66 +12,13 @@ use tracing_core::{
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-/// Marker for `Format` and `Builder` that indicates that the compact log format should be used.
+/// Marker for `Format` that indicates that the compact log format should be used.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
-/// Marker for `Format` and `Builder` that indicates that the verbose log format should be used.
+/// Marker for `Format` that indicates that the verbose log format should be used.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
-
-/// Builder for a `Format` formatter.
-#[derive(Debug, Clone)]
-pub struct Builder<F = Full, T = SystemTime> {
-    format: PhantomData<F>,
-    timer: T,
-}
-
-impl<T: Default> Default for Builder<Full, T> {
-    fn default() -> Self {
-        Builder {
-            format: PhantomData,
-            timer: T::default(),
-        }
-    }
-}
-
-impl<F, T> Builder<F, T> {
-    /// Use a less verbose output format.
-    pub fn compact(self) -> Builder<Compact, T> {
-        Builder {
-            format: PhantomData,
-            timer: self.timer,
-        }
-    }
-
-    /// Use the given `timer` for log message timestamps.
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<F, T2>
-    where
-        T2: FormatTime,
-    {
-        Builder {
-            format: self.format,
-            timer,
-        }
-    }
-
-    /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Builder<F, ()> {
-        Builder {
-            format: self.format,
-            timer: (),
-        }
-    }
-
-    /// Produce a `Format` event formatter from this `Builder`'s configuration.
-    pub fn build(self) -> Format<F, T> {
-        Format {
-            format: self.format,
-            timer: self.timer,
-        }
-    }
-}
 
 /// A pre-configured event formatter.
 ///
@@ -84,7 +31,36 @@ pub struct Format<F = Full, T = SystemTime> {
 
 impl<T: Default> Default for Format<Full, T> {
     fn default() -> Self {
-        Builder::default().build()
+        Format {
+            format: PhantomData,
+            timer: T::default(),
+        }
+    }
+}
+
+impl<F, T> Format<F, T> {
+    /// Use a less verbose output format.
+    pub fn compact(self) -> Format<Compact, T> {
+        Format {
+            format: PhantomData,
+            timer: self.timer,
+        }
+    }
+
+    /// Use the given `timer` for log message timestamps.
+    pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
+        Format {
+            format: self.format,
+            timer,
+        }
+    }
+
+    /// Do not emit timestamps with log messages.
+    pub fn without_time(self) -> Format<F, ()> {
+        Format {
+            format: self.format,
+            timer: (),
+        }
     }
 }
 
