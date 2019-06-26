@@ -170,7 +170,7 @@ pub struct Level(LevelInner);
 impl<'a> Metadata<'a> {
     /// Construct new metadata for a span, with a name, target, level, field
     /// names, and optional source code location.
-    pub const fn new(
+    pub fn new(
         name: &'static str,
         target: &'a str,
         level: Level,
@@ -178,7 +178,7 @@ impl<'a> Metadata<'a> {
         file: Option<&'a str>,
         line: Option<u32>,
         field_names: &'static [&'static str],
-        callsite: callsite::Identifier,
+        callsite: &'static dyn Callsite,
         kind: Kind,
     ) -> Self {
         Metadata {
@@ -190,7 +190,7 @@ impl<'a> Metadata<'a> {
             line,
             fields: field::FieldSet {
                 names: field_names,
-                callsite,
+                callsite: callsite::Identifier(callsite),
             },
             kind,
         }
