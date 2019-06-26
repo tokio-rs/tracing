@@ -521,7 +521,6 @@ impl fmt::Display for LevelFilter {
             LevelFilter::Level(Level::INFO) => f.pad("info"),
             LevelFilter::Level(Level::DEBUG) => f.pad("debug"),
             LevelFilter::Level(Level::TRACE) => f.pad("trace"),
-            LevelFilter::Level(_) => f.pad("???"),
         }
     }
 }

@@ -65,9 +65,8 @@ impl<T: Future> Future for Instrumented<T> {
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(|| inner.poll())
+        let _enter = self.span.enter();
+        self.inner.poll()
     }
 }
 
@@ -76,9 +75,8 @@ impl<T: Stream> Stream for Instrumented<T> {
     type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(|| inner.poll())
+        let _enter = self.span.enter();
+        self.inner.poll()
     }
 }
 
@@ -87,15 +85,13 @@ impl<T: Sink> Sink for Instrumented<T> {
     type SinkError = T::SinkError;
 
     fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(|| inner.start_send(item))
+        let _enter = self.span.enter();
+        self.inner.start_send(item)
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        let span = &mut self.span;
-        let inner = &mut self.inner;
-        span.enter(|| inner.poll_complete())
+        let _enter = self.span.enter();
+        self.inner.poll_complete()
     }
 }
 
@@ -278,11 +274,11 @@ mod tests {
             .run_with_handle();
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         with_default(subscriber, || {
-            span!(Level::TRACE, "a").enter(|| {
+            span!(Level::TRACE, "a").in_scope(|| {
                 let future = PollN::new_ok(2)
                     .instrument(span!(Level::TRACE, "b"))
                     .map(|_| {
-                        span!(Level::TRACE, "c").enter(|| {
+                        span!(Level::TRACE, "c").in_scope(|| {
                             // "c" happens _outside_ of the instrumented future's
                             // spab, so we don't expect it.
                         })
