@@ -164,6 +164,7 @@ mod test {
         }
 
         let subscriber = FmtSubscriber::builder()
+            .compact()
             .with_filter(filter1 as fn(&Metadata, &span::Context<_>) -> bool)
             .with_filter_reloading();
         let handle = subscriber.reload_handle();
@@ -192,10 +193,7 @@ mod test {
     #[test]
     fn reload_from_env() {
         use filter::EnvFilter;
-        let subscriber = FmtSubscriber::builder()
-            .with_filter_reloading()
-            .full()
-            .finish();
+        let subscriber = FmtSubscriber::builder().with_filter_reloading().finish();
         let reload_handle = subscriber.reload_handle();
         reload_handle.reload(EnvFilter::from_default_env());
     }

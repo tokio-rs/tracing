@@ -1,53 +1,135 @@
 use span;
+use time::{self, FormatTime, SystemTime};
+use FormatEvent;
 
+use std::fmt::{self, Write};
+use std::marker::PhantomData;
 use tracing_core::{
     field::{self, Field},
     Event, Level,
 };
 
-use std::fmt::{self, Write};
-
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event<N>(ctx: &span::Context<N>, f: &mut dyn Write, event: &Event) -> fmt::Result
-where
-    N: for<'a> ::NewVisitor<'a>,
-{
-    let meta = event.metadata();
-    write!(
-        f,
-        "{} {}{}: ",
-        FmtLevel(meta.level()),
-        FmtCtx(&ctx),
-        meta.target()
-    )?;
-    {
-        let mut recorder = ctx.new_visitor(f, true);
-        event.record(&mut recorder);
-    }
-    ctx.with_current(|(_, span)| write!(f, " {}", span.fields()))
-        .unwrap_or(Ok(()))?;
-    writeln!(f)
+/// Marker for `Format` that indicates that the compact log format should be used.
+///
+/// The compact format only includes the fields from the most recently entered span.
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Compact;
+
+/// Marker for `Format` that indicates that the verbose log format should be used.
+///
+/// The full format includes fields from all entered spans.
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Full;
+
+/// A pre-configured event formatter.
+///
+/// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
+///
+/// The default logging format, [`Full`] includes all fields in each event and its containing
+/// spans. The [`Compact`] logging format includes only the fields from the most-recently-entered
+/// span.
+#[derive(Debug, Clone)]
+pub struct Format<F = Full, T = SystemTime> {
+    format: PhantomData<F>,
+    timer: T,
 }
 
-pub fn fmt_verbose<N>(ctx: &span::Context<N>, f: &mut dyn Write, event: &Event) -> fmt::Result
+impl<T: Default> Default for Format<Full, T> {
+    fn default() -> Self {
+        Format {
+            format: PhantomData,
+            timer: T::default(),
+        }
+    }
+}
+
+impl<F, T> Format<F, T> {
+    /// Use a less verbose output format.
+    ///
+    /// See [`Compact`].
+    pub fn compact(self) -> Format<Compact, T> {
+        Format {
+            format: PhantomData,
+            timer: self.timer,
+        }
+    }
+
+    /// Use the given `timer` for log message timestamps.
+    pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
+        Format {
+            format: self.format,
+            timer,
+        }
+    }
+
+    /// Do not emit timestamps with log messages.
+    pub fn without_time(self) -> Format<F, ()> {
+        Format {
+            format: self.format,
+            timer: (),
+        }
+    }
+}
+
+impl<N, T> FormatEvent<N> for Format<Full, T>
 where
     N: for<'a> ::NewVisitor<'a>,
+    T: FormatTime,
 {
-    let meta = event.metadata();
-    write!(
-        f,
-        "{} {}{}: ",
-        FmtLevel(meta.level()),
-        FullCtx(&ctx),
-        meta.target()
-    )?;
-    {
-        let mut recorder = ctx.new_visitor(f, true);
-        event.record(&mut recorder);
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut dyn fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        let meta = event.metadata();
+        time::write(&self.timer, writer)?;
+        write!(
+            writer,
+            "{} {}{}: ",
+            FmtLevel(meta.level()),
+            FullCtx(&ctx),
+            meta.target()
+        )?;
+        {
+            let mut recorder = ctx.new_visitor(writer, true);
+            event.record(&mut recorder);
+        }
+        writeln!(writer)
     }
-    writeln!(f)
+}
+
+impl<N, T> FormatEvent<N> for Format<Compact, T>
+where
+    N: for<'a> ::NewVisitor<'a>,
+    T: FormatTime,
+{
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        let meta = event.metadata();
+        time::write(&self.timer, writer)?;
+        write!(
+            writer,
+            "{} {}{}: ",
+            FmtLevel(meta.level()),
+            FmtCtx(&ctx),
+            meta.target()
+        )?;
+        {
+            let mut recorder = ctx.new_visitor(writer, true);
+            event.record(&mut recorder);
+        }
+        ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
+            .unwrap_or(Ok(()))?;
+        writeln!(writer)
+    }
 }
 
 pub struct NewRecorder;

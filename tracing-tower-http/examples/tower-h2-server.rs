@@ -112,7 +112,6 @@ fn main() {
         .with_filter(tracing_fmt::filter::EnvFilter::from(
             "tower_h2_server=trace",
         ))
-        .full()
         .finish();
 
     tracing::subscriber::with_default(subscriber, || {
