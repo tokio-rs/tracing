@@ -455,7 +455,7 @@ impl FieldSet {
     /// [`Identifier`]: ../callsite/struct.Identifier.html
     /// [`Callsite`]: ../callsite/trait.Callsite.html
     pub(crate) fn callsite(&self) -> callsite::Identifier {
-        callsite::Identifier(self.callsite.0)
+        self.callsite.clone()
     }
 
     /// Returns the [`Field`] named `name`, or `None` if no such field exists.
