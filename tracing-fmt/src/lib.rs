@@ -261,6 +261,32 @@ where
     }
 }
 
+impl<N, L, T, F> Builder<N, default::Format<L, T>, F>
+where
+    N: for<'a> NewVisitor<'a> + 'static,
+    F: Filter<N> + 'static,
+{
+    /// Use the given `timer` for log message timestamps.
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, default::Format<L, T2>, F> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event.with_timer(timer),
+            filter: self.filter,
+            settings: self.settings,
+        }
+    }
+
+    /// Use the given `timer` for log message timestamps.
+    pub fn without_time(self) -> Builder<N, default::Format<L, ()>, F> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event.without_time(),
+            filter: self.filter,
+            settings: self.settings,
+        }
+    }
+}
+
 impl<N, E, F> Builder<N, E, F>
 where
     F: Filter<N> + 'static,
