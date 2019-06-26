@@ -32,7 +32,7 @@ macro_rules! dbg {
             Event, Id, Subscriber,
         };
         let callsite = callsite! {
-            name: stringify!($ex),
+            name: concat!("event:trace_dbg(", stringify!($ex), ")"),
             kind: tracing::metadata::Kind::EVENT,
             target: $target,
             level: $level,
