@@ -5,19 +5,19 @@ extern crate tracing_fmt;
 use tracing::Level;
 
 fn shave(yak: usize) -> bool {
-    span!(Level::TRACE, "shave", yak = yak).enter(|| {
-        debug!(
-            message = "hello! I'm gonna shave a yak.",
-            excitement = "yay!"
-        );
-        if yak == 3 {
-            warn!(target: "yak_events", "could not locate yak!");
-            false
-        } else {
-            trace!(target: "yak_events", "yak shaved successfully");
-            true
-        }
-    })
+    let span = span!(Level::TRACE, "shave", yak = yak);
+    let _e = span.enter();
+    debug!(
+        message = "hello! I'm gonna shave a yak.",
+        excitement = "yay!"
+    );
+    if yak == 3 {
+        warn!(target: "yak_events", "could not locate yak!");
+        false
+    } else {
+        trace!(target: "yak_events", "yak shaved successfully");
+        true
+    }
 }
 
 fn main() {
@@ -28,7 +28,7 @@ fn main() {
         let mut number_shaved = 0;
         debug!("preparing to shave {} yaks", number_of_yaks);
 
-        span!(Level::TRACE, "shaving_yaks", yaks_to_shave = number_of_yaks).enter(|| {
+        span!(Level::TRACE, "shaving_yaks", yaks_to_shave = number_of_yaks).in_scope(|| {
             info!("shaving yaks");
 
             for yak in 1..=number_of_yaks {

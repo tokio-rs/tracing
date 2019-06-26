@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Weak},
 };
-use tracing_core::{subscriber::Interest, Metadata};
+use tracing_core::{callsite, subscriber::Interest, Metadata};
 use {filter::Filter, span::Context};
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ where
     _f: PhantomData<fn(N)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Handle<F, N>
 where
     F: Filter<N>,
@@ -41,10 +41,8 @@ impl<F, N> Filter<N> for ReloadFilter<F, N>
 where
     F: Filter<N>,
 {
-    fn callsite_enabled(&self, _: &Metadata, _: &Context<N>) -> Interest {
-        // TODO(eliza): When tokio-rs/tokio#1039 lands, we can allow our
-        // interest to be cached. For now, we must always return `sometimes`.
-        Interest::sometimes()
+    fn callsite_enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> Interest {
+        self.inner.read().callsite_enabled(metadata, ctx)
     }
 
     fn enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> bool {
@@ -92,10 +90,14 @@ where
         let inner = self.inner.upgrade().ok_or(Error {
             kind: ErrorKind::SubscriberGone,
         })?;
-        let mut inner = inner.write();
-        f(&mut *inner);
-        // TODO(eliza): When tokio-rs/tokio#1039 lands, this is where we would
-        // invalidate the callsite cache.
+
+        let mut lock = inner.write();
+        f(&mut *lock);
+        // Release the lock before rebuilding the interest cache, as that
+        // function will lock the new filter.
+        drop(lock);
+
+        callsite::rebuild_interest_cache();
         Ok(())
     }
 
@@ -116,6 +118,18 @@ where
         })?;
         let inner = inner.read();
         Ok(f(&*inner))
+    }
+}
+
+impl<F, N> Clone for Handle<F, N>
+where
+    F: Filter<N>,
+{
+    fn clone(&self) -> Self {
+        Handle {
+            inner: self.inner.clone(),
+            _f: PhantomData,
+        }
     }
 }
 

@@ -7,14 +7,10 @@ authors = ["Eliza Weisman <eliza@buoyant.io>", "David Barsky <dbarsky@amazon.com
 proc-macro = true
 
 [dependencies]
+tracing = { version = "0.1", path = "../tracing" }
 syn = { version = "0.15", features = ["full", "extra-traits"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
-
-[dependencies.tracing]
-# TODO: replace this with a path dependency on the local `tracing`.
-package = "tokio-trace"
-version = "0.1"
 
 [dev-dependencies]
 tracing-fmt = { path = "../tracing-fmt" }

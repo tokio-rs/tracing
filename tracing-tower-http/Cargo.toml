@@ -4,16 +4,13 @@ version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
 [dependencies]
+
+tracing = { version = "0.1", path = "../tracing" }
 tracing-futures = { path = "../tracing-futures" }
 futures = "0.1"
 tower-service = "0.2"
 tower = { git = "https://github.com/tower-rs/tower.git" }
 http = "0.1"
-
-[dependencies.tracing]
-# TODO: replace this with a path dependency on the local `tracing`.
-package = "tokio-trace"
-version = "0.1"
 
 [dev-dependencies]
 bytes = "0.4"

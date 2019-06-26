@@ -73,9 +73,9 @@ where
     type Future = InstrumentedMakeServiceFuture<T::Future>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
-        if let Some(span) = &mut self.span {
-            let inner = &mut self.inner;
-            span.enter(move || inner.poll_ready())
+        if let Some(span) = self.span.as_ref() {
+            let _enter = span.enter();
+            self.inner.poll_ready()
         } else {
             self.inner.poll_ready()
         }
@@ -124,16 +124,15 @@ where
     type Error = T::Error;
 
     fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        if let Some(span) = &mut self.span {
-            let inner = &mut self.inner;
-            span.enter(move || inner.poll_ready())
+        if let Some(span) = self.span.as_ref() {
+            let _enter = span.enter();
+            self.inner.poll_ready()
         } else {
             self.inner.poll_ready()
         }
     }
 
     fn call(&mut self, request: http::Request<B>) -> Self::Future {
-        let inner = &mut self.inner;
         let span = trace_span!(
             parent: self.span.as_ref(),
             "request",
@@ -144,8 +143,7 @@ where
             uri = &field::debug(request.uri()),
             headers = &field::debug(request.headers())
         );
-
-        let span2 = span.clone();
-        span.enter(move || inner.call(request).instrument(span2))
+        let _enter = span.enter();
+        self.inner.call(request).instrument(span.clone())
     }
 }
