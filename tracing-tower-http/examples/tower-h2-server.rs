@@ -6,21 +6,21 @@ extern crate tokio;
 #[macro_use]
 extern crate tracing;
 extern crate env_logger;
+extern crate tower_h2;
+extern crate tower_service;
 extern crate tracing_fmt;
 extern crate tracing_futures;
 extern crate tracing_tower_http;
-extern crate tower_h2;
-extern crate tower_service;
 
 use bytes::{Bytes, IntoBuf};
 use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tracing::{field, Level};
-use tracing_futures::Instrument;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
+use tracing::{field, Level};
+use tracing_futures::Instrument;
 
 type Response = http::Response<RspBody>;
 

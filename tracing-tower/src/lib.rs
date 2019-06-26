@@ -6,9 +6,8 @@ extern crate tracing_futures;
 
 use std::fmt;
 use tower_service::Service;
-use tracing_futures::{Instrument, Instrumented};
 use tracing::{field, Level};
-
+use tracing_futures::{Instrument, Instrumented};
 
 #[derive(Clone, Debug)]
 pub struct InstrumentedService<T> {
