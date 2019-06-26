@@ -31,7 +31,7 @@ fn filter_caching_is_lexically_scoped() {
     let count2 = count.clone();
 
     let subscriber = subscriber::mock()
-        .with_filter(move |meta| match meta.name {
+        .with_filter(move |meta| match meta.name() {
             "emily" | "frank" => {
                 count2.fetch_add(1, Ordering::Relaxed);
                 true

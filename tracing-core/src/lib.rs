@@ -90,9 +90,6 @@ macro_rules! identify_callsite {
 
 /// Statically constructs new span [metadata].
 ///
-/// This may be used in contexts, such as static initializers, where the
-/// [`Metadata::new`] function is not currently usable.
-///
 /// /// For example:
 /// ```rust
 /// # #[macro_use]
@@ -150,19 +147,16 @@ macro_rules! metadata {
         callsite: $callsite:expr,
         kind: $kind:expr,
     ) => {
-        $crate::metadata::Metadata {
-            name: $name,
-            target: $target,
-            level: $level,
-            file: Some(__tracing_core_file!()),
-            line: Some(__tracing_core_line!()),
-            module_path: Some(__tracing_core_module_path!()),
-            fields: $crate::field::FieldSet {
-                names: $fields,
-                callsite: identify_callsite!($callsite),
-            },
-            kind: $kind,
-        }
+        $crate::metadata::Metadata::new(
+            $name,
+            $target,
+            $level,
+            Some(__tracing_core_file!()),
+            Some(__tracing_core_line!()),
+            Some(__tracing_core_module_path!()),
+            $crate::field::FieldSet::new($fields, identify_callsite!($callsite)),
+            $kind,
+        )
     };
 }
 
