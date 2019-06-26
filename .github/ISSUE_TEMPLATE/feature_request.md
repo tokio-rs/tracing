@@ -9,7 +9,7 @@ about: I have a suggestion (and may want to implement it 🙂)!
 ### Crates
 
 <!--
-If known, please specify the tokio-trace-nursery crate or crates the new feature
+If known, please specify the tracing-nursery crate or crates the new feature
 should be added to. Otherwise, delete this section.
 -->
 

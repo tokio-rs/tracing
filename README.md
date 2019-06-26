@@ -1,185 +1,92 @@
-# tokio-trace
+# tracing
 
-A scoped, structured logging and diagnostics system.
+Application-level tracing for Rust.
 
-[Documentation](https://docs.rs/tokio-trace/0.1.0/tokio_trace/index.html)
+[![MIT licensed][mit-badge]][mit-url]
+[![Build Status][travis-badge]][travis-url]
+[![Gitter chat][gitter-badge]][gitter-url]
+
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: LICENSE
+[travis-badge]: https://travis-ci.org/tokio-rs/tracing.svg?branch=master
+[travis-url]: https://travis-ci.org/tokio-rs/tracing/branches
+[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
+[gitter-url]: https://gitter.im/tokio-rs/tracing
+
+[Website](https://tokio.rs) |
+[Chat](https://gitter.im/tracing-rs/tracing)
 
 ## Overview
 
-`tokio-trace` is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information.
+`tracing` is a framework for instrumenting Rust programs to collect
+structured, event-based diagnostic information. `tracing` is maintained by the
+Tokio project, but does _not_ require the `tokio` runtime to be used.
 
-In asynchronous systems like Tokio, interpreting traditional log messages can
-often be quite challenging. Since individual tasks are multiplexed on the same
-thread, associated events and log lines are intermixed making it difficult to
-trace the logic flow. `tokio-trace` expands upon logging-style diagnostics by
-allowing libraries and applications to record structured events with additional
-information about *temporality* and *causality* — unlike a log message, a span
-in `tokio-trace` has a beginning and end time, may be entered and exited by the
-flow of execution, and may exist within a nested tree of similar spans. In
-addition, `tokio-trace` spans are *structured*, with the ability to record typed
-data as well as textual messages.
+## Getting Help
 
-The `tokio-trace` crate provides the APIs necessary for instrumenting libraries
-and applications to emit trace data.
+First, see if the answer to your question can be found in the API documentation.
+If the answer is not there, there is an active community in
+the [Tracing Gitter channel][chat]. We would be happy to try to answer your
+question.  Last, if that doesn't work, try opening an [issue] with the question.
 
-## Usage
+[chat]: https://gitter.im/tokio-rs/tracing
+[issue]: https://github.com/tokio-rs/tracing/issues/new
 
-First, add this to your `Cargo.toml`:
+## Contributing
 
-```toml
-[dependencies]
-tokio-trace = "0.1"
-```
+:balloon: Thanks for your help improving the project! We are so happy to have
+you! We have a [contributing guide][guide] to help you get involved in the Tracing
+project.
 
-Next, add this to your crate:
+[guide]: CONTRIBUTING.md
 
-```rust
-#[macro_use]
-extern crate tokio_trace;
-```
+## Project layout
 
-This crate provides macros for creating `Span`s and `Event`s, which represent
-periods of time and momentary events within the execution of a program,
-respectively.
+The `tracing` crate contains the primary _instrumentation_ API, used for
+instrumenting libraries and applications to emit trace data. The `tracing-core`
+crate contains the _core_ API primitives on which the rest of `tracing` is
+instrumented. Authors of trace subscribers may depend on `tracing-core`, which
+guarantees a higher level of stability.
 
-As a rule of thumb, _spans_ should be used to represent discrete units of work
-(e.g., a given request's lifetime in a server) or periods of time spent in a
-given context (e.g., time spent interacting with an instance of an external
-system, such as a database). In contrast, _events_ should be used to represent
-points in time within a span — a request returned with a given status code,
-_n_ new items were taken from a queue, and so on.
+Additionally, this repository contains several compatibility and utility
+libraries built on top of `tracing`. Some of these crates are in a pre-release
+state, and are less stable than the `tracing` and `tracing-core` crates.
 
-`Span`s are constructed using the `span!` macro, and then _entered_
-to indicate that some code takes place within the context of that `Span`:
+The crates included as part of Tracing are:
 
-```rust
-// Construct a new span named "my span".
-let mut span = span!("my span");
-span.in_scope(|| {
-    // Any trace events in this closure or code called by it will occur within
-    // the span.
-});
-// Dropping the span will close it, indicating that it has ended.
-```
+* [`tracing-fmt`]: A subscriber for formatting and logging trace events.
 
-The `Event` type represent an event that occurs instantaneously, and is
-essentially a `Span` that cannot be entered. They are created using the `event!`
-macro:
+* [`tracing-futures`]: Utilities for instrumenting `futures` (unstable).
 
-```rust
-use tokio_trace::Level;
-event!(Level::INFO, "something has happened!");
-```
+* [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
 
-Users of the [`log`] crate should note that `tokio-trace` exposes a set of macros for
-creating `Event`s (`trace!`, `debug!`, `info!`, `warn!`, and `error!`) which may
-be invoked with the same syntax as the similarly-named macros from the `log`
-crate. Often, the process of converting a project to use `tokio-trace` can begin
-with a simple drop-in replacement.
+* [`tracing-proc-macros`]: Procedural macro attributes for automatically
+    instrumenting functions (unstable).
 
-Let's consider the `log` crate's yak-shaving example:
+* [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-```rust
-#[macro_use]
-extern crate tokio_trace;
-use tokio_trace::field;
+* [`tracing-env-logger`]: A subscriber that logs trace events using the
+    `env_logger` crate (unstable).
 
-pub fn shave_the_yak(yak: &mut Yak) {
-    // Create a new span for this invocation of `shave_the_yak`, annotated
-    // with  the yak being shaved as a *field* on the span.
-    span!("shave_the_yak", yak = field::debug(&yak)).in_scope(|| {
-        // Since the span is annotated with the yak, it is part of the context
-        // for everything happening inside the span. Therefore, we don't need
-        // to add it to the message for this event, as the `log` crate does.
-        info!(target: "yak_events", "Commencing yak shaving");
+* [`tracing-serde`]: A compatibility layer for serializing trace data with
+    `serde` (unstable).
 
-        loop {
-            match find_a_razor() {
-                Ok(razor) => {
-                    // We can add the razor as a field rather than formatting it
-                    // as part of the message, allowing subscribers to consume it
-                    // in a more structured manner:
-                    info!({ razor = field::display(razor) }, "Razor located");
-                    yak.shave(razor);
-                    break;
-                }
-                Err(err) => {
-                    // However, we can also create events with formatted messages,
-                    // just as we would for log records.
-                    warn!("Unable to locate a razor: {}, retrying", err);
-                }
-            }
-        }
-    })
-}
-```
+* [`tracing-subscriber`]: Utilities for subscriber implementations (unstable).
 
-You can find examples showing how to use this crate in the examples directory.
+* [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
-### In libraries
+* [`tracing-tower-http`]: `tower` compatibility for HTTP services (unstable).
 
-Libraries should link only to the `tokio-trace` crate, and use the provided
-macros to record whatever information will be useful to downstream consumers.
-
-### In executables
-
-In order to record trace events, executables have to use a `Subscriber`
-implementation compatible with `tokio-trace`. A `Subscriber` implements a way of
-collecting trace data, such as by logging it to standard output.
-
-There currently aren't too many subscribers to choose from. The best one to use right now
-is probably [`tokio-trace-fmt`], which logs to the terminal.
-
-The simplest way to use a subscriber is to call the `set_global_default` function:
-
-```rust
-#[macro_use]
-extern crate tokio_trace;
-
-let my_subscriber = FooSubscriber::new();
-
-tokio_trace::subscriber::set_global_default(my_subscriber).expect("setting tokio_trace default failed");
-```
-
-This subscriber will be used as the default in all threads for the remainder of the duration
-of the program, similar to how loggers work in the `log` crate.
-
-Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
-executables try to set the default later.
-
-In addition, you can locally override the default subscriber, using the `tokio` pattern
-of executing code in a context. For example:
-
-```rust
-#[macro_use]
-extern crate tokio_trace;
-
-let my_subscriber = FooSubscriber::new();
-
-tokio_trace::subscriber::with_default(subscriber, || {
-    // Any trace events generated in this closure or by functions it calls
-    // will be collected by `my_subscriber`.
-})
-```
-
-This approach allows trace data to be collected by multiple subscribers within
-different contexts in the program. Note that the override only applies to the
-currently executing thread; other threads will not see the change from with_default.
-
-Any trace events generated outside the context of a
-subscriber will not be collected.
-
-The executable itself may use the `tokio-trace` crate to instrument itself as
-well.
-
-The [`tokio-trace-nursery`] repository contains less stable crates designed to
-be used with the `tokio-trace` ecosystem. It includes a collection of
-`Subscriber` implementations, as well as utility and adapter crates.
-
-[`log`]: https://docs.rs/log/0.4.6/log/
-[`tokio-trace-nursery`]: https://github.com/tokio-rs/tokio-trace-nursery
-[`tokio-trace-fmt`]: https://github.com/tokio-rs/tokio-trace-nursery/tree/master/tokio-trace-fmt
+[`tracing-fmt`]: tracing-fmt
+[`tracing-futures`]: tracing-futures
+[`tracing-macros`]: tracing-macros
+[`tracing-proc-macros`]: tracing-proc-macros
+[`tracing-log`]: tracing-log
+[`tracing-env-logger`]: tracing-env-logger
+[`tracing-serde`]: tracing-serde
+[`tracing-subscriber`]: tracing-subscriber
+[`tracing-tower`]: tracing-tower
+[`tracing-tower-http`]: tracing-tower-http
 
 ## License
 
@@ -188,5 +95,7 @@ This project is licensed under the [MIT license](LICENSE).
 ### Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in Tokio by you, shall be licensed as MIT, without any additional
+for inclusion in Tracing by you, shall be licensed as MIT, without any additional
 terms or conditions.
+
+[`tokio-trace`]: https://github.com/tokio-rs/tokio/tree/master/tokio-trace
