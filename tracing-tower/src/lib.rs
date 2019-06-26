@@ -6,7 +6,7 @@ extern crate tracing_futures;
 
 use std::fmt;
 use tower_service::Service;
-use tracing::{field, Level};
+use tracing::Level;
 use tracing_futures::{Instrument, Instrumented};
 
 #[derive(Clone, Debug)]
@@ -37,8 +37,7 @@ where
 
     fn call(&mut self, req: Request) -> Self::Future {
         // TODO: custom `Value` impls for `http` types would be nice...
-        let span =
-            span!(Level::TRACE, parent: &self.span, "request", request = ?req);
+        let span = span!(Level::TRACE, parent: &self.span, "request", request = ?req);
         let _enter = span.enter();
         self.inner.call(req).instrument(span.clone())
     }
