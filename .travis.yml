@@ -1,37 +1,19 @@
 language: rust
 sudo: false
 rust:
-# This represents the minimum Rust version supported by Tokio. Updating this
+# This represents the minimum Rust version supported by tracing. Updating this
 # should be done in a dedicated PR and cannot be greater than two 0.x
 # releases prior to the current stable.
-- 1.26.0
+- 1.34.0
 - stable
 - beta
 - nightly
 
 script:
-- cargo test --verbose -p tracing-core
-- cargo test --verbose -p tracing-futures
-- cargo test --verbose -p tracing-subscriber
-- cargo test --verbose -p tracing-log
-- cargo test --verbose -p tracing-env-logger
-- cargo test --verbose -p tracing-macros
-- cargo test --verbose -p tracing-serde
-- cargo test --verbose -p tracing-fmt
-- cargo test --verbose -p tracing-slog
+- cargo test --verbose --all
 
 jobs:
   include:
-  # Test stage for crates which don't build on Rust 1.26.0 for unavoidable reasons.
-  - stage: test
-    name: "test stable only"
-    script:
-      # No stable proc macros on 1.26.0
-    - cargo test -p tracing-proc-macros
-      # Tower doesn't build on Rust 1.26.0.
-    - cargo test -p tracing-tower
-    - cargo test -p tracing-tower-http
-    rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview
     name: "rustfmt"
