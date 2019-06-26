@@ -344,6 +344,8 @@ impl<N, E, F> Builder<N, E, F> {
     }
 
     /// Sets the subscriber being built to use a less verbose formatter.
+    ///
+    /// See [`default::Compact`].
     pub fn compact(self) -> Builder<N, default::Format<default::Compact>, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,

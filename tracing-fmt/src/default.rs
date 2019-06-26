@@ -13,16 +13,24 @@ use tracing_core::{
 use ansi_term::{Colour, Style};
 
 /// Marker for `Format` that indicates that the compact log format should be used.
+///
+/// The compact format only includes the fields from the most recently entered span.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
 /// Marker for `Format` that indicates that the verbose log format should be used.
+///
+/// The full format includes fields from all entered spans.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
 
 /// A pre-configured event formatter.
 ///
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
+///
+/// The default logging format, [`Full`] includes all fields in each event and its containing
+/// spans. The [`Compact`] logging format includes only the fields from the most-recently-entered
+/// span.
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
@@ -40,6 +48,8 @@ impl<T: Default> Default for Format<Full, T> {
 
 impl<F, T> Format<F, T> {
     /// Use a less verbose output format.
+    ///
+    /// See [`Compact`].
     pub fn compact(self) -> Format<Compact, T> {
         Format {
             format: PhantomData,
