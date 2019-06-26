@@ -129,7 +129,7 @@ fn main() {
             local.port = addr.port() as u64
         );
         let new_svc =
-            tokio_trace_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
+            tracing_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
         let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
         let serve = bind

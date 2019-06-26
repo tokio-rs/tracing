@@ -8,6 +8,7 @@ default = ["ansi"]
 ansi = ["ansi_term"]
 
 [dependencies]
+tracing-core = { version = "0.1", path = "../tracing-core" }
 ansi_term = { version = "0.11", optional = true }
 regex = "1"
 lazy_static = "1"
@@ -15,12 +16,5 @@ owning_ref = "0.4.0"
 parking_lot = { version = "0.7"}
 lock_api = "0.1"
 
-[dependencies.tracing-core]
-# TODO: replace this with a path dependency on the local `tracing-core`.
-package = "tokio-trace-core"
-version = "0.2.0"
-
-[dev-dependencies.tracing]
-# TODO: replace this with a path dependency on the local `tracing`.
-package = "tokio-trace"
-version = "0.1"
+[dev-dependencies]
+tracing = { version = "0.1", path = "../tracing" }

@@ -3,10 +3,8 @@ name = "tracing-macros"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 
-[dependencies.tracing]
-# TODO: replace this with a path dependency on the local `tracing`.
-package = "tokio-trace"
-version = "0.1"
+[dependencies]
+tracing = { version = "0.1", path = "../tracing" }
 
 [dev-dependencies]
 tracing-log = { path = "../tracing-log" }
