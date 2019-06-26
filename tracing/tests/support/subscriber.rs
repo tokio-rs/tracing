@@ -227,7 +227,7 @@ where
                     }
                     None => {}
                 }
-            },
+            }
             Some(ex) => ex.bad(format_args!("observed event {:?}", event)),
         }
     }

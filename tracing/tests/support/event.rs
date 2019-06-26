@@ -78,7 +78,6 @@ impl MockEvent {
         }
     }
 
-
     pub(in support) fn check(&mut self, event: &tracing::Event) {
         let meta = event.metadata();
         let name = meta.name();
