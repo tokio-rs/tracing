@@ -38,7 +38,7 @@ where
 {
     fn spawn(
         &mut self,
-        future: Box<Future<Error = (), Item = ()> + 'static + Send>,
+        future: Box<dyn Future<Error = (), Item = ()> + 'static + Send>,
     ) -> Result<(), SpawnError> {
         // TODO: get rid of double box somehow?
         let future = Box::new(future.instrument(self.span.clone()));
@@ -183,7 +183,7 @@ where
 {
     fn spawn(
         &mut self,
-        future: Box<Future<Error = (), Item = ()> + 'static + Send>,
+        future: Box<dyn Future<Error = (), Item = ()> + 'static + Send>,
     ) -> Result<(), SpawnError> {
         // TODO: get rid of double box?
         let future = Box::new(self.with_dispatch(future));

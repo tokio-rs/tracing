@@ -20,7 +20,7 @@ use std::{
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 #[derive(Clone)]
 pub struct Dispatch {
-    subscriber: Arc<Subscriber + Send + Sync>,
+    subscriber: Arc<dyn Subscriber + Send + Sync>,
 }
 
 thread_local! {
@@ -161,7 +161,7 @@ where
         .unwrap_or_else(|_| f(&Dispatch::none()))
 }
 
-pub(crate) struct Registrar(Weak<Subscriber + Send + Sync>);
+pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
 
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.

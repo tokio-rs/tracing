@@ -182,7 +182,7 @@ where
         }
     }
 
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         if self.state.is_ok() {
             self.state = self
                 .serializer
@@ -236,7 +236,7 @@ where
         }
     }
 
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         if self.state.is_ok() {
             self.state = self
                 .serializer

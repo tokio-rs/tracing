@@ -51,7 +51,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         .expect("log record fields must have a message");
     Event::dispatch(
         &meta,
-        &fields.value_set(&[(&key, Some(record.args() as &field::Value))]),
+        &fields.value_set(&[(&key, Some(record.args() as &dyn field::Value))]),
     );
     Ok(())
 }
@@ -342,7 +342,7 @@ impl SpanLineBuilder {
 }
 
 impl field::Visit for SpanLineBuilder {
-    fn record_debug(&mut self, field: &field::Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         write!(self.fields, " {}={:?};", field.name(), value)
             .expect("write to string should never fail")
     }
@@ -522,7 +522,7 @@ struct LogEvent<'a>(&'a Event<'a>);
 impl<'a> fmt::Display for LogEvent<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut has_logged = false;
-        let mut format_fields = |field: &field::Field, value: &fmt::Debug| {
+        let mut format_fields = |field: &field::Field, value: &dyn fmt::Debug| {
             let name = field.name();
             let leading = if has_logged { " " } else { "" };
             // TODO: handle fmt error?

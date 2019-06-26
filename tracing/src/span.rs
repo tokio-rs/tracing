@@ -593,7 +593,7 @@ impl Span {
                 &self
                     .meta
                     .fields()
-                    .value_set(&[(&field, Some(value as &field::Value))]),
+                    .value_set(&[(&field, Some(value as &dyn field::Value))]),
             );
         }
 
@@ -827,7 +827,7 @@ struct FmtValues<'a>(&'a Record<'a>);
 impl<'a> fmt::Display for FmtValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut res = Ok(());
-        self.0.record(&mut |k: &field::Field, v: &fmt::Debug| {
+        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
             res = write!(f, "{}={:?} ", k, v);
         });
         res
@@ -839,7 +839,7 @@ struct FmtAttrs<'a>(&'a Attributes<'a>);
 impl<'a> fmt::Display for FmtAttrs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut res = Ok(());
-        self.0.record(&mut |k: &field::Field, v: &fmt::Debug| {
+        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
             res = write!(f, "{}={:?} ", k, v);
         });
         res

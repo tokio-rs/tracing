@@ -533,7 +533,7 @@ fn error_root() {
 
 #[test]
 fn event_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
+    let _p = span!(Level::TRACE, "im_a_parent!");
     event!(Level::DEBUG, parent: &p, foo = ?3, bar.baz = %2, quux = false);
     event!(Level::DEBUG, parent: &p, foo = 3, bar.baz = 2, quux = false);
     event!(Level::DEBUG, parent: &p, foo = 3, bar.baz = 3,);
@@ -555,7 +555,7 @@ fn event_with_parent() {
 
 #[test]
 fn trace_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
+    let _p = span!(Level::TRACE, "im_a_parent!");
     trace!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
     trace!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     trace!(parent: &p, foo = 3, bar.baz = 3,);
@@ -578,7 +578,7 @@ fn trace_with_parent() {
 
 #[test]
 fn debug_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
+    let _p = span!(Level::TRACE, "im_a_parent!");
     debug!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
     debug!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     debug!(parent: &p, foo = 3, bar.baz = 3,);
@@ -601,7 +601,7 @@ fn debug_with_parent() {
 
 #[test]
 fn info_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
+    let _p = span!(Level::TRACE, "im_a_parent!");
     info!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
     info!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     info!(parent: &p, foo = 3, bar.baz = 3,);
@@ -624,7 +624,7 @@ fn info_with_parent() {
 
 #[test]
 fn warn_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
+    let _p = span!(Level::TRACE, "im_a_parent!");
     warn!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
     warn!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     warn!(parent: &p, foo = 3, bar.baz = 3,);
@@ -647,7 +647,7 @@ fn warn_with_parent() {
 
 #[test]
 fn error_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
+    let _p = span!(Level::TRACE, "im_a_parent!");
     error!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
     error!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     error!(parent: &p, foo = 3, bar.baz = 3,);

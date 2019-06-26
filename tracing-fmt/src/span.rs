@@ -213,7 +213,7 @@ impl<'a, N> Context<'a, N> {
 
     pub fn new_visitor<'writer>(
         &self,
-        writer: &'writer mut fmt::Write,
+        writer: &'writer mut dyn fmt::Write,
         is_empty: bool,
     ) -> N::Visitor
     where
@@ -300,7 +300,7 @@ impl Store {
                 let len = this.slab.len();
 
                 // Insert the span into a new slot.
-                let mut slot = Slot::new(span.take().unwrap(), attrs, new_visitor);
+                let slot = Slot::new(span.take().unwrap(), attrs, new_visitor);
                 this.slab.push(RwLock::new(slot));
                 // TODO: can we grow the slab in chunks to avoid having to
                 // realloc as often?

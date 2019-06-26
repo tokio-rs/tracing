@@ -10,7 +10,7 @@ use std::fmt::{self, Write};
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
-pub fn fmt_event<N>(ctx: &span::Context<N>, f: &mut Write, event: &Event) -> fmt::Result
+pub fn fmt_event<N>(ctx: &span::Context<N>, f: &mut dyn Write, event: &Event) -> fmt::Result
 where
     N: for<'a> ::NewVisitor<'a>,
 {
@@ -31,7 +31,7 @@ where
     writeln!(f)
 }
 
-pub fn fmt_verbose<N>(ctx: &span::Context<N>, f: &mut Write, event: &Event) -> fmt::Result
+pub fn fmt_verbose<N>(ctx: &span::Context<N>, f: &mut dyn Write, event: &Event) -> fmt::Result
 where
     N: for<'a> ::NewVisitor<'a>,
 {
@@ -53,12 +53,12 @@ where
 pub struct NewRecorder;
 
 pub struct Recorder<'a> {
-    writer: &'a mut Write,
+    writer: &'a mut dyn Write,
     is_empty: bool,
 }
 
 impl<'a> Recorder<'a> {
-    pub fn new(writer: &'a mut Write, is_empty: bool) -> Self {
+    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
         Self { writer, is_empty }
     }
 
@@ -75,7 +75,7 @@ impl<'a> ::NewVisitor<'a> for NewRecorder {
     type Visitor = Recorder<'a>;
 
     #[inline]
-    fn make(&self, writer: &'a mut Write, is_empty: bool) -> Self::Visitor {
+    fn make(&self, writer: &'a mut dyn Write, is_empty: bool) -> Self::Visitor {
         Recorder::new(writer, is_empty)
     }
 }
@@ -89,7 +89,7 @@ impl<'a> field::Visit for Recorder<'a> {
         }
     }
 
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.maybe_pad();
         let _ = match field.name() {
             "message" => write!(self.writer, "{:?}", value),

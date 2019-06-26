@@ -462,7 +462,7 @@ impl Error for FromEnvError {
     }
 
     #[allow(deprecated)] // for compatibility with minimum Rust version 1.26.0
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match self.kind {
             ErrorKind::Parse(ref p) => Some(p),
             ErrorKind::Env(ref e) => Some(e),

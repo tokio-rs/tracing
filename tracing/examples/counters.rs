@@ -48,7 +48,7 @@ impl<'a> Visit for Count<'a> {
 
     fn record_bool(&mut self, _: &Field, _: bool) {}
     fn record_str(&mut self, _: &Field, _: &str) {}
-    fn record_debug(&mut self, _: &Field, _: &fmt::Debug) {}
+    fn record_debug(&mut self, _: &Field, _: &dyn fmt::Debug) {}
 }
 
 impl CounterSubscriber {

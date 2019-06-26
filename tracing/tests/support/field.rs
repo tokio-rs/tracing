@@ -40,7 +40,7 @@ where
 
 impl MockField {
     /// Expect a field with the given name and value.
-    pub fn with_value(self, value: &Value) -> Self {
+    pub fn with_value(self, value: &dyn Value) -> Self {
         Self {
             value: MockValue::from(value),
             ..self
@@ -86,7 +86,7 @@ impl Expect {
         Self { only: true, ..self }
     }
 
-    fn compare_or_panic(&mut self, name: &str, value: &Value, ctx: &str) {
+    fn compare_or_panic(&mut self, name: &str, value: &dyn Value, ctx: &str) {
         let value = value.into();
         match self.fields.remove(name) {
             Some(MockValue::Any) => {}
@@ -155,7 +155,7 @@ impl<'a> Visit for CheckVisitor<'a> {
             .compare_or_panic(field.name(), &value, &self.ctx[..])
     }
 
-    fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.expect
             .compare_or_panic(field.name(), &field::debug(value), &self.ctx)
     }
@@ -172,8 +172,8 @@ impl<'a> CheckVisitor<'a> {
     }
 }
 
-impl<'a> From<&'a Value> for MockValue {
-    fn from(value: &'a Value) -> Self {
+impl<'a> From<&'a dyn Value> for MockValue {
+    fn from(value: &'a dyn Value) -> Self {
         struct MockValueBuilder {
             value: Option<MockValue>,
         }
@@ -195,7 +195,7 @@ impl<'a> From<&'a Value> for MockValue {
                 self.value = Some(MockValue::Str(value.to_owned()));
             }
 
-            fn record_debug(&mut self, _: &Field, value: &fmt::Debug) {
+            fn record_debug(&mut self, _: &Field, value: &dyn fmt::Debug) {
                 self.value = Some(MockValue::Debug(format!("{:?}", value)));
             }
         }
