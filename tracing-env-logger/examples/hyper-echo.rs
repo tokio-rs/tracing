@@ -131,7 +131,7 @@ fn main() {
                 let span = span!(
                     Level::TRACE,
                     "connection",
-                    remote = %sock.peer_addr().unwrap()
+                    remote = ?sock.peer_addr().unwrap()
                 );
                 hyper::rt::spawn(
                     http.serve_connection(sock, service_fn(echo))

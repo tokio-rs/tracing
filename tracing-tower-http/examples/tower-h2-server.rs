@@ -124,6 +124,8 @@ fn main() {
             local.ip = field::debug(addr.ip()),
             local.port = addr.port() as u64
         );
+        let _enter = serve_span.enter();
+
         let new_svc =
             tracing_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
         let h2 = Server::new(new_svc, Default::default(), reactor.clone());
@@ -161,7 +163,7 @@ fn main() {
                 error!("serve error {:?}", e);
             })
             .map(|_| {})
-            .instrument(serve_span);
+            .instrument(serve_span.clone());
 
         rt.spawn(serve);
         rt.shutdown_on_idle().wait().unwrap();
