@@ -5,12 +5,12 @@
 // threads with shared global state lets them interfere with eachother
 
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 mod support;
 
 use self::support::*;
-use tokio_trace::subscriber::with_default;
-use tokio_trace::Level;
+use tracing::subscriber::with_default;
+use tracing::Level;
 
 use std::sync::{
     atomic::{AtomicUsize, Ordering},

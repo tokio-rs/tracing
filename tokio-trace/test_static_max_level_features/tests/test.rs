@@ -1,9 +1,9 @@
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
 use std::sync::{Arc, Mutex};
-use tokio_trace::span::{Attributes, Record};
-use tokio_trace::{span, Event, Id, Level, Metadata, Subscriber};
+use tracing::span::{Attributes, Record};
+use tracing::{span, Event, Id, Level, Metadata, Subscriber};
 
 struct State {
     last_level: Mutex<Option<Level>>,
@@ -39,7 +39,7 @@ fn test_static_max_level_features() {
         last_level: Mutex::new(None),
     });
     let a = me.clone();
-    tokio_trace::subscriber::with_default(TestSubscriber(me), || {
+    tracing::subscriber::with_default(TestSubscriber(me), || {
         error!("");
         last(&a, Some(Level::ERROR));
         warn!("");

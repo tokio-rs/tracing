@@ -1,5 +1,5 @@
 //! Collects and records trace data.
-pub use tokio_trace_core::subscriber::*;
+pub use tracing_core::subscriber::*;
 
 /// Sets this subscriber as the default for the duration of a closure.
 ///
@@ -37,4 +37,4 @@ where
     ::dispatcher::set_global_default(::Dispatch::new(subscriber))
 }
 
-pub use tokio_trace_core::dispatcher::SetGlobalDefaultError;
+pub use tracing_core::dispatcher::SetGlobalDefaultError;

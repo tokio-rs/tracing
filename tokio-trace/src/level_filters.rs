@@ -31,12 +31,12 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tokio-trace = { version = "0.1", features = ["max_level_debug", "release_max_level_warn"] }
+//! tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_warn"] }
 //! ```
 //!
 //! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters
 use std::cmp::Ordering;
-use tokio_trace_core::Level;
+use tracing_core::Level;
 
 /// A filter comparable to trace verbosity `Level`.
 ///

@@ -1,5 +1,5 @@
 //! Structured data associated with `Span`s and `Event`s.
-pub use tokio_trace_core::field::*;
+pub use tracing_core::field::*;
 
 use Metadata;
 

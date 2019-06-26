@@ -11,9 +11,9 @@
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
-use tokio_trace::{field, Level};
+use tracing::{field, Level};
 
 mod sloggish_subscriber;
 use self::sloggish_subscriber::SloggishSubscriber;
@@ -21,7 +21,7 @@ use self::sloggish_subscriber::SloggishSubscriber;
 fn main() {
     let subscriber = SloggishSubscriber::new(2);
 
-    tokio_trace::subscriber::with_default(subscriber, || {
+    tracing::subscriber::with_default(subscriber, || {
         span!(Level::TRACE, "", version = &field::display(5.0)).in_scope(|| {
             span!(Level::TRACE, "server", host = "localhost", port = 8080).in_scope(|| {
                 info!("starting");

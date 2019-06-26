@@ -1,10 +1,10 @@
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 mod support;
 
 use self::support::*;
 
-use tokio_trace::{
+use tracing::{
     field::{debug, display},
     subscriber::with_default,
     Level,
@@ -41,10 +41,7 @@ fn event_without_message() {
 fn event_with_message() {
     let (subscriber, handle) = subscriber::mock()
         .event(event::mock().with_fields(field::mock("message").with_value(
-            &tokio_trace::field::debug(format_args!(
-                "hello from my event! yak shaved = {:?}",
-                true
-            )),
+            &tracing::field::debug(format_args!("hello from my event! yak shaved = {:?}", true)),
         )))
         .done()
         .run_with_handle();
@@ -63,7 +60,7 @@ fn one_with_everything() {
             event::mock()
                 .with_fields(
                     field::mock("message")
-                        .with_value(&tokio_trace::field::debug(format_args!(
+                        .with_value(&tracing::field::debug(format_args!(
                             "{:#x} make me one with{what:.>20}",
                             4277009102u64,
                             what = "everything"
@@ -156,7 +153,7 @@ fn borrowed_field() {
 // If emitting log instrumentation, this gets moved anyway, breaking the test.
 #[cfg(not(feature = "log"))]
 fn move_field_out_of_struct() {
-    use tokio_trace::field::debug;
+    use tracing::field::debug;
 
     #[derive(Debug)]
     struct Position {

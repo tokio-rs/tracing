@@ -12,7 +12,7 @@ use std::{
         Arc, Mutex,
     },
 };
-use tokio_trace::{
+use tracing::{
     span::{self, Attributes, Id},
     Event, Metadata, Subscriber,
 };

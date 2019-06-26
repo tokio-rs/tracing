@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
-use tokio_trace::{
+use tracing::{
     field::{Field, Visit},
     span,
     subscriber::{self, Subscriber},
@@ -123,7 +123,7 @@ impl Counters {
 fn main() {
     let (counters, subscriber) = Counters::new();
 
-    tokio_trace::subscriber::with_default(subscriber, || {
+    tracing::subscriber::with_default(subscriber, || {
         let mut foo: u64 = 2;
         span!(Level::TRACE, "my_great_span", foo_count = &foo).in_scope(|| {
             foo += 1;

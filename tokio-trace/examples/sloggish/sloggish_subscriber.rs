@@ -13,7 +13,7 @@
 extern crate ansi_term;
 extern crate humantime;
 use self::ansi_term::{Color, Style};
-use super::tokio_trace::{
+use super::tracing::{
     self,
     field::{Field, Visit},
     Id, Level, Subscriber,
@@ -103,7 +103,7 @@ impl<'a> fmt::Display for ColorLevel<'a> {
 }
 
 impl Span {
-    fn new(parent: Option<Id>, attrs: &tokio_trace::span::Attributes) -> Self {
+    fn new(parent: Option<Id>, attrs: &tracing::span::Attributes) -> Self {
         let mut span = Self {
             parent,
             kvs: Vec::new(),
@@ -198,30 +198,30 @@ impl SloggishSubscriber {
 }
 
 impl Subscriber for SloggishSubscriber {
-    fn enabled(&self, _metadata: &tokio_trace::Metadata) -> bool {
+    fn enabled(&self, _metadata: &tracing::Metadata) -> bool {
         true
     }
 
-    fn new_span(&self, span: &tokio_trace::span::Attributes) -> tokio_trace::Id {
+    fn new_span(&self, span: &tracing::span::Attributes) -> tracing::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
-        let id = tokio_trace::Id::from_u64(next);
+        let id = tracing::Id::from_u64(next);
         let span = Span::new(self.current.id(), span);
         self.spans.lock().unwrap().insert(id.clone(), span);
         id
     }
 
-    fn record(&self, span: &tokio_trace::Id, values: &tokio_trace::span::Record) {
+    fn record(&self, span: &tracing::Id, values: &tracing::span::Record) {
         let mut spans = self.spans.lock().expect("mutex poisoned!");
         if let Some(span) = spans.get_mut(span) {
             values.record(span);
         }
     }
 
-    fn record_follows_from(&self, _span: &tokio_trace::Id, _follows: &tokio_trace::Id) {
+    fn record_follows_from(&self, _span: &tracing::Id, _follows: &tracing::Id) {
         // unimplemented
     }
 
-    fn enter(&self, span_id: &tokio_trace::Id) {
+    fn enter(&self, span_id: &tracing::Id) {
         self.current.enter(span_id.clone());
         let mut stderr = self.stderr.lock();
         let mut stack = self.stack.lock().unwrap();
@@ -253,7 +253,7 @@ impl Subscriber for SloggishSubscriber {
         }
     }
 
-    fn event(&self, event: &tokio_trace::Event) {
+    fn event(&self, event: &tracing::Event) {
         let mut stderr = self.stderr.lock();
         let indent = self.stack.lock().unwrap().len();
         self.print_indent(&mut stderr, indent).unwrap();
@@ -274,12 +274,12 @@ impl Subscriber for SloggishSubscriber {
     }
 
     #[inline]
-    fn exit(&self, _span: &tokio_trace::Id) {
+    fn exit(&self, _span: &tracing::Id) {
         // TODO: unify stack with current span
         self.current.exit();
     }
 
-    fn drop_span(&self, _id: tokio_trace::Id) {
+    fn drop_span(&self, _id: tracing::Id) {
         // TODO: GC unneeded spans.
     }
 }

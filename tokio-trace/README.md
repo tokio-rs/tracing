@@ -1,26 +1,26 @@
-# tokio-trace
+# tracing
 
 A scoped, structured logging and diagnostics system.
 
-[Documentation](https://docs.rs/tokio-trace/0.1.0/tokio_trace/index.html)
+[Documentation](https://docs.rs/tracing/0.1.0/tracing/index.html)
 
 ## Overview
 
-`tokio-trace` is a framework for instrumenting Rust programs to collect
+`tracing` is a framework for instrumenting Rust programs to collect
 structured, event-based diagnostic information.
 
 In asynchronous systems like Tokio, interpreting traditional log messages can
 often be quite challenging. Since individual tasks are multiplexed on the same
 thread, associated events and log lines are intermixed making it difficult to
-trace the logic flow. `tokio-trace` expands upon logging-style diagnostics by
+trace the logic flow. `tracing` expands upon logging-style diagnostics by
 allowing libraries and applications to record structured events with additional
 information about *temporality* and *causality* — unlike a log message, a span
-in `tokio-trace` has a beginning and end time, may be entered and exited by the
+in `tracing` has a beginning and end time, may be entered and exited by the
 flow of execution, and may exist within a nested tree of similar spans. In
-addition, `tokio-trace` spans are *structured*, with the ability to record typed
+addition, `tracing` spans are *structured*, with the ability to record typed
 data as well as textual messages.
 
-The `tokio-trace` crate provides the APIs necessary for instrumenting libraries
+The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
 ## Usage
@@ -29,14 +29,14 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tokio-trace = "0.1"
+tracing = "0.1"
 ```
 
 Next, add this to your crate:
 
 ```rust
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 ```
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
@@ -68,22 +68,22 @@ essentially a `Span` that cannot be entered. They are created using the `event!`
 macro:
 
 ```rust
-use tokio_trace::Level;
+use tracing::Level;
 event!(Level::INFO, "something has happened!");
 ```
 
-Users of the [`log`] crate should note that `tokio-trace` exposes a set of macros for
+Users of the [`log`] crate should note that `tracing` exposes a set of macros for
 creating `Event`s (`trace!`, `debug!`, `info!`, `warn!`, and `error!`) which may
 be invoked with the same syntax as the similarly-named macros from the `log`
-crate. Often, the process of converting a project to use `tokio-trace` can begin
+crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
 Let's consider the `log` crate's yak-shaving example:
 
 ```rust
 #[macro_use]
-extern crate tokio_trace;
-use tokio_trace::field;
+extern crate tracing;
+use tracing::field;
 
 pub fn shave_the_yak(yak: &mut Yak) {
     // Create a new span for this invocation of `shave_the_yak`, annotated
@@ -119,27 +119,27 @@ You can find examples showing how to use this crate in the examples directory.
 
 ### In libraries
 
-Libraries should link only to the `tokio-trace` crate, and use the provided
+Libraries should link only to the `tracing` crate, and use the provided
 macros to record whatever information will be useful to downstream consumers.
 
 ### In executables
 
 In order to record trace events, executables have to use a `Subscriber`
-implementation compatible with `tokio-trace`. A `Subscriber` implements a way of
+implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
 
 There currently aren't too many subscribers to choose from. The best one to use right now
-is probably [`tokio-trace-fmt`], which logs to the terminal.
+is probably [`tracing-fmt`], which logs to the terminal.
 
 The simplest way to use a subscriber is to call the `set_global_default` function:
 
 ```rust
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
 let my_subscriber = FooSubscriber::new();
 
-tokio_trace::subscriber::set_global_default(my_subscriber).expect("setting tokio_trace default failed");
+tracing::subscriber::set_global_default(my_subscriber).expect("setting tracing default failed");
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -153,11 +153,11 @@ of executing code in a context. For example:
 
 ```rust
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
 let my_subscriber = FooSubscriber::new();
 
-tokio_trace::subscriber::with_default(subscriber, || {
+tracing::subscriber::with_default(subscriber, || {
     // Any trace events generated in this closure or by functions it calls
     // will be collected by `my_subscriber`.
 })
@@ -170,16 +170,16 @@ currently executing thread; other threads will not see the change from with_defa
 Any trace events generated outside the context of a
 subscriber will not be collected.
 
-The executable itself may use the `tokio-trace` crate to instrument itself as
+The executable itself may use the `tracing` crate to instrument itself as
 well.
 
-The [`tokio-trace-nursery`] repository contains less stable crates designed to
-be used with the `tokio-trace` ecosystem. It includes a collection of
+The [`tracing-nursery`] repository contains less stable crates designed to
+be used with the `tracing` ecosystem. It includes a collection of
 `Subscriber` implementations, as well as utility and adapter crates.
 
 [`log`]: https://docs.rs/log/0.4.6/log/
-[`tokio-trace-nursery`]: https://github.com/tokio-rs/tokio-trace-nursery
-[`tokio-trace-fmt`]: https://github.com/tokio-rs/tokio-trace-nursery/tree/master/tokio-trace-fmt
+[`tracing-nursery`]: https://github.com/tokio-rs/tracing-nursery
+[`tracing-fmt`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-fmt
 
 ## License
 

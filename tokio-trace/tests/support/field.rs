@@ -1,4 +1,4 @@
-use tokio_trace::{
+use tracing::{
     callsite::Callsite,
     field::{self, Field, Value, Visit},
     metadata::Kind,

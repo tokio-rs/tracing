@@ -1,10 +1,10 @@
 extern crate log;
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
 use log::{LevelFilter, Log, Metadata, Record};
 use std::sync::{Arc, Mutex};
-use tokio_trace::Level;
+use tracing::Level;
 
 struct State {
     last_log: Mutex<Option<String>>,

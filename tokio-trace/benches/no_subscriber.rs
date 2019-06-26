@@ -1,12 +1,12 @@
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate criterion;
 
 use criterion::Criterion;
-use tokio_trace::Level;
+use tracing::Level;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("span_no_subscriber", |b| {
@@ -24,7 +24,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             span!(
                 Level::TRACE,
                 "span",
-                foo = tokio_trace::field::display(format!("bar {:?}", 2))
+                foo = tracing::field::display(format!("bar {:?}", 2))
             );
         });
     });

@@ -5,4 +5,4 @@ mod metadata;
 pub mod span;
 pub mod subscriber;
 
-extern crate tokio_trace_core;
+extern crate tracing_core;

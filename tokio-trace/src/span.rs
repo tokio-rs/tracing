@@ -3,7 +3,7 @@
 //!
 //! A span consists of [fields], user-defined key-value pairs of arbitrary data
 //! that describe the context the span represents, and [metadata], a fixed set
-//! of attributes that describe all `tokio-trace` spans and events. Each span is
+//! of attributes that describe all `tracing` spans and events. Each span is
 //! assigned an [`Id` ] by the subscriber that uniquely identifies it in relation
 //! to other spans.
 //!
@@ -17,8 +17,8 @@
 //! For example:
 //! ```rust
 //! #[macro_use]
-//! extern crate tokio_trace;
-//! use tokio_trace::Level;
+//! extern crate tracing;
+//! use tracing::Level;
 //!
 //! # fn main() {
 //! /// Construct a new span at the `INFO` level named "my_span", with a single
@@ -54,8 +54,8 @@
 //! The `enter` method enters a span, returning a [guard] that exits the span
 //! when dropped
 //! ```
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var);
@@ -73,8 +73,8 @@
 //! `in_scope` takes a closure or function pointer and executes it inside the
 //! span.
 //! ```
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var = &my_var);
@@ -105,8 +105,8 @@
 //! as long as the longest-executing span in its subtree.
 //!
 //! ```
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! // this span is considered the "root" of a new trace tree:
 //! span!(Level::INFO, "root").in_scope(|| {
@@ -128,8 +128,8 @@
 //! the `span!` macro. For example:
 //!
 //! ```rust
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! // Create, but do not enter, a span called "foo".
 //! let foo = span!(Level::INFO, "foo");
@@ -173,12 +173,12 @@
 //! _closed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
-//! # extern crate tokio_trace;
+//! # extern crate tracing;
 //! # extern crate futures;
 //! # use futures::{Future, Poll, Async};
 //! struct MyFuture {
 //!    // data
-//!    span: tokio_trace::Span,
+//!    span: tracing::Span,
 //! }
 //!
 //! impl Future for MyFuture {
@@ -214,8 +214,8 @@
 //! that handle "closes" the span, since the capacity to enter it no longer
 //! exists. For example:
 //! ```
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! {
 //!     span!(Level::TRACE, "my_span").in_scope(|| {
@@ -250,8 +250,8 @@
 //! construct one span and perform the entire loop inside of that span, like:
 //!
 //! ```rust
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! # let n = 1;
 //! let span = span!(Level::TRACE, "my_loop");
@@ -264,8 +264,8 @@
 //! ```
 //! Or, should we create a new span for each iteration of the loop, as in:
 //! ```rust
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! # let n = 1u64;
 //! for i in 0..n {
@@ -301,7 +301,7 @@
 //! [`in_scope`]: struct.Span.html#method.in_scope
 //! [`follows_from`]: struct.Span.html#method.follows_from
 //! [guard]: struct.Entered.html
-pub use tokio_trace_core::span::{Attributes, Id, Record};
+pub use tracing_core::span::{Attributes, Id, Record};
 
 use std::{
     cmp, fmt,
@@ -445,8 +445,8 @@ impl Span {
     /// # Examples
     ///
     /// ```
-    /// #[macro_use] extern crate tokio_trace;
-    /// # use tokio_trace::Level;
+    /// #[macro_use] extern crate tracing;
+    /// # use tracing::Level;
     /// # fn main() {
     /// let span = span!(Level::INFO, "my_span");
     /// let guard = span.enter();
@@ -463,7 +463,7 @@ impl Span {
     /// Guards need not be explicitly dropped:
     ///
     /// ```
-    /// #[macro_use] extern crate tokio_trace;
+    /// #[macro_use] extern crate tracing;
     /// # fn main() {
     /// fn my_function() -> String {
     ///     // enter a span for the duration of this function.
@@ -487,7 +487,7 @@ impl Span {
     /// entered:
     ///
     /// ```
-    /// #[macro_use] extern crate tokio_trace;
+    /// #[macro_use] extern crate tracing;
     /// # fn main() {
     /// let span = info_span!("my_great_span");
     ///
@@ -528,8 +528,8 @@ impl Span {
     /// # Examples
     ///
     /// ```
-    /// # #[macro_use] extern crate tokio_trace;
-    /// # use tokio_trace::Level;
+    /// # #[macro_use] extern crate tracing;
+    /// # use tracing::Level;
     /// # fn main() {
     /// let my_span = span!(Level::TRACE, "my_span");
     ///
@@ -545,8 +545,8 @@ impl Span {
     ///
     /// Calling a function and returning the result:
     /// ```
-    /// # #[macro_use] extern crate tokio_trace;
-    /// # use tokio_trace::Level;
+    /// # #[macro_use] extern crate tracing;
+    /// # use tracing::Level;
     /// fn hello_world() -> String {
     ///     "Hello world!".to_owned()
     /// }

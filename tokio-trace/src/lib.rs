@@ -1,30 +1,30 @@
-#![doc(html_root_url = "https://docs.rs/tokio-trace/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.0")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 //! A scoped, structured logging and diagnostics system.
 //!
 //! # Overview
 //!
-//! `tokio-trace` is a framework for instrumenting Rust programs to collect
+//! `tracing` is a framework for instrumenting Rust programs to collect
 //! structured, event-based diagnostic information.
 //!
 //! In asynchronous systems like Tokio, interpreting traditional log messages can
 //! often be quite challenging. Since individual tasks are multiplexed on the same
 //! thread, associated events and log lines are intermixed making it difficult to
-//! trace the logic flow. `tokio-trace` expands upon logging-style diagnostics by
+//! trace the logic flow. `tracing` expands upon logging-style diagnostics by
 //! allowing libraries and applications to record structured events with additional
 //! information about *temporality* and *causality* — unlike a log message, a span
-//! in `tokio-trace` has a beginning and end time, may be entered and exited by the
+//! in `tracing` has a beginning and end time, may be entered and exited by the
 //! flow of execution, and may exist within a nested tree of similar spans. In
-//! addition, `tokio-trace` spans are *structured*, with the ability to record typed
+//! addition, `tracing` spans are *structured*, with the ability to record typed
 //! data as well as textual messages.
 //!
-//! The `tokio-trace` crate provides the APIs necessary for instrumenting libraries
+//! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
 //! # Core Concepts
 //!
-//! The core of `tokio-trace`'s API is composed of _spans_, _events_ and
+//! The core of `tracing`'s API is composed of _spans_, _events_ and
 //! _subscribers_. We'll cover these in turn.
 //!
 //! ## Spans
@@ -38,9 +38,9 @@
 //! For example:
 //! ```
 //! #[macro_use]
-//! extern crate tokio_trace;
+//! extern crate tracing;
 //!
-//! use tokio_trace::Level;
+//! use tracing::Level;
 //!
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my_span");
@@ -62,8 +62,8 @@
 //!
 //! For example:
 //! ```
-//! # #[macro_use] extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # #[macro_use] extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! // records an event outside of any span context:
 //! event!(Level::INFO, "something happened");
@@ -115,14 +115,14 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tokio-trace = "0.1"
+//! tracing = "0.1"
 //! ```
 //!
 //! Next, add this to your crate:
 //!
 //! ```rust
 //! #[macro_use]
-//! extern crate tokio_trace;
+//! extern crate tracing;
 //! # fn main() {}
 //! ```
 //!
@@ -131,8 +131,8 @@
 //!
 //! ```rust
 //! # #[macro_use]
-//! # extern crate tokio_trace;
-//! # use tokio_trace::Level;
+//! # extern crate tracing;
+//! # use tracing::Level;
 //! # fn main() {
 //! // Construct a new span named "my span" with trace log level.
 //! let span = span!(Level::TRACE, "my span");
@@ -152,25 +152,25 @@
 //!
 //! ```rust
 //! # #[macro_use]
-//! # extern crate tokio_trace;
+//! # extern crate tracing;
 //! # fn main() {
-//! use tokio_trace::Level;
+//! use tracing::Level;
 //! event!(Level::INFO, "something has happened!");
 //! # }
 //! ```
 //!
-//! Users of the [`log`] crate should note that `tokio-trace` exposes a set of
+//! Users of the [`log`] crate should note that `tracing` exposes a set of
 //! macros for creating `Event`s (`trace!`, `debug!`, `info!`, `warn!`, and
 //! `error!`) which may be invoked with the same syntax as the similarly-named
 //! macros from the `log` crate. Often, the process of converting a project to
-//! use `tokio-trace` can begin with a simple drop-in replacement.
+//! use `tracing` can begin with a simple drop-in replacement.
 //!
 //! Let's consider the `log` crate's yak-shaving example:
 //!
 //! ```rust
 //! #[macro_use]
-//! extern crate tokio_trace;
-//! use tokio_trace::Level;
+//! extern crate tracing;
+//! use tracing::Level;
 //!
 //! # #[derive(Debug)] pub struct Yak(String);
 //! # impl Yak { fn shave(&mut self, _: u32) {} }
@@ -210,25 +210,25 @@
 //!
 //! ## In libraries
 //!
-//! Libraries should link only to the `tokio-trace` crate, and use the provided
+//! Libraries should link only to the `tracing` crate, and use the provided
 //! macros to record whatever information will be useful to downstream
 //! consumers.
 //!
 //! ## In executables
 //!
 //! In order to record trace events, executables have to use a `Subscriber`
-//! implementation compatible with `tokio-trace`. A `Subscriber` implements a
+//! implementation compatible with `tracing`. A `Subscriber` implements a
 //! way of collecting trace data, such as by logging it to standard output.
 //!
 //! There currently aren't too many subscribers to choose from. The best one to use right now
-//!  is probably [`tokio-trace-fmt`], which logs to the terminal.
+//!  is probably [`tracing-fmt`], which logs to the terminal.
 //! The simplest way to use a subscriber is to call the `set_global_default` function:
 //!
 //! ```no_build
 //! #[macro_use]
-//! extern crate tokio_trace;
+//! extern crate tracing;
 //! let my_subscriber = FooSubscriber::new();
-//! tokio_trace::subscriber::set_global_default(my_subscriber).expect("setting tokio_trace default failed");
+//! tracing::subscriber::set_global_default(my_subscriber).expect("setting tracing default failed");
 //! ```
 //!
 //! Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
@@ -240,19 +240,19 @@
 //! In addition, you can locally override the default subscriber, using the `tokio` pattern
 //! of executing code in a context. For example:
 //!
-//! Unlike the `log` crate, `tokio-trace` does *not* use a global `Subscriber`
+//! Unlike the `log` crate, `tracing` does *not* use a global `Subscriber`
 //! which is initialized once. Instead, it follows the `tokio` pattern of
 //! executing code in a context. For example:
 //!
 //! ```rust
 //! #[macro_use]
-//! extern crate tokio_trace;
+//! extern crate tracing;
 //! # pub struct FooSubscriber;
-//! # use tokio_trace::{span::{Id, Attributes, Record}, Metadata};
-//! # impl tokio_trace::Subscriber for FooSubscriber {
+//! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # impl tracing::Subscriber for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
-//! #   fn event(&self, _: &tokio_trace::Event) {}
+//! #   fn event(&self, _: &tracing::Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -265,7 +265,7 @@
 //!
 //! let my_subscriber = FooSubscriber::new();
 //!
-//! tokio_trace::subscriber::with_default(my_subscriber, || {
+//! tracing::subscriber::with_default(my_subscriber, || {
 //!     // Any trace events generated in this closure or by functions it calls
 //!     // will be collected by `my_subscriber`.
 //! })
@@ -280,24 +280,24 @@
 //! Any trace events generated outside the
 //! context of a subscriber will not be collected.
 //!
-//! The executable itself may use the `tokio-trace` crate to instrument itself
+//! The executable itself may use the `tracing` crate to instrument itself
 //! as well.
 //!
-//! The [`tokio-trace-nursery`] repository contains less stable crates designed
-//! to be used with the `tokio-trace` ecosystem. It includes a collection of
+//! The [`tracing-nursery`] repository contains less stable crates designed
+//! to be used with the `tracing` ecosystem. It includes a collection of
 //! `Subscriber` implementations, as well as utility and adapter crates.
 //!
-//! In particular, the following `tokio-trace-nursery` crates are likely to be
+//! In particular, the following `tracing-nursery` crates are likely to be
 //! of interest:
 //!
-//! - [`tokio-trace-futures`] provides a compatibility layer with the `futures`
+//! - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!   crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
-//! - [`tokio-trace-fmt`] provides a `Subscriber` implementation for
+//! - [`tracing-fmt`] provides a `Subscriber` implementation for
 //!   logging formatted trace data to stdout, with similar filtering and
 //!   formatting to the `env-logger` crate.
-//! - [`tokio-trace-log`] provides a compatibility layer with the `log` crate,
-//!   allowing log `Record`s to be recorded as `tokio-trace` `Event`s within the
-//!   trace tree. This is useful when a project using `tokio-trace` have
+//! - [`tracing-log`] provides a compatibility layer with the `log` crate,
+//!   allowing log `Record`s to be recorded as `tracing` `Event`s within the
+//!   trace tree. This is useful when a project using `tracing` have
 //!   dependencies which use `log`.
 //!
 //!
@@ -308,11 +308,11 @@
 //! * A set of features controlling the [static verbosity level].
 //! * `log` causes trace instrumentation points to emit [`log`] records as well
 //!   as trace events. This is inteded for use in libraries whose users may be
-//!   using either `tokio-trace` or `log`.
+//!   using either `tracing` or `log`.
 //!
 //! ```toml
 //! [dependencies]
-//! tokio-trace = { version = "0.1", features = ["log"] }
+//! tracing = { version = "0.1", features = ["log"] }
 //! ```
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
@@ -328,14 +328,14 @@
 //! [metadata]: struct.Metadata.html
 //! [`field::display`]: field/fn.display.html
 //! [`field::debug`]: field/fn.debug.html
-//! [`tokio-trace-nursery`]: https://github.com/tokio-rs/tokio-trace-nursery
-//! [`tokio-trace-futures`]: https://github.com/tokio-rs/tokio-trace-nursery/tree/master/tokio-trace-futures
-//! [`tokio-trace-fmt`]: https://github.com/tokio-rs/tokio-trace-nursery/tree/master/tokio-trace-fmt
-//! [`tokio-trace-log`]: https://github.com/tokio-rs/tokio-trace-nursery/tree/master/tokio-trace-log
+//! [`tracing-nursery`]: https://github.com/tokio-rs/tracing-nursery
+//! [`tracing-futures`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-futures
+//! [`tracing-fmt`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-fmt
+//! [`tracing-log`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-log
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 #[macro_use]
 extern crate cfg_if;
-extern crate tokio_trace_core;
+extern crate tracing_core;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
@@ -345,7 +345,7 @@ pub extern crate log;
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
 #[allow(unused_imports)]
 #[doc(hidden)]
-use tokio_trace_core::*;
+use tracing_core::*;
 
 pub use self::{
     dispatcher::Dispatch,
@@ -353,13 +353,13 @@ pub use self::{
     field::Value,
     span::Span,
     subscriber::Subscriber,
-    tokio_trace_core::{dispatcher, event, Level, Metadata},
+    tracing_core::{dispatcher, event, Level, Metadata},
 };
 
 #[doc(hidden)]
 pub use self::{
     span::Id,
-    tokio_trace_core::{
+    tracing_core::{
         callsite::{self, Callsite},
         metadata,
     },

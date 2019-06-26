@@ -1,6 +1,6 @@
 #[macro_use]
-extern crate tokio_trace;
-use tokio_trace::{
+extern crate tracing;
+use tracing::{
     span,
     subscriber::{with_default, Interest, Subscriber},
     Event, Level, Metadata,

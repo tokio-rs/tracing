@@ -1,10 +1,10 @@
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 mod support;
 
 use self::support::*;
 use std::thread;
-use tokio_trace::{
+use tracing::{
     field::{debug, display},
     subscriber::with_default,
     Level, Span,
@@ -349,7 +349,7 @@ fn borrowed_field() {
 // If emitting log instrumentation, this gets moved anyway, breaking the test.
 #[cfg(not(feature = "log"))]
 fn move_field_out_of_struct() {
-    use tokio_trace::field::debug;
+    use tracing::field::debug;
 
     #[derive(Debug)]
     struct Position {
