@@ -95,16 +95,23 @@ impl FormatTime for Uptime {
 }
 
 #[inline(always)]
+#[cfg(feature = "ansi")]
 pub(crate) fn write<T>(timer: T, writer: &mut fmt::Write) -> fmt::Result
 where
     T: FormatTime,
 {
-    #[cfg(feature = "ansi")]
     let style = Style::new().dimmed();
-    #[cfg(feature = "ansi")]
     write!(writer, "{}", style.prefix())?;
     timer.format_time(writer)?;
-    #[cfg(feature = "ansi")]
     write!(writer, "{}", style.suffix())?;
     Ok(())
+}
+
+#[inline(always)]
+#[cfg(not(feature = "ansi"))]
+pub(crate) fn write<T>(timer: T, writer: &mut fmt::Write) -> fmt::Result
+where
+    T: FormatTime,
+{
+    timer.format_time(writer)
 }
