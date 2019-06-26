@@ -119,7 +119,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 }
 
 fn main() {
-    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
     tracing_env_logger::try_init().expect("init log adapter");
 
     tracing::subscriber::with_default(subscriber, || {

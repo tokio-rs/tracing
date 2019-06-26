@@ -21,7 +21,7 @@ fn shave(yak: usize) -> bool {
 }
 
 fn main() {
-    let subscriber = tracing_fmt::FmtSubscriber::builder().full().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
 
     tracing::subscriber::with_default(subscriber, || {
         let number_of_yaks = 3;

@@ -5,6 +5,8 @@ extern crate tracing;
 
 #[cfg(feature = "ansi")]
 extern crate ansi_term;
+#[cfg(feature = "chrono")]
+extern crate chrono;
 extern crate lock_api;
 extern crate owning_ref;
 extern crate parking_lot;
@@ -20,14 +22,43 @@ use std::{any::TypeId, cell::RefCell, fmt, io};
 pub mod default;
 pub mod filter;
 mod span;
+pub mod time;
 
 pub use filter::Filter;
 pub use span::Context;
 
+/// A type that can format a tracing `Event` for a `fmt::Write`.
+///
+/// `FormatEvent` is primarily used in the context of [`FmtSubscriber`]. Each time an event is
+/// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
+/// emit a log message.
+///
+/// This trait is already implemented for function pointers with the same signature as `format`.
+pub trait FormatEvent<N> {
+    /// Write a log message for `Event` in `Context` to the given `Write`.
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut fmt::Write,
+        event: &Event,
+    ) -> fmt::Result;
+}
+
+impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result {
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        (*self)(ctx, writer, event)
+    }
+}
+
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = default::NewRecorder,
-    E = fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result,
+    E = default::Format<default::Full>,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -40,7 +71,7 @@ pub struct FmtSubscriber<
 #[derive(Debug, Default)]
 pub struct Builder<
     N = default::NewRecorder,
-    E = fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result,
+    E = default::Format<default::Full>,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -94,7 +125,7 @@ where
 impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
+    E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
     fn register_callsite(&self, metadata: &Metadata) -> Interest {
@@ -141,7 +172,7 @@ where
             };
             let ctx = span::Context::new(&self.spans, &self.new_visitor);
 
-            if (self.fmt_event)(&ctx, buf, event).is_ok() {
+            if self.fmt_event.format_event(&ctx, buf, event).is_ok() {
                 // TODO: make the io object configurable
                 let _ = io::Write::write_all(&mut io::stdout(), buf.as_bytes());
             }
@@ -207,7 +238,7 @@ impl Default for Builder {
         Builder {
             filter: filter::EnvFilter::from_default_env(),
             new_visitor: default::NewRecorder,
-            fmt_event: default::fmt_event,
+            fmt_event: default::Format::default(),
             settings: Settings::default(),
         }
     }
@@ -216,7 +247,7 @@ impl Default for Builder {
 impl<N, E, F> Builder<N, E, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
-    E: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
+    E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
@@ -225,6 +256,32 @@ where
             fmt_event: self.fmt_event,
             filter: self.filter,
             spans: span::Store::with_capacity(32),
+            settings: self.settings,
+        }
+    }
+}
+
+impl<N, L, T, F> Builder<N, default::Format<L, T>, F>
+where
+    N: for<'a> NewVisitor<'a> + 'static,
+    F: Filter<N> + 'static,
+{
+    /// Use the given `timer` for log message timestamps.
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, default::Format<L, T2>, F> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event.with_timer(timer),
+            filter: self.filter,
+            settings: self.settings,
+        }
+    }
+
+    /// Use the given `timer` for log message timestamps.
+    pub fn without_time(self) -> Builder<N, default::Format<L, ()>, F> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event.without_time(),
+            filter: self.filter,
             settings: self.settings,
         }
     }
@@ -286,16 +343,15 @@ impl<N, E, F> Builder<N, E, F> {
         }
     }
 
-    /// Sets the subscriber being built to use the default full span formatter.
-    // TODO: this should probably just become the default.
-    pub fn full(
-        self,
-    ) -> Builder<N, fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result, F>
+    /// Sets the subscriber being built to use a less verbose formatter.
+    ///
+    /// See [`default::Compact`].
+    pub fn compact(self) -> Builder<N, default::Format<default::Compact>, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
         Builder {
-            fmt_event: default::fmt_verbose,
+            fmt_event: default::Format::default().compact(),
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,
@@ -306,7 +362,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
     where
-        E2: Fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result + 'static,
+        E2: FormatEvent<N> + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
@@ -329,8 +385,7 @@ impl<N, E, F> Builder<N, E, F> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fmt;
-    use tracing_core::Dispatch;
+    use tracing_core::dispatcher::Dispatch;
 
     #[test]
     fn subscriber_downcasts() {
@@ -341,12 +396,10 @@ mod test {
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        type FmtEvent =
-            fn(&span::Context<default::NewRecorder>, &mut dyn fmt::Write, &Event) -> fmt::Result;
         let subscriber = FmtSubscriber::new();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<default::NewRecorder>().is_some());
         assert!(dispatch.downcast_ref::<filter::EnvFilter>().is_some());
-        assert!(dispatch.downcast_ref::<FmtEvent>().is_some())
+        assert!(dispatch.downcast_ref::<default::Format>().is_some())
     }
 }
