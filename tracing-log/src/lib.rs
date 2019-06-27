@@ -20,7 +20,7 @@
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 extern crate log;
-extern crate tracing;
+extern crate tracing_core;
 extern crate tracing_subscriber;
 
 use std::{
@@ -33,13 +33,14 @@ use std::{
     },
 };
 
-use tracing::{
+use tracing_core::{
     callsite::{self, Callsite},
     dispatcher, field,
     metadata::Kind,
-    span,
+    span::{self, Id},
     subscriber::{self, Subscriber},
-    Event, Id, Metadata,
+    Event, Metadata,
+    identify_callsite,
 };
 
 /// Format a log record as a trace event in the current span.
@@ -70,8 +71,8 @@ impl<'a> AsLog for Metadata<'a> {
     type Log = log::Metadata<'a>;
     fn as_log(&self) -> Self::Log {
         log::Metadata::builder()
-            .level(self.level.as_log())
-            .target(self.target)
+            .level(self.level().as_log())
+            .target(self.target())
             .build()
     }
 }
@@ -80,24 +81,22 @@ impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
         struct LogCallsite;
+        const CS_ID: callsite::Identifier = identify_callsite!(&LogCallsite);
         impl Callsite for LogCallsite {
             fn set_interest(&self, _interest: subscriber::Interest) {}
             fn metadata(&self) -> &Metadata {
                 // Since we never register the log callsite, this method is
                 // never actually called. So it's okay to return mostly empty metadata.
-                static EMPTY_META: Metadata<'static> = Metadata {
-                    name: "log record",
-                    target: "log",
-                    level: tracing::Level::TRACE,
-                    module_path: None,
-                    file: None,
-                    line: None,
-                    fields: field::FieldSet {
-                        names: &["message"],
-                        callsite: callsite::Identifier(&LogCallsite),
-                    },
-                    kind: Kind::SPAN,
-                };
+                static EMPTY_META: Metadata<'static> = Metadata::new(
+                    "log record",
+                    "log",
+                    tracing_core::Level::TRACE,
+                    None,
+                    None,
+                    None,
+                    field::FieldSet::new(&["message"], CS_ID),
+                    Kind::SPAN,
+                );
                 &EMPTY_META
             }
         }
@@ -106,37 +105,36 @@ impl<'a> AsTrace for log::Record<'a> {
             self.target(),
             self.level().as_trace(),
             self.module_path(),
-            self.file(),
             self.line(),
-            &["message"],
-            &LogCallsite,
+            self.file(),
+            field::FieldSet::new(&["message"], CS_ID),
             Kind::SPAN,
         )
     }
 }
 
-impl AsLog for tracing::Level {
+impl AsLog for tracing_core::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
         match *self {
-            tracing::Level::ERROR => log::Level::Error,
-            tracing::Level::WARN => log::Level::Warn,
-            tracing::Level::INFO => log::Level::Info,
-            tracing::Level::DEBUG => log::Level::Debug,
-            tracing::Level::TRACE => log::Level::Trace,
+            tracing_core::Level::ERROR => log::Level::Error,
+            tracing_core::Level::WARN => log::Level::Warn,
+            tracing_core::Level::INFO => log::Level::Info,
+            tracing_core::Level::DEBUG => log::Level::Debug,
+            tracing_core::Level::TRACE => log::Level::Trace,
         }
     }
 }
 
 impl AsTrace for log::Level {
-    type Trace = tracing::Level;
-    fn as_trace(&self) -> tracing::Level {
+    type Trace = tracing_core::Level;
+    fn as_trace(&self) -> tracing_core::Level {
         match self {
-            log::Level::Error => tracing::Level::ERROR,
-            log::Level::Warn => tracing::Level::WARN,
-            log::Level::Info => tracing::Level::INFO,
-            log::Level::Debug => tracing::Level::DEBUG,
-            log::Level::Trace => tracing::Level::TRACE,
+            log::Level::Error => tracing_core::Level::ERROR,
+            log::Level::Warn => tracing_core::Level::WARN,
+            log::Level::Info => tracing_core::Level::INFO,
+            log::Level::Debug => tracing_core::Level::DEBUG,
+            log::Level::Trace => tracing_core::Level::TRACE,
         }
     }
 }
@@ -477,10 +475,10 @@ impl Subscriber for TraceLogger {
             logger.log(
                 &log::Record::builder()
                     .metadata(log_meta)
-                    .target(meta.target)
-                    .module_path(meta.module_path.as_ref().cloned())
-                    .file(meta.file.as_ref().cloned())
-                    .line(meta.line)
+                    .target(meta.target())
+                    .module_path(meta.module_path().as_ref().cloned())
+                    .file(meta.file().as_ref().cloned())
+                    .line(meta.line())
                     .args(format_args!(
                         "{}{}{}{}",
                         parent.unwrap_or(""),
