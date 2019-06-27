@@ -35,12 +35,11 @@ use std::{
 
 use tracing_core::{
     callsite::{self, Callsite},
-    dispatcher, field,
+    dispatcher, field, identify_callsite,
     metadata::Kind,
     span::{self, Id},
     subscriber::{self, Subscriber},
     Event, Metadata,
-    identify_callsite,
 };
 
 /// Format a log record as a trace event in the current span.

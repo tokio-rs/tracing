@@ -530,8 +530,8 @@ mod tests {
     use super::*;
     use default::NewRecorder;
     use span::*;
-    use tracing_core::*;
     use tracing_core::field::FieldSet;
+    use tracing_core::*;
 
     struct Cs;
 
