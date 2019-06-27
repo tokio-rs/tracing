@@ -163,23 +163,30 @@ mod test {
         static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
         static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
 
-        fn filter1<N>(_: &Metadata, _: &span::Context<N>) -> bool {
-            FILTER1_CALLS.fetch_add(1, Ordering::Relaxed);
-            true
+        enum Filter {
+            One,
+            Two,
         }
+        impl<N> filter::Filter<N> for Filter {
+            fn callsite_enabled(&self, _: &Metadata, _: &Context<N>) -> Interest {
+                Interest::sometimes()
+            }
 
-        fn filter2<N>(_: &Metadata, _: &span::Context<N>) -> bool {
-            FILTER2_CALLS.fetch_add(1, Ordering::Relaxed);
-            true
+            fn enabled(&self, _: &Metadata, _: &Context<N>) -> bool {
+                match self {
+                    Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
+                    Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
+                };
+                true
+            }
         }
-
         fn event() {
             trace!("my event");
         }
 
         let subscriber = FmtSubscriber::builder()
             .compact()
-            .with_filter(filter1 as fn(&Metadata, &span::Context<_>) -> bool)
+            .with_filter(Filter::One)
             .with_filter_reloading();
         let handle = subscriber.reload_handle();
         let subscriber = Dispatch::new(subscriber.finish());
@@ -193,9 +200,7 @@ mod test {
             assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 1);
             assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
 
-            handle
-                .reload(filter2 as fn(&Metadata, &span::Context<_>) -> bool)
-                .expect("should reload");
+            handle.reload(Filter::Two).expect("should reload");
 
             event();
 

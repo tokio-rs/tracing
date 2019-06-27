@@ -44,7 +44,19 @@ use tracing_core::{
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
-    let meta = record.as_trace();
+    let filter_meta = record.as_trace();
+    if !dispatcher::get_default(|dispatch| dispatch.enabled(&filter_meta)) {
+        return Ok(());
+    };
+
+    let cs = match record.level() {
+        log::Level::Trace => TRACE_CS,
+        log::Level::Debug => DEBUG_CS,
+        log::Level::Info => INFO_CS,
+        log::Level::Warn => WARN_CS,
+        log::Level::Error => ERROR_CS,
+    };
+    let meta = cs.metadata();
     let fields = meta.fields();
     let key = fields
         .field(&"message")
@@ -66,6 +78,45 @@ pub trait AsTrace {
     fn as_trace(&self) -> Self::Trace;
 }
 
+macro_rules! log_cs {
+    ($level:expr) => {{
+        struct Callsite;
+        static META: Metadata = Metadata::new(
+            "log event",
+            "log",
+            $level,
+            None,
+            None,
+            None,
+            field::FieldSet::new(
+                &[
+                    "message",
+                    "log.target",
+                    "log.module_path",
+                    "log.file",
+                    "log.line",
+                ],
+                identify_callsite!(&Callsite),
+            ),
+            Kind::EVENT,
+        );
+
+        impl callsite::Callsite for Callsite {
+            fn set_interest(&self, _: subscriber::Interest) {}
+            fn metadata(&self) -> &'static Metadata<'static> {
+                &META
+            }
+        }
+        &Callsite
+    }};
+}
+
+static TRACE_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::TRACE);
+static DEBUG_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::DEBUG);
+static INFO_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::INFO);
+static WARN_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::WARN);
+static ERROR_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::ERROR);
+
 impl<'a> AsLog for Metadata<'a> {
     type Log = log::Metadata<'a>;
     fn as_log(&self) -> Self::Log {
@@ -75,30 +126,16 @@ impl<'a> AsLog for Metadata<'a> {
             .build()
     }
 }
-
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
-        struct LogCallsite;
-        const CS_ID: callsite::Identifier = identify_callsite!(&LogCallsite);
-        impl Callsite for LogCallsite {
-            fn set_interest(&self, _interest: subscriber::Interest) {}
-            fn metadata(&self) -> &Metadata {
-                // Since we never register the log callsite, this method is
-                // never actually called. So it's okay to return mostly empty metadata.
-                static EMPTY_META: Metadata<'static> = Metadata::new(
-                    "log record",
-                    "log",
-                    tracing_core::Level::TRACE,
-                    None,
-                    None,
-                    None,
-                    field::FieldSet::new(&["message"], CS_ID),
-                    Kind::SPAN,
-                );
-                &EMPTY_META
-            }
-        }
+        let cs_id = match self.level() {
+            log::Level::Trace => identify_callsite!(TRACE_CS),
+            log::Level::Debug => identify_callsite!(DEBUG_CS),
+            log::Level::Info => identify_callsite!(INFO_CS),
+            log::Level::Warn => identify_callsite!(WARN_CS),
+            log::Level::Error => identify_callsite!(ERROR_CS),
+        };
         Metadata::new(
             "log record",
             self.target(),
@@ -106,8 +143,17 @@ impl<'a> AsTrace for log::Record<'a> {
             self.module_path(),
             self.line(),
             self.file(),
-            field::FieldSet::new(&["message"], CS_ID),
-            Kind::SPAN,
+            field::FieldSet::new(
+                &[
+                    "message",
+                    "log.target",
+                    "log.module_path",
+                    "log.file",
+                    "log.line",
+                ],
+                cs_id,
+            ),
+            Kind::EVENT,
         )
     }
 }

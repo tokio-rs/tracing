@@ -199,7 +199,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.register_callsite
     #[inline]
-    pub fn register_callsite(&self, metadata: &Metadata) -> subscriber::Interest {
+    pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> subscriber::Interest {
         self.subscriber.register_callsite(metadata)
     }
 
@@ -358,7 +358,7 @@ where
 struct NoSubscriber;
 impl Subscriber for NoSubscriber {
     #[inline]
-    fn register_callsite(&self, _: &Metadata) -> subscriber::Interest {
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
         subscriber::Interest::never()
     }
 
@@ -382,7 +382,10 @@ impl Subscriber for NoSubscriber {
 }
 
 impl Registrar {
-    pub(crate) fn try_register(&self, metadata: &Metadata) -> Option<subscriber::Interest> {
+    pub(crate) fn try_register(
+        &self,
+        metadata: &'static Metadata<'static>,
+    ) -> Option<subscriber::Interest> {
         self.0.upgrade().map(|s| s.register_callsite(metadata))
     }
 
