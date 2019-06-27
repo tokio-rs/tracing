@@ -12,7 +12,7 @@ struct State {
 struct TestSubscriber(Arc<State>);
 
 impl Subscriber for TestSubscriber {
-    fn enabled(&self, _: &Metadata) -> bool {
+    fn enabled(&self, _: &'static Metadata) -> bool {
         true
     }
 

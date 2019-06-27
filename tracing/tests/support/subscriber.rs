@@ -35,7 +35,7 @@ struct SpanState {
     refs: usize,
 }
 
-struct Running<F: Fn(&Metadata) -> bool> {
+struct Running<F: Fn(&'static Metadata) -> bool> {
     spans: Mutex<HashMap<Id, SpanState>>,
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
@@ -43,23 +43,23 @@ struct Running<F: Fn(&Metadata) -> bool> {
     filter: F,
 }
 
-pub struct MockSubscriber<F: Fn(&Metadata) -> bool> {
+pub struct MockSubscriber<F: Fn(&'static Metadata) -> bool> {
     expected: VecDeque<Expect>,
     filter: F,
 }
 
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>);
 
-pub fn mock() -> MockSubscriber<fn(&Metadata) -> bool> {
+pub fn mock() -> MockSubscriber<fn(&'static Metadata) -> bool> {
     MockSubscriber {
         expected: VecDeque::new(),
-        filter: (|_: &Metadata| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
+        filter: (|_: &'static Metadata| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
     }
 }
 
 impl<F> MockSubscriber<F>
 where
-    F: Fn(&Metadata) -> bool + 'static,
+    F: Fn(&'static Metadata) -> bool + 'static,
 {
     pub fn enter(mut self, span: MockSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
@@ -109,7 +109,7 @@ where
 
     pub fn with_filter<G>(self, filter: G) -> MockSubscriber<G>
     where
-        G: Fn(&Metadata) -> bool + 'static,
+        G: Fn(&'static Metadata) -> bool + 'static,
     {
         MockSubscriber {
             filter,
@@ -138,9 +138,9 @@ where
 
 impl<F> Subscriber for Running<F>
 where
-    F: Fn(&Metadata) -> bool + 'static,
+    F: Fn(&'static Metadata) -> bool + 'static,
 {
-    fn enabled(&self, meta: &Metadata) -> bool {
+    fn enabled(&self, meta: &'static Metadata) -> bool {
         (self.filter)(meta)
     }
 

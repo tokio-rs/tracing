@@ -2020,15 +2020,13 @@ macro_rules! callsite {
         };
         use $crate::{callsite, subscriber::Interest, Metadata};
         struct MyCallsite;
-        static META: Metadata<'static> = {
-            metadata! {
-                name: $name,
-                target: $target,
-                level: $lvl,
-                fields: fieldset!( $($fields)* ),
-                callsite: &MyCallsite,
-                kind: $kind,
-            }
+        static META: Metadata = metadata! {
+            name: $name,
+            target: $target,
+            level: $lvl,
+            fields: fieldset!( $($fields)* ),
+            callsite: &MyCallsite,
+            kind: $kind,
         };
         // FIXME: Rust 1.34 deprecated ATOMIC_USIZE_INIT. When Tokio's minimum
         // supported version is 1.34, replace this with the const fn `::new`.
@@ -2055,7 +2053,7 @@ macro_rules! callsite {
                 INTEREST.store(interest, Ordering::SeqCst);
             }
 
-            fn metadata(&self) -> &Metadata {
+            fn metadata(&self) -> &'static Metadata {
                 &META
             }
         }

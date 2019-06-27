@@ -61,7 +61,7 @@ pub trait Callsite: Sync {
     /// Returns the [metadata] associated with the callsite.
     ///
     /// [metadata]: ../metadata/struct.Metadata.html
-    fn metadata(&self) -> &Metadata;
+    fn metadata(&self) -> &'static Metadata;
 }
 
 /// Uniquely identifies a [`Callsite`]

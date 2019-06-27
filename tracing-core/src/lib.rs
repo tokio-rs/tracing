@@ -66,7 +66,7 @@ extern crate lazy_static;
 /// }
 /// impl callsite::Callsite for MyCallsite {
 /// # fn set_interest(&self, _: Interest) { unimplemented!() }
-/// # fn metadata(&self) -> &Metadata { unimplemented!() }
+/// # fn metadata(&self) -> &'static Metadata { unimplemented!() }
 ///     // ...
 /// }
 ///
@@ -100,7 +100,7 @@ macro_rules! identify_callsite {
 /// # pub struct MyCallsite { }
 /// # impl Callsite for MyCallsite {
 /// # fn set_interest(&self, _: Interest) { unimplemented!() }
-/// # fn metadata(&self) -> &Metadata { unimplemented!() }
+/// # fn metadata(&self) -> &'static Metadata { unimplemented!() }
 /// # }
 /// #
 /// static FOO_CALLSITE: MyCallsite = MyCallsite {

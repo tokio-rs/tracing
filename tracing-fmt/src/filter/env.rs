@@ -115,7 +115,7 @@ impl EnvFilter {
 
     fn directives_for<'a>(
         &'a self,
-        metadata: &'a Metadata<'a>,
+        metadata: &'static Metadata,
     ) -> impl Iterator<Item = &'a Directive> + 'a {
         let target = metadata.target();
         let name = metadata.name();
@@ -156,7 +156,7 @@ impl Default for EnvFilter {
 }
 
 impl<N> Filter<N> for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
+    fn callsite_enabled(&self, metadata: &'static Metadata, _: &Context<N>) -> Interest {
         if !self.includes_span_directive && self.max_level < *metadata.level() {
             return Interest::never();
         }
@@ -185,7 +185,7 @@ impl<N> Filter<N> for EnvFilter {
         interest
     }
 
-    fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
+    fn enabled<'a>(&self, metadata: &'static Metadata, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
             let accepts_level = directive.level >= *metadata.level();
             match directive.in_span.as_ref() {
@@ -537,7 +537,7 @@ mod tests {
 
     impl Callsite for Cs {
         fn set_interest(&self, _interest: Interest) {}
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &'static Metadata {
             unimplemented!()
         }
     }

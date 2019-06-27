@@ -16,7 +16,7 @@ fn metadata_macro_api() {
         fn set_interest(&self, _: Interest) {
             unimplemented!("test")
         }
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &'static Metadata {
             unimplemented!("test")
         }
     }

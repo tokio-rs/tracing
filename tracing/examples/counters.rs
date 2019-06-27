@@ -60,7 +60,7 @@ impl CounterSubscriber {
 }
 
 impl Subscriber for CounterSubscriber {
-    fn register_callsite(&self, meta: &Metadata) -> subscriber::Interest {
+    fn register_callsite(&self, meta: &'static Metadata) -> subscriber::Interest {
         let mut interest = subscriber::Interest::never();
         for key in meta.fields() {
             let name = key.name();
@@ -95,7 +95,7 @@ impl Subscriber for CounterSubscriber {
         event.record(&mut self.visitor())
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &'static Metadata) -> bool {
         metadata.fields().iter().any(|f| f.name().contains("count"))
     }
 

@@ -29,16 +29,15 @@ use std::{
     io,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Mutex,
+        Mutex, Once,
     },
 };
 
 use tracing_core::{
-    callsite::{self, Callsite},
-    dispatcher, field, identify_callsite,
+    callsite, dispatcher, field, identify_callsite,
     metadata::Kind,
     span::{self, Id},
-    subscriber::{self, Subscriber},
+    subscriber::{Interest, Subscriber},
     Event, Metadata,
 };
 
@@ -49,6 +48,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let key = fields
         .field(&"message")
         .expect("log record fields must have a message");
+    // TODO: propagate the `log::Record`'s target/location as fields.
     Event::dispatch(
         &meta,
         &fields.value_set(&[(&key, Some(record.args() as &dyn field::Value))]),
@@ -66,8 +66,8 @@ pub trait AsTrace {
     fn as_trace(&self) -> Self::Trace;
 }
 
-impl<'a> AsLog for Metadata<'a> {
-    type Log = log::Metadata<'a>;
+impl AsLog for Metadata {
+    type Log = log::Metadata<'static>;
     fn as_log(&self) -> Self::Log {
         log::Metadata::builder()
             .level(self.level().as_log())
@@ -76,39 +76,61 @@ impl<'a> AsLog for Metadata<'a> {
     }
 }
 
-impl<'a> AsTrace for log::Record<'a> {
-    type Trace = Metadata<'a>;
-    fn as_trace(&self) -> Self::Trace {
-        struct LogCallsite;
-        const CS_ID: callsite::Identifier = identify_callsite!(&LogCallsite);
-        impl Callsite for LogCallsite {
-            fn set_interest(&self, _interest: subscriber::Interest) {}
-            fn metadata(&self) -> &Metadata {
-                // Since we never register the log callsite, this method is
-                // never actually called. So it's okay to return mostly empty metadata.
-                static EMPTY_META: Metadata<'static> = Metadata::new(
-                    "log record",
-                    "log",
-                    tracing_core::Level::TRACE,
-                    None,
-                    None,
-                    None,
-                    field::FieldSet::new(&["message"], CS_ID),
-                    Kind::SPAN,
-                );
-                &EMPTY_META
+macro_rules! log_cs {
+    ($level:expr) => {{
+        struct Callsite;
+        static META: Metadata = Metadata::new(
+            "log event",
+            "log",
+            $level,
+            None,
+            None,
+            None,
+            field::FieldSet::new(
+                &[
+                    "message",
+                    "log.target",
+                    "log.module_path",
+                    "log.file",
+                    "log.line",
+                ],
+                identify_callsite!(&Callsite),
+            ),
+            Kind::EVENT,
+        );
+        static INTEREST: AtomicUsize = AtomicUsize::new(0);
+        static REGISTRATION: Once = Once::new();
+        impl callsite::Callsite for Callsite {
+            fn set_interest(&self, interest: Interest) {
+                let interest = match () {
+                    _ if interest.is_never() => 0,
+                    _ if interest.is_always() => 2,
+                    _ => 1,
+                };
+                INTEREST.store(interest, Ordering::SeqCst);
+            }
+
+            fn metadata(&self) -> &'static Metadata {
+                &META
             }
         }
-        Metadata::new(
-            "log record",
-            self.target(),
-            self.level().as_trace(),
-            self.module_path(),
-            self.line(),
-            self.file(),
-            field::FieldSet::new(&["message"], CS_ID),
-            Kind::SPAN,
-        )
+        REGISTRATION.call_once(|| {
+            callsite::register(&Callsite);
+        });
+        &META
+    }};
+}
+
+impl<'a> AsTrace for log::Record<'a> {
+    type Trace = &'static Metadata;
+    fn as_trace(&self) -> Self::Trace {
+        match self.level() {
+            log::Level::Trace => log_cs!(tracing_core::Level::TRACE),
+            log::Level::Debug => log_cs!(tracing_core::Level::DEBUG),
+            log::Level::Info => log_cs!(tracing_core::Level::INFO),
+            log::Level::Warn => log_cs!(tracing_core::Level::WARN),
+            log::Level::Error => log_cs!(tracing_core::Level::ERROR),
+        }
     }
 }
 
@@ -299,7 +321,7 @@ struct SpanLineBuilder {
 }
 
 impl SpanLineBuilder {
-    fn new(parent: Option<Id>, meta: &Metadata, fields: String) -> Self {
+    fn new(parent: Option<Id>, meta: &'static Metadata, fields: String) -> Self {
         Self {
             parent,
             ref_count: 1,
@@ -346,7 +368,7 @@ impl field::Visit for SpanLineBuilder {
 }
 
 impl Subscriber for TraceLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &'static Metadata) -> bool {
         log::logger().enabled(&metadata.as_log())
     }
 

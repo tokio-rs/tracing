@@ -681,7 +681,7 @@ mod test {
             unimplemented!()
         }
 
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &'static Metadata {
             &TEST_META_1
         }
     }
@@ -702,7 +702,7 @@ mod test {
             unimplemented!()
         }
 
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &'static Metadata {
             &TEST_META_2
         }
     }

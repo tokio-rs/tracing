@@ -199,7 +199,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.register_callsite
     #[inline]
-    pub fn register_callsite(&self, metadata: &Metadata) -> subscriber::Interest {
+    pub fn register_callsite(&self, metadata: &'static Metadata) -> subscriber::Interest {
         self.subscriber.register_callsite(metadata)
     }
 
@@ -252,7 +252,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`enabled`]: ../subscriber/trait.Subscriber.html#method.enabled
     #[inline]
-    pub fn enabled(&self, metadata: &Metadata) -> bool {
+    pub fn enabled(&self, metadata: &'static Metadata) -> bool {
         self.subscriber.enabled(metadata)
     }
 
@@ -358,7 +358,7 @@ where
 struct NoSubscriber;
 impl Subscriber for NoSubscriber {
     #[inline]
-    fn register_callsite(&self, _: &Metadata) -> subscriber::Interest {
+    fn register_callsite(&self, _: &'static Metadata) -> subscriber::Interest {
         subscriber::Interest::never()
     }
 
@@ -373,7 +373,7 @@ impl Subscriber for NoSubscriber {
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
     #[inline]
-    fn enabled(&self, _metadata: &Metadata) -> bool {
+    fn enabled(&self, _metadata: &'static Metadata) -> bool {
         false
     }
 
@@ -382,7 +382,7 @@ impl Subscriber for NoSubscriber {
 }
 
 impl Registrar {
-    pub(crate) fn try_register(&self, metadata: &Metadata) -> Option<subscriber::Interest> {
+    pub(crate) fn try_register(&self, metadata: &'static Metadata) -> Option<subscriber::Interest> {
         self.0.upgrade().map(|s| s.register_callsite(metadata))
     }
 
@@ -461,7 +461,7 @@ mod test {
 
     impl Callsite for TestCallsite {
         fn set_interest(&self, _: Interest) {}
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &'static Metadata {
             &TEST_META
         }
     }
@@ -472,7 +472,7 @@ mod test {
         // won't cause an infinite loop of events.
         struct TestSubscriber;
         impl Subscriber for TestSubscriber {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &'static Metadata) -> bool {
                 true
             }
 
@@ -520,7 +520,7 @@ mod test {
 
         struct TestSubscriber;
         impl Subscriber for TestSubscriber {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &'static Metadata) -> bool {
                 true
             }
 
@@ -553,7 +553,7 @@ mod test {
     fn global_dispatch() {
         struct TestSubscriberA;
         impl Subscriber for TestSubscriberA {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &'static Metadata) -> bool {
                 true
             }
             fn new_span(&self, _: &span::Attributes) -> span::Id {
@@ -567,7 +567,7 @@ mod test {
         }
         struct TestSubscriberB;
         impl Subscriber for TestSubscriberB {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &'static Metadata) -> bool {
                 true
             }
             fn new_span(&self, _: &span::Attributes) -> span::Id {

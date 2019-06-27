@@ -12,13 +12,13 @@ fn event_macros_dont_infinite_loop() {
     // won't cause an infinite loop of events.
     struct TestSubscriber;
     impl Subscriber for TestSubscriber {
-        fn register_callsite(&self, _: &Metadata) -> Interest {
+        fn register_callsite(&self, _: &'static Metadata) -> Interest {
             // Always return sometimes so that `enabled` will be called
             // (which can loop).
             Interest::sometimes()
         }
 
-        fn enabled(&self, meta: &Metadata) -> bool {
+        fn enabled(&self, meta: &'static Metadata) -> bool {
             assert!(meta.fields().iter().any(|f| f.name() == "foo"));
             event!(Level::TRACE, bar = false);
             true

@@ -41,11 +41,11 @@ impl<F, N> Filter<N> for ReloadFilter<F, N>
 where
     F: Filter<N>,
 {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> Interest {
+    fn callsite_enabled(&self, metadata: &'static Metadata, ctx: &Context<N>) -> Interest {
         self.inner.read().callsite_enabled(metadata, ctx)
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> bool {
+    fn enabled(&self, metadata: &'static Metadata, ctx: &Context<N>) -> bool {
         self.inner.read().enabled(metadata, ctx)
     }
 }
@@ -163,12 +163,12 @@ mod test {
         static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
         static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
 
-        fn filter1<N>(_: &Metadata, _: &span::Context<N>) -> bool {
+        fn filter1<N>(_: &'static Metadata, _: &span::Context<N>) -> bool {
             FILTER1_CALLS.fetch_add(1, Ordering::Relaxed);
             true
         }
 
-        fn filter2<N>(_: &Metadata, _: &span::Context<N>) -> bool {
+        fn filter2<N>(_: &'static Metadata, _: &span::Context<N>) -> bool {
             FILTER2_CALLS.fetch_add(1, Ordering::Relaxed);
             true
         }
@@ -179,7 +179,7 @@ mod test {
 
         let subscriber = FmtSubscriber::builder()
             .compact()
-            .with_filter(filter1 as fn(&Metadata, &span::Context<_>) -> bool)
+            .with_filter(filter1 as fn(&'static Metadata, &span::Context<_>) -> bool)
             .with_filter_reloading();
         let handle = subscriber.reload_handle();
         let subscriber = Dispatch::new(subscriber.finish());
@@ -194,7 +194,7 @@ mod test {
             assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
 
             handle
-                .reload(filter2 as fn(&Metadata, &span::Context<_>) -> bool)
+                .reload(filter2 as fn(&'static Metadata, &span::Context<_>) -> bool)
                 .expect("should reload");
 
             event();

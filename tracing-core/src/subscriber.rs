@@ -108,7 +108,7 @@ pub trait Subscriber: 'static {
     /// [`Interest`]: struct.Interest.html
     /// [`enabled`]: #method.enabled
     /// [`rebuild_interest_cache`]: ../callsite/fn.rebuild_interest_cache.html
-    fn register_callsite(&self, metadata: &Metadata) -> Interest {
+    fn register_callsite(&self, metadata: &'static Metadata) -> Interest {
         match self.enabled(metadata) {
             true => Interest::always(),
             false => Interest::never(),
@@ -135,7 +135,7 @@ pub trait Subscriber: 'static {
     /// [interested]: struct.Interest.html
     /// [`Interest::sometimes`]: struct.Interest.html#method.sometimes
     /// [`register_callsite`]: #method.register_callsite
-    fn enabled(&self, metadata: &Metadata) -> bool;
+    fn enabled(&self, metadata: &'static Metadata) -> bool;
 
     /// Visit the construction of a new span, returning a new [span ID] for the
     /// span being constructed.

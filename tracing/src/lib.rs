@@ -254,7 +254,7 @@
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
-//! #   fn enabled(&self, _: &Metadata) -> bool { false }
+//! #   fn enabled(&self, _: &'static Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }

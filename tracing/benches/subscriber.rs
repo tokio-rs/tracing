@@ -33,7 +33,7 @@ impl tracing::Subscriber for EnabledSubscriber {
         let _ = (span, follows);
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &'static Metadata) -> bool {
         let _ = metadata;
         true
     }
@@ -80,7 +80,7 @@ impl tracing::Subscriber for VisitingSubscriber {
         let _ = (span, follows);
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &'static Metadata) -> bool {
         let _ = metadata;
         true
     }

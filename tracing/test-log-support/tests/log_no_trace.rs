@@ -13,7 +13,7 @@ struct State {
 struct Logger(Arc<State>);
 
 impl Log for Logger {
-    fn enabled(&self, _: &Metadata) -> bool {
+    fn enabled(&self, _: &'static Metadata) -> bool {
         true
     }
 

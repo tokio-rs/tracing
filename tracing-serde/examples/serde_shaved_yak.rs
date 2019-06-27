@@ -23,7 +23,7 @@ pub struct JsonSubscriber {
 }
 
 impl Subscriber for JsonSubscriber {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &'static Metadata) -> bool {
         let json = json!({
         "enabled": {
             "metadata": metadata.as_serde(),
