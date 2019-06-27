@@ -19,7 +19,7 @@ pub struct Id(NonZeroU64);
 /// created.
 #[derive(Debug)]
 pub struct Attributes<'a> {
-    metadata: &'a Metadata<'a>,
+    metadata: &'static Metadata,
     values: &'a field::ValueSet<'a>,
     parent: Parent,
 }
@@ -60,7 +60,7 @@ impl<'a> Into<Option<Id>> for &'a Id {
 impl<'a> Attributes<'a> {
     /// Returns `Attributes` describing a new child span of the current span,
     /// with the provided metadata and values.
-    pub fn new(metadata: &'a Metadata<'a>, values: &'a field::ValueSet<'a>) -> Self {
+    pub fn new(metadata: &'static Metadata, values: &'a field::ValueSet<'a>) -> Self {
         Attributes {
             metadata,
             values,
@@ -70,7 +70,7 @@ impl<'a> Attributes<'a> {
 
     /// Returns `Attributes` describing a new span at the root of its own trace
     /// tree, with the provided metadata and values.
-    pub fn new_root(metadata: &'a Metadata<'a>, values: &'a field::ValueSet<'a>) -> Self {
+    pub fn new_root(metadata: &'static Metadata, values: &'a field::ValueSet<'a>) -> Self {
         Attributes {
             metadata,
             values,
@@ -82,7 +82,7 @@ impl<'a> Attributes<'a> {
     /// parent span, with the provided metadata and values.
     pub fn child_of(
         parent: Id,
-        metadata: &'a Metadata<'a>,
+        metadata: &'static Metadata,
         values: &'a field::ValueSet<'a>,
     ) -> Self {
         Attributes {
@@ -93,7 +93,7 @@ impl<'a> Attributes<'a> {
     }
 
     /// Returns a reference to the new span's metadata.
-    pub fn metadata(&self) -> &Metadata<'a> {
+    pub fn metadata(&self) -> &'static Metadata {
         self.metadata
     }
 

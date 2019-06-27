@@ -47,24 +47,24 @@ use std::fmt;
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`id`]: struct.Metadata.html#method.id
 /// [callsite identifier]: ../callsite/struct.Identifier.html
-pub struct Metadata<'a> {
+pub struct Metadata {
     /// The name of the span described by this metadata.
     name: &'static str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
-    target: &'a str,
+    target: &'static str,
 
     /// The level of verbosity of the described span.
     level: Level,
 
     /// The name of the Rust module where the span occurred, or `None` if this
     /// could not be determined.
-    module_path: Option<&'a str>,
+    module_path: Option<&'static str>,
 
     /// The name of the source code file where the span occurred, or `None` if
     /// this could not be determined.
-    file: Option<&'a str>,
+    file: Option<&'static str>,
 
     /// The line number in the source code file where the span occurred, or
     /// `None` if this could not be determined.
@@ -86,18 +86,19 @@ pub struct Kind(KindInner);
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Level(LevelInner);
 
+
 // ===== impl Metadata =====
 
-impl<'a> Metadata<'a> {
+impl Metadata {
     /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
     pub const fn new(
         name: &'static str,
-        target: &'a str,
+        target: &'static str,
         level: Level,
-        file: Option<&'a str>,
+        file: Option<&'static str>,
         line: Option<u32>,
-        module_path: Option<&'a str>,
+        module_path: Option<&'static str>,
         fields: field::FieldSet,
         kind: Kind,
     ) -> Self {
@@ -133,19 +134,19 @@ impl<'a> Metadata<'a> {
     ///
     /// Typically, this is the module path, but alternate targets may be set
     /// when spans or events are constructed.
-    pub fn target(&self) -> &'a str {
+    pub fn target(&self) -> &'static str {
         self.target
     }
 
     /// Returns the path to the Rust module where the span occurred, or
     /// `None` if the module path is unknown.
-    pub fn module_path(&self) -> Option<&'a str> {
+    pub fn module_path(&self) -> Option<&'static str> {
         self.module_path
     }
 
     /// Returns the name of the source code file where the span
     /// occurred, or `None` if the file is unknown
-    pub fn file(&self) -> Option<&'a str> {
+    pub fn file(&self) -> Option<&'static str> {
         self.file
     }
 
@@ -173,7 +174,7 @@ impl<'a> Metadata<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Metadata<'a> {
+impl fmt::Debug for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut meta = f.debug_struct("Metadata");
         meta.field("name", &self.name)
