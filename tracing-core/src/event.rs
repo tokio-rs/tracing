@@ -22,7 +22,7 @@ use {field, Metadata};
 #[derive(Debug)]
 pub struct Event<'a> {
     fields: &'a field::ValueSet<'a>,
-    metadata: &'a Metadata<'a>,
+    metadata: &'static Metadata<'static>,
     parent: Parent,
 }
 
@@ -30,7 +30,7 @@ impl<'a> Event<'a> {
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current subscriber.
     #[inline]
-    pub fn dispatch(metadata: &'a Metadata<'a>, fields: &'a field::ValueSet) {
+    pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet) {
         let event = Event {
             metadata,
             fields,
@@ -46,7 +46,7 @@ impl<'a> Event<'a> {
     #[inline]
     pub fn child_of(
         parent: impl Into<Option<Id>>,
-        metadata: &'a Metadata<'a>,
+        metadata: &'static Metadata<'static>,
         fields: &'a field::ValueSet,
     ) {
         let parent = match parent.into() {
@@ -80,7 +80,7 @@ impl<'a> Event<'a> {
     /// Returns [metadata] describing this `Event`.
     ///
     /// [metadata]: ../metadata/struct.Metadata.html
-    pub fn metadata(&self) -> &Metadata {
+    pub fn metadata(&self) -> &'static Metadata<'static> {
         self.metadata
     }
 

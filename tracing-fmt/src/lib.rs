@@ -128,7 +128,7 @@ where
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
-    fn register_callsite(&self, metadata: &Metadata) -> Interest {
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
     }
 
