@@ -594,7 +594,7 @@ mod tests {
             None,
             None,
             None,
-            FieldSet::new(&[], identify_callsite!(&Cs)s),
+            FieldSet::new(&[], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
 
