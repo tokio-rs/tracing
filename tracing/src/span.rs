@@ -328,7 +328,7 @@ pub struct Span {
     ///
     /// If this is `None`, then the span has either closed or was never enabled.
     inner: Option<Inner>,
-    meta: &'static Metadata<'static>,
+    meta: &'static Metadata,
 }
 
 /// A handle representing the capacity to enter a span which is known to exist.
@@ -379,7 +379,7 @@ impl Span {
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     #[inline]
-    pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet) -> Span {
+    pub fn new(meta: &'static Metadata, values: &field::ValueSet) -> Span {
         let new_span = Attributes::new(meta, values);
         Self::make(meta, new_span)
     }
@@ -394,7 +394,7 @@ impl Span {
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     #[inline]
-    pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet) -> Span {
+    pub fn new_root(meta: &'static Metadata, values: &field::ValueSet) -> Span {
         Self::make(meta, Attributes::new_root(meta, values))
     }
 
@@ -409,7 +409,7 @@ impl Span {
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     pub fn child_of(
         parent: impl Into<Option<Id>>,
-        meta: &'static Metadata<'static>,
+        meta: &'static Metadata,
         values: &field::ValueSet,
     ) -> Span {
         let new_span = match parent.into() {
@@ -421,11 +421,11 @@ impl Span {
 
     /// Constructs a new disabled span.
     #[inline(always)]
-    pub fn new_disabled(meta: &'static Metadata<'static>) -> Span {
+    pub fn new_disabled(meta: &'static Metadata) -> Span {
         Span { inner: None, meta }
     }
 
-    fn make(meta: &'static Metadata<'static>, new_span: Attributes) -> Span {
+    fn make(meta: &'static Metadata, new_span: Attributes) -> Span {
         let attrs = &new_span;
         let inner = ::dispatcher::get_default(move |dispatch| {
             let id = dispatch.new_span(attrs);
@@ -646,7 +646,7 @@ impl Span {
     }
 
     /// Returns this span's `Metadata`, if it is enabled.
-    pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
+    pub fn metadata(&self) -> Option<&'static Metadata> {
         if self.inner.is_some() {
             Some(self.meta)
         } else {
