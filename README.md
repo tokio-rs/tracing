@@ -45,8 +45,8 @@ project.
 
 ## Project layout
 
-The `tracing` crate contains the primary _instrumentation_ API, used for
-instrumenting libraries and applications to emit trace data. The `tracing-core`
+The [`tracing`] crate contains the primary _instrumentation_ API, used for
+instrumenting libraries and applications to emit trace data. The [`tracing-core`]
 crate contains the _core_ API primitives on which the rest of `tracing` is
 instrumented. Authors of trace subscribers may depend on `tracing-core`, which
 guarantees a higher level of stability.
@@ -80,6 +80,8 @@ The crates included as part of Tracing are:
 
 * [`tracing-tower-http`]: `tower` compatibility for HTTP services (unstable).
 
+[`tracing`]: tracing
+[`tracing-core`]: tracing
 [`tracing-fmt`]: tracing-fmt
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros

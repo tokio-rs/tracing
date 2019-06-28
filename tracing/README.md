@@ -19,7 +19,6 @@ Application-level tracing for Rust.
 [gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
 [gitter-url]: https://gitter.im/tokio-rs/tracing
 
-
 ## Overview
 
 `tracing` is a framework for instrumenting Rust programs to collect
