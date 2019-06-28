@@ -231,7 +231,7 @@
 //! tracing::subscriber::set_global_default(my_subscriber).expect("setting tracing default failed");
 //! ```
 //!
-//! Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
+//! **Note:** Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
 //! executables try to set the default later.
 //!
 //! This subscriber will be used as the default in all threads for the remainder of the duration
@@ -239,10 +239,6 @@
 //!
 //! In addition, you can locally override the default subscriber, using the `tokio` pattern
 //! of executing code in a context. For example:
-//!
-//! Unlike the `log` crate, `tracing` does *not* use a global `Subscriber`
-//! which is initialized once. Instead, it follows the `tokio` pattern of
-//! executing code in a context. For example:
 //!
 //! ```rust
 //! #[macro_use]
@@ -283,9 +279,11 @@
 //! The executable itself may use the `tracing` crate to instrument itself
 //! as well.
 //!
-//! The [`tracing-nursery`] repository contains less stable crates designed
-//! to be used with the `tracing` ecosystem. It includes a collection of
-//! `Subscriber` implementations, as well as utility and adapter crates.
+//! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`]
+//! several additional crates designed to be used with the `tracing` ecosystem.
+//! This includes a collection of `Subscriber` implementations, as well as utility
+//! and adapter crates to assist in writing `Subscriber`s and instrumenting
+//! applications.
 //!
 //! In particular, the following `tracing-nursery` crates are likely to be
 //! of interest:
@@ -300,6 +298,9 @@
 //!   trace tree. This is useful when a project using `tracing` have
 //!   dependencies which use `log`.
 //!
+//! **Note:** that some of the ecosystem crates are currently unreleased and
+//! undergoing active development. They may be less stable than `tracing` and
+//! `tracing-core`.
 //!
 //! ##  Crate Feature Flags
 //!
@@ -328,10 +329,10 @@
 //! [metadata]: struct.Metadata.html
 //! [`field::display`]: field/fn.display.html
 //! [`field::debug`]: field/fn.debug.html
-//! [`tracing-nursery`]: https://github.com/tokio-rs/tracing-nursery
-//! [`tracing-futures`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-futures
-//! [`tracing-fmt`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-fmt
-//! [`tracing-log`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-log
+//! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
+//! [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
+//! [`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
+//! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 #[macro_use]
 extern crate cfg_if;
