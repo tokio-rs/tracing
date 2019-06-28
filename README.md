@@ -2,10 +2,13 @@
 
 Application-level tracing for Rust.
 
+[![Crates.io][crates-badge]][crates-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][travis-badge]][travis-url]
 [![Gitter chat][gitter-badge]][gitter-url]
 
+[crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
+[crates-url]: https://crates.io/crates/tracing-core
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [travis-badge]: https://travis-ci.org/tokio-rs/tracing.svg?branch=master

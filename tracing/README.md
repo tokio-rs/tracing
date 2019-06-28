@@ -1,8 +1,24 @@
 # tracing
 
-A scoped, structured logging and diagnostics system.
+Application-level tracing for Rust.
 
-[Documentation](https://docs.rs/tracing/0.1.0/tracing/index.html)
+[![Crates.io][crates-badge]][crates-url]
+[![MIT licensed][mit-badge]][mit-url]
+[![Build Status][travis-badge]][travis-url]
+[![Gitter chat][gitter-badge]][gitter-url]
+
+[Documentation](https://docs.rs/tracing/0.1.0/tracing/index.html) |
+[Chat](https://gitter.im/tokio-rs/tracing)
+
+[crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
+[crates-url]: https://crates.io/crates/tracing-core
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: LICENSE
+[travis-badge]: https://travis-ci.org/tokio-rs/tracing.svg?branch=master
+[travis-url]: https://travis-ci.org/tokio-rs/tracing/branches
+[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
+[gitter-url]: https://gitter.im/tokio-rs/tracing
+
 
 ## Overview
 
