@@ -18,11 +18,14 @@
 //! Spans are created using the [`span!`] macro. This macro is invoked with the
 //! following arguments, in order:
 //!
-//! - The `target` and/or `parent` attributes, if the user wishes to override
+//! - The [`target`] and/or [`parent`](parent) attributes, if the user wishes to override
 //!   their default values.
 //! - The span's [verbosity level]
 //! - A string literal providing the span's name.
 //! - Finally, between zero and 32 arbitrary key/value fields.
+//!
+//! [parent]: #span-relationships
+//! [`target`]: ../struct.Metadata.html#method.target
 //!
 //! For example:
 //! ```rust
