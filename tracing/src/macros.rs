@@ -194,7 +194,7 @@
 /// # extern crate tracing;
 /// # use tracing::Level;
 /// # fn main() {
-/// span!(Level::TRACE, target: "app_span", "my span");
+/// span!(target: "app_span", Level::TRACE, "my span");
 /// # }
 /// ```
 ///
@@ -212,7 +212,7 @@
 ///
 /// // Although we have currently entered "bar", "baz"'s parent span
 /// // will be "foo".
-/// let baz = span!(Level::INFO, parent: &foo, "baz");
+/// let baz = span!(parent: &foo, Level::INFO, "baz");
 /// # }
 /// ```
 ///
@@ -227,7 +227,7 @@
 ///
 /// // Although we have currently entered "foo", "bar" will be created
 /// // as the root of its own trace tree:
-/// let bar = span!(Level::INFO, parent: None, "bar");
+/// let bar = span!(parent: None, Level::INFO, "bar");
 /// # }
 /// ```
 ///
@@ -239,7 +239,7 @@
 /// # fn main() {
 /// let foo = span!(Level::INFO, "foo");
 //
-/// let bar = span!(Level::INFO, target: "bar_events", parent: &foo, "bar");
+/// let bar = span!(target: "bar_events", parent: &foo, Level::INFO, "bar");
 /// # }
 /// ```
 ///
@@ -254,10 +254,10 @@
 /// [`field::display`]: field/fn.display.html
 #[macro_export(local_inner_macros)]
 macro_rules! span {
-    ($lvl:expr, target: $target:expr, parent: $parent:expr, $name:expr) => {
-        span!($lvl, target: $target, parent: $parent, $name,)
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
+        span!(target: $target, parent: $parent, $lvl, $name,)
     };
-    ($lvl:expr, target: $target:expr, parent: $parent:expr, $name:expr, $($fields:tt)*) => {
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
             use $crate::callsite;
             use $crate::callsite::Callsite;
@@ -284,7 +284,7 @@ macro_rules! span {
             }
         }
     };
-    ($lvl:expr, target: $target:expr, $name:expr, $($fields:tt)*) => {
+    (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
             use $crate::callsite;
             use $crate::callsite::Callsite;
@@ -311,49 +311,49 @@ macro_rules! span {
         }
 
     };
-    ($lvl:expr, target: $target:expr, parent: $parent:expr, $name:expr) => {
-        span!($lvl, target: $target, parent: $parent, $name,)
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
+        span!(target: $target, parent: $parent, $lvl, $name,)
     };
-    ($lvl:expr, parent: $parent:expr, $name:expr, $($fields:tt)*) => {
+    (parent: $parent:expr, $lvl:expr,  $name:expr, $($fields:tt)*) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
             parent: $parent,
+            $lvl,
             $name,
             $($fields)*
         )
     };
-    ($lvl:expr, parent: $parent:expr, $name:expr) => {
+    (parent: $parent:expr, $lvl:expr, $name:expr) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
             parent: $parent,
+            $lvl,
             $name,
         )
     };
-    ($lvl:expr, target: $target:expr, $name:expr, $($fields:tt)*) => {
+    (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         span!(
-            $lvl,
             target: $target,
+            $lvl,
             $name,
             $($fields)*
         )
     };
-    ($lvl:expr, target: $target:expr, $name:expr) => {
-        span!($lvl, target: $target, $name,)
+    (target: $target:expr, $lvl:expr, $name:expr) => {
+        span!(target: $target, $lvl, $name,)
     };
     ($lvl:expr, $name:expr, $($fields:tt)*) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
+            $lvl,
             $name,
             $($fields)*
         )
     };
     ($lvl:expr, $name:expr) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
+            $lvl,
             $name,
         )
     };
@@ -394,9 +394,9 @@ macro_rules! span {
 macro_rules! trace_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: $target,
             parent: $parent,
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -406,9 +406,9 @@ macro_rules! trace_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -418,8 +418,8 @@ macro_rules! trace_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: $target,
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -429,8 +429,8 @@ macro_rules! trace_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: __tracing_module_path!(),
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -473,9 +473,9 @@ macro_rules! trace_span {
 macro_rules! debug_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: $target,
             parent: $parent,
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -485,9 +485,9 @@ macro_rules! debug_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -497,8 +497,8 @@ macro_rules! debug_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: $target,
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -508,8 +508,8 @@ macro_rules! debug_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: __tracing_module_path!(),
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -552,9 +552,9 @@ macro_rules! debug_span {
 macro_rules! info_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: $target,
             parent: $parent,
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -564,9 +564,9 @@ macro_rules! info_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -576,8 +576,8 @@ macro_rules! info_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: $target,
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -587,8 +587,8 @@ macro_rules! info_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: __tracing_module_path!(),
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -631,9 +631,9 @@ macro_rules! info_span {
 macro_rules! warn_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: $target,
             parent: $parent,
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -643,9 +643,9 @@ macro_rules! warn_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -655,8 +655,8 @@ macro_rules! warn_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: $target,
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -666,8 +666,8 @@ macro_rules! warn_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: __tracing_module_path!(),
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -709,9 +709,9 @@ macro_rules! warn_span {
 macro_rules! error_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: $target,
             parent: $parent,
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -721,9 +721,9 @@ macro_rules! error_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -733,8 +733,8 @@ macro_rules! error_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: $target,
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -744,8 +744,8 @@ macro_rules! error_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: __tracing_module_path!(),
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -845,7 +845,7 @@ macro_rules! error_span {
 /// ```
 #[macro_export(local_inner_macros)]
 macro_rules! event {
-    (target: $target:expr, $lvl:expr, parent: $parent:expr, { $($fields:tt)* } )=> ({
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         {
             __tracing_log!(
                 target: $target,
@@ -876,6 +876,21 @@ macro_rules! event {
             }
         }
     });
+
+    (target: $target:expr, parent: $parent:expr, $lvl:expr,  { $($fields:tt)* }, $($arg:tt)+ ) => ({
+        event!(
+            target: $target,
+            parent: $parent,
+            $lvl,
+            { message = __tracing_format_args!($($arg)+), $($fields)* }
+        )
+    });
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
+        event!(target: $target, parent: $parent, $lvl, { $($k).+ = $($fields)* })
+    );
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $($arg:tt)+ ) => (
+        event!(target: $target, parent: $parent, $lvl, { }, $($arg)+)
+    );
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         {
             __tracing_log!(
@@ -907,14 +922,6 @@ macro_rules! event {
             }
         }
     });
-    (target: $target:expr, $lvl:expr, parent: $parent:expr, { $($fields:tt)* }, $($arg:tt)+ ) => ({
-        event!(
-            target: $target,
-            $lvl,
-            parent: $parent,
-            { message = __tracing_format_args!($($arg)+), $($fields)* }
-        )
-    });
     (target: $target:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => ({
         event!(
             target: $target,
@@ -922,19 +929,21 @@ macro_rules! event {
             { message = __tracing_format_args!($($arg)+), $($fields)* }
         )
     });
-    (target: $target:expr, $lvl:expr, parent: $parent:expr, $($k:ident).+ = $($fields:tt)* ) => (
-        event!(target: $target, $lvl, parent: $parent, { $($k).+ = $($fields)* })
-    );
     (target: $target:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
         event!(target: $target, $lvl, { $($k).+ = $($fields)* })
-    );
-    (target: $target:expr, $lvl:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: $target, $lvl, parent: $parent, { }, $($arg)+)
     );
     (target: $target:expr, $lvl:expr, $($arg:tt)+ ) => (
         event!(target: $target, $lvl, { }, $($arg)+)
     );
-    ( $lvl:expr, parent: $parent:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+    (parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        event!(
+            target: __tracing_module_path!(),
+            parent: $parent,
+            $lvl,
+            { message = __tracing_format_args!($($arg)+), $($fields)* }
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
         event!(
             target: __tracing_module_path!(),
             $lvl,
@@ -942,34 +951,69 @@ macro_rules! event {
             { message = __tracing_format_args!($($arg)+), $($fields)* }
         )
     );
-    ( $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+    (parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $lvl,
-            { message = __tracing_format_args!($($arg)+), $($fields)* }
-        )
-    );
-    ( $lvl:expr, parent: $parent:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
             parent: $parent,
-            { message = __tracing_format_args!($($arg)+), $($fields)* }
-        )
-    );
-    ( $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
-        event!(
-            target: __tracing_module_path!(),
             $lvl,
-            { message = __tracing_format_args!($($arg)+), $($fields)* }
-        )
-    );
-    ( $lvl:expr, parent: $parent:expr, $($k:ident).+ = $($field:tt)*) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
-            parent: $parent,
             { $($k).+ = $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, ?$($k:ident).+ = $($field:tt)*) => (
+        event!(
+            target: __tracing_module_path!(),
+            parent: $parent,
+            $lvl,
+            { ?$($k).+ = $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, %$($k:ident).+ = $($field:tt)*) => (
+        event!(
+            target: __tracing_module_path!(),
+            parent: $parent,
+            $lvl,
+            { %$($k).+ = $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, $($k:ident).+, $($field:tt)*) => (
+        event!(
+            target: __tracing_module_path!(),
+            parent: $parent,
+            $lvl,
+            { $($k).+, $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, %$($k:ident).+, $($field:tt)*) => (
+        event!(
+            target: __tracing_module_path!(),
+            parent: $parent,
+            $lvl,
+            { %$($k).+, $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, ?$($k:ident).+, $($field:tt)*) => (
+        event!(
+            target: __tracing_module_path!(),
+            parent: $parent,
+            $lvl,
+            { ?$($k).+, $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, $($arg:tt)+ ) => (
+        event!(target: __tracing_module_path!(), parent: $parent, $lvl, { }, $($arg)+)
+    );
+    ( $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        event!(
+            target: __tracing_module_path!(),
+            $lvl,
+            { message = __tracing_format_args!($($arg)+), $($fields)* }
+        )
+    );
+    ( $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        event!(
+            target: __tracing_module_path!(),
+            $lvl,
+            { message = __tracing_format_args!($($arg)+), $($fields)* }
         )
     );
     ($lvl:expr, $($k:ident).+ = $($field:tt)*) => (
@@ -979,27 +1023,11 @@ macro_rules! event {
             { $($k).+ = $($field)*}
         )
     );
-    ($lvl:expr, parent: $parent:expr, ?$($k:ident).+ = $($field:tt)*) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
-            parent: $parent,
-            { ?$($k).+ = $($field)*}
-        )
-    );
     ($lvl:expr, ?$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
             $lvl,
             { ?$($k).+ = $($field)*}
-        )
-    );
-    ($lvl:expr, parent: $parent:expr, %$($k:ident).+ = $($field:tt)*) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
-            parent: $parent,
-            { %$($k).+ = $($field)*}
         )
     );
     ($lvl:expr, %$($k:ident).+ = $($field:tt)*) => (
@@ -1009,27 +1037,11 @@ macro_rules! event {
             { %$($k).+ = $($field)*}
         )
     );
-    ($lvl:expr, parent: $parent:expr, $($k:ident).+, $($field:tt)*) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
-            parent: $parent,
-            { $($k).+, $($field)*}
-        )
-    );
     ($lvl:expr, $($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
             $lvl,
             { $($k).+, $($field)*}
-        )
-    );
-    ($lvl:expr, parent: $parent:expr, ?$($k:ident).+, $($field:tt)*) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
-            parent: $parent,
-            { ?$($k).+, $($field)*}
         )
     );
     ($lvl:expr, ?$($k:ident).+, $($field:tt)*) => (
@@ -1039,23 +1051,12 @@ macro_rules! event {
             { ?$($k).+, $($field)*}
         )
     );
-    ($lvl:expr, parent: $parent:expr, %$($k:ident).+, $($field:tt)*) => (
-        event!(
-            target: __tracing_module_path!(),
-            $lvl,
-            parent: $parent,
-            { %$($k).+, $($field)*}
-        )
-    );
     ($lvl:expr, %$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
             $lvl,
             { %$($k).+, $($field)*}
         )
-    );
-    ( $lvl:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: __tracing_module_path!(), $lvl, parent: $parent, { }, $($arg)+)
     );
     ( $lvl:expr, $($arg:tt)+ ) => (
         event!(target: __tracing_module_path!(), $lvl, { }, $($arg)+)
@@ -1099,25 +1100,25 @@ macro_rules! event {
 #[macro_export(local_inner_macros)]
 macro_rules! trace {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
-        event!(target: $target, $crate::Level::TRACE, parent: $parent, { $($field)* }, $($arg)*)
+        event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($field)* }, $($arg)*)
     );
     (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::TRACE, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::TRACE,  { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::TRACE, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::TRACE, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: $target, $crate::Level::TRACE, parent: $parent, {}, $($arg)+)
+        event!(target: $target, parent: $parent, $crate::Level::TRACE, {}, $($arg)+)
     );
     (parent: $parent:expr, { $($field:tt)+ }, $($arg:tt)+ ) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { $($field)+ },
             $($arg)+
         )
@@ -1125,56 +1126,56 @@ macro_rules! trace {
     (parent: $parent:expr, $($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { $($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { ?$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { %$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, $($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { $($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { ?$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             { %$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, $($arg:tt)+) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::TRACE,
             parent: $parent,
+            $crate::Level::TRACE,
             {},
             $($arg)+
         )
@@ -1278,25 +1279,25 @@ macro_rules! trace {
 #[macro_export(local_inner_macros)]
 macro_rules! debug {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($field)* }, $($arg)*)
+        event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($field)* }, $($arg)*)
     );
     (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::DEBUG,  { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target,  parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, {}, $($arg)+)
+        event!(target: $target, parent: $parent, $crate::Level::DEBUG, {}, $($arg)+)
     );
     (parent: $parent:expr, { $($field:tt)+ }, $($arg:tt)+ ) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { $($field)+ },
             $($arg)+
         )
@@ -1304,56 +1305,56 @@ macro_rules! debug {
     (parent: $parent:expr, $($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { $($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { ?$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { %$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, $($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { $($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { ?$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             { %$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, $($arg:tt)+) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::DEBUG,
             {},
             $($arg)+
         )
@@ -1463,26 +1464,26 @@ macro_rules! debug {
 /// ```
 #[macro_export(local_inner_macros)]
 macro_rules! info {
-    (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($field)* }, $($arg)*)
+     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
+        event!(target: $target, parent: $parent, $crate::Level::INFO, { $($field)* }, $($arg)*)
     );
     (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target,  parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: $target, $crate::Level::INFO, parent: $parent, {}, $($arg)+)
+        event!(target: $target, parent: $parent, $crate::Level::INFO, {}, $($arg)+)
     );
     (parent: $parent:expr, { $($field:tt)+ }, $($arg:tt)+ ) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { $($field)+ },
             $($arg)+
         )
@@ -1490,56 +1491,56 @@ macro_rules! info {
     (parent: $parent:expr, $($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { $($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { ?$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { %$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, $($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { $($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { ?$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             { %$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, $($arg:tt)+) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
             parent: $parent,
+            $crate::Level::INFO,
             {},
             $($arg)+
         )
@@ -1584,7 +1585,7 @@ macro_rules! info {
     (%$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::INFO,
+            $crate::Level::TRACE,
             { %$($k).+ = $($field)*}
         )
     );
@@ -1646,26 +1647,26 @@ macro_rules! info {
 /// ```
 #[macro_export(local_inner_macros)]
 macro_rules! warn {
-    (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
-        event!(target: $target, $crate::Level::WARN, parent: $parent, { $($field)* }, $($arg)*)
+     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
+        event!(target: $target, parent: $parent, $crate::Level::WARN, { $($field)* }, $($arg)*)
     );
     (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::WARN, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::WARN, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target,  parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::WARN, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: $target, $crate::Level::WARN, parent: $parent, {}, $($arg)+)
+        event!(target: $target, parent: $parent, $crate::Level::WARN, {}, $($arg)+)
     );
     (parent: $parent:expr, { $($field:tt)+ }, $($arg:tt)+ ) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { $($field)+ },
             $($arg)+
         )
@@ -1673,56 +1674,56 @@ macro_rules! warn {
     (parent: $parent:expr, $($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { $($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { ?$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { %$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, $($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { $($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { ?$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             { %$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, $($arg:tt)+) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
             parent: $parent,
+            $crate::Level::WARN,
             {},
             $($arg)+
         )
@@ -1767,7 +1768,7 @@ macro_rules! warn {
     (%$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::WARN,
+            $crate::Level::TRACE,
             { %$($k).+ = $($field)*}
         )
     );
@@ -1824,26 +1825,26 @@ macro_rules! warn {
 /// ```
 #[macro_export(local_inner_macros)]
 macro_rules! error {
-    (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
-        event!(target: $target, $crate::Level::ERROR, parent: $parent, { $($field)* }, $($arg)*)
+     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
+        event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($field)* }, $($arg)*)
     );
     (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::ERROR, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::ERROR, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target,  parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        event!(target: $target, $crate::Level::ERROR, parent: $parent, { $($k).+ $($field)+ })
+        event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
-        event!(target: $target, $crate::Level::ERROR, parent: $parent, {}, $($arg)+)
+        event!(target: $target, parent: $parent, $crate::Level::ERROR, {}, $($arg)+)
     );
     (parent: $parent:expr, { $($field:tt)+ }, $($arg:tt)+ ) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { $($field)+ },
             $($arg)+
         )
@@ -1851,56 +1852,56 @@ macro_rules! error {
     (parent: $parent:expr, $($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { $($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { ?$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { %$($k).+ = $($field)*}
         )
     );
     (parent: $parent:expr, $($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { $($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, ?$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { ?$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, %$($k:ident).+, $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             { %$($k).+, $($field)*}
         )
     );
     (parent: $parent:expr, $($arg:tt)+) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
             parent: $parent,
+            $crate::Level::ERROR,
             {},
             $($arg)+
         )
@@ -1945,7 +1946,7 @@ macro_rules! error {
     (%$($k:ident).+ = $($field:tt)*) => (
         event!(
             target: __tracing_module_path!(),
-            $crate::Level::ERROR,
+            $crate::Level::TRACE,
             { %$($k).+ = $($field)*}
         )
     );

@@ -257,7 +257,7 @@ fn explicit_child() {
 
     with_default(subscriber, || {
         let foo = span!(Level::TRACE, "foo");
-        event!(Level::TRACE, parent: foo.id(), "bar");
+        event!(parent: foo.id(), Level::TRACE, "bar");
     });
 
     handle.assert_finished();

@@ -152,7 +152,7 @@
 //!
 //! // Although we have currently entered "bar", "baz"'s parent span
 //! // will be "foo".
-//! let baz = span!(Level::INFO, parent: &foo, "baz");
+//! let baz = span!(parent: &foo, Level::INFO, "baz");
 //! # }
 //! ```
 //!

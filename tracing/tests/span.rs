@@ -529,7 +529,7 @@ fn new_span_with_target_and_log_level() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        span!(Level::DEBUG, target: "app_span", "foo");
+        span!(target: "app_span", Level::DEBUG, "foo");
     });
 
     handle.assert_finished();
@@ -543,7 +543,7 @@ fn explicit_root_span_is_root() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        span!(Level::TRACE, parent: None, "foo");
+        span!(parent: None, Level::TRACE, "foo");
     });
 
     handle.assert_finished();
@@ -561,7 +561,7 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
 
     with_default(subscriber, || {
         span!(Level::TRACE, "foo").in_scope(|| {
-            span!(Level::TRACE, parent: None, "bar");
+            span!(parent: None, Level::TRACE, "bar");
         })
     });
 
@@ -578,7 +578,7 @@ fn explicit_child() {
 
     with_default(subscriber, || {
         let foo = span!(Level::TRACE, "foo");
-        span!(Level::TRACE, parent: foo.id(), "bar");
+        span!(parent: foo.id(), Level::TRACE, "bar");
     });
 
     handle.assert_finished();
@@ -621,7 +621,7 @@ fn explicit_child_regardless_of_ctx() {
 
     with_default(subscriber, || {
         let foo = span!(Level::TRACE, "foo");
-        span!(Level::TRACE, "bar").in_scope(|| span!(Level::TRACE, parent: foo.id(), "baz"))
+        span!(Level::TRACE, "bar").in_scope(|| span!(parent: foo.id(), Level::TRACE, "baz"))
     });
 
     handle.assert_finished();
