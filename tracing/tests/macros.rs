@@ -395,29 +395,29 @@ fn error() {
 
 #[test]
 fn event_root() {
-    event!(Level::DEBUG, parent: None, foo = ?3, bar.baz = %2, quux = false);
+    event!(parent: None, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
     event!(
-        Level::DEBUG,
         parent: None,
+        Level::DEBUG,
         foo = 3,
         bar.baz = 2,
         quux = false
     );
-    event!(Level::DEBUG, parent: None, foo = 3, bar.baz = 3,);
-    event!(Level::DEBUG, parent: None, "foo");
-    event!(Level::DEBUG, parent: None, "foo: {}", 3);
-    event!(Level::DEBUG, parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    event!(Level::DEBUG, parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    event!(Level::DEBUG, parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(Level::DEBUG, parent: None, { foo = ?2, bar.baz = %78 }, "quux");
-    event!(target: "foo_events", Level::DEBUG, parent: None, foo = 3, bar.baz = 2, quux = false);
-    event!(target: "foo_events", Level::DEBUG, parent: None, foo = 3, bar.baz = 3,);
-    event!(target: "foo_events", Level::DEBUG, parent: None, "foo");
-    event!(target: "foo_events", Level::DEBUG, parent: None, "foo: {}", 3);
-    event!(target: "foo_events", Level::DEBUG, parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    event!(target: "foo_events", Level::DEBUG, parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    event!(target: "foo_events", Level::DEBUG, parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(target: "foo_events", Level::DEBUG, parent: None, { foo = 2, bar.baz = 78, }, "quux");
+    event!(parent: None, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(parent: None, Level::DEBUG, "foo");
+    event!(parent: None, Level::DEBUG, "foo: {}", 3);
+    event!(parent: None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
+    event!(parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    event!(parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    event!(parent: None, Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
+    event!(target: "foo_events", parent: None, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
+    event!(target: "foo_events", parent: None, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(target: "foo_events", parent: None, Level::DEBUG, "foo");
+    event!(target: "foo_events", parent: None, Level::DEBUG, "foo: {}", 3);
+    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
+    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[test]
@@ -533,23 +533,23 @@ fn error_root() {
 #[test]
 fn event_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    event!(Level::DEBUG, parent: &p, foo = ?3, bar.baz = %2, quux = false);
-    event!(Level::DEBUG, parent: &p, foo = 3, bar.baz = 2, quux = false);
-    event!(Level::DEBUG, parent: &p, foo = 3, bar.baz = 3,);
-    event!(Level::DEBUG, parent: &p, "foo");
-    event!(Level::DEBUG, parent: &p, "foo: {}", 3);
-    event!(Level::DEBUG, parent: &p, { foo = 3, bar.baz = 80 }, "quux");
-    event!(Level::DEBUG, parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    event!(Level::DEBUG, parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(Level::DEBUG, parent: &p, { foo = ?2, bar.baz = %78 }, "quux");
-    event!(target: "foo_events", Level::DEBUG, parent: &p, foo = 3, bar.baz = 2, quux = false);
-    event!(target: "foo_events", Level::DEBUG, parent: &p, foo = 3, bar.baz = 3,);
-    event!(target: "foo_events", Level::DEBUG, parent: &p, "foo");
-    event!(target: "foo_events", Level::DEBUG, parent: &p, "foo: {}", 3);
-    event!(target: "foo_events", Level::DEBUG, parent: &p, { foo = 3, bar.baz = 80 }, "quux");
-    event!(target: "foo_events", Level::DEBUG, parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    event!(target: "foo_events", Level::DEBUG, parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(target: "foo_events", Level::DEBUG, parent: &p, { foo = 2, bar.baz = 78, }, "quux");
+    event!(parent: &p, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
+    event!(parent: &p, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
+    event!(parent: &p, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(parent: &p, Level::DEBUG, "foo");
+    event!(parent: &p, Level::DEBUG, "foo: {}", 3);
+    event!(parent: &p, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
+    event!(parent: &p, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    event!(parent: &p, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    event!(parent: &p, Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
+    event!(target: "foo_events", parent: &p, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
+    event!(target: "foo_events", parent: &p, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(target: "foo_events", parent: &p, Level::DEBUG, "foo");
+    event!(target: "foo_events", parent: &p, Level::DEBUG, "foo: {}", 3);
+    event!(target: "foo_events", parent: &p, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
+    event!(target: "foo_events", parent: &p, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    event!(target: "foo_events", parent: &p, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    event!(target: "foo_events", parent: &p, Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[test]
