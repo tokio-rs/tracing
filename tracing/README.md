@@ -52,6 +52,7 @@ Next, add this to your crate:
 ```rust
 #[macro_use]
 extern crate tracing;
+# fn main() {}
 ```
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
@@ -69,13 +70,17 @@ _n_ new items were taken from a queue, and so on.
 to indicate that some code takes place within the context of that `Span`:
 
 ```rust
+# #[macro_use] extern crate tracing;
+# use tracing::Level;
+# fn main() {
 // Construct a new span named "my span".
-let mut span = span!("my span");
+let mut span = span!(Level::INFO, "my span");
 span.in_scope(|| {
     // Any trace events in this closure or code called by it will occur within
     // the span.
 });
 // Dropping the span will close it, indicating that it has ended.
+# }
 ```
 
 The `Event` type represent an event that occurs instantaneously, and is
@@ -84,6 +89,7 @@ macro:
 
 ```rust
 use tracing::Level;
+use tracing::event;
 event!(Level::INFO, "something has happened!");
 ```
 
@@ -98,36 +104,39 @@ Let's consider the `log` crate's yak-shaving example:
 ```rust
 #[macro_use]
 extern crate tracing;
-use tracing::field;
+use tracing::Level;
 
+# #[derive(Debug)] pub struct Yak(String);
+# impl Yak { fn shave(&mut self, _: u32) {} }
+# fn find_a_razor() -> Result<u32, u32> { Ok(1) }
+# fn main() {
 pub fn shave_the_yak(yak: &mut Yak) {
-    // Create a new span for this invocation of `shave_the_yak`, annotated
-    // with  the yak being shaved as a *field* on the span.
-    span!("shave_the_yak", yak = field::debug(&yak)).in_scope(|| {
-        // Since the span is annotated with the yak, it is part of the context
-        // for everything happening inside the span. Therefore, we don't need
-        // to add it to the message for this event, as the `log` crate does.
-        info!(target: "yak_events", "Commencing yak shaving");
+    let span = span!(Level::TRACE, "shave_the_yak", ?yak);
+    let _enter = span.enter();
 
-        loop {
-            match find_a_razor() {
-                Ok(razor) => {
-                    // We can add the razor as a field rather than formatting it
-                    // as part of the message, allowing subscribers to consume it
-                    // in a more structured manner:
-                    info!({ razor = field::display(razor) }, "Razor located");
-                    yak.shave(razor);
-                    break;
-                }
-                Err(err) => {
-                    // However, we can also create events with formatted messages,
-                    // just as we would for log records.
-                    warn!("Unable to locate a razor: {}, retrying", err);
-                }
+    // Since the span is annotated with the yak, it is part of the context
+    // for everything happening inside the span. Therefore, we don't need
+    // to add it to the message for this event, as the `log` crate does.
+    info!(target: "yak_events", "Commencing yak shaving");
+    loop {
+        match find_a_razor() {
+            Ok(razor) => {
+                // We can add the razor as a field rather than formatting it
+                // as part of the message, allowing subscribers to consume it
+                // in a more structured manner:
+                info!({ %razor }, "Razor located");
+                yak.shave(razor);
+                break;
+            }
+            Err(err) => {
+                // However, we can also create events with formatted messages,
+                // just as we would for log records.
+                warn!("Unable to locate a razor: {}, retrying", err);
             }
         }
-    })
+    }
 }
+# }
 ```
 
 You can find examples showing how to use this crate in the examples directory.
@@ -149,12 +158,27 @@ is probably [`tracing-fmt`], which logs to the terminal.
 The simplest way to use a subscriber is to call the `set_global_default` function:
 
 ```rust
-#[macro_use]
 extern crate tracing;
+# pub struct FooSubscriber;
+# use tracing::{span::{Id, Attributes, Record}, Metadata};
+# impl tracing::Subscriber for FooSubscriber {
+#   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+#   fn record(&self, _: &Id, _: &Record) {}
+#   fn event(&self, _: &tracing::Event) {}
+#   fn record_follows_from(&self, _: &Id, _: &Id) {}
+#   fn enabled(&self, _: &Metadata) -> bool { false }
+#   fn enter(&self, _: &Id) {}
+#   fn exit(&self, _: &Id) {}
+# }
+# impl FooSubscriber {
+#   fn new() -> Self { FooSubscriber }
+# }
+# fn main() {
 
 let my_subscriber = FooSubscriber::new();
-
-tracing::subscriber::set_global_default(my_subscriber).expect("setting tracing default failed");
+tracing::subscriber::set_global_default(my_subscriber)
+    .expect("setting tracing default failed");
+# }
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -169,13 +193,29 @@ of executing code in a context. For example:
 ```rust
 #[macro_use]
 extern crate tracing;
+# pub struct FooSubscriber;
+# use tracing::{span::{Id, Attributes, Record}, Metadata};
+# impl tracing::Subscriber for FooSubscriber {
+#   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+#   fn record(&self, _: &Id, _: &Record) {}
+#   fn event(&self, _: &tracing::Event) {}
+#   fn record_follows_from(&self, _: &Id, _: &Id) {}
+#   fn enabled(&self, _: &Metadata) -> bool { false }
+#   fn enter(&self, _: &Id) {}
+#   fn exit(&self, _: &Id) {}
+# }
+# impl FooSubscriber {
+#   fn new() -> Self { FooSubscriber }
+# }
+# fn main() {
 
 let my_subscriber = FooSubscriber::new();
 
-tracing::subscriber::with_default(subscriber, || {
+tracing::subscriber::with_default(my_subscriber, || {
     // Any trace events generated in this closure or by functions it calls
     // will be collected by `my_subscriber`.
 })
+# }
 ```
 
 This approach allows trace data to be collected by multiple subscribers within
