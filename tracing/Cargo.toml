@@ -60,3 +60,7 @@ harness = false
 [[bench]]
 name = "no_subscriber"
 harness = false
+
+[badges]
+travis-ci = { repository = "tokio-rs/tracing", branch = "master" }
+maintenance = { status = "actively-developed" }
