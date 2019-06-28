@@ -44,6 +44,8 @@
 //!
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my_span");
+//! // `enter` returns a RAII guard which, when dropped, exits the span. this
+//! // indicates that we are in the span for the current lexical scope.
 //! let _enter = span.enter();
 //! // perform some work in the context of `my_span`...
 //! # }
@@ -75,17 +77,13 @@
 //! # }
 //!```
 //!
-//! Essentially, `Event`s exist to bridge the gap between traditional
-//! unstructured logging and span-based tracing. Similar to log records, they
+//! Essentially, `Event`s  bridge the gap between traditional unstructured
+//! logging and span-based tracing. Similar to log records, they
 //! may be recorded at a number of levels, and can have unstructured,
 //! human-readable messages; however, they also carry key-value data and exist
 //! within the context of the tree of spans that comprise a trace. Thus,
 //! individual log record-like events can be pinpointed not only in time, but
 //! in the logical execution flow of the system.
-//!
-//! Events are represented as a special case of spans — they are created, they
-//! may have fields added, and then they close immediately, without being
-//! entered.
 //!
 //! In general, events should be used to represent points in time _within_ a
 //! span — a request returned with a given status code, _n_ new items were
@@ -220,9 +218,8 @@
 //! implementation compatible with `tracing`. A `Subscriber` implements a
 //! way of collecting trace data, such as by logging it to standard output.
 //!
-//! There currently aren't too many subscribers to choose from. The best one to use right now
-//!  is probably [`tracing-fmt`], which logs to the terminal.
-//! The simplest way to use a subscriber is to call the `set_global_default` function:
+//! The simplest way to use a subscriber is to call the [`set_global_default`]
+//! function:
 //!
 //! ```
 //! extern crate tracing;
@@ -248,14 +245,17 @@
 //! # }
 //! ```
 //!
-//! **Note:** Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
-//! executables try to set the default later.
+//! **Note:** Libraries should *NOT* call `set_global_default()`! That will
+//! cause conflicts when executables try to set the default later.
 //!
-//! This subscriber will be used as the default in all threads for the remainder of the duration
-//! of the program, similar to how loggers work in the `log` crate.
+//! This subscriber will be used as the default in all threads for the
+//! remainder of the duration of the program, similar to setting the logger
+//! in the `log` crate.
 //!
-//! In addition, you can locally override the default subscriber, using the `tokio` pattern
-//! of executing code in a context. For example:
+//! In addition, the default subscriber can be set through using the
+//! [`with_default`] function. This follows the the `tokio` pattern of using
+//! closures to represent executing code in a context that is exited at the end
+//! of the closure. For example:
 //!
 //! ```rust
 //! #[macro_use]
@@ -346,6 +346,8 @@
 //! [metadata]: struct.Metadata.html
 //! [`field::display`]: field/fn.display.html
 //! [`field::debug`]: field/fn.debug.html
+//! [`set_global_default`]: subscriber/fn.set_global_default.html
+//! [`with_default`]: subscriber/fn.with_default.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
 //! [`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
