@@ -296,14 +296,13 @@
 //! The executable itself may use the `tracing` crate to instrument itself
 //! as well.
 //!
-//! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`]
+//! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 //! several additional crates designed to be used with the `tracing` ecosystem.
 //! This includes a collection of `Subscriber` implementations, as well as utility
 //! and adapter crates to assist in writing `Subscriber`s and instrumenting
 //! applications.
 //!
-//! In particular, the following `tracing-nursery` crates are likely to be
-//! of interest:
+//! In particular, the following `tracing` crates are likely to be of interest:
 //!
 //! - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!   crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
