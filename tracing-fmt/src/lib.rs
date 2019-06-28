@@ -388,6 +388,21 @@ mod test {
     use tracing_core::dispatcher::Dispatch;
 
     #[test]
+    fn impls() {
+        let f = default::Format::default().with_timer(time::Uptime::default());
+        let subscriber = FmtSubscriber::builder().on_event(f).finish();
+        let _dispatch = Dispatch::new(subscriber);
+
+        let f = default::Format::default();
+        let subscriber = FmtSubscriber::builder().on_event(f).finish();
+        let _dispatch = Dispatch::new(subscriber);
+
+        let f = default::Format::default().compact();
+        let subscriber = FmtSubscriber::builder().on_event(f).finish();
+        let _dispatch = Dispatch::new(subscriber);
+    }
+
+    #[test]
     fn subscriber_downcasts() {
         let subscriber = FmtSubscriber::new();
         let dispatch = Dispatch::new(subscriber);
