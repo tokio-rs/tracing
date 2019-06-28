@@ -22,7 +22,7 @@ categories = ["development-tools::debugging", "asynchronous"]
 keywords = ["logging", "tracing"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core" }
+tracing-core = { version = "0.1", path = "../tracing-core" }
 log = { version = "0.4", optional = true }
 cfg-if = "0.1.7"
 
