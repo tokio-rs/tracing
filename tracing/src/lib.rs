@@ -224,11 +224,28 @@
 //!  is probably [`tracing-fmt`], which logs to the terminal.
 //! The simplest way to use a subscriber is to call the `set_global_default` function:
 //!
-//! ```no_build
-//! #[macro_use]
+//! ```
 //! extern crate tracing;
+//! # pub struct FooSubscriber;
+//! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # impl tracing::Subscriber for FooSubscriber {
+//! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+//! #   fn record(&self, _: &Id, _: &Record) {}
+//! #   fn event(&self, _: &tracing::Event) {}
+//! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
+//! #   fn enabled(&self, _: &Metadata) -> bool { false }
+//! #   fn enter(&self, _: &Id) {}
+//! #   fn exit(&self, _: &Id) {}
+//! # }
+//! # impl FooSubscriber {
+//! #   fn new() -> Self { FooSubscriber }
+//! # }
+//! # fn main() {
+//!
 //! let my_subscriber = FooSubscriber::new();
-//! tracing::subscriber::set_global_default(my_subscriber).expect("setting tracing default failed");
+//! tracing::subscriber::set_global_default(my_subscriber)
+//!     .expect("setting tracing default failed");
+//! # }
 //! ```
 //!
 //! **Note:** Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
