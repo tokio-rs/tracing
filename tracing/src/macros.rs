@@ -194,7 +194,7 @@
 /// # extern crate tracing;
 /// # use tracing::Level;
 /// # fn main() {
-/// span!(Level::TRACE, target: "app_span", "my span");
+/// span!(target: "app_span", Level::TRACE, "my span");
 /// # }
 /// ```
 ///
@@ -212,7 +212,7 @@
 ///
 /// // Although we have currently entered "bar", "baz"'s parent span
 /// // will be "foo".
-/// let baz = span!(Level::INFO, parent: &foo, "baz");
+/// let baz = span!(parent: &foo, Level::INFO, "baz");
 /// # }
 /// ```
 ///
@@ -227,7 +227,7 @@
 ///
 /// // Although we have currently entered "foo", "bar" will be created
 /// // as the root of its own trace tree:
-/// let bar = span!(Level::INFO, parent: None, "bar");
+/// let bar = span!(parent: None, Level::INFO, "bar");
 /// # }
 /// ```
 ///
@@ -239,7 +239,7 @@
 /// # fn main() {
 /// let foo = span!(Level::INFO, "foo");
 //
-/// let bar = span!(Level::INFO, target: "bar_events", parent: &foo, "bar");
+/// let bar = span!(target: "bar_events", parent: &foo, Level::INFO, "bar");
 /// # }
 /// ```
 ///
@@ -254,10 +254,10 @@
 /// [`field::display`]: field/fn.display.html
 #[macro_export(local_inner_macros)]
 macro_rules! span {
-    ($lvl:expr, target: $target:expr, parent: $parent:expr, $name:expr) => {
-        span!($lvl, target: $target, parent: $parent, $name,)
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
+        span!(target: $target, parent: $parent, $lvl, $name,)
     };
-    ($lvl:expr, target: $target:expr, parent: $parent:expr, $name:expr, $($fields:tt)*) => {
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
             use $crate::callsite;
             use $crate::callsite::Callsite;
@@ -284,7 +284,7 @@ macro_rules! span {
             }
         }
     };
-    ($lvl:expr, target: $target:expr, $name:expr, $($fields:tt)*) => {
+    (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
             use $crate::callsite;
             use $crate::callsite::Callsite;
@@ -311,49 +311,49 @@ macro_rules! span {
         }
 
     };
-    ($lvl:expr, target: $target:expr, parent: $parent:expr, $name:expr) => {
-        span!($lvl, target: $target, parent: $parent, $name,)
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
+        span!(target: $target, parent: $parent, $lvl, $name,)
     };
-    ($lvl:expr, parent: $parent:expr, $name:expr, $($fields:tt)*) => {
+    (parent: $parent:expr, $lvl:expr,  $name:expr, $($fields:tt)*) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
             parent: $parent,
+            $lvl,
             $name,
             $($fields)*
         )
     };
-    ($lvl:expr, parent: $parent:expr, $name:expr) => {
+    (parent: $parent:expr, $lvl:expr, $name:expr) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
             parent: $parent,
+            $lvl,
             $name,
         )
     };
-    ($lvl:expr, target: $target:expr, $name:expr, $($fields:tt)*) => {
+    (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         span!(
-            $lvl,
             target: $target,
+            $lvl,
             $name,
             $($fields)*
         )
     };
-    ($lvl:expr, target: $target:expr, $name:expr) => {
-        span!($lvl, target: $target, $name,)
+    (target: $target:expr, $lvl:expr, $name:expr) => {
+        span!(target: $target, $lvl, $name,)
     };
     ($lvl:expr, $name:expr, $($fields:tt)*) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
+            $lvl,
             $name,
             $($fields)*
         )
     };
     ($lvl:expr, $name:expr) => {
         span!(
-            $lvl,
             target: __tracing_module_path!(),
+            $lvl,
             $name,
         )
     };
@@ -394,9 +394,9 @@ macro_rules! span {
 macro_rules! trace_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: $target,
             parent: $parent,
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -406,9 +406,9 @@ macro_rules! trace_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -418,8 +418,8 @@ macro_rules! trace_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: $target,
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -429,8 +429,8 @@ macro_rules! trace_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::TRACE,
             target: __tracing_module_path!(),
+            $crate::Level::TRACE,
             $name,
             $($field)*
         )
@@ -473,9 +473,9 @@ macro_rules! trace_span {
 macro_rules! debug_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: $target,
             parent: $parent,
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -485,9 +485,9 @@ macro_rules! debug_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -497,8 +497,8 @@ macro_rules! debug_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: $target,
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -508,8 +508,8 @@ macro_rules! debug_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::DEBUG,
             target: __tracing_module_path!(),
+            $crate::Level::DEBUG,
             $name,
             $($field)*
         )
@@ -552,9 +552,9 @@ macro_rules! debug_span {
 macro_rules! info_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: $target,
             parent: $parent,
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -564,9 +564,9 @@ macro_rules! info_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -576,8 +576,8 @@ macro_rules! info_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: $target,
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -587,8 +587,8 @@ macro_rules! info_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::INFO,
             target: __tracing_module_path!(),
+            $crate::Level::INFO,
             $name,
             $($field)*
         )
@@ -631,9 +631,9 @@ macro_rules! info_span {
 macro_rules! warn_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: $target,
             parent: $parent,
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -643,9 +643,9 @@ macro_rules! warn_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -655,8 +655,8 @@ macro_rules! warn_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: $target,
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -666,8 +666,8 @@ macro_rules! warn_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::WARN,
             target: __tracing_module_path!(),
+            $crate::Level::WARN,
             $name,
             $($field)*
         )
@@ -709,9 +709,9 @@ macro_rules! warn_span {
 macro_rules! error_span {
     (target: $target:expr, parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: $target,
             parent: $parent,
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -721,9 +721,9 @@ macro_rules! error_span {
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: __tracing_module_path!(),
             parent: $parent,
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -733,8 +733,8 @@ macro_rules! error_span {
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: $target,
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
@@ -744,8 +744,8 @@ macro_rules! error_span {
     };
     ($name:expr, $($field:tt)*) => {
         span!(
-            $crate::Level::ERROR,
             target: __tracing_module_path!(),
+            $crate::Level::ERROR,
             $name,
             $($field)*
         )
