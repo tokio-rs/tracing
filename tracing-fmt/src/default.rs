@@ -37,11 +37,11 @@ pub struct Format<F = Full, T = SystemTime> {
     timer: T,
 }
 
-impl<T: Default> Default for Format<Full, T> {
+impl Default for Format<Full, SystemTime> {
     fn default() -> Self {
         Format {
             format: PhantomData,
-            timer: T::default(),
+            timer: SystemTime,
         }
     }
 }

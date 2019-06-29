@@ -1,8 +1,19 @@
 # tracing-core
 
-Core primitives for `tracing`.
+Core primitives for application-level tracing.
+
+[![Crates.io][crates-badge]][crates-url]
+[![MIT licensed][mit-badge]][mit-url]
+[![Gitter chat][gitter-badge]][gitter-url]
 
 [Documentation](https://docs.rs/tracing-core/0.1.0/tracing_core/index.html)
+
+[crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
+[crates-url]: https://crates.io/crates/tracing-core
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: LICENSE
+[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
+[gitter-url]: https://gitter.im/tokio-rs/tracubg
 
 ## Overview
 
