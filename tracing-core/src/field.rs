@@ -37,7 +37,7 @@
 //! [`record`]: ../subscriber/trait.Subscriber.html#method.record
 //! [`event`]:  ../subscriber/trait.Subscriber.html#method.record
 //! [`Visit`]: trait.Visit.html
-use callsite;
+use crate::callsite;
 use std::{
     borrow::Borrow,
     fmt,
@@ -201,7 +201,7 @@ pub trait Visit {
 /// their data should be recorded.
 ///
 /// [visitor]: trait.Visit.html
-pub trait Value: ::sealed::Sealed {
+pub trait Value: crate::sealed::Sealed {
     /// Visits this value with the given `Visitor`.
     fn record(&self, key: &Field, visitor: &mut dyn Visit);
 }
@@ -305,7 +305,7 @@ impl_values! {
     record_bool(bool)
 }
 
-impl ::sealed::Sealed for str {}
+impl crate::sealed::Sealed for str {}
 
 impl Value for str {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
@@ -313,7 +313,7 @@ impl Value for str {
     }
 }
 
-impl<'a, T: ?Sized> ::sealed::Sealed for &'a T where T: Value + ::sealed::Sealed + 'a {}
+impl<'a, T: ?Sized> crate::sealed::Sealed for &'a T where T: Value + crate::sealed::Sealed + 'a {}
 
 impl<'a, T: ?Sized> Value for &'a T
 where
@@ -324,7 +324,7 @@ where
     }
 }
 
-impl<'a> ::sealed::Sealed for fmt::Arguments<'a> {}
+impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
 
 impl<'a> Value for fmt::Arguments<'a> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
@@ -334,7 +334,7 @@ impl<'a> Value for fmt::Arguments<'a> {
 
 // ===== impl DisplayValue =====
 
-impl<T: fmt::Display> ::sealed::Sealed for DisplayValue<T> {}
+impl<T: fmt::Display> crate::sealed::Sealed for DisplayValue<T> {}
 
 impl<T> Value for DisplayValue<T>
 where
@@ -353,7 +353,7 @@ impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
 
 // ===== impl DebugValue =====
 
-impl<T: fmt::Debug> ::sealed::Sealed for DebugValue<T> {}
+impl<T: fmt::Debug> crate::sealed::Sealed for DebugValue<T> {}
 
 impl<T: fmt::Debug> Value for DebugValue<T>
 where
@@ -663,7 +663,7 @@ impl_valid_len! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use metadata::{Kind, Level, Metadata};
+    use crate::metadata::{Kind, Level, Metadata};
 
     struct TestCallsite1;
     static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
@@ -676,8 +676,8 @@ mod test {
         kind: Kind::SPAN,
     };
 
-    impl ::callsite::Callsite for TestCallsite1 {
-        fn set_interest(&self, _: ::subscriber::Interest) {
+    impl crate::callsite::Callsite for TestCallsite1 {
+        fn set_interest(&self, _: crate::subscriber::Interest) {
             unimplemented!()
         }
 
@@ -697,8 +697,8 @@ mod test {
         kind: Kind::SPAN,
     };
 
-    impl ::callsite::Callsite for TestCallsite2 {
-        fn set_interest(&self, _: ::subscriber::Interest) {
+    impl crate::callsite::Callsite for TestCallsite2 {
+        fn set_interest(&self, _: crate::subscriber::Interest) {
             unimplemented!()
         }
 

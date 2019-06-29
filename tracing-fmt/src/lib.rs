@@ -24,8 +24,8 @@ pub mod filter;
 mod span;
 pub mod time;
 
-pub use filter::Filter;
-pub use span::Context;
+pub use crate::filter::Filter;
+pub use crate::span::Context;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
