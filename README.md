@@ -2,10 +2,13 @@
 
 Application-level tracing for Rust.
 
+[![Crates.io][crates-badge]][crates-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][travis-badge]][travis-url]
 [![Gitter chat][gitter-badge]][gitter-url]
 
+[crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
+[crates-url]: https://crates.io/crates/tracing-core
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [travis-badge]: https://travis-ci.org/tokio-rs/tracing.svg?branch=master
@@ -42,8 +45,8 @@ project.
 
 ## Project layout
 
-The `tracing` crate contains the primary _instrumentation_ API, used for
-instrumenting libraries and applications to emit trace data. The `tracing-core`
+The [`tracing`] crate contains the primary _instrumentation_ API, used for
+instrumenting libraries and applications to emit trace data. The [`tracing-core`]
 crate contains the _core_ API primitives on which the rest of `tracing` is
 instrumented. Authors of trace subscribers may depend on `tracing-core`, which
 guarantees a higher level of stability.
@@ -77,6 +80,8 @@ The crates included as part of Tracing are:
 
 * [`tracing-tower-http`]: `tower` compatibility for HTTP services (unstable).
 
+[`tracing`]: tracing
+[`tracing-core`]: tracing
 [`tracing-fmt`]: tracing-fmt
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
