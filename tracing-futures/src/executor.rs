@@ -71,7 +71,7 @@ impl Instrumented<Runtime> {
     /// complete, and yielding its resolved result. Any tasks or timers which
     /// the future spawns internally will be executed on the runtime.
     ///
-    /// This method should not be called from an asynchrounous context.
+    /// This method should not be called from an asynchronous context.
     ///
     /// This method simply wraps a call to `tokio::runtime::Runtime::block_on`,
     /// instrumenting the spawned future beforehand.
@@ -218,7 +218,7 @@ impl WithDispatch<Runtime> {
     /// complete, and yielding its resolved result. Any tasks or timers which
     /// the future spawns internally will be executed on the runtime.
     ///
-    /// This method should not be called from an asynchrounous context.
+    /// This method should not be called from an asynchronous context.
     ///
     /// This method simply wraps a call to `tokio::runtime::Runtime::block_on`,
     /// instrumenting the spawned future beforehand.

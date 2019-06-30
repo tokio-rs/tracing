@@ -15,7 +15,7 @@ use {field, Metadata};
 /// - Like spans, `Event`s have structured key-value data known as _[fields]_,
 ///   which may include textual message. In general, a majority of the data
 ///   associated with an event should be in the event's fields rather than in
-///   the textual message, as the fields are more structed.
+///   the textual message, as the fields are more structured.
 ///
 /// [span]: ../span
 /// [fields]: ../field
@@ -84,7 +84,7 @@ impl<'a> Event<'a> {
         self.metadata
     }
 
-    /// Returns true if the new event shoold be a root.
+    /// Returns true if the new event should be a root.
     pub fn is_root(&self) -> bool {
         match self.parent {
             Parent::Root => true,
@@ -96,7 +96,7 @@ impl<'a> Event<'a> {
     /// current context.
     ///
     /// If this is true and the current thread is currently inside a span, then
-    /// that span should be the new events's parent. Otherwise, if the current
+    /// that span should be the new event's parent. Otherwise, if the current
     /// thread is _not_ inside a span, then the new event will be the root of its
     /// own trace tree.
     pub fn is_contextual(&self) -> bool {

@@ -103,7 +103,7 @@ impl<'a> Attributes<'a> {
         self.values
     }
 
-    /// Returns true if the new span shoold be a root.
+    /// Returns true if the new span should be a root.
     pub fn is_root(&self) -> bool {
         match self.parent {
             Parent::Root => true,
