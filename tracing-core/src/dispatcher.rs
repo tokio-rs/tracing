@@ -1,5 +1,5 @@
 //! Dispatches trace events to `Subscriber`s.c
-use {
+use crate::{
     callsite, span,
     subscriber::{self, Subscriber},
     Event, Metadata,
@@ -430,14 +430,14 @@ impl Drop for ResetGuard {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use {
+    use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},
         span,
         subscriber::{Interest, Subscriber},
         Event,
     };
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn dispatch_is() {

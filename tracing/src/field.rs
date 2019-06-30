@@ -1,7 +1,7 @@
 //! Structured data associated with `Span`s and `Event`s.
 pub use tracing_core::field::*;
 
-use Metadata;
+use crate::Metadata;
 
 /// Trait implemented to allow a type to be used as a field key.
 ///
@@ -12,7 +12,7 @@ use Metadata;
 /// should be used whenever possible.
 ///
 /// [`Field`]: ../struct.Field.html
-pub trait AsField: ::sealed::Sealed {
+pub trait AsField: crate::sealed::Sealed {
     /// Attempts to convert `&self` into a `Field` with the specified `metadata`.
     ///
     /// If `metadata` defines this field, then the field is returned. Otherwise,
@@ -51,6 +51,6 @@ impl AsField for str {
     }
 }
 
-impl ::sealed::Sealed for Field {}
-impl<'a> ::sealed::Sealed for &'a Field {}
-impl ::sealed::Sealed for str {}
+impl crate::sealed::Sealed for Field {}
+impl<'a> crate::sealed::Sealed for &'a Field {}
+impl crate::sealed::Sealed for str {}
