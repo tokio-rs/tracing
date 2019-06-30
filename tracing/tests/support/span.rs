@@ -8,14 +8,14 @@ use std::fmt;
 /// `subscriber` module.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct MockSpan {
-    pub(in support) metadata: metadata::Expect,
+    pub(in crate::support) metadata: metadata::Expect,
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct NewSpan {
-    pub(in support) span: MockSpan,
-    pub(in support) fields: field::Expect,
-    pub(in support) parent: Option<Parent>,
+    pub(in crate::support) span: MockSpan,
+    pub(in crate::support) fields: field::Expect,
+    pub(in crate::support) parent: Option<Parent>,
 }
 
 pub fn mock() -> MockSpan {
@@ -100,7 +100,7 @@ impl MockSpan {
         }
     }
 
-    pub(in support) fn check_metadata(&self, actual: &tracing::Metadata) {
+    pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata) {
         self.metadata.check(actual, format_args!("span {}", self));
         assert!(actual.is_span(), "expected a span but got {:?}", actual);
     }

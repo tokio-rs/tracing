@@ -1,7 +1,7 @@
 //! Events represent single points in time during the execution of a program.
-use parent::Parent;
-use span::Id;
-use {field, Metadata};
+use crate::parent::Parent;
+use crate::span::Id;
+use crate::{field, Metadata};
 
 /// `Event`s represent single points in time where something occurred during the
 /// execution of a program.
@@ -36,7 +36,7 @@ impl<'a> Event<'a> {
             fields,
             parent: Parent::Current,
         };
-        ::dispatcher::get_default(|current| {
+        crate::dispatcher::get_default(|current| {
             current.event(&event);
         });
     }
@@ -59,7 +59,7 @@ impl<'a> Event<'a> {
             fields,
             parent,
         };
-        ::dispatcher::get_default(|current| {
+        crate::dispatcher::get_default(|current| {
             current.event(&event);
         });
     }

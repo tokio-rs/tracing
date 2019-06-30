@@ -1,6 +1,6 @@
+use crate::{filter::Filter, span::Context};
 use regex::Regex;
 use tracing_core::{subscriber::Interest, Level, Metadata};
-use {filter::Filter, span::Context};
 
 use std::{cmp::Ordering, env, error::Error, fmt, str::FromStr};
 
@@ -528,8 +528,8 @@ impl fmt::Display for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use default::NewRecorder;
-    use span::*;
+    use crate::default::NewRecorder;
+    use crate::span::*;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 

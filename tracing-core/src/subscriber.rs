@@ -1,5 +1,5 @@
 //! Subscribers collect and record trace data.
-use {span, Event, Metadata};
+use crate::{span, Event, Metadata};
 
 use std::{
     any::{Any, TypeId},

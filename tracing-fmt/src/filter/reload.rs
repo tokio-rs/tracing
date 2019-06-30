@@ -1,3 +1,4 @@
+use crate::{filter::Filter, span::Context};
 use parking_lot::RwLock;
 use std::{
     error, fmt,
@@ -5,7 +6,6 @@ use std::{
     sync::{Arc, Weak},
 };
 use tracing_core::{callsite, subscriber::Interest, Metadata};
-use {filter::Filter, span::Context};
 
 #[derive(Debug)]
 pub struct ReloadFilter<F, N>
@@ -151,12 +151,12 @@ impl error::Error for Error {
 
 #[cfg(test)]
 mod test {
+    use crate::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tracing_core::{
         dispatcher::{self, Dispatch},
         Metadata,
     };
-    use *;
 
     #[test]
     fn reload_handle() {
@@ -211,7 +211,7 @@ mod test {
 
     #[test]
     fn reload_from_env() {
-        use filter::EnvFilter;
+        use crate::filter::EnvFilter;
         let subscriber = FmtSubscriber::builder().with_filter_reloading().finish();
         let reload_handle = subscriber.reload_handle();
         reload_handle
