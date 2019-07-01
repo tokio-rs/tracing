@@ -362,7 +362,7 @@ with the appropriate reason to keep the conversation flow concise and relevant.
 Be aware that *how* you communicate requests and reviews in your feedback can
 have a significant impact on the success of the Pull Request. Yes, we may land
 a particular change that makes `tracing` better, but the individual might
-just notwant to have anything to do with `tracing` ever again. The goal is
+just not want to have anything to do with `tracing` ever again. The goal is
 not just having good code.
 
 ### Abandoned or Stalled Pull Requests
