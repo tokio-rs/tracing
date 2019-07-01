@@ -1,4 +1,4 @@
-use span;
+use crate::span;
 
 use tracing_core::{subscriber::Interest, Metadata};
 
@@ -22,7 +22,7 @@ pub use self::{env::EnvFilter, reload::ReloadFilter};
 impl<'a, F, N> Filter<N> for F
 where
     F: Fn(&Metadata, &span::Context<N>) -> bool,
-    N: ::NewVisitor<'a>,
+    N: crate::NewVisitor<'a>,
 {
     fn enabled(&self, metadata: &Metadata, ctx: &span::Context<N>) -> bool {
         (self)(metadata, ctx)

@@ -30,7 +30,7 @@ use std::fmt;
 /// filtering is based on metadata, rather than  on the constructed span.
 ///
 /// **Note**: Although instances of `Metadata` cannot be compared directly, they
-/// provide a method [`id`] which returns an an opaque [callsite identifier]
+/// provide a method [`id`] which returns an opaque [callsite identifier]
 /// which uniquely identifies the callsite where the metadata originated.
 /// This can be used for determining if two Metadata correspond to
 /// the same callsite.

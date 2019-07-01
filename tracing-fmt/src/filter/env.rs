@@ -1,6 +1,6 @@
+use crate::{filter::Filter, span::Context};
 use regex::Regex;
 use tracing_core::{subscriber::Interest, Level, Metadata};
-use {filter::Filter, span::Context};
 
 use std::{cmp::Ordering, env, error::Error, fmt, str::FromStr};
 
@@ -57,9 +57,7 @@ impl EnvFilter {
     /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, ignoring any invalid filter directives.
     pub fn from_env<A: AsRef<str>>(env: A) -> Self {
-        env::var(env.as_ref())
-            .map(|ref var| Self::new(var))
-            .unwrap_or_default()
+        env::var(env.as_ref()).map(Self::new).unwrap_or_default()
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
@@ -528,8 +526,8 @@ impl fmt::Display for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use default::NewRecorder;
-    use span::*;
+    use crate::default::NewRecorder;
+    use crate::span::*;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 

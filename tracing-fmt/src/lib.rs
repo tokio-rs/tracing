@@ -24,8 +24,8 @@ pub mod filter;
 mod span;
 pub mod time;
 
-pub use filter::Filter;
-pub use span::Context;
+pub use crate::filter::Filter;
+pub use crate::span::Context;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -39,16 +39,16 @@ pub trait FormatEvent<N> {
     fn format_event(
         &self,
         ctx: &span::Context<N>,
-        writer: &mut fmt::Write,
+        writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result;
 }
 
-impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result {
+impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result {
     fn format_event(
         &self,
         ctx: &span::Context<N>,
-        writer: &mut fmt::Write,
+        writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result {
         (*self)(ctx, writer, event)
@@ -386,6 +386,21 @@ impl<N, E, F> Builder<N, E, F> {
 mod test {
     use super::*;
     use tracing_core::dispatcher::Dispatch;
+
+    #[test]
+    fn impls() {
+        let f = default::Format::default().with_timer(time::Uptime::default());
+        let subscriber = FmtSubscriber::builder().on_event(f).finish();
+        let _dispatch = Dispatch::new(subscriber);
+
+        let f = default::Format::default();
+        let subscriber = FmtSubscriber::builder().on_event(f).finish();
+        let _dispatch = Dispatch::new(subscriber);
+
+        let f = default::Format::default().compact();
+        let subscriber = FmtSubscriber::builder().on_event(f).finish();
+        let _dispatch = Dispatch::new(subscriber);
+    }
 
     #[test]
     fn subscriber_downcasts() {

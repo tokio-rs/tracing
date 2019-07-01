@@ -1,10 +1,7 @@
 //! Subscribers collect and record trace data.
-use {span, Event, Metadata};
+use crate::{span, Event, Metadata};
 
-use std::{
-    any::{Any, TypeId},
-    ptr,
-};
+use std::any::{Any, TypeId};
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -109,9 +106,10 @@ pub trait Subscriber: 'static {
     /// [`enabled`]: #method.enabled
     /// [`rebuild_interest_cache`]: ../callsite/fn.rebuild_interest_cache.html
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        match self.enabled(metadata) {
-            true => Interest::always(),
-            false => Interest::never(),
+        if self.enabled(metadata) {
+            Interest::always()
+        } else {
+            Interest::never()
         }
     }
 
@@ -363,7 +361,7 @@ impl dyn Subscriber {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         unsafe {
             let raw = self.downcast_raw(TypeId::of::<T>())?;
-            if raw == ptr::null() {
+            if raw.is_null() {
                 None
             } else {
                 Some(&*(raw as *const _))

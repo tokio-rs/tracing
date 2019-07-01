@@ -2,17 +2,30 @@
 //! particular context.
 //!
 //! A span consists of [fields], user-defined key-value pairs of arbitrary data
-//! that describe the context the span represents, and [metadata], a fixed set
-//! of attributes that describe all `tracing` spans and events. Each span is
-//! assigned an [`Id` ] by the subscriber that uniquely identifies it in relation
-//! to other spans.
+//! that describe the context the span represents, and a set of fixed attributes
+//! that describe all `tracing` spans and events. Attributes describing spans
+//! include:
+//!
+//! - An [`Id`] assigned by the subscriber that uniquely identifies it in relation
+//!   to other spans.
+//! - The span's [parent] in the trace tree.
+//! - [Metadata] describing that describes static characteristics of all spans
+//!   originating from that callsite, such as its name, source code location,
+//!   [verbosity level], and the names of its fields.
 //!
 //! # Creating Spans
 //!
-//! Spans are created using the [`span!`] macro. This macro is invoked with a
-//! [verbosity level], followed by a set of attributes whose default values
-//! the user whishes to override, a string literal providing the span's name,
-//! and finally, between zero and 32 fields.
+//! Spans are created using the [`span!`] macro. This macro is invoked with the
+//! following arguments, in order:
+//!
+//! - The [`target`] and/or [`parent`](parent) attributes, if the user wishes to override
+//!   their default values.
+//! - The span's [verbosity level]
+//! - A string literal providing the span's name.
+//! - Finally, between zero and 32 arbitrary key/value fields.
+//!
+//! [parent]: #span-relationships
+//! [`target`]: ../struct.Metadata.html#method.target
 //!
 //! For example:
 //! ```rust
@@ -38,10 +51,12 @@
 //!
 //! The [`Attributes`] type contains data associated with a span, and is
 //! provided to the [`Subscriber`] when a new span is created. It contains
-//! the span's metadata, the ID of the span's parent if one was explicitly set,
+//! the span's metadata, the ID of [the span's parent] if one was explicitly set,
 //! and any fields whose values were recorded when the span was constructed.
-//! The subscriber may then choose to cache the data for future use, record
-//! it in some manner, or discard it completely.
+//! The subscriber, which is responsible for recording `tracing` data, can then
+//! store or record these values.
+//!
+//! [the span's parent]: #span-relationships
 //!
 //! # The Span Lifecycle
 //!
@@ -140,7 +155,7 @@
 //!
 //! // Although we have currently entered "bar", "baz"'s parent span
 //! // will be "foo".
-//! let baz = span!(Level::INFO, parent: &foo, "baz");
+//! let baz = span!(parent: &foo, Level::INFO, "baz");
 //! # }
 //! ```
 //!
@@ -283,7 +298,7 @@
 //! on every iteration.
 //!
 //! [fields]: ../field/index.html
-//! [metadata]: ../struct.Metadata.html
+//! [Metadata]: ../struct.Metadata.html
 //! [`Id`]: struct.Id.html
 //! [verbosity level]: ../struct.Level.html
 //! [`span!`]: ../macro.span.html
@@ -303,14 +318,14 @@
 //! [guard]: struct.Entered.html
 pub use tracing_core::span::{Attributes, Id, Record};
 
+use crate::{dispatcher::Dispatch, field, Metadata};
 use std::{
     cmp, fmt,
     hash::{Hash, Hasher},
 };
-use {dispatcher::Dispatch, field, Metadata};
 
 /// Trait implemented by types which have a span `Id`.
-pub trait AsId: ::sealed::Sealed {
+pub trait AsId: crate::sealed::Sealed {
     /// Returns the `Id` of the span that `self` corresponds to, or `None` if
     /// this corresponds to a disabled span.
     fn as_id(&self) -> Option<&Id>;
@@ -427,7 +442,7 @@ impl Span {
 
     fn make(meta: &'static Metadata<'static>, new_span: Attributes) -> Span {
         let attrs = &new_span;
-        let inner = ::dispatcher::get_default(move |dispatch| {
+        let inner = crate::dispatcher::get_default(move |dispatch| {
             let id = dispatch.new_span(attrs);
             Some(Inner::new(id, dispatch))
         });

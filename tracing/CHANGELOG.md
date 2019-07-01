@@ -1,3 +1,3 @@
-# 0.1.0 (April 22, 2019)
+# 0.1.0 (June 27, 2019)
 
 - Initial release

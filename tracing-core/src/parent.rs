@@ -1,4 +1,4 @@
-use span::Id;
+use crate::span::Id;
 
 #[derive(Debug)]
 pub(crate) enum Parent {

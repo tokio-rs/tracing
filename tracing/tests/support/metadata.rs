@@ -9,7 +9,7 @@ pub struct Expect {
 }
 
 impl Expect {
-    pub(in support) fn check(&self, actual: &Metadata, ctx: fmt::Arguments) {
+    pub(in crate::support) fn check(&self, actual: &Metadata, ctx: fmt::Arguments) {
         if let Some(ref expected_name) = self.name {
             let name = actual.name();
             assert!(
