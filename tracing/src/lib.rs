@@ -253,7 +253,7 @@
 //! in the `log` crate.
 //!
 //! In addition, the default subscriber can be set through using the
-//! [`with_default`] function. This follows the the `tokio` pattern of using
+//! [`with_default`] function. This follows the `tokio` pattern of using
 //! closures to represent executing code in a context that is exited at the end
 //! of the closure. For example:
 //!

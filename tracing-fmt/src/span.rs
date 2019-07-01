@@ -258,7 +258,7 @@ impl Store {
         let mut span = Some(span);
 
         // The slab's free list is a modification of Treiber's lock-free stack,
-        // using slab indices instead of pointers, and with a provison for
+        // using slab indices instead of pointers, and with a provision for
         // growing the slab when needed.
         //
         // In order to insert a new span into the slab, we "pop" the next free
@@ -338,7 +338,7 @@ impl Store {
         }
     }
 
-    /// Decrements the reference count of the the span with the given `id`, and
+    /// Decrements the reference count of the span with the given `id`, and
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.

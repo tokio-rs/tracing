@@ -127,7 +127,7 @@ pub struct Iter {
 /// override the default implementations of these functions in order to
 /// implement type-specific behavior.
 ///
-/// Additionally, when a visitor recieves a value of a type it does not care
+/// Additionally, when a visitor receives a value of a type it does not care
 /// about, it is free to ignore those values completely. For example, a
 /// visitor which only records numeric data might look like this:
 ///
@@ -175,7 +175,7 @@ pub trait Visit {
         self.record_debug(field, &value)
     }
 
-    /// Visit an umsigned 64-bit integer value.
+    /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.record_debug(field, &value)
     }

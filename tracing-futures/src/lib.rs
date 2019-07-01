@@ -284,7 +284,7 @@ mod tests {
                     .map(|_| {
                         span!(Level::TRACE, "c").in_scope(|| {
                             // "c" happens _outside_ of the instrumented future's
-                            // spab, so we don't expect it.
+                            // span, so we don't expect it.
                         })
                     });
                 runtime.block_on(Box::new(future)).unwrap();
