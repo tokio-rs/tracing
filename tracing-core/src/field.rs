@@ -508,6 +508,12 @@ impl FieldSet {
     pub fn len(&self) -> usize {
         self.names.len()
     }
+
+    /// Returns whether or not this `FieldSet` has fields.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
 }
 
 impl<'a> IntoIterator for &'a FieldSet {
@@ -531,7 +537,7 @@ impl fmt::Debug for FieldSet {
 impl fmt::Display for FieldSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_set()
-            .entries(self.names.iter().map(|n| display(n)))
+            .entries(self.names.iter().map(display))
             .finish()
     }
 }
