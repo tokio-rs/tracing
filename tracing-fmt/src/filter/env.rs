@@ -57,9 +57,7 @@ impl EnvFilter {
     /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, ignoring any invalid filter directives.
     pub fn from_env<A: AsRef<str>>(env: A) -> Self {
-        env::var(env.as_ref())
-            .map(|ref var| Self::new(var))
-            .unwrap_or_default()
+        env::var(env.as_ref()).map(Self::new).unwrap_or_default()
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
