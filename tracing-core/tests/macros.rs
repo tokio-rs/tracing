@@ -8,8 +8,8 @@ use tracing_core::{
 
 #[test]
 fn metadata_macro_api() {
-    // This test should catch any inadvertant breaking changes
-    // caused bu changes to the macro.
+    // This test should catch any inadvertent breaking changes
+    // caused by changes to the macro.
     struct TestCallsite;
 
     impl Callsite for TestCallsite {
