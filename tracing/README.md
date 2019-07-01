@@ -47,14 +47,6 @@ First, add this to your `Cargo.toml`:
 tracing = "0.1"
 ```
 
-Next, add this to your crate:
-
-```rust
-#[macro_use]
-extern crate tracing;
-# fn main() {}
-```
-
 This crate provides macros for creating `Span`s and `Event`s, which represent
 periods of time and momentary events within the execution of a program,
 respectively.
@@ -70,9 +62,8 @@ _n_ new items were taken from a queue, and so on.
 to indicate that some code takes place within the context of that `Span`:
 
 ```rust
-# #[macro_use] extern crate tracing;
-# use tracing::Level;
-# fn main() {
+use tracing::{span, Level};
+
 // Construct a new span named "my span".
 let mut span = span!(Level::INFO, "my span");
 span.in_scope(|| {
@@ -80,7 +71,6 @@ span.in_scope(|| {
     // the span.
 });
 // Dropping the span will close it, indicating that it has ended.
-# }
 ```
 
 The `Event` type represent an event that occurs instantaneously, and is
@@ -88,8 +78,8 @@ essentially a `Span` that cannot be entered. They are created using the `event!`
 macro:
 
 ```rust
-use tracing::Level;
-use tracing::event;
+use tracing::{event, Level};
+
 event!(Level::INFO, "something has happened!");
 ```
 
@@ -102,14 +92,17 @@ with a simple drop-in replacement.
 Let's consider the `log` crate's yak-shaving example:
 
 ```rust
-#[macro_use]
-extern crate tracing;
-use tracing::Level;
+use tracing::{span, info, warn, Level};
 
-# #[derive(Debug)] pub struct Yak(String);
-# impl Yak { fn shave(&mut self, _: u32) {} }
-# fn find_a_razor() -> Result<u32, u32> { Ok(1) }
-# fn main() {
+#[derive(Debug)]
+pub struct Yak(String);
+
+impl Yak {
+    fn shave(&mut self, _: u32) {}
+}
+
+fn find_a_razor() -> Result<u32, u32> { Ok(1) }
+
 pub fn shave_the_yak(yak: &mut Yak) {
     let span = span!(Level::TRACE, "shave_the_yak", ?yak);
     let _enter = span.enter();
@@ -136,7 +129,6 @@ pub fn shave_the_yak(yak: &mut Yak) {
         }
     }
 }
-# }
 ```
 
 You can find examples showing how to use this crate in the examples directory.
@@ -158,27 +150,28 @@ is probably [`tracing-fmt`], which logs to the terminal.
 The simplest way to use a subscriber is to call the `set_global_default` function:
 
 ```rust
-extern crate tracing;
-# pub struct FooSubscriber;
-# use tracing::{span::{Id, Attributes, Record}, Metadata};
-# impl tracing::Subscriber for FooSubscriber {
-#   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-#   fn record(&self, _: &Id, _: &Record) {}
-#   fn event(&self, _: &tracing::Event) {}
-#   fn record_follows_from(&self, _: &Id, _: &Id) {}
-#   fn enabled(&self, _: &Metadata) -> bool { false }
-#   fn enter(&self, _: &Id) {}
-#   fn exit(&self, _: &Id) {}
-# }
-# impl FooSubscriber {
-#   fn new() -> Self { FooSubscriber }
-# }
-# fn main() {
+use tracing::{span::{Id, Attributes, Record}, Metadata};
+
+pub struct FooSubscriber;
+
+impl tracing::Subscriber for FooSubscriber {
+  fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+  fn record(&self, _: &Id, _: &Record) {}
+  fn event(&self, _: &tracing::Event) {}
+  fn record_follows_from(&self, _: &Id, _: &Id) {}
+  fn enabled(&self, _: &Metadata) -> bool { false }
+  fn enter(&self, _: &Id) {}
+  fn exit(&self, _: &Id) {}
+}
+
+impl FooSubscriber {
+  fn new() -> Self { FooSubscriber }
+}
 
 let my_subscriber = FooSubscriber::new();
+
 tracing::subscriber::set_global_default(my_subscriber)
     .expect("setting tracing default failed");
-# }
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -191,23 +184,23 @@ In addition, you can locally override the default subscriber, using the `tokio` 
 of executing code in a context. For example:
 
 ```rust
-#[macro_use]
-extern crate tracing;
-# pub struct FooSubscriber;
-# use tracing::{span::{Id, Attributes, Record}, Metadata};
-# impl tracing::Subscriber for FooSubscriber {
-#   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-#   fn record(&self, _: &Id, _: &Record) {}
-#   fn event(&self, _: &tracing::Event) {}
-#   fn record_follows_from(&self, _: &Id, _: &Id) {}
-#   fn enabled(&self, _: &Metadata) -> bool { false }
-#   fn enter(&self, _: &Id) {}
-#   fn exit(&self, _: &Id) {}
-# }
-# impl FooSubscriber {
-#   fn new() -> Self { FooSubscriber }
-# }
-# fn main() {
+use tracing::{span::{Id, Attributes, Record}, Metadata};
+
+pub struct FooSubscriber;
+
+impl tracing::Subscriber for FooSubscriber {
+  fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+  fn record(&self, _: &Id, _: &Record) {}
+  fn event(&self, _: &tracing::Event) {}
+  fn record_follows_from(&self, _: &Id, _: &Id) {}
+  fn enabled(&self, _: &Metadata) -> bool { false }
+  fn enter(&self, _: &Id) {}
+  fn exit(&self, _: &Id) {}
+}
+
+impl FooSubscriber {
+  fn new() -> Self { FooSubscriber }
+}
 
 let my_subscriber = FooSubscriber::new();
 
@@ -215,7 +208,6 @@ tracing::subscriber::with_default(my_subscriber, || {
     // Any trace events generated in this closure or by functions it calls
     // will be collected by `my_subscriber`.
 })
-# }
 ```
 
 This approach allows trace data to be collected by multiple subscribers within
