@@ -2391,6 +2391,18 @@ macro_rules! __mk_format_string {
     };
 
     // === recursive case (more tts), non-empty out set ===
+
+    // ====== shorthand field syntax ===
+    (@ { $($out:expr),+ }, ?$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_string!(@ { $($out),+, __tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    };
+    (@ { $($out:expr),+ }, %$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_string!(@ { $($out),+, __tracing_stringify!($($k).+), "={} " }, $($rest)*)
+    };
+    (@ { $($out:expr),+ }, $($k:ident).+, $($rest:tt)*) => {
+        __mk_format_string!(@ { $($out),+, __tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    };
+
     (@ { $($out:expr),+ }, message = $val:expr, $($rest:tt)*) => {
         __mk_format_string!(@ { $($out),+, "{} " }, $($rest)*)
     };
@@ -2404,7 +2416,18 @@ macro_rules! __mk_format_string {
         __mk_format_string!(@ { $($out),+, __tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
 
+
     // === recursive case (more tts), empty out set ===
+        // ====== shorthand field syntax ===
+    (@ { }, ?$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_string!(@ { __tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    };
+    (@ { }, %$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_string!(@ { __tracing_stringify!($($k).+), "={} " }, $($rest)*)
+    };
+    (@ { }, $($k:ident).+, $($rest:tt)*) => {
+        __mk_format_string!(@ { __tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    };
     (@ { }, message = $val:expr, $($rest:tt)*) => {
         __mk_format_string!(@ { "{} " }, $($rest)*)
     };
@@ -2432,37 +2455,58 @@ macro_rules! __mk_format_string {
 #[macro_export(local_inner_macros)]
 macro_rules! __mk_format_args {
     // == base case ==
-    (@ { $($out:expr),* }, $fmt:expr, $(,)*) => {
+    (@ { $($out:expr),* }, $fmt:expr, fields: $(,)*) => {
         __tracing_format_args!($fmt, $($out),*)
     };
 
     // === recursive case (more tts), non-empty out set ===
-    (@ { $($out:expr),+ }, $fmt:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $($out),+, $val }, $fmt, $($rest)*)
+    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $($out),+, $val }, $fmt, fields: $($rest)*)
     };
-    (@ { $($out:expr),+ }, $fmt:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $($out),+, $val }, $fmt, $($rest)*)
+    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $($out),+, $val }, $fmt, fields: $($rest)*)
     };
-    (@ { $($out:expr),+ }, $fmt:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $($out),+, $val }, $fmt, $($rest)*)
+    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $($out),+, $val }, $fmt, fields: $($rest)*)
+    };
+    // ====== shorthand field syntax ===
+    (@ { $($out:expr),+ }, $fmt:expr, fields: ?$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_args!(@ { $($out),+, &$($k).+ }, $fmt, fields: $($rest)*)
+    };
+    (@ { $($out:expr),+ }, $fmt:expr, fields: %$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_args!(@ { $($out),+, &$($k).+ }, $fmt, fields: $($rest)*)
+    };
+    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+, $($rest:tt)*) => {
+        __mk_format_args!(@ { $($out),+, &$($k).+ }, $fmt, fields: $($rest)*)
     };
 
+
     // == recursive case (more tts), empty out set ===
-    (@ { }, $fmt:expr, message = $val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $val }, $fmt, $($rest)*)
+    (@ { }, $fmt:expr, fields: message = $val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
     };
-    (@ { }, $fmt:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $val }, $fmt, $($rest)*)
+    (@ { }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
     };
-    (@ { }, $fmt:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $val }, $fmt, $($rest)*)
+    (@ { }, $fmt:expr, fields: $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
     };
-    (@ { }, $fmt:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        __mk_format_args!(@ { $val }, $fmt, $($rest)*)
+    (@ { }, $fmt:expr, fields: $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+        __mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
+    };
+    // ====== shorthand field syntax ===
+    (@ { }, $fmt:expr, fields: ?$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_args!(@ { &$($k).+ }, $fmt, fields: $($rest)*)
+    };
+    (@ { }, $fmt:expr, fields: %$($k:ident).+, $($rest:tt)*) => {
+        __mk_format_args!(@ { &$($k).+ }, $fmt, fields: $($rest)*)
+    };
+    (@ { }, $fmt:expr, fields: $($k:ident).+, $($rest:tt)*) => {
+        __mk_format_args!(@ { &$($k).+ }, $fmt, fields: $($rest)*)
     };
 
     // === entry ===
     ($($kv:tt)*) => {
-        __mk_format_args!(@ { }, __mk_format_string!($($kv)*), $($kv)*,)
+        __mk_format_args!(@ { }, __mk_format_string!($($kv)*), fields: $($kv)*,)
     };
 }
