@@ -14,6 +14,9 @@ script:
 
 jobs:
   include:
+  - script: cargo test --all --all-features
+    name: "all features"
+    rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview
     name: "rustfmt"
