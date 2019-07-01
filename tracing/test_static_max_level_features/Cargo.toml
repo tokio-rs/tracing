@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "test_cargo_max_level_features"
 version = "0.1.0"
