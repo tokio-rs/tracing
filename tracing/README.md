@@ -89,18 +89,49 @@ be invoked with the same syntax as the similarly-named macros from the `log`
 crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
-Let's consider the `log` crate's yak-shaving example:
+Let's consider the `log` crate's yak-shaving
+[example](https://docs.rs/log/0.4.6/log/index.html#examples), tweeked to
+support tracing:
+
+```rust
+// Add a use statement so we get tracing version of macros
+use tracing::{span, info, warn, Level};
+
+// Dummy impls to make the example compile
+#[derive(Debug)] pub struct Yak(String);
+impl Yak { fn shave(&mut self, _: u32) {} }
+fn find_a_razor() -> Result<u32, u32> { Ok(1) }
+
+pub fn shave_the_yak(yak: &mut Yak) {
+    // Add a span and enter it to utilize scoped logging in tracing
+    let span = span!(Level::TRACE, "shave_the_yak", ?yak);
+    let _enter = span.enter();
+
+    // unchanged from here forward
+    info!(target: "yak_events", "Commencing yak shaving for {:?}", yak);
+
+    loop {
+        match find_a_razor() {
+            Ok(razor) => {
+                info!("Razor located: {}", razor);
+                yak.shave(razor);
+                break;
+            }
+            Err(err) => {
+                warn!("Unable to locate a razor: {}, retrying", err);
+            }
+        }
+    }
+}
+```
+
+We can tweek it even further to better utilize features in tracing.
 
 ```rust
 use tracing::{span, info, warn, Level};
 
-#[derive(Debug)]
-pub struct Yak(String);
-
-impl Yak {
-    fn shave(&mut self, _: u32) {}
-}
-
+#[derive(Debug)] pub struct Yak(String);
+impl Yak { fn shave(&mut self, _: u32) {} }
 fn find_a_razor() -> Result<u32, u32> { Ok(1) }
 
 pub fn shave_the_yak(yak: &mut Yak) {
@@ -131,7 +162,8 @@ pub fn shave_the_yak(yak: &mut Yak) {
 }
 ```
 
-You can find examples showing how to use this crate in the examples directory.
+You can find further examples showing how to use this crate in the examples
+directory.
 
 ### In libraries
 
@@ -145,7 +177,9 @@ implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
 
 There currently aren't too many subscribers to choose from. The best one to use right now
-is probably [`tracing-fmt`], which logs to the terminal.
+is probably [`tracing-fmt`], which logs to the terminal. It is not currently
+published to crates.io so you will need to add [`tracing-fmt`] as a git
+dependency to use it.
 
 The simplest way to use a subscriber is to call the `set_global_default` function:
 
