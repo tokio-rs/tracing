@@ -19,6 +19,7 @@ Core primitives for application-level tracing.
 """
 categories = ["development-tools::debugging"]
 keywords = ["logging", "tracing"]
+edition = "2018"
 
 [dependencies]
 lazy_static = "1.0.0"
