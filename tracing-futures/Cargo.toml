@@ -2,6 +2,7 @@
 name = "tracing-futures"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
+edition = "2018"
 
 [features]
 default = ["tokio"]
