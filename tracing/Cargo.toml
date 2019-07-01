@@ -20,6 +20,7 @@ A scoped, structured logging and diagnostics system.
 """
 categories = ["development-tools::debugging", "asynchronous"]
 keywords = ["logging", "tracing"]
+edition = "2018"
 
 [dependencies]
 tracing-core = { version = "0.1", path = "../tracing-core" }
