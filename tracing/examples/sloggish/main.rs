@@ -2,7 +2,7 @@
 //! subscriber.
 //!
 //! This subscriber implements a tree-structured logger similar to
-//! the "compact" formatter in [`slog-term`]. The demo mimicks the
+//! the "compact" formatter in [`slog-term`]. The demo mimics the
 //! example output in the screenshot in the [`slog` README].
 //!
 //! Note that this logger isn't ready for actual production use.

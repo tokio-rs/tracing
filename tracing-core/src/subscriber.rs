@@ -74,7 +74,7 @@ pub trait Subscriber: 'static {
     /// that subscriber returns `Interest::always` from `register_callsite`, then
     /// the filter will not be re-evaluated once it has been applied to a given
     /// set of metadata. Thus, the counter will not be incremented, and the span
-    /// or event that correspands to the metadata will never be `enabled`.
+    /// or event that corresponds to the metadata will never be `enabled`.
     ///
     /// `Subscriber`s that need to change their filters occasionally should call
     /// [`rebuild_interest_cache`] to re-evaluate `register_callsite` for all

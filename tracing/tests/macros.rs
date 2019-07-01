@@ -689,8 +689,8 @@ fn field_shorthand_only() {
 
 #[test]
 fn callsite_macro_api() {
-    // This test should catch any inadvertant breaking changes
-    // caused bu changes to the macro.
+    // This test should catch any inadvertent breaking changes
+    // caused by changes to the macro.
     let _callsite = callsite! {
         name: "test callsite",
         kind: tracing::metadata::Kind::EVENT,
