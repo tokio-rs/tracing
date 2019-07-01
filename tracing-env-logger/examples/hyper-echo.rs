@@ -82,7 +82,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
         // future, waiting on concatenating the full body, so that
         // it can be reversed. Only then can we return a `Response`.
         (&Method::POST, "/echo/reversed") => {
-            let mut span = span!(Level::TRACE, "response", response_kind = "reversed");
+            let span = span!(Level::TRACE, "response", response_kind = "reversed");
             let _enter = span.enter();
             let reversed = req.into_body().concat2().map(move |chunk| {
                 let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
