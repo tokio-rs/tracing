@@ -106,9 +106,10 @@ pub trait Subscriber: 'static {
     /// [`enabled`]: #method.enabled
     /// [`rebuild_interest_cache`]: ../callsite/fn.rebuild_interest_cache.html
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        match self.enabled(metadata) {
-            true => Interest::always(),
-            false => Interest::never(),
+        if self.enabled(metadata) {
+            Interest::always()
+        } else {
+            Interest::never()
         }
     }
 
