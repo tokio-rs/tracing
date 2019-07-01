@@ -1,6 +1,6 @@
 // Taken from tokio-rs/tokio-trace-nursery/tokio-trace-fmt/examples/yak_shave.rs
 
-use tokio_trace::Level;
+use tracing::Level;
 
 fn shave(yak: usize) -> bool {
     span!(Level::TRACE, "shave", yak = yak).in_scope(|| {

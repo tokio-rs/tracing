@@ -1,9 +1,9 @@
 [package]
-name = "tokio-trace-test"
+name = "tracing-test"
 version = "0.1.0"
 authors = ["Matthias Prechtl <m.sleepypanda@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio-trace = { git = "https://github.com/tokio-rs/tokio" }
+tracing = "0.1"

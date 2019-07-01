@@ -2,7 +2,7 @@
 //! Its main intended use case is debugging subscribers.
 
 #[macro_use]
-extern crate tokio_trace;
+extern crate tracing;
 
 mod server;
 mod yak_shave;

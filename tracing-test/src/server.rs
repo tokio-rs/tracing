@@ -1,6 +1,6 @@
 // Taken from tokio-rs/tokio/tokio-trace/examples/sloggish/main.rs
 
-use tokio_trace::{field, Level};
+use tracing::{field, Level};
 
 pub(crate) fn incoming_connection() {
     span!(Level::TRACE, "", version = &field::display(5.0)).in_scope(|| {
