@@ -508,6 +508,12 @@ impl FieldSet {
     pub fn len(&self) -> usize {
         self.names.len()
     }
+
+    /// Returns whether or not this `FieldSet` has fields.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
 }
 
 impl<'a> IntoIterator for &'a FieldSet {
