@@ -2319,10 +2319,10 @@ macro_rules! __tracing_stringify {
 macro_rules! level_to_log {
     ($level:expr) => {
         match $level {
-            $crate::Level::ERROR => $crate::log::Level::Error,
-            $crate::Level::WARN => $crate::log::Level::Warn,
-            $crate::Level::INFO => $crate::log::Level::Info,
-            $crate::Level::DEBUG => $crate::log::Level::Debug,
+            &$crate::Level::ERROR => $crate::log::Level::Error,
+            &$crate::Level::WARN => $crate::log::Level::Warn,
+            &$crate::Level::INFO => $crate::log::Level::Info,
+            &$crate::Level::DEBUG => $crate::log::Level::Debug,
             _ => $crate::log::Level::Trace,
         }
     };
@@ -2334,7 +2334,7 @@ macro_rules! level_to_log {
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
         use $crate::log;
-        let level = level_to_log!($level);
+        let level = level_to_log!(&$level);
         if level <= log::STATIC_MAX_LEVEL {
             let log_meta = log::Metadata::builder()
                 .level(level)
