@@ -110,7 +110,7 @@ where
     fn format_event(
         &self,
         ctx: &span::Context<N>,
-        writer: &mut fmt::Write,
+        writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result {
         let meta = event.metadata();
