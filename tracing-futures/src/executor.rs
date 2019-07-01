@@ -1,8 +1,8 @@
+use crate::{Instrument, Instrumented, WithDispatch};
 use futures::{
     future::{ExecuteError, Executor},
     Future,
 };
-use {Instrument, Instrumented, WithDispatch};
 
 #[cfg(feature = "tokio")]
 use tokio::{

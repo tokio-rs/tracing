@@ -1,6 +1,6 @@
-use span;
-use time::{self, FormatTime, SystemTime};
-use FormatEvent;
+use crate::span;
+use crate::time::{self, FormatTime, SystemTime};
+use crate::FormatEvent;
 
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
@@ -76,7 +76,7 @@ impl<F, T> Format<F, T> {
 
 impl<N, T> FormatEvent<N> for Format<Full, T>
 where
-    N: for<'a> ::NewVisitor<'a>,
+    N: for<'a> crate::NewVisitor<'a>,
     T: FormatTime,
 {
     fn format_event(
@@ -104,7 +104,7 @@ where
 
 impl<N, T> FormatEvent<N> for Format<Compact, T>
 where
-    N: for<'a> ::NewVisitor<'a>,
+    N: for<'a> crate::NewVisitor<'a>,
     T: FormatTime,
 {
     fn format_event(
@@ -153,7 +153,7 @@ impl<'a> Recorder<'a> {
     }
 }
 
-impl<'a> ::NewVisitor<'a> for NewRecorder {
+impl<'a> crate::NewVisitor<'a> for NewRecorder {
     type Visitor = Recorder<'a>;
 
     #[inline]
@@ -186,7 +186,7 @@ struct FmtCtx<'a, N: 'a>(&'a span::Context<'a, N>);
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FmtCtx<'a, N>
 where
-    N: ::NewVisitor<'a>,
+    N: crate::NewVisitor<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
@@ -227,7 +227,7 @@ struct FullCtx<'a, N: 'a>(&'a span::Context<'a, N>);
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FullCtx<'a, N>
 where
-    N: ::NewVisitor<'a>,
+    N: crate::NewVisitor<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;

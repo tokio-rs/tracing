@@ -318,14 +318,14 @@
 //! [guard]: struct.Entered.html
 pub use tracing_core::span::{Attributes, Id, Record};
 
+use crate::{dispatcher::Dispatch, field, Metadata};
 use std::{
     cmp, fmt,
     hash::{Hash, Hasher},
 };
-use {dispatcher::Dispatch, field, Metadata};
 
 /// Trait implemented by types which have a span `Id`.
-pub trait AsId: ::sealed::Sealed {
+pub trait AsId: crate::sealed::Sealed {
     /// Returns the `Id` of the span that `self` corresponds to, or `None` if
     /// this corresponds to a disabled span.
     fn as_id(&self) -> Option<&Id>;
@@ -442,7 +442,7 @@ impl Span {
 
     fn make(meta: &'static Metadata<'static>, new_span: Attributes) -> Span {
         let attrs = &new_span;
-        let inner = ::dispatcher::get_default(move |dispatch| {
+        let inner = crate::dispatcher::get_default(move |dispatch| {
             let id = dispatch.new_span(attrs);
             Some(Inner::new(id, dispatch))
         });
