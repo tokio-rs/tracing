@@ -1,10 +1,7 @@
 //! Subscribers collect and record trace data.
 use crate::{span, Event, Metadata};
 
-use std::{
-    any::{Any, TypeId},
-    ptr,
-};
+use std::any::{Any, TypeId};
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -363,7 +360,7 @@ impl dyn Subscriber {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         unsafe {
             let raw = self.downcast_raw(TypeId::of::<T>())?;
-            if raw == ptr::null() {
+            if raw.is_null() {
                 None
             } else {
                 Some(&*(raw as *const _))
