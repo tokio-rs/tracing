@@ -2,6 +2,7 @@
 name = "test_cargo_max_level_features"
 version = "0.1.0"
 publish = false
+edition = "2018"
 
 [dependencies.tracing]
 path = ".."
