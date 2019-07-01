@@ -21,26 +21,26 @@ pub trait FormatTime {
     /// When `format_time` is called, implementors should get the current time using their desired
     /// mechanism, and write it out to the given `fmt::Write`. Implementors must insert a trailing
     /// space themselves if they wish to separate the time from subsequent log message text.
-    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result;
+    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result;
 }
 
 impl<'a, F> FormatTime for &'a F
 where
     F: FormatTime,
 {
-    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         (*self).format_time(w)
     }
 }
 
 impl FormatTime for () {
-    fn format_time(&self, _: &mut fmt::Write) -> fmt::Result {
+    fn format_time(&self, _: &mut dyn fmt::Write) -> fmt::Result {
         Ok(())
     }
 }
 
-impl FormatTime for fn(&mut fmt::Write) -> fmt::Result {
-    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+impl FormatTime for fn(&mut dyn fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         (*self)(w)
     }
 }
@@ -76,7 +76,7 @@ impl From<Instant> for Uptime {
 
 #[cfg(feature = "chrono")]
 impl FormatTime for SystemTime {
-    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         write!(w, "{} ", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
     }
 }
@@ -88,7 +88,7 @@ impl FormatTime for SystemTime {
 }
 
 impl FormatTime for Uptime {
-    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let e = self.epoch.elapsed();
         write!(w, "{:4}.{:09}s ", e.as_secs(), e.subsec_nanos())
     }
@@ -96,7 +96,7 @@ impl FormatTime for Uptime {
 
 #[inline(always)]
 #[cfg(feature = "ansi")]
-pub(crate) fn write<T>(timer: T, writer: &mut fmt::Write) -> fmt::Result
+pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write) -> fmt::Result
 where
     T: FormatTime,
 {

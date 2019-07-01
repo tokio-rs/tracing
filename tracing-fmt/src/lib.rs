@@ -39,16 +39,16 @@ pub trait FormatEvent<N> {
     fn format_event(
         &self,
         ctx: &span::Context<N>,
-        writer: &mut fmt::Write,
+        writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result;
 }
 
-impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut fmt::Write, &Event) -> fmt::Result {
+impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result {
     fn format_event(
         &self,
         ctx: &span::Context<N>,
-        writer: &mut fmt::Write,
+        writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result {
         (*self)(ctx, writer, event)
