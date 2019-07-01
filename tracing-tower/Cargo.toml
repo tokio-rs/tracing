@@ -2,6 +2,7 @@
 name = "tracing-tower"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
+edition = "2018"
 
 [dependencies]
 tracing = { version = "0.1", path = "../tracing" }

@@ -2,6 +2,7 @@
 name = "tracing-slog"
 version = "0.1.0"
 authors = ["David Barsky <dbarsky@amazon.com>"]
+edition = "2018"
 
 [dependencies]
 tracing = { version = "0.1", path = "../tracing" }
