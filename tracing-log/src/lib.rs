@@ -61,9 +61,30 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let key = fields
         .field(&"message")
         .expect("log record fields must have a message");
+    let target_key = fields
+        .field(&"log.target")
+        .expect("log record fields must have a target");
+    let module_key = fields
+        .field(&"log.module_path")
+        .expect("log record fields must have a module_path");
+    let file_key = fields
+        .field(&"log.file")
+        .expect("log record fields must have a file");
+    let line_key = fields
+        .field(&"log.line")
+        .expect("log record fields must have a line");
     Event::dispatch(
         &meta,
-        &fields.value_set(&[(&key, Some(record.args() as &dyn field::Value))]),
+        &fields.value_set(&[
+            (&key, Some(record.args() as &dyn field::Value)),
+            (&target_key, Some(&record.target())),
+            (&module_key, record.module_path().as_ref()
+                              .map(|s| s as &dyn field::Value)),
+            (&file_key, record.file().as_ref()
+                              .map(|s| s as &dyn field::Value)),
+            (&line_key, record.line().as_ref()
+                              .map(|s| s as &dyn field::Value)),
+        ]),
     );
     Ok(())
 }
