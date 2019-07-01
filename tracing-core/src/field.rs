@@ -531,7 +531,7 @@ impl fmt::Debug for FieldSet {
 impl fmt::Display for FieldSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_set()
-            .entries(self.names.iter().map(|n| display(n)))
+            .entries(self.names.iter().map(display))
             .finish()
     }
 }
