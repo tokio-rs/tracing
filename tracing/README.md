@@ -94,7 +94,7 @@ Let's consider the `log` crate's yak-shaving
 use `tracing`:
 
 ```rust
-// Add a use statement so we get tracing version of macros
+// Import `tracing`'s macros rather than `log`'s
 use tracing::{span, info, warn, Level};
 
 // Dummy impls to make the example compile
