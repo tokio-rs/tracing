@@ -121,7 +121,7 @@ impl Yak { fn shave(&mut self, _: u32) {} }
 fn find_a_razor() -> Result<u32, u32> { Ok(1) }
 ```
 
-We can modify it even further to better utilize features in tracing.
+We can change it even further to better utilize features in tracing.
 
 ```rust
 use tracing::{span, info, warn, Level};
