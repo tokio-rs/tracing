@@ -38,7 +38,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             const BODY: &'static str = "Try POSTing data to /echo";
             *response.body_mut() = Body::from(BODY);
             (
-                span!(Level::TRACE, "response", body = %(&BODY),
+                span!(Level::TRACE, "response", body = %(&BODY)),
                 Box::new(future::ok(response)),
             )
         }
