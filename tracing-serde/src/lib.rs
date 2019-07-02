@@ -97,8 +97,8 @@ impl<'a> Serialize for SerializeMetadata<'a> {
         state.serialize_field("file", &self.0.file())?;
         state.serialize_field("line", &self.0.line())?;
         state.serialize_field("fields", &SerializeFieldSet(self.0.fields()))?;
-        state.serialize_field("field_names", &self.0.is_span())?;
-        state.serialize_field("callsite", &self.0.is_event())?;
+        state.serialize_field("is_span", &self.0.is_span())?;
+        state.serialize_field("is_event", &self.0.is_event())?;
         state.end()
     }
 }
