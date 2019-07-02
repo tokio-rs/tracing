@@ -1,6 +1,7 @@
-use tracing_core::{subscriber::Interest, Metadata};
 
-pub trait Layer: 'static {
+use crate::layer::Layer;
+use tracing_core::{subscriber::Interest, Metadata};
+pub trait Filter: 'static {
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
             Interest::always()
@@ -34,7 +35,7 @@ where
 
 // === impl Layer ===
 
-impl<F: Layer, S> crate::layer::Layer<S> for F {
+impl<F: Filter, S> Layer<S> for F {
     fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
         let my_interest = self.callsite_enabled(metadata);
         if my_interest.is_always() {
@@ -45,13 +46,13 @@ impl<F: Layer, S> crate::layer::Layer<S> for F {
     }
 
     fn enabled(&self, metadata: &Metadata, prev: bool) -> bool {
-        Layer::enabled(self, metadata) && prev
+        Filter::enabled(self, metadata) && prev
     }
 }
 
 // === impl EnabledFn ===
 
-impl<F> Layer for EnabledFn<F>
+impl<F> Filter for EnabledFn<F>
 where
     F: Fn(&Metadata) -> bool + 'static,
 {
@@ -71,7 +72,7 @@ where
 
 // === impl InterestFn ===
 
-impl<F> Layer for InterestFn<F>
+impl<F> Filter for InterestFn<F>
 where
     F: Fn(&Metadata) -> Interest + 'static,
 {
