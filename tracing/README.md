@@ -91,7 +91,7 @@ with a simple drop-in replacement.
 
 Let's consider the `log` crate's yak-shaving
 [example](https://docs.rs/log/0.4.6/log/index.html#examples), tweaked to
-support tracing:
+use `tracing`:
 
 ```rust
 // Add a use statement so we get tracing version of macros
