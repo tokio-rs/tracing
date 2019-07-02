@@ -21,3 +21,7 @@ jobs:
     install: rustup component add rustfmt-preview
     name: "rustfmt"
     rust: stable
+  - script: cargo test --features=doctest-readme --verbose --all
+    name: "doctest readme"
+    rust: nightly
+
