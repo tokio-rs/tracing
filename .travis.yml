@@ -10,7 +10,7 @@ rust:
 - nightly
 
 script:
-- cargo test --verbose --all
+- cargo test --all
 
 jobs:
   include:
@@ -18,7 +18,7 @@ jobs:
     install: rustup component add rustfmt-preview
     name: "rustfmt"
     rust: stable
-  - script: cargo test --features=doctest-readme --verbose --all
+  - script: cargo test --features=doctest-readme --all
     name: "doctest readme"
     rust: nightly
 
