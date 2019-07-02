@@ -125,7 +125,7 @@ pub fn shave_the_yak(yak: &mut Yak) {
 }
 ```
 
-We can tweek it even further to better utilize features in tracing.
+We can tweak it even further to better utilize features in tracing.
 
 ```rust
 use tracing::{span, info, warn, Level};
