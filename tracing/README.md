@@ -90,7 +90,7 @@ crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
 Let's consider the `log` crate's yak-shaving
-[example](https://docs.rs/log/0.4.6/log/index.html#examples), tweeked to
+[example](https://docs.rs/log/0.4.6/log/index.html#examples), tweaked to
 support tracing:
 
 ```rust
