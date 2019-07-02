@@ -54,6 +54,8 @@ release_max_level_info  = []
 release_max_level_debug = []
 release_max_level_trace = []
 
+doctest-readme = []
+
 [[bench]]
 name = "subscriber"
 harness = false
