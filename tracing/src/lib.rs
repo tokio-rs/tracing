@@ -1,6 +1,8 @@
 #![doc(html_root_url = "https://docs.rs/tracing/0.1.0")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
+#![cfg_attr(feature = "doctest-readme", feature(external_doc))]
+
 //! A scoped, structured logging and diagnostics system.
 //!
 //! # Overview
@@ -391,6 +393,9 @@ pub mod field;
 pub mod level_filters;
 pub mod span;
 pub mod subscriber;
+
+#[cfg(feature = "doctest-readme")]
+mod readme_doctest;
 
 mod sealed {
     pub trait Sealed {}
