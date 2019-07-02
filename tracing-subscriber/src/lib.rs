@@ -1,7 +1,5 @@
 //! Utilities and helpers for implementing and composing subscribers.
-extern crate tracing_core as trace;
-use trace::span::Id;
-
+use tracing_core::span::Id;
 
 pub mod filter;
 pub mod layer;
