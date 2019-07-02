@@ -14,7 +14,7 @@ pub trait Filter: 'static {
     fn enabled(&self, metadata: &Metadata) -> bool;
 }
 
-pub trait FilterExt: Filter + crate::sealed::Sealed {
+pub trait FilterExt: Filter {
     fn or<B>(self, b: B) -> Or<Self, B>
     where
         Self: Sized,
@@ -125,10 +125,7 @@ where
 }
 
 // === impl FilterExt ===
-
-impl<F: Filter> crate::sealed::Sealed for F {}
-
-impl<F: Filter + crate::sealed::Sealed> FilterExt for F {}
+impl<F: Filter> FilterExt for F {}
 
 // === impl And ===
 
