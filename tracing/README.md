@@ -90,24 +90,15 @@ crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
 Let's consider the `log` crate's yak-shaving
-[example](https://docs.rs/log/0.4.6/log/index.html#examples), tweaked to
-use `tracing`:
+[example](https://docs.rs/log/0.4.6/log/index.html#examples), modified to use
+`tracing`:
 
 ```rust
 // Import `tracing`'s macros rather than `log`'s
 use tracing::{span, info, warn, Level};
 
-// Dummy impls to make the example compile
-#[derive(Debug)] pub struct Yak(String);
-impl Yak { fn shave(&mut self, _: u32) {} }
-fn find_a_razor() -> Result<u32, u32> { Ok(1) }
-
+// unchanged from here forward
 pub fn shave_the_yak(yak: &mut Yak) {
-    // Add a span and enter it to utilize scoped logging in tracing
-    let span = span!(Level::TRACE, "shave_the_yak", ?yak);
-    let _enter = span.enter();
-
-    // unchanged from here forward
     info!(target: "yak_events", "Commencing yak shaving for {:?}", yak);
 
     loop {
@@ -123,18 +114,20 @@ pub fn shave_the_yak(yak: &mut Yak) {
         }
     }
 }
+
+// Dummy impls to make the example compile
+#[derive(Debug)] pub struct Yak(String);
+impl Yak { fn shave(&mut self, _: u32) {} }
+fn find_a_razor() -> Result<u32, u32> { Ok(1) }
 ```
 
-We can tweak it even further to better utilize features in tracing.
+We can modify it even further to better utilize features in tracing.
 
 ```rust
 use tracing::{span, info, warn, Level};
 
-#[derive(Debug)] pub struct Yak(String);
-impl Yak { fn shave(&mut self, _: u32) {} }
-fn find_a_razor() -> Result<u32, u32> { Ok(1) }
-
 pub fn shave_the_yak(yak: &mut Yak) {
+    // create and enter a span to represent the scope
     let span = span!(Level::TRACE, "shave_the_yak", ?yak);
     let _enter = span.enter();
 
@@ -160,6 +153,10 @@ pub fn shave_the_yak(yak: &mut Yak) {
         }
     }
 }
+
+#[derive(Debug)] pub struct Yak(String);
+impl Yak { fn shave(&mut self, _: u32) {} }
+fn find_a_razor() -> Result<u32, u32> { Ok(1) }
 ```
 
 You can find further examples showing how to use this crate in the examples
