@@ -1,20 +1,20 @@
-use trace::{
+use tracing_core::{
     metadata::Metadata,
     span,
     subscriber::{Interest, Subscriber},
     Event,
 };
 
-
 use crate::filter;
 use std::any::TypeId;
+
 pub trait Layer<S>: 'static {
     /// Registers a new callsite with this layer, returning whether or not
     /// the subscriber is interested in being notified about the callsite.
     ///
     /// This function is provided with the `Interest` returned by the wrapped
     /// subscriber. The layer may then choose to return
-    fn register_callsite(&self, _metadata: &Metadata, prev: Interest) -> Interest {
+    fn register_callsite(&self, _metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
         prev
     }
     fn enabled(&self, _metadata: &Metadata, prev: bool) -> bool {
@@ -35,9 +35,7 @@ pub trait Layer<S>: 'static {
     /// and then those of the wrapped subscriber. Multiple layers may be
     /// composed in this manner. For example:
     /// ```rust
-    /// # extern crate tokio_trace_core;
-    /// # extern crate tokio_trace_subscriber;
-    /// # use tokio_trace_subscriber::layer::Layer;
+    /// # use tracing_subscriber::layer::Layer;
     /// # fn main() {
     /// pub struct FooLayer {
     ///     // ...
@@ -61,11 +59,11 @@ pub trait Layer<S>: 'static {
     /// # impl MySubscriber {
     /// # fn new() -> Self { Self { }}
     /// # }
-    /// # use tokio_trace_core::{span::{Id, Attributes, Record}, Metadata};
-    /// # impl tokio_trace_core::Subscriber for MySubscriber {
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata};
+    /// # impl tracing_core::Subscriber for MySubscriber {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
-    /// #   fn event(&self, _: &tokio_trace_core::Event) {}
+    /// #   fn event(&self, _: &tracing_core::Event) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
@@ -124,9 +122,7 @@ impl<A, B> Layered<A, B> {
     /// and then those of the wrapped subscriber. Multiple layers may be
     /// composed in this manner. For example:
     /// ```rust
-    /// # extern crate tokio_trace_core;
-    /// # extern crate tokio_trace_subscriber;
-    /// # use tokio_trace_subscriber::layer::Layer;
+    /// # use tracing_subscriber::layer::Layer;
     /// # fn main() {
     /// pub struct FooLayer {
     ///     // ...
@@ -157,11 +153,11 @@ impl<A, B> Layered<A, B> {
     /// # impl MySubscriber {
     /// # fn new() -> Self { Self { }}
     /// # }
-    /// # use tokio_trace_core::{span::{Id, Attributes, Record}, Metadata};
-    /// # impl tokio_trace_core::Subscriber for MySubscriber {
-    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
-    /// #   fn event(&self, _: &tokio_trace_core::Event) {}
+    /// #   fn event(&self, _: &Event) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
@@ -188,7 +184,7 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
-    fn register_callsite(&self, metadata: &Metadata) -> Interest {
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.inner.register_callsite(metadata);
         self.layer.register_callsite(metadata, interest)
     }
