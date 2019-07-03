@@ -2270,7 +2270,6 @@ macro_rules! level_to_log {
     };
 }
 
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_stringify {
