@@ -294,29 +294,30 @@
 //!
 //! Any trace events generated outside the context of a subscriber will not be collected.
 //!
-//! The executable itself may use the `tracing` crate to instrument itself
-//! as well.
+//! Once a subscriber has been set, instrumentation points may be added to the
+//! executable using the `tracing` crate's macros.
 //!
 //! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
-//! several additional crates designed to be used with the `tracing` ecosystem.
+//! contains several additional crates designed to be used with the `tracing` ecosystem.
 //! This includes a collection of `Subscriber` implementations, as well as utility
 //! and adapter crates to assist in writing `Subscriber`s and instrumenting
 //! applications.
 //!
-//! In particular, the following `tracing` crates are likely to be of interest:
+//! In particular, the following crates are likely to be of interest:
 //!
-//! - [`tracing-futures`] provides a compatibility layer with the `futures`
-//!   crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
-//! - [`tracing-fmt`] provides a `Subscriber` implementation for
-//!   logging formatted trace data to stdout, with similar filtering and
-//!   formatting to the `env-logger` crate.
-//! - [`tracing-log`] provides a compatibility layer with the `log` crate,
-//!   allowing log `Record`s to be recorded as `tracing` `Event`s within the
-//!   trace tree. This is useful when a project using `tracing` have
-//!   dependencies which use `log`.
-//! - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
-//!   It provides a subscriber that records the time elapsed between pairs of
-//!   `tracing` events and generates histograms.
+//!  - [`tracing-futures`] provides a compatibility layer with the `futures`
+//!    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
+//!  - [`tracing-fmt`] provides a `Subscriber` implementation for
+//!    logging formatted trace data to stdout, with similar filtering and
+//!    formatting to the `env-logger` crate.
+//!  - [`tracing-log`] provides a compatibility layer with the `log` crate,
+//!    allowing log messages to be recorded as `tracing` `Event`s within the
+//!    trace tree. This is useful when a project using `tracing` have
+//!    dependencies which use `log`.
+//!  - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
+//!    It provides a subscriber that records the time elapsed between pairs of
+//!    `tracing` events and generates histograms.
+//!
 //! **Note:** that some of the ecosystem crates are currently unreleased and
 //! undergoing active development. They may be less stable than `tracing` and
 //! `tracing-core`.

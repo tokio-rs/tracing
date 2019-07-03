@@ -246,10 +246,11 @@ tracing::subscriber::with_default(my_subscriber, || {
 
 Any trace events generated outside the context of a subscriber will not be collected.
 
-The executable itself may use the `tracing` crate to instrument itself as well.
+Once a subscriber has been set, instrumentation points may be added to the
+executable using the `tracing` crate's macros.
 
 In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
-several additional crates designed to be used with the `tracing` ecosystem.
+contains several additional crates designed to be used with the `tracing` ecosystem.
 This includes a collection of `Subscriber` implementations, as well as utility
 and adapter crates to assist in writing `Subscriber`s and instrumenting
 applications.
@@ -262,7 +263,7 @@ In particular, the following crates are likely to be of interest:
    logging formatted trace data to stdout, with similar filtering and
    formatting to the `env-logger` crate.
  - [`tracing-log`] provides a compatibility layer with the `log` crate,
-   allowing log `Record`s to be recorded as `tracing` `Event`s within the
+   allowing log messages to be recorded as `tracing` `Event`s within the
    trace tree. This is useful when a project using `tracing` have
    dependencies which use `log`.
  - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
