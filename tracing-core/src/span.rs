@@ -30,6 +30,7 @@ pub struct Record<'a> {
     values: &'a field::ValueSet<'a>,
 }
 
+/// TODO(eliza) docs
 #[derive(Debug)]
 pub struct Current {
     inner: CurrentInner,
@@ -37,7 +38,8 @@ pub struct Current {
 
 #[derive(Debug)]
 enum CurrentInner {
-    Known(Option<Id>),
+    Current { id: Id, metadata: &'static Metadata<'static> }
+    None,
     Unknown,
 }
 
@@ -196,18 +198,17 @@ impl<'a> Record<'a> {
 // ===== impl Current =====
 
 impl Current {
-
     /// TODO(eliza): docs
-    pub fn new(id: Id) -> Self {
+    pub fn new(id: Id, metadata: &'static Metadata<'static>) -> Self {
         Self {
-            inner: CurrentInner::Known(Some(id)),
+            inner: CurrentInner::Current { id, metadata },
         }
     }
 
     /// TODO(eliza) docs
     pub fn none() -> Self {
         Self {
-            inner: CurrentInner::Known(None),
+            inner: CurrentInner::None,
         }
     }
 
@@ -227,9 +228,9 @@ impl Current {
     }
 
     /// TODO(eliza): docs
-    pub fn into_inner(self) -> Option<Id> {
+    pub fn into_inner(self) -> Option<(Id, &'static Metadata<'static>)> {
         match self.inner {
-            CurrentInner::Known(Some(id)) => Some(id),
+            CurrentInner::Current { id, metadata } => Some((id, metadata)),
             _ => None,
         }
     }
