@@ -9,7 +9,7 @@ default = ["ansi", "chrono"]
 ansi = ["ansi_term"]
 
 [dependencies]
-tracing-core = { version = "0.1", path = "../tracing-core" }
+tracing-core = "0.1"
 ansi_term = { version = "0.11", optional = true }
 regex = "1"
 lazy_static = "1"
@@ -19,4 +19,4 @@ lock_api = "0.1"
 chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = "0.1"
