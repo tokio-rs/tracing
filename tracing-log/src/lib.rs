@@ -78,12 +78,21 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         &fields.value_set(&[
             (&key, Some(record.args() as &dyn field::Value)),
             (&target_key, Some(&record.target())),
-            (&module_key, record.module_path().as_ref()
-                              .map(|s| s as &dyn field::Value)),
-            (&file_key, record.file().as_ref()
-                              .map(|s| s as &dyn field::Value)),
-            (&line_key, record.line().as_ref()
-                              .map(|s| s as &dyn field::Value)),
+            (
+                &module_key,
+                record
+                    .module_path()
+                    .as_ref()
+                    .map(|s| s as &dyn field::Value),
+            ),
+            (
+                &file_key,
+                record.file().as_ref().map(|s| s as &dyn field::Value),
+            ),
+            (
+                &line_key,
+                record.line().as_ref().map(|s| s as &dyn field::Value),
+            ),
         ]),
     );
     Ok(())
