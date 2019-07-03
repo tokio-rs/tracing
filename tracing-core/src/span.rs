@@ -38,7 +38,7 @@ pub struct Current {
 
 #[derive(Debug)]
 enum CurrentInner {
-    Current { id: Id, metadata: &'static Metadata<'static> }
+    Current { id: Id, metadata: &'static Metadata<'static> },
     None,
     Unknown,
 }
