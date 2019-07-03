@@ -1,9 +1,9 @@
-# Contributing to the Tokio Trace Nursery
+# Contributing to Tracing
 
 :balloon: Thanks for your help improving the project! We are so happy to have
 you!
 
-There are opportunities to contribute to Tokio Trace at any level. It doesn't
+There are opportunities to contribute to Tracing at any level. It doesn't
 matter if you are just getting started with Rust or are the most weathered
 expert, we can use your help.
 
@@ -15,7 +15,7 @@ It should be considered a map to help you navigate the process.
 You may also get help with contributing in the [dev channel][dev], please join
 us!
 
-Tokio Trace is a part of the [Tokio][tokio] project, and follows the project's
+Tracing is a part of the [Tokio][tokio] project, and follows the project's
 guidelines for contributing. This document is based on the
 [`CONTRIBUTING.md` file][tokio-contrib] in the `tokio-rs/tokio` repository.
 
@@ -35,8 +35,8 @@ the _minimum_ behavior expected from all contributors.
 For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
-   have uncovered a bug in a nursery crate, creating a new issue in the
-   tokio-rs/tracing-nursery [issue tracker][issues] is the way to report it.
+   have uncovered a bug in a Tracing crate, creating a new issue in the
+   tokio-rs/tracing [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
    supporting details (a test case that demonstrates a bug), providing
@@ -51,7 +51,7 @@ For any issue, there are fundamentally three ways an individual can contribute:
 **Anybody can participate in any stage of contribution**. We urge you to
 participate in the discussion around bugs and participate in reviewing PRs.
 
-[issues]: https://github.com/tokio-rs/tracing-nursery/issues
+[issues]: https://github.com/tokio-rs/tracing/issues
 
 ### Asking for General Help
 
@@ -63,7 +63,7 @@ PR that helps others avoid the problems that you encountered.
 
 ### Submitting a Bug Report
 
-When opening a new issue in the `tracing-nursery` issue tracker, users will
+When opening a new issue in the `tracing` issue tracker, users will
 be presented with a [basic template][template] that should be filled in. If you
 believe that you have uncovered a bug, please fill out this form, following the
 template to the best of your ability. Do not worry if you cannot answer every
@@ -112,7 +112,7 @@ functional guidelines of the Tokio project.
 ## Pull Requests
 
 Pull Requests are the way concrete changes are made to the code, documentation,
-and dependencies in the `tracing-nursery` repository.
+and dependencies in the `tracing` repository.
 
 Even tiny pull requests (e.g., one character pull request fixing a typo in API
 documentation) are greatly appreciated. Before making a large change, it is
@@ -379,3 +379,63 @@ _Adapted from the [Node.js contributing guide][node]_.
 [node]: https://github.com/nodejs/node/blob/master/CONTRIBUTING.md
 [hiding-a-comment]: https://help.github.com/articles/managing-disruptive-comments/#hiding-a-comment
 [documentation test]: https://doc.rust-lang.org/rustdoc/documentation-tests.html
+
+## Releasing
+
+Since the Tracing project consists of a number of crates, many of which depend on
+each other, releasing new versions to crates.io can involve some complexities.
+When releasing a new version of a crate, follow these steps:
+
+1. **Ensure that the release crate has no path dependencies.** When the HEAD
+   version of a Tracing crate requires unreleased changes in another Tracing crate,
+   the crates.io dependency on the second crate will be replaced with a path
+   dependency. Crates with path dependencies cannot be published, so before
+   publishing the dependent crate, any path dependencies must also be published.
+   This should be done through a form of depth-first tree traversal:
+
+   1. Starting with the first path dependency in the crate to be released,
+      inspect the `Cargo.toml` for the dependency. If the dependency has any
+      path dependencies of its own, repeat this step with the first such
+      dependency.
+   2. Begin the release process for the path dependency.
+   3. Once the path dependency has been published to crates.io, update the
+      dependent crate to depend on the crates.io version.
+   4. When all path dependencies have been published, the dependent crate may
+      be published.
+
+   To verify that a crate is ready to publish, run:
+
+   ```bash
+   bin/publish --dry-run <CRATE NAME> <CRATE VERSION>
+   ```
+
+2. **Update Cargo metadata.** After releasing any path dependencies, update the
+   `version` field in `Cargo.toml` to the new version, and the `documentation`
+   field to the docs.rs URL of the new version.
+3. **Update other documentation links.** Update the `#![doc(html_root_url)]`
+   attribute in the crate's `lib.rs` and the "Documentation" link in the crate's
+   `README.md` to point to the docs.rs URL of the new version.
+4. **Update the changelog for the crate.** Each crate in the Tokio repository
+   has its own `CHANGELOG.md` in that crate's subdirectory. Any changes to that
+   crate since the last release should be added to the changelog. Change
+   descriptions may be taken from the Git history, but should be edited to
+   ensure a consistent format, based on [Keep A Changelog][keep-a-changelog].
+   Other entries in that crate's changelog may also be used for reference.
+5. **Perform a final audit for breaking changes.** Compare the HEAD version of
+   crate with the Git tag for the most recent release version. If there are any
+   breaking API changes, determine if those changes can be made without breaking
+   existing APIs. If so, resolve those issues. Otherwise, if it is necessary to
+   make a breaking release, update the version numbers to reflect this.
+6. **Open a pull request with your changes.** Once that pull request has been
+   approved by a maintainer and the pull request has been merged, continue to
+   the next step.
+7. **Release the crate.** Run the following command:
+
+   ```bash
+   bin/publish <NAME OF CRATE> <VERSION>
+   ```
+
+   Your editor and prompt you to edit a message for the tag. Copy the changelog
+   entry for that release version into your editor and close the window.
+
+[keep-a-changelog]: https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md
