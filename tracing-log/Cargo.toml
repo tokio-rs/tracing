@@ -5,6 +5,6 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 
 [dependencies]
-tracing-core = { version = "0.1", path = "../tracing-core" }
+tracing-core = "0.1"
 tracing-subscriber = { path = "../tracing-subscriber" }
 log = "0.4"
