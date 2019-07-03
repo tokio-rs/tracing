@@ -9,8 +9,8 @@ about: I have a suggestion (and may want to implement it 🙂)!
 ### Crates
 
 <!--
-If known, please specify the tracing-nursery crate or crates the new feature
-should be added to. Otherwise, delete this section.
+If known, please specify the tracing crate or crates the new feature should
+be added to. Otherwise, delete this section.
 -->
 
 ### Motivation

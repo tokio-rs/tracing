@@ -4,7 +4,7 @@
 
 //! Core primitives for `tracing`.
 //!
-//! `tracing` is a framework for instrumenting Rust programs to collect
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
 //! structured, event-based diagnostic information. This crate defines the core
 //! primitives of `tracing`.
 //!
@@ -31,7 +31,7 @@
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
 //!
-//! The [`tracing-nursery`] repository contains less stable crates designed to
+//! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
 //! `Subscriber` implementations, as well as utility and adapter crates.
 //!
@@ -45,7 +45,8 @@
 //! [`Value`]: field/trait.Value.html
 //! [`ValueSet`]: field/struct.ValueSet.html
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
-//! [`tracing-nursery`]: https://github.com/tokio-rs/tracing-nursery
+//! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
+//! [`tracing`]: https://github.com/tokio-rs/tracing
 #[macro_use]
 extern crate lazy_static;
 
