@@ -229,8 +229,8 @@ impl Current {
     /// TODO(eliza): docs
     pub fn into_inner(self) -> Option<Id> {
         match self.inner {
-            CurrentInner::Unknown => false,
-            _ => true,
+            CurrentInner::Known(Some(id)) => Some(id),
+            _ => None,
         }
     }
 }
