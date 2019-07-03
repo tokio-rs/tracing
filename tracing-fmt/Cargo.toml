@@ -19,4 +19,4 @@ lock_api = "0.1"
 chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = "0.1"

@@ -14,6 +14,6 @@ tokio = { version = "0.1", optional = true }
 tokio-executor = { version = "0.1", optional = true }
 
 [dev-dependencies]
-tokio = "0.1.21"
+tokio = "0.1.22"
 tracing-fmt = { path = "../tracing-fmt" }
 tracing-core = "0.1"
