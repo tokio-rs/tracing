@@ -30,6 +30,17 @@ pub struct Record<'a> {
     values: &'a field::ValueSet<'a>,
 }
 
+#[derive(Debug)]
+pub struct Current {
+    inner: CurrentInner,
+}
+
+#[derive(Debug)]
+enum CurrentInner {
+    Known(Option<Id>),
+    Unknown,
+}
+
 // ===== impl Span =====
 
 impl Id {
@@ -179,5 +190,47 @@ impl<'a> Record<'a> {
     /// Returns true if this `Record` contains _no_ values.
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
+    }
+}
+
+// ===== impl Current =====
+
+impl Current {
+
+    /// TODO(eliza): docs
+    pub fn new(id: Id) -> Self {
+        Self {
+            inner: CurrentInner::Known(Some(id)),
+        }
+    }
+
+    /// TODO(eliza) docs
+    pub fn none() -> Self {
+        Self {
+            inner: CurrentInner::Known(None),
+        }
+    }
+
+    /// TODO(eliza) docs
+    pub fn unknown() -> Self {
+        Self {
+            inner: CurrentInner::Unknown,
+        }
+    }
+
+    /// TODO(eliza): docs
+    pub fn is_known(&self) -> bool {
+        match self.inner {
+            CurrentInner::Unknown => false,
+            _ => true,
+        }
+    }
+
+    /// TODO(eliza): docs
+    pub fn into_inner(self) -> Option<Id> {
+        match self.inner {
+            CurrentInner::Unknown => false,
+            _ => true,
+        }
     }
 }

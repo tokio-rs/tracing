@@ -314,6 +314,11 @@ pub trait Subscriber: 'static {
         let _ = id;
     }
 
+    /// TODO(eliza): docs
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
+
     // === Downcasting methods ================================================
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
