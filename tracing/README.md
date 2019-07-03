@@ -3,15 +3,18 @@
 Application-level tracing for Rust.
 
 [![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][travis-badge]][travis-url]
 [![Gitter chat][gitter-badge]][gitter-url]
 
-[Documentation](https://docs.rs/tracing/0.1.0/tracing/index.html) |
-[Chat](https://gitter.im/tokio-rs/tracing)
+[Documentation][docs-url] |
+[Chat][gitter-url]
 
-[crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
-[crates-url]: https://crates.io/crates/tracing-core
+[crates-badge]: https://img.shields.io/crates/v/tracing.svg
+[crates-url]: https://crates.io/crates/tracing
+[docs-badge]: https://docs.rs/tracing/badge.svg
+[docs-url]: https://docs.rs/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [travis-badge]: https://travis-ci.org/tokio-rs/tracing.svg?branch=master
@@ -241,23 +244,43 @@ tracing::subscriber::with_default(my_subscriber, || {
 })
 ```
 
-This approach allows trace data to be collected by multiple subscribers within
-different contexts in the program. Note that the override only applies to the
-currently executing thread; other threads will not see the change from with_default.
+Any trace events generated outside the context of a subscriber will not be collected.
 
-Any trace events generated outside the context of a
-subscriber will not be collected.
+Once a subscriber has been set, instrumentation points may be added to the
+executable using the `tracing` crate's macros.
 
-The executable itself may use the `tracing` crate to instrument itself as
-well.
+In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
+contains several additional crates designed to be used with the `tracing` ecosystem.
+This includes a collection of `Subscriber` implementations, as well as utility
+and adapter crates to assist in writing `Subscriber`s and instrumenting
+applications.
 
-The [`tracing-nursery`] repository contains less stable crates designed to
-be used with the `tracing` ecosystem. It includes a collection of
-`Subscriber` implementations, as well as utility and adapter crates.
+In particular, the following crates are likely to be of interest:
+
+ - [`tracing-futures`] provides a compatibility layer with the `futures`
+   crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
+ - [`tracing-fmt`] provides a `Subscriber` implementation for
+   logging formatted trace data to stdout, with similar filtering and
+   formatting to the `env-logger` crate.
+ - [`tracing-log`] provides a compatibility layer with the `log` crate,
+   allowing log messages to be recorded as `tracing` `Event`s within the
+   trace tree. This is useful when a project using `tracing` have
+   dependencies which use `log`.
+ - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
+   It provides a subscriber that records the time elapsed between pairs of
+   `tracing` events and generates histograms.
+
+**Note:** that some of the ecosystem crates are currently unreleased and
+undergoing active development. They may be less stable than `tracing` and
+`tracing-core`.
+
 
 [`log`]: https://docs.rs/log/0.4.6/log/
-[`tracing-nursery`]: https://github.com/tokio-rs/tracing-nursery
-[`tracing-fmt`]: https://github.com/tokio-rs/tracing-nursery/tree/master/tracing-fmt
+[`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
+[`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
+[`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
+[`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
+[`tracing-timing`]: https://crates.io/crates/tracing-timing
 
 ## License
 
