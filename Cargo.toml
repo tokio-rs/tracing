@@ -2,8 +2,6 @@
 
 members = [
     "tracing",
-    "tracing/test-log-support",
-    "tracing/test_static_max_level_features",
     "tracing-core",
     "tracing-proc-macros",
     "tracing-fmt",

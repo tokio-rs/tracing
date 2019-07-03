@@ -1,3 +1,9 @@
+# Note: these tests _cannot_ be in the root workspace, as they will enable
+# filtering features on the rest of the workspace, breaking other tests.
+#
+# DO NOT ADD THIS TO THE ROOT WORKSPACE.
+[workspace]
+
 [package]
 name = "test_cargo_max_level_features"
 version = "0.1.0"
