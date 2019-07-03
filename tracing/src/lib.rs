@@ -328,6 +328,8 @@
 //! * `log` causes trace instrumentation points to emit [`log`] records as well
 //!   as trace events. This is inteded for use in libraries whose users may be
 //!   using either `tracing` or `log`.
+//!   **Note:** `log` support will not work when `tracing` is renamed in `Cargo.toml`,
+//!   due to oddities in macro expansion.
 //!
 //! ```toml
 //! [dependencies]
