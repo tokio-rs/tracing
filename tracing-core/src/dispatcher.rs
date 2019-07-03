@@ -324,6 +324,12 @@ impl Dispatch {
         self.subscriber.drop_span(id)
     }
 
+    /// TODO(eliza): docs
+    #[inline]
+    pub fn current_span(&self) -> span::Current {
+        self.subscriber.current_span()
+    }
+
     /// Returns `true` if this `Dispatch` forwards to a `Subscriber` of type
     /// `T`.
     #[inline]

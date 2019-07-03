@@ -318,7 +318,7 @@
 //! [guard]: struct.Entered.html
 pub use tracing_core::span::{Attributes, Id, Record};
 
-use crate::{dispatcher::Dispatch, field, Metadata};
+use crate::{dispatcher::{self, Dispatch}, field, Metadata};
 use std::{
     cmp, fmt,
     hash::{Hash, Hasher},
@@ -467,9 +467,25 @@ impl Span {
         }
     }
 
+    /// TODO(eliza) docs
+    pub fn current() -> Span {
+        dispatcher::get_default(|dispatch| {
+            if let Some((id, meta)) = dispatch.current_span().into_inner() {
+                // TODO(eliza): figure out if this should call clone_span or if that's
+                // the dispatcher's responsibility???
+                Self {
+                    inner: Some(Inner::new(id, dispatch)),
+                    meta: Some(meta),
+                }
+            } else {
+                Self::none()
+            }
+        })
+    }
+
     fn make(meta: &'static Metadata<'static>, new_span: Attributes) -> Span {
         let attrs = &new_span;
-        let inner = crate::dispatcher::get_default(move |dispatch| {
+        let inner = dispatcher::get_default(move |dispatch| {
             let id = dispatch.new_span(attrs);
             Some(Inner::new(id, dispatch))
         });
