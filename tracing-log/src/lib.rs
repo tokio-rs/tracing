@@ -58,27 +58,21 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         log::Level::Warn => *WARN_CS,
         log::Level::Error => *ERROR_CS,
     };
+    let module = record
+        .module_path()
+        .as_ref()
+        .map(|s| s as &dyn field::Value);
+    let file = record.file().as_ref().map(|s| s as &dyn field::Value);
+    let line = record.line().as_ref().map(|s| s as &dyn field::Value);
     let meta = cs.metadata();
     Event::dispatch(
         &meta,
         &meta.fields().value_set(&[
             (&keys.message, Some(record.args() as &dyn field::Value)),
             (&keys.target, Some(&record.target())),
-            (
-                &keys.module,
-                record
-                    .module_path()
-                    .as_ref()
-                    .map(|s| s as &dyn field::Value),
-            ),
-            (
-                &keys.file,
-                record.file().as_ref().map(|s| s as &dyn field::Value),
-            ),
-            (
-                &keys.line,
-                record.line().as_ref().map(|s| s as &dyn field::Value),
-            ),
+            (&keys.module, module),
+            (&keys.file, file),
+            (&keys.line, line),
         ]),
     );
     Ok(())
@@ -120,10 +114,7 @@ macro_rules! log_cs {
             None,
             None,
             None,
-            field::FieldSet::new(
-                FIELD_NAMES,
-                identify_callsite!(&Callsite),
-            ),
+            field::FieldSet::new(FIELD_NAMES, identify_callsite!(&Callsite)),
             Kind::EVENT,
         );
 
@@ -155,11 +146,16 @@ macro_rules! log_cs {
 }
 
 lazy_static! {
-    static ref TRACE_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::TRACE);
-    static ref DEBUG_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::DEBUG);
-    static ref INFO_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::INFO);
-    static ref WARN_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::WARN);
-    static ref ERROR_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::ERROR);
+    static ref TRACE_CS: (&'static dyn Callsite, &'static Fields) =
+        log_cs!(tracing_core::Level::TRACE);
+    static ref DEBUG_CS: (&'static dyn Callsite, &'static Fields) =
+        log_cs!(tracing_core::Level::DEBUG);
+    static ref INFO_CS: (&'static dyn Callsite, &'static Fields) =
+        log_cs!(tracing_core::Level::INFO);
+    static ref WARN_CS: (&'static dyn Callsite, &'static Fields) =
+        log_cs!(tracing_core::Level::WARN);
+    static ref ERROR_CS: (&'static dyn Callsite, &'static Fields) =
+        log_cs!(tracing_core::Level::ERROR);
 }
 
 impl<'a> AsLog for Metadata<'a> {
@@ -188,10 +184,7 @@ impl<'a> AsTrace for log::Record<'a> {
             self.module_path(),
             self.line(),
             self.file(),
-            field::FieldSet::new(
-                FIELD_NAMES,
-                cs_id,
-            ),
+            field::FieldSet::new(FIELD_NAMES, cs_id),
             Kind::EVENT,
         )
     }
