@@ -1,7 +1,7 @@
 [workspace]
 
 [package]
-name = "test_log_support"
+name = "test-log-support"
 version = "0.1.0"
 publish = false
 edition = "2018"

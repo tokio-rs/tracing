@@ -14,6 +14,11 @@ script:
 
 jobs:
   include:
+  - script:
+    - (cd tracing/test-log-support && cargo test)
+    - (cd tracing/test_static_max_level_features && cargo test)
+    name: "feature flags"
+    rust: stable
   - script: cargo fmt --all -- --check
     install: rustup component add rustfmt-preview
     name: "rustfmt"

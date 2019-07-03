@@ -672,19 +672,18 @@ impl Span {
     #[cfg(feature = "log")]
     #[inline]
     fn log(&self, message: fmt::Arguments) {
-        use log;
         let logger = log::logger();
         let log_meta = log::Metadata::builder()
-            .level(level_to_log!(self.meta.level))
-            .target(self.meta.target)
+            .level(level_to_log!(self.meta.level()))
+            .target(self.meta.target())
             .build();
         if logger.enabled(&log_meta) {
             logger.log(
                 &log::Record::builder()
                     .metadata(log_meta)
-                    .module_path(self.meta.module_path)
-                    .file(self.meta.file)
-                    .line(self.meta.line)
+                    .module_path(self.meta.module_path())
+                    .file(self.meta.file())
+                    .line(self.meta.line())
                     .args(message)
                     .build(),
             );

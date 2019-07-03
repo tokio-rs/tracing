@@ -38,7 +38,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
             const BODY: &'static str = "Try POSTing data to /echo";
             *response.body_mut() = Body::from(BODY);
             (
-                span!(Level::TRACE, "response", body = &field::display(&BODY)),
+                span!(Level::TRACE, "response", body = %(&BODY)),
                 Box::new(future::ok(response)),
             )
         }
@@ -136,7 +136,7 @@ fn main() {
                 hyper::rt::spawn(
                     http.serve_connection(sock, service_fn(echo))
                         .map_err(|e| {
-                            error!({ error = field::display(e) }, "serve error");
+                            error!(message = "serve error", error = %&e);
                         })
                         .instrument(span),
                 );
@@ -144,7 +144,7 @@ fn main() {
             })
             .map(|_| ())
             .map_err(|e| {
-                error!({ error = field::display(e) }, "server error");
+                error!(message = "server error", error = %&e);
             })
             .instrument(server_span.clone());
         info!("listening...");

@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let done = socket
         .incoming()
-        .map_err(|e| debug!(msg = "error accepting socket", error = field::display(e)))
+        .map_err(|e| debug!(msg = "error accepting socket", error = field::display(&e)))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
             let mut client_addr = None;
@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Err(e) => debug!(
                     message = "Could not get client information",
-                    error = field::display(e)
+                    error = field::display(&e)
                 ),
             }
 
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .map_err(|e| {
                     // Don't panic. Maybe the client just disconnected too soon.
-                    debug!(error = field::display(e));
+                    debug!(error = field::display(&e));
                 })
                 .instrument(span!(
                     Level::TRACE,
