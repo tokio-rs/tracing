@@ -654,7 +654,6 @@ impl Span {
             }
         }
 
-
         self
     }
 
@@ -892,7 +891,6 @@ impl<'a> Drop for Entered<'a> {
                 self.span.log(format_args!("<- {}", meta.name()));
             }
         }
-
     }
 }
 
