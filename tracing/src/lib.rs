@@ -292,8 +292,7 @@
 //! currently executing thread; other threads will not see the change from with_default.
 //! with that subscriber as the default.
 //!
-//! Any trace events generated outside the
-//! context of a subscriber will not be collected.
+//! Any trace events generated outside the context of a subscriber will not be collected.
 //!
 //! The executable itself may use the `tracing` crate to instrument itself
 //! as well.
@@ -315,7 +314,9 @@
 //!   allowing log `Record`s to be recorded as `tracing` `Event`s within the
 //!   trace tree. This is useful when a project using `tracing` have
 //!   dependencies which use `log`.
-//!
+//! - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
+//!   It provides a subscriber that records the time elapsed between pairs of
+//!   `tracing` events and generates histograms.
 //! **Note:** that some of the ecosystem crates are currently unreleased and
 //! undergoing active development. They may be less stable than `tracing` and
 //! `tracing-core`.
@@ -355,6 +356,7 @@
 //! [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
 //! [`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
 //! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
+//! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 #[macro_use]
 extern crate cfg_if;
