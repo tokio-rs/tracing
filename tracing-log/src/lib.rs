@@ -58,12 +58,15 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         log::Level::Warn => *WARN_CS,
         log::Level::Error => *ERROR_CS,
     };
-    let module = record
-        .module_path()
-        .as_ref()
-        .map(|s| s as &dyn field::Value);
-    let file = record.file().as_ref().map(|s| s as &dyn field::Value);
-    let line = record.line().as_ref().map(|s| s as &dyn field::Value);
+
+    let log_module = record.module_path();
+    let log_file = record.file();
+    let log_line = record.line();
+
+    let module = log_module.as_ref().map(|s| s as &dyn field::Value);
+    let file = log_file.as_ref().map(|s| s as &dyn field::Value);
+    let line = log_line.as_ref().map(|s| s as &dyn field::Value);
+
     let meta = cs.metadata();
     Event::dispatch(
         &meta,
