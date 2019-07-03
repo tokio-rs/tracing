@@ -1,9 +1,9 @@
-# Contributing to the Tokio Trace Nursery
+# Contributing to Tracing
 
 :balloon: Thanks for your help improving the project! We are so happy to have
 you!
 
-There are opportunities to contribute to Tokio Trace at any level. It doesn't
+There are opportunities to contribute to Tracing at any level. It doesn't
 matter if you are just getting started with Rust or are the most weathered
 expert, we can use your help.
 
@@ -15,7 +15,7 @@ It should be considered a map to help you navigate the process.
 You may also get help with contributing in the [dev channel][dev], please join
 us!
 
-Tokio Trace is a part of the [Tokio][tokio] project, and follows the project's
+Tracing is a part of the [Tokio][tokio] project, and follows the project's
 guidelines for contributing. This document is based on the
 [`CONTRIBUTING.md` file][tokio-contrib] in the `tokio-rs/tokio` repository.
 
@@ -35,8 +35,8 @@ the _minimum_ behavior expected from all contributors.
 For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
-   have uncovered a bug in a nursery crate, creating a new issue in the
-   tokio-rs/tracing-nursery [issue tracker][issues] is the way to report it.
+   have uncovered a bug in a Tracing crate, creating a new issue in the
+   tokio-rs/tracing [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
    supporting details (a test case that demonstrates a bug), providing
@@ -51,7 +51,7 @@ For any issue, there are fundamentally three ways an individual can contribute:
 **Anybody can participate in any stage of contribution**. We urge you to
 participate in the discussion around bugs and participate in reviewing PRs.
 
-[issues]: https://github.com/tokio-rs/tracing-nursery/issues
+[issues]: https://github.com/tokio-rs/tracing/issues
 
 ### Asking for General Help
 
@@ -63,7 +63,7 @@ PR that helps others avoid the problems that you encountered.
 
 ### Submitting a Bug Report
 
-When opening a new issue in the `tracing-nursery` issue tracker, users will
+When opening a new issue in the `tracing` issue tracker, users will
 be presented with a [basic template][template] that should be filled in. If you
 believe that you have uncovered a bug, please fill out this form, following the
 template to the best of your ability. Do not worry if you cannot answer every
@@ -112,7 +112,7 @@ functional guidelines of the Tokio project.
 ## Pull Requests
 
 Pull Requests are the way concrete changes are made to the code, documentation,
-and dependencies in the `tracing-nursery` repository.
+and dependencies in the `tracing` repository.
 
 Even tiny pull requests (e.g., one character pull request fixing a typo in API
 documentation) are greatly appreciated. Before making a large change, it is
