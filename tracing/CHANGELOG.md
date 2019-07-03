@@ -2,7 +2,7 @@
 
 ### Changed
 
-- `lazy_static` dependency to 1.3.0 (#143) .
+- `cfg_if` dependency to 0.1.9.
 
 ### Fixed
 
