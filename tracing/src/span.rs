@@ -318,7 +318,10 @@
 //! [guard]: struct.Entered.html
 pub use tracing_core::span::{Attributes, Id, Record};
 
-use crate::{dispatcher::{self, Dispatch}, field, Metadata};
+use crate::{
+    dispatcher::{self, Dispatch},
+    field, Metadata,
+};
 use std::{
     cmp, fmt,
     hash::{Hash, Hasher},
