@@ -44,48 +44,6 @@ use tracing_core::{
     Event, Metadata,
 };
 
-static LOG_FIELD_NAMES: [&'static str; 5] = [
-    "message",
-    "log.target",
-    "log.module_path",
-    "log.file",
-    "log.line",
-];
-
-// static lookup for index of above field names
-// make sure ordering is matching
-macro_rules! get_static_index {
-    (message) => {
-        0
-    };
-    (log.target) => {
-        1
-    };
-    (log.module_path) => {
-        2
-    };
-    (log.file) => {
-        3
-    };
-    (log.line) => {
-        4
-    };
-}
-
-// static lookup of `Field` for the correct `FieldSet` by level
-macro_rules! get_field {
-    ($level:expr, $($name:tt)*) => {{
-        let fs = match $level {
-            log::Level::Trace => &TRACE_FIELDS as &[field::Field; 5],
-            log::Level::Debug => &DEBUG_FIELDS as &[field::Field; 5],
-            log::Level::Info => &INFO_FIELDS as &[field::Field; 5],
-            log::Level::Warn => &WARN_FIELDS as &[field::Field; 5],
-            log::Level::Error => &ERROR_FIELDS as &[field::Field; 5],
-        };
-        fs[get_static_index!($($name)*)].clone()
-    }};
-}
-
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let filter_meta = record.as_trace();
@@ -93,38 +51,32 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         return Ok(());
     };
 
-    let cs = match record.level() {
-        log::Level::Trace => TRACE_CS,
-        log::Level::Debug => DEBUG_CS,
-        log::Level::Info => INFO_CS,
-        log::Level::Warn => WARN_CS,
-        log::Level::Error => ERROR_CS,
+    let (cs, keys) = match record.level() {
+        log::Level::Trace => *TRACE_CS,
+        log::Level::Debug => *DEBUG_CS,
+        log::Level::Info => *INFO_CS,
+        log::Level::Warn => *WARN_CS,
+        log::Level::Error => *ERROR_CS,
     };
     let meta = cs.metadata();
-    let fields = meta.fields();
-    let message_key = get_field!(record.level(), message);
-    let target_key = get_field!(record.level(), log.target);
-    let module_key = get_field!(record.level(), log.module_path);
-    let file_key = get_field!(record.level(), log.file);
-    let line_key = get_field!(record.level(), log.line);
     Event::dispatch(
         &meta,
-        &fields.value_set(&[
-            (&message_key, Some(record.args() as &dyn field::Value)),
-            (&target_key, Some(&record.target())),
+        &meta.fields().value_set(&[
+            (&keys.message, Some(record.args() as &dyn field::Value)),
+            (&keys.target, Some(&record.target())),
             (
-                &module_key,
+                &keys.module,
                 record
                     .module_path()
                     .as_ref()
                     .map(|s| s as &dyn field::Value),
             ),
             (
-                &file_key,
+                &keys.file,
                 record.file().as_ref().map(|s| s as &dyn field::Value),
             ),
             (
-                &line_key,
+                &keys.line,
                 record.line().as_ref().map(|s| s as &dyn field::Value),
             ),
         ]),
@@ -142,6 +94,22 @@ pub trait AsTrace {
     fn as_trace(&self) -> Self::Trace;
 }
 
+struct Fields {
+    message: field::Field,
+    target: field::Field,
+    module: field::Field,
+    file: field::Field,
+    line: field::Field,
+}
+
+static FIELD_NAMES: &'static [&'static str] = &[
+    "message",
+    "log.target",
+    "log.module_path",
+    "log.file",
+    "log.line",
+];
+
 macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
@@ -152,7 +120,10 @@ macro_rules! log_cs {
             None,
             None,
             None,
-            fieldset!(&Callsite),
+            field::FieldSet::new(
+                FIELD_NAMES,
+                identify_callsite!(&Callsite),
+            ),
             Kind::EVENT,
         );
 
@@ -162,45 +133,34 @@ macro_rules! log_cs {
                 &META
             }
         }
-        &Callsite
+
+        lazy_static! {
+            static ref FIELDS: Fields = {
+                let message = META.fields().field("message").unwrap();
+                let target = META.fields().field("log.target").unwrap();
+                let module = META.fields().field("log.module_path").unwrap();
+                let file = META.fields().field("log.file").unwrap();
+                let line = META.fields().field("log.line").unwrap();
+                Fields {
+                    message,
+                    target,
+                    module,
+                    file,
+                    line,
+                }
+            };
+        }
+        (&Callsite, &FIELDS)
     }};
 }
 
-macro_rules! fieldset {
-    ($cs:expr) => {
-        field::FieldSet::new(&LOG_FIELD_NAMES, identify_callsite!($cs));
-    };
+lazy_static! {
+    static ref TRACE_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::TRACE);
+    static ref DEBUG_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::DEBUG);
+    static ref INFO_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::INFO);
+    static ref WARN_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::WARN);
+    static ref ERROR_CS: (&'static dyn Callsite, &'static Fields) = log_cs!(tracing_core::Level::ERROR);
 }
-
-// Generates arrays of static lookups for messages
-macro_rules! log_fields {
-    ($name:ident, $cs:ident) => {
-        lazy_static! {
-            static ref $name: [field::Field; 5] = {
-                let _fields = fieldset!($cs);
-                [
-                    _fields.field(&LOG_FIELD_NAMES[0]).unwrap(),
-                    _fields.field(&LOG_FIELD_NAMES[1]).unwrap(),
-                    _fields.field(&LOG_FIELD_NAMES[2]).unwrap(),
-                    _fields.field(&LOG_FIELD_NAMES[3]).unwrap(),
-                    _fields.field(&LOG_FIELD_NAMES[4]).unwrap(),
-                ]
-            };
-        }
-    };
-}
-
-log_fields!(TRACE_FIELDS, TRACE_CS);
-log_fields!(DEBUG_FIELDS, DEBUG_CS);
-log_fields!(INFO_FIELDS, INFO_CS);
-log_fields!(WARN_FIELDS, WARN_CS);
-log_fields!(ERROR_FIELDS, ERROR_CS);
-
-static TRACE_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::TRACE);
-static DEBUG_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::DEBUG);
-static INFO_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::INFO);
-static WARN_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::WARN);
-static ERROR_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::ERROR);
 
 impl<'a> AsLog for Metadata<'a> {
     type Log = log::Metadata<'a>;
@@ -214,12 +174,12 @@ impl<'a> AsLog for Metadata<'a> {
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
-        let fields = match self.level() {
-            log::Level::Trace => fieldset!(TRACE_CS),
-            log::Level::Debug => fieldset!(DEBUG_CS),
-            log::Level::Info => fieldset!(INFO_CS),
-            log::Level::Warn => fieldset!(WARN_CS),
-            log::Level::Error => fieldset!(ERROR_CS),
+        let cs_id = match self.level() {
+            log::Level::Trace => identify_callsite!(TRACE_CS.0),
+            log::Level::Debug => identify_callsite!(DEBUG_CS.0),
+            log::Level::Info => identify_callsite!(INFO_CS.0),
+            log::Level::Warn => identify_callsite!(WARN_CS.0),
+            log::Level::Error => identify_callsite!(ERROR_CS.0),
         };
         Metadata::new(
             "log record",
@@ -228,7 +188,10 @@ impl<'a> AsTrace for log::Record<'a> {
             self.module_path(),
             self.line(),
             self.file(),
-            fields,
+            field::FieldSet::new(
+                FIELD_NAMES,
+                cs_id,
+            ),
             Kind::EVENT,
         )
     }
