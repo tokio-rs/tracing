@@ -711,7 +711,7 @@ impl Span {
 
     /// Returns this span's `Metadata`, if it is enabled.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
-        self.meta.as_ref().cloned()
+        self.meta.clone()
     }
 
     #[cfg(feature = "log")]
