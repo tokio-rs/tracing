@@ -277,7 +277,7 @@ macro_rules! span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                 __tracing_disabled_span!(
+                 $crate::__tracing_disabled_span!(
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
@@ -303,7 +303,7 @@ macro_rules! span {
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
             } else {
-                __tracing_disabled_span!(
+                $crate::__tracing_disabled_span!(
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
