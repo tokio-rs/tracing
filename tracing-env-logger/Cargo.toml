@@ -9,7 +9,7 @@ env_logger = "0.5"
 log = "0.4"
 
 [dev-dependencies]
-tracing = "0.1"
+tracing = { version = "0.1", path = "../tracing" }
 tracing-fmt = { path = "../tracing-fmt" }
 tracing-futures = { path = "../tracing-futures" }
 tracing-subscriber = { path = "../tracing-subscriber" }
