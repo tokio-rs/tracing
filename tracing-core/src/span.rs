@@ -211,7 +211,7 @@ impl<'a> Record<'a> {
 
 impl Current {
     /// Constructs a new `Current` that indicates the current context is a span
-    /// with the given `metadata` and `metadata`
+    /// with the given `metadata` and `metadata`.
     pub fn new(id: Id, metadata: &'static Metadata<'static>) -> Self {
         Self {
             inner: CurrentInner::Current { id, metadata },
@@ -234,7 +234,7 @@ impl Current {
         }
     }
 
-    /// Returns `true` if the `Subscriber` that constructed this tracks a
+    /// Returns `true` if the `Subscriber` that constructed this `Current` tracks a
     /// current span.
     ///
     /// If this returns `true`, if [`id`], [`metadata`], or [`into_inner`]
