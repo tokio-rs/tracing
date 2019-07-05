@@ -315,13 +315,35 @@ impl Dispatch {
     /// This calls the [`drop_span`]  function on the [`Subscriber`] that this
     ///  `Dispatch` forwards to.
     ///
+    /// **Note:** the [`try_close`] function is functionally identical, but
+    /// returns `true` if the span is now closed.
+    ///
     /// [span ID]: ../span/struct.Id.html
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`clone_span`]: ../subscriber/trait.Subscriber.html#method.clone_span
     /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+    /// [`try_close`]: #method.try_close
     #[inline]
     pub fn drop_span(&self, id: span::Id) {
-        self.subscriber.drop_span(id)
+        self.subscriber.drop_span(id);
+    }
+
+    /// Notifies the subscriber that a [span ID] has been dropped, and returns
+    /// `true` if there are now 0 IDs referring to that span.
+    ///
+    /// This function is guaranteed to only be called with span IDs that were
+    /// returned by this `Dispatch`'s [`new_span`] function.
+    ///
+    /// This calls the [`try_close`]  function on the [`Subscriber`] that this
+    ///  `Dispatch` forwards to.
+    ///
+    /// [span ID]: ../span/struct.Id.html
+    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+    /// [`try_close`]: ../subscriber/trait.Subscriber.html#method.try_close
+    /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+    #[inline]
+    pub fn try_close(&self, id: span::Id) -> bool {
+        self.subscriber.try_close(id)
     }
 
     /// Returns `true` if this `Dispatch` forwards to a `Subscriber` of type
