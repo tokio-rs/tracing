@@ -322,12 +322,12 @@ pub trait Subscriber: 'static {
     /// called is inside a span, or [`Current::none`] if the thread is not
     /// inside a span.
     ///
-    /// By default, this returns [`Current::unknown`], which indicates to
-    /// callers that the subscriber does **not** track what span is current.
+    /// By default, this returns a value indicating that the subscriber
+    /// does **not** track what span is current. If the subscriber does not
+    /// implement a current span, it should not override this method.
     ///
     /// [`Current::new`]: ../span/struct.Current.html#tymethod.new
     /// [`Current::none`]: ../span/struct.Current.html#tymethod.none
-    /// [`Current::unknown`]: ../span/struct.Current.html#method.unknown
     fn current_span(&self) -> span::Current {
         span::Current::unknown()
     }
