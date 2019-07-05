@@ -343,7 +343,11 @@ pub struct Span {
     ///
     /// If this is `None`, then the span has either closed or was never enabled.
     inner: Option<Inner>,
-    meta: &'static Metadata<'static>,
+    /// Metadata describing the span.
+    ///
+    /// This might be `Some` even if `inner` is `None`, in the case that the
+    /// span is disabled but the metadata is needed for `log` support.
+    meta: Option<&'static Metadata<'static>>,
 }
 
 /// A handle representing the capacity to enter a span which is known to exist.
@@ -434,10 +438,33 @@ impl Span {
         Self::make(meta, new_span)
     }
 
-    /// Constructs a new disabled span.
+    /// Constructs a new disabled span with the given `Metadata`.
+    ///
+    /// This should be used when a span is constructed from a known callsite,
+    /// but the subscriber indicates that it is disabled.
+    ///
+    /// Entering, exiting, and recording values on this span will not notify the
+    /// `Subscriber` but _may_ record log messages if the `log` feature flag is
+    /// enabled.
     #[inline(always)]
     pub fn new_disabled(meta: &'static Metadata<'static>) -> Span {
-        Span { inner: None, meta }
+        Self {
+            inner: None,
+            meta: Some(meta),
+        }
+    }
+
+    /// Constructs a new span that is *completely disabled*.
+    ///
+    /// This can be used rather than `Option<Span>` to represent cases where a
+    /// span is not present.
+    ///
+    /// Entering, exiting, and recording values on this span will do nothing.
+    pub const fn none() -> Span {
+        Self {
+            inner: None,
+            meta: None,
+        }
     }
 
     fn make(meta: &'static Metadata<'static>, new_span: Attributes) -> Span {
@@ -446,8 +473,15 @@ impl Span {
             let id = dispatch.new_span(attrs);
             Some(Inner::new(id, dispatch))
         });
-        let span = Self { inner, meta };
-        span.log(format_args!("{}; {}", meta.name(), FmtAttrs(&new_span)));
+
+        let span = Self {
+            inner,
+            meta: Some(meta),
+        };
+
+        #[cfg(feature = "log")]
+        span.log(format_args!("{}; {}", meta.name(), FmtAttrs(attrs)));
+
         span
     }
 
@@ -527,7 +561,14 @@ impl Span {
         if let Some(ref inner) = self.inner.as_ref() {
             inner.subscriber.enter(&inner.id);
         }
-        self.log(format_args!("-> {}", self.meta.name()));
+
+        #[cfg(feature = "log")]
+        {
+            if let Some(ref meta) = self.meta {
+                self.log(format_args!("-> {}", meta.name()));
+            }
+        }
+
         Entered { span: self }
     }
 
@@ -603,13 +644,14 @@ impl Span {
         Q: field::AsField,
         V: field::Value,
     {
-        if let Some(field) = field.as_field(self.meta) {
-            self.record_all(
-                &self
-                    .meta
-                    .fields()
-                    .value_set(&[(&field, Some(value as &dyn field::Value))]),
-            );
+        if let Some(ref meta) = self.meta {
+            if let Some(field) = field.as_field(meta) {
+                self.record_all(
+                    &meta
+                        .fields()
+                        .value_set(&[(&field, Some(value as &dyn field::Value))]),
+                );
+            }
         }
 
         self
@@ -621,7 +663,14 @@ impl Span {
         if let Some(ref inner) = self.inner {
             inner.record(&record);
         }
-        self.log(format_args!("{}; {}", self.meta.name(), FmtValues(&record)));
+
+        #[cfg(feature = "log")]
+        {
+            if let Some(ref meta) = self.meta {
+                self.log(format_args!("{}; {}", meta.name(), FmtValues(&record)));
+            }
+        }
+
         self
     }
 
@@ -662,42 +711,41 @@ impl Span {
 
     /// Returns this span's `Metadata`, if it is enabled.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
-        if self.inner.is_some() {
-            Some(self.meta)
-        } else {
-            None
-        }
+        self.meta.clone()
     }
 
     #[cfg(feature = "log")]
     #[inline]
     fn log(&self, message: fmt::Arguments) {
-        let logger = log::logger();
-        let log_meta = log::Metadata::builder()
-            .level(level_to_log!(self.meta.level()))
-            .target(self.meta.target())
-            .build();
-        if logger.enabled(&log_meta) {
-            logger.log(
-                &log::Record::builder()
-                    .metadata(log_meta)
-                    .module_path(self.meta.module_path())
-                    .file(self.meta.file())
-                    .line(self.meta.line())
-                    .args(message)
-                    .build(),
-            );
+        if let Some(ref meta) = self.meta {
+            let logger = log::logger();
+            let log_meta = log::Metadata::builder()
+                .level(level_to_log!(meta.level()))
+                .target(meta.target())
+                .build();
+            if logger.enabled(&log_meta) {
+                logger.log(
+                    &log::Record::builder()
+                        .metadata(log_meta)
+                        .module_path(meta.module_path())
+                        .file(meta.file())
+                        .line(meta.line())
+                        .args(message)
+                        .build(),
+                );
+            }
         }
     }
-
-    #[cfg(not(feature = "log"))]
-    #[inline]
-    fn log(&self, _: fmt::Arguments) {}
 }
 
 impl cmp::PartialEq for Span {
     fn eq(&self, other: &Self) -> bool {
-        self.meta.callsite() == other.meta.callsite() && self.inner == other.inner
+        match (&self.meta, &other.meta) {
+            (Some(this), Some(that)) => {
+                this.callsite() == that.callsite() && self.inner == other.inner
+            }
+            _ => false,
+        }
     }
 }
 
@@ -710,26 +758,30 @@ impl Hash for Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut span = f.debug_struct("Span");
-        span.field("name", &self.meta.name())
-            .field("level", &self.meta.level())
-            .field("target", &self.meta.target());
+        if let Some(ref meta) = self.meta {
+            span.field("name", &meta.name())
+                .field("level", &meta.level())
+                .field("target", &meta.target());
 
-        if let Some(ref inner) = self.inner {
-            span.field("id", &inner.id());
+            if let Some(ref inner) = self.inner {
+                span.field("id", &inner.id());
+            } else {
+                span.field("disabled", &true);
+            }
+
+            if let Some(ref path) = meta.module_path() {
+                span.field("module_path", &path);
+            }
+
+            if let Some(ref line) = meta.line() {
+                span.field("line", &line);
+            }
+
+            if let Some(ref file) = meta.file() {
+                span.field("file", &file);
+            }
         } else {
-            span.field("disabled", &true);
-        }
-
-        if let Some(ref path) = self.meta.module_path() {
-            span.field("module_path", &path);
-        }
-
-        if let Some(ref line) = self.meta.line() {
-            span.field("line", &line);
-        }
-
-        if let Some(ref file) = self.meta.file() {
-            span.field("file", &file);
+            span.field("none", &true);
         }
 
         span.finish()
@@ -832,12 +884,20 @@ impl<'a> Drop for Entered<'a> {
         if let Some(inner) = self.span.inner.as_ref() {
             inner.subscriber.exit(&inner.id);
         }
-        self.span.log(format_args!("<- {}", self.span.meta.name()));
+
+        #[cfg(feature = "log")]
+        {
+            if let Some(ref meta) = self.span.meta {
+                self.span.log(format_args!("<- {}", meta.name()));
+            }
+        }
     }
 }
 
+#[cfg(feature = "log")]
 struct FmtValues<'a>(&'a Record<'a>);
 
+#[cfg(feature = "log")]
 impl<'a> fmt::Display for FmtValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut res = Ok(());
@@ -848,8 +908,10 @@ impl<'a> fmt::Display for FmtValues<'a> {
     }
 }
 
+#[cfg(feature = "log")]
 struct FmtAttrs<'a>(&'a Attributes<'a>);
 
+#[cfg(feature = "log")]
 impl<'a> fmt::Display for FmtAttrs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut res = Ok(());
