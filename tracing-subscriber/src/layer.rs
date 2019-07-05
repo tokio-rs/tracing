@@ -36,8 +36,12 @@ pub trait Layer<S>: 'static {
     fn enter(&self, _id: &span::Id, _ctx: Ctx<S>) {}
     fn exit(&self, _id: &span::Id, _ctx: Ctx<S>) {}
 
-    fn clone_span(&self, _id: &span::Id, _new: Option<&span::Id>, _ctx: Ctx<S>) {}
-    fn drop_span(&self, _id: &span::Id, _ctx: Ctx<S>) {}
+    /// Notifies this layer that the span with the given ID has been closed.
+    fn close(&self, _id: span::Id, _ctx: Ctx<S>) {}
+
+    /// Notifies this layer that a span ID has been cloned, and that the
+    /// subscriber returned a different ID.
+    fn change_id(&self, _old: &span::Id, _new: &span::Id, _ctx: Ctx<S>) {}
 
     /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
     ///
@@ -251,16 +255,24 @@ where
     fn clone_span(&self, old: &span::Id) -> span::Id {
         let new = self.inner.clone_span(old);
         if &new != old {
-            self.layer.clone_span(old, Some(&new), self.ctx());
-        } else {
-            self.layer.clone_span(old, None, self.ctx());
+            self.layer.change_id(old, &new, self.ctx())
         };
         new
     }
 
+    #[inline]
     fn drop_span(&self, id: span::Id) {
-        self.layer.drop_span(&id, self.ctx());
-        self.inner.drop_span(id);
+        self.try_close(id);
+    }
+
+    fn try_close(&self, id: span::Id) -> bool {
+        let id2 = id.clone();
+        if self.inner.try_close(id) {
+            self.layer.close(id2, self.ctx())
+            true
+        } else {
+            false
+        }
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
