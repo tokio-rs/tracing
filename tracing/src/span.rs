@@ -470,12 +470,18 @@ impl Span {
         }
     }
 
-    /// TODO(eliza) docs
+    /// Returns a handle to the span [considered by the `Subscriber`] to be the
+    /// currrent span.
+    ///
+    /// If the subscriber indicates that it does not track the current span, or
+    /// that the thread from which this function is called is not currently
+    /// inside a span, the returned span will be disabled.
+    ///
+    /// [considered by the `Subscriber`]: ../subscriber/trait.Subscriber.html#method.current
     pub fn current() -> Span {
         dispatcher::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
-                // TODO(eliza): figure out if this should call clone_span or if that's
-                // the dispatcher's responsibility???
+                let id = dispatch.clone_span(&id);
                 Self {
                     inner: Some(Inner::new(id, dispatch)),
                     meta: Some(meta),

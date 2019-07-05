@@ -314,7 +314,20 @@ pub trait Subscriber: 'static {
         let _ = id;
     }
 
-    /// TODO(eliza): docs
+    /// Returns a type representing the span that represents this subscriber's
+    /// view of the "current" span.
+    ///
+    /// If subscribers track a current span, they should override this function
+    /// to return [`Current::new`] if the thread from which this method is
+    /// called is inside a span, or [`Current::none`] if the thread is not
+    /// inside a span.
+    ///
+    /// By default, this returns [`Current::unknown`], which indicates to
+    /// callers that the subscriber does **not** track what span is current.
+    ///
+    /// [`Current::new`]: ../span/struct.Current.html#tymethod.new
+    /// [`Current::none`]: ../span/struct.Current.html#tymethod.none
+    /// [`Current::unknown`]: ../span/struct.Current.html#method.unknown
     fn current_span(&self) -> span::Current {
         span::Current::unknown()
     }
