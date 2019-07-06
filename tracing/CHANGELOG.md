@@ -1,3 +1,16 @@
+# 0.1.2 (July 6, 2019)
+
+### Added
+
+- `Span::none()` constructor, which does not require metadata and
+  returns a completely empty span (#147).
+- `Span::current()` function, returning the current span if it is
+  known to the subscriber (#148).
+
+### Fixed
+
+- Broken macro imports when used prefixed with `tracing::` (#152).
+
 # 0.1.1 (July 3, 2019)
 
 ### Changed
