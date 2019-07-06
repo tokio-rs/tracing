@@ -277,7 +277,7 @@ macro_rules! span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                 __tracing_disabled_span!(
+                 $crate::__tracing_disabled_span!(
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
@@ -303,7 +303,7 @@ macro_rules! span {
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
             } else {
-                __tracing_disabled_span!(
+                $crate::__tracing_disabled_span!(
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
@@ -402,7 +402,7 @@ macro_rules! trace_span {
         )
     };
     (target: $target:expr, parent: $parent:expr, $name:expr) => {
-        trace_span!(target: $target, parent: $parent, $name,)
+        $crate::trace_span!(target: $target, parent: $parent, $name,)
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -414,7 +414,7 @@ macro_rules! trace_span {
         )
     };
     (parent: $parent:expr, $name:expr) => {
-        trace_span!(parent: $parent, $name,)
+        $crate::trace_span!(parent: $parent, $name,)
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -425,7 +425,7 @@ macro_rules! trace_span {
         )
     };
     (target: $target:expr, $name:expr) => {
-        trace_span!(target: $target, $name,)
+        $crate::trace_span!(target: $target, $name,)
     };
     ($name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -435,7 +435,7 @@ macro_rules! trace_span {
             $($field)*
         )
     };
-    ($name:expr) => {trace_span!($name,)};
+    ($name:expr) => { $crate::trace_span!($name,) };
 }
 
 /// Constructs a span at the debug level.
@@ -481,7 +481,7 @@ macro_rules! debug_span {
         )
     };
     (target: $target:expr, parent: $parent:expr, $name:expr) => {
-        debug_span!(target: $target, parent: $parent, $name,)
+        $crate::debug_span!(target: $target, parent: $parent, $name,)
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -493,7 +493,7 @@ macro_rules! debug_span {
         )
     };
     (parent: $parent:expr, $name:expr) => {
-        debug_span!(parent: $parent, $name,)
+        $crate::debug_span!(parent: $parent, $name,)
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -504,7 +504,7 @@ macro_rules! debug_span {
         )
     };
     (target: $target:expr, $name:expr) => {
-        debug_span!(target: $target, $name,)
+        $crate::debug_span!(target: $target, $name,)
     };
     ($name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -514,7 +514,7 @@ macro_rules! debug_span {
             $($field)*
         )
     };
-    ($name:expr) => {debug_span!($name,)};
+    ($name:expr) => {$crate::debug_span!($name,)};
 }
 
 /// Constructs a span at the info level.
@@ -560,7 +560,7 @@ macro_rules! info_span {
         )
     };
     (target: $target:expr, parent: $parent:expr, $name:expr) => {
-        info_span!(target: $target, parent: $parent, $name,)
+        $crate::info_span!(target: $target, parent: $parent, $name,)
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -572,7 +572,7 @@ macro_rules! info_span {
         )
     };
     (parent: $parent:expr, $name:expr) => {
-        info_span!(parent: $parent, $name,)
+        $crate::info_span!(parent: $parent, $name,)
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -583,7 +583,7 @@ macro_rules! info_span {
         )
     };
     (target: $target:expr, $name:expr) => {
-        info_span!(target: $target, $name,)
+        $crate::info_span!(target: $target, $name,)
     };
     ($name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -593,7 +593,7 @@ macro_rules! info_span {
             $($field)*
         )
     };
-    ($name:expr) => {info_span!($name,)};
+    ($name:expr) => {$crate::info_span!($name,)};
 }
 
 /// Constructs a span at the warn level.
@@ -639,7 +639,7 @@ macro_rules! warn_span {
         )
     };
     (target: $target:expr, parent: $parent:expr, $name:expr) => {
-        warn_span!(target: $target, parent: $parent, $name,)
+        $crate::warn_span!(target: $target, parent: $parent, $name,)
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -651,7 +651,7 @@ macro_rules! warn_span {
         )
     };
     (parent: $parent:expr, $name:expr) => {
-        warn_span!(parent: $parent, $name,)
+        $crate::warn_span!(parent: $parent, $name,)
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -662,7 +662,7 @@ macro_rules! warn_span {
         )
     };
     (target: $target:expr, $name:expr) => {
-        warn_span!(target: $target, $name,)
+        $crate::warn_span!(target: $target, $name,)
     };
     ($name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -672,7 +672,7 @@ macro_rules! warn_span {
             $($field)*
         )
     };
-    ($name:expr) => {warn_span!($name,)};
+    ($name:expr) => {$crate::warn_span!($name,)};
 }
 /// Constructs a span at the error level.
 ///
@@ -717,7 +717,7 @@ macro_rules! error_span {
         )
     };
     (target: $target:expr, parent: $parent:expr, $name:expr) => {
-        error_span!(target: $target, parent: $parent, $name,)
+        $crate::error_span!(target: $target, parent: $parent, $name,)
     };
     (parent: $parent:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -729,7 +729,7 @@ macro_rules! error_span {
         )
     };
     (parent: $parent:expr, $name:expr) => {
-        error_span!(parent: $parent, $name,)
+        $crate::error_span!(parent: $parent, $name,)
     };
     (target: $target:expr, $name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -740,7 +740,7 @@ macro_rules! error_span {
         )
     };
     (target: $target:expr, $name:expr) => {
-        error_span!(target: $target, $name,)
+        $crate::error_span!(target: $target, $name,)
     };
     ($name:expr, $($field:tt)*) => {
         $crate::span!(
@@ -750,7 +750,7 @@ macro_rules! error_span {
             $($field)*
         )
     };
-    ($name:expr) => {error_span!($name,)};
+    ($name:expr) => {$crate::error_span!($name,)};
 }
 
 /// Constructs a new `Event`.
