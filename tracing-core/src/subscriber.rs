@@ -314,6 +314,23 @@ pub trait Subscriber: 'static {
         let _ = id;
     }
 
+    /// Returns a type representing this subscriber's view of the current span.
+    ///
+    /// If subscribers track a current span, they should override this function
+    /// to return [`Current::new`] if the thread from which this method is
+    /// called is inside a span, or [`Current::none`] if the thread is not
+    /// inside a span.
+    ///
+    /// By default, this returns a value indicating that the subscriber
+    /// does **not** track what span is current. If the subscriber does not
+    /// implement a current span, it should not override this method.
+    ///
+    /// [`Current::new`]: ../span/struct.Current.html#tymethod.new
+    /// [`Current::none`]: ../span/struct.Current.html#tymethod.none
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
+
     // === Downcasting methods ================================================
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
