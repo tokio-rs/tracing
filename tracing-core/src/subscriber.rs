@@ -314,8 +314,7 @@ pub trait Subscriber: 'static {
         let _ = id;
     }
 
-    /// Returns a type representing the span that represents this subscriber's
-    /// view of the "current" span.
+    /// Returns a type representing this subscriber's view of the current span.
     ///
     /// If subscribers track a current span, they should override this function
     /// to return [`Current::new`] if the thread from which this method is

@@ -324,8 +324,7 @@ impl Dispatch {
         self.subscriber.drop_span(id)
     }
 
-    /// Returns a type representing the span that represents this subscriber's
-    /// view of the "current" span.
+    /// Returns a type representing this subscriber's view of the current span.
     ///
     /// This calls the [`current`] function on the `Subscriber` that this
     /// `Dispatch` forwards to.
