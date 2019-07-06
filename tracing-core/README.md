@@ -3,21 +3,28 @@
 Core primitives for application-level tracing.
 
 [![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
 [![MIT licensed][mit-badge]][mit-url]
+[![Build Status][travis-badge]][travis-url]
 [![Gitter chat][gitter-badge]][gitter-url]
 
-[Documentation](https://docs.rs/tracing-core/0.1.1/tracing_core/index.html)
+[Documentation][docs-url] |
+[Chat][gitter-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
 [crates-url]: https://crates.io/crates/tracing-core
+[docs-badge]: https://docs.rs/tracing-core/badge.svg
+[docs-url]: https://docs.rs/tracing-core
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
+[travis-badge]: https://travis-ci.org/tokio-rs/tracing.svg?branch=master
+[travis-url]: https://travis-ci.org/tokio-rs/tracing/branches
 [gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
-[gitter-url]: https://gitter.im/tokio-rs/tracubg
+[gitter-url]: https://gitter.im/tokio-rs/tracing
 
 ## Overview
 
-`tracing` is a framework for instrumenting Rust programs to collect
+[`tracing`] is a framework for instrumenting Rust programs to collect
 structured, event-based diagnostic information. This crate defines the core
 primitives of `tracing`.
 
