@@ -30,5 +30,5 @@ travis-ci = { repository = "tokio-rs/tracing", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-lazy_static = "1.0.0"
+lazy_static = "1"
 
