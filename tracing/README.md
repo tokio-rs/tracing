@@ -47,7 +47,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing = "0.1"
+tracing = "0.1.2"
 ```
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
