@@ -237,7 +237,7 @@ impl Current {
     /// Returns `true` if the `Subscriber` that constructed this `Current` tracks a
     /// current span.
     ///
-    /// If this returns `true`, if [`id`], [`metadata`], or [`into_inner`]
+    /// If this returns `true` and [`id`], [`metadata`], or [`into_inner`]
     /// return `None`, that indicates that we are currently known to *not* be
     /// inside a span. If this returns `false`, those methods will also return
     /// `None`, but in this case, that is because the subscriber does not keep
