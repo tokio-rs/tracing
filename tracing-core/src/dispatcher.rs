@@ -324,6 +324,17 @@ impl Dispatch {
         self.subscriber.drop_span(id)
     }
 
+    /// Returns a type representing this subscriber's view of the current span.
+    ///
+    /// This calls the [`current`] function on the `Subscriber` that this
+    /// `Dispatch` forwards to.
+    ///
+    /// [`current`]: ../subscriber/trait.Subscriber.html#method.current
+    #[inline]
+    pub fn current_span(&self) -> span::Current {
+        self.subscriber.current_span()
+    }
+
     /// Returns `true` if this `Dispatch` forwards to a `Subscriber` of type
     /// `T`.
     #[inline]
