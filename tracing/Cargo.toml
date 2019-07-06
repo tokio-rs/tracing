@@ -18,7 +18,11 @@ documentation = "https://docs.rs/tracing/0.1.1/tracing"
 description = """
 A scoped, structured logging and diagnostics system.
 """
-categories = ["development-tools::debugging", "asynchronous"]
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
 keywords = ["logging", "tracing"]
 edition = "2018"
 
