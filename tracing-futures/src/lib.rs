@@ -26,10 +26,7 @@ extern crate tokio_executor;
 extern crate tracing;
 
 #[cfg(feature = "std-future")]
-use std::{
-    pin::Pin,
-    task::Context,
-};
+use std::{pin::Pin, task::Context};
 
 #[cfg(feature = "futures-01")]
 use futures::{Sink, StartSend, Stream};
