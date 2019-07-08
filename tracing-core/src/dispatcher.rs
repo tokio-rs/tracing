@@ -623,4 +623,30 @@ mod test {
         set_global_default(Dispatch::new(TestSubscriberA))
             .expect_err("double global dispatch set succeeded");
     }
+
+    #[test]
+    fn downcast_while_default() {
+        struct TestSubscriber;
+        impl Subscriber for TestSubscriber {
+            fn enabled(&self, _: &Metadata) -> bool {
+                true
+            }
+            fn new_span(&self, _: &span::Attributes) -> span::Id {
+                span::Id::from_u64(1)
+            }
+            fn record(&self, _: &span::Id, _: &span::Record) {}
+            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+            fn event(&self, _: &Event) {}
+            fn enter(&self, _: &span::Id) {}
+            fn exit(&self, _: &span::Id) {}
+        }
+
+        let dispatch = Dispatch::new(TestSubscriber);
+        let _ = dispatch.downcast_ref::<TestSubscriber>().unwrap();
+        with_default(&dispatch, || {
+            get_default(|d| {
+                let _ = d.downcast_ref::<TestSubscriber>().unwrap();
+            });
+        });
+    }
 }
