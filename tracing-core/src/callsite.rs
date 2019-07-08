@@ -1,27 +1,48 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
+// Types in this module are never formatted.
+#![allow(missing_debug_implementations)]
 use crate::{
     dispatcher::{self, Dispatch, Registrar},
     subscriber::Interest,
     Metadata,
 };
+
 use std::{
     fmt,
     hash::{Hash, Hasher},
     ptr,
-    sync::Mutex,
+    sync::{
+        RwLock,
+        atomic::{AtomicPtr, Ordering},
+    },
 };
 
 lazy_static! {
-    static ref REGISTRY: Mutex<Registry> = Mutex::new(Registry {
-        callsites: Vec::new(),
+    static ref REGISTRY: RwLock<Registry> = RwLock::new(Registry {
         dispatchers: Vec::new(),
     });
 }
 
+static CALLSITES: Callsites = Callsites {
+    head: AtomicPtr::new(ptr::null_mut()),
+};
+
 struct Registry {
-    callsites: Vec<&'static dyn Callsite>,
     dispatchers: Vec<dispatcher::Registrar>,
+}
+
+struct Callsites {
+    head: AtomicPtr<CsEntry>,
+}
+
+struct CsEntry {
+    next: Option<ptr::NonNull<CsEntry>>,
+    callsite: &'static dyn Callsite,
+}
+
+struct CsIter<'a> {
+    current: Option<&'a CsEntry>,
 }
 
 impl Registry {
@@ -42,9 +63,9 @@ impl Registry {
     fn rebuild_interest(&mut self) {
         self.dispatchers.retain(Registrar::is_alive);
 
-        self.callsites.iter().for_each(|&callsite| {
+        for callsite in &CALLSITES {
             self.rebuild_callsite_interest(callsite);
-        });
+        }
     }
 }
 
@@ -96,8 +117,7 @@ pub struct Identifier(
 /// [`Interest::sometimes()`]: ../subscriber/struct.Interest.html#method.sometimes
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 pub fn rebuild_interest_cache() {
-    let mut registry = REGISTRY.lock().unwrap();
-    registry.rebuild_interest();
+    REGISTRY.write().unwrap().rebuild_interest();
 }
 
 /// Register a new `Callsite` with the global registry.
@@ -105,13 +125,13 @@ pub fn rebuild_interest_cache() {
 /// This should be called once per callsite after the callsite has been
 /// constructed.
 pub fn register(callsite: &'static dyn Callsite) {
-    let mut registry = REGISTRY.lock().unwrap();
+    let registry = REGISTRY.read().unwrap();
     registry.rebuild_callsite_interest(callsite);
-    registry.callsites.push(callsite);
+    CALLSITES.push(callsite);
 }
 
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
-    let mut registry = REGISTRY.lock().unwrap();
+    let mut registry = REGISTRY.write().unwrap();
     registry.dispatchers.push(dispatch.registrar());
     registry.rebuild_interest();
 }
@@ -138,5 +158,59 @@ impl Hash for Identifier {
         H: Hasher,
     {
         (self.0 as *const dyn Callsite).hash(state)
+    }
+}
+
+// ===== impl Callsites =====
+
+impl Callsites {
+    fn push(&self, callsite: &'static dyn Callsite) {
+        let entry = CsEntry::new(callsite);
+        loop {
+            let head = self.head.load(Ordering::Relaxed);
+
+            unsafe {
+                (*entry).next = ptr::NonNull::new(head);
+            }
+
+            if self.head.compare_and_swap(head, entry, Ordering::Release) == head {
+                break;
+            }
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a Callsites {
+    type Item = &'static dyn Callsite;
+    type IntoIter = CsIter<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        let head = self.head.load(Ordering::Acquire);
+        CsIter {
+            current: unsafe { head.as_ref() }
+        }
+    }
+}
+
+impl CsEntry {
+    fn new(callsite: &'static dyn Callsite) -> *mut Self {
+        Box::into_raw(Box::new(Self {
+            callsite,
+            next: None,
+        }))
+    }
+
+    #[inline]
+    fn next(&self) -> Option<&Self> {
+        self.next.as_ref().map(|ptr| unsafe { ptr.as_ref() })
+    }
+}
+
+impl<'a> Iterator for CsIter<'a> {
+    type Item = &'static dyn Callsite;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current.take()?;
+        self.current = current.next();
+        Some(current.callsite)
     }
 }
