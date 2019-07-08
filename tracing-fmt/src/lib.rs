@@ -190,6 +190,15 @@ where
         span::pop(id);
     }
 
+    fn current_span(&self) -> span::Current {
+        if let Some(id) = span::current() {
+            if let Some(meta) = self.spans.get(&id).map(|span| span.metadata()) {
+                return span::Current::new(id, meta);
+            }
+        }
+        span::Current::none()
+    }
+
     fn clone_span(&self, id: &span::Id) -> span::Id {
         if let Some(span) = self.spans.get(id) {
             span.clone_ref()
