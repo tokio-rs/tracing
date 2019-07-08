@@ -1,8 +1,8 @@
 use crate::{Instrument, Instrumented, WithDispatch};
 #[cfg(feature = "futures-01")]
 use futures::{
-  future::{ExecuteError, Executor},
-  Future,
+    future::{ExecuteError, Executor},
+    Future,
 };
 #[cfg(feature = "futures-01")]
 use tokio::executor::{Executor as TokioExecutor, SpawnError};

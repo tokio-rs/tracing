@@ -27,8 +27,8 @@ extern crate tracing;
 
 #[cfg(feature = "std-future")]
 use std::{
-  pin::Pin,
-  task::Context,
+    pin::Pin,
+    task::Context,
 };
 
 #[cfg(feature = "futures-01")]
