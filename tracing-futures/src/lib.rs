@@ -14,7 +14,10 @@
 //!
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
+#[cfg(feature = "futures-01")]
 extern crate futures;
+#[cfg(feature = "std-future")]
+extern crate pin_utils;
 #[cfg(feature = "tokio")]
 extern crate tokio;
 #[cfg(feature = "tokio-executor")]
@@ -22,24 +25,25 @@ extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
 extern crate tracing;
 
+#[cfg(feature = "std-future")]
 use std::{
   pin::Pin,
   task::Context,
 };
 
+#[cfg(feature = "futures-01")]
 use futures::{Sink, StartSend, Stream};
-use tracing::{dispatcher, Dispatch, Span};
+#[cfg(feature = "futures-01")]
+use tracing::dispatcher;
+use tracing::{Dispatch, Span};
 
+#[cfg(feature = "tokio")]
 pub mod executor;
 
 // TODO: seal?
 pub trait Instrument: Sized {
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
-    }
-
-    fn boxed_instrument(self, span: Span) -> Instrumented<Pin<Box<Self>>> {
-        Instrumented { inner: Box::pin(self), span }
     }
 }
 
@@ -69,16 +73,26 @@ pub struct WithDispatch<T> {
 
 impl<T: Sized> Instrument for T {}
 
-impl<P: std::future::Future + Unpin> std::future::Future for Instrumented<P> {
-    type Output = P::Output;
+#[cfg(feature = "std-future")]
+impl<T: std::future::Future> Instrumented<T> {
+    pin_utils::unsafe_pinned!(inner: T);
+}
 
-    fn poll(self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
-        let this = self.get_mut();
-        let _enter = this.span.enter();
-        Pin::new(&mut this.inner).poll(lw)
+#[cfg(feature = "std-future")]
+impl<T: std::future::Future> std::future::Future for Instrumented<T> {
+    type Output = T::Output;
+
+    fn poll(mut self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
+        let span = self.as_ref().span.clone();
+        let _enter = span.enter();
+        self.as_mut().inner().poll(lw)
     }
 }
 
+#[cfg(feature = "std-future")]
+impl<T: Unpin> Unpin for Instrumented<T> {}
+
+#[cfg(feature = "futures-01")]
 impl<T: futures::Future> futures::Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -89,6 +103,7 @@ impl<T: futures::Future> futures::Future for Instrumented<T> {
     }
 }
 
+#[cfg(feature = "futures-01")]
 impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -99,6 +114,7 @@ impl<T: Stream> Stream for Instrumented<T> {
     }
 }
 
+#[cfg(feature = "futures-01")]
 impl<T: Sink> Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
@@ -135,6 +151,7 @@ impl<T> Instrumented<T> {
 
 impl<T: Sized> WithSubscriber for T {}
 
+#[cfg(feature = "futures-01")]
 impl<T: futures::Future> futures::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -146,6 +163,7 @@ impl<T: futures::Future> futures::Future for WithDispatch<T> {
 }
 
 impl<T> WithDispatch<T> {
+    #[cfg(feature = "tokio")]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
@@ -176,6 +194,8 @@ mod tests {
     extern crate tokio;
 
     use super::{test_support::*, *};
+
+    #[cfg(feature = "futures-01")]
     use futures::{future, stream, task, Async, Future};
     use tracing::{subscriber::with_default, Level};
 
@@ -185,6 +205,7 @@ mod tests {
         polls: usize,
     }
 
+    #[cfg(feature = "futures-01")]
     impl<T, E> futures::Future for PollN<T, E> {
         type Item = T;
         type Error = E;
@@ -220,6 +241,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "futures-01")]
     #[test]
     fn future_enter_exit_is_reasonable() {
         let (subscriber, handle) = subscriber::mock()
@@ -239,6 +261,7 @@ mod tests {
         handle.assert_finished();
     }
 
+    #[cfg(feature = "futures-01")]
     #[test]
     fn future_error_ends_span() {
         let (subscriber, handle) = subscriber::mock()
@@ -259,6 +282,7 @@ mod tests {
         handle.assert_finished();
     }
 
+    #[cfg(feature = "futures-01")]
     #[test]
     fn stream_enter_exit_is_reasonable() {
         let (subscriber, handle) = subscriber::mock()
@@ -282,6 +306,7 @@ mod tests {
         handle.assert_finished();
     }
 
+    #[cfg(feature = "futures-01")]
     #[test]
     fn span_follows_future_onto_threadpool() {
         let (subscriber, handle) = subscriber::mock()

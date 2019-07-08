@@ -1,15 +1,14 @@
 use crate::{Instrument, Instrumented, WithDispatch};
+#[cfg(feature = "futures-01")]
 use futures::{
-    future::{ExecuteError, Executor},
-    Future,
+  future::{ExecuteError, Executor},
+  Future,
 };
+#[cfg(feature = "futures-01")]
+use tokio::executor::{Executor as TokioExecutor, SpawnError};
+use tokio::runtime::{current_thread, Runtime, TaskExecutor};
 
-#[cfg(feature = "tokio")]
-use tokio::{
-    executor::{Executor as TokioExecutor, SpawnError},
-    runtime::{current_thread, Runtime, TaskExecutor},
-};
-
+#[cfg(feature = "futures-01")]
 macro_rules! deinstrument_err {
     ($e:expr) => {
         $e.map_err(|e| {
@@ -20,6 +19,7 @@ macro_rules! deinstrument_err {
     };
 }
 
+#[cfg(feature = "futures-01")]
 impl<T, F> Executor<F> for Instrumented<T>
 where
     T: Executor<Instrumented<F>>,
@@ -31,7 +31,7 @@ where
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "futures-01", feature = "tokio"))]
 impl<T> TokioExecutor for Instrumented<T>
 where
     T: TokioExecutor,
@@ -56,6 +56,7 @@ impl Instrumented<Runtime> {
     ///
     /// This method simply wraps a call to `tokio::runtime::Runtime::spawn`,
     /// instrumenting the spawned future beforehand.
+    #[cfg(feature = "futures-01")]
     pub fn spawn<F>(&mut self, future: F) -> &mut Self
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
@@ -80,6 +81,7 @@ impl Instrumented<Runtime> {
     ///
     /// This function panics if the executor is at capacity, if the provided
     /// future panics, or if called within an asynchronous execution context.
+    #[cfg(feature = "futures-01")]
     pub fn block_on<F, R, E>(&mut self, future: F) -> Result<R, E>
     where
         F: Send + 'static + Future<Item = R, Error = E>,
@@ -108,6 +110,7 @@ impl Instrumented<current_thread::Runtime> {
     ///
     /// This method simply wraps a call to `current_thread::Runtime::spawn`,
     /// instrumenting the spawned future beforehand.
+    #[cfg(feature = "futures-01")]
     pub fn spawn<F>(&mut self, future: F) -> &mut Self
     where
         F: Future<Item = (), Error = ()> + 'static,
@@ -141,6 +144,7 @@ impl Instrumented<current_thread::Runtime> {
     ///
     /// This function panics if the executor is at capacity, if the provided
     /// future panics, or if called within an asynchronous execution context.
+    #[cfg(feature = "futures-01")]
     pub fn block_on<F, R, E>(&mut self, future: F) -> Result<R, E>
     where
         F: 'static + Future<Item = R, Error = E>,
@@ -165,6 +169,7 @@ impl Instrumented<current_thread::Runtime> {
     }
 }
 
+#[cfg(feature = "futures-01")]
 impl<T, F> Executor<F> for WithDispatch<T>
 where
     T: Executor<WithDispatch<F>>,
@@ -176,7 +181,7 @@ where
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "futures-01", feature = "tokio"))]
 impl<T> TokioExecutor for WithDispatch<T>
 where
     T: TokioExecutor,
@@ -202,6 +207,7 @@ impl WithDispatch<Runtime> {
     ///
     /// This method simply wraps a call to `tokio::runtime::Runtime::spawn`,
     /// instrumenting the spawned future beforehand.
+    #[cfg(feature = "futures-01")]
     pub fn spawn<F>(&mut self, future: F) -> &mut Self
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
@@ -227,6 +233,7 @@ impl WithDispatch<Runtime> {
     ///
     /// This function panics if the executor is at capacity, if the provided
     /// future panics, or if called within an asynchronous execution context.
+    #[cfg(feature = "futures-01")]
     pub fn block_on<F, R, E>(&mut self, future: F) -> Result<R, E>
     where
         F: Send + 'static + Future<Item = R, Error = E>,
@@ -257,6 +264,7 @@ impl WithDispatch<current_thread::Runtime> {
     ///
     /// This method simply wraps a call to `current_thread::Runtime::spawn`,
     /// instrumenting the spawned future beforehand.
+    #[cfg(feature = "futures-01")]
     pub fn spawn<F>(&mut self, future: F) -> &mut Self
     where
         F: Future<Item = (), Error = ()> + 'static,
@@ -290,6 +298,7 @@ impl WithDispatch<current_thread::Runtime> {
     ///
     /// This function panics if the executor is at capacity, if the provided
     /// future panics, or if called within an asynchronous execution context.
+    #[cfg(feature = "futures-01")]
     pub fn block_on<F, R, E>(&mut self, future: F) -> Result<R, E>
     where
         F: 'static + Future<Item = R, Error = E>,
