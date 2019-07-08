@@ -42,8 +42,7 @@ where
 
     fn call(&mut self, req: Request) -> Self::Future {
         // TODO: custom `Value` impls for `http` types would be nice...
-        let span =
-            span!(parent: &self.span, Level::TRACE, "request", request = ?req);
+        let span = span!(parent: &self.span, Level::TRACE, "request", request = ?req);
         let _enter = span.enter();
         self.inner.call(req).instrument(span.clone())
     }
