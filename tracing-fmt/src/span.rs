@@ -7,7 +7,7 @@ use std::{
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use tracing_core::dispatcher;
+use tracing_core::{dispatcher, Metadata};
 pub(crate) use tracing_core::span::{Attributes, Id, Record};
 
 pub struct Span<'a> {
@@ -37,7 +37,7 @@ pub(crate) struct Store {
 #[derive(Debug)]
 pub(crate) struct Data {
     parent: Option<Id>,
-    name: &'static str,
+    metadata: &'static Metadata<'static>,
     ref_count: AtomicUsize,
     is_empty: bool,
 }
@@ -111,7 +111,14 @@ pub(crate) fn pop(expected_id: &Id) {
 impl<'a> Span<'a> {
     pub fn name(&self) -> &'static str {
         match self.lock.span {
-            State::Full(ref data) => data.name,
+            State::Full(ref data) => data.metadata.name(),
+            State::Empty(_) => unreachable!(),
+        }
+    }
+
+    pub fn metadata(&self) -> &'static Metadata<'static> {
+        match self.lock.span {
+            State::Full(ref data) => data.metadata,
             State::Empty(_) => unreachable!(),
         }
     }
@@ -373,7 +380,7 @@ impl Data {
             attrs.parent().map(clone_id)
         };
         Self {
-            name: attrs.metadata().name(),
+            metadata: attrs.metadata(),
             parent,
             ref_count: AtomicUsize::new(1),
             is_empty: true,
