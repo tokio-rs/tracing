@@ -7,8 +7,8 @@ use std::{
 use owning_ref::OwningHandle;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+pub(crate) use tracing_core::span::{Attributes, Current, Id, Record};
 use tracing_core::{dispatcher, Metadata};
-pub(crate) use tracing_core::span::{Attributes, Id, Record, Current};
 
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
