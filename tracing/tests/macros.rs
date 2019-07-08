@@ -281,6 +281,10 @@ fn event() {
     event!(target: "foo_events", Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     event!(target: "foo_events", Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     event!(target: "foo_events", Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
+    let foo = 1;
+    event!(Level::DEBUG, ?foo);
+    event!(Level::DEBUG, %foo);
+    event!(Level::DEBUG, foo);
 }
 
 #[test]
@@ -303,6 +307,10 @@ fn trace() {
     trace!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     trace!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     trace!(target: "foo_events", { foo = 2, bar.baz = 78, }, "quux");
+    let foo = 1;
+    trace!(?foo);
+    trace!(%foo);
+    trace!(foo);
 }
 
 #[test]
@@ -325,6 +333,10 @@ fn debug() {
     debug!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     debug!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     debug!(target: "foo_events", { foo = 2, bar.baz = 78, }, "quux");
+    let foo = 1;
+    debug!(?foo);
+    debug!(%foo);
+    debug!(foo);
 }
 
 #[test]
@@ -347,6 +359,10 @@ fn info() {
     info!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     info!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     info!(target: "foo_events", { foo = 2, bar.baz = 78, }, "quux");
+    let foo = 1;
+    info!(?foo);
+    info!(%foo);
+    info!(foo);
 }
 
 #[test]
@@ -369,6 +385,10 @@ fn warn() {
     warn!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     warn!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     warn!(target: "foo_events", { foo = 2, bar.baz = 78, }, "quux");
+    let foo = 1;
+    warn!(?foo);
+    warn!(%foo);
+    warn!(foo);
 }
 
 #[test]
@@ -391,6 +411,10 @@ fn error() {
     error!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     error!(target: "foo_events", { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     error!(target: "foo_events", { foo = 2, bar.baz = 78, }, "quux");
+    let foo = 1;
+    error!(?foo);
+    error!(%foo);
+    error!(foo);
 }
 
 #[test]
