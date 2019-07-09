@@ -268,7 +268,7 @@ where
     fn try_close(&self, id: span::Id) -> bool {
         let id2 = id.clone();
         if self.inner.try_close(id) {
-            self.layer.close(id2, self.ctx())
+            self.layer.close(id2, self.ctx());
             true
         } else {
             false
