@@ -292,8 +292,10 @@ impl Dispatch {
 
     /// Notifies the subscriber that a [span ID] has been cloned.
     ///
-    /// This function is guaranteed to only be called with span IDs that were
-    /// returned by this `Dispatch`'s [`new_span`] function.
+    /// This function must only be called with span IDs that were returned by
+    /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
+    /// this guarantee and any other libraries implementing instrumentation APIs
+    /// must as well.
     ///
     /// This calls the [`clone_span`] function on the `Subscriber` that this
     /// `Dispatch` forwards to.
@@ -309,8 +311,10 @@ impl Dispatch {
 
     /// Notifies the subscriber that a [span ID] has been dropped.
     ///
-    /// This function is guaranteed to only be called with span IDs that were
-    /// returned by this `Dispatch`'s [`new_span`] function.
+    /// This function must only be called with span IDs that were returned by
+    /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
+    /// this guarantee and any other libraries implementing instrumentation APIs
+    /// must as well.
     ///
     /// This calls the [`drop_span`]  function on the [`Subscriber`] that this
     ///  `Dispatch` forwards to.
@@ -331,8 +335,10 @@ impl Dispatch {
     /// Notifies the subscriber that a [span ID] has been dropped, and returns
     /// `true` if there are now 0 IDs referring to that span.
     ///
-    /// This function is guaranteed to only be called with span IDs that were
-    /// returned by this `Dispatch`'s [`new_span`] function.
+    /// This function must only be called with span IDs that were returned by
+    /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
+    /// this guarantee and any other libraries implementing instrumentation APIs
+    /// must as well.
     ///
     /// This calls the [`try_close`]  function on the [`Subscriber`] that this
     ///  `Dispatch` forwards to.
