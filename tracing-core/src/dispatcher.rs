@@ -328,7 +328,9 @@ impl Dispatch {
     /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
     /// [`try_close`]: #method.try_close
     #[inline]
+    #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
     pub fn drop_span(&self, id: span::Id) {
+        #[allow(deprecated)]
         self.subscriber.drop_span(id);
     }
 
