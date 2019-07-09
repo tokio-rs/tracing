@@ -21,7 +21,7 @@ where
 
 pub trait FilterExt<S>
 where
-    Self: Filter<S>,
+    Self: Filter<S> + crate::sealed::Sealed<S>,
     S: Subscriber,
 {
     fn or<B>(self, b: B) -> Or<Self, B>
@@ -180,6 +180,12 @@ where
 }
 
 // === impl FilterExt ===
+
+impl<F, S> crate::sealed::Sealed<S> for F
+where
+    F: Filter<S>,
+    S: Subscriber,
+{}
 
 impl<F, S> FilterExt<S> for F
 where
