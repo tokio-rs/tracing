@@ -39,6 +39,22 @@ where
     {
         And { a: self, b }
     }
+
+    fn into_layer(self) -> FilterLayer<Self, S>
+    where
+        Self: Sized,
+    {
+        FilterLayer {
+            filter: self,
+            _s: PhantomData,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FilterLayer<F, S> {
+    filter: F,
+    _s: PhantomData<fn(S)>
 }
 
 #[derive(Clone, Debug)]
@@ -79,15 +95,15 @@ where
     InterestFn::from(f)
 }
 
-// === impl Layer ===
+// === impl FilterLayer ===
 
-impl<F, S> Layer<S> for F
+impl<F, S> Layer<S> for FilterLayer<F, S>
 where
     F: Filter<S>,
     S: Subscriber,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
-        let my_interest = self.callsite_enabled(metadata);
+        let my_interest = self.filter.callsite_enabled(metadata);
         if my_interest.is_always() {
             prev
         } else {
@@ -96,7 +112,17 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Ctx<S>) -> bool {
-        Filter::enabled(self, metadata, &ctx) && prev
+        self.filter.enabled(metadata, &ctx) && prev
+    }
+}
+
+impl<F, S> From<F> for FilterLayer<F, S>
+where
+    F: Filter<S>,
+    S: Subscriber,
+{
+    fn from(filter: F) -> Self {
+        filter.into_layer()
     }
 }
 
