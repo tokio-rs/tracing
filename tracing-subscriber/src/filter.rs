@@ -1,4 +1,4 @@
-use crate::layer::{Ctx, Layer};
+use crate::layer::{Context, Layer};
 use std::marker::PhantomData;
 use tracing_core::{
     subscriber::{Interest, Subscriber},
@@ -11,14 +11,14 @@ where
     S: Subscriber,
 {
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.enabled(metadata, &Ctx::none()) {
+        if self.enabled(metadata, &Context::none()) {
             Interest::always()
         } else {
             Interest::never()
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &Ctx<S>) -> bool;
+    fn enabled(&self, metadata: &Metadata, ctx: &Context<S>) -> bool;
 }
 
 pub trait FilterExt<S>
@@ -113,7 +113,7 @@ where
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Ctx<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Context<S>) -> bool {
         self.filter.enabled(metadata, &ctx) && prev
     }
 }
@@ -135,7 +135,7 @@ where
     F: Fn(&Metadata) -> bool + 'static,
     S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata, _: &Ctx<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, _: &Context<S>) -> bool {
         (self.f)(metadata)
     }
 }
@@ -156,7 +156,7 @@ where
     F: Fn(&Metadata) -> Interest + 'static,
     S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata, _: &Ctx<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, _: &Context<S>) -> bool {
         let my_interest = (self.f)(metadata);
         my_interest.is_always() || my_interest.is_sometimes()
     }
@@ -199,7 +199,7 @@ where
     B: Filter<S>,
     S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata, ctx: &Ctx<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, ctx: &Context<S>) -> bool {
         self.a.enabled(metadata, ctx) && self.b.enabled(metadata, ctx)
     }
 
@@ -223,7 +223,7 @@ where
     B: Filter<S>,
     S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata, ctx: &Ctx<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, ctx: &Context<S>) -> bool {
         self.a.enabled(metadata, ctx) || self.b.enabled(metadata, ctx)
     }
 

@@ -17,31 +17,31 @@ pub trait Layer<S>: 'static {
         prev
     }
 
-    fn enabled(&self, _metadata: &Metadata, prev: bool, _ctx: Ctx<S>) -> bool {
+    fn enabled(&self, _metadata: &Metadata, prev: bool, _ctx: Context<S>) -> bool {
         prev
     }
 
-    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Ctx<S>) {}
+    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
 
     // Note: it's unclear to me why we'd need the current span in `record` (the
-    // only thing the `Ctx` type currently provides), but passing it in anyway
+    // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn record(&self, _span: &span::Id, _values: &span::Record, _ctx: Ctx<S>) {}
+    fn record(&self, _span: &span::Id, _values: &span::Record, _ctx: Context<S>) {}
     // Note: it's unclear to me why we'd need the current span in `record` (the
-    // only thing the `Ctx` type currently provides), but passing it in anyway
+    // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Ctx<S>) {}
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<S>) {}
 
-    fn event(&self, _event: &Event, _ctx: Ctx<S>) {}
-    fn enter(&self, _id: &span::Id, _ctx: Ctx<S>) {}
-    fn exit(&self, _id: &span::Id, _ctx: Ctx<S>) {}
+    fn event(&self, _event: &Event, _ctx: Context<S>) {}
+    fn enter(&self, _id: &span::Id, _ctx: Context<S>) {}
+    fn exit(&self, _id: &span::Id, _ctx: Context<S>) {}
 
     /// Notifies this layer that the span with the given ID has been closed.
-    fn close(&self, _id: span::Id, _ctx: Ctx<S>) {}
+    fn close(&self, _id: span::Id, _ctx: Context<S>) {}
 
     /// Notifies this layer that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
-    fn change_id(&self, _old: &span::Id, _new: &span::Id, _ctx: Ctx<S>) {}
+    fn change_id(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<S>) {}
 
     /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
     ///
@@ -124,7 +124,7 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
 /// Represents information about the current context provided to `Layer`s by the
 /// wrapped `Subscriber`.
 #[derive(Debug)]
-pub struct Ctx<'a, S> {
+pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
 }
 
@@ -199,8 +199,8 @@ impl<A, B> Layered<A, B> {
         }
     }
 
-    fn ctx(&self) -> Ctx<B> {
-        Ctx {
+    fn ctx(&self) -> Context<B> {
+        Context {
             subscriber: Some(&self.inner),
         }
     }
@@ -289,9 +289,9 @@ where
 impl<S: Subscriber> crate::sealed::Sealed for S {}
 impl<S: Subscriber> SubscriberExt for S {}
 
-// === impl Ctx ===
+// === impl Context ===
 
-impl<'a, S: Subscriber> Ctx<'a, S> {
+impl<'a, S: Subscriber> Context<'a, S> {
     /// Returns the wrapped subscriber's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
