@@ -5,7 +5,6 @@ use tracing_core::{
     Event,
 };
 
-use crate::filter;
 use std::any::TypeId;
 
 pub trait Layer<S>: 'static {
@@ -17,17 +16,28 @@ pub trait Layer<S>: 'static {
     fn register_callsite(&self, _metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
         prev
     }
-    fn enabled(&self, _metadata: &Metadata, prev: bool) -> bool {
+
+    fn enabled(&self, _metadata: &Metadata, prev: bool, _ctx: Ctx<S>) -> bool {
         prev
     }
-    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id) {}
-    fn record(&self, _span: &span::Id, _values: &span::Record) {}
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
-    fn event(&self, _event: &Event) {}
-    fn enter(&self, _id: &span::Id) {}
-    fn exit(&self, _id: &span::Id) {}
-    fn clone_span(&self, _id: &span::Id, _new: Option<&span::Id>) {}
-    fn drop_span(&self, _id: &span::Id) {}
+
+    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Ctx<S>) {}
+
+    // Note: it's unclear to me why we'd need the current span in `record` (the
+    // only thing the `Ctx` type currently provides), but passing it in anyway
+    // seems like a good future-proofing measure as it may grow other methods later...
+    fn record(&self, _span: &span::Id, _values: &span::Record, _ctx: Ctx<S>) {}
+    // Note: it's unclear to me why we'd need the current span in `record` (the
+    // only thing the `Ctx` type currently provides), but passing it in anyway
+    // seems like a good future-proofing measure as it may grow other methods later...
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Ctx<S>) {}
+
+    fn event(&self, _event: &Event, _ctx: Ctx<S>) {}
+    fn enter(&self, _id: &span::Id, _ctx: Ctx<S>) {}
+    fn exit(&self, _id: &span::Id, _ctx: Ctx<S>) {}
+
+    fn clone_span(&self, _id: &span::Id, _new: Option<&span::Id>, _ctx: Ctx<S>) {}
+    fn drop_span(&self, _id: &span::Id, _ctx: Ctx<S>) {}
 
     /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
     ///
@@ -107,6 +117,13 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
     // }
 }
 
+/// Represents information about the current context provided to `Layer`s by the
+/// wrapped `Subscriber`.
+#[derive(Debug)]
+pub struct Ctx<'a, S> {
+    subscriber: Option<&'a S>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Layered<L, S> {
     layer: L,
@@ -177,6 +194,12 @@ impl<A, B> Layered<A, B> {
             inner,
         }
     }
+
+    fn ctx(&self) -> Ctx<B> {
+        Ctx {
+            subscriber: Some(&self.inner),
+        }
+    }
 }
 
 impl<L, S> Subscriber for Layered<L, S>
@@ -191,52 +214,52 @@ where
 
     fn enabled(&self, metadata: &Metadata) -> bool {
         let enabled = self.inner.enabled(metadata);
-        self.layer.enabled(metadata, enabled)
+        self.layer.enabled(metadata, enabled, self.ctx())
     }
 
     fn new_span(&self, span: &span::Attributes) -> span::Id {
         let id = self.inner.new_span(span);
-        self.layer.new_span(span, &id);
+        self.layer.new_span(span, &id, self.ctx());
         id
     }
 
     fn record(&self, span: &span::Id, values: &span::Record) {
         self.inner.record(span, values);
-        self.layer.record(span, values);
+        self.layer.record(span, values, self.ctx());
     }
 
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.inner.record_follows_from(span, follows);
-        self.layer.record_follows_from(span, follows);
+        self.layer.record_follows_from(span, follows, self.ctx());
     }
 
     fn event(&self, event: &Event) {
         self.inner.event(event);
-        self.layer.event(event);
+        self.layer.event(event, self.ctx());
     }
 
     fn enter(&self, span: &span::Id) {
         self.inner.enter(span);
-        self.layer.enter(span);
+        self.layer.enter(span, self.ctx());
     }
 
     fn exit(&self, span: &span::Id) {
         self.inner.exit(span);
-        self.layer.exit(span);
+        self.layer.exit(span, self.ctx());
     }
 
     fn clone_span(&self, old: &span::Id) -> span::Id {
         let new = self.inner.clone_span(old);
         if &new != old {
-            self.layer.clone_span(old, Some(&new));
+            self.layer.clone_span(old, Some(&new), self.ctx());
         } else {
-            self.layer.clone_span(old, None);
+            self.layer.clone_span(old, None, self.ctx());
         };
         new
     }
 
     fn drop_span(&self, id: span::Id) {
-        self.layer.drop_span(&id);
+        self.layer.drop_span(&id, self.ctx());
         self.inner.drop_span(id);
     }
 
@@ -253,3 +276,21 @@ where
 
 impl<S: Subscriber> crate::sealed::Sealed for S {}
 impl<S: Subscriber> SubscriberExt for S {}
+
+// === impl Ctx ===
+
+impl<'a, S: Subscriber> Ctx<'a, S> {
+    /// Returns the wrapped subscriber's view of the current span.
+    #[inline]
+    pub fn current_span(&self) -> span::Current {
+        self.subscriber
+            .map(Subscriber::current_span)
+            // TODO: this would be more correct as "unknown", so perhaps
+            // `tracing-core` should make `Current::unknown()` public?
+            .unwrap_or_else(span::Current::none)
+    }
+
+    pub(crate) fn none() -> Self {
+        Self { subscriber: None }
+    }
+}
