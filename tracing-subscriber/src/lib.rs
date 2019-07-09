@@ -57,5 +57,8 @@ impl Default for CurrentSpanPerThread {
 }
 
 mod sealed {
-    pub trait Sealed {}
+    pub struct SealedTy {
+        _p: (),
+    }
+    pub trait Sealed<A = SealedTy> {}
 }
