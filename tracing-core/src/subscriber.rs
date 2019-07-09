@@ -293,17 +293,20 @@ pub trait Subscriber: 'static {
     /// Although using it won’t cause compilation warning, new code should
     /// call or implement [`try_close`] instead.
     ///
-    /// The default implementation of this function simply calls `try_close` and
-    /// ignores the return value.
+    /// The default implementation of this function does nothing.
     ///
     /// [`try_close`]: trait.Subscriber.html#method.try_close
-    fn drop_span(&self, id: span::Id) {
-        self.try_close(id);
-    }
+    fn drop_span(&self, _id: span::Id) {}
 
     /// Notifies the subscriber that a [`span ID`] has been dropped, and returns
     /// `true` if there are now 0 IDs that refer to that span.
     ///
+    /// The default implementation of this method calls the subscriber's
+    /// [`drop_span`] method and returns `false`. This means that, unless the
+    /// subscriber overrides the default implementation, close notifications
+    /// will never be sent to any layered subscribers. In general, if the
+    /// subscriber tracks reference counts, this method should be implemented,
+    /// rather than `drop_span`.
     /// This function is guaranteed to only be called with span IDs that were
     /// returned by this subscriber's `new_span` function.
     ///
@@ -326,7 +329,7 @@ pub trait Subscriber: 'static {
     /// [span ID]: ../span/struct.Id.html
     /// [`clone_span`]: trait.Subscriber.html#method.clone_span
     fn try_close(&self, id: span::Id) -> bool {
-        let _ = id;
+        let _ = self.drop_span(id);
         false
     }
 
