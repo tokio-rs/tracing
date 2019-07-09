@@ -33,8 +33,40 @@ use std::any::{Any, TypeId};
 /// not be needed by the implementations of `enter` and `exit`, the subscriber
 /// may freely discard that data without allocating space to store it.
 ///
+/// ## Overriding default impls
+///
+/// Some trait methods on `Subscriber` have default implementations, either in
+/// order to reduce the surface area of implementing `Subscriber`, or for
+/// backward-compatibility reasons. However, many subscribers will likely want
+/// to override these default implementations.
+///
+/// The following methods are likely of interest:
+///
+/// - [`register_callsite`] is called once for each callsite from which a span
+///   event may originate, and returns an [`Interest`] value describing whether or
+///   not the subscriber wishes to see events or spans from that callsite. By
+///   default, it calls [`enabled`], and returns `Interest::always()` if
+///   `enabled` returns true, or `Interest::never()` if enabled returns false.
+///   However, if the subscriber's interest can change dynamically at runtime,
+///   it may want to override this function to return `Interest::sometimes()`.
+///   Additionally, subscribers which wish to perform a behaviour once for each
+///   callsite, such as allocating storage for data related to that callsite,
+///   can perform it in `register_callsite`.
+/// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
+///   is called when a span ID is dropped. By default, these functions do
+///   nothing. However, they can be used to implement reference counting for
+///   spans, allowing subscribers to free storage for span data and to determine
+///   when a span has _closed_ permanently (rather than being exited).
+///   Subscribers which store per-span data or which need to track span closures
+///   should override these functions together.
+///
 /// [ID]: ../span/struct.Id.html
 /// [`new_span`]: trait.Subscriber.html#method.new_span
+/// [`register_callsite]: trait.Subscriber.html#method.register_callsite
+/// [`Interest`]: struct.Interest.html
+/// [`enabled`]: trait.Subscriber.html#method.enabled
+/// [`clone_span`]: trait.Subscriber.html#method.clone_span
+/// [`try_close`]: trait.Subscriber.html#method.try_close
 pub trait Subscriber: 'static {
     // === Span registry methods ==============================================
 
@@ -271,9 +303,9 @@ pub trait Subscriber: 'static {
     ///
     /// Note that the default implementation of this function this is just the
     /// identity function, passing through the identifier. However, it can be
-    /// used in conjunction with [`drop_span`] to track the number of handles
+    /// used in conjunction with [`try_close`] to track the number of handles
     /// capable of `enter`ing a span. When all the handles have been dropped
-    /// (i.e., `drop_span` has been called one more time than `clone_span` for a
+    /// (i.e., `try_close` has been called one more time than `clone_span` for a
     /// given ID), the subscriber may assume that the span will not be entered
     /// again. It is then free to deallocate storage for data associated with
     /// that span, write data from that span to IO, and so on.
@@ -283,35 +315,60 @@ pub trait Subscriber: 'static {
     /// what that means for the specified pointer.
     ///
     /// [span ID]: ../span/struct.Id.html
-    /// [`drop_span`]: trait.Subscriber.html#method.drop_span
+    /// [`try_close`]: trait.Subscriber.html#method.try_close
     fn clone_span(&self, id: &span::Id) -> span::Id {
         id.clone()
     }
 
-    /// Notifies the subscriber that a [span ID] has been dropped.
+    /// **This method is soft-deprecated.**
+    ///
+    /// Although using it won’t cause compilation warning, new code should
+    /// call or implement [`try_close`] instead.
+    ///
+    /// The default implementation of this function does nothing.
+    ///
+    /// [`try_close`]: trait.Subscriber.html#method.try_close
+    fn drop_span(&self, _id: span::Id) {}
+
+    /// Notifies the subscriber that a [`span ID`] has been dropped, and returns
+    /// `true` if there are now 0 IDs that refer to that span.
+    ///
+    /// Higher-level libraries providing functionality for composing multiple
+    /// subscriber implementations may use this return value to notify any
+    /// "layered" subscribers that this subscriber considers the span closed.
+    ///
+    /// The default implementation of this method calls the subscriber's
+    /// [`drop_span`] method and returns `false`. This means that, unless the
+    /// subscriber overrides the default implementation, close notifications
+    /// will never be sent to any layered subscribers. In general, if the
+    /// subscriber tracks reference counts, this method should be implemented,
+    /// rather than `drop_span`.
     ///
     /// This function is guaranteed to only be called with span IDs that were
     /// returned by this subscriber's `new_span` function.
     ///
     /// It's guaranteed that if this function has been called once more than the
     /// number of times `clone_span` was called with the same `id`, then no more
-    /// spans using that `id` exist. This means that it can be used in
-    /// conjunction with [`clone_span`] to track the number of handles
-    /// capable of `enter`ing a span. When all the handles have been dropped
-    /// (i.e., `drop_span` has been called one more time than `clone_span` for a
-    /// given ID), the subscriber may assume that the span will not be entered
-    /// again. It is then free to deallocate storage for data associated with
-    /// that span, write data from that span to IO, and so on.
+    /// handles that can enter the span with that `id` exist. This means that it
+    /// can be used in  conjunction with [`clone_span`] to track the number of
+    /// handles capable of `enter`ing a span. When all the handles have been
+    /// dropped (i.e., `try_close` has been called one more time than
+    /// `clone_span` for a given ID), the subscriber may assume that the span
+    /// will not be entered again, and should return `true`. It is then free to
+    /// deallocate storage for data associated with  that span, write data from
+    /// that span to IO, and so on.
     ///
     /// **Note**: since this function is called when spans are dropped,
     /// implementations should ensure that they are unwind-safe. Panicking from
-    /// inside of a `drop_span` function may cause a double panic, if the span
+    /// inside of a `try_close` function may cause a double panic, if the span
     /// was dropped due to a thread unwinding.
     ///
     /// [span ID]: ../span/struct.Id.html
     /// [`clone_span`]: trait.Subscriber.html#method.clone_span
-    fn drop_span(&self, id: span::Id) {
-        let _ = id;
+    /// [`drop_span`]: trait.Subscriber.html#method.drop_span
+    fn try_close(&self, id: span::Id) -> bool {
+        let _ = self.drop_span(id);
+        false
     }
 
     /// Returns a type representing this subscriber's view of the current span.
