@@ -1,7 +1,9 @@
-
 use crate::layer::{Ctx, Layer};
-use tracing_core::{subscriber::{Subscriber, Interest}, Metadata};
 use std::marker::PhantomData;
+use tracing_core::{
+    subscriber::{Interest, Subscriber},
+    Metadata,
+};
 
 pub trait Filter<S>
 where
@@ -54,7 +56,7 @@ where
 #[derive(Clone, Debug)]
 pub struct FilterLayer<F, S> {
     filter: F,
-    _s: PhantomData<fn(S)>
+    _s: PhantomData<fn(S)>,
 }
 
 #[derive(Clone, Debug)]
@@ -143,10 +145,7 @@ where
     F: Fn(&Metadata) -> bool + 'static,
 {
     fn from(f: F) -> Self {
-        Self {
-            f,
-            _s: PhantomData,
-        }
+        Self { f, _s: PhantomData }
     }
 }
 
@@ -172,10 +171,7 @@ where
     F: Fn(&'static Metadata<'static>) -> Interest + 'static,
 {
     fn from(f: F) -> Self {
-        Self {
-            f,
-            _s: PhantomData,
-        }
+        Self { f, _s: PhantomData }
     }
 }
 
@@ -185,13 +181,15 @@ impl<F, S> crate::sealed::Sealed<S> for F
 where
     F: Filter<S>,
     S: Subscriber,
-{}
+{
+}
 
 impl<F, S> FilterExt<S> for F
 where
     F: Filter<S>,
     S: Subscriber,
-{}
+{
+}
 
 // === impl And ===
 
