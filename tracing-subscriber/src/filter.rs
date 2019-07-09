@@ -1,23 +1,33 @@
 
-use crate::layer::Layer;
-use tracing_core::{subscriber::Interest, Metadata};
+use crate::layer::{Ctx, Layer};
+use tracing_core::{subscriber::{Subscriber, Interest}, Metadata};
+use std::marker::PhantomData;
 
-pub trait Filter: 'static {
+pub trait Filter<S>
+where
+    Self: 'static,
+    S: Subscriber,
+{
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.enabled(metadata) {
+        if self.enabled(metadata, &Ctx::none()) {
             Interest::always()
         } else {
             Interest::never()
         }
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool;
+    fn enabled(&self, metadata: &Metadata, ctx: &Ctx<S>) -> bool;
 }
 
-pub trait FilterExt: Filter {
+pub trait FilterExt<S>
+where
+    Self: Filter<S>,
+    S: Subscriber,
+{
     fn or<B>(self, b: B) -> Or<Self, B>
     where
         Self: Sized,
+        B: Filter<S>,
     {
         Or { a: self, b }
     }
@@ -25,16 +35,23 @@ pub trait FilterExt: Filter {
     fn and<B>(self, b: B) -> And<Self, B>
     where
         Self: Sized,
+        B: Filter<S>,
     {
         And { a: self, b }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct EnabledFn<F>(F);
+pub struct EnabledFn<F, S> {
+    f: F,
+    _s: PhantomData<fn(S)>,
+}
 
 #[derive(Clone, Debug)]
-pub struct InterestFn<F>(F);
+pub struct InterestFn<F, S> {
+    f: F,
+    _s: PhantomData<fn(S)>,
+}
 
 #[derive(Clone, Debug)]
 pub struct Or<A, B> {
@@ -48,14 +65,14 @@ pub struct And<A, B> {
     b: B,
 }
 
-pub fn enabled_fn<F>(f: F) -> EnabledFn<F>
+pub fn enabled_fn<F, S>(f: F) -> EnabledFn<F, S>
 where
     F: Fn(&Metadata) -> bool + 'static,
 {
     EnabledFn::from(f)
 }
 
-pub fn callsite_fn<F>(f: F) -> InterestFn<F>
+pub fn callsite_fn<F, S>(f: F) -> InterestFn<F, S>
 where
     F: Fn(&Metadata) -> Interest + 'static,
 {
@@ -64,7 +81,11 @@ where
 
 // === impl Layer ===
 
-impl<F: Filter, S> Layer<S> for F {
+impl<F, S> Layer<S> for F
+where
+    F: Filter<S>,
+    S: Subscriber,
+{
     fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
         let my_interest = self.callsite_enabled(metadata);
         if my_interest.is_always() {
@@ -74,68 +95,82 @@ impl<F: Filter, S> Layer<S> for F {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, prev: bool) -> bool {
-        Filter::enabled(self, metadata) && prev
+    fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Ctx<S>) -> bool {
+        Filter::enabled(self, metadata, &ctx) && prev
     }
 }
 
 // === impl EnabledFn ===
 
-impl<F> Filter for EnabledFn<F>
+impl<F, S> Filter<S> for EnabledFn<F, S>
 where
     F: Fn(&Metadata) -> bool + 'static,
+    S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        (self.0)(metadata)
+    fn enabled(&self, metadata: &Metadata, _: &Ctx<S>) -> bool {
+        (self.f)(metadata)
     }
 }
 
-impl<F> From<F> for EnabledFn<F>
+impl<F, S> From<F> for EnabledFn<F, S>
 where
     F: Fn(&Metadata) -> bool + 'static,
 {
     fn from(f: F) -> Self {
-        Self(f)
+        Self {
+            f,
+            _s: PhantomData,
+        }
     }
 }
 
 // === impl InterestFn ===
 
-impl<F> Filter for InterestFn<F>
+impl<F, S> Filter<S> for InterestFn<F, S>
 where
     F: Fn(&Metadata) -> Interest + 'static,
+    S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        let my_interest = (self.0)(metadata);
+    fn enabled(&self, metadata: &Metadata, _: &Ctx<S>) -> bool {
+        let my_interest = (self.f)(metadata);
         my_interest.is_always() || my_interest.is_sometimes()
     }
 
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
-        (self.0)(metadata)
+        (self.f)(metadata)
     }
 }
 
-impl<F> From<F> for InterestFn<F>
+impl<F, S> From<F> for InterestFn<F, S>
 where
     F: Fn(&'static Metadata<'static>) -> Interest + 'static,
 {
     fn from(f: F) -> Self {
-        Self(f)
+        Self {
+            f,
+            _s: PhantomData,
+        }
     }
 }
 
 // === impl FilterExt ===
-impl<F: Filter> FilterExt for F {}
+
+impl<F, S> FilterExt<S> for F
+where
+    F: Filter<S>,
+    S: Subscriber,
+{}
 
 // === impl And ===
 
-impl<A, B> Filter for And<A, B>
+impl<A, B, S> Filter<S> for And<A, B>
 where
-    A: Filter,
-    B: Filter,
+    A: Filter<S>,
+    B: Filter<S>,
+    S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        self.a.enabled(metadata) && self.b.enabled(metadata)
+    fn enabled(&self, metadata: &Metadata, ctx: &Ctx<S>) -> bool {
+        self.a.enabled(metadata, ctx) && self.b.enabled(metadata, ctx)
     }
 
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -152,13 +187,14 @@ where
 
 // === impl Or ===
 
-impl<A, B> Filter for Or<A, B>
+impl<A, B, S> Filter<S> for Or<A, B>
 where
-    A: Filter,
-    B: Filter,
+    A: Filter<S>,
+    B: Filter<S>,
+    S: Subscriber,
 {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        self.a.enabled(metadata) || self.b.enabled(metadata)
+    fn enabled(&self, metadata: &Metadata, ctx: &Ctx<S>) -> bool {
+        self.a.enabled(metadata, ctx) || self.b.enabled(metadata, ctx)
     }
 
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
