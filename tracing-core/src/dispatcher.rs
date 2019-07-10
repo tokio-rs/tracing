@@ -126,7 +126,7 @@
 //!
 //! [`Subscriber`]: ../subscriber/struct.Subscriber.html
 //! [`with_default`]: fn.with_default.html
-//! [`set_global_default]: fn.set_global_default.html
+//! [`set_global_default`]: fn.set_global_default.html
 //! [`get_default`]: fn.get_default.html
 //! [`Dispatch`]: struct.Dispatch.html
 use crate::{
