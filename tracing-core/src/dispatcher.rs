@@ -15,7 +15,7 @@
 //! By default, the current subscriber is an empty implementation that does
 //! nothing. To use a subscriber implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
-//! [`set_global_default`]. `with_default` sets a the default subscriber for the
+//! [`set_global_default`]. `with_default` sets the default subscriber for the
 //! duration of a scope, while `set_global_default` sets a default subscriber
 //! for the entire process.
 //!
