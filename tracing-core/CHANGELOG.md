@@ -1,3 +1,16 @@
+# 0.1.2 (July 10, 2019)
+
+### Deprecated
+
+- `Subscriber::drop_span` in favor of new `Subscriber::try_close` (#168)
+
+### Added
+
+- `Into<Option<&Id>>`, `Into<Option<Id>>`, and
+  `Into<Option<&'static Metadata<'static>>>` impls for `span::Current` (#170)
+- `Subscriber::try_close` method (#153)
+- Improved documentation for `dispatcher` (#171)
+
 # 0.1.1 (July 6, 2019)
 
 ### Added
