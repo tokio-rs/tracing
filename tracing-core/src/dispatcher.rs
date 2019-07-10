@@ -75,8 +75,14 @@
 //! // no default subscriber again
 //! # }
 //! ```
-//! Alternatively, we can use [`set_global_default`] to set that `Dispatch` as
-//! the default for all threads, for the lifetime of the program. For example:
+//! It's important to note that `with_default` will not propagate the current
+//! thread's default subscriber to any threads spawned within the `with_default`
+//! block. To propagate the default subscriber to new threads, either use
+//! `with_default` from the new thread, or use `set_global_default`.
+//!
+//! As an alternative to `with_default`, we can use [`set_global_default`] to
+//! set a `Dispatch` as the default for all threads, for the lifetime of the
+//! program. For example:
 //! ```rust
 //! # pub struct FooSubscriber;
 //! # use tracing_core::{
@@ -106,11 +112,6 @@
 //! // `my_subscriber` is now the default
 //! # }
 //! ```
-//!
-//! It's important to note that `with_default` will not propagate the current
-//! thread's default subscriber to any threads spawned within the `with_default`
-//! block. To propagate the default subscriber to new threads, either use
-//! `with_default` from the new thread, or use `set_global_default`.
 //!
 //! Finally, `tokio` users should note that versions of `tokio` >= 0.1.22
 //! support an `experimental-tracing` feature flag. When this flag is enabled,
