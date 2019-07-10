@@ -7,12 +7,44 @@ use tracing_core::{
 
 use std::any::TypeId;
 
+/// A composable handler for `tracing` events.
+///
+/// The [`Subscriber`] trait in `tracing-core` represents the _complete_ set of
+/// functionality required to consume `tracing` instrumentation. This means that
+/// a single `Subscriber` instance is a self-contained implementation of a
+/// complete strategy for collecting traces; but it _also_ means that the
+/// `Subscriber` trait cannot easily be composed with other `Subscriber`s.
+///
+/// In particular, `Subscriber`s are responsible for generating [span IDs] and
+/// assigning them to spans. Since these IDs must uniquely identify a span
+/// within the context of the current trace, this means that there may only be
+/// a single `Subscriber` for a given thread at any point in time &mdash;
+/// otherwise, there would be no authoritative source of span IDs.
+///
+/// On the other hand, the majority of the `Subscriber` trait's functionality
+/// is composable: any number of subscribers may _observe_ events, span entry
+/// and exit, and so on, provided that there is a single authoritative source of
+/// span IDs. The `Layer` trait represents this composable subset of the
+/// `Subscriber` behavior; it can _observe_ events and spans, but does not
+/// assign IDs.
+///
+/// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core//subscriber/trait.Subscriber.html
+/// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
 pub trait Layer<S>: 'static {
     /// Registers a new callsite with this layer, returning whether or not
     /// the subscriber is interested in being notified about the callsite.
     ///
-    /// This function is provided with the `Interest` returned by the wrapped
-    /// subscriber. The layer may then choose to return
+    /// This function is provided with the [`Interest`] returned by the wrapped
+    /// subscriber. The layer may then choose to return that interest, ignore it
+    /// entirely, or combine an `Interest` of its own with the prior `Interest`.
+    ///
+    /// this functions similarly to [`Subscriber::register_callsite`].
+    ///
+    /// By default, this simply returns the `Interest` returned by the wrapped
+    /// subscriber.
+    ///
+    /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
+    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.register_callsite
     fn register_callsite(&self, _metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
         prev
     }
@@ -21,7 +53,7 @@ pub trait Layer<S>: 'static {
         prev
     }
 
-    fn on_new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
+    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
 
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
@@ -223,7 +255,7 @@ where
 
     fn new_span(&self, span: &span::Attributes) -> span::Id {
         let id = self.inner.new_span(span);
-        self.layer.on_new_span(span, &id, self.ctx());
+        self.layer.new_span(span, &id, self.ctx());
         id
     }
 
