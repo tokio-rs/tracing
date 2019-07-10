@@ -31,7 +31,7 @@
 //! # impl tracing_core::Subscriber for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
-//! #   fn event(&self, _: &tracing::Event) {}
+//! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -39,6 +39,8 @@
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
 //! # fn main() {
+//! use dispatcher::Dispatch;
+//!
 //! let my_subscriber = FooSubscriber::new();
 //! let my_dispatch = Dispatch::new(my_subscriber);
 //! # }
@@ -54,7 +56,7 @@
 //! # impl tracing_core::Subscriber for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
-//! #   fn event(&self, _: &tracing::Event) {}
+//! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -63,7 +65,7 @@
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
 //! # fn main() {
 //! # let my_subscriber = FooSubscriber::new();
-//! # let my_dispatch = Dispatch::new(my_subscriber);
+//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
 //!
 //! dispatcher::with_default(&my_dispatch, || {
@@ -84,7 +86,7 @@
 //! # impl tracing_core::Subscriber for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
-//! #   fn event(&self, _: &tracing::Event) {}
+//! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -93,10 +95,10 @@
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
 //! # fn main() {
 //! # let my_subscriber = FooSubscriber::new();
-//! # let dispatch = Dispatch::new(my_subscriber);
+//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
 //!
-//! dispatcher::set_global_default(&my_dispatch)
+//! dispatcher::set_global_default(my_dispatch)
 //!     // `set_global_default` will return an error if the global default
 //!     // subscriber has already been set.
 //!     .expect("global default was already set!");
