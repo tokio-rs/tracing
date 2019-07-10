@@ -114,10 +114,6 @@ pub trait Layer<S>: 'static {
     ///     // ...
     /// }
     ///
-    // /// pub struct BarLayer {
-    // ///     // ...
-    // /// }
-    // ///
     /// pub struct MySubscriber {
     ///     // ...
     /// }
@@ -143,7 +139,45 @@ pub trait Layer<S>: 'static {
     /// #   fn exit(&self, _: &Id) {}
     /// # }
     /// let subscriber = FooLayer::new()
-    // ///     .and_then(BarLayer::new()
+    ///     .and_then(MySubscriber::new());
+    /// # }
+    /// ```
+    /// Chaining multiple layers:
+    /// ```rust
+    /// # use tracing_subscriber::layer::Layer;
+    /// # fn main() {
+    /// # pub struct FooLayer {}
+    /// pub struct BarLayer {
+    ///     // ...
+    /// }
+    /// # pub struct MySubscriber {}
+    /// # impl<S> Layer<S> for FooLayer {}
+    ///
+    /// impl<S> Layer<S> for BarLayer {
+    ///     // ...
+    /// }
+    ///
+    /// # impl FooLayer {
+    /// # fn new() -> Self { Self {} }
+    /// # }
+    /// # impl BarLayer {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # impl MySubscriber {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
+    /// #   fn record(&self, _: &Id, _: &Record) {}
+    /// #   fn event(&self, _: &Event) {}
+    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
+    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
+    /// #   fn enter(&self, _: &Id) {}
+    /// #   fn exit(&self, _: &Id) {}
+    /// # }
+    /// let subscriber = FooLayer::new()
+    ///     .and_then(BarLayer::new())
     ///     .and_then(MySubscriber::new());
     /// # }
     fn and_then(self, inner: S) -> Layered<Self, S>
@@ -194,76 +228,6 @@ pub struct Layered<L, S> {
 }
 
 // === impl Layered ===
-
-impl<A, B> Layered<A, B> {
-    /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
-    ///
-    /// The returned `Layered` subscriber will call the methods on this `Layer`
-    /// and then those of the wrapped subscriber. Multiple layers may be
-    /// composed in this manner. For example:
-    /// ```rust
-    /// # use tracing_subscriber::layer::Layer;
-    /// # fn main() {
-    /// pub struct FooLayer {
-    ///     // ...
-    /// }
-    ///
-    /// pub struct BarLayer {
-    ///     // ...
-    /// }
-    ///
-    /// pub struct MySubscriber {
-    ///     // ...
-    /// }
-    ///
-    /// impl<S> Layer<S> for FooLayer {
-    ///     // ...
-    /// }
-    ///
-    /// impl<S> Layer<S> for BarLayer {
-    ///     // ...
-    /// }
-    ///
-    /// # impl FooLayer {
-    /// # fn new() -> Self { Self {} }
-    /// # }
-    /// # impl BarLayer {
-    /// # fn new() -> Self { Self { }}
-    /// # }
-    /// # impl MySubscriber {
-    /// # fn new() -> Self { Self { }}
-    /// # }
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-    /// # impl tracing_core::Subscriber for MySubscriber {
-    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
-    /// #   fn record(&self, _: &Id, _: &Record) {}
-    /// #   fn event(&self, _: &Event) {}
-    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
-    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
-    /// #   fn enter(&self, _: &Id) {}
-    /// #   fn exit(&self, _: &Id) {}
-    /// # }
-    /// let subscriber = FooLayer::new()
-    ///     .and_then(BarLayer::new())
-    ///     .and_then(MySubscriber::new());
-    /// # }
-    pub fn and_then<C>(self, inner: C) -> Layered<A, Layered<B, C>> {
-        let inner = Layered {
-            layer: self.inner,
-            inner,
-        };
-        Layered {
-            layer: self.layer,
-            inner,
-        }
-    }
-
-    fn ctx(&self) -> Context<B> {
-        Context {
-            subscriber: Some(&self.inner),
-        }
-    }
-}
 
 impl<L, S> Subscriber for Layered<L, S>
 where
@@ -343,6 +307,83 @@ where
     }
 }
 
+impl<S, A, B> Layer<S> for Layered<A, B>
+where
+    A: Layer<S>,
+    B: Layer<S>,
+{
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
+        let prev = self.inner.register_callsite(metadata, prev);
+        self.layer.register_callsite(metadata, prev)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Context<S>) -> bool {
+        let prev = self.inner.enabled(metadata, prev, ctx.clone());
+        self.layer.enabled(metadata, prev, ctx)
+    }
+
+    #[inline]
+    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
+        self.inner.new_span(attrs, id, ctx.clone());
+        self.layer.new_span(attrs, id, ctx);
+    }
+
+    #[inline]
+    fn on_record(&self, span: &span::Id, values: &span::Record, ctx: Context<S>) {
+        self.inner.on_record(span, values, ctx.clone());
+        self.layer.on_record(span, values, ctx);
+    }
+
+    #[inline]
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<S>) {
+        self.inner.on_follows_from(span, follows, ctx.clone());
+        self.layer.on_follows_from(span, follows, ctx);
+    }
+
+    #[inline]
+    fn on_event(&self, event: &Event, ctx: Context<S>) {
+        self.inner.on_event(event, ctx.clone());
+        self.layer.on_event(event, ctx);
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, ctx: Context<S>) {
+        self.inner.on_enter(id, ctx.clone());
+        self.layer.on_enter(id, ctx);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, ctx: Context<S>) {
+        self.inner.on_exit(id, ctx.clone());
+        self.layer.on_exit(id, ctx);
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, ctx: Context<S>){
+        self.inner.on_close(id.clone(), ctx.clone());
+        self.layer.on_close(id, ctx);
+    }
+
+    #[inline]
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<S>) {
+        self.inner.on_id_change(old, new, ctx.clone());
+        self.layer.on_id_change(old, new, ctx);
+    }
+}
+
+impl<L, S> Layered<L, S>
+where
+    S: Subscriber,
+{
+    fn ctx(&self) -> Context<S> {
+        Context {
+            subscriber: Some(&self.inner)
+        }
+    }
+}
+
 // === impl SubscriberExt ===
 
 impl<S: Subscriber> crate::sealed::Sealed for S {}
@@ -363,5 +404,17 @@ impl<'a, S: Subscriber> Context<'a, S> {
 
     pub(crate) fn none() -> Self {
         Self { subscriber: None }
+    }
+}
+
+impl<'a, S> Clone for Context<'a, S> {
+    #[inline]
+    fn clone(&self) -> Self {
+        let subscriber = if let Some(ref subscriber) = self.subscriber {
+            Some(*subscriber)
+        } else {
+            None
+        };
+        Context { subscriber }
     }
 }
