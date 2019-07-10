@@ -38,7 +38,7 @@ pub trait Layer<S>: 'static {
     /// subscriber. The layer may then choose to return that interest, ignore it
     /// entirely, or combine an `Interest` of its own with the prior `Interest`.
     ///
-    /// this functions similarly to [`Subscriber::register_callsite`].
+    /// Beyond that, this functions similarly to [`Subscriber::register_callsite`].
     ///
     /// By default, this simply returns the `Interest` returned by the wrapped
     /// subscriber.
@@ -49,23 +49,50 @@ pub trait Layer<S>: 'static {
         prev
     }
 
+    /// Returns `true` if this layer is interested in a span or event with the
+    /// given `metadata`.
+    ///
+    /// This function is provided with the return value of the `enabled` function
+    /// on the wrapped subscriber. The layer may then choose to return that
+    /// value unmodified, ignore it entirely, or combine it with the result of
+    /// applying a filter of its own.
+    ///
+    /// Beyond that, this functions similarly to [`Subscriber::enabled`].
+    ///
+    /// By default, this simply returns the value returned by the wrapped
+    /// subscriber.
+    ///
+    /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
+    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.enabled
     fn enabled(&self, _metadata: &Metadata, prev: bool, _ctx: Context<S>) -> bool {
         prev
     }
 
+    /// Notifies this layer that a new span was constructed with the given
+    /// `Attributes` and `Id`.
     fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
 
+    /// Notifies this layer that a span with the given `Id` recorded the given
+    /// `values`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_record(&self, _span: &span::Id, _values: &span::Record, _ctx: Context<S>) {}
+
+    /// Notifies this layer that a span with the ID `span` recorded that it
+    /// follows from the span with the ID `follows`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<S>) {}
 
+    /// Notifies this layer that an event has occurred.
     fn on_event(&self, _event: &Event, _ctx: Context<S>) {}
+
+    /// Notifies this layer that a span with the given ID was entered.
     fn on_enter(&self, _id: &span::Id, _ctx: Context<S>) {}
+
+    /// Notifies this layer that the span with the given ID was exited.
     fn on_exit(&self, _id: &span::Id, _ctx: Context<S>) {}
 
     /// Notifies this layer that the span with the given ID has been closed.
