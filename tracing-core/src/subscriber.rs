@@ -328,6 +328,7 @@ pub trait Subscriber: 'static {
     /// The default implementation of this function does nothing.
     ///
     /// [`try_close`]: trait.Subscriber.html#method.try_close
+    #[deprecated(since = "0.1.2", note = "use `Subscriber::try_close` instead")]
     fn drop_span(&self, _id: span::Id) {}
 
     /// Notifies the subscriber that a [`span ID`] has been dropped, and returns
@@ -367,6 +368,7 @@ pub trait Subscriber: 'static {
     /// [`clone_span`]: trait.Subscriber.html#method.clone_span
     /// [`drop_span`]: trait.Subscriber.html#method.drop_span
     fn try_close(&self, id: span::Id) -> bool {
+        #[allow(deprecated)]
         let _ = self.drop_span(id);
         false
     }
