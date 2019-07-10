@@ -278,3 +278,27 @@ impl Current {
         }
     }
 }
+
+impl<'a> Into<Option<&'a Id>> for &'a Current {
+    fn into(self) -> Option<&'a Id> {
+        self.id()
+    }
+}
+
+impl<'a> Into<Option<Id>> for &'a Current {
+    fn into(self) -> Option<Id> {
+        self.id().cloned()
+    }
+}
+
+impl Into<Option<Id>> for Current {
+    fn into(self) -> Option<Id> {
+        self.id().cloned()
+    }
+}
+
+impl<'a> Into<Option<&'static Metadata<'static>>> for &'a Current {
+    fn into(self) -> Option<&'static Metadata<'static>> {
+        self.metadata()
+    }
+}
