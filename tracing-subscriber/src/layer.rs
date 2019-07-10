@@ -21,27 +21,27 @@ pub trait Layer<S>: 'static {
         prev
     }
 
-    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
+    fn on_new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
 
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn record(&self, _span: &span::Id, _values: &span::Record, _ctx: Context<S>) {}
+    fn on_record(&self, _span: &span::Id, _values: &span::Record, _ctx: Context<S>) {}
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<S>) {}
+    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<S>) {}
 
-    fn event(&self, _event: &Event, _ctx: Context<S>) {}
-    fn enter(&self, _id: &span::Id, _ctx: Context<S>) {}
-    fn exit(&self, _id: &span::Id, _ctx: Context<S>) {}
+    fn on_event(&self, _event: &Event, _ctx: Context<S>) {}
+    fn on_enter(&self, _id: &span::Id, _ctx: Context<S>) {}
+    fn on_exit(&self, _id: &span::Id, _ctx: Context<S>) {}
 
     /// Notifies this layer that the span with the given ID has been closed.
-    fn close(&self, _id: span::Id, _ctx: Context<S>) {}
+    fn on_close(&self, _id: span::Id, _ctx: Context<S>) {}
 
     /// Notifies this layer that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
-    fn change_id(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<S>) {}
+    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<S>) {}
 
     /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
     ///
@@ -223,39 +223,39 @@ where
 
     fn new_span(&self, span: &span::Attributes) -> span::Id {
         let id = self.inner.new_span(span);
-        self.layer.new_span(span, &id, self.ctx());
+        self.layer.on_new_span(span, &id, self.ctx());
         id
     }
 
     fn record(&self, span: &span::Id, values: &span::Record) {
         self.inner.record(span, values);
-        self.layer.record(span, values, self.ctx());
+        self.layer.on_record(span, values, self.ctx());
     }
 
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.inner.record_follows_from(span, follows);
-        self.layer.record_follows_from(span, follows, self.ctx());
+        self.layer.on_follows_from(span, follows, self.ctx());
     }
 
     fn event(&self, event: &Event) {
         self.inner.event(event);
-        self.layer.event(event, self.ctx());
+        self.layer.on_event(event, self.ctx());
     }
 
     fn enter(&self, span: &span::Id) {
         self.inner.enter(span);
-        self.layer.enter(span, self.ctx());
+        self.layer.on_enter(span, self.ctx());
     }
 
     fn exit(&self, span: &span::Id) {
         self.inner.exit(span);
-        self.layer.exit(span, self.ctx());
+        self.layer.on_exit(span, self.ctx());
     }
 
     fn clone_span(&self, old: &span::Id) -> span::Id {
         let new = self.inner.clone_span(old);
         if &new != old {
-            self.layer.change_id(old, &new, self.ctx())
+            self.layer.on_id_change(old, &new, self.ctx())
         };
         new
     }
@@ -268,7 +268,7 @@ where
     fn try_close(&self, id: span::Id) -> bool {
         let id2 = id.clone();
         if self.inner.try_close(id) {
-            self.layer.close(id2, self.ctx());
+            self.layer.on_close(id2, self.ctx());
             true
         } else {
             false
