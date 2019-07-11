@@ -78,7 +78,7 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
+    /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
         Format { ansi, ..self }
     }
