@@ -35,6 +35,7 @@ pub struct Full;
 pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
     timer: T,
+    ansi: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -42,6 +43,7 @@ impl Default for Format<Full, SystemTime> {
         Format {
             format: PhantomData,
             timer: SystemTime,
+            ansi: true,
         }
     }
 }
@@ -54,6 +56,7 @@ impl<F, T> Format<F, T> {
         Format {
             format: PhantomData,
             timer: self.timer,
+            ansi: self.ansi,
         }
     }
 
@@ -62,6 +65,7 @@ impl<F, T> Format<F, T> {
         Format {
             format: self.format,
             timer,
+            ansi: self.ansi,
         }
     }
 
@@ -70,7 +74,13 @@ impl<F, T> Format<F, T> {
         Format {
             format: self.format,
             timer: (),
+            ansi: self.ansi,
         }
+    }
+
+    /// Enable ANSI terminal colors for formatted output.
+    pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
+        Format { ansi, ..self }
     }
 }
 
@@ -90,8 +100,8 @@ where
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel(meta.level()),
-            FullCtx(&ctx),
+            FmtLevel::new(meta.level(), self.ansi),
+            FullCtx::new(&ctx, self.ansi),
             meta.target()
         )?;
         {
@@ -118,8 +128,8 @@ where
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel(meta.level()),
-            FmtCtx(&ctx),
+            FmtLevel::new(meta.level(), self.ansi),
+            FmtCtx::new(&ctx, self.ansi),
             meta.target()
         )?;
         {
@@ -181,7 +191,16 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
-struct FmtCtx<'a, N: 'a>(&'a span::Context<'a, N>);
+struct FmtCtx<'a, N: 'a> {
+    ctx: &'a span::Context<'a, N>,
+    ansi: bool,
+}
+
+impl<'a, N: 'a> FmtCtx<'a, N> {
+    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+        Self { ctx, ansi }
+    }
+}
 
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FmtCtx<'a, N>
@@ -190,12 +209,17 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.visit_spans(|_, span| {
+        self.ctx.visit_spans(|_, span| {
             if seen {
                 f.pad(":")?;
             }
             seen = true;
-            write!(f, "{}", Style::new().bold().paint(span.name()))
+
+            if self.ansi {
+                write!(f, "{}", Style::new().bold().paint(span.name()))
+            } else {
+                write!(f, "{}", span.name())
+            }
         })?;
         if seen {
             f.pad(" ")?;
@@ -208,7 +232,7 @@ where
 impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.visit_spans(|_, span| {
+        self.ctx.visit_spans(|_, span| {
             if seen {
                 f.pad(":")?;
             }
@@ -222,7 +246,16 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     }
 }
 
-struct FullCtx<'a, N: 'a>(&'a span::Context<'a, N>);
+struct FullCtx<'a, N: 'a> {
+    ctx: &'a span::Context<'a, N>,
+    ansi: bool,
+}
+
+impl<'a, N: 'a> FullCtx<'a, N> {
+    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+        Self { ctx, ansi }
+    }
+}
 
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FullCtx<'a, N>
@@ -231,9 +264,14 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        let style = Style::new().bold();
-        self.0.visit_spans(|_, span| {
+        let style = if self.ansi {
+            Style::new().bold()
+        } else {
+            Style::new()
+        };
+        self.ctx.visit_spans(|_, span| {
             write!(f, "{}", style.paint(span.name()))?;
+
             seen = true;
 
             let fields = span.fields();
@@ -253,7 +291,7 @@ where
 impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.visit_spans(|_, span| {
+        self.ctx.visit_spans(|_, span| {
             write!(f, "{}", span.name())?;
             seen = true;
 
@@ -270,12 +308,21 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
     }
 }
 
-struct FmtLevel<'a>(&'a Level);
+struct FmtLevel<'a> {
+    level: &'a Level,
+    ansi: bool,
+}
+
+impl<'a> FmtLevel<'a> {
+    pub fn new(level: &'a Level, ansi: bool) -> Self {
+        Self { level, ansi }
+    }
+}
 
 #[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self.0 {
+        match *self.level {
             Level::TRACE => f.pad("TRACE"),
             Level::DEBUG => f.pad("DEBUG"),
             Level::INFO => f.pad("INFO"),
@@ -288,12 +335,22 @@ impl<'a> fmt::Display for FmtLevel<'a> {
 #[cfg(feature = "ansi")]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self.0 {
-            Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
-            Level::DEBUG => write!(f, "{}", Colour::Blue.paint("DEBUG")),
-            Level::INFO => write!(f, "{}", Colour::Green.paint(" INFO")),
-            Level::WARN => write!(f, "{}", Colour::Yellow.paint(" WARN")),
-            Level::ERROR => write!(f, "{}", Colour::Red.paint("ERROR")),
+        if self.ansi {
+            match *self.level {
+                Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
+                Level::DEBUG => write!(f, "{}", Colour::Blue.paint("DEBUG")),
+                Level::INFO => write!(f, "{}", Colour::Green.paint(" INFO")),
+                Level::WARN => write!(f, "{}", Colour::Yellow.paint(" WARN")),
+                Level::ERROR => write!(f, "{}", Colour::Red.paint("ERROR")),
+            }
+        } else {
+            match *self.level {
+                Level::TRACE => f.pad("TRACE"),
+                Level::DEBUG => f.pad("DEBUG"),
+                Level::INFO => f.pad("INFO"),
+                Level::WARN => f.pad("WARN"),
+                Level::ERROR => f.pad("ERROR"),
+            }
         }
     }
 }
