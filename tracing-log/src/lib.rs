@@ -579,7 +579,7 @@ impl Subscriber for TraceLogger {
         id.clone()
     }
 
-    fn drop_span(&self, id: Id) {
+    fn try_close(&self, id: Id) -> bool {
         let mut spans = self.spans.lock().unwrap();
         if spans.contains_key(&id) {
             if spans.get(&id).unwrap().ref_count == 1 {
@@ -587,11 +587,12 @@ impl Subscriber for TraceLogger {
                 if self.settings.log_span_closes {
                     span.finish();
                 }
+                return true;
             } else {
                 spans.get_mut(&id).unwrap().ref_count -= 1;
             }
-            return;
         }
+        false
     }
 }
 

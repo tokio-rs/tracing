@@ -206,8 +206,8 @@ where
         id.clone()
     }
 
-    fn drop_span(&self, id: span::Id) {
-        self.spans.drop_span(id);
+    fn try_close(&self, id: span::Id) -> bool {
+        self.spans.drop_span(id)
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
