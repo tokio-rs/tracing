@@ -13,6 +13,8 @@ script:
 - cargo test --all
 
 jobs:
+  allow_failures:
+  - rust: nightly
   include:
   - script:
     - (cd tracing/test-log-support && cargo test)
@@ -26,4 +28,3 @@ jobs:
   - script: cargo test --features=doctest-readme --all
     name: "doctest readme"
     rust: nightly
-
