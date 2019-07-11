@@ -1,5 +1,3 @@
-#![cfg_attr(all(feature = "std-future", test), feature(futures_api))]
-
 //! Futures compatibility for `tracing`
 //!
 //! # Feature flags
