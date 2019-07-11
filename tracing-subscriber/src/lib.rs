@@ -3,6 +3,7 @@ use tracing_core::span::Id;
 
 pub mod layer;
 pub mod prelude;
+pub mod registry;
 
 pub use layer::Layer;
 use std::{cell::RefCell, default::Default, thread};

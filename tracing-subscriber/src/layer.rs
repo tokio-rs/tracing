@@ -7,6 +7,8 @@ use tracing_core::{
 
 use std::{any::TypeId, marker::PhantomData};
 
+use crate::registry::{self, Registry};
+
 /// A composable handler for `tracing` events.
 ///
 /// The [`Subscriber`] trait in `tracing-core` represents the _complete_ set of
@@ -611,6 +613,34 @@ impl<'a, S> Context<'a, S> {
     }
 }
 
+impl<'a, S: Subscriber + Registry> Context<'a, S> {
+    fn current_data(&self) -> Option<S::Ref> {
+        self.subscriber.as_ref()?.current()
+    }
+
+    fn current_data_mut(&self) -> Option<S::RefMut> {
+        self.subscriber.as_ref()?.current_mut()
+    }
+
+    fn span(&self, id: &span::Id) -> Option<S::Ref> {
+        self.subscriber.as_ref()?.span(id)
+    }
+
+    fn span_mut(&self, id: &span::Id) -> Option<Self::RefMut> {
+        self.subscriber.as_ref()?.span_mut(id)
+    }
+
+    fn parents<'a>(&'a self, span: &span::Id) -> Parents<'a, S>
+    where
+        S: Sized,
+    {
+        let inner = self.subscriber.as_ref().map(|s| s.parents(id));
+        Parents {
+            inner,
+        }
+    }
+}
+
 impl<'a, S> Clone for Context<'a, S> {
     #[inline]
     fn clone(&self) -> Self {
@@ -620,6 +650,20 @@ impl<'a, S> Clone for Context<'a, S> {
             None
         };
         Context { subscriber }
+    }
+}
+
+pub struct Parents<'registry, S> {
+    inner: Option<registry::Parents<'registry, S>>,
+}
+
+impl<'registry, S> Iterator for Parents<'registry, S>
+where
+    S: Registry,
+{
+    type Item = S::Ref;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.as_mut()?.next()
     }
 }
 
