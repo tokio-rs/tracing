@@ -100,8 +100,8 @@ where
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel(meta.level(), self.ansi),
-            FullCtx(&ctx, self.ansi),
+            FmtLevel::new(meta.level(), self.ansi),
+            FullCtx::new(&ctx, self.ansi),
             meta.target()
         )?;
         {
@@ -128,8 +128,8 @@ where
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel(meta.level(), self.ansi),
-            FmtCtx(&ctx, self.ansi),
+            FmtLevel::new(meta.level(), self.ansi),
+            FmtCtx::new(&ctx, self.ansi),
             meta.target()
         )?;
         {
@@ -191,7 +191,16 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
-struct FmtCtx<'a, N: 'a>(&'a span::Context<'a, N>, bool);
+struct FmtCtx<'a, N: 'a> {
+    ctx: &'a span::Context<'a, N>,
+    ansi: bool,
+}
+
+impl<'a, N: 'a> FmtCtx<'a, N> {
+    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+        Self { ctx, ansi }
+    }
+}
 
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FmtCtx<'a, N>
@@ -200,13 +209,13 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.visit_spans(|_, span| {
+        self.ctx.visit_spans(|_, span| {
             if seen {
                 f.pad(":")?;
             }
             seen = true;
 
-            if self.1 {
+            if self.ansi {
                 write!(f, "{}", Style::new().bold().paint(span.name()))
             } else {
                 write!(f, "{}", span.name())
@@ -223,7 +232,7 @@ where
 impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.visit_spans(|_, span| {
+        self.ctx.visit_spans(|_, span| {
             if seen {
                 f.pad(":")?;
             }
@@ -237,7 +246,16 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     }
 }
 
-struct FullCtx<'a, N: 'a>(&'a span::Context<'a, N>, bool);
+struct FullCtx<'a, N: 'a> {
+    ctx: &'a span::Context<'a, N>,
+    ansi: bool,
+}
+
+impl<'a, N: 'a> FullCtx<'a, N> {
+    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+        Self { ctx, ansi }
+    }
+}
 
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FullCtx<'a, N>
@@ -246,27 +264,19 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        let style = if self.1 {
-            Some(Style::new().bold())
+        let style = if self.ansi {
+            Style::new().bold()
         } else {
-            None
+            Style::new()
         };
-        self.0.visit_spans(|_, span| {
-            if let Some(style) = style {
-                write!(f, "{}", style.paint(span.name()))?;
-            } else {
-                write!(f, "{}", span.name())?;
-            }
+        self.ctx.visit_spans(|_, span| {
+            write!(f, "{}", style.paint(span.name()))?;
 
             seen = true;
 
             let fields = span.fields();
             if !fields.is_empty() {
-                if let Some(style) = style {
-                    write!(f, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
-                } else {
-                    write!(f, "{{{}}}", fields)?;
-                }
+                write!(f, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
             }
             ":".fmt(f)
         })?;
@@ -281,7 +291,7 @@ where
 impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut seen = false;
-        self.0.visit_spans(|_, span| {
+        self.ctx.visit_spans(|_, span| {
             write!(f, "{}", span.name())?;
             seen = true;
 
@@ -298,12 +308,21 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
     }
 }
 
-struct FmtLevel<'a>(&'a Level, bool);
+struct FmtLevel<'a> {
+    level: &'a Level,
+    ansi: bool,
+}
+
+impl<'a> FmtLevel<'a> {
+    pub fn new(level: &'a Level, ansi: bool) -> Self {
+        Self { level, ansi }
+    }
+}
 
 #[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self.0 {
+        match *self.level {
             Level::TRACE => f.pad("TRACE"),
             Level::DEBUG => f.pad("DEBUG"),
             Level::INFO => f.pad("INFO"),
@@ -316,8 +335,8 @@ impl<'a> fmt::Display for FmtLevel<'a> {
 #[cfg(feature = "ansi")]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.1 {
-            match *self.0 {
+        if self.ansi {
+            match *self.level {
                 Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
                 Level::DEBUG => write!(f, "{}", Colour::Blue.paint("DEBUG")),
                 Level::INFO => write!(f, "{}", Colour::Green.paint(" INFO")),
@@ -325,7 +344,7 @@ impl<'a> fmt::Display for FmtLevel<'a> {
                 Level::ERROR => write!(f, "{}", Colour::Red.paint("ERROR")),
             }
         } else {
-            match *self.0 {
+            match *self.level {
                 Level::TRACE => f.pad("TRACE"),
                 Level::DEBUG => f.pad("DEBUG"),
                 Level::INFO => f.pad("INFO"),
