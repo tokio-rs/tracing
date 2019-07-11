@@ -18,5 +18,6 @@ tokio-executor = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
+tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
 tracing-fmt = { path = "../tracing-fmt" }
 tracing-core = "0.1.2"
