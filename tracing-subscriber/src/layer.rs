@@ -626,11 +626,11 @@ impl<'a, S: Subscriber + Registry> Context<'a, S> {
         self.subscriber.as_ref()?.span(id)
     }
 
-    fn span_mut(&self, id: &span::Id) -> Option<Self::RefMut> {
+    fn span_mut(&self, id: &span::Id) -> Option<S::RefMut> {
         self.subscriber.as_ref()?.span_mut(id)
     }
 
-    fn parents<'a>(&'a self, span: &span::Id) -> Parents<'a, S>
+    fn parents(&'a self, span: &span::Id) -> Parents<'a, S>
     where
         S: Sized,
     {
