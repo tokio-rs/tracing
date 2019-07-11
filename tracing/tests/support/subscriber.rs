@@ -81,6 +81,7 @@ where
         self
     }
 
+    #[allow(deprecated)]
     pub fn drop_span(mut self, span: MockSpan) -> Self {
         self.expected.push_back(Expect::DropSpan(span));
         self
