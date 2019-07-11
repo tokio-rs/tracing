@@ -101,7 +101,7 @@ pub(crate) fn pop(expected_id: &Id) {
         .and_then(|i| i);
     if id.is_some() {
         dispatcher::get_default(|subscriber| {
-            subscriber.drop_span(id.take().unwrap());
+            let _ = subscriber.try_close(id.take().unwrap());
         })
     }
 }
@@ -349,7 +349,7 @@ impl Store {
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    pub fn drop_span(&self, id: Id) {
+    pub fn drop_span(&self, id: Id) -> bool {
         let this = self.inner.read();
         let idx = id_to_idx(&id);
 
@@ -359,7 +359,7 @@ impl Store {
             .map(|span| span.read().drop_ref())
             .unwrap_or(false)
         {
-            return;
+            return false;
         }
 
         // Synchronize only if we are actually removing the span (stolen
@@ -367,6 +367,7 @@ impl Store {
         atomic::fence(Ordering::Acquire);
 
         this.remove(&self.next, idx);
+        true
     }
 }
 
@@ -397,7 +398,7 @@ impl Drop for Data {
         if self.parent.is_some() {
             dispatcher::get_default(|subscriber| {
                 if let Some(parent) = self.parent.take() {
-                    subscriber.drop_span(parent);
+                    let _ = subscriber.try_close(parent);
                 }
             })
         }

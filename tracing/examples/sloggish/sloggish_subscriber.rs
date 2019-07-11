@@ -279,7 +279,8 @@ impl Subscriber for SloggishSubscriber {
         self.current.exit();
     }
 
-    fn drop_span(&self, _id: tracing::Id) {
+    fn try_close(&self, _id: tracing::Id) -> bool {
         // TODO: GC unneeded spans.
+        false
     }
 }

@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 serde = "1"
-tracing-core = "0.1"
+tracing-core = "0.1.2"
 
 [dev-dependencies]
 serde_json = "1.0"
