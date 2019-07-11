@@ -884,7 +884,7 @@ impl Hash for Inner {
 
 impl Drop for Inner {
     fn drop(&mut self) {
-        self.subscriber.drop_span(self.id.clone());
+        let _ = self.subscriber.try_close(self.id.clone());
     }
 }
 
