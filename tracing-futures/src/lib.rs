@@ -218,9 +218,7 @@ mod tests {
 
             this.polls += 1;
             if this.polls == this.finish_at {
-                let value = this.and_return
-                    .take()
-                    .expect("polled after ready");
+                let value = this.and_return.take().expect("polled after ready");
 
                 std::task::Poll::Ready(value)
             } else {
@@ -276,7 +274,7 @@ mod tests {
         loop {
             match task.poll(&mut future) {
                 std::task::Poll::Ready(v) => break v,
-                _ => {},
+                _ => {}
             }
         }
     }
@@ -390,8 +388,7 @@ mod tests {
             .run_with_handle();
         let mut task = MockTask::new();
         with_default(subscriber, || {
-            let future = PollN::new_ok(2)
-                .instrument(span!(Level::TRACE, "foo"));
+            let future = PollN::new_ok(2).instrument(span!(Level::TRACE, "foo"));
             block_on_future(&mut task, future).unwrap();
         });
         handle.assert_finished();
@@ -410,8 +407,7 @@ mod tests {
             .run_with_handle();
         let mut task = MockTask::new();
         with_default(subscriber, || {
-            let future = PollN::new_err(2)
-                .instrument(span!(Level::TRACE, "foo"));
+            let future = PollN::new_err(2).instrument(span!(Level::TRACE, "foo"));
             block_on_future(&mut task, future).unwrap_err();
         });
         handle.assert_finished();
