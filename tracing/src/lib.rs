@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.2")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.3")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 #![cfg_attr(feature = "doctest-readme", feature(external_doc))]
