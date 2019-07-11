@@ -505,7 +505,7 @@ impl Span {
         };
 
         #[cfg(feature = "log")]
-        span.log(format_args!("{}; {}", meta.name(), FmtAttrs(attrs)));
+        span.log(format_args!("++ {}; {}", meta.name(), FmtAttrs(attrs)));
 
         span
     }
@@ -831,6 +831,25 @@ impl Into<Option<Id>> for Span {
     }
 }
 
+impl Drop for Span {
+    fn drop(&mut self) {
+        if let Some(Inner {
+            ref id,
+            ref subscriber,
+        }) = self.inner
+        {
+            if subscriber.try_close(id.clone()) {
+                #[cfg(feature = "log")]
+                {
+                    if let Some(ref meta) = self.meta {
+                        self.log(format_args!("-- {}", meta.name()));
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ===== impl Inner =====
 
 impl Inner {
@@ -879,12 +898,6 @@ impl cmp::PartialEq for Inner {
 impl Hash for Inner {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
-    }
-}
-
-impl Drop for Inner {
-    fn drop(&mut self) {
-        let _ = self.subscriber.try_close(self.id.clone());
     }
 }
 
