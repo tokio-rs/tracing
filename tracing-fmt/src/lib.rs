@@ -294,6 +294,15 @@ where
             settings: self.settings,
         }
     }
+
+    /// Enable ANSI encoding for formatted events.
+    #[cfg(feature = "ansi")]
+    pub fn with_ansi(self, ansi: bool) -> Builder<N, default::Format<L, T>, F> {
+        Builder {
+            fmt_event: self.fmt_event.with_ansi(ansi),
+            ..self
+        }
+    }
 }
 
 impl<N, E, F> Builder<N, E, F>
