@@ -278,4 +278,9 @@ impl Subscriber for SloggishSubscriber {
         // TODO: unify stack with current span
         self.current.exit();
     }
+
+    fn try_close(&self, _id: tracing::Id) -> bool {
+        // TODO: GC unneeded spans.
+        false
+    }
 }
