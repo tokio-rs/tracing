@@ -361,7 +361,7 @@ where
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<S>){
+    fn on_close(&self, id: span::Id, ctx: Context<S>) {
         self.inner.on_close(id.clone(), ctx.clone());
         self.layer.on_close(id, ctx);
     }
@@ -379,7 +379,7 @@ where
 {
     fn ctx(&self) -> Context<S> {
         Context {
-            subscriber: Some(&self.inner)
+            subscriber: Some(&self.inner),
         }
     }
 }
