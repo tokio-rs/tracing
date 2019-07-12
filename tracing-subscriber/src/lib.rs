@@ -4,16 +4,8 @@ use tracing_core::span::Id;
 pub mod filter;
 pub mod layer;
 pub mod prelude;
-// pub use compose::Composed;
 
-// pub mod filter;
-// pub mod observe;
-// pub mod registry;
-
-// pub use filter::{Filter, FilterExt};
-// pub use observe::{Observe, ObserveExt};
-// pub use registry::{RegisterSpan, SpanRef};
-
+pub use layer::Layer;
 use std::{cell::RefCell, default::Default, thread};
 
 /// Tracks the currently executing span on a per-thread basis.

@@ -1,4 +1,4 @@
+pub use crate::filter::FilterExt as __tracing_subscriber_FilterExt;
 pub use crate::layer::{
-    Layer as __tokio_trace_subscriber_Layer,
-    SubscriberExt as __tokio_trace_subscriber_SubscriberExt,
+    Layer as __tracing_subscriber_Layer, SubscriberExt as __tracing_subscriber_SubscriberExt,
 };
