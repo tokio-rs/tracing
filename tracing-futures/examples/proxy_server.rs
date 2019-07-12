@@ -114,14 +114,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
 
     let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
-    tracing::subscriber::with_default(subscriber, || {
-        let done = done.instrument(span!(
-            Level::TRACE,
-            "proxy",
-            listen_addr = field::debug(&listen_addr)
-        ));
-        tokio::run(done);
-    });
+    let _ = tracing::subscriber::set_global_default(subscriber);
+    let done = done.instrument(span!(
+        Level::TRACE,
+        "proxy",
+        listen_addr = field::debug(&listen_addr)
+    ));
+    tokio::run(done);
 
     Ok(())
 }
