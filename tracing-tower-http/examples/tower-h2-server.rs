@@ -110,61 +110,60 @@ fn main() {
         ))
         .finish();
 
-    tracing::subscriber::with_default(subscriber, || {
-        let mut rt = Runtime::new().unwrap();
-        let reactor = rt.executor();
+    let _ = tracing::subscriber::set_global_default(subscriber);
+    let mut rt = Runtime::new().unwrap();
+    let reactor = rt.executor();
 
-        let addr = "[::1]:8888".parse().unwrap();
-        let bind = TcpListener::bind(&addr).expect("bind");
+    let addr = "[::1]:8888".parse().unwrap();
+    let bind = TcpListener::bind(&addr).expect("bind");
 
-        let serve_span = span!(
-            Level::TRACE,
-            "serve",
-            local.ip = field::debug(addr.ip()),
-            local.port = addr.port() as u64
-        );
-        let _enter = serve_span.enter();
+    let serve_span = span!(
+        Level::TRACE,
+        "serve",
+        local.ip = field::debug(addr.ip()),
+        local.port = addr.port() as u64
+    );
+    let _enter = serve_span.enter();
 
-        let new_svc =
-            tracing_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
-        let h2 = Server::new(new_svc, Default::default(), reactor.clone());
+    let new_svc =
+        tracing_tower_http::InstrumentedMakeService::with_span(NewSvc, serve_span.clone());
+    let h2 = Server::new(new_svc, Default::default(), reactor.clone());
 
-        let serve = bind
-            .incoming()
-            .fold((h2, reactor), |(mut h2, reactor), sock| {
-                let addr = sock.peer_addr().expect("can't get addr");
-                let conn_span = span!(
-                    Level::TRACE,
-                    "conn",
-                    remote.ip = field::debug(addr.ip()),
-                    remote.port = addr.port() as u64
-                );
-                let _enter = conn_span.enter();
-                if let Err(e) = sock.set_nodelay(true) {
-                    return Err(e);
-                }
+    let serve = bind
+        .incoming()
+        .fold((h2, reactor), |(mut h2, reactor), sock| {
+            let addr = sock.peer_addr().expect("can't get addr");
+            let conn_span = span!(
+                Level::TRACE,
+                "conn",
+                remote.ip = field::debug(addr.ip()),
+                remote.port = addr.port() as u64
+            );
+            let _enter = conn_span.enter();
+            if let Err(e) = sock.set_nodelay(true) {
+                return Err(e);
+            }
 
-                info!("accepted connection");
+            info!("accepted connection");
 
-                let serve = h2
-                    .serve(sock)
-                    .map_err(|e| error!("error {:?}", e))
-                    .and_then(|_| {
-                        debug!("response finished");
-                        future::ok(())
-                    })
-                    .instrument(conn_span.clone());
-                reactor.spawn(Box::new(serve));
+            let serve = h2
+                .serve(sock)
+                .map_err(|e| error!("error {:?}", e))
+                .and_then(|_| {
+                    debug!("response finished");
+                    future::ok(())
+                })
+                .instrument(conn_span.clone());
+            reactor.spawn(Box::new(serve));
 
-                Ok((h2, reactor))
-            })
-            .map_err(|e| {
-                error!("serve error {:?}", e);
-            })
-            .map(|_| {})
-            .instrument(serve_span.clone());
+            Ok((h2, reactor))
+        })
+        .map_err(|e| {
+            error!("serve error {:?}", e);
+        })
+        .map(|_| {})
+        .instrument(serve_span.clone());
 
-        rt.spawn(serve);
-        rt.shutdown_on_idle().wait().unwrap();
-    });
+    rt.spawn(serve);
+    rt.shutdown_on_idle().wait().unwrap();
 }
