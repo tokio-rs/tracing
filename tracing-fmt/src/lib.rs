@@ -138,8 +138,7 @@ where
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes) -> span::Id {
-        let span = span::Data::new(attrs);
-        self.spans.new_span(span, attrs, &self.new_visitor)
+        self.spans.new_span(attrs, &self.new_visitor)
     }
 
     #[inline]
@@ -183,15 +182,15 @@ where
 
     fn enter(&self, id: &span::Id) {
         // TODO: add on_enter hook
-        span::push(id);
+        self.spans.push(id);
     }
 
     fn exit(&self, id: &span::Id) {
-        span::pop(id);
+        self.spans.pop(id);
     }
 
     fn current_span(&self) -> span::Current {
-        if let Some(id) = span::current() {
+        if let Some(id) = self.spans.current() {
             if let Some(meta) = self.spans.get(&id).map(|span| span.metadata()) {
                 return span::Current::new(id, meta);
             }
@@ -199,13 +198,12 @@ where
         span::Current::none()
     }
 
+    #[inline]
     fn clone_span(&self, id: &span::Id) -> span::Id {
-        if let Some(span) = self.spans.get(id) {
-            span.clone_ref()
-        }
-        id.clone()
+        self.spans.clone_span(id)
     }
 
+    #[inline]
     fn try_close(&self, id: span::Id) -> bool {
         self.spans.drop_span(id)
     }

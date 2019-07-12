@@ -63,46 +63,13 @@ thread_local! {
     static CONTEXT: RefCell<Vec<Id>> = RefCell::new(vec![]);
 }
 
-pub(crate) fn current() -> Option<Id> {
-    CONTEXT
-        .try_with(|current| current.borrow().last().map(clone_id))
-        .ok()?
-}
-
-#[inline]
-fn clone_id(id: &Id) -> Id {
-    dispatcher::get_default(|subscriber| subscriber.clone_span(id))
-}
-
-pub(crate) fn push(id: &Id) {
-    let _ = CONTEXT.try_with(|current| {
-        let mut current = current.borrow_mut();
-        if current.contains(id) {
-            // Ignore duplicate enters.
-            return;
-        }
-
-        let id = clone_id(id);
-        current.push(id);
-    });
-}
-
-pub(crate) fn pop(expected_id: &Id) {
-    let mut id = CONTEXT
-        .try_with(|current| {
-            let mut current = current.borrow_mut();
-            if current.last() == Some(expected_id) {
-                current.pop()
-            } else {
-                None
+macro_rules! debug_panic {
+    ($($args:tt)*) => {
+        #[cfg(debug_assertions)] {
+            if !std::thread::panicking() {
+                panic!($($args)*)
             }
-        })
-        .ok()
-        .and_then(|i| i);
-    if id.is_some() {
-        dispatcher::get_default(|subscriber| {
-            let _ = subscriber.try_close(id.take().unwrap());
-        })
+        }
     }
 }
 
@@ -134,13 +101,6 @@ impl<'a> Span<'a> {
         }
     }
 
-    #[inline]
-    pub(crate) fn clone_ref(&self) {
-        if let State::Full(ref data) = self.lock.span {
-            data.ref_count.fetch_add(1, Ordering::Release);
-        }
-    }
-
     #[inline(always)]
     fn with_parent<'store, F, E>(
         self,
@@ -156,6 +116,8 @@ impl<'a> Span<'a> {
             if Some(parent_id) != last_id {
                 if let Some(parent) = store.get(parent_id) {
                     parent.with_parent(parent_id, Some(my_id), f, store)?;
+                } else {
+                    debug_panic!("missing span for {:?}; this is a bug", parent_id);
                 }
             }
         }
@@ -188,6 +150,8 @@ impl<'a, N> Context<'a, N> {
                         // stack in reverse order, without having to allocate
                         // a buffer.
                         return span.with_parent(id, None, &mut f, self.store);
+                    } else {
+                        debug_panic!("missing span for {:?}; this is a bug", id);
                     }
                 }
                 Ok(())
@@ -207,6 +171,8 @@ impl<'a, N> Context<'a, N> {
                 if let Some(id) = current.borrow().last() {
                     if let Some(span) = self.store.get(id) {
                         return Some(f((id, span)));
+                    } else {
+                        debug_panic!("missing span for {:?}, this is a bug", id);
                     }
                 }
                 None
@@ -250,6 +216,41 @@ impl Store {
         }
     }
 
+    #[inline]
+    pub fn current(&self) -> Option<Id> {
+        CONTEXT
+            .try_with(|current| current.borrow().last().map(|span| self.clone_span(span)))
+            .ok()?
+    }
+
+    pub fn push(&self, id: &Id) {
+        let _ = CONTEXT.try_with(|current| {
+            let mut current = current.borrow_mut();
+            if current.contains(id) {
+                // Ignore duplicate enters.
+                return;
+            }
+            current.push(self.clone_span(id));
+        });
+    }
+
+    pub fn pop(&self, expected_id: &Id) {
+        let id = CONTEXT
+            .try_with(|current| {
+                let mut current = current.borrow_mut();
+                if current.last() == Some(expected_id) {
+                    current.pop()
+                } else {
+                    None
+                }
+            })
+            .ok()
+            .and_then(|i| i);
+        if let Some(id) = id {
+            let _ = self.drop_span(id);
+        }
+    }
+
     /// Inserts a new span with the given data and fields into the slab,
     /// returning an ID for that span.
     ///
@@ -258,11 +259,11 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&self, span: Data, attrs: &Attributes, new_visitor: &N) -> Id
+    pub fn new_span<N>(&self, attrs: &Attributes, new_visitor: &N) -> Id
     where
         N: for<'a> crate::NewVisitor<'a>,
     {
-        let mut span = Some(span);
+        let mut span = Some(Data::new(attrs, self));
 
         // The slab's free list is a modification of Treiber's lock-free stack,
         // using slab indices instead of pointers, and with a provision for
@@ -357,7 +358,10 @@ impl Store {
             .slab
             .get(idx)
             .map(|span| span.read().drop_ref())
-            .unwrap_or(false)
+            .unwrap_or_else(|| {
+                debug_panic!("tried to drop {:?} but it no longer exists!", id);
+                false
+            })
         {
             return false;
         }
@@ -369,16 +373,31 @@ impl Store {
         this.remove(&self.next, idx);
         true
     }
+
+    pub fn clone_span(&self, id: &Id) -> Id {
+        let this = self.inner.read();
+        let idx = id_to_idx(id);
+
+        if let Some(span) = this.slab.get(idx).map(|span| span.read()) {
+            span.clone_ref();
+        } else {
+            debug_panic!(
+                "tried to clone {:?}, but no span exists with that ID. this is a bug!",
+                id
+            );
+        }
+        id.clone()
+    }
 }
 
 impl Data {
-    pub(crate) fn new(attrs: &Attributes) -> Self {
+    pub(crate) fn new(attrs: &Attributes, store: &Store) -> Self {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
-            current()
+            store.current()
         } else {
-            attrs.parent().map(clone_id)
+            attrs.parent().map(|id| store.clone_span(id))
         };
         Self {
             metadata: attrs.metadata(),
@@ -473,6 +492,17 @@ impl Slot {
         match self.span {
             State::Full(ref data) => data.ref_count.fetch_sub(1, Ordering::Release) == 1,
             State::Empty(_) => false,
+        }
+    }
+
+    fn clone_ref(&self) {
+        match self.span {
+            State::Full(ref data) => {
+                let _ = data.ref_count.fetch_sub(1, Ordering::Release);
+            }
+            State::Empty(_) => {
+                unreachable!("tried to clone a ref to a span that no longer exists, this is a bug")
+            }
         }
     }
 }
