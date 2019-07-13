@@ -30,6 +30,8 @@ edition = "2018"
 tracing-core = "0.1.2"
 log = { version = "0.4", optional = true }
 cfg-if = "0.1.9"
+proc-macro-hack = "0.5.7"
+tracing-macro-impls = { path = "../tracing-macro-impls" }
 
 [dev-dependencies]
 ansi_term = "0.11"

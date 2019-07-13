@@ -1,0 +1,17 @@
+[package]
+name = "tracing-macro-impls"
+version = "0.1.0"
+authors = ["Benjamin Saunders <ben.e.saunders@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "0.15", features = ["full", "extra-traits"] }
+quote = "0.6"
+proc-macro2 = { version = "0.4", features = ["nightly"] }
+proc-macro-hack = "0.5.7"
+
+[features]
+log = []

@@ -367,6 +367,8 @@ extern crate tracing_core;
 #[doc(hidden)]
 pub extern crate log;
 
+use proc_macro_hack::proc_macro_hack;
+
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
 #[allow(unused_imports)]
@@ -405,3 +407,354 @@ mod readme_doctest;
 mod sealed {
     pub trait Sealed {}
 }
+
+
+/// Constructs a new `Event`.
+///
+/// # Examples
+///
+/// ```rust
+/// # #[macro_use]
+/// # extern crate tracing;
+/// use tracing::{Level, field};
+///
+/// # fn main() {
+/// let data = (42, "fourty-two");
+/// let private_data = "private";
+/// let error = "a bad error";
+///
+/// event!(Level::ERROR, { error = field::display(error) }, "Received error");
+/// event!(target: "app_events", Level::WARN, {
+///         private_data = private_data,
+///         data = field::debug(data),
+///     },
+///     "App warning: {}", error
+/// );
+/// event!(Level::INFO, the_answer = data.0);
+/// # }
+/// ```
+///
+/// Note that *unlike `span!`*, `event!` requires a value for all fields. As
+/// events are recorded immediately when the macro is invoked, there is no
+/// opportunity for fields to be recorded later. A trailing comma on the final
+/// field is valid.
+///
+/// For example, the following does not compile:
+/// ```rust,compile_fail
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// event!(Level::Info, foo = 5, bad_field, bar = "hello")
+/// #}
+/// ```
+/// Shorthand for `field::debug`:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// #[derive(Debug)]
+/// struct MyStruct {
+///     field: &'static str,
+/// }
+///
+/// let my_struct = MyStruct {
+///     field: "Hello world!"
+/// };
+///
+/// // `my_struct` will be recorded using its `fmt::Debug` implementation.
+/// event!(Level::TRACE, my_struct = ?my_struct);
+/// # }
+/// ```
+/// Shorthand for `field::display`:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// # #[derive(Debug)]
+/// # struct MyStruct {
+/// #     field: &'static str,
+/// # }
+/// #
+/// # let my_struct = MyStruct {
+/// #     field: "Hello world!"
+/// # };
+/// // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+/// event!(Level::TRACE, my_struct.field = %my_struct.field);
+/// # }
+/// ```
+/// Events may have up to 32 fields. The following will not compile:
+/// ```rust,compile_fail
+///  # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// event!(Level::INFO,
+///     a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9,
+///     j = 10, k = 11, l = 12, m = 13, n = 14, o = 15, p = 16, q = 17,
+///     r = 18, s = 19, t = 20, u = 21, v = 22, w = 23, x = 24, y = 25,
+///     z = 26, aa = 27, bb = 28, cc = 29, dd = 30, ee = 31, ff = 32, gg = 33
+/// );
+/// # }
+/// ```
+#[proc_macro_hack]
+pub use tracing_macro_impls::event;
+
+/// Constructs a new span.
+///
+/// # Examples
+///
+/// Creating a new span:
+/// ```
+/// #[macro_use]
+/// extern crate tracing;
+/// use tracing::Level;
+/// # fn main() {
+/// let span = span!(Level::TRACE, "my span");
+/// let _enter = span.enter();
+/// // do work inside the span...
+/// # }
+/// ```
+///
+/// ## Recording Fields
+///
+/// Span fields are written using the syntax `key = value`.
+/// ```
+/// # #[macro_use] extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// // construct a new span with two fields:
+/// //  - "foo", with a value of 42,
+/// //  - "bar", with the value "false"
+/// let my_span = span!(Level::INFO, "my_span", foo = 42, bar = false);
+/// # }
+/// ```
+/// Note that a trailing comma on the final field is valid:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// span!(
+///     Level::INFO,
+///     "my_span",
+///     foo = 42,
+///     bar = false,
+/// );
+/// # }
+/// ```
+///
+/// As shorthand, local variables may be used as field values without an
+/// assignment, similar to [struct initializers]. For example:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// let user = "ferris";
+///
+/// span!(Level::TRACE, "login", user);
+/// // is equivalent to:
+/// span!(Level::TRACE, "login", user = user);
+/// # }
+///```
+///
+/// Field names can include dots, but should not be terminated by them:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// let user = "ferris";
+/// let email = "ferris@rust-lang.org";
+/// span!(Level::TRACE, "login", user, user.email = email);
+/// # }
+///```
+///
+/// Since field names can include dots, fields on local structs can be used
+/// using the local variable shorthand:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// # struct User {
+/// #    name: &'static str,
+/// #    email: &'static str,
+/// # }
+/// let user = User {
+///     name: "ferris",
+///     email: "ferris@rust-lang.org",
+/// };
+/// // the span will have the fields `user.name = "ferris"` and
+/// // `user.email = "ferris@rust-lang.org"`.
+/// span!(Level::TRACE, "login", user.name, user.email);
+/// # }
+///```
+///
+// TODO(#1138): determine a new syntax for uninitialized span fields, and
+// re-enable this.
+// /// Field values may be recorded after the span is created. The `_` character is
+// /// used to represent a field whose value has yet to be recorded:
+// /// ```
+// /// # #[macro_use]
+// /// # extern crate tracing;
+// /// # use tracing::Level;
+// /// # fn main() {
+// /// let my_span = span!(Level::TRACE, "my span", foo = 2, bar = _);
+// /// my_span.record("bar", &7);
+// /// # }
+// /// ```
+// ///
+/// The `?` sigil is shorthand for [`field::debug`]:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// #[derive(Debug)]
+/// struct MyStruct {
+///     field: &'static str,
+/// }
+///
+/// let my_struct = MyStruct {
+///     field: "Hello world!"
+/// };
+///
+/// // `my_struct` will be recorded using its `fmt::Debug` implementation.
+/// span!(Level::TRACE, "my span", foo = ?my_struct);
+/// // is equivalent to:
+/// span!(Level::TRACE, "my span", foo = tracing::field::debug(&my_struct));
+/// # }
+/// ```
+///
+/// The `%` character is shorthand for [`field::display`]:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// # #[derive(Debug)]
+/// # struct MyStruct {
+/// #     field: &'static str,
+/// # }
+/// #
+/// # let my_struct = MyStruct {
+/// #     field: "Hello world!"
+/// # };
+/// // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+/// span!(Level::TRACE, "my span", foo = %my_struct.field);
+/// // is equivalent to:
+/// span!(Level::TRACE, "my span", foo = tracing::field::display(&my_struct.field));
+/// # }
+/// ```
+///
+/// The `%` and `?` sigils may also be used with local variable shorthand:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// # #[derive(Debug)]
+/// # struct MyStruct {
+/// #     field: &'static str,
+/// # }
+/// #
+/// # let my_struct = MyStruct {
+/// #     field: "Hello world!"
+/// # };
+/// // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+/// let my_span = span!(Level::TRACE, "my span", %my_struct.field);
+/// # }
+/// ```
+///
+/// Note that a span may have up to 32 fields. The following will not compile:
+/// ```rust,compile_fail
+///  # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// span!(
+///     Level::TRACE,
+///     "too many fields!",
+///     a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9,
+///     j = 10, k = 11, l = 12, m = 13, n = 14, o = 15, p = 16, q = 17,
+///     r = 18, s = 19, t = 20, u = 21, v = 22, w = 23, x = 24, y = 25,
+///     z = 26, aa = 27, bb = 28, cc = 29, dd = 30, ee = 31, ff = 32, gg = 33
+/// );
+/// # }
+/// ```
+///
+/// ## Setting Span Attributes
+///
+/// In addition to the level and name of the span, which are required, the
+/// [target] and [parent span] may be overridden. For example:
+///
+/// Creating a span with custom target:
+/// ```
+/// # #[macro_use]
+/// # extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// span!(target: "app_span", Level::TRACE, "my span");
+/// # }
+/// ```
+///
+/// Creating a span with an explicit parent:
+/// ```rust
+/// # #[macro_use] extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// // Create, but do not enter, a span called "foo".
+/// let foo = span!(Level::INFO, "foo");
+///
+/// // Create and enter a span called "bar".
+/// let bar = span!(Level::INFO, "bar");
+/// let _enter = bar.enter();
+///
+/// // Although we have currently entered "bar", "baz"'s parent span
+/// // will be "foo".
+/// let baz = span!(parent: &foo, Level::INFO, "baz");
+/// # }
+/// ```
+///
+/// Creating a span _without_ a parent:
+///
+///```rust
+/// # #[macro_use] extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// let foo = span!(Level::INFO, "foo");
+/// let _enter = foo.enter();
+///
+/// // Although we have currently entered "foo", "bar" will be created
+/// // as the root of its own trace tree:
+/// let bar = span!(parent: None, Level::INFO, "bar");
+/// # }
+/// ```
+///
+/// Both the parent and target may be overridden simultaenously:
+///
+///```rust
+/// # #[macro_use] extern crate tracing;
+/// # use tracing::Level;
+/// # fn main() {
+/// let foo = span!(Level::INFO, "foo");
+//
+/// let bar = span!(target: "bar_events", parent: &foo, Level::INFO, "bar");
+/// # }
+/// ```
+///
+/// By default, the module path to the current Rust module will be used
+/// as the target, and the parent will be [determined contextually].
+///
+/// [struct initializers]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-the-field-init-shorthand-when-variables-and-fields-have-the-same-name
+/// [target]: struct.Metadata.html#method.target
+/// [parent span]: span/struct.Attributes.html#method.parent
+/// [determined contextually]: span/struct.Attributes.html#method.is_contextual
+/// [`field::debug`]: field/fn.display.html
+/// [`field::display`]: field/fn.display.html
+#[proc_macro_hack]
+pub use tracing_macro_impls::span;
