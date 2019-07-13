@@ -184,9 +184,9 @@ impl<'a> AsTrace for log::Record<'a> {
             "log record",
             self.target(),
             self.level().as_trace(),
-            self.module_path(),
-            self.line(),
             self.file(),
+            self.line(),
+            self.module_path(),
             field::FieldSet::new(FIELD_NAMES, cs_id),
             Kind::EVENT,
         )
