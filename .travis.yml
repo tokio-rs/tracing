@@ -28,6 +28,6 @@ jobs:
   - script: cargo test --features=doctest-readme --all
     name: "doctest readme"
     rust: nightly
-  - script: (cd tracing-futures/test_std_futures && cargo test)
+  - script: (cd tracing-futures/test_std_future && cargo test)
     name: "futures nightly"
     rust: nightly
