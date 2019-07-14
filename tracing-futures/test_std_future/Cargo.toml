@@ -1,0 +1,18 @@
+# Note: these tests depend on crates that use nightly features which do not
+# run under stable and beta toolchains.
+#
+# Do not add these tests to the other tracing-futures tests unless the
+# minimum Rust version is at least 1.36.
+[workspace]
+
+[package]
+name = "test_std_future"
+version = "0.1.0"
+publish = false
+edition = "2018"
+
+[dependencies]
+tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
+tracing = "0.1"
+tracing-core = "0.1.2"
+tracing-futures = { path = "..", features = ["std-future"] }
