@@ -591,7 +591,7 @@ mod tests {
     struct NopLayer2;
     impl<S: Subscriber> Layer<S> for NopLayer2 {}
 
-    fn assert_subscriber(s: impl Subscriber) {}
+    fn assert_subscriber(_s: impl Subscriber) {}
 
     #[test]
     fn layer_is_subscriber() {
