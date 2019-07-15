@@ -267,6 +267,15 @@ where
             _s: PhantomData,
         }
     }
+
+    #[doc(hidden)]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        if id == TypeId::of::<Self>() {
+            Some(&self as *const _ as *const ())
+        } else {
+            None
+        }
+    }
 }
 
 pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
@@ -403,12 +412,11 @@ where
         }
     }
 
+    #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        if id == TypeId::of::<L>() {
-            Some(&self.layer as *const _ as *const ())
-        } else {
-            self.inner.downcast_raw(id)
-        }
+        self.layer
+            .downcast_raw(id)
+            .or_else(|| self.inner.downcast_raw(id))
     }
 }
 
@@ -493,6 +501,13 @@ where
     fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<S>) {
         self.inner.on_id_change(old, new, ctx.clone());
         self.layer.on_id_change(old, new, ctx);
+    }
+
+    #[doc(hidden)]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        self.layer
+            .downcast_raw(id)
+            .or_else(|| self.inner.downcast_raw(id))
     }
 }
 
