@@ -36,40 +36,38 @@ where
     Self: 'static,
 {
     /// Registers a new callsite with this layer, returning whether or not
-    /// the layer is interested in being notified about the callsite.
+    /// the layer is interested in being notified about the callsite, similarly
+    /// to [`Subscriber::register_callsite`].
     ///
-    /// This function is provided with the [`Interest`] returned by the wrapped
-    /// subscriber. The layer may then choose to return that interest, ignore it
-    /// entirely, or combine an `Interest` of its own with the prior `Interest`.
+    /// Layers may also implement this method to perform any behaviour that
+    /// should be run once per callsite.
     ///
-    /// Beyond that, this functions similarly to [`Subscriber::register_callsite`].
-    ///
-    /// By default, this simply returns the `Interest` returned by the wrapped
-    /// subscriber.
+    /// By default, this returns `Interest::always()` if [`self.enabled`] returns
+    /// true, or `Interest::never()` if it returns false.
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
+    /// [`self.enabled`]: #method.enabled
     /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.register_callsite
-    fn register_callsite(&self, _metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
-        prev
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        if self.enabled(metadata, Context::none()) {
+            Interest::always()
+        } else {
+            Interest::never()
+        }
     }
 
     /// Returns `true` if this layer is interested in a span or event with the
-    /// given `metadata`.
+    /// given `metadata` in the current [`Context`], similarly to
+    /// [`Subscriber::enabled`].
     ///
-    /// This function is provided with the return value of the `enabled` function
-    /// on the wrapped subscriber. The layer may then choose to return that
-    /// value unmodified, ignore it entirely, or combine it with the result of
-    /// applying a filter of its own.
-    ///
-    /// Beyond that, this functions similarly to [`Subscriber::enabled`].
-    ///
-    /// By default, this simply returns the value returned by the wrapped
-    /// subscriber.
+    /// By default, this always returns `true`, allowing the wrapped subscriber
+    /// to choose to disable the span.
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
+    /// [`Context`]: ../struct.Context.html
     /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.enabled
-    fn enabled(&self, _metadata: &Metadata, prev: bool, _ctx: Context<S>) -> bool {
-        prev
+    fn enabled(&self, _metadata: &Metadata, _ctx: Context<S>) -> bool {
+        true
     }
 
     /// Notifies this layer that a new span was constructed with the given
@@ -323,13 +321,32 @@ where
     S: Subscriber,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        let interest = self.inner.register_callsite(metadata);
-        self.layer.register_callsite(metadata, interest)
+        let outer = self.layer.register_callsite(metadata);
+        if outer.is_never() {
+            // if the outer layer has disabled the callsite, return now so that
+            // the subscriber doesn't get its hopes up.
+            return outer;
+        }
+
+        let inner = self.inner.register_callsite(metadata);
+        if outer.is_sometimes() {
+            // if this interest is "sometimes", return "sometimes" to ensure that
+            // filters are reevaluated.
+            outer
+        } else {
+            // otherwise, allow the inner subscriber to weigh in.
+            inner
+        }
     }
 
     fn enabled(&self, metadata: &Metadata) -> bool {
-        let enabled = self.inner.enabled(metadata);
-        self.layer.enabled(metadata, enabled, self.ctx())
+        if self.layer.enabled(metadata, self.ctx()) {
+            // if the outer layer enables the callsite metadata, ask the subscriber.
+            self.inner.enabled(metadata)
+        } else {
+            // otherwise, the callsite is disabled by the layer
+            false
+        }
     }
 
     fn new_span(&self, span: &span::Attributes) -> span::Id {
@@ -401,16 +418,33 @@ where
     B: Layer<S>,
     S: Subscriber,
 {
-    #[inline]
-    fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
-        let prev = self.inner.register_callsite(metadata, prev);
-        self.layer.register_callsite(metadata, prev)
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        let outer = self.layer.register_callsite(metadata);
+        if outer.is_never() {
+            // if the outer layer has disabled the callsite, return now so that
+            // inner layers  don't get their hopes up.
+            return outer;
+        }
+
+        let inner = self.inner.register_callsite(metadata);
+        if outer.is_sometimes() {
+            // if this interest is "sometimes", return "sometimes" to ensure that
+            // filters are reevaluated.
+            outer
+        } else {
+            // otherwise, allow the inner layer to weigh in.
+            inner
+        }
     }
 
-    #[inline]
-    fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Context<S>) -> bool {
-        let prev = self.inner.enabled(metadata, prev, ctx.clone());
-        self.layer.enabled(metadata, prev, ctx)
+    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+        if self.layer.enabled(metadata, ctx.clone()) {
+            // if the outer layer enables the callsite metadata, ask the inner layer.
+            self.inner.enabled(metadata, ctx)
+        } else {
+            // otherwise, the callsite is disabled by this layer
+            false
+        }
     }
 
     #[inline]

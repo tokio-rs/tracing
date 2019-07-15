@@ -104,17 +104,12 @@ where
     F: Filter<S>,
     S: Subscriber,
 {
-    fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
-        let my_interest = self.filter.callsite_enabled(metadata);
-        if my_interest.is_always() {
-            prev
-        } else {
-            my_interest
-        }
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.filter.callsite_enabled(metadata)
     }
 
-    fn enabled(&self, metadata: &Metadata, prev: bool, ctx: Context<S>) -> bool {
-        self.filter.enabled(metadata, &ctx) && prev
+    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+        self.filter.enabled(metadata, &ctx)
     }
 }
 
