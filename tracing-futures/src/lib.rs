@@ -14,7 +14,10 @@
 //!
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
+#[cfg(feature = "futures-01")]
 extern crate futures;
+#[cfg(feature = "std-future")]
+extern crate pin_utils;
 #[cfg(feature = "tokio")]
 extern crate tokio;
 #[cfg(feature = "tokio-executor")]
@@ -22,9 +25,16 @@ extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
 extern crate tracing;
 
-use futures::{Future, Poll, Sink, StartSend, Stream};
-use tracing::{dispatcher, Dispatch, Span};
+#[cfg(feature = "std-future")]
+use std::{pin::Pin, task::Context};
 
+#[cfg(feature = "futures-01")]
+use futures::{Sink, StartSend, Stream};
+#[cfg(feature = "futures-01")]
+use tracing::dispatcher;
+use tracing::{Dispatch, Span};
+
+#[cfg(feature = "tokio")]
 pub mod executor;
 
 // TODO: seal?
@@ -60,26 +70,48 @@ pub struct WithDispatch<T> {
 
 impl<T: Sized> Instrument for T {}
 
-impl<T: Future> Future for Instrumented<T> {
+#[cfg(feature = "std-future")]
+impl<T: std::future::Future> Instrumented<T> {
+    pin_utils::unsafe_pinned!(inner: T);
+}
+
+#[cfg(feature = "std-future")]
+impl<T: std::future::Future> std::future::Future for Instrumented<T> {
+    type Output = T::Output;
+
+    fn poll(mut self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
+        let span = self.as_ref().span.clone();
+        let _enter = span.enter();
+        self.as_mut().inner().poll(lw)
+    }
+}
+
+#[cfg(feature = "std-future")]
+impl<T: Unpin> Unpin for Instrumented<T> {}
+
+#[cfg(feature = "futures-01")]
+impl<T: futures::Future> futures::Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
         let _enter = self.span.enter();
         self.inner.poll()
     }
 }
 
+#[cfg(feature = "futures-01")]
 impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> futures::Poll<Option<Self::Item>, Self::Error> {
         let _enter = self.span.enter();
         self.inner.poll()
     }
 }
 
+#[cfg(feature = "futures-01")]
 impl<T: Sink> Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
@@ -89,7 +121,7 @@ impl<T: Sink> Sink for Instrumented<T> {
         self.inner.start_send(item)
     }
 
-    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
+    fn poll_complete(&mut self) -> futures::Poll<(), Self::SinkError> {
         let _enter = self.span.enter();
         self.inner.poll_complete()
     }
@@ -116,17 +148,19 @@ impl<T> Instrumented<T> {
 
 impl<T: Sized> WithSubscriber for T {}
 
-impl<T: Future> Future for WithDispatch<T> {
+#[cfg(feature = "futures-01")]
+impl<T: futures::Future> futures::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
         dispatcher::with_default(&self.dispatch, || inner.poll())
     }
 }
 
 impl<T> WithDispatch<T> {
+    #[cfg(feature = "tokio")]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
@@ -154,33 +188,12 @@ pub mod support;
 
 #[cfg(test)]
 mod tests {
-    extern crate tokio;
-
     use super::{test_support::*, *};
-    use futures::{future, stream, task, Async};
-    use tracing::{subscriber::with_default, Level};
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,
         finish_at: usize,
         polls: usize,
-    }
-
-    impl<T, E> Future for PollN<T, E> {
-        type Item = T;
-        type Error = E;
-        fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-            self.polls += 1;
-            if self.polls == self.finish_at {
-                self.and_return
-                    .take()
-                    .expect("polled after ready")
-                    .map(Async::Ready)
-            } else {
-                task::current().notify();
-                Ok(Async::NotReady)
-            }
-        }
     }
 
     impl PollN<(), ()> {
@@ -201,95 +214,123 @@ mod tests {
         }
     }
 
-    #[test]
-    fn future_enter_exit_is_reasonable() {
-        let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .drop_span(span::mock().named("foo"))
-            .done()
-            .run_with_handle();
-        with_default(subscriber, || {
-            PollN::new_ok(2)
-                .instrument(span!(Level::TRACE, "foo"))
-                .wait()
-                .unwrap();
-        });
-        handle.assert_finished();
-    }
+    #[cfg(feature = "futures-01")]
+    mod futures_tests {
+        extern crate tokio;
 
-    #[test]
-    fn future_error_ends_span() {
-        let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .drop_span(span::mock().named("foo"))
-            .done()
-            .run_with_handle();
-        with_default(subscriber, || {
-            PollN::new_err(2)
-                .instrument(span!(Level::TRACE, "foo"))
-                .wait()
-                .unwrap_err();
-        });
+        use futures::{future, stream, task, Async, Future};
+        use tracing::{subscriber::with_default, Level};
 
-        handle.assert_finished();
-    }
+        use super::*;
 
-    #[test]
-    fn stream_enter_exit_is_reasonable() {
-        let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .enter(span::mock().named("foo"))
-            .exit(span::mock().named("foo"))
-            .drop_span(span::mock().named("foo"))
-            .run_with_handle();
-        with_default(subscriber, || {
-            stream::iter_ok::<_, ()>(&[1, 2, 3])
-                .instrument(span!(Level::TRACE, "foo"))
-                .for_each(|_| future::ok(()))
-                .wait()
-                .unwrap();
-        });
-        handle.assert_finished();
-    }
+        impl<T, E> futures::Future for PollN<T, E> {
+            type Item = T;
+            type Error = E;
+            fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
+                self.polls += 1;
+                if self.polls == self.finish_at {
+                    self.and_return
+                        .take()
+                        .expect("polled after ready")
+                        .map(Async::Ready)
+                } else {
+                    task::current().notify();
+                    Ok(Async::NotReady)
+                }
+            }
+        }
 
-    #[test]
-    fn span_follows_future_onto_threadpool() {
-        let (subscriber, handle) = subscriber::mock()
-            .enter(span::mock().named("a"))
-            .enter(span::mock().named("b"))
-            .exit(span::mock().named("b"))
-            .enter(span::mock().named("b"))
-            .exit(span::mock().named("b"))
-            .drop_span(span::mock().named("b"))
-            .exit(span::mock().named("a"))
-            .drop_span(span::mock().named("a"))
-            .done()
-            .run_with_handle();
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        with_default(subscriber, || {
-            span!(Level::TRACE, "a").in_scope(|| {
-                let future = PollN::new_ok(2)
-                    .instrument(span!(Level::TRACE, "b"))
-                    .map(|_| {
-                        span!(Level::TRACE, "c").in_scope(|| {
-                            // "c" happens _outside_ of the instrumented future's
-                            // span, so we don't expect it.
-                        })
-                    });
-                runtime.block_on(Box::new(future)).unwrap();
-            })
-        });
-        handle.assert_finished();
+        #[test]
+        fn future_enter_exit_is_reasonable() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .drop_span(span::mock().named("foo"))
+                .done()
+                .run_with_handle();
+            with_default(subscriber, || {
+                PollN::new_ok(2)
+                    .instrument(span!(Level::TRACE, "foo"))
+                    .wait()
+                    .unwrap();
+            });
+            handle.assert_finished();
+        }
+
+        #[cfg(feature = "futures-01")]
+        #[test]
+        fn future_error_ends_span() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .drop_span(span::mock().named("foo"))
+                .done()
+                .run_with_handle();
+            with_default(subscriber, || {
+                PollN::new_err(2)
+                    .instrument(span!(Level::TRACE, "foo"))
+                    .wait()
+                    .unwrap_err();
+            });
+
+            handle.assert_finished();
+        }
+
+        #[test]
+        fn stream_enter_exit_is_reasonable() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .drop_span(span::mock().named("foo"))
+                .run_with_handle();
+            with_default(subscriber, || {
+                stream::iter_ok::<_, ()>(&[1, 2, 3])
+                    .instrument(span!(Level::TRACE, "foo"))
+                    .for_each(|_| future::ok(()))
+                    .wait()
+                    .unwrap();
+            });
+            handle.assert_finished();
+        }
+
+        #[test]
+        fn span_follows_future_onto_threadpool() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("a"))
+                .enter(span::mock().named("b"))
+                .exit(span::mock().named("b"))
+                .enter(span::mock().named("b"))
+                .exit(span::mock().named("b"))
+                .drop_span(span::mock().named("b"))
+                .exit(span::mock().named("a"))
+                .drop_span(span::mock().named("a"))
+                .done()
+                .run_with_handle();
+            let mut runtime = tokio::runtime::Runtime::new().unwrap();
+            with_default(subscriber, || {
+                span!(Level::TRACE, "a").in_scope(|| {
+                    let future = PollN::new_ok(2)
+                        .instrument(span!(Level::TRACE, "b"))
+                        .map(|_| {
+                            span!(Level::TRACE, "c").in_scope(|| {
+                                // "c" happens _outside_ of the instrumented future's
+                                // span, so we don't expect it.
+                            })
+                        });
+                    runtime.block_on(Box::new(future)).unwrap();
+                })
+            });
+            handle.assert_finished();
+        }
     }
 }
