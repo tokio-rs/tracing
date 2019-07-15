@@ -1,5 +1,5 @@
 use tracing_core::Level;
-use std::{str::FromStr, fmt, cmp::Ordering, error};
+use std::{str::FromStr, fmt, cmp::Ordering};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LevelFilter(Inner);
@@ -62,7 +62,7 @@ impl PartialOrd<Level> for LevelFilter {
 
 impl fmt::Display for LevelFilter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.inner {
+        match self.0 {
             Inner::Off => f.pad("OFF"),
             Inner::Level(Level::ERROR) => f.pad("ERROR"),
             Inner::Level(Level::WARN) => f.pad("WARM"),
@@ -97,7 +97,7 @@ impl FromStr for LevelFilter {
                 s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
                 _ => None,
             })
-            .ok_or_else(|| ParseError(s.to_string()))
+            .ok_or_else(|| ParseError(from.to_string()))
     }
 }
 
@@ -109,4 +109,4 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl std:;error::Error for ParseError {}
+impl std::error::Error for ParseError {}
