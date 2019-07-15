@@ -509,3 +509,56 @@ impl<'a, S> Clone for Context<'a, S> {
         Context { subscriber }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct NopSubscriber;
+
+    impl Subscriber for NopSubscriber {
+        fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+            Interest::never()
+        }
+
+        fn enabled(&self, _: &Metadata) -> bool {
+            false
+        }
+
+        fn new_span(&self, _: &span::Attributes) -> span::Id {
+            span::Id::from_u64(1)
+        }
+
+        fn record(&self, _: &span::Id, _: &span::Record) {}
+        fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+        fn event(&self, _: &Event) {}
+        fn enter(&self, _: &span::Id) {}
+        fn exit(&self, _: &span::Id) {}
+    }
+
+    struct NopLayer;
+    impl<S: Subscriber> Layer<S> for NopLayer {}
+
+    fn assert_subscriber(s: impl Subscriber) {}
+
+    #[test]
+    fn layer_is_subscriber() {
+        let s = NopLayer.with_subscriber(NopSubscriber);
+        assert_subscriber(s)
+    }
+
+    #[test]
+    fn two_layers_are_subscriber() {
+        let s = NopLayer.and_then(NopLayer).with_subscriber(NopSubscriber);
+        assert_subscriber(s)
+    }
+
+    #[test]
+    fn three_layers_are_subscriber() {
+        let s = NopLayer
+            .and_then(NopLayer)
+            .and_then(NopLayer)
+            .with_subscriber(NopSubscriber);
+        assert_subscriber(s)
+    }
+}
