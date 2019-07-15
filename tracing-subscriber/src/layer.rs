@@ -5,7 +5,7 @@ use tracing_core::{
     Event,
 };
 
-use std::any::TypeId;
+use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
 ///
@@ -30,7 +30,11 @@ use std::any::TypeId;
 ///
 /// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core//subscriber/trait.Subscriber.html
 /// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
-pub trait Layer<S>: 'static {
+pub trait Layer<S>
+where
+    S: Subscriber,
+    Self: 'static,
+{
     /// Registers a new callsite with this layer, returning whether or not
     /// the layer is interested in being notified about the callsite.
     ///
@@ -102,15 +106,21 @@ pub trait Layer<S>: 'static {
     /// subscriber returned a different ID.
     fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<S>) {}
 
-    /// Composes the given [`Subscriber`] with this `Layer`, returning a `Layered` subscriber.
+    /// Composes this layer around the given `Layer`, returning a `Layered`
+    /// struct implementing `Layer`.
     ///
-    /// The returned `Layered` subscriber will call the methods on this `Layer`
-    /// and then those of the wrapped subscriber. Multiple layers may be
-    /// composed in this manner. For example:
+    /// The returned `Layer` will call the methods on this `Layer` and then
+    /// those of the new `Layer`, before calling the methods on the subscriber
+    /// it wraps. For example:
     /// ```rust
     /// # use tracing_subscriber::layer::Layer;
+    /// # use tracing_core::Subscriber;
     /// # fn main() {
     /// pub struct FooLayer {
+    ///     // ...
+    /// }
+    ///
+    /// pub struct BarLayer {
     ///     // ...
     /// }
     ///
@@ -118,42 +128,11 @@ pub trait Layer<S>: 'static {
     ///     // ...
     /// }
     ///
-    /// impl<S> Layer<S> for FooLayer {
+    /// impl<S: Subscriber> Layer<S> for FooLayer {
     ///     // ...
     /// }
     ///
-    /// # impl FooLayer {
-    /// # fn new() -> Self { Self {} }
-    /// # }
-    /// # impl MySubscriber {
-    /// # fn new() -> Self { Self { }}
-    /// # }
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata};
-    /// # impl tracing_core::Subscriber for MySubscriber {
-    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-    /// #   fn record(&self, _: &Id, _: &Record) {}
-    /// #   fn event(&self, _: &tracing_core::Event) {}
-    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
-    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
-    /// #   fn enter(&self, _: &Id) {}
-    /// #   fn exit(&self, _: &Id) {}
-    /// # }
-    /// let subscriber = FooLayer::new()
-    ///     .and_then(MySubscriber::new());
-    /// # }
-    /// ```
-    /// Chaining multiple layers:
-    /// ```rust
-    /// # use tracing_subscriber::layer::Layer;
-    /// # fn main() {
-    /// # pub struct FooLayer {}
-    /// pub struct BarLayer {
-    ///     // ...
-    /// }
-    /// # pub struct MySubscriber {}
-    /// # impl<S> Layer<S> for FooLayer {}
-    ///
-    /// impl<S> Layer<S> for BarLayer {
+    /// impl<S: Subscriber> Layer<S> for BarLayer {
     ///     // ...
     /// }
     ///
@@ -178,13 +157,117 @@ pub trait Layer<S>: 'static {
     /// # }
     /// let subscriber = FooLayer::new()
     ///     .and_then(BarLayer::new())
-    ///     .and_then(MySubscriber::new());
+    ///     .with_subscriber(MySubscriber::new());
     /// # }
-    fn and_then(self, inner: S) -> Layered<Self, S>
+    /// ```
+    ///
+    /// Multiple layers may be composed in this manner:
+    ///    /// ```rust
+    /// # use tracing_subscriber::layer::Layer;
+    /// # use tracing_core::Subscriber;
+    /// # fn main() {
+    /// # pub struct FooLayer {}
+    /// # pub struct BarLayer {}
+    /// # pub struct MySubscriber {}
+    /// # impl<S: Subscriber> Layer<S> for FooLayer {}
+    /// # impl<S: Subscriber> Layer<S> for BarLayer {}
+    /// # impl FooLayer {
+    /// # fn new() -> Self { Self {} }
+    /// # }
+    /// # impl BarLayer {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # impl MySubscriber {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
+    /// #   fn record(&self, _: &Id, _: &Record) {}
+    /// #   fn event(&self, _: &Event) {}
+    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
+    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
+    /// #   fn enter(&self, _: &Id) {}
+    /// #   fn exit(&self, _: &Id) {}
+    /// # }
+    /// pub struct BazLayer {
+    ///     // ...
+    /// }
+    ///
+    /// impl<S: Subscriber> Layer<S> for BazLayer {
+    ///     // ...
+    /// }
+    /// # impl BazLayer { fn new() -> Self { BazLayer } }
+    ///
+    /// let subscriber = FooLayer::new()
+    ///     .and_then(BarLayer::new())
+    ///     .and_then(BazLayer::new())
+    ///     .with_subscriber(MySubscriber::new());
+    /// # }
+    /// ```
+    fn and_then<L>(self, layer: L) -> Layered<L, Self, S>
+    where
+        L: Layer<S>,
+        Self: Sized,
+    {
+        Layered {
+            layer,
+            inner: self,
+            _s: PhantomData,
+        }
+    }
+
+    /// Composes this `Layer` with the given [`Subscriber`], returning a
+    /// `Layered` struct that implements [`Subscriber`].
+    ///
+    /// The returned `Layered` subscriber will call the methods on this `Layer`
+    /// and then those of the wrapped subscriber.
+    ///
+    /// For example:
+    /// ```rust
+    /// # use tracing_subscriber::layer::Layer;
+    /// # use tracing_core::Subscriber;
+    /// # fn main() {
+    /// pub struct FooLayer {
+    ///     // ...
+    /// }
+    ///
+    /// pub struct MySubscriber {
+    ///     // ...
+    /// }
+    ///
+    /// impl<S: Subscriber> Layer<S> for FooLayer {
+    ///     // ...
+    /// }
+    ///
+    /// # impl FooLayer {
+    /// # fn new() -> Self { Self {} }
+    /// # }
+    /// # impl MySubscriber {
+    /// # fn new() -> Self { Self { }}
+    /// # }
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata};
+    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
+    /// #   fn record(&self, _: &Id, _: &Record) {}
+    /// #   fn event(&self, _: &tracing_core::Event) {}
+    /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
+    /// #   fn enabled(&self, _: &Metadata) -> bool { false }
+    /// #   fn enter(&self, _: &Id) {}
+    /// #   fn exit(&self, _: &Id) {}
+    /// # }
+    /// let subscriber = FooLayer::new()
+    ///     .with_subscriber(MySubscriber::new());
+    /// # }
+    fn with_subscriber(self, inner: S) -> Layered<Self, S>
     where
         Self: Sized,
     {
-        Layered { layer: self, inner }
+        Layered {
+            layer: self,
+            inner,
+            _s: PhantomData,
+        }
     }
 }
 
@@ -194,7 +277,11 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
         L: Layer<Self>,
         Self: Sized,
     {
-        Layered { layer, inner: self }
+        Layered {
+            layer,
+            inner: self,
+            _s: PhantomData,
+        }
     }
 
     // fn with_enabled<F>(self, f: F) -> Layered<filter::EnabledFn<F>, Self>
@@ -222,9 +309,10 @@ pub struct Context<'a, S> {
 }
 
 #[derive(Clone, Debug)]
-pub struct Layered<L, S> {
+pub struct Layered<L, I, S = I> {
     layer: L,
-    inner: S,
+    inner: I,
+    _s: PhantomData<fn(S)>,
 }
 
 // === impl Layered ===
@@ -307,10 +395,11 @@ where
     }
 }
 
-impl<S, A, B> Layer<S> for Layered<A, B>
+impl<S, A, B> Layer<S> for Layered<A, B, S>
 where
     A: Layer<S>,
     B: Layer<S>,
+    S: Subscriber,
 {
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>, prev: Interest) -> Interest {
@@ -401,7 +490,9 @@ impl<'a, S: Subscriber> Context<'a, S> {
             // `tracing-core` should make `Current::unknown()` public?
             .unwrap_or_else(span::Current::none)
     }
+}
 
+impl<'a, S> Context<'a, S> {
     pub(crate) fn none() -> Self {
         Self { subscriber: None }
     }
