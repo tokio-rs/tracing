@@ -595,4 +595,22 @@ mod tests {
             .with_subscriber(NopSubscriber);
         assert_subscriber(s)
     }
+
+    #[test]
+    fn downcasts_to_subscriber() {
+        let s = NopLayer
+            .and_then(NopLayer)
+            .and_then(NopLayer)
+            .with_subscriber(NopSubscriber);
+        assert!(Subscriber::downcast_ref::<NopSubscriber>(&s).is_some());
+    }
+
+    #[test]
+    fn downcasts_to_layer() {
+        let s = NopLayer
+            .and_then(NopLayer)
+            .and_then(NopLayer)
+            .with_subscriber(NopSubscriber);
+        assert!(Subscriber::downcast_ref::<NopLayer>(&s).is_some());
+    }
 }
