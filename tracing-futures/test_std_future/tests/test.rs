@@ -75,7 +75,7 @@ where
 }
 
 #[test]
-fn std_future_enter_exit_is_reasonable() {
+fn enter_exit_is_reasonable() {
     let (subscriber, handle) = subscriber::mock()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -93,7 +93,7 @@ fn std_future_enter_exit_is_reasonable() {
 }
 
 #[test]
-fn std_future_error_ends_span() {
+fn error_ends_span() {
     let (subscriber, handle) = subscriber::mock()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
