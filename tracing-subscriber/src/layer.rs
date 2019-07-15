@@ -32,7 +32,7 @@ use std::any::TypeId;
 /// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
 pub trait Layer<S>: 'static {
     /// Registers a new callsite with this layer, returning whether or not
-    /// the subscriber is interested in being notified about the callsite.
+    /// the layer is interested in being notified about the callsite.
     ///
     /// This function is provided with the [`Interest`] returned by the wrapped
     /// subscriber. The layer may then choose to return that interest, ignore it
