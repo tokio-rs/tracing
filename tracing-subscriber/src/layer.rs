@@ -588,6 +588,9 @@ mod tests {
     struct NopLayer;
     impl<S: Subscriber> Layer<S> for NopLayer {}
 
+    struct NopLayer2;
+    impl<S: Subscriber> Layer<S> for NopLayer2 {}
+
     fn assert_subscriber(s: impl Subscriber) {}
 
     #[test]
@@ -624,8 +627,9 @@ mod tests {
     fn downcasts_to_layer() {
         let s = NopLayer
             .and_then(NopLayer)
-            .and_then(NopLayer)
+            .and_then(NopLayer2)
             .with_subscriber(NopSubscriber);
         assert!(Subscriber::downcast_ref::<NopLayer>(&s).is_some());
+        assert!(Subscriber::downcast_ref::<NopLayer2>(&s).is_some());
     }
 }
