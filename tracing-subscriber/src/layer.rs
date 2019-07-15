@@ -290,22 +290,6 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
             _s: PhantomData,
         }
     }
-
-    // fn with_enabled<F>(self, f: F) -> Layered<filter::EnabledFn<F>, Self>
-    // where
-    //     F: Fn(&Metadata) -> bool + 'static,
-    //     Self: Sized,
-    // {
-    //     self.layer(filter::enabled_fn(f))
-    // }
-
-    // fn with_callsite_filter<F>(self, f: F) -> Layered<filter::InterestFn<F>, Self>
-    // where
-    //     F: Fn(&Metadata) -> Interest + 'static,
-    //     Self: Sized,
-    // {
-    //     self.layer(filter::enabled_fn(f))
-    // }
 }
 
 /// Represents information about the current context provided to `Layer`s by the

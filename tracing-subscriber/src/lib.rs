@@ -1,7 +1,6 @@
 //! Utilities and helpers for implementing and composing subscribers.
 use tracing_core::span::Id;
 
-pub mod filter;
 pub mod layer;
 pub mod prelude;
 
