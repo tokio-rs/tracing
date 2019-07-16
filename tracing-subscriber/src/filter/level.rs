@@ -1,5 +1,5 @@
+use std::{cmp::Ordering, fmt, str::FromStr};
 use tracing_core::Level;
-use std::{str::FromStr, fmt, cmp::Ordering};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LevelFilter(Inner);
@@ -7,7 +7,7 @@ pub struct LevelFilter(Inner);
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum Inner {
     Off,
-    Level(Level)
+    Level(Level),
 }
 
 #[derive(Clone, Debug)]
@@ -85,7 +85,7 @@ impl FromStr for LevelFilter {
                 3 => Some(LevelFilter::INFO),
                 4 => Some(LevelFilter::DEBUG),
                 5 => Some(LevelFilter::TRACE),
-                s => None
+                s => None,
             })
             .or_else(|| match from {
                 "" => Some(LevelFilter::ERROR),

@@ -8,6 +8,7 @@ edition = "2018"
 tracing-core = "0.1.2"
 matchers = { git = "https://github.com/hawkw/matchers.git" }
 smallvec = "0.6"
+crossbeam-utils = "0.6"
 
 [dev-dependencies]
 tracing-log = { path = "../tracing-log" }

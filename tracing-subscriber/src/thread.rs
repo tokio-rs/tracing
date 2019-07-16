@@ -1,0 +1,167 @@
+use std::{
+    cell::{Cell, UnsafeCell},
+    fmt,
+    marker::PhantomData,
+};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
+use crossbeam_utils::sync::{ShardedLock, ShardedLockReadGuard};
+
+pub struct Local<T> {
+    inner: ShardedLock<Inner<T>>,
+}
+
+type Inner<T> = Vec<Option<UnsafeCell<T>>>;
+
+pub struct LocalGuard<'a, T> {
+    inner: *mut T,
+    /// Hold the read guard for the lifetime of this guard. We're not actually
+    /// accessing the data behind that guard, but holding the read lock will
+    /// keep another thread from reallocating the vec.
+    _lock: ShardedLockReadGuard<'a, Inner<T>>,
+}
+
+/// Uniquely identifies a thread.
+#[repr(transparent)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub(crate) struct Id {
+    id: usize,
+    _not_send: PhantomData<UnsafeCell<()>>,
+}
+
+// === impl Local ===
+
+impl<T> Local<T> {
+    pub fn new() -> Self {
+        let len = Id::current().as_usize();
+        // Preallocate up to the current thread ID, so we don't have to inside
+        // the lock.
+        let mut data = Vec::with_capacity(len);
+        data.resize_with(len, || None);
+        Local {
+            inner: ShardedLock::new(data),
+        }
+    }
+
+    fn get2<'a>(&'a self, i: usize) -> Option<LocalGuard<'a, T>> {
+        match self.inner.read() {
+            Ok(lock) => {
+                let slot = lock.get(i)?.as_ref()?;
+                let inner = slot.get();
+                Some(LocalGuard {
+                    inner,
+                    _lock: lock,
+                })
+            },
+            Err(_) if std::thread::panicking() => None,
+            e => panic!("lock poisoned!"),
+        }
+    }
+
+    pub fn get_or_else<'a>(&'a self, new: impl FnOnce() -> T) -> LocalGuard<'a, T> {
+        let i = Id::current().as_usize();
+        if let Some(guard) = self.get2(i) {
+            guard
+        } else {
+            self.new_thread(i, new);
+            self.get2(i).expect("data was just inserted")
+        }
+    }
+
+    #[cold]
+    fn new_thread<'a>(&'a self, i: usize, new: impl FnOnce() -> T) {
+        let mut lock = self.inner.write().unwrap();
+        let this = &mut *lock;
+        this.resize_with(i, || None);
+        this[i] = Some(UnsafeCell::new(new()));
+    }
+}
+
+impl<T: Default> Local<T> {
+    pub fn get<'a>(&'a self) -> LocalGuard<'a, T> {
+        self.get_or_else(T::default)
+    }
+}
+
+unsafe impl<T> Sync for Local<T> {}
+
+// === impl LocalGuard ===
+
+impl<'a, T> Deref for LocalGuard<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        unsafe {
+            // this is safe, as the `Local` only allows access to each slot
+            // from a single thread.
+            &*self.inner
+        }
+    }
+}
+
+impl<'a, T> DerefMut for LocalGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe {
+            // this is safe, as the `Local` only allows access to each slot
+            // from a single thread.
+            &mut *self.inner
+        }
+    }
+}
+
+// === impl Id ===
+
+impl Id {
+    pub(crate) fn current() -> Self {
+        thread_local! {
+            static MY_ID: Cell<Option<Id>> = Cell::new(None);
+        }
+
+        MY_ID
+            .try_with(|my_id| my_id.get().unwrap_or_else(|| Self::new_thread(my_id)))
+            .unwrap_or_else(|_| Self::poisoned())
+    }
+
+    pub(crate) fn as_usize(&self) -> usize {
+        self.id
+    }
+
+    #[cold]
+    fn new_thread(local: &Cell<Option<Id>>) -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::AcqRel);
+        let tid = Self {
+            id,
+            _not_send: PhantomData,
+        };
+        local.set(Some(tid));
+        tid
+    }
+
+    #[cold]
+    fn poisoned() -> Self {
+        Self {
+            id: std::usize::MAX,
+            _not_send: PhantomData,
+        }
+    }
+
+    /// Returns true if the local thread ID was accessed while unwinding.
+    pub fn is_poisoned(&self) -> bool {
+        self.id == std::usize::MAX
+    }
+}
+
+impl fmt::Debug for Id {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_poisoned() {
+            f.debug_tuple("Id")
+                .field(&format_args!("<poisoned>"))
+                .finish()
+        } else {
+            f.debug_tuple("Id").field(&self.id).finish()
+        }
+    }
+}
