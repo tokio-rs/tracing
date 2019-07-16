@@ -1,12 +1,21 @@
 use matchers::Pattern;
 use std::{error::Error, fmt, str::FromStr};
+use tracing_core::field::Field;
 
-pub struct FieldMatch {
-    name: String, // TODO: allow match patterns for names?
-    value: Option<ValueMatch>,
+#[derive(Debug)]
+pub struct Match {
+    pub(crate) name: String, // TODO: allow match patterns for names?
+    pub(crate) value: Option<ValueMatch>,
 }
 
-enum ValueMatch {
+#[derive(Debug)]
+pub struct Keyed {
+    pub(crate) field: Field,
+    pub(crate) value: ValueMatch,
+}
+
+#[derive(Debug)]
+pub(crate) enum ValueMatch {
     Bool(bool),
     U64(u64),
     I64(i64),
@@ -18,9 +27,9 @@ struct BadName {
     name: String,
 }
 
-// === impl FieldMatch ===
+// === impl Match ===
 
-impl FromStr for FieldMatch {
+impl FromStr for Match {
     type Err = Box<dyn Error + Send + Sync>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split('=');
@@ -32,7 +41,7 @@ impl FromStr for FieldMatch {
             // TODO: validate field name
             .to_string();
         let value = parts.next().map(ValueMatch::from_str).transpose()?;
-        Ok(FieldMatch { name, value })
+        Ok(Match { name, value })
     }
 }
 
