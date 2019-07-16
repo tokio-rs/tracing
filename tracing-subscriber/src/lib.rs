@@ -4,6 +4,7 @@ use tracing_core::span::Id;
 pub mod filter;
 pub mod layer;
 pub mod prelude;
+pub(crate) mod sync;
 
 pub use layer::Layer;
 use std::{cell::RefCell, default::Default, thread};
