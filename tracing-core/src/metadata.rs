@@ -261,6 +261,18 @@ impl Level {
     pub const TRACE: Level = Level(LevelInner::Trace);
 }
 
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Level::TRACE => f.pad("TRACE"),
+            Level::DEBUG => f.pad("DEBUG"),
+            Level::INFO => f.pad("INFO"),
+            Level::WARN => f.pad("WARN"),
+            Level::ERROR => f.pad("ERROR"),
+        }
+    }
+}
+
 #[repr(usize)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 enum LevelInner {
