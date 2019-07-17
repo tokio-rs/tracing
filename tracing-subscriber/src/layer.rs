@@ -81,8 +81,8 @@ where
     /// the layer is interested in being notified about the callsite, similarly
     /// to [`Subscriber::register_callsite`].
     ///
-    /// By default, this returns `Interest::always()` if [`self.enabled`] returns
-    /// true, or `Interest::never()` if it returns false.
+    /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
+    /// true, or [`Interest::never()`] if it returns false.
     ///
     /// **Note:** This method (and [`Layer::enabled`]) determine whether a
     /// span or event is globally enabled, _not_ whether the individual layer
@@ -99,10 +99,12 @@ where
     /// should be run once per callsite. If the layer wishes to use
     /// `register_callsite` for per-callsite behaviour, but does not want to
     /// globally enable or disable those callsites, it should always return
-    /// `Interest::always()`.
+    /// [`Interest::always()`].
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
     /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.register_callsite
+    /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.never
+    /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.always
     /// [`self.enabled`]: #method.enabled
     /// [`Layer::enabled`]: #method.enabled
     /// [`on_event`]: #method.on_event
