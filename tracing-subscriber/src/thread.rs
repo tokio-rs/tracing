@@ -51,11 +51,8 @@ impl<T> Local<T> {
             Ok(lock) => {
                 let slot = lock.get(i)?.as_ref()?;
                 let inner = slot.get();
-                Some(LocalGuard {
-                    inner,
-                    _lock: lock,
-                })
-            },
+                Some(LocalGuard { inner, _lock: lock })
+            }
             Err(_) if std::thread::panicking() => None,
             e => panic!("lock poisoned!"),
         }

@@ -116,7 +116,6 @@ impl From<Option<Level>> for LevelFilter {
             Some(level) => LevelFilter(Inner::Level(level)),
             None => LevelFilter(Inner::Off),
         }
-
     }
 }
 

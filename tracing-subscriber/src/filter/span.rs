@@ -1,3 +1,1 @@
-pub struct Match {
-
-}
+pub struct Match {}

@@ -70,10 +70,14 @@ impl Directive {
         if self.is_dynamic() {
             None
         } else {
-            let field_names = self.fields.into_iter().map(|f| {
-                debug_assert!(f.value.is_none());
-                f.name
-            }).collect();
+            let field_names = self
+                .fields
+                .into_iter()
+                .map(|f| {
+                    debug_assert!(f.value.is_none());
+                    f.name
+                })
+                .collect();
             Some(StaticDirective {
                 target: self.target,
                 field_names,
@@ -157,11 +161,10 @@ impl Extend<Directive> for Dynamics {
     fn extend<I: IntoIterator<Item = Directive>>(&mut self, iter: I) {
         let max_level = &mut self.max_level;
         // let can_disable = &mut self.can_disable;
-        let ds = iter
-            .into_iter()
-            .filter(Directive::is_dynamic)
-            .inspect(|d| if &d.level > &*max_level {
-            *max_level = d.level.clone();
+        let ds = iter.into_iter().filter(Directive::is_dynamic).inspect(|d| {
+            if &d.level > &*max_level {
+                *max_level = d.level.clone();
+            }
         });
         self.spans.extend(ds);
         self.spans.sort_unstable();
@@ -185,14 +188,15 @@ impl PartialOrd for Directive {
             (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
             (Some(_), None) => Some(Ordering::Greater),
             (None, Some(_)) => Some(Ordering::Less),
-            (None, None) => Some(Ordering::Equal)
+            (None, None) => Some(Ordering::Equal),
         }
     }
 }
 
 impl Ord for Directive {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).expect("Directive::partial_cmp should never return `None`")
+        self.partial_cmp(other)
+            .expect("Directive::partial_cmp should never return `None`")
     }
 }
 
@@ -210,9 +214,14 @@ impl Default for Statics {
 impl Extend<Directive> for Statics {
     fn extend<I: IntoIterator<Item = Directive>>(&mut self, iter: I) {
         let max_level = &mut self.max_level;
-        let ds = iter.into_iter().filter_map(Directive::into_static).inspect(|d| if &d.level > &*max_level {
-            *max_level = d.level.clone();
-        });
+        let ds = iter
+            .into_iter()
+            .filter_map(Directive::into_static)
+            .inspect(|d| {
+                if &d.level > &*max_level {
+                    *max_level = d.level.clone();
+                }
+            });
         self.directives.extend(ds);
         self.directives.sort_unstable();
     }
@@ -237,7 +246,7 @@ impl PartialOrd for StaticDirective {
             (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
             (Some(_), None) => Some(Ordering::Greater),
             (None, Some(_)) => Some(Ordering::Less),
-            (None, None) => Some(Ordering::Equal)
+            (None, None) => Some(Ordering::Equal),
         }
     }
 }
