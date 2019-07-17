@@ -28,8 +28,17 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`Subscriber`] behavior; it can _observe_ events and spans, but does not
 /// assign IDs.
 ///
+/// The `Layer` trait defines a set of methods for consuming notifications from
+/// tracing instrumentation, which are generally equivalent to the similarly
+/// named methods on [`Subscriber`]. Unlike [`Subscriber`], the methods on
+/// `Layer` are additionally passed a [`Context`] type, which exposes additional
+/// information provided by the wrapped subscriber (such as [the current span])
+/// to the layer.
+///
 /// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core//subscriber/trait.Subscriber.html
 /// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
+/// [`Context`]: struct.Context.html
+/// [the current span]: struct.Context.html#method.current_span
 pub trait Layer<S>
 where
     S: Subscriber,
