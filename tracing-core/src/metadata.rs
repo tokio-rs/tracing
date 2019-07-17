@@ -1,6 +1,6 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 /// Metadata describing a [span] or [event].
 ///
@@ -273,6 +273,32 @@ impl fmt::Display for Level {
     }
 }
 
+impl std::error::Error for ParseLevelError {}
+
+impl FromStr for Level {
+    type Err = ParseLevelError;
+    fn from_str(s: &str) -> Result<Self, ParseLevelError> {
+        s.parse::<usize>()
+            .map_err(|_| ParseLevelError { _p: () })
+            .and_then(|num| match num {
+                1 => Ok(Level::ERROR),
+                2 => Ok(Level::WARN),
+                3 => Ok(Level::INFO),
+                4 => Ok(Level::DEBUG),
+                5 => Ok(Level::TRACE),
+                _ => Err(ParseLevelError { _p: () }),
+            })
+            .or_else(|_| match s {
+                s if s.eq_ignore_ascii_case("error") => Ok(Level::ERROR),
+                s if s.eq_ignore_ascii_case("warn") => Ok(Level::WARN),
+                s if s.eq_ignore_ascii_case("info") => Ok(Level::INFO),
+                s if s.eq_ignore_ascii_case("debug") => Ok(Level::DEBUG),
+                s if s.eq_ignore_ascii_case("trace") => Ok(Level::TRACE),
+                _ => Err(ParseLevelError { _p: () }),
+            })
+    }
+}
+
 #[repr(usize)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 enum LevelInner {
@@ -296,4 +322,31 @@ enum LevelInner {
     ///
     /// Designates very low priority, often extremely verbose, information.
     Trace,
+}
+
+/// Returned if parsing a `Level` fails.
+#[derive(Debug)]
+pub struct ParseLevelError {
+    _p: (),
+}
+
+impl fmt::Display for ParseLevelError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(
+            "error parsing level: expected one of \"error\", \"warn\", \
+             \"info\", \"debug\", \"trace\", or a number 1-5",
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn level_from_str() {
+        assert_eq!("error".parse::<Level>().unwrap(), Level::ERROR);
+        assert_eq!("4".parse::<Level>().unwrap(), Level::DEBUG);
+        assert!("0".parse::<Level>().is_err())
+    }
 }
