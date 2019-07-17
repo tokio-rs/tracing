@@ -62,7 +62,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`Interest::never()`] from its [`register_callsite`] method, filter
 /// evaluation will short-circuit and the span or event will be disabled.
 ///
-/// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core//subscriber/trait.Subscriber.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/trait.Subscriber.html
 /// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
 /// [`Context`]: struct.Context.html
 /// [the current span]: struct.Context.html#method.current_span
