@@ -6,6 +6,7 @@ stages:
      - template: azure/cargo-check.yml@templates
        parameters:
          name: cargo_check
+         benches: true
  # This represents the minimum Rust version supported.
  # Tests are not run as tests may require newer versions of rust.
  - stage: msrv
