@@ -5,19 +5,20 @@ pub use self::level::LevelFilter;
 
 use crate::thread;
 use crossbeam_utils::sync::ShardedLock;
-use std::collections::HashMap;
-use tracing_core::{callsite, subscriber::Interest, Metadata};
+use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
+use tracing_core::{callsite, subscriber::Interest, Level, Metadata};
 
 pub struct Filter {
+    // TODO: eventually, this should be exposed by the registry.
     scope: thread::Local<Vec<LevelFilter>>,
 
-    targets: Vec<(String, LevelFilter)>,
-    dynamic: Vec<Directive>,
+    statics: Statics,
+    dynamic: Dynamics,
 
     by_cs: ShardedLock<HashMap<callsite::Identifier, span::Match>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Directive {
     target: Option<String>,
     in_span: Option<String>,
@@ -27,30 +28,64 @@ pub struct Directive {
     level: LevelFilter,
 }
 
+#[derive(Debug, PartialEq, Eq, Ord)]
+struct StaticDirective {
+    target: Option<String>,
+    field_names: Vec<String>,
+    level: LevelFilter,
+}
+
+#[derive(Debug)]
+struct Dynamics {
+    spans: Vec<Directive>,
+    max_level: LevelFilter,
+    // can_disable: bool,
+}
+
+#[derive(Debug)]
+struct Statics {
+    directives: Vec<StaticDirective>,
+    max_level: LevelFilter,
+}
+
 enum MatchResult {
     Static(Interest),
     Dynamic(span::Match),
 }
 
 impl Directive {
-    pub fn is_dynamic(&self) -> bool {
-        self.in_span.is_some() || !self.fields.is_empty()
+    fn has_name(&self) -> bool {
+        self.in_span.is_some()
     }
-}
 
-impl Filter {
-    fn dyn_directives<'a>(
-        &'a self,
-        metadata: &'a Metadata<'a>,
-    ) -> impl Iterator<Item = &'a Directive> + 'a {
-        self.dynamic
-            .iter()
-            .rev()
-            .filter(move |d| d.cares_about(metadata))
+    fn has_target(&self) -> bool {
+        self.target.is_some()
     }
-}
 
-impl Directive {
+    fn has_fields(&self) -> bool {
+        self.fields.is_empty()
+    }
+
+    fn into_static(self) -> Option<StaticDirective> {
+        if self.is_dynamic() {
+            None
+        } else {
+            let field_names = self.fields.into_iter().map(|f| {
+                debug_assert!(f.value.is_none());
+                f.name
+            }).collect();
+            Some(StaticDirective {
+                target: self.target,
+                field_names,
+                level: self.level,
+            })
+        }
+    }
+
+    fn is_dynamic(&self) -> bool {
+        self.has_name() || !self.fields.iter().any(field::Match::is_dynamic)
+    }
+
     fn cares_about(&self, meta: &Metadata) -> bool {
         // Does this directive have a target filter, and does it match the
         // metadata's target?
@@ -77,5 +112,132 @@ impl Directive {
         }
 
         true
+    }
+
+    fn make_tables(directives: impl IntoIterator<Item = Directive>) -> (Dynamics, Statics) {
+        let (dyns, stats): (Vec<Directive>, Vec<Directive>) =
+            directives.into_iter().partition(Directive::is_dynamic);
+        (Dynamics::from_iter(dyns), Statics::from_iter(stats))
+    }
+}
+
+// === impl Dynamics ===
+
+impl Dynamics {
+    fn directives_for<'a>(
+        &'a self,
+        metadata: &'a Metadata<'a>,
+    ) -> impl Iterator<Item = &'a Directive> + 'a {
+        self.spans
+            .iter()
+            .rev()
+            .filter(move |d| d.cares_about(metadata))
+    }
+}
+
+impl Default for Dynamics {
+    fn default() -> Self {
+        Self {
+            spans: Vec::new(),
+            max_level: LevelFilter::OFF,
+            // can_disable: false,
+        }
+    }
+}
+
+impl FromIterator<Directive> for Dynamics {
+    fn from_iter<I: IntoIterator<Item = Directive>>(iter: I) -> Self {
+        let mut this = Self::default();
+        this.extend(iter);
+        this
+    }
+}
+
+impl Extend<Directive> for Dynamics {
+    fn extend<I: IntoIterator<Item = Directive>>(&mut self, iter: I) {
+        let max_level = &mut self.max_level;
+        // let can_disable = &mut self.can_disable;
+        let ds = iter
+            .into_iter()
+            .filter(Directive::is_dynamic)
+            .inspect(|d| if &d.level > &*max_level {
+            *max_level = d.level.clone();
+        });
+        self.spans.extend(ds);
+        self.spans.sort_unstable();
+    }
+}
+
+impl PartialOrd for Directive {
+    fn partial_cmp(&self, other: &Directive) -> Option<Ordering> {
+        match (self.has_name(), other.has_name()) {
+            (true, false) => return Some(Ordering::Greater),
+            (false, true) => return Some(Ordering::Less),
+            _ => {}
+        }
+
+        match (self.fields.len(), other.fields.len()) {
+            (a, b) if a == b => {}
+            (a, b) => return Some(a.cmp(&b)),
+        }
+
+        match (self.target.as_ref(), other.target.as_ref()) {
+            (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
+            (Some(_), None) => Some(Ordering::Greater),
+            (None, Some(_)) => Some(Ordering::Less),
+            (None, None) => Some(Ordering::Equal)
+        }
+    }
+}
+
+impl Ord for Directive {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).expect("Directive::partial_cmp should never return `None`")
+    }
+}
+
+// === impl Statics ===
+
+impl Default for Statics {
+    fn default() -> Self {
+        Self {
+            directives: Vec::new(),
+            max_level: LevelFilter::OFF,
+        }
+    }
+}
+
+impl Extend<Directive> for Statics {
+    fn extend<I: IntoIterator<Item = Directive>>(&mut self, iter: I) {
+        let max_level = &mut self.max_level;
+        let ds = iter.into_iter().filter_map(Directive::into_static).inspect(|d| if &d.level > &*max_level {
+            *max_level = d.level.clone();
+        });
+        self.directives.extend(ds);
+        self.directives.sort_unstable();
+    }
+}
+
+impl FromIterator<Directive> for Statics {
+    fn from_iter<I: IntoIterator<Item = Directive>>(iter: I) -> Self {
+        let mut this = Self::default();
+        this.extend(iter);
+        this
+    }
+}
+
+impl PartialOrd for StaticDirective {
+    fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
+        match (self.field_names.len(), other.field_names.len()) {
+            (a, b) if a == b => {}
+            (a, b) => return Some(a.cmp(&b)),
+        }
+
+        match (self.target.as_ref(), other.target.as_ref()) {
+            (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
+            (Some(_), None) => Some(Ordering::Greater),
+            (None, Some(_)) => Some(Ordering::Less),
+            (None, None) => Some(Ordering::Equal)
+        }
     }
 }

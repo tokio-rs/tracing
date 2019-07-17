@@ -2,7 +2,7 @@ use matchers::Pattern;
 use std::{error::Error, fmt, str::FromStr};
 use tracing_core::field::Field;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Match {
     pub(crate) name: String, // TODO: allow match patterns for names?
     pub(crate) value: Option<ValueMatch>,
@@ -45,6 +45,12 @@ impl FromStr for Match {
     }
 }
 
+impl Match {
+    pub(crate) fn is_dynamic(&self) -> bool {
+        self.value.is_some()
+    }
+}
+
 // === impl ValueMatch ===
 
 impl FromStr for ValueMatch {
@@ -58,6 +64,22 @@ impl FromStr for ValueMatch {
     }
 }
 
+impl PartialEq<Self> for ValueMatch {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ValueMatch::Bool(a), ValueMatch::Bool(b)) => a == b,
+            (ValueMatch::I64(a), ValueMatch::I64(b)) => a == b,
+            (ValueMatch::U64(a), ValueMatch::U64(b)) => a == b,
+            // TODO: T_T
+            (ValueMatch::Pat(_), ValueMatch::Pat(_)) => false,
+            (_, _) => false,
+        }
+    }
+}
+
+impl Eq for ValueMatch {}
+
+// === impl BadName ===
 impl Error for BadName {}
 
 impl fmt::Display for BadName {

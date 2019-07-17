@@ -101,6 +101,31 @@ impl FromStr for LevelFilter {
     }
 }
 
+impl Into<Option<Level>> for LevelFilter {
+    fn into(self) -> Option<Level> {
+        match self.0 {
+            Inner::Off => None,
+            Inner::Level(l) => Some(l),
+        }
+    }
+}
+
+impl From<Option<Level>> for LevelFilter {
+    fn from(level: Option<Level>) -> Self {
+        match level {
+            Some(level) => LevelFilter(Inner::Level(level)),
+            None => LevelFilter(Inner::Off),
+        }
+
+    }
+}
+
+impl From<Level> for LevelFilter {
+    fn from(level: Level) -> Self {
+        LevelFilter(Inner::Level(level))
+    }
+}
+
 // === impl ParseError ===
 
 impl fmt::Display for ParseError {
