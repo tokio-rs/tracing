@@ -1,5 +1,5 @@
 use matchers::Pattern;
-use std::{error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, error::Error, fmt, str::FromStr, sync::atomic::{AtomicBool, Ordering}};
 use tracing_core::field::Field;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -9,9 +9,15 @@ pub struct Match {
 }
 
 #[derive(Debug)]
-pub struct Keyed {
-    pub(crate) field: Field,
-    pub(crate) value: ValueMatch,
+pub struct SpanMatch {
+    // TODO: hashmap is a lot for this...
+    fields: HashMap<Field, MatchState>,
+}
+
+#[derive(Debug)]
+struct MatchState {
+    matcher: ValueMatch,
+    matched: AtomicBool,
 }
 
 #[derive(Debug)]

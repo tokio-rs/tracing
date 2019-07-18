@@ -5,7 +5,7 @@ pub use self::level::LevelFilter;
 use crate::{thread, layer::{Layer, Context}};
 use crossbeam_utils::sync::ShardedLock;
 use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
-use tracing_core::{callsite, subscriber::{Interest, Subscriber}, Level, Metadata, span, Event};
+use tracing_core::{callsite, subscriber::{Interest, Subscriber}, Level, Metadata, span, Event, field::Field};
 
 pub struct Filter {
     // TODO: eventually, this should be exposed by the registry.
@@ -28,7 +28,11 @@ pub struct Directive {
     level: LevelFilter,
 }
 
-struct SpanMatch {}
+#[derive(Debug, PartialEq, Eq)]
+struct SpanMatch {
+    fields: HashMap<Field, (field::ValueMatch, AtomicBool)>
+    level: LevelFilter,
+}
 
 #[derive(Debug, PartialEq, Eq, Ord)]
 struct StaticDirective {
