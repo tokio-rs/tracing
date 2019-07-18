@@ -3,17 +3,28 @@ use super::{Field, FieldSet};
 use std::fmt;
 
 /// A map of `Field`s to `T`s, with fast O(1) indexing.
+///
+/// In many cases, subscriber implementations may wish to store data for each
+/// field recorded by a span or event. `FieldMap` provides specialized storage
+/// for that use-case, with `Field`s from a `FieldSet` as the key type.
+///
+/// Unlike other storage, such as `HashMap`, a `FieldMap` does not allocate, and
+/// can store all data on the stack or inline in another struct. Like `HashMap`,
+/// it has O(1) indexing, but with significantly faster constant-faster
+/// performance. However, it may _only_ be indexed by `Field`s.
 pub struct FieldMap<T> {
     fields: FieldSet,
     values: [Option<T>; 32],
 }
 
+/// Iterator over the key-value pairs in a `FieldMap`.
 #[derive(Debug)]
 pub struct Iter<'a, T> {
     keys: super::Iter,
     map: &'a [Option<T>],
 }
 
+/// Iterator over the values stored in a `FieldMap`.
 #[derive(Debug)]
 pub struct Values<'a, T> {
     keys: super::Iter,
@@ -23,6 +34,7 @@ pub struct Values<'a, T> {
 // ===== impl FieldMap =====
 
 impl<T> FieldMap<T> {
+    /// Returns a new `FieldMap` keyed by the fields in the given `FieldSet`.
     pub fn new(set: &FieldSet) -> Self {
         Self {
             fields: set.duplicate(),
@@ -30,21 +42,29 @@ impl<T> FieldMap<T> {
         }
     }
 
+    /// Returns `true` if the given `Field` is a valid key for this `FieldMap`
+    /// (i.e. it came from the same span or event as the `FieldSet` that created
+    /// this map).
     #[inline]
     pub fn can_contain(&self, key: &Field) -> bool {
         self.fields.contains(key)
     }
 
+    /// Returns `true` if this `FieldMap` _currently_ contains a value for the
+    /// given `Field`.
     #[inline]
     pub fn contains(&self, key: &Field) -> bool {
         self.can_contain(key) && self.values[key.i].is_some()
     }
 
+    /// Borrows the underlying `FieldSet` that created this `FieldMap`.
     #[inline]
     pub fn fields(&self) -> &FieldSet {
         &self.fields
     }
 
+    /// Borrows the value for the given `Field`, if that field is a valid key to
+    /// this map and a value currently exists for it.
     pub fn get(&self, key: &Field) -> Option<&T> {
         if !self.can_contain(key) {
             return None;
@@ -52,6 +72,8 @@ impl<T> FieldMap<T> {
         self.values[key.i].as_ref()
     }
 
+    /// Mutably borrows the value for the given `Field`, if that field is a
+    /// valid key to this map and a value currently exists for it.
     pub fn get_mut(&mut self, key: &Field) -> Option<&mut T> {
         if !self.can_contain(key) {
             return None;
@@ -59,6 +81,13 @@ impl<T> FieldMap<T> {
         self.values[key.i].as_mut()
     }
 
+    /// Inserts the given value into the `FieldMap` at the index of the given
+    /// `Field`. If there was previously a value present for that key, the old
+    /// value is returned.
+    ///
+    /// **Note** that if the given `Field` does _not_ correspond to the `FieldSet`
+    /// that created this map (i.e., if `self.can_contain(&key) == false`), the
+    /// value will not be inserted.
     pub fn insert(&mut self, key: &Field, value: T) -> Option<T> {
         if !self.can_contain(key) {
             return None;
@@ -66,6 +95,7 @@ impl<T> FieldMap<T> {
         std::mem::replace(&mut self.values[key.i], Some(value))
     }
 
+    /// Removes the value indexed by the given `Field`, if one exists.
     pub fn remove(&mut self, key: &Field) -> Option<T> {
         if !self.can_contain(key) {
             return None;
@@ -73,11 +103,13 @@ impl<T> FieldMap<T> {
         self.values[key.i].take()
     }
 
+    /// Returns `true` if no values are currently stored in this `FieldMap`.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.values.iter().all(Option::is_none)
     }
 
+    /// Returns a forward iterator over the key-value pairs in this `FieldMap`.
     #[inline]
     pub fn iter(&self) -> Iter<T> {
         Iter {
@@ -86,11 +118,13 @@ impl<T> FieldMap<T> {
         }
     }
 
+    /// Returns a forward iterator over the `Field` keys in this `FieldMap`.
     #[inline]
     pub fn keys(&self) -> super::Iter {
         self.fields.iter()
     }
 
+    /// Returns a forward iterator over the `Values` in this `FieldMap`.
     #[inline]
     pub fn values(&self) -> Values<T> {
         Values {
