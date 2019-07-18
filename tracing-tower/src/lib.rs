@@ -1,49 +1,13 @@
-extern crate tower_layer;
-extern crate tower_service;
-#[macro_use]
-extern crate tracing;
-#[macro_use]
-extern crate futures;
-extern crate tracing_futures;
-
-use std::fmt;
 use tower_service::Service;
-use tracing::Level;
-use tracing_futures::{Instrument, Instrumented};
 
-pub mod instrument;
-pub mod request;
+pub mod request_span;
+pub mod service_span;
 
-#[derive(Clone, Debug)]
-pub struct InstrumentedService<S> {
-    inner: S,
-    span: tracing::Span,
-}
+#[deprecated(since = "0.0.1", note = "use `service_span::Service` instead")]
+pub type InstrumentedService<R> = service_span::Service<R>;
 
 pub trait InstrumentableService<Request>: Service<Request> + Sized {
-    fn instrument(self, span: tracing::Span) -> InstrumentedService<Self> {
-        InstrumentedService { inner: self, span }
-    }
-}
-
-impl<T: Service<Request>, Request> Service<Request> for InstrumentedService<T>
-where
-    // TODO: it would be nice to do more for HTTP services...
-    Request: fmt::Debug + Clone + Send + Sync + 'static,
-{
-    type Response = T::Response;
-    type Error = T::Error;
-    type Future = Instrumented<T::Future>;
-
-    fn poll_ready(&mut self) -> futures::Poll<(), Self::Error> {
-        let _enter = self.span.enter();
-        self.inner.poll_ready()
-    }
-
-    fn call(&mut self, req: Request) -> Self::Future {
-        // TODO: custom `Value` impls for `http` types would be nice...
-        let span = span!(parent: &self.span, Level::TRACE, "request", request = ?req);
-        let _enter = span.enter();
-        self.inner.call(req).instrument(span.clone())
+    fn instrument(self, span: tracing::Span) -> service_span::Service<Self> {
+        service_span::Service { inner: self, span }
     }
 }
