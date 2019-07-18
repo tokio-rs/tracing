@@ -111,11 +111,7 @@ pub mod make {
         type Service = MakeService<M, T, R, F>;
 
         fn layer(&self, inner: M) -> Self::Service {
-            MakeService {
-                f: self.f.clone(),
-                inner,
-                _p: PhantomData,
-            }
+            MakeService::new(inner, self.f.clone())
         }
     }
 
@@ -171,7 +167,21 @@ pub mod make {
             };
 
             let span = self.span.take().expect("polled after ready");
-            Ok(Async::Ready(Service { inner, span }))
+            Ok(Async::Ready(Service::new(inner, span)))
+        }
+    }
+
+    impl<M, T, R, F> MakeService<M, T, R, F>
+    where
+        M: tower_util::MakeService<T, R>,
+        F: FnMut(&T) -> tracing::Span + Clone,
+    {
+        pub fn new(inner: M, f: F) -> Self {
+            MakeService {
+                f,
+                inner,
+                _p: PhantomData,
+            }
         }
     }
 }
