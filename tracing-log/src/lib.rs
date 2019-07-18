@@ -221,6 +221,27 @@ impl AsTrace for log::Level {
 
 /// A simple "logger" that converts all log records into `tracing` `Event`s,
 /// with an optional level filter.
+///
+/// Be careful to set appropriate log levels:
+///
+/// * `LogTracer`'s default filter level is `log::LevelFilter::Info`.
+/// * `log`'s default max level is `log::LevelFilter::Off` (logging disabled).
+///
+/// For example, to get trace logs:
+///
+/// ```rust
+/// # use tracing_log::LogTracer;
+/// # use std::error::Error;
+/// # use log::trace;
+/// # fn main() -> Result<(), Box<Error>> {
+/// let logger = LogTracer::with_filter(log::LevelFilter::Trace);
+/// log::set_boxed_logger(Box::new(logger))?;
+/// log::set_max_level(log::LevelFilter::Trace);
+///
+/// trace!("an example trace log");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct LogTracer {
     filter: log::LevelFilter,
