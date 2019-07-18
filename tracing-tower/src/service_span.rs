@@ -113,7 +113,7 @@ pub mod make {
     // === impl MakeLayer ===
 
     #[cfg(feature = "tower-layer")]
-    impl<M, R, T, G> tower_layer::Layer<M> for MakeLayer<T, R, G>
+    impl<M, T, R, G> tower_layer::Layer<M> for MakeLayer<T, R, G>
     where
         M: tower_util::MakeService<T, R>,
         G: GetSpan<T> + Clone,
@@ -184,7 +184,7 @@ pub mod make {
     impl<M, T, R, G> MakeService<M, T, R, G>
     where
         M: tower_util::MakeService<T, R>,
-        G: GetSpan<T> + Clone,
+        G: GetSpan<T>,
     {
         pub fn new(inner: M, get_span: G) -> Self {
             MakeService {

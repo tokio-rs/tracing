@@ -22,18 +22,17 @@ where
         let req_span: fn(&Request) -> tracing::Span =
             |request| tracing::span!(Level::TRACE, "request", ?request);
         let svc_span = svc_span.span_for(&self);
-        self.instrument_request(req_span)
-            .instrument_service(svc_span)
+        self.trace_requests(req_span).trace_service(svc_span)
     }
 
-    fn instrument_request<G>(self, get_span: G) -> request_span::Service<Self, Request, G>
+    fn trace_requests<G>(self, get_span: G) -> request_span::Service<Self, Request, G>
     where
         G: GetSpan<Request> + Clone,
     {
         request_span::Service::new(self, get_span)
     }
 
-    fn instrument_service<G>(self, get_span: G) -> service_span::Service<Self>
+    fn trace_service<G>(self, get_span: G) -> service_span::Service<Self>
     where
         G: GetSpan<Self>,
     {
@@ -42,7 +41,30 @@ where
     }
 }
 
+#[cfg(feature = "tower-util")]
+pub trait InstrumentMake<T, R>
+where
+    Self: tower_util::MakeService<T, R> + Sized,
+{
+    fn with_traced_service<G>(self, get_span: G) -> service_span::MakeService<Self, T, R, G>
+    where
+        G: GetSpan<T>,
+    {
+        service_span::MakeService::new(self, get_span)
+    }
+
+    fn with_traced_requests<G>(self, get_span: G) -> request_span::MakeService<Self, R, G>
+    where
+        G: GetSpan<R> + Clone,
+    {
+        request_span::MakeService::new(self, get_span)
+    }
+}
+
 impl<S, R> InstrumentableService<R> for S where S: Service<R> + Sized {}
+
+#[cfg(feature = "tower-util")]
+impl<M, T, R> InstrumentMake<T, R> for M where M: tower_util::MakeService<T, R> {}
 
 pub trait GetSpan<T>: crate::sealed::Sealed<T> {
     fn span_for(&self, target: &T) -> tracing::Span;

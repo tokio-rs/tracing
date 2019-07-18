@@ -7,6 +7,7 @@ use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
 use tracing::Level;
 use tracing_futures::Instrument;
+use tracing_tower::InstrumentMake;
 
 type Response = http::Response<RspBody>;
 
@@ -111,10 +112,7 @@ fn main() {
     );
     let _enter = serve_span.enter();
 
-    let new_svc = tracing_tower::service_span::MakeService::new(
-        tracing_tower::request_span::MakeService::new(NewSvc, tracing_tower::http::trace_request),
-        serve_span.clone()
-    );
+    let new_svc = NewSvc.with_traced_requests(tracing_tower::http::trace_request);
     let h2 = Server::new(new_svc, Default::default(), reactor.clone());
     tracing::info!("listening");
 
