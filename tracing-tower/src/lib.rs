@@ -13,14 +13,37 @@ pub type InstrumentedService<S, R> = service_span::Service<request_span::Service
 pub trait InstrumentableService<Request>
 where
     Self: Service<Request> + Sized,
-    Request: fmt::Debug,
 {
-    fn instrument(self, span: tracing::Span) -> InstrumentedService<Self, Request> {
+    fn instrument<G>(self, svc_span: G) -> InstrumentedService<Self, Request>
+    where
+        G: GetSpan<Self>,
+        Request: fmt::Debug,
+    {
         let req_span: fn(&Request) -> tracing::Span =
             |request| tracing::span!(Level::TRACE, "request", ?request);
-        let svc = request_span::Service::new(self, req_span);
-        service_span::Service::new(svc, span)
+        let svc_span = svc_span.span_for(&self);
+        self.instrument_request(req_span)
+            .instrument_service(svc_span)
     }
+
+    fn instrument_request<G>(self, get_span: G) -> request_span::Service<Self, Request, G>
+    where
+        G: GetSpan<Request> + Clone,
+    {
+        request_span::Service::new(self, get_span)
+    }
+
+    fn instrument_service<G>(self, get_span: G) -> service_span::Service<Self>
+    where
+        G: GetSpan<Self>,
+    {
+        let span = get_span.span_for(&self);
+        service_span::Service::new(self, span)
+    }
+}
+
+impl<S, R> InstrumentableService<R> for S where S: Service<R> + Sized {}
+
 pub trait GetSpan<T>: crate::sealed::Sealed<T> {
     fn span_for(&self, target: &T) -> tracing::Span;
 }
