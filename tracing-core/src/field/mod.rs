@@ -45,6 +45,9 @@ use std::{
     ops::Range,
 };
 
+pub mod map;
+pub use self::map::FieldMap;
+
 use self::private::ValidLen;
 
 /// An opaque key allowing _O_(1) access to a field in a `Span`'s key-value
@@ -423,10 +426,7 @@ impl Clone for Field {
     fn clone(&self) -> Self {
         Field {
             i: self.i,
-            fields: FieldSet {
-                names: self.fields.names,
-                callsite: self.fields.callsite(),
-            },
+            fields: self.fields.duplicate(),
         }
     }
 }
@@ -458,10 +458,7 @@ impl FieldSet {
         let name = &name.borrow();
         self.names.iter().position(|f| f == name).map(|i| Field {
             i,
-            fields: FieldSet {
-                names: self.names,
-                callsite: self.callsite(),
-            },
+            fields: self.duplicate(),
         })
     }
 
@@ -481,10 +478,7 @@ impl FieldSet {
         let idxs = 0..self.len();
         Iter {
             idxs,
-            fields: FieldSet {
-                names: self.names,
-                callsite: self.callsite(),
-            },
+            fields: self.duplicate(),
         }
     }
 
@@ -513,6 +507,14 @@ impl FieldSet {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.names.is_empty()
+    }
+
+    #[inline]
+    fn duplicate(&self) -> Self {
+        FieldSet {
+            names: self.names,
+            callsite: self.callsite(),
+        }
     }
 }
 
@@ -550,10 +552,7 @@ impl Iterator for Iter {
         let i = self.idxs.next()?;
         Some(Field {
             i,
-            fields: FieldSet {
-                names: self.fields.names,
-                callsite: self.fields.callsite(),
-            },
+            fields: self.fields.duplicate(),
         })
     }
 }
