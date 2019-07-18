@@ -11,7 +11,7 @@ pub struct Service<S> {
 impl<T, Request> tower_service::Service<Request> for Service<T>
 where
     T: tower_service::Service<Request>,
-    Request: fmt::Debug + Clone + Send + Sync + 'static,
+    Request: fmt::Debug,
 {
     type Response = T::Response;
     type Error = T::Error;
