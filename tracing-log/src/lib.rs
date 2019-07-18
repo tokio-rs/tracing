@@ -44,6 +44,20 @@ use tracing_core::{
     Event, Metadata,
 };
 
+static LOGGER: LogTracer = LogTracer;
+
+/// Sets up LogTracer as global logger for the `log` crate
+///
+/// Setting a global logger can only be done once.
+///
+/// The `level` parameter is the maximal log level passed to `log`.
+/// It controls which level will pas passed to `tracing`.
+pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+    log::set_logger(&LOGGER)?;
+    log::set_max_level(level);
+    Ok(())
+}
+
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let filter_meta = record.as_trace();
@@ -222,9 +236,7 @@ impl AsTrace for log::Level {
 /// A simple "logger" that converts all log records into `tracing` `Event`s,
 /// with an optional level filter.
 #[derive(Debug)]
-pub struct LogTracer {
-    filter: log::LevelFilter,
-}
+pub struct LogTracer;
 
 /// A `tracing_subscriber::Observe` implementation that logs all recorded
 /// trace events.
@@ -246,37 +258,14 @@ pub struct TraceLoggerBuilder {
 
 // ===== impl LogTracer =====
 
-impl LogTracer {
-    pub fn with_filter(filter: log::LevelFilter) -> Self {
-        Self { filter }
-    }
-}
-
-impl Default for LogTracer {
-    fn default() -> Self {
-        Self::with_filter(log::LevelFilter::Info)
-    }
-}
-
 impl log::Log for LogTracer {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() <= self.filter
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        // Use log::set_max_level to filter LogTracing's input
+        true
     }
 
     fn log(&self, record: &log::Record) {
-        let enabled = dispatcher::get_default(|dispatch| {
-            // TODO: can we cache this for each log record, so we can get
-            // similar to the callsite cache?
-            dispatch.enabled(&record.as_trace())
-        });
-
-        if enabled {
-            // TODO: if the record is enabled, we'll get the current dispatcher
-            // twice --- once to check if enabled, and again to dispatch the event.
-            // If we could construct events without dispatching them, we could
-            // re-use the dispatcher reference...
-            format_trace(record).unwrap();
-        }
+        format_trace(record).unwrap();
     }
 
     fn flush(&self) {}
