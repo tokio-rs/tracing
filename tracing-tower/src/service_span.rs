@@ -26,6 +26,6 @@ where
         // TODO: custom `Value` impls for `http` types would be nice...
         let span = tracing::span!(parent: &self.span, Level::TRACE, "request", ?request);
         let _enter = span.enter();
-        self.inner.call(req).instrument(span.clone())
+        self.inner.call(request).instrument(span.clone())
     }
 }
