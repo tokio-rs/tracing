@@ -113,7 +113,7 @@ fn main() {
 
     let new_svc = tracing_tower::service_span::MakeService::new(
         tracing_tower::request_span::MakeService::new(NewSvc, tracing_tower::http::trace_request),
-        |_| tracing::trace_span!("service")
+        serve_span.clone()
     );
     let h2 = Server::new(new_svc, Default::default(), reactor.clone());
     tracing::info!("listening");

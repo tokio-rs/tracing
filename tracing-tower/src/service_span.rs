@@ -1,5 +1,6 @@
 //! Middleware which instruments a service with a span entered when that service
 //! is called.
+use crate::GetSpan;
 use futures::{future::Future, Async, Poll};
 use std::marker::PhantomData;
 
@@ -20,46 +21,49 @@ mod layer {
     use super::*;
 
     #[derive(Debug)]
-    pub struct Layer<S, R, F = fn(&S) -> tracing::Span>
+    pub struct Layer<S, R, G = fn(&S) -> tracing::Span>
     where
-        F: Fn(&S) -> tracing::Span,
+        G: GetSpan<S>,
         S: tower_service::Service<R>,
     {
-        f: F,
+        get_span: G,
         _p: PhantomData<fn(S, R)>,
     }
 
-    pub fn layer<S, R, F>(f: F) -> Layer<S, R, F>
+    pub fn layer<S, R, G>(get_span: G) -> Layer<S, R, G>
     where
-        F: Fn(&S) -> tracing::Span,
+        G: GetSpan<S>,
         S: tower_service::Service<R>,
     {
-        Layer { f, _p: PhantomData }
+        Layer {
+            get_span,
+            _p: PhantomData,
+        }
     }
 
     // === impl Layer ===
 
-    impl<S, R, F> tower_layer::Layer<S> for Layer<S, R, F>
+    impl<S, R, G> tower_layer::Layer<S> for Layer<S, R, G>
     where
-        F: Fn(&S) -> tracing::Span,
+        G: GetSpan<S>,
         S: tower_service::Service<R>,
     {
         type Service = Service<S>;
 
         fn layer(&self, inner: S) -> Self::Service {
-            let span = (self.f)(&inner);
+            let span = self.get_span.span_for(&inner);
             Service { span, inner }
         }
     }
 
-    impl<S, R, F> Clone for Layer<S, R, F>
+    impl<S, R, G> Clone for Layer<S, R, G>
     where
-        F: Fn(&S) -> tracing::Span + Clone,
+        G: GetSpan<S> + Clone,
         S: tower_service::Service<R>,
     {
         fn clone(&self) -> Self {
             Self {
-                f: self.f.clone(),
+                get_span: self.get_span.clone(),
                 _p: PhantomData,
             }
         }
@@ -71,11 +75,11 @@ pub mod make {
     use super::*;
 
     #[derive(Debug)]
-    pub struct MakeService<M, T, R, F = fn(&T) -> tracing::Span>
+    pub struct MakeService<M, T, R, G = fn(&T) -> tracing::Span>
     where
-        F: FnMut(&T) -> tracing::Span,
+        G: GetSpan<T>,
     {
-        f: F,
+        get_span: G,
         inner: M,
         _p: PhantomData<fn(T, R)>,
     }
@@ -87,45 +91,48 @@ pub mod make {
     }
 
     #[derive(Debug)]
-    pub struct MakeLayer<T, R, F = fn(&T) -> tracing::Span>
+    pub struct MakeLayer<T, R, G = fn(&T) -> tracing::Span>
     where
-        F: FnMut(&T) -> tracing::Span + Clone,
+        G: GetSpan<T> + Clone,
     {
-        f: F,
+        get_span: G,
         _p: PhantomData<fn(T, R)>,
     }
 
     #[cfg(feature = "tower-layer")]
-    pub fn layer<T, R, F>(f: F) -> MakeLayer<T, R, F>
+    pub fn layer<T, R, G>(get_span: G) -> MakeLayer<T, R, G>
     where
-        F: FnMut(&T) -> tracing::Span + Clone,
+        G: GetSpan<T> + Clone,
     {
-        MakeLayer { f, _p: PhantomData }
+        MakeLayer {
+            get_span,
+            _p: PhantomData,
+        }
     }
 
     // === impl MakeLayer ===
 
     #[cfg(feature = "tower-layer")]
-    impl<F, T, M, R> tower_layer::Layer<M> for MakeLayer<T, R, F>
+    impl<M, R, T, G> tower_layer::Layer<M> for MakeLayer<T, R, G>
     where
         M: tower_util::MakeService<T, R>,
-        F: FnMut(&T) -> tracing::Span + Clone,
+        G: GetSpan<T> + Clone,
     {
-        type Service = MakeService<M, T, R, F>;
+        type Service = MakeService<M, T, R, G>;
 
         fn layer(&self, inner: M) -> Self::Service {
-            MakeService::new(inner, self.f.clone())
+            MakeService::new(inner, self.get_span.clone())
         }
     }
 
     #[cfg(feature = "tower-layer")]
-    impl<T, R, F> Clone for MakeLayer<T, R, F>
+    impl<T, R, G> Clone for MakeLayer<T, R, G>
     where
-        F: FnMut(&T) -> tracing::Span + Clone,
+        G: GetSpan<T> + Clone,
     {
         fn clone(&self) -> Self {
             Self {
-                f: self.f.clone(),
+                get_span: self.get_span.clone(),
                 _p: PhantomData,
             }
         }
@@ -133,10 +140,10 @@ pub mod make {
 
     // === impl MakeService ===
 
-    impl<M, T, R, F> tower_service::Service<T> for MakeService<M, T, R, F>
+    impl<M, T, R, G> tower_service::Service<T> for MakeService<M, T, R, G>
     where
         M: tower_util::MakeService<T, R>,
-        F: FnMut(&T) -> tracing::Span + Clone,
+        G: GetSpan<T>,
     {
         type Response = Service<M::Service>;
         type Error = M::MakeError;
@@ -147,7 +154,7 @@ pub mod make {
         }
 
         fn call(&mut self, target: T) -> Self::Future {
-            let span = (self.f)(&target);
+            let span = self.get_span.span_for(&target);
             let inner = self.inner.make_service(target);
             MakeFuture {
                 span: Some(span),
@@ -174,14 +181,14 @@ pub mod make {
         }
     }
 
-    impl<M, T, R, F> MakeService<M, T, R, F>
+    impl<M, T, R, G> MakeService<M, T, R, G>
     where
         M: tower_util::MakeService<T, R>,
-        F: FnMut(&T) -> tracing::Span + Clone,
+        G: GetSpan<T> + Clone,
     {
-        pub fn new(inner: M, f: F) -> Self {
+        pub fn new(inner: M, get_span: G) -> Self {
             MakeService {
-                f,
+                get_span,
                 inner,
                 _p: PhantomData,
             }
