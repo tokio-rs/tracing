@@ -4,10 +4,10 @@ use std::marker::PhantomData;
 use tracing_futures::Instrument;
 
 #[derive(Debug)]
-pub struct Service<S, R, F>
+pub struct Service<S, R, F = fn(&R) -> tracing::Span>
 where
     S: tower_service::Service<R>,
-    F: FnMut(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span,
 {
     f: F,
     inner: S,
@@ -17,14 +17,14 @@ where
 pub type MakeFuture<S, R, F> = MakeService<S, R, Option<F>>;
 
 #[derive(Debug)]
-pub struct MakeService<S, R, F> {
+pub struct MakeService<S, R, F = fn(&R) -> tracing::Span> {
     f: F,
     inner: S,
     _p: PhantomData<fn(R)>,
 }
 
 #[derive(Debug)]
-pub struct Layer<R, F>
+pub struct Layer<R, F = fn(&R) -> tracing::Span>
 where
     F: FnMut(&R) -> tracing::Span + Clone,
 {
@@ -33,7 +33,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct MakeLayer<R, T, F>
+pub struct MakeLayer<R, T, F = fn(&R) -> tracing::Span>
 where
     F: FnMut(&R) -> tracing::Span + Clone,
 {
