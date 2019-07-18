@@ -9,6 +9,16 @@ pub(crate) mod thread;
 pub use layer::Layer;
 use std::default::Default;
 
+macro_rules! try_lock {
+    ($lock:expr) => {
+        match $lock {
+            Ok(l) => l,
+            Err(_) if std::thread::panicking() => return,
+            Err(_) => panic!("lock poisoned"),
+        }
+    };
+}
+
 pub type CurrentSpanPerThread = CurrentSpan;
 
 /// Tracks the currently executing span on a per-thread basis.

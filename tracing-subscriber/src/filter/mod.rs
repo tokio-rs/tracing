@@ -3,19 +3,21 @@ pub mod level;
 pub mod span;
 pub use self::level::LevelFilter;
 
-use crate::thread;
+use crate::{thread, Layer};
 use crossbeam_utils::sync::ShardedLock;
 use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
-use tracing_core::{callsite, subscriber::Interest, Level, Metadata};
+use tracing_core::{callsite, subscriber::{Interest, Subscriber}, Level, Metadata, span::Id};
+use indexmap::IndexSet;
 
 pub struct Filter {
     // TODO: eventually, this should be exposed by the registry.
-    scope: thread::Local<Vec<LevelFilter>>,
+    scope: thread::Local<IndexMap<Id, LevelFilter>>,
 
     statics: Statics,
     dynamic: Dynamics,
 
     by_cs: ShardedLock<HashMap<callsite::Identifier, span::Match>>,
+    by_id: ShardedLock<HashMap<Id, LevelFilter>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -51,6 +53,61 @@ struct Statics {
 enum MatchResult {
     Static(Interest),
     Dynamic(span::Match),
+}
+
+impl<S: Subscriber> Layer<S> for Filter {
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        unimplemented!()
+    }
+
+    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn on_record(&self, span: &span::Id, values: &span::Record, ctx: Context<S>) {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<S>) {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn on_event(&self, event: &Event, ctx: Context<S>) {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, ctx: Context<S>) {
+        let enabled =
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, _: Context<S>) {
+        let mut scope = self.scope.get();
+        scope.remove(id);
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, _: Context<S>) {
+        let mut spans = crate::try_lock!(self.by_id.write());
+        spans.remove(id);
+    }
+
+    #[doc(hidden)]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        self.layer
+            .downcast_raw(id)
+            .or_else(|| self.inner.downcast_raw(id))
+    }
+}
 }
 
 impl Directive {
