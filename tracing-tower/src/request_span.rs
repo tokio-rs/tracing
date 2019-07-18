@@ -64,6 +64,9 @@ mod layer {
 }
 
 #[cfg(feature = "tower-util")]
+pub use self::make::MakeService;
+
+#[cfg(feature = "tower-util")]
 pub mod make {
     use super::*;
 

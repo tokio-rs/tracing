@@ -12,6 +12,9 @@ pub struct Service<S> {
 #[cfg(feature = "tower-layer")]
 pub use self::layer::*;
 
+#[cfg(feature = "tower-util")]
+pub use self::make::MakeService;
+
 #[cfg(feature = "tower-layer")]
 mod layer {
     use super::*;
@@ -203,6 +206,7 @@ where
     type Future = S::Future;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        let _enter = self.span.enter();
         self.inner.poll_ready()
     }
 

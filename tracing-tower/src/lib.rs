@@ -5,6 +5,9 @@ use tracing::Level;
 pub mod request_span;
 pub mod service_span;
 
+#[cfg(feature = "http")]
+pub mod http;
+
 pub type InstrumentedService<S, R> = service_span::Service<request_span::Service<S, R>>;
 
 pub trait InstrumentableService<Request>
