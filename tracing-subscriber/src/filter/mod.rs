@@ -1,23 +1,21 @@
 pub mod field;
 pub mod level;
-pub mod span;
 pub use self::level::LevelFilter;
 
-use crate::{thread, Layer};
+use crate::{thread, layer::{Layer, Context}};
 use crossbeam_utils::sync::ShardedLock;
 use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
-use tracing_core::{callsite, subscriber::{Interest, Subscriber}, Level, Metadata, span::Id};
-use indexmap::IndexSet;
+use tracing_core::{callsite, subscriber::{Interest, Subscriber}, Level, Metadata, span, Event};
 
 pub struct Filter {
     // TODO: eventually, this should be exposed by the registry.
-    scope: thread::Local<IndexMap<Id, LevelFilter>>,
+    scope: thread::Local<Vec<LevelFilter>>,
 
     statics: Statics,
     dynamic: Dynamics,
 
-    by_cs: ShardedLock<HashMap<callsite::Identifier, span::Match>>,
-    by_id: ShardedLock<HashMap<Id, LevelFilter>,
+    by_id: ShardedLock<HashMap<span::Id, LevelFilter>>,
+    by_cs: ShardedLock<HashMap<callsite::Identifier, SpanMatch>>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -29,6 +27,8 @@ pub struct Directive {
     fields: Vec<field::Match>,
     level: LevelFilter,
 }
+
+struct SpanMatch {}
 
 #[derive(Debug, PartialEq, Eq, Ord)]
 struct StaticDirective {
@@ -52,7 +52,14 @@ struct Statics {
 
 enum MatchResult {
     Static(Interest),
-    Dynamic(span::Match),
+    Dynamic(SpanMatch),
+}
+
+impl Filter {
+    fn cares_about_span(&self, span: &span::Id) -> bool {
+        let spans = try_lock!(self.by_id.read(), else return false);
+        spans.contains_key(span)
+    }
 }
 
 impl<S: Subscriber> Layer<S> for Filter {
@@ -60,16 +67,23 @@ impl<S: Subscriber> Layer<S> for Filter {
         unimplemented!()
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
-        unimplemented!()
+    fn enabled(&self, metadata: &Metadata, _: Context<S>) -> bool {
+        let level = metadata.level();
+        for filter in self.scope.iter() {
+            if filter >= level {
+                return true;
+            }
+        }
+
+        // TODO: other filters...
+
+        false
     }
 
-    #[inline]
     fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
         unimplemented!()
     }
 
-    #[inline]
     fn on_record(&self, span: &span::Id, values: &span::Record, ctx: Context<S>) {
         unimplemented!()
     }
@@ -79,35 +93,31 @@ impl<S: Subscriber> Layer<S> for Filter {
         unimplemented!()
     }
 
-    #[inline]
     fn on_event(&self, event: &Event, ctx: Context<S>) {
         unimplemented!()
     }
 
-    #[inline]
     fn on_enter(&self, id: &span::Id, ctx: Context<S>) {
-        let enabled =
+        if let Some(level) = try_lock!(self.by_id.read()).get(id) {
+            self.scope.get().push(level.clone());
+        }
     }
 
-    #[inline]
     fn on_exit(&self, id: &span::Id, _: Context<S>) {
-        let mut scope = self.scope.get();
-        scope.remove(id);
+        if self.cares_about_span(id) {
+            self.scope.get().pop();
+        }
     }
 
-    #[inline]
     fn on_close(&self, id: span::Id, _: Context<S>) {
-        let mut spans = crate::try_lock!(self.by_id.write());
-        spans.remove(id);
-    }
+        // If we don't need to acquire a write lock, avoid doing so.
+        if !self.cares_about_span(&id) {
+            return;
+        }
 
-    #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        self.layer
-            .downcast_raw(id)
-            .or_else(|| self.inner.downcast_raw(id))
+        let mut spans = try_lock!(self.by_id.write());
+        spans.remove(&id);
     }
-}
 }
 
 impl Directive {

@@ -47,15 +47,10 @@ impl<T> Local<T> {
     }
 
     fn get2<'a>(&'a self, i: usize) -> Option<LocalGuard<'a, T>> {
-        match self.inner.read() {
-            Ok(lock) => {
-                let slot = lock.get(i)?.as_ref()?;
-                let inner = slot.get();
-                Some(LocalGuard { inner, _lock: lock })
-            }
-            Err(_) if std::thread::panicking() => None,
-            e => panic!("lock poisoned!"),
-        }
+        let lock = try_lock!(self.inner.read(), else return None);
+        let slot = lock.get(i)?.as_ref()?;
+        let inner = slot.get();
+        Some(LocalGuard { inner, _lock: lock })
     }
 
     pub fn get_or_else<'a>(&'a self, new: impl FnOnce() -> T) -> LocalGuard<'a, T> {
@@ -84,6 +79,25 @@ impl<T: Default> Local<T> {
 }
 
 unsafe impl<T> Sync for Local<T> {}
+
+impl<T> Deref for Local<T>
+where
+    T: Default,
+{
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.get().deref()
+    }
+}
+
+impl<T> DerefMut for Local<T>
+where
+    T: Default,
+{
+    fn deref_mut(&mut self) -> &mut T {
+        self.get().deref_mut()
+    }
+}
 
 // === impl LocalGuard ===
 

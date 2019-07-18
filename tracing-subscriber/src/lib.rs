@@ -1,6 +1,21 @@
 //! Utilities and helpers for implementing and composing subscribers.
 use tracing_core::span::Id;
 
+#[macro_use]
+macro_rules! try_lock {
+    ($lock:expr) => {
+        try_lock!($lock, else return)
+    };
+    ($lock:expr, else $els:expr) => {
+        match $lock {
+            Ok(l) => l,
+            Err(_) if std::thread::panicking() => $els,
+            Err(_) => panic!("lock poisoned"),
+        }
+    };
+}
+
+
 pub mod filter;
 pub mod layer;
 pub mod prelude;
@@ -8,16 +23,6 @@ pub mod prelude;
 pub(crate) mod thread;
 pub use layer::Layer;
 use std::default::Default;
-
-macro_rules! try_lock {
-    ($lock:expr) => {
-        match $lock {
-            Ok(l) => l,
-            Err(_) if std::thread::panicking() => return,
-            Err(_) => panic!("lock poisoned"),
-        }
-    };
-}
 
 pub type CurrentSpanPerThread = CurrentSpan;
 
