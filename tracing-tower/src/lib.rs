@@ -1,13 +1,21 @@
+use std::fmt;
 use tower_service::Service;
+use tracing::Level;
 
 pub mod request_span;
 pub mod service_span;
 
-#[deprecated(since = "0.0.1", note = "use `service_span::Service` instead")]
-pub type InstrumentedService<R> = service_span::Service<R>;
+pub type InstrumentedService<S, R> = service_span::Service<request_span::Service<S, R>>;
 
-pub trait InstrumentableService<Request>: Service<Request> + Sized {
-    fn instrument(self, span: tracing::Span) -> service_span::Service<Self> {
-        service_span::Service { inner: self, span }
+pub trait InstrumentableService<Request>
+where
+    Self: Service<Request> + Sized,
+    Request: fmt::Debug,
+{
+    fn instrument(self, span: tracing::Span) -> InstrumentedService<Self, Request> {
+        let req_span: fn(&Request) -> tracing::Span =
+            |request| tracing::span!(Level::TRACE, "request", ?request);
+        let svc = request_span::Service::new(self, req_span);
+        service_span::Service::new(svc, span)
     }
 }
