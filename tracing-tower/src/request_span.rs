@@ -7,7 +7,7 @@ use tracing_futures::Instrument;
 pub struct Service<S, R, F>
 where
     S: tower_service::Service<R>,
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     f: F,
     inner: S,
@@ -26,7 +26,7 @@ pub struct MakeService<S, R, F> {
 #[derive(Debug)]
 pub struct Layer<R, F>
 where
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     f: F,
     _p: PhantomData<fn(R)>,
@@ -35,7 +35,7 @@ where
 #[derive(Debug)]
 pub struct MakeLayer<R, T, F>
 where
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     f: F,
     _p: PhantomData<fn(T, R)>,
@@ -43,14 +43,14 @@ where
 
 pub fn layer<R, F>(f: F) -> Layer<R, F>
 where
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     Layer { f, _p: PhantomData }
 }
 
 pub fn make_layer<R, T, F>(f: F) -> MakeLayer<R, T, F>
 where
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     MakeLayer { f, _p: PhantomData }
 }
@@ -60,7 +60,7 @@ where
 impl<S, R, F> tower_layer::Layer<S> for Layer<R, F>
 where
     S: tower_service::Service<R>,
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     type Service = Service<S, R, F>;
 
@@ -71,7 +71,7 @@ where
 
 impl<R, F> Clone for Layer<R, F>
 where
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -86,7 +86,7 @@ where
 impl<S, R, F, T> tower_layer::Layer<S> for MakeLayer<R, T, F>
 where
     S: tower_util::MakeService<T, R>,
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     type Service = MakeService<S, R, F>;
 
@@ -97,7 +97,7 @@ where
 
 impl<R, T, F> Clone for MakeLayer<R, T, F>
 where
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -112,7 +112,7 @@ where
 impl<S, R, F> tower_service::Service<R> for Service<S, R, F>
 where
     S: tower_service::Service<R>,
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -132,7 +132,7 @@ where
 impl<S, R, F> Clone for Service<S, R, F>
 where
     S: tower_service::Service<R> + Clone,
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     fn clone(&self) -> Self {
         Service {
@@ -146,7 +146,7 @@ where
 impl<S, R, F> Service<S, R, F>
 where
     S: tower_service::Service<R>,
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span,
 {
     pub fn new(inner: S, f: F) -> Self {
         Service {
@@ -162,7 +162,7 @@ where
 impl<S, R, F, T> tower_service::Service<T> for MakeService<S, R, F>
 where
     S: tower_util::MakeService<T, R>,
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
 {
     type Response = Service<S::Service, R, F>;
     type Error = S::MakeError;
@@ -185,7 +185,7 @@ where
 
 impl<S, R, F> MakeService<S, R, F>
 where
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span,
 {
     pub fn new<T>(inner: S, f: F) -> Self
     where
@@ -201,7 +201,7 @@ where
 
 impl<S, R, F> Clone for MakeService<S, R, F>
 where
-    F: Fn(&R) -> tracing::Span + Clone,
+    F: FnMut(&R) -> tracing::Span + Clone,
     S: Clone,
 {
     fn clone(&self) -> Self {
@@ -217,13 +217,13 @@ impl<S, R, F> Future for MakeService<S, R, Option<F>>
 where
     S: Future,
     S::Item: tower_service::Service<R>,
-    F: Fn(&R) -> tracing::Span,
+    F: FnMut(&R) -> tracing::Span,
 {
     type Item = Service<S::Item, R, F>;
     type Error = S::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let inner = try_ready!(self.inner.poll());
+        let inner = futures::try_ready!(self.inner.poll());
         let f = self.f.take().expect("polled after ready");
         Ok(Async::Ready(Service {
             inner,
