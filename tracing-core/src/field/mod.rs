@@ -482,6 +482,11 @@ impl FieldSet {
         }
     }
 
+    /// Returns a new `FieldMap` container indexed by the fields in this `FieldSet`.
+    pub fn new_map<T>(&self) -> FieldMap<T> {
+        FieldMap::new(self)
+    }
+
     /// Returns a new `ValueSet` with entries for this `FieldSet`'s values.
     ///
     /// Note that a `ValueSet` may not be constructed with arrays of over 32

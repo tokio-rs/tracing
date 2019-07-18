@@ -2,7 +2,7 @@
 use super::{Field, FieldSet};
 use std::fmt;
 
-/// A map of values indexed by `Field`s.
+/// A map of `Field`s to `T`s, with fast O(1) indexing.
 pub struct FieldMap<T> {
     fields: FieldSet,
     values: [Option<T>; 32],
@@ -40,6 +40,11 @@ impl<T> FieldMap<T> {
         self.can_contain(key) && self.values[key.i].is_some()
     }
 
+    #[inline]
+    pub fn fields(&self) -> &FieldSet {
+        &self.fields
+    }
+
     pub fn get(&self, key: &Field) -> Option<&T> {
         if !self.can_contain(key) {
             return None;
@@ -66,6 +71,11 @@ impl<T> FieldMap<T> {
             return None;
         }
         self.values[key.i].take()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.values.iter().all(Option::is_none)
     }
 
     #[inline]
@@ -116,6 +126,12 @@ impl<'a, T> IntoIterator for &'a FieldMap<T> {
     }
 }
 
+impl<'a, T> From<&'a FieldSet> for FieldMap<T> {
+    fn from(set: &'a FieldSet) -> Self {
+        Self::new(set)
+    }
+}
+
 // ===== iterators =====
 
 impl<'a, T> Iterator for Iter<'a, T> {
@@ -146,4 +162,161 @@ impl<'a, T> Iterator for Values<'a, T> {
     }
 
     // TODO: size hint?
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::metadata::{Kind, Level, Metadata};
+
+    struct TestCallsite1;
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
+    static TEST_META_1: Metadata<'static> = metadata! {
+        name: "field_test1",
+        target: module_path!(),
+        level: Level::INFO,
+        fields: &["foo", "bar", "baz"],
+        callsite: &TEST_CALLSITE_1,
+        kind: Kind::SPAN,
+    };
+
+    impl crate::callsite::Callsite for TestCallsite1 {
+        fn set_interest(&self, _: crate::subscriber::Interest) {
+            unimplemented!()
+        }
+
+        fn metadata(&self) -> &Metadata {
+            &TEST_META_1
+        }
+    }
+
+    struct TestCallsite2;
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2;
+    static TEST_META_2: Metadata<'static> = metadata! {
+        name: "field_test2",
+        target: module_path!(),
+        level: Level::INFO,
+        fields: &["foo", "bar", "baz"],
+        callsite: &TEST_CALLSITE_2,
+        kind: Kind::SPAN,
+    };
+
+    impl crate::callsite::Callsite for TestCallsite2 {
+        fn set_interest(&self, _: crate::subscriber::Interest) {
+            unimplemented!()
+        }
+
+        fn metadata(&self) -> &Metadata {
+            &TEST_META_2
+        }
+    }
+
+    #[test]
+    fn can_contain() {
+        let fields_1 = TEST_META_1.fields();
+        let fields_2 = TEST_META_2.fields();
+        let field = fields_1.field("foo").unwrap();
+
+        assert!(FieldMap::<usize>::from(fields_1).can_contain(&field));
+        assert_eq!(FieldMap::<usize>::from(fields_2).can_contain(&field), false);
+
+        let field = fields_2.field("baz").unwrap();
+        assert!(FieldMap::<usize>::from(fields_2).can_contain(&field));
+        assert_eq!(FieldMap::<usize>::from(fields_1).can_contain(&field), false);
+    }
+
+    #[test]
+    fn contains() {
+        let fields_1 = TEST_META_1.fields();
+        let foo = fields_1.field("foo").unwrap();
+        let bar = fields_1.field("bar").unwrap();
+        let baz = fields_1.field("baz").unwrap();
+
+        let mut map: FieldMap<&str> = fields_1.into();
+        assert!(map.can_contain(&foo));
+        assert!(map.can_contain(&bar));
+        assert!(map.can_contain(&baz));
+
+        assert!(map.contains(&foo) == false);
+        assert!(map.contains(&bar) == false);
+        assert!(map.contains(&baz) == false);
+
+        map.insert(&foo, "hello world");
+        assert!(map.can_contain(&foo));
+
+        assert!(map.contains(&foo));
+        assert!(map.contains(&bar) == false);
+        assert!(map.contains(&baz) == false);
+
+        map.insert(&baz, "hello other world");
+        assert!(map.contains(&foo));
+        assert!(map.contains(&bar) == false);
+        assert!(map.contains(&baz));
+
+        let map2: FieldMap<&str> = fields_1.into();
+        assert!(map2.can_contain(&foo));
+        assert!(map2.can_contain(&bar));
+        assert!(map2.can_contain(&baz));
+
+        assert!(map2.contains(&foo) == false);
+        assert!(map2.contains(&bar) == false);
+        assert!(map2.contains(&baz) == false);
+
+        let map3: FieldMap<&str> = TEST_META_2.fields().into();
+        assert!(map3.can_contain(&foo) == false);
+        assert!(map3.can_contain(&bar) == false);
+        assert!(map3.can_contain(&baz) == false);
+
+        assert!(map3.contains(&foo) == false);
+        assert!(map3.contains(&bar) == false);
+        assert!(map3.contains(&baz) == false);
+    }
+
+    #[test]
+    fn get() {
+        let fields_1 = TEST_META_1.fields();
+        let foo = fields_1.field("foo").unwrap();
+        let bar = fields_1.field("bar").unwrap();
+        let baz = fields_1.field("baz").unwrap();
+
+        let mut map: FieldMap<&str> = fields_1.into();
+        assert_eq!(map.get(&foo), None);
+        assert_eq!(map.get(&bar), None);
+        assert_eq!(map.get(&baz), None);
+
+        map.insert(&foo, "hello world");
+        assert_eq!(map.get(&foo), Some(&"hello world"));
+        assert_eq!(map.get(&bar), None);
+        assert_eq!(map.get(&baz), None);
+
+        map.insert(&bar, "hello san francisco!");
+        assert_eq!(map.get(&foo), Some(&"hello world"));
+        assert_eq!(map.get(&bar), Some(&"hello san francisco!"));
+        assert_eq!(map.get(&baz), None);
+
+        let map2: FieldMap<&str> = fields_1.into();
+        assert_eq!(map2.get(&foo), None);
+        assert_eq!(map2.get(&bar), None);
+        assert_eq!(map2.get(&baz), None);
+
+        let map3: FieldMap<&str> = TEST_META_2.fields().into();
+        assert_eq!(map3.get(&foo), None);
+        assert_eq!(map3.get(&bar), None);
+        assert_eq!(map3.get(&baz), None);
+    }
+
+    #[test]
+    fn insert() {
+        let fields_1 = TEST_META_1.fields();
+        let foo = fields_1.field("foo").unwrap();
+
+        let mut map1: FieldMap<&str> = TEST_META_1.fields().into();
+        map1.insert(&foo, "hello world");
+        assert_eq!(map1.get(&foo), Some(&"hello world"));
+
+        let mut map2: FieldMap<&str> = TEST_META_2.fields().into();
+        map2.insert(&foo, "hello world");
+        assert_eq!(map2.get(&foo), None);
+    }
+
 }
