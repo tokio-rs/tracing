@@ -6,11 +6,10 @@ edition = "2018"
 license = "MIT"
 documentation = "https://docs.rs/tracing-fmt/0.0.1-alpha.1/tracing-fmt"
 description = """
-An experimental subscriber for tracing, a runtime diagnostics system.
+A (currently experimental) `tracing` subscriber that formats and logs trace data
 """
 categories = [
     "development-tools::debugging",
-    "development-tools::profiling",
     "asynchronous",
 ]
 keywords = ["logging", "tracing"]

@@ -2,7 +2,8 @@
 
 **Warning: Until `tracing-fmt` has a 0.1.0 release on crates.io, please treat every release as potentially breaking.**
 
-A subscriber for [tracing], a collection of libraries designed for application-level tracing for Rust. tracing-fmt tastefully formats and colors tracing's [spans]/[events] before chucking them to the wastes of `stdout`.
+A (currently experimental) [tracing] subscriber
+that formats, colors, and logs trace data.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
@@ -13,7 +14,8 @@ A subscriber for [tracing], a collection of libraries designed for application-l
 [Documentation][docs-url] |
 [Chat][gitter-url]
 
-[tracing]: https://github.com/tokio-rs/tracing-fmt
+[tracing]: https://github.com/tokio-rs/tracing/tree/master/tracing
+[tracing-fmt]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
 [crates-badge]: https://img.shields.io/crates/v/tracing-fmt.svg
 [crates-url]: https://crates.io/crates/tracing-fmt
 [docs-badge]: https://docs.rs/tracing-fmt/badge.svg
@@ -24,8 +26,6 @@ A subscriber for [tracing], a collection of libraries designed for application-l
 [travis-url]: https://travis-ci.org/tokio-rs/tracing/branches
 [gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
 [gitter-url]: https://gitter.im/tokio-rs/tracing
-[spans]: https://docs.rs/tracing/0.1.3/tracing/span/index.html
-[events]: https://docs.rs/tracing/0.1.3/tracing/struct.Event.html
 
 ## License
 
