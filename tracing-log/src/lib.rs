@@ -343,7 +343,7 @@ impl LogTracer {
     /// # }
     /// ```
     ///
-    /// This will forward all logs to `tracing` and let the subscribers
+    /// This will forward all logs to `tracing` and lets the current `Subscriber`
     /// determine if they are enabled. If you know in advance you want to filter some log levels,
     /// use [`init_with_filter`] instead.
     ///
