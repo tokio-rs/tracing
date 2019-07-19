@@ -289,7 +289,7 @@ impl LogTracer {
     /// Creates a new `LogTracer` that can then be used as a logger for the `log` crate.
     ///
     /// It is generally simpler to use the [`init`] or [`init_with_filter`] methods
-    /// that will create the `LogTracer` and set it as global logger.
+    /// which will create the `LogTracer` and set it as the global logger.
     ///
     /// Logger setup without the initialization methods can be done with:
     ///
