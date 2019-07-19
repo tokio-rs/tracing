@@ -274,6 +274,18 @@ pub struct TraceLoggerBuilder {
 
 // ===== impl LogTracer =====
 
+impl LogTracer {
+    pub fn new() -> Self {
+        Self { _p: () }
+    }
+}
+
+impl Default for LogTracer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl log::Log for LogTracer {
     fn enabled(&self, _metadata: &log::Metadata) -> bool {
         // Use log::set_max_level to filter LogTracing's input
@@ -297,18 +309,6 @@ impl log::Log for LogTracer {
     }
 
     fn flush(&self) {}
-}
-
-impl LogTracer {
-    pub fn new() -> Self {
-        Self { _p: () }
-    }
-}
-
-impl Default for LogTracer {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 // ===== impl TraceLogger =====
