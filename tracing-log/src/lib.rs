@@ -1,6 +1,25 @@
 //! Adapters for connecting unstructured log records from the `log` crate into
 //! the `tracing` ecosystem.
-//!
+//! 
+//! ## Convert log records to tracing `Event`s
+//! 
+//! To make logs seen as tracing events, set up `LogTracer` as logger by calling
+//! its [`init`] or [`init_with_filter`] methods.
+//! 
+//! ```rust
+//! # use std::error::Error;
+//! use tracing_log::LogTracer;
+//! use log;
+//! 
+//! # fn main() -> Result<(), Box<Error>> {
+//! LogTracer::init()?;
+//! 
+//! // will be available for Subscribers as a tracing Event
+//! log::trace!("an example trace log");
+//! # Ok(())
+//! # }
+//! ```
+//! 
 //! This conversion does not convert unstructured data in log records (such as
 //! values passed as format arguments to the `log!` macro) to structured
 //! `tracing` fields. However, it *does* attach these new events to to the
@@ -8,6 +27,12 @@
 //! primary use-case for this library: making it possible to locate the log
 //! records emitted by dependencies which use `log` within the context of a
 //! trace.
+//! 
+//! ## Convert tracing `Event`s to logs
+//! 
+//! This conversion can be done with [`TraceLogger`].
+//! 
+//! ## Caution: Mixing both conversions
 //!
 //! Note that logger implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
@@ -19,6 +44,10 @@
 //! `log` crate is desired, either the `log` crate should not be used to
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
+//! 
+//! [`init`]: struct.LogTracer.html#method.init
+//! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
+//! [`TraceLogger`]: struct.TraceLogger.html
 extern crate log;
 extern crate tracing_core;
 extern crate tracing_subscriber;
@@ -43,34 +72,6 @@ use tracing_core::{
     subscriber::{self, Subscriber},
     Event, Metadata,
 };
-
-static LOGGER: LogTracer = LogTracer { _p: () };
-
-/// Sets up `LogTracer` as global logger for the `log` crate,
-/// with the given level as max level filter.
-///
-/// Setting a global logger can only be done once.
-///
-/// The `level` parameter controls which levels will be passed
-/// to `tracing`.
-pub fn init_logger_with_filter(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
-    log::set_logger(&LOGGER)?;
-    log::set_max_level(level);
-    Ok(())
-}
-
-/// Sets up `LogTracer` as global logger for the `log` crate.
-///
-/// Setting a global logger can only be done once.
-///
-/// This will forward all logs to `tracing` and let the subscribers
-/// do the filtering. If you know in advance you want to filter some log levels,
-/// use [`init_logger_with_filter`] instead.
-///
-/// [`init_logger_with_filter`]: ../fn.init_logger_with_filter.html
-pub fn init_logger() -> Result<(), log::SetLoggerError> {
-    init_logger_with_filter(log::LevelFilter::Trace)
-}
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
@@ -247,8 +248,15 @@ impl AsTrace for log::Level {
     }
 }
 
-/// A simple "logger" that converts all log records into `tracing` `Event`s,
-/// with an optional level filter.
+/// A simple "logger" that converts all log records into `tracing` `Event`s.
+/// 
+/// Can be initialized with:
+/// 
+/// * [`init`] if you want to convert all logs and do the filtering in a subscriber
+/// * [`init_with_filter`] if you know in advance a log level you want to filter
+///
+/// [`init`]: ../fn.init.html
+/// [`init_with_filter`]: ../fn.init_with_filter.html
 #[derive(Debug)]
 pub struct LogTracer {
     _p: (),
@@ -274,9 +282,74 @@ pub struct TraceLoggerBuilder {
 
 // ===== impl LogTracer =====
 
+// Static logger for `LogTrace`
+static LOGGER: LogTracer = LogTracer { _p: () };
+
 impl LogTracer {
+    /// Creates a new `LogTracer` that can then be used as logger for the `log` crate.
+    /// 
+    /// It is generally simpler to use the [`init`] or [`init_with_filter`] methods
+    /// that will create the `LogTracer` and set it as global logger.
+    /// 
+    /// Logger setup without the initialization methods can be done with:
+    ///
+    /// ```rust
+    /// # use std::error::Error;
+    /// use tracing_log::LogTracer;
+    /// use log;
+    /// 
+    /// # fn main() -> Result<(), Box<Error>> {
+    /// let logger = LogTracer::new();
+    /// log::set_boxed_logger(Box::new(logger))?;
+    /// log::set_max_level(log::LevelFilter::Trace);
+    ///
+    /// // will be available for Subscribers as a tracing Event
+    /// log::trace!("an example trace log");
+    /// # Ok(())
+    /// # }
+    /// ```
+    /// 
+    /// [`init`]: #method.init
+    /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
         Self { _p: () }
+    }
+
+    /// Sets up `LogTracer` as global logger for the `log` crate,
+    /// with the given level as max level filter.
+    ///
+    /// Setting a global logger can only be done once.
+    pub fn init_with_filter(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+        log::set_logger(&LOGGER)?;
+        log::set_max_level(level);
+        Ok(())
+    }
+
+    /// Sets up `LogTracer` as global logger for the `log` crate.
+    ///
+    /// Setting a global logger can only be done once.
+    /// 
+    /// ```rust
+    /// # use std::error::Error;
+    /// use tracing_log::LogTracer;
+    /// use log;
+    /// 
+    /// # fn main() -> Result<(), Box<Error>> {
+    /// LogTracer::init()?;
+    /// 
+    /// // will be available for Subscribers as a tracing Event
+    /// log::trace!("an example trace log");
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// This will forward all logs to `tracing` and let the subscribers
+    /// do the filtering. If you know in advance you want to filter some log levels,
+    /// use [`init_with_filter`] instead.
+    ///
+    /// [`init_with_filter`]: #method.init_with_filter
+    pub fn init() -> Result<(), log::SetLoggerError> {
+        Self::init_with_filter(log::LevelFilter::Trace)
     }
 }
 
