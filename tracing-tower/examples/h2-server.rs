@@ -134,7 +134,7 @@ fn main() {
                     .serve(sock)
                     .map_err(|error| tracing::error!(message = "h2 error", %error))
                     .map(|_| {
-                        tracing::trace!("response sent");
+                        tracing::trace!("finished serving connection");
                     })
                     .instrument(span.clone());
                 tokio::spawn(serve);
