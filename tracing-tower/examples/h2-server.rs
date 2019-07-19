@@ -5,7 +5,6 @@ use tokio::executor::DefaultExecutor;
 use tokio::net::TcpListener;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
-use tracing::Level;
 use tracing_futures::Instrument;
 use tracing_tower::InstrumentMake;
 
@@ -70,7 +69,8 @@ impl Service<Request<RecvBody>> for Svc {
             let body = RspBody::new("heyo!".into());
             rsp.status(200).body(body).unwrap()
         };
-        tracing::debug!(rsp.status = %rsp.status(), message = "sending response");
+
+        tracing::debug!(rsp.status = %rsp.status(), message = "sending response...");
         future::ok(rsp)
     }
 }
@@ -91,31 +91,40 @@ impl tower_service::Service<()> for NewSvc {
 }
 
 fn main() {
+    // Set the default subscriber to record all traces emitted by this example
+    // and by the `tracing_tower` library's helpers.
     let subscriber = tracing_fmt::FmtSubscriber::builder()
         .with_filter(tracing_fmt::filter::EnvFilter::from(
             "h2_server=trace,tracing_tower=trace",
         ))
         .finish();
-
     let _ = tracing::subscriber::set_global_default(subscriber);
 
     let addr = "[::1]:8888".parse().unwrap();
     let bind = TcpListener::bind(&addr).expect("bind");
 
+    // Construct a span for the server task, annotated with the listening IP
+    // address and port.
     let span = tracing::trace_span!("server", ip = %addr.ip(), port = addr.port());
 
     let server = lazy(|| {
         let executor = DefaultExecutor::current();
 
+        // Enrich the `MakeService` with a wrapper so that each request is
+        // traced with its own span.
         let new_svc = NewSvc.with_traced_requests(tracing_tower::http::debug_request);
         let h2 = Server::new(new_svc, Default::default(), executor);
+
         tracing::info!("listening");
 
         bind.incoming()
             .fold(h2, |mut h2, sock| {
+                // Construct a new span for each accepted connection.
                 let addr = sock.peer_addr().expect("can't get addr");
                 let span = tracing::trace_span!("conn", ip = %addr.ip(), port = addr.port());
                 let _enter = span.enter();
+
+                tracing::debug!("accepted connection");
 
                 if let Err(e) = sock.set_nodelay(true) {
                     return Err(e);
@@ -124,6 +133,9 @@ fn main() {
                 let serve = h2
                     .serve(sock)
                     .map_err(|error| tracing::error!(message = "h2 error", %error))
+                    .map(|_| {
+                        tracing::trace!("response sent");
+                    })
                     .instrument(span.clone());
                 tokio::spawn(serve);
 
