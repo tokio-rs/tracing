@@ -325,7 +325,7 @@ impl LogTracer {
         Ok(())
     }
 
-    /// Sets up `LogTracer` as global logger for the `log` crate.
+    /// Sets a `LogTracer` as the global logger for the `log` crate.
     ///
     /// Setting a global logger can only be done once.
     ///
