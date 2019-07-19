@@ -19,10 +19,10 @@ stages:
  - stage: custom
    displayName: "Special tests"
    dependsOn: check
-   pool:
-     vmImage: ubuntu-16.04
    jobs:
      - job: custom_stable
+       pool:
+         vmImage: ubuntu-16.04
        displayName: "Stable custom tests"
        steps:
          - template: azure/install-rust.yml@templates
@@ -33,6 +33,8 @@ stages:
          - bash: cd tracing/test_static_max_level_features && cargo test
            displayName: "Test static max level features"
      - job: custom_nightly
+       pool:
+         vmImage: ubuntu-16.04
        displayName: "Nightly custom tests"
        continueOnError: true
        steps:
