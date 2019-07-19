@@ -1,5 +1,11 @@
 use matchers::Pattern;
-use std::{collections::HashMap, error::Error, fmt, str::FromStr, sync::atomic::{AtomicBool, Ordering}};
+use std::{
+    collections::HashMap,
+    error::Error,
+    fmt,
+    str::FromStr,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use tracing_core::field::Field;
 
 #[derive(Debug, Eq, PartialEq)]

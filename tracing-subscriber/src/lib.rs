@@ -15,7 +15,6 @@ macro_rules! try_lock {
     };
 }
 
-
 pub mod filter;
 pub mod layer;
 pub mod prelude;

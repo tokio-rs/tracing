@@ -2,10 +2,19 @@ pub mod field;
 pub mod level;
 pub use self::level::LevelFilter;
 
-use crate::{thread, layer::{Layer, Context}};
+use crate::{
+    layer::{Context, Layer},
+    thread,
+};
 use crossbeam_utils::sync::ShardedLock;
 use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
-use tracing_core::{callsite, subscriber::{Interest, Subscriber}, Level, Metadata, span, Event, field::{Field, FieldMap}};
+use tracing_core::{
+    callsite,
+    field::{Field, FieldMap},
+    span,
+    subscriber::{Interest, Subscriber},
+    Event, Level, Metadata,
+};
 
 pub struct Filter {
     // TODO: eventually, this should be exposed by the registry.
