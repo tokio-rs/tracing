@@ -2,7 +2,7 @@ use bytes::{Bytes, IntoBuf};
 use futures::*;
 use http::Request;
 use tokio::net::TcpListener;
-use tokio::runtime::Runtime;
+use tokio::executor::DefaultExecutor;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
 use tracing::Level;
@@ -98,59 +98,38 @@ fn main() {
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);
-    let mut rt = Runtime::new().unwrap();
-    let reactor = rt.executor();
 
     let addr = "[::1]:8888".parse().unwrap();
     let bind = TcpListener::bind(&addr).expect("bind");
 
-    let serve_span = tracing::span!(
-        Level::TRACE,
-        "serve",
-        local.ip = ?addr.ip(),
-        local.port = addr.port() as u64
-    );
-    let _enter = serve_span.enter();
+    let span = tracing::trace_span!("server", ip = %addr.ip(), port = addr.port());
 
-    let new_svc = NewSvc.with_traced_requests(tracing_tower::http::trace_request);
-    let h2 = Server::new(new_svc, Default::default(), reactor.clone());
-    tracing::info!("listening");
+    let server = lazy(|| {
+        let executor = DefaultExecutor::current();
 
-    let serve = bind
-        .incoming()
-        .fold((h2, reactor), |(mut h2, reactor), sock| {
-            let addr = sock.peer_addr().expect("can't get addr");
-            let conn_span = tracing::span!(
-                Level::TRACE,
-                "conn",
-                remote.ip = ?addr.ip(),
-                remote.port = addr.port() as u64
-            );
-            let _enter = conn_span.enter();
-            if let Err(e) = sock.set_nodelay(true) {
-                return Err(e);
-            }
+        let new_svc = NewSvc.with_traced_requests(tracing_tower::http::trace_request);
+        let h2 = Server::new(new_svc, Default::default(), executor);
+        tracing::info!("listening");
 
-            tracing::debug!("accepted connection");
+        bind.incoming()
+            .fold(h2, |mut h2, sock| {
+                let addr = sock.peer_addr().expect("can't get addr");
+                let span = tracing::trace_span!("conn", ip = %addr.ip(), port = addr.port());
+                let _enter = span.enter();
 
-            let serve = h2
-                .serve(sock)
-                .map_err(|error| tracing::error!(?error))
-                .and_then(|_| {
-                    tracing::debug!("response finished");
-                    future::ok(())
-                })
-                .instrument(conn_span.clone());
-            reactor.spawn(Box::new(serve));
+                if let Err(e) = sock.set_nodelay(true) {
+                    return Err(e);
+                }
 
-            Ok((h2, reactor))
-        })
-        .map_err(|error| {
-            tracing::error!(?error);
-        })
-        .map(|_| {})
-        .instrument(serve_span.clone());
+                let serve = h2.serve(sock).map_err(|error| tracing::error!(message = "h2 error", %error)).instrument(span.clone());
+                tokio::spawn(serve);
 
-    rt.spawn(serve);
-    rt.shutdown_on_idle().wait().unwrap();
+                Ok(h2)
+            })
+            .map_err(|error| tracing::error!(message = "serve error", %error))
+            .map(|_| {})
+    })
+    .instrument(span);
+
+    tokio::run(server);
 }
