@@ -57,14 +57,14 @@ impl Service<Request<RecvBody>> for Svc {
     }
 
     fn call(&mut self, req: Request<RecvBody>) -> Self::Future {
-        tracing::debug!("received request");
+        tracing::trace!(message = "received request", request.headers = ?req.headers());
         let mut rsp = http::Response::builder();
         rsp.version(http::Version::HTTP_2);
 
         let uri = req.uri();
         let rsp = if uri.path() != ROOT {
             let body = RspBody::empty();
-            tracing::warn!(rsp.error = %"unrecognized path", req.path = ?uri.path());
+            tracing::warn!(rsp.error = %"unrecognized path", request.path = ?uri.path());
             rsp.status(404).body(body).unwrap()
         } else {
             let body = RspBody::new("heyo!".into());

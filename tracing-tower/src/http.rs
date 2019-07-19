@@ -9,8 +9,8 @@ macro_rules! make_req_fns {
                 tracing::span!(
                     $level,
                     "request",
-                    request.method = ?req.method(),
-                    request.uri = ?req.uri(),
+                    method = ?req.method(),
+                    uri = ?req.uri(),
                 )
             }
         )+
@@ -28,9 +28,9 @@ pub fn debug_request<A>(req: &http::Request<A>) -> tracing::Span {
     tracing::span!(
         tracing::Level::DEBUG,
         "request",
-        request.method = ?req.method(),
-        request.uri = ?req.uri(),
-        request.version = ?req.version(),
+        method = ?req.method(),
+        uri = ?req.uri(),
+        version = ?req.version(),
     )
 }
 
@@ -39,9 +39,9 @@ pub fn trace_request<A>(req: &http::Request<A>) -> tracing::Span {
     tracing::span!(
         tracing::Level::TRACE,
         "request",
-        request.method = ?req.method(),
-        request.uri = ?req.uri(),
-        request.version = ?req.version(),
-        request.headers = ?req.headers(),
+        method = ?req.method(),
+        uri = ?req.uri(),
+        version = ?req.version(),
+        headers = ?req.headers(),
     )
 }
