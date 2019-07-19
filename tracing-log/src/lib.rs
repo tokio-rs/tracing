@@ -344,7 +344,7 @@ impl LogTracer {
     /// ```
     ///
     /// This will forward all logs to `tracing` and let the subscribers
-    /// do the filtering. If you know in advance you want to filter some log levels,
+    /// determine if they are enabled. If you know in advance you want to filter some log levels,
     /// use [`init_with_filter`] instead.
     ///
     /// [`init_with_filter`]: #method.init_with_filter
