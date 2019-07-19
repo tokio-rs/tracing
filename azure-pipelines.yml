@@ -80,4 +80,4 @@ resources:
     - repository: templates
       type: github
       name: crate-ci/azure-pipelines
-      endpoint: tokio-rs
+      endpoint: tracing
