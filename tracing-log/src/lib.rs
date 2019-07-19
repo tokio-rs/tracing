@@ -1,25 +1,25 @@
 //! Adapters for connecting unstructured log records from the `log` crate into
 //! the `tracing` ecosystem.
-//! 
+//!
 //! ## Convert log records to tracing `Event`s
-//! 
+//!
 //! To make logs seen as tracing events, set up `LogTracer` as logger by calling
 //! its [`init`] or [`init_with_filter`] methods.
-//! 
+//!
 //! ```rust
 //! # use std::error::Error;
 //! use tracing_log::LogTracer;
 //! use log;
-//! 
+//!
 //! # fn main() -> Result<(), Box<Error>> {
 //! LogTracer::init()?;
-//! 
+//!
 //! // will be available for Subscribers as a tracing Event
 //! log::trace!("an example trace log");
 //! # Ok(())
 //! # }
 //! ```
-//! 
+//!
 //! This conversion does not convert unstructured data in log records (such as
 //! values passed as format arguments to the `log!` macro) to structured
 //! `tracing` fields. However, it *does* attach these new events to to the
@@ -27,11 +27,11 @@
 //! primary use-case for this library: making it possible to locate the log
 //! records emitted by dependencies which use `log` within the context of a
 //! trace.
-//! 
+//!
 //! ## Convert tracing `Event`s to logs
-//! 
+//!
 //! This conversion can be done with [`TraceLogger`].
-//! 
+//!
 //! ## Caution: Mixing both conversions
 //!
 //! Note that logger implementations that convert log records to trace events
@@ -44,7 +44,7 @@
 //! `log` crate is desired, either the `log` crate should not be used to
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
-//! 
+//!
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
 //! [`TraceLogger`]: struct.TraceLogger.html
@@ -249,9 +249,9 @@ impl AsTrace for log::Level {
 }
 
 /// A simple "logger" that converts all log records into `tracing` `Event`s.
-/// 
+///
 /// Can be initialized with:
-/// 
+///
 /// * [`init`] if you want to convert all logs and do the filtering in a subscriber
 /// * [`init_with_filter`] if you know in advance a log level you want to filter
 ///
@@ -287,17 +287,17 @@ static LOGGER: LogTracer = LogTracer { _p: () };
 
 impl LogTracer {
     /// Creates a new `LogTracer` that can then be used as logger for the `log` crate.
-    /// 
+    ///
     /// It is generally simpler to use the [`init`] or [`init_with_filter`] methods
     /// that will create the `LogTracer` and set it as global logger.
-    /// 
+    ///
     /// Logger setup without the initialization methods can be done with:
     ///
     /// ```rust
     /// # use std::error::Error;
     /// use tracing_log::LogTracer;
     /// use log;
-    /// 
+    ///
     /// # fn main() -> Result<(), Box<Error>> {
     /// let logger = LogTracer::new();
     /// log::set_boxed_logger(Box::new(logger))?;
@@ -308,7 +308,7 @@ impl LogTracer {
     /// # Ok(())
     /// # }
     /// ```
-    /// 
+    ///
     /// [`init`]: #method.init
     /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
@@ -328,15 +328,15 @@ impl LogTracer {
     /// Sets up `LogTracer` as global logger for the `log` crate.
     ///
     /// Setting a global logger can only be done once.
-    /// 
+    ///
     /// ```rust
     /// # use std::error::Error;
     /// use tracing_log::LogTracer;
     /// use log;
-    /// 
+    ///
     /// # fn main() -> Result<(), Box<Error>> {
     /// LogTracer::init()?;
-    /// 
+    ///
     /// // will be available for Subscribers as a tracing Event
     /// log::trace!("an example trace log");
     /// # Ok(())
