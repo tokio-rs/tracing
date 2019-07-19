@@ -286,7 +286,7 @@ pub struct TraceLoggerBuilder {
 static LOGGER: LogTracer = LogTracer { _p: () };
 
 impl LogTracer {
-    /// Creates a new `LogTracer` that can then be used as logger for the `log` crate.
+    /// Creates a new `LogTracer` that can then be used as a logger for the `log` crate.
     ///
     /// It is generally simpler to use the [`init`] or [`init_with_filter`] methods
     /// that will create the `LogTracer` and set it as global logger.
