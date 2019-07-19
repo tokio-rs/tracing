@@ -4,6 +4,19 @@ version = "0.0.1-alpha.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 license = "MIT"
+documentation = "https://docs.rs/tracing-fmt/0.0.1-alpha.1/tracing-fmt"
+description = """
+An experimental subscriber for tracing, a runtime diagnostics system.
+"""
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["logging", "tracing"]
+
+[badges] 
+maintenance = { status = "experimental" }
 
 [features]
 default = ["ansi", "chrono"]
@@ -20,4 +33,4 @@ lock_api = "0.1"
 chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = { version = "0.1" }
