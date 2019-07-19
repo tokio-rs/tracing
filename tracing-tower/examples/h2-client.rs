@@ -1,4 +1,3 @@
-
 use bytes::Bytes;
 use futures::*;
 use h2::Reason;
@@ -50,7 +49,10 @@ fn main() {
                     tracing::info!("connected!");
                     Ok(tcp)
                 })
-                .map_err(|error| { tracing::error!(%error); error });
+                .map_err(|error| {
+                    tracing::error!(%error);
+                    error
+                });
             Box::new(c)
         }
     }
@@ -94,7 +96,10 @@ fn main() {
 /// Avoids overflowing max concurrent streams
 struct Serial {
     count: usize,
-    h2: tracing_tower::request_span::Service<tower_h2::client::Connection<TcpStream, TaskExecutor, tower_h2::NoBody>, http::Request<tower_h2::NoBody>>,
+    h2: tracing_tower::request_span::Service<
+        tower_h2::client::Connection<TcpStream, TaskExecutor, tower_h2::NoBody>,
+        http::Request<tower_h2::NoBody>,
+    >,
     pending: Option<Box<Future<Item = (), Error = tower_h2::client::Error> + Send>>,
 }
 
@@ -118,8 +123,7 @@ impl Future for Serial {
             let mut fut = {
                 let span = tracing::debug_span!("serial", req.number = self.count);
                 let _enter = span.enter();
-                self
-                    .h2
+                self.h2
                     .call(mkreq())
                     .and_then(move |rsp| read_response(rsp).map_err(Into::into))
                     .instrument(span.clone())
