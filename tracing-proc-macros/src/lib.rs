@@ -55,7 +55,6 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
             let __tracing_attr_span = span!(
                 tracing::Level::TRACE,
                 #ident_str,
-                traced_function = &#ident_str,
                 #(#param_names = tracing::field::debug(&#param_names_clone)),*
             );
             let __tracing_attr_guard = __tracing_attr_span.enter();
