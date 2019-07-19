@@ -1,8 +1,21 @@
 [package]
 name = "tracing-fmt"
-version = "0.1.0"
+version = "0.0.1-alpha.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
+license = "MIT"
+documentation = "https://docs.rs/tracing-fmt/0.0.1-alpha.1/tracing-fmt"
+description = """
+A (currently experimental) `tracing` subscriber that formats and logs trace data
+"""
+categories = [
+    "development-tools::debugging",
+    "asynchronous",
+]
+keywords = ["logging", "tracing"]
+
+[badges] 
+maintenance = { status = "experimental" }
 
 [features]
 default = ["ansi", "chrono"]
@@ -19,4 +32,4 @@ lock_api = "0.1"
 chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = { version = "0.1" }
