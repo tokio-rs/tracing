@@ -24,7 +24,7 @@ pub struct Filter {
     dynamic: Dynamics,
 
     by_id: ShardedLock<HashMap<span::Id, LevelFilter>>,
-    by_cs: ShardedLock<HashMap<callsite::Identifier, SpanMatch>>,
+    by_cs: ShardedLock<HashMap<callsite::Identifier, field::SpanMatch>>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -34,12 +34,6 @@ pub struct Directive {
     // TODO: this can probably be a `SmallVec` someday, since a span won't have
     // over 32 fields.
     fields: Vec<field::Match>,
-    level: LevelFilter,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct SpanMatch {
-    fields: FieldMap<(field::ValueMatch, AtomicBool)>,
     level: LevelFilter,
 }
 
@@ -63,10 +57,10 @@ struct Statics {
     max_level: LevelFilter,
 }
 
-enum MatchResult {
-    Static(Interest),
-    Dynamic(SpanMatch),
-}
+// enum MatchResult {
+//     Static(Interest),
+//     Dynamic(SpanMatch),
+// }
 
 impl Filter {
     fn cares_about_span(&self, span: &span::Id) -> bool {

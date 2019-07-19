@@ -4,9 +4,10 @@ use std::{
     error::Error,
     fmt,
     str::FromStr,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
-use tracing_core::field::Field;
+use super::LevelFilter;
+use tracing_core::field::{Field, FieldMap, Visit};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Match {
@@ -16,15 +17,15 @@ pub struct Match {
 
 #[derive(Debug)]
 pub struct SpanMatch {
-    // TODO: hashmap is a lot for this...
-    fields: HashMap<Field, MatchState>,
+    fields: FieldMap<(ValueMatch, AtomicBool)>,
+    level: LevelFilter,
+    has_matched: AtomicBool,
 }
 
-#[derive(Debug)]
-struct MatchState {
-    matcher: ValueMatch,
-    matched: AtomicBool,
+pub struct MatchVisitor<'a> {
+    inner: &'a SpanMatch
 }
+
 
 #[derive(Debug)]
 pub(crate) enum ValueMatch {
@@ -97,5 +98,86 @@ impl Error for BadName {}
 impl fmt::Display for BadName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "invalid field name `{}`", self.name)
+    }
+}
+
+impl SpanMatch {
+    pub fn visitor<'a>(&'a self) -> MatchVisitor<'a> {
+        MatchVisitor {
+            inner: self,
+        }
+    }
+
+    pub fn is_matched(&self) -> bool {
+        if self.has_matched.load(Ordering::Acquire) {
+            return true;
+        }
+        self.is_matched_slow()
+    }
+
+    fn is_matched_slow(&self) -> bool {
+        let matched = self.fields.values().all(|state| state.matched.load(Ordering::Acquire));
+        if matched {
+            self.has_matched.store(true, Ordering::Release);
+        }
+        matched
+    }
+
+    pub fn filter(&self) -> Option<LevelFilter> {
+        if self.is_matched() {
+            Some(self.level.clone())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> Visit for MatchVisitor<'a> {
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::I64(ref e), ref matched)) if value == e => {
+                matched.store(true, Ordering::Release);
+            }
+            Some((ValueMatch::U64(ref e), ref matched)) if value as i64 == e =>{
+                matched.store(true, Ordering::Release);
+            },
+            _ => {}
+        }
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::U64(ref e), ref matched)) if value == e => {
+                matched.store(true, Ordering::Release);
+            }
+            _ => {}
+        }
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::Bool(ref e), ref matched)) if value == e => {
+                matched.store(true, Ordering::Release);
+            }
+            _ => {}
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::Pat(ref e), ref matched)) if e.matches(&value) => {
+                matched.store(true, Ordering::Release);
+            }
+            _ => {}
+        }
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+         match self.inner.fields.get(field) {
+            Some((ValueMatch::Pat(ref e), ref matched)) if e.debug_matches(&value) => {
+                matched.store(true, Ordering::Release);
+            }
+            _ => {}
+        }
     }
 }
