@@ -47,7 +47,7 @@ stages:
            displayName: "Test std::future support for tracing-futures"
  - stage: style
    displayName: Style linting
-   dependsOn: ${{ format('{0}check', parameters.prefix) }}
+   dependsOn: check
    jobs:
     - template: azure/rustfmt.yml@templates
       parameters:
