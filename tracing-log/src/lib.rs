@@ -3,8 +3,8 @@
 //!
 //! ## Convert log records to tracing `Event`s
 //!
-//! To make logs seen as tracing events, set up `LogTracer` as logger by calling
-//! its [`init`] or [`init_with_filter`] methods.
+//! To convert [`log::Record`]s as [`tracing::Event`]s, set `LogTracer` as the default
+//! logger by calling its [`init`] or [`init_with_filter`] methods.
 //!
 //! ```rust
 //! # use std::error::Error;
@@ -30,7 +30,8 @@
 //!
 //! ## Convert tracing `Event`s to logs
 //!
-//! This conversion can be done with [`TraceLogger`].
+//! This conversion can be done with [`TraceLogger`], a [`Subscriber`] which
+//! records `tracing` spans and events and outputs log records.
 //!
 //! ## Caution: Mixing both conversions
 //!
@@ -48,6 +49,8 @@
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
 //! [`TraceLogger`]: struct.TraceLogger.html
+//! [`tracing::Event`]: https://docs.rs/tracing/0.1.3/tracing/struct.Event.html
+//! [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
 extern crate log;
 extern crate tracing_core;
 extern crate tracing_subscriber;
