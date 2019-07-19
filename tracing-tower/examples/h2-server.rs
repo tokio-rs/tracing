@@ -1,8 +1,8 @@
 use bytes::{Bytes, IntoBuf};
 use futures::*;
 use http::Request;
-use tokio::net::TcpListener;
 use tokio::executor::DefaultExecutor;
+use tokio::net::TcpListener;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
 use tracing::Level;
@@ -107,7 +107,7 @@ fn main() {
     let server = lazy(|| {
         let executor = DefaultExecutor::current();
 
-        let new_svc = NewSvc.with_traced_requests(tracing_tower::http::trace_request);
+        let new_svc = NewSvc.with_traced_requests(tracing_tower::http::debug_request);
         let h2 = Server::new(new_svc, Default::default(), executor);
         tracing::info!("listening");
 
@@ -121,7 +121,10 @@ fn main() {
                     return Err(e);
                 }
 
-                let serve = h2.serve(sock).map_err(|error| tracing::error!(message = "h2 error", %error)).instrument(span.clone());
+                let serve = h2
+                    .serve(sock)
+                    .map_err(|error| tracing::error!(message = "h2 error", %error))
+                    .instrument(span.clone());
                 tokio::spawn(serve);
 
                 Ok(h2)
