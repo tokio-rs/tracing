@@ -41,9 +41,8 @@ stages:
          - template: azure/install-rust.yml@templates
            parameters:
             rust: nightly
+         # TODO: add back README doctest
          # https://github.com/tokio-rs/tracing/pull/191#issuecomment-513394436
-         #- script: cargo test --features=doctest-readme --all
-         #  displayName: "Test README as doctest"
          - bash: cd tracing-futures/test_std_future && cargo test
            displayName: "Test std::future support for tracing-futures"
  - stage: style
