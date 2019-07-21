@@ -1,3 +1,46 @@
+//! A filter based on a filter expression than can be read from an environment variable
+//!
+//! ## Filter syntax
+//!
+//! The filter is made of a list of directives. A directive is made of:
+//!
+//! * A level to use as filter (see [`LevelFilter`] for available levels)
+//! * An optional target to filter
+//! * An optional span to filter
+//! * An optional list of fields,
+//!
+//! It is represented by `target[span{key=value ...}]=level`
+//!
+//! A directive could hence be one of:
+//!
+//! * `info` with no filter, which makes it a global filter level
+//! * `target=info` to set info level for traces having a given target
+//! * `[span]=info` to set info level for traces in a given span
+//! * `[span{key}]=info` to set info level for traces having a given target having the
+//!   given key in their fields
+//! * `[span{key=value}]=info` to set info level for traces having a given target having
+//!   the given key with the given value in their fields
+//! * `[span{key1="value1" key2=value2}]=info` to set info level for traces having a
+//!   given target having the given key with the given value in their fields
+//!
+//! ## Filter definition
+//!
+//! By default, only errors are displayed (i.e. the default filter is `error`).
+//!
+//! The filter can be created from one of:
+//!
+//! * The `RUST_LOG` environment variable (like `env_logger` does), with `from_default_env`
+//! * Another environment variable with `from_env`
+//! * A string containing the filter with `new`
+//!
+//! There are `try_*` variants for each of these to get filter parsing errors, otherwise
+//! they are just ignored.
+//!
+//! To reload the filter at runtime, see [`reload`].
+//!
+//! [`LevelFilter`]: https://docs.rs/tracing/0.1.3/tracing/level_filters/struct.LevelFilter.html
+//! [`reload`]: ../reload/index.html
+
 use crate::{filter::Filter, span::Context};
 use regex::Regex;
 use tracing_core::{subscriber::Interest, Level, Metadata};

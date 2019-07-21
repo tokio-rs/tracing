@@ -1,3 +1,5 @@
+//! Reload filters in `FmtSubscriber`
+
 use crate::{filter::Filter, span::Context};
 use parking_lot::RwLock;
 use std::{

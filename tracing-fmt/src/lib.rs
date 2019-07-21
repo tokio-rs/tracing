@@ -1,3 +1,96 @@
+//! A `tracing` subscriber that formats and logs trace data
+//!
+//! This crates provides a configurable subscriber for tracing events,
+//! allowing to output formatted logs and provided other logging-oriented
+//! features, likes filter with live reloading.
+//!
+//! ## Subscriber setup
+//!
+//! You can setup the subscriber with:
+//!
+//! ```rust
+//! # use std::error::Error;
+//! use tracing_fmt::FmtSubscriber;
+//! use tracing::subscriber::set_global_default;
+//! use tracing::info;
+//!
+//! # fn main() -> Result<(), Box<Error>> {
+//! let my_subscriber = FmtSubscriber::builder().finish();
+//!
+//! set_global_default(my_subscriber)?;
+//!
+//! info!("an example trace log");
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! By default, it will display timestamps and use ansi terminal formatting.
+//! These options are configurable in the [`Builder`].
+//!
+//! ## Event formatting
+//!
+//! Two log formats are provided by default:
+//!
+//! * Full (used by default), which includes all fields in each event and its containing
+//! spans
+//! * Compact which includes only the fields from the most-recently-entered
+//!
+//! To use the `compact` format, use the [`compact`] method on the subscriber builder.
+//!
+//! You can write your own formatting by implementing [`FormatEvent`] and passing it
+//! when building `FmtSubscriber` with  [`on_event`].
+//!
+//! ## Filtering
+//!
+//! A filtering mechanism is provided by [`EnvFilter`], which
+//! allows filtering events to display by level, target, span
+//! field presence and field value, possibly based on an environment
+//! variable value. See `env` module for
+//! more information.
+//!
+//! For example:
+//!
+//! ```rust
+//! # use std::error::Error;
+//! use tracing_fmt::FmtSubscriber;
+//! use tracing_fmt::filter::env::EnvFilter;
+//!
+//! # fn main() -> Result<(), Box<Error>> {
+//! let filter = EnvFilter::new("info");
+//! let my_subscriber = FmtSubscriber::builder().with_filter(filter).finish();
+//! // Now all log equals or higher than info will be displayed
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! You can define your own filter by implementing [`Filter`].
+//!
+//! ## Filter reload
+//!
+//! The subscriber includes a filter reloading mechanism. You need to call the
+//! `with_filter_reloading` on the builder.
+//!
+//! ```rust
+//! # use std::error::Error;
+//! use tracing_fmt::FmtSubscriber;
+//!
+//! # fn main() -> Result<(), Box<Error>> {
+//! let my_subscriber = FmtSubscriber::builder().with_filter_reloading().finish();
+//! let reload_handle = my_subscriber.reload_handle();
+//!
+//! // You can now at, at any time, reload the filter configuration with:
+//! reload_handle.reload("error,[myspan]=info")?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! [`FormatEvent`]: trait.FormatEvent.html
+//! [`Builder`]: struct.Builder.html
+//! [`compact`]: struct.Builder.html#method.compact
+//! [`on_event`]: struct.Builder.html#method.on_event
+//! [`with_filter_reloading`]: struct.Builder.html#method.with_filter_reloading
+//! [`Filter`]: trait.Filter.html
+
 extern crate tracing_core;
 #[cfg(test)]
 #[macro_use]
