@@ -526,7 +526,7 @@ impl fmt::Display for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::default::NewRecorder;
+    use crate::format::NewRecorder;
     use crate::span::*;
     use tracing_core::field::FieldSet;
     use tracing_core::*;

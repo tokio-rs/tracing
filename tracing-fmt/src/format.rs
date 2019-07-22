@@ -1,3 +1,5 @@
+//! Default formatters for logs
+
 use crate::span;
 use crate::time::{self, FormatTime, SystemTime};
 use crate::FormatEvent;
