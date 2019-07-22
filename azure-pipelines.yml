@@ -1,6 +1,7 @@
 stages:
 # Blocked on https://github.com/crate-ci/azure-pipelines/pull/42
 # See also https://github.com/tokio-rs/tracing/pull/191#issuecomment-513872071
+# When we bring these back, add check as a dependency for the other stages
 # - stage: check
 #   displayName: Compilation check
 #   dependsOn: []
@@ -20,7 +21,8 @@ stages:
 #        rust: 1.34.0
  - stage: custom
    displayName: "Special tests"
-   dependsOn: check
+   # dependsOn: check
+   dependsOn: []
    jobs:
      - job: custom_stable
        pool:
@@ -49,7 +51,8 @@ stages:
            displayName: "Test std::future support for tracing-futures"
  - stage: style
    displayName: Style linting
-   dependsOn: check
+   # dependsOn: check
+   dependsOn: []
    jobs:
     - template: azure/rustfmt.yml@templates
       parameters:
@@ -66,7 +69,8 @@ stages:
         allow_fail: true
  - stage: test
    displayName: Test suite
-   dependsOn: check
+   # dependsOn: check
+   dependsOn: []
    jobs:
      - template: azure/tests.yml@templates
  - stage: coverage
