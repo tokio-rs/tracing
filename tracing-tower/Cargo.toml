@@ -4,8 +4,29 @@ version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 
+[features]
+default = ["tower-layer", "tower-util", "http"]
+
 [dependencies]
 tracing = "0.1"
 tracing-futures = { path = "../tracing-futures" }
 futures = "0.1"
 tower-service = "0.2"
+tower-layer = { version = "0.1", optional = true }
+tower-util = { version = "0.1", optional = true }
+http = { version = "0.1", optional = true }
+
+[dev-dependencies]
+bytes = "0.4"
+h2 = "=0.1.11"
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
+string = { git = "https://github.com/carllerche/string" }
+tokio = "0.1"
+tokio-current-thread = "0.1.1"
+tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
+tracing-subscriber = { path = "../tracing-subscriber" }
+tracing-fmt = { path = "../tracing-fmt" }
+tokio-io = "0.1"
+ansi_term = "0.11"
+humantime = "1.1.1"
+env_logger = "0.5"
