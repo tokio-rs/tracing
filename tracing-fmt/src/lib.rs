@@ -19,8 +19,8 @@ use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
 
-pub mod format;
 pub mod filter;
+pub mod format;
 mod span;
 pub mod time;
 
@@ -69,11 +69,8 @@ pub struct FmtSubscriber<
 }
 
 #[derive(Debug, Default)]
-pub struct Builder<
-    N = format::NewRecorder,
-    E = format::Format<format::Full>,
-    F = filter::EnvFilter,
-> {
+pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter>
+{
     new_visitor: N,
     fmt_event: E,
     filter: F,
