@@ -25,35 +25,8 @@ mod span;
 pub mod time;
 
 pub use crate::filter::Filter;
+pub use crate::format::FormatEvent;
 pub use crate::span::Context;
-
-/// A type that can format a tracing `Event` for a `fmt::Write`.
-///
-/// `FormatEvent` is primarily used in the context of [`FmtSubscriber`]. Each time an event is
-/// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
-/// emit a log message.
-///
-/// This trait is already implemented for function pointers with the same signature as `format`.
-pub trait FormatEvent<N> {
-    /// Write a log message for `Event` in `Context` to the given `Write`.
-    fn format_event(
-        &self,
-        ctx: &span::Context<N>,
-        writer: &mut dyn fmt::Write,
-        event: &Event,
-    ) -> fmt::Result;
-}
-
-impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result {
-    fn format_event(
-        &self,
-        ctx: &span::Context<N>,
-        writer: &mut dyn fmt::Write,
-        event: &Event,
-    ) -> fmt::Result {
-        (*self)(ctx, writer, event)
-    }
-}
 
 #[derive(Debug)]
 pub struct FmtSubscriber<
@@ -280,7 +253,7 @@ where
         }
     }
 
-    /// Use the given `timer` for log message timestamps.
+    /// Do not emit timestamps with log messages.
     pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F> {
         Builder {
             new_visitor: self.new_visitor,
