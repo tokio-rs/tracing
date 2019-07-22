@@ -2,7 +2,6 @@
 
 use crate::span;
 use crate::time::{self, FormatTime, SystemTime};
-use crate::FormatEvent;
 
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
@@ -13,6 +12,34 @@ use tracing_core::{
 
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
+
+/// A type that can format a tracing `Event` for a `fmt::Write`.
+///
+/// `FormatEvent` is primarily used in the context of [`FmtSubscriber`]. Each time an event is
+/// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
+/// emit a log message.
+///
+/// This trait is already implemented for function pointers with the same signature as `format`.
+pub trait FormatEvent<N> {
+    /// Write a log message for `Event` in `Context` to the given `Write`.
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut dyn fmt::Write,
+        event: &Event,
+    ) -> fmt::Result;
+}
+
+impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result {
+    fn format_event(
+        &self,
+        ctx: &span::Context<N>,
+        writer: &mut dyn fmt::Write,
+        event: &Event,
+    ) -> fmt::Result {
+        (*self)(ctx, writer, event)
+    }
+}
 
 /// Marker for `Format` that indicates that the compact log format should be used.
 ///
