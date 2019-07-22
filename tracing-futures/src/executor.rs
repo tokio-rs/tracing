@@ -5,7 +5,7 @@ use futures::{
     Future,
 };
 #[cfg(feature = "futures-01")]
-use tokio::executor::{Executor as TokioExecutor, SpawnError};
+use tokio::executor::{Executor as TokioExecutor, SpawnError, TypedExecutor};
 use tokio::runtime::{current_thread, Runtime, TaskExecutor};
 
 #[cfg(feature = "futures-01")]
@@ -43,6 +43,20 @@ where
         // TODO: get rid of double box somehow?
         let future = Box::new(future.instrument(self.span.clone()));
         self.inner.spawn(future)
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl<T, F> TypedExecutor<F> for Instrumented<T>
+where
+    T: TypedExecutor<Instrumented<F>>,
+{
+    fn spawn(&mut self, future: F) -> Result<(), SpawnError> {
+        self.inner.spawn(future.instrument(self.span.clone()))
+    }
+
+    fn status(&self) -> Result<(), SpawnError> {
+        self.inner.status()
     }
 }
 
@@ -193,6 +207,20 @@ where
         // TODO: get rid of double box?
         let future = Box::new(self.with_dispatch(future));
         self.inner.spawn(future)
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl<T, F> TypedExecutor<F> for WithDispatch<T>
+where
+    T: TypedExecutor<WithDispatch<F>>,
+{
+    fn spawn(&mut self, future: F) -> Result<(), SpawnError> {
+        self.inner.spawn(self.with_dispatch(future))
+    }
+
+    fn status(&self) -> Result<(), SpawnError> {
+        self.inner.status()
     }
 }
 
