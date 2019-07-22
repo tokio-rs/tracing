@@ -19,7 +19,7 @@ use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
 
-pub mod default;
+pub mod format;
 pub mod filter;
 mod span;
 pub mod time;
@@ -57,8 +57,8 @@ impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut dyn fmt::Write, &Event) ->
 
 #[derive(Debug)]
 pub struct FmtSubscriber<
-    N = default::NewRecorder,
-    E = default::Format<default::Full>,
+    N = format::NewRecorder,
+    E = format::Format<format::Full>,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -70,8 +70,8 @@ pub struct FmtSubscriber<
 
 #[derive(Debug, Default)]
 pub struct Builder<
-    N = default::NewRecorder,
-    E = default::Format<default::Full>,
+    N = format::NewRecorder,
+    E = format::Format<format::Full>,
     F = filter::EnvFilter,
 > {
     new_visitor: N,
@@ -244,8 +244,8 @@ impl Default for Builder {
     fn default() -> Self {
         Builder {
             filter: filter::EnvFilter::from_default_env(),
-            new_visitor: default::NewRecorder,
-            fmt_event: default::Format::default(),
+            new_visitor: format::NewRecorder,
+            fmt_event: format::Format::default(),
             settings: Settings::default(),
         }
     }
@@ -268,13 +268,13 @@ where
     }
 }
 
-impl<N, L, T, F> Builder<N, default::Format<L, T>, F>
+impl<N, L, T, F> Builder<N, format::Format<L, T>, F>
 where
     N: for<'a> NewVisitor<'a> + 'static,
     F: Filter<N> + 'static,
 {
     /// Use the given `timer` for log message timestamps.
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, default::Format<L, T2>, F> {
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event.with_timer(timer),
@@ -284,7 +284,7 @@ where
     }
 
     /// Use the given `timer` for log message timestamps.
-    pub fn without_time(self) -> Builder<N, default::Format<L, ()>, F> {
+    pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event.without_time(),
@@ -295,7 +295,7 @@ where
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
-    pub fn with_ansi(self, ansi: bool) -> Builder<N, default::Format<L, T>, F> {
+    pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<L, T>, F> {
         Builder {
             fmt_event: self.fmt_event.with_ansi(ansi),
             ..self
@@ -361,13 +361,13 @@ impl<N, E, F> Builder<N, E, F> {
 
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
-    /// See [`default::Compact`].
-    pub fn compact(self) -> Builder<N, default::Format<default::Compact>, F>
+    /// See [`format::Compact`].
+    pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
         Builder {
-            fmt_event: default::Format::default().compact(),
+            fmt_event: format::Format::default().compact(),
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,
@@ -405,15 +405,15 @@ mod test {
 
     #[test]
     fn impls() {
-        let f = default::Format::default().with_timer(time::Uptime::default());
+        let f = format::Format::default().with_timer(time::Uptime::default());
         let subscriber = FmtSubscriber::builder().on_event(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
-        let f = default::Format::default();
+        let f = format::Format::default();
         let subscriber = FmtSubscriber::builder().on_event(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
-        let f = default::Format::default().compact();
+        let f = format::Format::default().compact();
         let subscriber = FmtSubscriber::builder().on_event(f).finish();
         let _dispatch = Dispatch::new(subscriber);
     }
@@ -429,8 +429,8 @@ mod test {
     fn subscriber_downcasts_to_parts() {
         let subscriber = FmtSubscriber::new();
         let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<default::NewRecorder>().is_some());
+        assert!(dispatch.downcast_ref::<format::NewRecorder>().is_some());
         assert!(dispatch.downcast_ref::<filter::EnvFilter>().is_some());
-        assert!(dispatch.downcast_ref::<default::Format>().is_some())
+        assert!(dispatch.downcast_ref::<format::Format>().is_some())
     }
 }
