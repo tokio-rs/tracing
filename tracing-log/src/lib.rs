@@ -76,6 +76,9 @@ use tracing_core::{
     Event, Metadata,
 };
 
+pub mod log_tracer;
+pub use self::log_tracer::LogTracer;
+
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
     let filter_meta = record.as_trace();
@@ -121,6 +124,16 @@ pub trait AsLog {
 pub trait AsTrace {
     type Trace;
     fn as_trace(&self) -> Self::Trace;
+}
+
+impl<'a> AsLog for Metadata<'a> {
+    type Log = log::Metadata<'a>;
+    fn as_log(&self) -> Self::Log {
+        log::Metadata::builder()
+            .level(self.level().as_log())
+            .target(self.target())
+            .build()
+    }
 }
 
 struct Fields {
@@ -193,15 +206,6 @@ lazy_static! {
         log_cs!(tracing_core::Level::ERROR);
 }
 
-impl<'a> AsLog for Metadata<'a> {
-    type Log = log::Metadata<'a>;
-    fn as_log(&self) -> Self::Log {
-        log::Metadata::builder()
-            .level(self.level().as_log())
-            .target(self.target())
-            .build()
-    }
-}
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
@@ -251,20 +255,6 @@ impl AsTrace for log::Level {
     }
 }
 
-/// A simple "logger" that converts all log records into `tracing` `Event`s.
-///
-/// Can be initialized with:
-///
-/// * [`init`] if you want to convert all logs and do the filtering in a subscriber
-/// * [`init_with_filter`] if you know in advance a log level you want to filter
-///
-/// [`init`]: ../fn.init.html
-/// [`init_with_filter`]: ../fn.init_with_filter.html
-#[derive(Debug)]
-pub struct LogTracer {
-    _p: (),
-}
-
 /// A `tracing_subscriber::Observe` implementation that logs all recorded
 /// trace events.
 pub struct TraceLogger {
@@ -281,110 +271,6 @@ pub struct TraceLoggerBuilder {
     log_ids: bool,
     parent_fields: bool,
     log_parent: bool,
-}
-
-// ===== impl LogTracer =====
-
-// Static logger for `LogTrace`
-static LOGGER: LogTracer = LogTracer { _p: () };
-
-impl LogTracer {
-    /// Creates a new `LogTracer` that can then be used as a logger for the `log` crate.
-    ///
-    /// It is generally simpler to use the [`init`] or [`init_with_filter`] methods
-    /// which will create the `LogTracer` and set it as the global logger.
-    ///
-    /// Logger setup without the initialization methods can be done with:
-    ///
-    /// ```rust
-    /// # use std::error::Error;
-    /// use tracing_log::LogTracer;
-    /// use log;
-    ///
-    /// # fn main() -> Result<(), Box<Error>> {
-    /// let logger = LogTracer::new();
-    /// log::set_boxed_logger(Box::new(logger))?;
-    /// log::set_max_level(log::LevelFilter::Trace);
-    ///
-    /// // will be available for Subscribers as a tracing Event
-    /// log::trace!("an example trace log");
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// [`init`]: #method.init
-    /// [`init_with_filter`]: .#method.init_with_filter
-    pub fn new() -> Self {
-        Self { _p: () }
-    }
-
-    /// Sets up `LogTracer` as global logger for the `log` crate,
-    /// with the given level as max level filter.
-    ///
-    /// Setting a global logger can only be done once.
-    pub fn init_with_filter(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
-        log::set_logger(&LOGGER)?;
-        log::set_max_level(level);
-        Ok(())
-    }
-
-    /// Sets a `LogTracer` as the global logger for the `log` crate.
-    ///
-    /// Setting a global logger can only be done once.
-    ///
-    /// ```rust
-    /// # use std::error::Error;
-    /// use tracing_log::LogTracer;
-    /// use log;
-    ///
-    /// # fn main() -> Result<(), Box<Error>> {
-    /// LogTracer::init()?;
-    ///
-    /// // will be available for Subscribers as a tracing Event
-    /// log::trace!("an example trace log");
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// This will forward all logs to `tracing` and lets the current `Subscriber`
-    /// determine if they are enabled. If you know in advance you want to filter some log levels,
-    /// use [`init_with_filter`] instead.
-    ///
-    /// [`init_with_filter`]: #method.init_with_filter
-    pub fn init() -> Result<(), log::SetLoggerError> {
-        Self::init_with_filter(log::LevelFilter::Trace)
-    }
-}
-
-impl Default for LogTracer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl log::Log for LogTracer {
-    fn enabled(&self, _metadata: &log::Metadata) -> bool {
-        // Use log::set_max_level to filter LogTracing's input
-        true
-    }
-
-    fn log(&self, record: &log::Record) {
-        let enabled = dispatcher::get_default(|dispatch| {
-            // TODO: can we cache this for each log record, so we can get
-            // similar to the callsite cache?
-            dispatch.enabled(&record.as_trace())
-        });
-
-        if enabled {
-            // TODO: if the record is enabled, we'll get the current dispatcher
-            // twice --- once to check if enabled, and again to dispatch the event.
-            // If we could construct events without dispatching them, we could
-            // re-use the dispatcher reference...
-            format_trace(record).unwrap();
-        }
-    }
-
-    fn flush(&self) {}
 }
 
 // ===== impl TraceLogger =====
