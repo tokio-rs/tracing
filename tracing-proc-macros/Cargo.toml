@@ -17,3 +17,7 @@ tracing-fmt = { path = "../tracing-fmt" }
 env_logger = "0.5"
 ansi_term = "0.11"
 humantime = "1.1.1"
+
+[badges]
+azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
+maintenance = { status = "experimental" }
