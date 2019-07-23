@@ -75,7 +75,9 @@ impl LogTracer {
     /// [`init`]: #method.init
     /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
-        Self { ignore_crates: Vec::new().into_boxed_slice() }
+        Self {
+            ignore_crates: Vec::new().into_boxed_slice(),
+        }
     }
 
     /// Sets up `LogTracer` as global logger for the `log` crate,
@@ -140,7 +142,10 @@ impl log::Log for LogTracer {
         // If we are ignoring certain module paths, ensure that the metadata
         // does not start with one of those paths.
         let target = metadata.target();
-        !self.ignore_crates.iter().any(|ignored| target.starts_with(ignored))
+        !self
+            .ignore_crates
+            .iter()
+            .any(|ignored| target.starts_with(ignored))
     }
 
     fn log(&self, record: &log::Record) {

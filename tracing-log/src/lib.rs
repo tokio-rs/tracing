@@ -63,14 +63,13 @@ use tracing_core::{
     callsite::{self, Callsite},
     dispatcher, field, identify_callsite,
     metadata::Kind,
-    subscriber,
-    Event, Metadata,
+    subscriber, Event, Metadata,
 };
 
 pub mod log_tracer;
 pub use self::log_tracer::LogTracer;
 pub mod trace_logger;
-pub use self::trace_logger::{TraceLogger, Builder as TraceLoggerBuilder};
+pub use self::trace_logger::{Builder as TraceLoggerBuilder, TraceLogger};
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
