@@ -3,12 +3,15 @@
 Application-level tracing for Rust.
 
 [![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
 [![Gitter chat][gitter-badge]][gitter-url]
 
-[crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
-[crates-url]: https://crates.io/crates/tracing-core
+[crates-badge]: https://img.shields.io/crates/v/tracing.svg
+[crates-url]: https://crates.io/crates/tracing
+[docs-badge]: https://docs.rs/tracing/badge.svg
+[docs-url]: https://docs.rs/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
