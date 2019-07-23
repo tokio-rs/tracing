@@ -19,3 +19,4 @@ tokio = "0.1.22"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
+maintenance = { status = "experimental" }

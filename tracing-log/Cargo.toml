@@ -12,3 +12,4 @@ lazy_static = "1.3.0"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
+maintenance = { status = "experimental" }
