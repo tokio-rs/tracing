@@ -20,3 +20,6 @@ tokio-executor = { version = "0.1", optional = true }
 tokio = "0.1.22"
 tracing-fmt = { path = "../tracing-fmt" }
 tracing-core = "0.1.2"
+
+[badges]
+azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
