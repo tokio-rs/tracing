@@ -80,25 +80,6 @@ impl<T: Default> Local<T> {
 
 unsafe impl<T> Sync for Local<T> {}
 
-impl<T> Deref for Local<T>
-where
-    T: Default,
-{
-    type Target = T;
-    fn deref(&self) -> &T {
-        self.get().deref()
-    }
-}
-
-impl<T> DerefMut for Local<T>
-where
-    T: Default,
-{
-    fn deref_mut(&mut self) -> &mut T {
-        self.get().deref_mut()
-    }
-}
-
 // === impl LocalGuard ===
 
 impl<'a, T> Deref for LocalGuard<'a, T> {

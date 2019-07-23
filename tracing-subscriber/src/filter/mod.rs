@@ -10,7 +10,7 @@ use crossbeam_utils::sync::ShardedLock;
 use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
 use tracing_core::{
     callsite,
-    field::{Field, FieldMap},
+    field::Field,
     span,
     subscriber::{Interest, Subscriber},
     Event, Level, Metadata,
@@ -36,6 +36,8 @@ pub struct Directive {
     fields: Vec<field::Match>,
     level: LevelFilter,
 }
+
+type FieldMap<T> = HashMap<Field, T>;
 
 #[derive(Debug, PartialEq, Eq, Ord)]
 struct StaticDirective {
@@ -76,7 +78,7 @@ impl<S: Subscriber> Layer<S> for Filter {
 
     fn enabled(&self, metadata: &Metadata, _: Context<S>) -> bool {
         let level = metadata.level();
-        for filter in self.scope.iter() {
+        for filter in self.scope.get().iter() {
             if filter >= level {
                 return true;
             }

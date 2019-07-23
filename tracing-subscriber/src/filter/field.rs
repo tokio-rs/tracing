@@ -1,13 +1,13 @@
 use matchers::Pattern;
 use std::{
-    collections::HashMap,
     error::Error,
     fmt,
     str::FromStr,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, Ordering},
 };
-use super::LevelFilter;
-use tracing_core::field::{Field, FieldMap, Visit};
+
+use super::{FieldMap, LevelFilter};
+use tracing_core::field::{Field, Visit};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Match {
@@ -23,9 +23,8 @@ pub struct SpanMatch {
 }
 
 pub struct MatchVisitor<'a> {
-    inner: &'a SpanMatch
+    inner: &'a SpanMatch,
 }
-
 
 #[derive(Debug)]
 pub(crate) enum ValueMatch {
@@ -103,9 +102,7 @@ impl fmt::Display for BadName {
 
 impl SpanMatch {
     pub fn visitor<'a>(&'a self) -> MatchVisitor<'a> {
-        MatchVisitor {
-            inner: self,
-        }
+        MatchVisitor { inner: self }
     }
 
     pub fn is_matched(&self) -> bool {
@@ -116,7 +113,10 @@ impl SpanMatch {
     }
 
     fn is_matched_slow(&self) -> bool {
-        let matched = self.fields.values().all(|state| state.matched.load(Ordering::Acquire));
+        let matched = self
+            .fields
+            .values()
+            .all(|(_, matched)| matched.load(Ordering::Acquire));
         if matched {
             self.has_matched.store(true, Ordering::Release);
         }
@@ -134,20 +134,22 @@ impl SpanMatch {
 
 impl<'a> Visit for MatchVisitor<'a> {
     fn record_i64(&mut self, field: &Field, value: i64) {
+        use std::convert::TryInto;
+
         match self.inner.fields.get(field) {
-            Some((ValueMatch::I64(ref e), ref matched)) if value == e => {
+            Some((ValueMatch::I64(ref e), ref matched)) if value == *e => {
                 matched.store(true, Ordering::Release);
             }
-            Some((ValueMatch::U64(ref e), ref matched)) if value as i64 == e =>{
+            Some((ValueMatch::U64(ref e), ref matched)) if Ok(value) == (*e).try_into() => {
                 matched.store(true, Ordering::Release);
-            },
+            }
             _ => {}
         }
     }
 
     fn record_u64(&mut self, field: &Field, value: u64) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::U64(ref e), ref matched)) if value == e => {
+            Some((ValueMatch::U64(ref e), ref matched)) if value == *e => {
                 matched.store(true, Ordering::Release);
             }
             _ => {}
@@ -156,7 +158,7 @@ impl<'a> Visit for MatchVisitor<'a> {
 
     fn record_bool(&mut self, field: &Field, value: bool) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::Bool(ref e), ref matched)) if value == e => {
+            Some((ValueMatch::Bool(ref e), ref matched)) if value == *e => {
                 matched.store(true, Ordering::Release);
             }
             _ => {}
@@ -173,7 +175,7 @@ impl<'a> Visit for MatchVisitor<'a> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-         match self.inner.fields.get(field) {
+        match self.inner.fields.get(field) {
             Some((ValueMatch::Pat(ref e), ref matched)) if e.debug_matches(&value) => {
                 matched.store(true, Ordering::Release);
             }
