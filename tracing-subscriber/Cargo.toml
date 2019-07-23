@@ -10,3 +10,6 @@ tracing-core = "0.1.2"
 [dev-dependencies]
 tracing-log = { path = "../tracing-log" }
 tracing = "0.1"
+
+[badges]
+azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }

@@ -9,3 +9,6 @@ tracing-core = "0.1.2"
 tracing-subscriber = { path = "../tracing-subscriber" }
 log = "0.4"
 lazy_static = "1.3.0"
+
+[badges]
+azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
