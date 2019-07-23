@@ -183,7 +183,6 @@ pub mod make {
 
     impl<M, T, R, G> MakeService<M, T, R, G>
     where
-        M: tower_util::MakeService<T, R>,
         G: GetSpan<T>,
     {
         pub fn new(inner: M, get_span: G) -> Self {
@@ -192,6 +191,16 @@ pub mod make {
                 inner,
                 _p: PhantomData,
             }
+        }
+    }
+
+    impl<M, T, R, G> Clone for MakeService<M, T, R, G>
+    where
+        M: Clone,
+        G: GetSpan<T> + Clone,
+    {
+        fn clone(&self) -> Self {
+            Self::new(self.inner.clone(), self.get_span.clone())
         }
     }
 }
