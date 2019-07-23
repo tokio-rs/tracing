@@ -27,7 +27,6 @@ keywords = ["logging", "tracing"]
 edition = "2018"
 
 [badges]
-travis-ci = { repository = "tokio-rs/tracing", branch = "master" }
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "actively-developed" }
 

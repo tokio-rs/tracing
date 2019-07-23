@@ -63,5 +63,4 @@ harness = false
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
-travis-ci = { repository = "tokio-rs/tracing", branch = "master" }
 maintenance = { status = "actively-developed" }
