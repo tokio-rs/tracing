@@ -9,13 +9,13 @@ use crate::{
     thread,
 };
 use crossbeam_utils::sync::ShardedLock;
-use std::{cmp::Ordering, collections::HashMap, iter::FromIterator};
+use std::collections::HashMap;
 use tracing_core::{
     callsite,
     field::Field,
     span,
     subscriber::{Interest, Subscriber},
-    Event, Level, Metadata,
+    Metadata,
 };
 
 pub struct Filter {
