@@ -441,10 +441,10 @@ impl PartialOrd for StaticDirective {
         //     _ => {}
         // }
 
-        match (self.field_names.len(), other.field_names.len()) {
-            (a, b) if a == b => {}
-            (a, b) => return Some(a.cmp(&b)),
-        }
+        // match (self.field_names.len(), other.field_names.len()) {
+        //     (a, b) if a == b => {}
+        //     (a, b) => return Some(a.cmp(&b)),
+        // }
 
         match (self.target.as_ref(), other.target.as_ref()) {
             (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
