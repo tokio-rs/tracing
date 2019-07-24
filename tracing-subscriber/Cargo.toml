@@ -4,14 +4,20 @@ version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 
+[features]
+default = ["filter", "smallvec"]
+filter = ["matchers", "regex", "lazy_static"]
+
 [dependencies]
 tracing-core = "0.1.2"
-matchers = { git = "https://github.com/hawkw/matchers.git" }
-regex = "1"
-lazy_static = "1"
-smallvec = "0.6"
 crossbeam-utils = "0.6"
-indexmap = "1"
+
+# only required by the filter feature
+matchers = { optional = true, git = "https://github.com/hawkw/matchers.git" }
+regex = { optional = true, version = "1" }
+smallvec = { optional = true, version = "0.6.10"}
+lazy_static = { optional = true, version = "1" }
+
 
 [dev-dependencies]
 tracing-fmt = { path = "../tracing-fmt" }

@@ -15,6 +15,7 @@ macro_rules! try_lock {
     };
 }
 
+#[cfg(feature = "filter")]
 pub mod filter;
 pub mod layer;
 pub mod prelude;
