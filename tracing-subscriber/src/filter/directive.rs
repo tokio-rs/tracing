@@ -2,6 +2,7 @@ use super::{
     field,
     level::{self, LevelFilter},
     FieldMap,
+    FilterVec,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -14,17 +15,13 @@ use tracing_core::{span, Metadata};
 pub struct Directive {
     target: Option<String>,
     in_span: Option<String>,
-    // TODO: this can probably be a `SmallVec` someday, since a span won't have
-    // over 32 fields.
-    fields: Vec<field::Match>,
+    fields: FilterVec<field::Match>,
     level: LevelFilter,
 }
 
 #[derive(Debug, PartialEq, Eq, Ord)]
 pub(super) struct StaticDirective {
     target: Option<String>,
-    // in_span: Option<String>,
-    field_names: Vec<String>,
     level: LevelFilter,
 }
 
@@ -46,7 +43,7 @@ pub type SpanMatch = DynamicMatch<field::SpanMatch>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DynamicMatch<T> {
-    field_matches: Vec<T>,
+    field_matches: FilterVec<T>,
     base_level: LevelFilter,
 }
 
@@ -75,17 +72,17 @@ impl Directive {
         if self.is_dynamic() {
             return Err(self);
         }
-        let field_names = self
-            .fields
-            .into_iter()
-            .map(|f| {
-                debug_assert!(f.value.is_none());
-                f.name
-            })
-            .collect();
+        // let field_names = self
+        //     .fields
+        //     .into_iter()
+        //     .map(|f| {
+        //         debug_assert!(f.value.is_none());
+        //         f.name
+        //     })
+        //     .collect();
         Ok(StaticDirective {
             target: self.target,
-            field_names,
+            // field_names,
             level: self.level,
         })
     }
@@ -214,12 +211,12 @@ impl FromStr for Directive {
                         FIELD_FILTER_RE
                             .find_iter(c.as_str())
                             .map(|c| c.as_str().parse())
-                            .collect::<Result<Vec<_>, _>>()
+                            .collect::<Result<FilterVec<_>, _>>()
                     })
-                    .unwrap_or_else(|| Ok(Vec::new()));
+                    .unwrap_or_else(|| Ok(FilterVec::new()));
                 Some((span, fields))
             })
-            .unwrap_or_else(|| (None, Ok(Vec::new())));
+            .unwrap_or_else(|| (None, Ok(FilterVec::new())));
 
         let level = caps
             .name("level")
@@ -241,7 +238,7 @@ impl Default for Directive {
             level: LevelFilter::OFF,
             target: None,
             in_span: None,
-            fields: Vec::new(),
+            fields: FilterVec::new(),
         }
     }
 }
@@ -476,12 +473,12 @@ impl StaticDirective {
             }
         }
 
-        let fields = meta.fields();
-        for field in &self.field_names {
-            if !fields.field(field).is_some() {
-                return false;
-            }
-        }
+        // let fields = meta.fields();
+        // for field in &self.field_names {
+        //     if !fields.field(field).is_some() {
+        //         return false;
+        //     }
+        // }
 
         true
     }
@@ -491,7 +488,7 @@ impl Default for StaticDirective {
     fn default() -> Self {
         StaticDirective {
             target: None,
-            field_names: Vec::new(),
+            // field_names: FilterVec::new(),
             level: LevelFilter::ERROR,
         }
     }
