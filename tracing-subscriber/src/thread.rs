@@ -67,7 +67,7 @@ impl<T> Local<T> {
     fn new_thread<'a>(&'a self, i: usize, new: impl FnOnce() -> T) {
         let mut lock = self.inner.write().unwrap();
         let this = &mut *lock;
-        this.resize_with(i, || None);
+        this.resize_with(i + 1, || None);
         this[i] = Some(UnsafeCell::new(new()));
     }
 }
