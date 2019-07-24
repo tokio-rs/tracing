@@ -2,6 +2,7 @@ pub mod field;
 pub mod level;
 pub use self::level::LevelFilter;
 mod directive;
+use self::directive::Directive;
 pub use self::directive::ParseError;
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     thread,
 };
 use crossbeam_utils::sync::ShardedLock;
-use std::collections::HashMap;
+use std::{collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
     field::Field,
@@ -29,24 +30,88 @@ pub struct Filter {
     by_cs: ShardedLock<HashMap<callsite::Identifier, directive::CallsiteMatch>>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct Directive {
-    target: Option<String>,
-    in_span: Option<String>,
-    // TODO: this can probably be a `SmallVec` someday, since a span won't have
-    // over 32 fields.
-    fields: Vec<field::Match>,
-    level: LevelFilter,
-}
-
 type FieldMap<T> = HashMap<Field, T>;
 
-// enum MatchResult {
-//     Static(Interest),
-//     Dynamic(SpanMatch),
-// }
+#[derive(Debug)]
+pub struct FromEnvError {
+    kind: ErrorKind,
+}
+
+#[derive(Debug)]
+enum ErrorKind {
+    Parse(ParseError),
+    Env(env::VarError),
+}
 
 impl Filter {
+    pub const DEFAULT_ENV: &'static str = "RUST_LOG";
+
+    /// Returns a new `Filter` from the value of the `RUST_LOG` environment
+    /// variable, ignoring any invalid filter directives.
+    pub fn from_default_env() -> Self {
+        Self::from_env(Self::DEFAULT_ENV)
+    }
+
+    /// Returns a new `Filter` from the value of the given environment
+    /// variable, ignoring any invalid filter directives.
+    pub fn from_env<A: AsRef<str>>(env: A) -> Self {
+        env::var(env.as_ref()).map(Self::new).unwrap_or_default()
+    }
+
+    /// Returns a new `Filter` from the directives in the given string,
+    /// ignoring any that are invalid.
+    pub fn new<S: AsRef<str>>(dirs: S) -> Self {
+        let directives = dirs.as_ref().split(',').filter_map(|s| match s.parse() {
+            Ok(d) => Some(d),
+            Err(err) => {
+                eprintln!("ignoring `{}`: {}", s, err);
+                None
+            }
+        });
+        Self::from_directives(directives)
+    }
+
+    /// Returns a new `Filter` from the directives in the given string,
+    /// or an error if any are invalid.
+    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
+        let directives = dirs
+            .as_ref()
+            .split(',')
+            .map(|s| s.parse())
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self::from_directives(directives))
+    }
+
+    /// Returns a new `Filter` from the value of the `RUST_LOG` environment
+    /// variable, or an error if the environment variable contains any invalid
+    /// filter directives.
+    pub fn try_from_default_env() -> Result<Self, FromEnvError> {
+        Self::try_from_env(Self::DEFAULT_ENV)
+    }
+
+    /// Returns a new `Filter` from the value of the given environment
+    /// variable, or an error if the environment variable is unset or contains
+    /// any invalid filter directives.
+    pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
+        env::var(env.as_ref())?.parse().map_err(Into::into)
+    }
+
+    fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
+        let (dynamics, mut statics) = Directive::make_tables(directives);
+
+        if statics.is_empty() {
+            statics.add(directive::StaticDirective::default());
+        }
+
+        Self {
+            scope: thread::Local::new(),
+            statics,
+            dynamics,
+            by_id: ShardedLock::new(HashMap::new()),
+            by_cs: ShardedLock::new(HashMap::new()),
+        }
+    }
+
     fn cares_about_span(&self, span: &span::Id) -> bool {
         let spans = try_lock!(self.by_id.read(), else return false);
         spans.contains_key(span)
@@ -124,5 +189,62 @@ impl<S: Subscriber> Layer<S> for Filter {
 
         let mut spans = try_lock!(self.by_id.write());
         spans.remove(&id);
+    }
+}
+
+impl FromStr for Filter {
+    type Err = ParseError;
+
+    fn from_str(spec: &str) -> Result<Self, Self::Err> {
+        Self::try_new(spec)
+    }
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Self::from_directives(std::iter::empty())
+    }
+}
+
+// ===== impl FromEnvError =====
+
+impl From<ParseError> for FromEnvError {
+    fn from(p: ParseError) -> Self {
+        Self {
+            kind: ErrorKind::Parse(p),
+        }
+    }
+}
+
+impl From<env::VarError> for FromEnvError {
+    fn from(v: env::VarError) -> Self {
+        Self {
+            kind: ErrorKind::Env(v),
+        }
+    }
+}
+
+impl fmt::Display for FromEnvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.kind {
+            ErrorKind::Parse(ref p) => p.fmt(f),
+            ErrorKind::Env(ref e) => e.fmt(f),
+        }
+    }
+}
+
+impl Error for FromEnvError {
+    fn description(&self) -> &str {
+        match self.kind {
+            ErrorKind::Parse(ref p) => p.description(),
+            ErrorKind::Env(ref e) => e.description(),
+        }
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self.kind {
+            ErrorKind::Parse(ref p) => Some(p),
+            ErrorKind::Env(ref e) => Some(e),
+        }
     }
 }

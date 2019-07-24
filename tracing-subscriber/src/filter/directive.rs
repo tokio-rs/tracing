@@ -391,6 +391,17 @@ impl Statics {
             .rev()
             .filter(move |d| d.cares_about(metadata))
     }
+
+    pub(super) fn is_empty(&self) -> bool {
+        self.directives.is_empty()
+    }
+
+    pub(super) fn add(&mut self, directive: StaticDirective) {
+        if directive.level > self.max_level {
+            self.max_level = directive.level.clone();
+        }
+        self.directives.insert(directive);
+    }
 }
 
 impl Default for Statics {
@@ -473,6 +484,16 @@ impl StaticDirective {
         }
 
         true
+    }
+}
+
+impl Default for StaticDirective {
+    fn default() -> Self {
+        StaticDirective {
+            target: None,
+            field_names: Vec::new(),
+            level: LevelFilter::ERROR,
+        }
     }
 }
 
