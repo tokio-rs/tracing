@@ -99,7 +99,7 @@ impl Filter {
     fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
         let (dynamics, mut statics) = Directive::make_tables(directives);
 
-        if statics.is_empty() {
+        if statics.is_empty() && dynamics.is_empty() {
             statics.add(directive::StaticDirective::default());
         }
 
