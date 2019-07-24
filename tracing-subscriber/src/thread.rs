@@ -80,10 +80,29 @@ impl<T: Default> Local<T> {
 
 unsafe impl<T> Sync for Local<T> {}
 
+impl<T: fmt::Debug> fmt::Debug for Local<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let id = Id::current();
+        match self.get2(id.as_usize()) {
+            Some(local) => f
+                .debug_struct("Local")
+                .field("thread", &id)
+                .field("local", &*local)
+                .finish(),
+            None => f
+                .debug_struct("Local")
+                .field("thread", &id)
+                .field("local", &format_args!("<uninitialized>"))
+                .finish(),
+        }
+    }
+}
+
 // === impl LocalGuard ===
 
 impl<'a, T> Deref for LocalGuard<'a, T> {
     type Target = T;
+    #[inline]
     fn deref(&self) -> &T {
         unsafe {
             // this is safe, as the `Local` only allows access to each slot
@@ -94,12 +113,25 @@ impl<'a, T> Deref for LocalGuard<'a, T> {
 }
 
 impl<'a, T> DerefMut for LocalGuard<'a, T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         unsafe {
             // this is safe, as the `Local` only allows access to each slot
             // from a single thread.
             &mut *self.inner
         }
+    }
+}
+
+impl<'a, T: fmt::Debug> fmt::Debug for LocalGuard<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.deref().fmt(f)
+    }
+}
+
+impl<'a, T: fmt::Display> fmt::Display for LocalGuard<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.deref().fmt(f)
     }
 }
 
