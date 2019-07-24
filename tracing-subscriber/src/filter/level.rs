@@ -11,7 +11,7 @@ enum Inner {
 }
 
 #[derive(Clone, Debug)]
-pub struct ParseError(String);
+pub struct ParseError(());
 
 // === impl LevelFilter ===
 
@@ -85,7 +85,7 @@ impl FromStr for LevelFilter {
                 3 => Some(LevelFilter::INFO),
                 4 => Some(LevelFilter::DEBUG),
                 5 => Some(LevelFilter::TRACE),
-                s => None,
+                _ => None,
             })
             .or_else(|| match from {
                 "" => Some(LevelFilter::ERROR),
@@ -97,7 +97,7 @@ impl FromStr for LevelFilter {
                 s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
                 _ => None,
             })
-            .ok_or_else(|| ParseError(from.to_string()))
+            .ok_or_else(|| ParseError(()))
     }
 }
 
@@ -129,7 +129,7 @@ impl From<Level> for LevelFilter {
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid level `{}`", self.0)
+        write!(f, "invalid level`")
     }
 }
 

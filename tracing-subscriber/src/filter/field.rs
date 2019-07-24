@@ -15,6 +15,12 @@ pub struct Match {
     pub(crate) value: Option<ValueMatch>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct CallsiteMatch {
+    pub(crate) fields: FieldMap<ValueMatch>,
+    pub(crate) level: LevelFilter,
+}
+
 #[derive(Debug)]
 pub struct SpanMatch {
     fields: FieldMap<(ValueMatch, AtomicBool)>,
@@ -26,7 +32,7 @@ pub struct MatchVisitor<'a> {
     inner: &'a SpanMatch,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum ValueMatch {
     Bool(bool),
     U64(u64),
@@ -35,7 +41,7 @@ pub(crate) enum ValueMatch {
 }
 
 #[derive(Clone, Debug)]
-struct BadName {
+pub struct BadName {
     name: String,
 }
 
@@ -54,12 +60,6 @@ impl FromStr for Match {
             .to_string();
         let value = parts.next().map(ValueMatch::from_str).transpose()?;
         Ok(Match { name, value })
-    }
-}
-
-impl Match {
-    pub(crate) fn is_dynamic(&self) -> bool {
-        self.value.is_some()
     }
 }
 
@@ -100,9 +100,28 @@ impl fmt::Display for BadName {
     }
 }
 
+impl CallsiteMatch {
+    pub fn to_span_match(&self) -> SpanMatch {
+        let fields = self
+            .fields
+            .iter()
+            .map(|(k, v)| (k.clone(), (v.clone(), AtomicBool::new(false))))
+            .collect();
+        SpanMatch {
+            fields,
+            level: self.level.clone(),
+            has_matched: AtomicBool::new(false),
+        }
+    }
+}
+
 impl SpanMatch {
     pub fn visitor<'a>(&'a self) -> MatchVisitor<'a> {
         MatchVisitor { inner: self }
+    }
+
+    pub fn level(&self) -> LevelFilter {
+        self.level.clone()
     }
 
     pub fn is_matched(&self) -> bool {
