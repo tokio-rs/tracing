@@ -28,3 +28,20 @@ where
         (self)(metadata, ctx)
     }
 }
+
+pub fn none() -> NoFilter {
+    NoFilter {
+        _p: (),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NoFilter {
+    _p: ()
+}
+
+impl<N> Filter<N> for NoFilter {
+    fn enabled(&self, _: &Metadata, _: &span::Context<N>) -> bool {
+        true
+    }
+}

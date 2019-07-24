@@ -14,5 +14,5 @@ crossbeam-utils = "0.6"
 indexmap = "1"
 
 [dev-dependencies]
-tracing-log = { path = "../tracing-log" }
+tracing-fmt = { path = "../tracing-fmt" }
 tracing = "0.1"
