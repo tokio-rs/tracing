@@ -30,14 +30,12 @@ where
 }
 
 pub fn none() -> NoFilter {
-    NoFilter {
-        _p: (),
-    }
+    NoFilter { _p: () }
 }
 
 #[derive(Clone, Debug)]
 pub struct NoFilter {
-    _p: ()
+    _p: (),
 }
 
 impl<N> Filter<N> for NoFilter {
