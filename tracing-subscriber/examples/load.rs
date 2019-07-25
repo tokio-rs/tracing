@@ -73,7 +73,7 @@ where
     <M::Service as Service<Request<Body>>>::Future: Send + 'static,
 {
     let bind = TcpListener::bind(addr).expect("bind");
-    let span = tracing::trace_span!("server", name = %name, local.addr = %addr);
+    let span = tracing::info_span!("server", name = %name, local.addr = %addr);
     let trace_req: fn(&Request<_>) -> tracing::Span = |req: &Request<_>| {
         let span = tracing::debug_span!(
             "request",
@@ -100,7 +100,7 @@ where
             .fold(server, |mut server, sock| {
                 // Construct a new span for each accepted connection.
                 let addr = sock.peer_addr().expect("can't get addr");
-                let span = tracing::trace_span!("conn", remote.addr = %addr);
+                let span = tracing::info_span!("conn", remote.addr = %addr);
                 let _enter = span.enter();
 
                 tracing::debug!("accepted connection");
