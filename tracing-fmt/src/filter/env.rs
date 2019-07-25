@@ -2,36 +2,37 @@
 //!
 //! ## Filter syntax
 //!
-//! The filter is made of a list of directives. A directive is made of:
+//! The filter is made of a list of directives, separated by commas.
+//! A directive is made of:
 //!
 //! * A level to use as filter (see [`LevelFilter`] for available levels)
 //! * An optional target to filter
 //! * An optional span to filter
 //! * An optional list of fields,
 //!
-//! It is represented by `target[span{key=value ...}]=level`
+//! It is represented in with the `target[span{key=value ...}]=level` syntax.
 //!
 //! A directive could hence be one of:
 //!
-//! * `info` with no filter, which makes it a global filter level
+//! * `info` which specifies no filter, making it a global filter level
 //! * `target=info` to set info level for traces having a given target
 //! * `[span]=info` to set info level for traces in a given span
-//! * `[span{key}]=info` to set info level for traces having a given target having the
+//! * `[span{key}]=info` to set info level for traces having a given target, and the
 //!   given key in their fields
-//! * `[span{key=value}]=info` to set info level for traces having a given target having
+//! * `[span{key=value}]=info` to set info level for traces having a given target, and
 //!   the given key with the given value in their fields
 //! * `[span{key1="value1" key2=value2}]=info` to set info level for traces having a
-//!   given target having the given key with the given value in their fields
+//!   given target and the given keys with the given values in their fields
 //!
 //! ## Filter definition
 //!
 //! By default, only errors are displayed (i.e. the default filter is `error`).
 //!
-//! The filter can be created from one of:
+//! The filter can be created from:
 //!
-//! * The `RUST_LOG` environment variable (like `env_logger` does), with `from_default_env`
-//! * Another environment variable with `from_env`
-//! * A string containing the filter with `new`
+//! * The `RUST_LOG` environment variable (like `env_logger` does), with [`from_default_env`]
+//! * Another environment variable with [`from_env`]
+//! * A string containing the filter with [`new`]
 //!
 //! There are `try_*` variants for each of these to get filter parsing errors, otherwise
 //! they are just ignored.
@@ -40,6 +41,9 @@
 //!
 //! [`LevelFilter`]: https://docs.rs/tracing/0.1.3/tracing/level_filters/struct.LevelFilter.html
 //! [`reload`]: ../reload/index.html
+//! [`from_default_env`]: struct.EnvFilter.html#method.from_default_env
+//! [`from_env`]: struct.EnvFilter.html#method.from_env
+//! [`new`]: struct.EnvFilter.html#method.new
 
 use crate::{filter::Filter, span::Context};
 use regex::Regex;

@@ -1,8 +1,8 @@
 //! A `tracing` subscriber that formats and logs trace data
 //!
 //! This crates provides a configurable subscriber for tracing events,
-//! allowing to output formatted logs and provided other logging-oriented
-//! features, likes filter with live reloading.
+//! allowing to output formatted logs and providing other logging-oriented
+//! features, like filters with live reloading.
 //!
 //! ## Subscriber setup
 //!
@@ -24,12 +24,12 @@
 //! # }
 //! ```
 //!
+//! ## Event formatting
+//!
 //! By default, it will display timestamps and use ansi terminal formatting.
 //! These options are configurable in the [`Builder`].
 //!
-//! ## Event formatting
-//!
-//! Two log formats are provided by default:
+//! For the actual log content, two formats are provided by default:
 //!
 //! * Full (used by default), which includes all fields in each event and its containing
 //! spans
