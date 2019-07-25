@@ -274,8 +274,6 @@ pub trait NormalizeEvent<'a> {
     /// Returns `None` is the `Event` is not issued from a `log`.
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
     /// Returns wether this `Event` represents a log (from the `log` crate)
-    // FIXME: Not sure if should be part of the trait, could maybe
-    // be useful for subscribers?
     fn is_log(&self) -> bool;
 }
 
@@ -283,7 +281,14 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
         let original = self.metadata();
         if self.is_log() {
-            let mut fields = LogVisitor::new_for(self);
+            let fields = match *original.level() {
+                Level::TRACE => TRACE_CS.1,
+                Level::DEBUG => DEBUG_CS.1,
+                Level::INFO => INFO_CS.1,
+                Level::WARN => WARN_CS.1,
+                Level::ERROR => ERROR_CS.1,
+            };
+            let mut fields = LogVisitor::new_for(self, fields);
             self.record(&mut fields);
 
             Some(Metadata::new(
@@ -318,18 +323,20 @@ struct LogVisitor<'a> {
     module_path: Option<&'a str>,
     file: Option<&'a str>,
     line: Option<u64>,
+    fields: &'static Fields,
 }
 
 impl<'a> LogVisitor<'a> {
     // We don't actually _use_ the provided event argument; it is simply to
     // ensure that the `LogVisitor` does not outlive the event whose fields it
     // is visiting, so that the reference casts in `record_str` are safe.
-    fn new_for(_event: &'a Event<'a>) -> Self {
+    fn new_for(_event: &'a Event<'a>, fields: &'static Fields) -> Self {
         Self {
             target: None,
             module_path: None,
             file: None,
             line: None,
+            fields,
         }
     }
 }
@@ -338,7 +345,7 @@ impl<'a> Visit for LogVisitor<'a> {
     fn record_debug(&mut self, _field: &Field, _value: &fmt::Debug) {}
 
     fn record_u64(&mut self, field: &Field, value: u64) {
-        if field.name() == "log.line" {
+        if field == &self.fields.line {
             self.line = Some(value);
         }
     }
@@ -350,12 +357,13 @@ impl<'a> Visit for LogVisitor<'a> {
             // (and only if!) this `LogVisitor` was constructed with the same
             // lifetime parameter `'a` as the event in question, it's safe to
             // cast these string slices to the `'a` lifetime.
-            match field.name() {
-                "log.file" => self.file = Some(&*(value as *const _)),
-                "log.target" => self.target = Some(&*(value as *const _)),
-                "log.module_path" => self.module_path = Some(&*(value as *const _)),
-                _ => (),
-            };
+            if field == &self.fields.file {
+                self.file = Some(&*(value as *const _));
+            } else if field == &self.fields.target {
+                self.target = Some(&*(value as *const _));
+            } else if field == &self.fields.module {
+                self.module_path = Some(&*(value as *const _));
+            }
         }
     }
 }
