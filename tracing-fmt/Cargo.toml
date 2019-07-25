@@ -19,11 +19,12 @@ azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", bui
 maintenance = { status = "experimental" }
 
 [features]
-default = ["ansi", "chrono"]
+default = ["ansi", "chrono", "tracing-log"]
 ansi = ["ansi_term"]
 
 [dependencies]
 tracing-core = "0.1.2"
+tracing-log = { path = "../tracing-log", optional = true }
 ansi_term = { version = "0.11", optional = true }
 regex = "1"
 lazy_static = "1"

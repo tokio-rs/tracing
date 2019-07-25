@@ -2,6 +2,8 @@
 
 use crate::span;
 use crate::time::{self, FormatTime, SystemTime};
+#[cfg(feature = "tracing-log")]
+use crate::tracing_log::NormalizeEvent;
 
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
@@ -124,6 +126,9 @@ where
         writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result {
+        #[cfg(feature = "tracing-log")]
+        let meta = event.normalized_metadata();
+        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         time::write(&self.timer, writer)?;
         write!(
@@ -152,6 +157,9 @@ where
         writer: &mut dyn fmt::Write,
         event: &Event,
     ) -> fmt::Result {
+        #[cfg(feature = "tracing-log")]
+        let meta = event.normalized_metadata();
+        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         time::write(&self.timer, writer)?;
         write!(

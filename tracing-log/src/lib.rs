@@ -57,12 +57,14 @@ extern crate tracing_subscriber;
 
 use lazy_static::lazy_static;
 
-use std::io;
+use std::{fmt, io};
 
 use tracing_core::{
     callsite::{self, Callsite},
-    dispatcher, field, identify_callsite,
-    metadata::Kind,
+    dispatcher,
+    field::{self, Field, Visit},
+    identify_callsite,
+    metadata::{Kind, Level},
     subscriber, Event, Metadata,
 };
 
@@ -243,6 +245,127 @@ impl AsTrace for log::Level {
             log::Level::Info => tracing_core::Level::INFO,
             log::Level::Debug => tracing_core::Level::DEBUG,
             log::Level::Trace => tracing_core::Level::TRACE,
+        }
+    }
+}
+
+/// Extends log `Event`s to provide complete `Metadata`.
+///
+/// In `tracing-log`, an `Event` produced by a log (through `AsTrace`) has an hard coded
+/// "log" target and no file, line, or module_path attributes. This happens because `Event`
+/// requires its `Metadata` to be `'static`, while log records provide them with a generic
+/// lifetime.
+///
+/// However, these values are stored in the `Event`'s fields and
+/// the [`normalized_metadata`] method allows to build a new `Metadata`
+/// that only lives as long as its source `Event`, but provides complete
+/// data.
+///
+/// It can typically be used by `Subscriber`s when processing an `Event`,
+/// to allow accessing its complete metadata in a consistent way,
+/// regardless of the source of its source.
+///
+/// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
+pub trait NormalizeEvent<'a> {
+    /// If this `Event` comes from a `log`, this method provides a new
+    /// normalized `Metadata` which has all available attributes
+    /// from the original log, including `file`, `line`, `module_path`
+    /// and `target`.
+    /// Returns `None` is the `Event` is not issued from a `log`.
+    fn normalized_metadata(&'a self) -> Metadata<'a>;
+    /// Returns wether this `Event` represents a log (from the `log` crate)
+    // FIXME: Not sure if should be part of the trait, could maybe
+    // be useful for subscribers?
+    fn is_log(&self) -> bool;
+}
+
+impl<'a> NormalizeEvent<'a> for Event<'a> {
+    fn normalized_metadata(&'a self) -> Metadata<'a> {
+        let original = self.metadata();
+        if self.is_log() {
+            let mut fields = LogVisitor::new_for(self);
+            self.record(&mut fields);
+
+            Metadata::new(
+                "log event",
+                fields.target.unwrap_or("log"),
+                original.level().clone(),
+                fields.file,
+                fields.line.map(|l| l as u32),
+                fields.module_path,
+                field::FieldSet::new(&["message"], original.callsite()),
+                Kind::EVENT,
+            )
+        } else {
+            Metadata::new(
+                original.name(),
+                original.target(),
+                original.level().clone(),
+                original.file(),
+                original.line(),
+                original.module_path(),
+                // FIXME how to get the original names array?
+                field::FieldSet::new(&[], original.callsite()),
+                Kind::EVENT,
+            )
+        }
+    }
+
+    fn is_log(&self) -> bool {
+        self.metadata().callsite()
+            == match *self.metadata().level() {
+                Level::TRACE => identify_callsite!(TRACE_CS.0),
+                Level::DEBUG => identify_callsite!(DEBUG_CS.0),
+                Level::INFO => identify_callsite!(INFO_CS.0),
+                Level::WARN => identify_callsite!(WARN_CS.0),
+                Level::ERROR => identify_callsite!(ERROR_CS.0),
+            }
+    }
+}
+
+struct LogVisitor<'a> {
+    target: Option<&'a str>,
+    module_path: Option<&'a str>,
+    file: Option<&'a str>,
+    line: Option<u64>,
+}
+
+impl<'a> LogVisitor<'a> {
+    // We don't actually _use_ the provided event argument; it is simply to
+    // ensure that the `LogVisitor` does not outlive the event whose fields it
+    // is visiting, so that the reference casts in `record_str` are safe.
+    fn new_for(_event: &'a Event<'a>) -> Self {
+        Self {
+            target: None,
+            module_path: None,
+            file: None,
+            line: None,
+        }
+    }
+}
+
+impl<'a> Visit for LogVisitor<'a> {
+    fn record_debug(&mut self, _field: &Field, _value: &fmt::Debug) {}
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if field.name() == "log.line" {
+            self.line = Some(value);
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        unsafe {
+            // The `Visit` API erases the string slice's lifetime. However, we
+            // know it is part of the `Event` struct with a lifetime of `'a`. If
+            // (and only if!) this `LogVisitor` was constructed with the same
+            // lifetime parameter `'a` as the event in question, it's safe to
+            // cast these string slices to the `'a` lifetime.
+            match field.name() {
+                "log.file" => self.file = Some(&*(value as *const _)),
+                "log.target" => self.target = Some(&*(value as *const _)),
+                "log.module_path" => self.module_path = Some(&*(value as *const _)),
+                _ => (),
+            };
         }
     }
 }
