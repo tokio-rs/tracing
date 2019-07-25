@@ -272,7 +272,7 @@ pub trait NormalizeEvent<'a> {
     /// from the original log, including `file`, `line`, `module_path`
     /// and `target`.
     /// Returns `None` is the `Event` is not issued from a `log`.
-    fn normalized_metadata(&'a self) -> Metadata<'a>;
+    fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
     /// Returns wether this `Event` represents a log (from the `log` crate)
     // FIXME: Not sure if should be part of the trait, could maybe
     // be useful for subscribers?
@@ -280,13 +280,13 @@ pub trait NormalizeEvent<'a> {
 }
 
 impl<'a> NormalizeEvent<'a> for Event<'a> {
-    fn normalized_metadata(&'a self) -> Metadata<'a> {
+    fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
         let original = self.metadata();
         if self.is_log() {
             let mut fields = LogVisitor::new_for(self);
             self.record(&mut fields);
 
-            Metadata::new(
+            Some(Metadata::new(
                 "log event",
                 fields.target.unwrap_or("log"),
                 original.level().clone(),
@@ -295,19 +295,9 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
                 fields.module_path,
                 field::FieldSet::new(&["message"], original.callsite()),
                 Kind::EVENT,
-            )
+            ))
         } else {
-            Metadata::new(
-                original.name(),
-                original.target(),
-                original.level().clone(),
-                original.file(),
-                original.line(),
-                original.module_path(),
-                // FIXME how to get the original names array?
-                field::FieldSet::new(&[], original.callsite()),
-                Kind::EVENT,
-            )
+            None
         }
     }
 

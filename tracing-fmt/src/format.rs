@@ -127,7 +127,9 @@ where
         event: &Event,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
-        let meta = event.normalized_metadata();
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         time::write(&self.timer, writer)?;
@@ -158,7 +160,9 @@ where
         event: &Event,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
-        let meta = event.normalized_metadata();
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         time::write(&self.timer, writer)?;
