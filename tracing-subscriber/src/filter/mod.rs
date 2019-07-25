@@ -254,3 +254,132 @@ impl Error for FromEnvError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+    use tracing_core::field::FieldSet;
+    use tracing_core::*;
+
+    struct NoSubscriber;
+    impl Subscriber for NoSubscriber {
+        #[inline]
+        fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
+            subscriber::Interest::always()
+        }
+        fn new_span(&self, _: &span::Attributes) -> span::Id {
+            span::Id::from_u64(0xDEAD)
+        }
+        fn event(&self, _event: &Event) {}
+        fn record(&self, _span: &span::Id, _values: &span::Record) {}
+        fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+
+        #[inline]
+        fn enabled(&self, _metadata: &Metadata) -> bool {
+            true
+        }
+        fn enter(&self, _span: &span::Id) {}
+        fn exit(&self, _span: &span::Id) {}
+    }
+
+    struct Cs;
+    impl Callsite for Cs {
+        fn set_interest(&self, _interest: Interest) {}
+        fn metadata(&self) -> &Metadata {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn callsite_enabled_no_span_directive() {
+        let filter = Filter::new("app=debug").with_subscriber(NoSubscriber);
+        static META: &'static Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(META);
+        assert!(interest.is_never());
+    }
+
+    #[test]
+    fn callsite_off() {
+        let filter = Filter::new("app=off").with_subscriber(NoSubscriber);
+        static META: &'static Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::ERROR,
+            None,
+            None,
+            None,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(&META);
+        assert!(interest.is_never());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive() {
+        let filter = Filter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
+        static META: &'static Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(&META);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive_field() {
+        let filter =
+            Filter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
+        static META: &'static Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&["field"], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(&META);
+        assert!(interest.is_always());
+    }
+
+    #[test]
+    fn callsite_enabled_includes_span_directive_multiple_fields() {
+        let filter = Filter::new("app[mySpan{field=\"value\",field2=2}]=debug")
+            .with_subscriber(NoSubscriber);
+        static META: &'static Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&["field"], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(&META);
+        assert!(interest.is_never());
+    }
+}
