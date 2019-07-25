@@ -24,9 +24,13 @@ tracing = "0.1"
 
 # load generator demo
 tracing-tower = { path = "../tracing-tower" }
+tower = "0.1"
 tower-hyper = "0.1"
+tower-http-util = "0.1"
 tracing-futures = { path = "../tracing-futures" }
 futures = "0.1"
-tower = "0.1"
 hyper = "0.12"
+tokio = "0.1"
 tokio-tcp = "0.1"
+tokio-buf = "0.1"
+rand = "0.6"

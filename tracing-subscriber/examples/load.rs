@@ -1,19 +1,38 @@
+//! A demo showing how filtering on values and dynamic filter reloading can be
+//! used together to help make sense of complex or noisy traces.
+//!
+//! This example runs a simple HTTP server that implements highly advanced,
+//! cloud-native "character repetition as a service", on port 3000. The server's
+//! `GET /${CHARACTER}` route will respond with a string containing that
+//! character repeated up to the requested `Content-Length`. A load generator
+//! runs in the background and constantly sends requests for various characters
+//! to be repeated.
+//!
+//! As the load generators logs indicate, the server will sometimes return
+//! errors! Because the logs at such high load are so noisy, tracking down the
+//! root cause of the errors can be difficult, if not impossible. Since the
+//! character-repetition service is absolutely mission-critical to our
+//! organization, we have to determine what is causing these errors as soon as
+//! possible!
+//!
+//! Fortunately, an admin service running on port 3001 exposes a `PUT /filter`
+//! route that can be used to change the trace filter for the format subscriber.
+//! By dynamically changing the filter we can try to track down the cause of the
+//! error.
 use futures::{future, Future, Poll, Stream};
-use hyper::{Request, Response, StatusCode};
+use hyper::{header, Method, Request, Response, StatusCode};
 use tokio_tcp::TcpListener;
-use tower::{Service, ServiceBuilder, MakeService};
+use tower::{MakeService, Service, ServiceBuilder};
 use tower_hyper::body::Body;
 use tower_hyper::server::Server;
 
+use std::{error::Error, fmt, net::SocketAddr};
 use tracing;
-use tracing_subscriber::prelude::*;
 use tracing_futures::Instrument;
-use std::net::SocketAddr;
+use tracing_subscriber::prelude::*;
 
 fn main() {
-    // Set the default subscriber to record all traces emitted by this example
-    // and by the `tracing_tower` library's helpers.
-    let filter = tracing_subscriber::filter::Filter::new("tracing_tower=trace,load=trace");
+    let filter = tracing_subscriber::filter::Filter::new("load=debug");
     let (filter, handle) = tracing_subscriber::reload::Layer::new(filter);
     let subscriber = tracing_fmt::FmtSubscriber::builder()
         .with_filter(tracing_fmt::filter::none())
@@ -25,43 +44,52 @@ fn main() {
     let addr = "[::1]:3000".parse().unwrap();
     let admin_addr = "[::1]:3001".parse().unwrap();
 
-    let admin = serve(AdminSvc { handle }, admin_addr, "admin");
-    let server = serve(MakeSvc, addr, "server")
+    let admin = serve(AdminSvc { handle }, &admin_addr, "admin");
+    let server = serve(MakeSvc, &addr, "serve")
         .join(admin)
-        .map(|_|())
-        .map_err(|_|());
+        .join(load_gen(&addr))
+        .map(|_| ())
+        .map_err(|_| ());
 
     hyper::rt::run(server);
 }
 
-fn serve<M>(make_svc: M, addr: SocketAddr, name: &str) -> impl Future<Item = (), Error = ()> + Send + Sync + 'static
+fn serve<M>(
+    make_svc: M,
+    addr: &SocketAddr,
+    name: &str,
+) -> impl Future<Item = (), Error = ()> + Send + 'static
 where
     M: MakeService<
-        (), Request<Body>,
-        Response = Response<Body>,
-        Error = hyper::Error,
-        MakeError = hyper::Error,
-    > + Send,
-    M::Future: Send + Sync + 'static,
-    M::Service: Send + Sync + 'static,
+            (),
+            Request<Body>,
+            Response = Response<Body>,
+            Error = hyper::Error,
+            MakeError = hyper::Error,
+        > + Send
+        + 'static,
+    M::Future: Send + 'static,
+    M::Service: Send + 'static,
+    <M::Service as Service<Request<Body>>>::Future: Send + 'static,
 {
-    let bind = TcpListener::bind(&addr).expect("bind");
-    // Construct a span for the server task, annotated with the listening IP
-    // address and port.
-    let span = tracing::trace_span!("server", name = %name, ip = %addr.ip(), port = addr.port());
-    let req_span: fn(&Request<_>) -> tracing::Span = |req: &Request<_>| {
-        tracing::span!(
-            tracing::Level::TRACE,
+    let bind = TcpListener::bind(addr).expect("bind");
+    let span = tracing::trace_span!("server", name = %name, local.addr = %addr);
+    let trace_req: fn(&Request<_>) -> tracing::Span = |req: &Request<_>| {
+        let span = tracing::debug_span!(
             "request",
             req.method = ?req.method(),
             req.uri = ?req.uri(),
             req.version = ?req.version(),
             req.path = ?req.uri().path(),
-        )
+        );
+        span.in_scope(|| {
+            tracing::debug!(message = "received request.", req.headers = ?req.headers());
+        });
+        span
     };
-    future::lazy(|| {
+    future::lazy(move || {
         let svc = ServiceBuilder::new()
-            .layer(tracing_tower::request_span::make::layer(req_span))
+            .layer(tracing_tower::request_span::make::layer(trace_req))
             .service(make_svc);
 
         let server = Server::new(svc);
@@ -72,7 +100,7 @@ where
             .fold(server, |mut server, sock| {
                 // Construct a new span for each accepted connection.
                 let addr = sock.peer_addr().expect("can't get addr");
-                let span = tracing::trace_span!("conn", ip = %addr.ip(), port = addr.port());
+                let span = tracing::trace_span!("conn", remote.addr = %addr);
                 let _enter = span.enter();
 
                 tracing::debug!("accepted connection");
@@ -83,7 +111,7 @@ where
 
                 let serve = server
                     .serve(sock)
-                    .map_err(|error| tracing::error!(message = "http error", %error))
+                    .map_err(|error| tracing::error!(message = "http error!", %error))
                     .map(|_| {
                         tracing::trace!("finished serving connection");
                     })
@@ -92,7 +120,7 @@ where
 
                 Ok(server)
             })
-            .map_err(|error| tracing::error!(message = "serve error", %error))
+            .map_err(|error| tracing::error!(message = "serve error!", %error))
             .map(|_| {})
     })
     .instrument(span)
@@ -109,19 +137,75 @@ impl Service<Request<Body>> for Svc {
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        tracing::debug!(req.headers = ?req.headers());
-
-        let uri = req.uri();
-        let mut rsp = Response::builder();
-        let rsp = if uri.path() == "z" {
-            tracing::trace!(error = %"i don't like this letter", letter = "z");
-            rsp.status(500).body(Body::empty()).unwrap()
-        } else {
-            rsp.status(200).body(Body::empty()).unwrap()
-        };
+        let rsp = Self::handle_request(req)
+            .map(|body| {
+                tracing::trace!("sending response");
+                rsp(StatusCode::OK, body)
+            })
+            .unwrap_or_else(|e| {
+                tracing::trace!(rsp.error = %e);
+                let status = match e {
+                    HandleError::BadPath => {
+                        tracing::warn!(rsp.status = ?StatusCode::NOT_FOUND);
+                        StatusCode::NOT_FOUND
+                    }
+                    HandleError::NoContentLength | HandleError::BadRequest(_) => {
+                        StatusCode::BAD_REQUEST
+                    }
+                    HandleError::Unknown => StatusCode::INTERNAL_SERVER_ERROR,
+                };
+                rsp(status, format!("{}", e))
+            });
         future::ok(rsp)
     }
 }
+
+impl Svc {
+    fn handle_request(req: Request<Body>) -> Result<String, HandleError> {
+        const BAD_METHOD: WrongMethod = WrongMethod(&[Method::GET]);
+        tracing::trace!("handling request...");
+        match (req.method(), req.uri().path()) {
+            (&Method::GET, "/z") => {
+                tracing::trace!(error = %"i don't like this letter.", letter = "z");
+                Err(HandleError::Unknown)
+            }
+            (&Method::GET, path) => {
+                let ch = path.get(1..2).ok_or(HandleError::BadPath)?;
+                let content_length = req
+                    .headers()
+                    .get(header::CONTENT_LENGTH)
+                    .ok_or(HandleError::NoContentLength)?;
+                tracing::trace!(req.content_length = ?content_length);
+                let content_length = content_length
+                    .to_str()
+                    .map_err(HandleError::bad_request)?
+                    .parse::<usize>()
+                    .map_err(HandleError::bad_request)?;
+                let mut body = String::new();
+                let span =
+                    tracing::debug_span!("build_rsp", rsp.len = content_length, rsp.character = ch);
+                let _enter = span.enter();
+                for idx in 0..content_length {
+                    body.push_str(ch);
+                    tracing::trace!(rsp.body = ?body, rsp.body.idx = idx);
+                }
+                Ok(body)
+            }
+            _ => Err(HandleError::bad_request(BAD_METHOD)),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum HandleError {
+    BadPath,
+    NoContentLength,
+    BadRequest(Box<dyn Error + Send + 'static>),
+    Unknown,
+}
+
+#[derive(Debug, Clone)]
+struct WrongMethod(&'static [Method]);
 
 struct MakeSvc;
 impl Service<()> for MakeSvc {
@@ -139,7 +223,7 @@ impl Service<()> for MakeSvc {
 }
 
 struct AdminSvc<S> {
-    handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::Filter, S>
+    handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::Filter, S>,
 }
 
 impl<S> Clone for AdminSvc<S> {
@@ -173,45 +257,46 @@ where
 {
     type Response = Response<Body>;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send + Sync + 'static>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send + 'static>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(().into())
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        tracing::debug!(req.headers = ?req.headers());
-
-        let uri = req.uri();
-        if uri.path() == "filter" {
-            let handle = self.clone();
-            tracing::trace!("setting filter");
-            let f = req
-                .into_body()
-                .concat2()
-                .map(move |chunk| match handle.set_from(chunk) {
-                    Err(error) => {
-                        tracing::warn!(message = "setting filter failed", %error);
-                        rsp(StatusCode::BAD_REQUEST, format!("{}", error))
-                    }
-                    Ok(()) => rsp(StatusCode::NO_CONTENT, Body::empty()),
-                })
-        } else {
-            Box::new(future::ok(rsp(StatusCode::NOT_FOUND, Body::empty())))
+        match (req.method(), req.uri().path()) {
+            (&Method::PUT, "/filter") => {
+                let handle = self.clone();
+                tracing::trace!("setting filter");
+                let f = req
+                    .into_body()
+                    .concat2()
+                    .map(move |chunk| match handle.set_from(chunk) {
+                        Err(error) => {
+                            tracing::warn!(message = "setting filter failed!", %error);
+                            rsp(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", error))
+                        }
+                        Ok(()) => rsp(StatusCode::NO_CONTENT, Body::empty()),
+                    });
+                Box::new(f)
+            }
+            _ => Box::new(future::ok(rsp(StatusCode::NOT_FOUND, "try `/filter`"))),
         }
     }
 }
 
 impl<S> AdminSvc<S>
 where
-    S: tracing::Subscriber + Clone
+    S: tracing::Subscriber,
 {
     fn set_from(&self, chunk: hyper::Chunk) -> Result<(), String> {
         use std::str;
         let bytes = chunk.into_bytes();
         let body = str::from_utf8(&bytes.as_ref()).map_err(|e| format!("{}", e))?;
         tracing::trace!(request.body = ?body);
-        let new_filter = body.parse::<tracing_subscriber::filter::Filter>().map_err(|e| format!("{}", e))?;
+        let new_filter = body
+            .parse::<tracing_subscriber::filter::Filter>()
+            .map_err(|e| format!("{}", e))?;
         self.handle.reload(new_filter).map_err(|e| format!("{}", e))
     }
 }
@@ -221,4 +306,87 @@ fn rsp(status: StatusCode, body: impl Into<Body>) -> Response<Body> {
         .status(status)
         .body(body.into())
         .expect("builder with known status code must not fail")
+}
+
+impl HandleError {
+    fn bad_request(e: impl std::error::Error + Send + 'static) -> Self {
+        HandleError::BadRequest(Box::new(e))
+    }
+}
+
+impl fmt::Display for HandleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            HandleError::BadPath => f.pad("path must be a single ASCII character"),
+            HandleError::NoContentLength => f.pad("request must have Content-Length header"),
+            HandleError::BadRequest(ref e) => write!(f, "bad request: {}", e),
+            HandleError::Unknown => f.pad("unknown internal error"),
+        }
+    }
+}
+
+impl std::error::Error for HandleError {}
+
+impl fmt::Display for WrongMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unsupported method: please use one of {:?}", self.0)
+    }
+}
+
+impl std::error::Error for WrongMethod {}
+
+fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send + 'static> {
+    use rand::Rng;
+    use std::time::Duration;
+    use tokio_buf::util::BufStreamExt;
+    use tower::ServiceExt;
+    use tower_http_util::body::BodyExt;
+    use tower_hyper::client::Client;
+
+    static ALPHABET: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let authority = format!("{}", addr);
+    let f = future::lazy(move || {
+        let hyper = Client::new();
+        let svc = ServiceBuilder::new()
+            .buffer(5)
+            .timeout(Duration::from_secs(5))
+            .service(hyper);
+
+        tokio::timer::Interval::new_interval(Duration::from_millis(50))
+            .fold((svc, authority), |(svc, authority), _| {
+                let mut rng = rand::thread_rng();
+                let idx = rng.gen_range(0, ALPHABET.len()+1);
+                let len = rng.gen_range(0, 26);
+                let letter = ALPHABET.get(idx..idx+1).unwrap_or("");
+                let uri = format!("http://{}/{}", authority, letter);
+                let request = Request::get(&uri[..])
+                    .header("Content-Length", len)
+                    .body(Body::empty())
+                    .unwrap();
+                let f = svc.clone().ready()
+                    .and_then(|mut svc| svc.call(request))
+                    .map_err(|e| tracing::error!(target: "gen", message = "request error!", error = %e))
+                    .and_then(|response| {
+                        let status = response.status();
+                        if status != StatusCode::OK {
+                            tracing::error!(message = "error received from server!", ?status);
+                        }
+                        response
+                            .into_body()
+                            .into_buf_stream()
+                            .collect::<Vec<u8>>()
+                            .map(|v| String::from_utf8(v).unwrap())
+                            .map_err(|e| tracing::error!(target: "gen", message = "body error!", error = ?e))
+                    })
+                    .and_then(|body| {
+                        tracing::info!(target: "gen", message = "response complete.", rsp.body = %body);
+                        Ok(())
+                    });
+                hyper::rt::spawn(f);
+                future::ok((svc, authority))
+            }).map(|_| ())
+            .map_err(|e| panic!("timer error {}", e))
+    }).instrument(tracing::debug_span!("gen", remote.addr=%addr));
+
+    Box::new(f)
 }
