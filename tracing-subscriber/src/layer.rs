@@ -624,7 +624,7 @@ impl<'a, S> Clone for Context<'a, S> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     pub(crate) struct NopSubscriber;
