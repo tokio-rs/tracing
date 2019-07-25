@@ -19,6 +19,8 @@
 //! route that can be used to change the trace filter for the format subscriber.
 //! By dynamically changing the filter we can try to track down the cause of the
 //! error.
+//!
+//! As a hint: all spans and events from the load generator have the "gen" target.
 use futures::{future, Future, Poll, Stream};
 use hyper::{header, Method, Request, Response, StatusCode};
 use tokio_tcp::TcpListener;
@@ -32,7 +34,7 @@ use tracing_futures::Instrument;
 use tracing_subscriber::prelude::*;
 
 fn main() {
-    let filter = tracing_subscriber::filter::Filter::new("error,load=debug");
+    let filter = tracing_subscriber::filter::Filter::new("info,load=debug");
     let (filter, handle) = tracing_subscriber::reload::Layer::new(filter);
     let subscriber = tracing_fmt::FmtSubscriber::builder()
         .with_filter(tracing_fmt::filter::none())
@@ -359,12 +361,21 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
                 let len = rng.gen_range(0, 26);
                 let letter = ALPHABET.get(idx..idx+1).unwrap_or("");
                 let uri = format!("http://{}/{}", authority, letter);
-                let request = Request::get(&uri[..])
+                let req = Request::get(&uri[..])
                     .header("Content-Length", len)
                     .body(Body::empty())
                     .unwrap();
+                let span = tracing::debug_span!(
+                    target: "gen",
+                    "request",
+                    req.method = ?req.method(),
+                    req.path = ?req.uri().path(),
+                );
                 let f = svc.clone().ready()
-                    .and_then(|mut svc| svc.call(request))
+                    .and_then(|mut svc| {
+                        tracing::trace!(target: "gen", message = "sending request...");
+                        svc.call(req)
+                    })
                     .map_err(|e| tracing::error!(target: "gen", message = "request error!", error = %e))
                     .and_then(|response| {
                         let status = response.status();
@@ -379,10 +390,10 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
                             .map_err(|e| tracing::error!(target: "gen", message = "body error!", error = ?e))
                     })
                     .and_then(|body| {
-                        tracing::info!(target: "gen", message = "response complete.", rsp.body = %body);
+                        tracing::trace!(target: "gen", message = "response complete.", rsp.body = %body);
                         Ok(())
                     })
-                    .instrument(tracing::info_span!(target: "gen", "request"));
+                    .instrument(span);
                 hyper::rt::spawn(f);
                 future::ok((svc, authority))
             }).map(|_| ())
