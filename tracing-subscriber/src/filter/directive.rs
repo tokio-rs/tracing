@@ -1,8 +1,7 @@
 use super::{
     field,
     level::{self, LevelFilter},
-    FieldMap,
-    FilterVec,
+    FieldMap, FilterVec,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -175,7 +174,18 @@ impl FromStr for Directive {
             static ref SPAN_PART_RE: Regex =
                 Regex::new(r#"(?P<name>\w+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
             static ref FIELD_FILTER_RE: Regex =
-                Regex::new(r#"([\w_0-9]+(?:=(?:[\w0-9]+|".+"))?)(?: |$)"#).unwrap();
+                // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
+                // characters. We should fix that.
+                Regex::new(r#"(?x)
+                    (
+                        # field name
+                        [[:word:]][[[:word:]]\.]*
+                        # value part (optional)
+                        (?:=[^,]+)?
+                    )
+                    # trailing comma or EOS
+                    (?:,\s?|$)
+                "#).unwrap();
         }
 
         let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
