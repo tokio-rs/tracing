@@ -10,6 +10,8 @@ use std::{
 };
 use tracing_core::{span, Metadata};
 
+/// A single filtering directive.
+// TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
 pub struct Directive {
     target: Option<String>,
@@ -18,30 +20,37 @@ pub struct Directive {
     level: LevelFilter,
 }
 
+/// A directive which will statically enable or disable a given callsite.
+///
+/// Unlike a dynamic directive, this can be cached by the callsite.
 #[derive(Debug, PartialEq, Eq, Ord)]
-pub(super) struct StaticDirective {
+pub struct StaticDirective {
     target: Option<String>,
     level: LevelFilter,
 }
 
-#[derive(Debug)]
-pub(super) struct Dynamics {
-    spans: BTreeSet<Directive>,
-    max_level: LevelFilter,
-    // can_disable: bool,
+pub trait Match {
+    fn cares_about(&self, meta: &Metadata) -> bool;
+    fn level(&self) -> &LevelFilter;
 }
 
+/// A set of dynamic filtering directives.
+pub type Dynamics = DirectiveSet<Directive>;
+
+/// A set of static filtering directives.
+pub type Statics = DirectiveSet<StaticDirective>;
+
 #[derive(Debug)]
-pub(super) struct Statics {
-    directives: BTreeSet<StaticDirective>,
+pub struct DirectiveSet<T> {
+    directives: BTreeSet<T>,
     max_level: LevelFilter,
 }
 
-pub type CallsiteMatch = DynamicMatch<field::CallsiteMatch>;
-pub type SpanMatch = DynamicMatch<field::SpanMatch>;
+pub type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
+pub type SpanMatcher = MatchSet<field::SpanMatch>;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct DynamicMatch<T> {
+pub struct MatchSet<T> {
     field_matches: FilterVec<T>,
     base_level: LevelFilter,
 }
@@ -71,17 +80,9 @@ impl Directive {
         if self.is_dynamic() {
             return Err(self);
         }
-        // let field_names = self
-        //     .fields
-        //     .into_iter()
-        //     .map(|f| {
-        //         debug_assert!(f.value.is_none());
-        //         f.name
-        //     })
-        //     .collect();
+
         Ok(StaticDirective {
             target: self.target,
-            // field_names,
             level: self.level,
         })
     }
@@ -116,24 +117,35 @@ impl Directive {
         })
     }
 
+    pub(super) fn make_tables(
+        directives: impl IntoIterator<Item = Directive>,
+    ) -> (Dynamics, Statics) {
+        let (dyns, stats): (BTreeSet<Directive>, BTreeSet<Directive>) =
+            directives.into_iter().partition(Directive::is_dynamic);
+        let stats = stats.into_iter().filter_map(|d| d.into_static().ok());
+        (Dynamics::from_iter(dyns), Statics::from_iter(stats))
+    }
+}
+
+impl Match for Directive {
     fn cares_about(&self, meta: &Metadata) -> bool {
         // Does this directive have a target filter, and does it match the
         // metadata's target?
         if let Some(ref target) = self.target.as_ref() {
-            // If so,
             if !meta.target().starts_with(&target[..]) {
                 return false;
             }
         }
 
         // Do we have a name filter, and does it match the metadata's name?
-        // TODO: put name globbing here?
+        // TODO(eliza): put name globbing here?
         if let Some(ref name) = self.in_span {
             if name != meta.name() {
                 return false;
             }
         }
 
+        // Does the metadata define all the fields that this directive cares about?
         let fields = meta.fields();
         for field in &self.fields {
             if !fields.field(&field.name).is_some() {
@@ -144,12 +156,8 @@ impl Directive {
         true
     }
 
-    pub(super) fn make_tables(
-        directives: impl IntoIterator<Item = Directive>,
-    ) -> (Dynamics, Statics) {
-        let (dyns, stats): (BTreeSet<Directive>, BTreeSet<Directive>) =
-            directives.into_iter().partition(Directive::is_dynamic);
-        (Dynamics::from_iter(dyns), Statics::from_iter(stats))
+    fn level(&self) -> &LevelFilter {
+        &self.level
     }
 }
 
@@ -253,89 +261,6 @@ impl Default for Directive {
     }
 }
 
-// === impl Dynamics ===
-
-impl Dynamics {
-    pub fn matcher(&self, metadata: &Metadata) -> Option<CallsiteMatch> {
-        let mut base_level = None;
-        let field_matches = self
-            .directives_for(metadata)
-            .filter_map(|d| {
-                if let Some(f) = d.field_matcher(metadata) {
-                    return Some(f);
-                }
-                match base_level {
-                    Some(ref b) if &d.level > b => base_level = Some(d.level.clone()),
-                    None => base_level = Some(d.level.clone()),
-                    _ => {}
-                }
-                None
-            })
-            .collect();
-
-        if let Some(base_level) = base_level {
-            Some(DynamicMatch {
-                field_matches,
-                base_level,
-            })
-        } else if !field_matches.is_empty() {
-            Some(DynamicMatch {
-                field_matches,
-                base_level: base_level.unwrap_or(LevelFilter::OFF),
-            })
-        } else {
-            None
-        }
-    }
-
-    fn directives_for<'a>(
-        &'a self,
-        metadata: &'a Metadata<'a>,
-    ) -> impl Iterator<Item = &'a Directive> + 'a {
-        self.spans
-            .iter()
-            .rev()
-            .filter(move |d| d.cares_about(metadata))
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.spans.is_empty()
-    }
-}
-
-impl Default for Dynamics {
-    fn default() -> Self {
-        Self {
-            spans: BTreeSet::new(),
-            max_level: LevelFilter::OFF,
-            // can_disable: false,
-        }
-    }
-}
-
-impl FromIterator<Directive> for Dynamics {
-    fn from_iter<I: IntoIterator<Item = Directive>>(iter: I) -> Self {
-        let mut this = Self::default();
-        this.extend(iter);
-        this
-    }
-}
-
-impl Extend<Directive> for Dynamics {
-    fn extend<I: IntoIterator<Item = Directive>>(&mut self, iter: I) {
-        let max_level = &mut self.max_level;
-        // let can_disable = &mut self.can_disable;
-        let ds = iter.into_iter().filter(Directive::is_dynamic).inspect(|d| {
-            if &d.level > &*max_level {
-                *max_level = d.level.clone();
-            }
-        });
-        self.spans.extend(ds);
-    }
-}
-
-// ===== impl Directive =====
-
 impl PartialOrd for Directive {
     fn partial_cmp(&self, other: &Directive) -> Option<Ordering> {
         match (self.has_name(), other.has_name()) {
@@ -365,53 +290,15 @@ impl Ord for Directive {
     }
 }
 
-// === impl Statics ===
+// === impl DirectiveSet ===
 
-impl Statics {
-    pub(crate) fn enabled(&self, meta: &Metadata) -> bool {
-        let level = meta.level();
-        self.directives_for(meta).any(|d| d.level >= *level)
-
-        // if self.max_level < meta.level {
-        //     return StaticMatch::Disabled;
-        // }
-
-        // let mut result = StaticMatch::Disabled;
-        // for d in self.directives_for(meta) {
-        //     if let Some(ref name) = d.in_span.as_ref() {
-        //         return StaticMatch::InSpan(d.level.clone())
-        //     }
-
-        //     if d.level >= level {
-        //         result = StaticMatch::Enabled;
-        //     }
-        // }
-        // result
-    }
-
-    fn directives_for<'a>(
-        &'a self,
-        metadata: &'a Metadata<'a>,
-    ) -> impl Iterator<Item = &'a StaticDirective> + 'a {
-        self.directives
-            .iter()
-            .rev()
-            .filter(move |d| d.cares_about(metadata))
-    }
-
-    pub(super) fn is_empty(&self) -> bool {
+impl<T> DirectiveSet<T> {
+    pub fn is_empty(&self) -> bool {
         self.directives.is_empty()
-    }
-
-    pub(super) fn add(&mut self, directive: StaticDirective) {
-        if directive.level > self.max_level {
-            self.max_level = directive.level.clone();
-        }
-        self.directives.insert(directive);
     }
 }
 
-impl Default for Statics {
+impl<T: Ord> Default for DirectiveSet<T> {
     fn default() -> Self {
         Self {
             directives: BTreeSet::new(),
@@ -420,42 +307,94 @@ impl Default for Statics {
     }
 }
 
-impl Extend<Directive> for Statics {
-    fn extend<I: IntoIterator<Item = Directive>>(&mut self, iter: I) {
-        let max_level = &mut self.max_level;
-        let ds = iter
-            .into_iter()
-            .filter_map(|d| d.into_static().ok())
-            .inspect(|d| {
-                if &d.level > &*max_level {
-                    *max_level = d.level.clone();
-                }
-            });
-        self.directives.extend(ds);
+impl<T: Match> DirectiveSet<T> {
+    fn directives_for<'a>(
+        &'a self,
+        metadata: &'a Metadata<'a>,
+    ) -> impl Iterator<Item = &'a T> + 'a {
+        self.directives
+            .iter()
+            .rev()
+            .filter(move |d| d.cares_about(metadata))
     }
 }
 
-impl FromIterator<Directive> for Statics {
-    fn from_iter<I: IntoIterator<Item = Directive>>(iter: I) -> Self {
+impl<T: Match + Ord> FromIterator<T> for DirectiveSet<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut this = Self::default();
         this.extend(iter);
         this
     }
 }
 
+impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        let max_level = &mut self.max_level;
+        let ds = iter.into_iter().inspect(|d| {
+            let level = d.level();
+            if level > &*max_level {
+                *max_level = level.clone();
+            }
+        });
+        self.directives.extend(ds);
+    }
+}
+
+// === impl Dynamics ===
+
+impl Dynamics {
+    pub fn matcher(&self, metadata: &Metadata) -> Option<CallsiteMatcher> {
+        let mut base_level = None;
+        let field_matches = self
+            .directives_for(metadata)
+            .filter_map(|d| {
+                if let Some(f) = d.field_matcher(metadata) {
+                    return Some(f);
+                }
+                match base_level {
+                    Some(ref b) if &d.level > b => base_level = Some(d.level.clone()),
+                    None => base_level = Some(d.level.clone()),
+                    _ => {}
+                }
+                None
+            })
+            .collect();
+
+        if let Some(base_level) = base_level {
+            Some(CallsiteMatcher {
+                field_matches,
+                base_level,
+            })
+        } else if !field_matches.is_empty() {
+            Some(CallsiteMatcher {
+                field_matches,
+                base_level: base_level.unwrap_or(LevelFilter::OFF),
+            })
+        } else {
+            None
+        }
+    }
+}
+
+
+// === impl Statics ===
+
+impl Statics {
+    pub fn enabled(&self, meta: &Metadata) -> bool {
+        let level = meta.level();
+        self.directives_for(meta).any(|d| d.level >= *level)
+    }
+
+    pub fn add(&mut self, directive: StaticDirective) {
+        if directive.level > self.max_level {
+            self.max_level = directive.level.clone();
+        }
+        self.directives.insert(directive);
+    }
+}
+
 impl PartialOrd for StaticDirective {
     fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
-        // match (self.has_name(), other.has_name()) {
-        //     (true, false) => return Some(Ordering::Greater),
-        //     (false, true) => return Some(Ordering::Less),
-        //     _ => {}
-        // }
-
-        // match (self.field_names.len(), other.field_names.len()) {
-        //     (a, b) if a == b => {}
-        //     (a, b) => return Some(a.cmp(&b)),
-        // }
-
         match (self.target.as_ref(), other.target.as_ref()) {
             (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
             (Some(_), None) => Some(Ordering::Greater),
@@ -467,14 +406,8 @@ impl PartialOrd for StaticDirective {
 
 // ===== impl StaticDirective =====
 
-impl StaticDirective {
+impl Match for StaticDirective {
     fn cares_about(&self, meta: &Metadata) -> bool {
-        // if Some(ref name) = self.in_span.as_ref() {
-        //     if name != meta.name() {
-        //         return false;
-        //     }
-        // }
-
         // Does this directive have a target filter, and does it match the
         // metadata's target?
         if let Some(ref target) = self.target.as_ref() {
@@ -483,14 +416,11 @@ impl StaticDirective {
             }
         }
 
-        // let fields = meta.fields();
-        // for field in &self.field_names {
-        //     if !fields.field(field).is_some() {
-        //         return false;
-        //     }
-        // }
-
         true
+    }
+
+    fn level(&self) -> &LevelFilter {
+        &self.level
     }
 }
 
@@ -498,7 +428,6 @@ impl Default for StaticDirective {
     fn default() -> Self {
         StaticDirective {
             target: None,
-            // field_names: FilterVec::new(),
             level: LevelFilter::ERROR,
         }
     }
@@ -554,8 +483,11 @@ impl From<level::ParseError> for ParseError {
     }
 }
 
-impl CallsiteMatch {
-    pub fn to_span_match(&self, attrs: &span::Attributes) -> SpanMatch {
+// ===== impl DynamicMatch =====
+
+impl CallsiteMatcher {
+    /// Create a new `SpanMatch` for a given instance of the matched callsite.
+    pub fn to_span_match(&self, attrs: &span::Attributes) -> SpanMatcher {
         let field_matches = self
             .field_matches
             .iter()
@@ -565,14 +497,15 @@ impl CallsiteMatch {
                 m
             })
             .collect();
-        SpanMatch {
+        SpanMatcher {
             field_matches,
             base_level: self.base_level.clone(),
         }
     }
 }
 
-impl SpanMatch {
+impl SpanMatcher {
+    /// Returns the level currently enabled for this callsite.
     pub fn level(&self) -> LevelFilter {
         self.field_matches
             .iter()

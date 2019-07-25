@@ -27,8 +27,8 @@ pub struct Filter {
     statics: directive::Statics,
     dynamics: directive::Dynamics,
 
-    by_id: ShardedLock<HashMap<span::Id, directive::SpanMatch>>,
-    by_cs: ShardedLock<HashMap<callsite::Identifier, directive::CallsiteMatch>>,
+    by_id: ShardedLock<HashMap<span::Id, directive::SpanMatcher>>,
+    by_cs: ShardedLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
 }
 
 type FieldMap<T> = HashMap<Field, T>;
