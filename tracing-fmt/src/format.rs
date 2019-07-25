@@ -141,7 +141,7 @@ where
         time::write(&self.timer, writer)?;
         write!(
             writer,
-            "{} {}{}: l",
+            "{} {}{}: ",
             FmtLevel::new(meta.level(), self.ansi),
             FullCtx::new(&ctx, self.ansi),
             if self.display_target {
