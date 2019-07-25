@@ -9,11 +9,11 @@
 //! to be repeated.
 //!
 //! As the load generators logs indicate, the server will sometimes return
-//! errors! Because the logs at such high load are so noisy, tracking down the
-//! root cause of the errors can be difficult, if not impossible. Since the
-//! character-repetition service is absolutely mission-critical to our
-//! organization, we have to determine what is causing these errors as soon as
-//! possible!
+//! errors, including HTTP 500s! Because the logs at high load are so noisy,
+//! tracking down the root cause of the errors can be difficult, if not
+//! impossible. Since the character-repetition service is absolutely
+//! mission-critical to our organization, we have to determine what is causing
+//! these errors as soon as possible!
 //!
 //! Fortunately, an admin service running on port 3001 exposes a `PUT /filter`
 //! route that can be used to change the trace filter for the format subscriber.
@@ -32,7 +32,7 @@ use tracing_futures::Instrument;
 use tracing_subscriber::prelude::*;
 
 fn main() {
-    let filter = tracing_subscriber::filter::Filter::new("load=debug");
+    let filter = tracing_subscriber::filter::Filter::new("error,load=debug");
     let (filter, handle) = tracing_subscriber::reload::Layer::new(filter);
     let subscriber = tracing_fmt::FmtSubscriber::builder()
         .with_filter(tracing_fmt::filter::none())
@@ -73,7 +73,7 @@ where
     <M::Service as Service<Request<Body>>>::Future: Send + 'static,
 {
     let bind = TcpListener::bind(addr).expect("bind");
-    let span = tracing::info_span!("server", name = %name, local.addr = %addr);
+    let span = tracing::info_span!("server", name = %name, local = %addr);
     let trace_req: fn(&Request<_>) -> tracing::Span = |req: &Request<_>| {
         let span = tracing::debug_span!(
             "request",
@@ -100,7 +100,7 @@ where
             .fold(server, |mut server, sock| {
                 // Construct a new span for each accepted connection.
                 let addr = sock.peer_addr().expect("can't get addr");
-                let span = tracing::info_span!("conn", remote.addr = %addr);
+                let span = tracing::info_span!("conn", remote = %addr);
                 let _enter = span.enter();
 
                 tracing::debug!("accepted connection");
@@ -369,7 +369,7 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
                     .and_then(|response| {
                         let status = response.status();
                         if status != StatusCode::OK {
-                            tracing::error!(message = "error received from server!", ?status);
+                            tracing::error!(target: "gen", message = "error received from server!", ?status);
                         }
                         response
                             .into_body()
@@ -381,12 +381,13 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
                     .and_then(|body| {
                         tracing::info!(target: "gen", message = "response complete.", rsp.body = %body);
                         Ok(())
-                    });
+                    })
+                    .instrument(tracing::info_span!(target: "gen", "request"));
                 hyper::rt::spawn(f);
                 future::ok((svc, authority))
             }).map(|_| ())
             .map_err(|e| panic!("timer error {}", e))
-    }).instrument(tracing::debug_span!("gen", remote.addr=%addr));
+    }).instrument(tracing::info_span!(target: "gen", "load_gen", remote.addr=%addr));
 
     Box::new(f)
 }
