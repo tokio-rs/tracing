@@ -6,7 +6,11 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Weak},
 };
-use tracing_core::{callsite, subscriber::{Subscriber, Interest}, Metadata, span, Event};
+use tracing_core::{
+    callsite, span,
+    subscriber::{Interest, Subscriber},
+    Event, Metadata,
+};
 
 #[derive(Debug)]
 pub struct Layer<L, S> {
@@ -52,7 +56,6 @@ where
     fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: layer::Context<S>) {
         try_lock!(self.inner.read()).new_span(attrs, id, ctx)
     }
-
 
     #[inline]
     fn on_record(&self, span: &span::Id, values: &span::Record, ctx: layer::Context<S>) {
@@ -191,16 +194,16 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         match self.kind {
             ErrorKind::SubscriberGone => "subscriber no longer exists",
-            ErrorKind::Poisoned => "lock poisoned"
+            ErrorKind::Poisoned => "lock poisoned",
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::prelude::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use super::*;
 
     #[test]
     fn reload_handle() {
@@ -212,11 +215,11 @@ mod test {
             Two,
         }
         impl<S: Subscriber> crate::Layer<S> for Filter {
-            fn register_callsite(&self, _: &Metadata,) -> Interest {
+            fn register_callsite(&self, _: &Metadata) -> Interest {
                 Interest::sometimes()
             }
 
-            fn enabled(&self, _: &Metadata, _: &layer::Context<S>) -> bool {
+            fn enabled(&self, _: &Metadata, _: layer::Context<S>) -> bool {
                 match self {
                     Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
                     Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
@@ -230,10 +233,10 @@ mod test {
 
         let (layer, handle) = Layer::new(Filter::One);
 
-        let subscriber = Dispatch::new(crate::layer::tests::NopSubscriber
-            .with(layer));
+        let subscriber =
+            tracing_core::dispatcher::Dispatch::new(crate::layer::tests::NopSubscriber.with(layer));
 
-        dispatcher::with_default(&subscriber, || {
+        tracing_core::dispatcher::with_default(&subscriber, || {
             assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 0);
             assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
 
