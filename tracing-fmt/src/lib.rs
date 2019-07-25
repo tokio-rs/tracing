@@ -272,7 +272,7 @@ where
         }
     }
 
-    /// Display the target of events
+    /// Sets whether or not an event's target is displayed.
     pub fn with_target(self, display_target: bool) -> Builder<N, format::Format<L, T>, F> {
         Builder {
             fmt_event: self.fmt_event.with_target(display_target),

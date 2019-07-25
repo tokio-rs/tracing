@@ -117,7 +117,7 @@ impl<F, T> Format<F, T> {
         Format { ansi, ..self }
     }
 
-    /// Display the target of events
+    /// Sets whether or not an event's target is displayed.
     pub fn with_target(self, display_target: bool) -> Format<F, T> {
         Format {
             display_target,
