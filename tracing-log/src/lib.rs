@@ -140,6 +140,24 @@ static FIELD_NAMES: &'static [&'static str] = &[
     "log.line",
 ];
 
+impl Fields {
+    fn new(cs: &'static dyn Callsite) -> Self {
+        let fieldset = cs.metadata().fields();
+        let message = fieldset.field("message").unwrap();
+        let target = fieldset.field("log.target").unwrap();
+        let module = fieldset.field("log.module_path").unwrap();
+        let file = fieldset.field("log.file").unwrap();
+        let line = fieldset.field("log.line").unwrap();
+        Fields {
+            message,
+            target,
+            module,
+            file,
+            line,
+        }
+    }
+}
+
 macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
@@ -161,56 +179,41 @@ macro_rules! log_cs {
             }
         }
 
-        lazy_static! {
-            static ref FIELDS: Fields = {
-                let message = META.fields().field("message").unwrap();
-                let target = META.fields().field("log.target").unwrap();
-                let module = META.fields().field("log.module_path").unwrap();
-                let file = META.fields().field("log.file").unwrap();
-                let line = META.fields().field("log.line").unwrap();
-                Fields {
-                    message,
-                    target,
-                    module,
-                    file,
-                    line,
-                }
-            };
-        }
-        (&Callsite, &FIELDS)
+        &Callsite
     }};
 }
 
+static TRACE_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::TRACE);
+static DEBUG_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::DEBUG);
+static INFO_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::INFO);
+static WARN_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::WARN);
+static ERROR_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::ERROR);
+
 lazy_static! {
-    static ref TRACE_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::TRACE);
-    static ref DEBUG_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::DEBUG);
-    static ref INFO_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::INFO);
-    static ref WARN_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::WARN);
-    static ref ERROR_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::ERROR);
+    static ref TRACE_FIELDS: Fields = Fields::new(TRACE_CS);
+    static ref DEBUG_FIELDS: Fields = Fields::new(DEBUG_CS);
+    static ref INFO_FIELDS: Fields = Fields::new(INFO_CS);
+    static ref WARN_FIELDS: Fields = Fields::new(WARN_CS);
+    static ref ERROR_FIELDS: Fields = Fields::new(ERROR_CS);
 }
 
 fn level_to_cs(level: &Level) -> (&'static dyn Callsite, &'static Fields) {
     match *level {
-        Level::TRACE => *TRACE_CS,
-        Level::DEBUG => *DEBUG_CS,
-        Level::INFO => *INFO_CS,
-        Level::WARN => *WARN_CS,
-        Level::ERROR => *ERROR_CS,
+        Level::TRACE => (TRACE_CS, &*TRACE_FIELDS),
+        Level::DEBUG => (DEBUG_CS, &*DEBUG_FIELDS),
+        Level::INFO => (INFO_CS, &*INFO_FIELDS),
+        Level::WARN => (WARN_CS, &*WARN_FIELDS),
+        Level::ERROR => (ERROR_CS, &*ERROR_FIELDS),
     }
 }
 
 fn loglevel_to_cs(level: log::Level) -> (&'static dyn Callsite, &'static Fields) {
     match level {
-        log::Level::Trace => *TRACE_CS,
-        log::Level::Debug => *DEBUG_CS,
-        log::Level::Info => *INFO_CS,
-        log::Level::Warn => *WARN_CS,
-        log::Level::Error => *ERROR_CS,
+        log::Level::Trace => (TRACE_CS, &*TRACE_FIELDS),
+        log::Level::Debug => (DEBUG_CS, &*DEBUG_FIELDS),
+        log::Level::Info => (INFO_CS, &*INFO_FIELDS),
+        log::Level::Warn => (WARN_CS, &*WARN_FIELDS),
+        log::Level::Error => (ERROR_CS, &*ERROR_FIELDS),
     }
 }
 
@@ -308,9 +311,7 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     }
 
     fn is_log(&self) -> bool {
-        // We can't use identify_callsite directly on Callsite as lazy_static
-        // breaks address comparison
-        self.metadata().callsite() == level_to_cs(self.metadata().level()).0.metadata().callsite()
+        self.metadata().callsite() == identify_callsite!(level_to_cs(self.metadata().level()).0)
     }
 }
 
@@ -369,7 +370,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn log_call_site_is_correct() {
+    fn log_callsite_is_correct() {
         let record = log::Record::builder()
             .args(format_args!("Error!"))
             .level(log::Level::Error)
@@ -379,13 +380,9 @@ mod test {
             .module_path(Some("server"))
             .build();
 
-        // Uses identify_callsite! on lazy_static
         let meta = record.as_trace();
-
         let (cs, _keys) = loglevel_to_cs(record.level());
-        // Uses internal reference to callsite
-        let meta2 = cs.metadata();
-
-        assert_eq!(meta.callsite(), meta2.callsite());
+        let cs_meta = cs.metadata();
+        assert_eq!(meta.callsite(), cs_meta.callsite());
     }
 }
