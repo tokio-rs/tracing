@@ -30,7 +30,6 @@ fn level_filter_event_with_target() {
     let filter: Filter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
         .event(event::mock().at_level(Level::WARN).with_target("stuff"))
         .event(event::mock().at_level(Level::ERROR))
