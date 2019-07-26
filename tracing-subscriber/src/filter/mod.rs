@@ -182,9 +182,10 @@ impl<S: Subscriber> Layer<S> for Filter {
     }
 
     fn on_enter(&self, id: &span::Id, _: Context<S>) {
-        eprintln!("on_enter({:?})", id);
+        // XXX: This is where _we_ could push IDs to the stack instead, and use
+        // that to allow changing the filter while a span is already entered.
+        // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            eprintln!("--> {:?}", span);
             self.scope.get().push(span.level());
         }
     }
@@ -266,7 +267,6 @@ impl Error for FromEnvError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::*;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 
