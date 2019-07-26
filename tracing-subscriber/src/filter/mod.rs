@@ -140,8 +140,7 @@ impl<S: Subscriber> Layer<S> for Filter {
             // should always be enabled, since it influences filtering.
             if let Some(matcher) = self.dynamics.matcher(metadata) {
                 let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
-                let _i = by_cs.insert(metadata.callsite(), matcher);
-                debug_assert_eq!(_i, None, "register_callsite called twice since reset");
+                by_cs.insert(metadata.callsite(), matcher);
                 return Interest::always();
             }
         }
