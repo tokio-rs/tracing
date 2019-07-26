@@ -80,13 +80,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         return Ok(());
     };
 
-    let (cs, keys) = match record.level() {
-        log::Level::Trace => *TRACE_CS,
-        log::Level::Debug => *DEBUG_CS,
-        log::Level::Info => *INFO_CS,
-        log::Level::Warn => *WARN_CS,
-        log::Level::Error => *ERROR_CS,
-    };
+    let (cs, keys) = loglevel_to_cs(record.level());
 
     let log_module = record.module_path();
     let log_file = record.file();
@@ -200,16 +194,30 @@ lazy_static! {
         log_cs!(tracing_core::Level::ERROR);
 }
 
+fn level_to_cs(level: &Level) -> (&'static dyn Callsite, &'static Fields) {
+    match *level {
+        Level::TRACE => *TRACE_CS,
+        Level::DEBUG => *DEBUG_CS,
+        Level::INFO => *INFO_CS,
+        Level::WARN => *WARN_CS,
+        Level::ERROR => *ERROR_CS,
+    }
+}
+
+fn loglevel_to_cs(level: log::Level) -> (&'static dyn Callsite, &'static Fields) {
+    match level {
+        log::Level::Trace => *TRACE_CS,
+        log::Level::Debug => *DEBUG_CS,
+        log::Level::Info => *INFO_CS,
+        log::Level::Warn => *WARN_CS,
+        log::Level::Error => *ERROR_CS,
+    }
+}
+
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
-        let cs_id = match self.level() {
-            log::Level::Trace => identify_callsite!(TRACE_CS.0),
-            log::Level::Debug => identify_callsite!(DEBUG_CS.0),
-            log::Level::Info => identify_callsite!(INFO_CS.0),
-            log::Level::Warn => identify_callsite!(WARN_CS.0),
-            log::Level::Error => identify_callsite!(ERROR_CS.0),
-        };
+        let cs_id = identify_callsite!(loglevel_to_cs(self.level()).0);
         Metadata::new(
             "log record",
             self.target(),
@@ -281,14 +289,7 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
         let original = self.metadata();
         if self.is_log() {
-            let fields = match *original.level() {
-                Level::TRACE => TRACE_CS.1,
-                Level::DEBUG => DEBUG_CS.1,
-                Level::INFO => INFO_CS.1,
-                Level::WARN => WARN_CS.1,
-                Level::ERROR => ERROR_CS.1,
-            };
-            let mut fields = LogVisitor::new_for(self, fields);
+            let mut fields = LogVisitor::new_for(self, level_to_cs(original.level()).1);
             self.record(&mut fields);
 
             Some(Metadata::new(
@@ -307,14 +308,9 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     }
 
     fn is_log(&self) -> bool {
-        self.metadata().callsite()
-            == match *self.metadata().level() {
-                Level::TRACE => identify_callsite!(TRACE_CS.0),
-                Level::DEBUG => identify_callsite!(DEBUG_CS.0),
-                Level::INFO => identify_callsite!(INFO_CS.0),
-                Level::WARN => identify_callsite!(WARN_CS.0),
-                Level::ERROR => identify_callsite!(ERROR_CS.0),
-            }
+        // We can't use identify_callsite directly on Callsite as lazy_static
+        // breaks address comparison
+        self.metadata().callsite() == level_to_cs(self.metadata().level()).0.metadata().callsite()
     }
 }
 
@@ -365,5 +361,31 @@ impl<'a> Visit for LogVisitor<'a> {
                 self.module_path = Some(&*(value as *const _));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn log_call_site_is_correct() {
+        let record = log::Record::builder()
+            .args(format_args!("Error!"))
+            .level(log::Level::Error)
+            .target("myApp")
+            .file(Some("server.rs"))
+            .line(Some(144))
+            .module_path(Some("server"))
+            .build();
+
+        // Uses identify_callsite! on lazy_static
+        let meta = record.as_trace();
+
+        let (cs, _keys) = loglevel_to_cs(record.level());
+        // Uses internal reference to callsite
+        let meta2 = cs.metadata();
+
+        assert_eq!(meta.callsite(), meta2.callsite());
     }
 }
