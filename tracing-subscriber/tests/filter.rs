@@ -98,3 +98,32 @@ fn span_name_filter_is_dynamic() {
 
     finished.assert_finished();
 }
+
+#[test]
+fn field_filter_events() {
+    let filter: Filter = "[{thing}]=debug".parse().expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .event(
+            event::mock()
+                .at_level(Level::INFO)
+                .with_fields(field::mock("thing")),
+        )
+        .event(
+            event::mock()
+                .at_level(Level::DEBUG)
+                .with_fields(field::mock("thing")),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::trace!("this should be disabled");
+        tracing::info!("also disabled");
+        tracing::info!(thing = 1);
+        tracing::debug!(thing = 2);
+        tracing::trace!(thing = 3);
+    });
+
+    finished.assert_finished();
+}
