@@ -289,7 +289,6 @@
 //! This approach allows trace data to be collected by multiple subscribers
 //! within different contexts in the program. Note that the override only applies to the
 //! currently executing thread; other threads will not see the change from with_default.
-//! with that subscriber as the default.
 //!
 //! Any trace events generated outside the context of a subscriber will not be collected.
 //!
@@ -327,7 +326,7 @@
 //!
 //! * A set of features controlling the [static verbosity level].
 //! * `log` causes trace instrumentation points to emit [`log`] records as well
-//!   as trace events. This is inteded for use in libraries whose users may be
+//!   as trace events. This is intended for use in libraries whose users may be
 //!   using either `tracing` or `log`.
 //!   **Note:** `log` support will not work when `tracing` is renamed in `Cargo.toml`,
 //!   due to oddities in macro expansion.

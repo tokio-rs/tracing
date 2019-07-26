@@ -65,6 +65,7 @@ pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
     timer: T,
     ansi: bool,
+    display_target: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -73,6 +74,7 @@ impl Default for Format<Full, SystemTime> {
             format: PhantomData,
             timer: SystemTime,
             ansi: true,
+            display_target: true,
         }
     }
 }
@@ -86,6 +88,7 @@ impl<F, T> Format<F, T> {
             format: PhantomData,
             timer: self.timer,
             ansi: self.ansi,
+            display_target: self.display_target,
         }
     }
 
@@ -95,6 +98,7 @@ impl<F, T> Format<F, T> {
             format: self.format,
             timer,
             ansi: self.ansi,
+            display_target: self.display_target,
         }
     }
 
@@ -104,12 +108,21 @@ impl<F, T> Format<F, T> {
             format: self.format,
             timer: (),
             ansi: self.ansi,
+            display_target: self.display_target,
         }
     }
 
     /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
         Format { ansi, ..self }
+    }
+
+    /// Sets whether or not an event's target is displayed.
+    pub fn with_target(self, display_target: bool) -> Format<F, T> {
+        Format {
+            display_target,
+            ..self
+        }
     }
 }
 
@@ -131,7 +144,11 @@ where
             "{} {}{}: ",
             FmtLevel::new(meta.level(), self.ansi),
             FullCtx::new(&ctx, self.ansi),
-            meta.target()
+            if self.display_target {
+                meta.target()
+            } else {
+                ""
+            }
         )?;
         {
             let mut recorder = ctx.new_visitor(writer, true);
@@ -159,7 +176,11 @@ where
             "{} {}{}: ",
             FmtLevel::new(meta.level(), self.ansi),
             FmtCtx::new(&ctx, self.ansi),
-            meta.target()
+            if self.display_target {
+                meta.target()
+            } else {
+                ""
+            }
         )?;
         {
             let mut recorder = ctx.new_visitor(writer, true);

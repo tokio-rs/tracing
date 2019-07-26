@@ -34,3 +34,7 @@ tokio = "0.1"
 tokio-tcp = "0.1"
 tokio-buf = "0.1"
 rand = "0.6"
+
+[badges]
+azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
+maintenance = { status = "experimental" }
