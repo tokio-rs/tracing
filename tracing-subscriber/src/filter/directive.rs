@@ -23,9 +23,10 @@ pub struct Directive {
 /// A directive which will statically enable or disable a given callsite.
 ///
 /// Unlike a dynamic directive, this can be cached by the callsite.
-#[derive(Debug, PartialEq, Eq, Ord)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct StaticDirective {
     target: Option<String>,
+    field_names: FilterVec<String>,
     level: LevelFilter,
 }
 
@@ -76,15 +77,24 @@ impl Directive {
         !self.fields.is_empty()
     }
 
-    pub(super) fn into_static(self) -> Result<StaticDirective, Self> {
-        if self.is_dynamic() {
-            return Err(self);
+    pub(super) fn to_static(&self) -> Option<StaticDirective> {
+        if !self.is_static() {
+            return None;
         }
 
-        Ok(StaticDirective {
-            target: self.target,
-            level: self.level,
+        // TODO(eliza): these strings are all immutable; we should consider
+        // `Arc`ing them to make this more efficient...
+        let field_names = self.fields.iter().map(field::Match::name).collect();
+
+        Some(StaticDirective {
+            target: self.target.clone(),
+            field_names,
+            level: self.level.clone(),
         })
+    }
+
+    fn is_static(&self) -> bool {
+        !self.has_name() && !self.fields.iter().any(field::Match::has_value)
     }
 
     pub(super) fn is_dynamic(&self) -> bool {
@@ -120,10 +130,15 @@ impl Directive {
     pub(super) fn make_tables(
         directives: impl IntoIterator<Item = Directive>,
     ) -> (Dynamics, Statics) {
+        // TODO(eliza): this could be made more efficient...
         let (dyns, stats): (BTreeSet<Directive>, BTreeSet<Directive>) =
             directives.into_iter().partition(Directive::is_dynamic);
-        let stats = stats.into_iter().filter_map(|d| d.into_static().ok());
-        (Dynamics::from_iter(dyns), Statics::from_iter(stats))
+        let statics = stats
+            .into_iter()
+            .filter_map(|d| d.to_static())
+            .chain(dyns.iter().filter_map(Directive::to_static))
+            .collect();
+        (Dynamics::from_iter(dyns), statics)
     }
 }
 
@@ -376,7 +391,6 @@ impl Dynamics {
     }
 }
 
-
 // === impl Statics ===
 
 impl Statics {
@@ -395,12 +409,24 @@ impl Statics {
 
 impl PartialOrd for StaticDirective {
     fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
+        match (self.field_names.len(), other.field_names.len()) {
+            (a, b) if a == b => {}
+            (a, b) => return Some(a.cmp(&b)),
+        }
+
         match (self.target.as_ref(), other.target.as_ref()) {
             (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
             (Some(_), None) => Some(Ordering::Greater),
             (None, Some(_)) => Some(Ordering::Less),
             (None, None) => Some(Ordering::Equal),
         }
+    }
+}
+
+impl Ord for StaticDirective {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other)
+            .expect("StaticDirective::partial_cmp should define a total order")
     }
 }
 
@@ -416,6 +442,15 @@ impl Match for StaticDirective {
             }
         }
 
+        if meta.is_event() && !self.field_names.is_empty() {
+            let fields = meta.fields();
+            for name in &self.field_names {
+                if !fields.field(name).is_some() {
+                    return false;
+                }
+            }
+        }
+
         true
     }
 
@@ -428,6 +463,7 @@ impl Default for StaticDirective {
     fn default() -> Self {
         StaticDirective {
             target: None,
+            field_names: FilterVec::new(),
             level: LevelFilter::ERROR,
         }
     }

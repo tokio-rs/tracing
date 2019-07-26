@@ -63,6 +63,17 @@ impl FromStr for Match {
     }
 }
 
+impl Match {
+    pub fn has_value(&self) -> bool {
+        self.value.is_some()
+    }
+
+    // TODO: reference count these strings?
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+}
+
 // === impl ValueMatch ===
 
 impl FromStr for ValueMatch {
