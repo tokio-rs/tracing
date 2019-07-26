@@ -134,14 +134,20 @@ impl Filter {
 
 impl<S: Subscriber> Layer<S> for Filter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.statics.enabled(metadata) {
-            return Interest::always();
+        if metadata.is_span() {
+            // If this metadata describes a span, first, check if there is a
+            // dynamic filter that should be constructed for it. If so, it
+            // should always be enabled, since it influences filtering.
+            if let Some(matcher) = self.dynamics.matcher(metadata) {
+                let mut by_cs = self.by_cs.write().unwrap();
+                let _i = by_cs.insert(metadata.callsite(), matcher);
+                debug_assert_eq!(_i, None, "register_callsite called twice since reset");
+                return Interest::always();
+            }
         }
 
-        if let Some(matcher) = self.dynamics.matcher(metadata) {
-            let mut by_cs = self.by_cs.write().unwrap();
-            let _i = by_cs.insert(metadata.callsite(), matcher);
-            debug_assert_eq!(_i, None, "register_callsite called twice since reset");
+        // Otherwise, check if any of our static filters enable this metadata.
+        if self.statics.enabled(metadata) {
             Interest::always()
         } else {
             self.base_interest()
@@ -176,7 +182,9 @@ impl<S: Subscriber> Layer<S> for Filter {
     }
 
     fn on_enter(&self, id: &span::Id, _: Context<S>) {
+        eprintln!("on_enter({:?})", id);
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+            eprintln!("--> {:?}", span);
             self.scope.get().push(span.level());
         }
     }
