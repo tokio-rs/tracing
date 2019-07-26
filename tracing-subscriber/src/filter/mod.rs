@@ -139,7 +139,7 @@ impl<S: Subscriber> Layer<S> for Filter {
             // dynamic filter that should be constructed for it. If so, it
             // should always be enabled, since it influences filtering.
             if let Some(matcher) = self.dynamics.matcher(metadata) {
-                let mut by_cs = self.by_cs.write().unwrap();
+                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
                 let _i = by_cs.insert(metadata.callsite(), matcher);
                 debug_assert_eq!(_i, None, "register_callsite called twice since reset");
                 return Interest::always();
@@ -168,15 +168,15 @@ impl<S: Subscriber> Layer<S> for Filter {
     }
 
     fn new_span(&self, attrs: &span::Attributes, id: &span::Id, _: Context<S>) {
-        let by_cs = self.by_cs.read().unwrap();
+        let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
-            self.by_id.write().unwrap().insert(id.clone(), span);
+            try_lock!(self.by_id.write()).insert(id.clone(), span);
         }
     }
 
     fn on_record(&self, id: &span::Id, values: &span::Record, _: Context<S>) {
-        if let Some(span) = self.by_id.read().unwrap().get(id) {
+        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
