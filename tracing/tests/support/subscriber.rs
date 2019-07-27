@@ -343,6 +343,12 @@ where
     }
 
     fn exit(&self, id: &Id) {
+        if std::thread::panicking() {
+            // `exit()` can be called in `drop` impls, so we must guard against
+            // double panics.
+            println!("exit {:?} while panicking", id);
+            return;
+        }
         let spans = self.spans.lock().unwrap();
         let span = spans
             .get(id)
