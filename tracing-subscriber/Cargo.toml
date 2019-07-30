@@ -5,6 +5,8 @@ authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.r
 edition = "2018"
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
 documentation = "https://docs.rs/tracing-subscriber/0.0.1-alpha.1/tracing-subscriber"
 description = """
 Utilities for implementing and composing `tracing` subscribers.
