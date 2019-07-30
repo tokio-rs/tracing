@@ -1,4 +1,17 @@
-//! Utilities and helpers for implementing and composing subscribers.
+//! Utilities for implementing and composing [`tracing`] subscribers.
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
+//! scoped, structured, and async-aware diagnostics. The [`Subscriber`] trait
+//! represents the functionality necessary to collect this trace data. This
+//! crate contains tools for composing subscribers out of smaller units of
+//! behaviour, and batteries-included implementations of common subscriber
+//! functionality.
+//!
+//! `tracing-subscriber` is intended for use by both `Subscriber` authors and
+//! application authors using `tracing` to instrument their applications.
+//!
+//! [`tracing`]: https://docs.rs/tracing/0.1.3/tracing/
+//! [`Subscriber`]: https://docs.rs/tracing/0.1.3/tracing/subscriber/trait.Subscriber.html
 use tracing_core::span::Id;
 
 pub mod layer;
