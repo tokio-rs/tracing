@@ -65,7 +65,7 @@ impl fmt::Display for LevelFilter {
         match self.0 {
             Inner::Off => f.pad("OFF"),
             Inner::Level(Level::ERROR) => f.pad("ERROR"),
-            Inner::Level(Level::WARN) => f.pad("WARM"),
+            Inner::Level(Level::WARN) => f.pad("WARN"),
             Inner::Level(Level::INFO) => f.pad("INFO"),
             Inner::Level(Level::DEBUG) => f.pad("DEBUG"),
             Inner::Level(Level::TRACE) => f.pad("TRACE"),
