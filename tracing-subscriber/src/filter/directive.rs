@@ -163,7 +163,7 @@ impl Match for Directive {
         // Does the metadata define all the fields that this directive cares about?
         let fields = meta.fields();
         for field in &self.fields {
-            if !fields.field(&field.name).is_some() {
+            if fields.field(&field.name).is_none() {
                 return false;
             }
         }
