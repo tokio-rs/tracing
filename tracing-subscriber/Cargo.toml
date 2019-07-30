@@ -8,7 +8,6 @@ edition = "2018"
 tracing-core = "0.1.2"
 
 [dev-dependencies]
-tracing-log = { path = "../tracing-log" }
 tracing = "0.1"
 
 [badges]
