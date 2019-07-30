@@ -188,7 +188,7 @@ impl FromStr for Directive {
                     (?P<target>[\w:]+)|(?P<span>\[[^\]]*\])
                 ){1,2}
                 (?: # level or nothing
-                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF[0-5])?
+                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])?
                 )?
                 $
                 "
