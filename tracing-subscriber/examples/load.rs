@@ -8,7 +8,7 @@
 //! runs in the background and constantly sends requests for various characters
 //! to be repeated.
 //!
-//! As the load generators logs indicate, the server will sometimes return
+//! As the load generator's logs indicate, the server will sometimes return
 //! errors, including HTTP 500s! Because the logs at high load are so noisy,
 //! tracking down the root cause of the errors can be difficult, if not
 //! impossible. Since the character-repetition service is absolutely
