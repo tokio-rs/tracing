@@ -1,10 +1,10 @@
 use std::{cmp::Ordering, fmt, str::FromStr};
 use tracing_core::Level;
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LevelFilter(Inner);
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 enum Inner {
     Off,
     Level(Level),
@@ -69,6 +69,19 @@ impl fmt::Display for LevelFilter {
             Inner::Level(Level::INFO) => f.pad("INFO"),
             Inner::Level(Level::DEBUG) => f.pad("DEBUG"),
             Inner::Level(Level::TRACE) => f.pad("TRACE"),
+        }
+    }
+}
+
+impl fmt::Debug for LevelFilter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Inner::Off => f.pad("LevelFilter::OFF"),
+            Inner::Level(Level::ERROR) => f.pad("LevelFilter::ERROR"),
+            Inner::Level(Level::WARN) => f.pad("LevelFilter::WARN"),
+            Inner::Level(Level::INFO) => f.pad("LevelFilter::INFO"),
+            Inner::Level(Level::DEBUG) => f.pad("LevelFilter::DEBUG"),
+            Inner::Level(Level::TRACE) => f.pad("LevelFilter::TRACE"),
         }
     }
 }
