@@ -16,10 +16,10 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// This macro behaves similarly to the [`tokio::spawn`] function, but the
 /// spawned future is instrumented with a new `tokio-trace` span prior to
 /// spawning. This macro may be used as a drop-in replacement for `tokio::spawn`
-/// in projects using `tokio-trace`.
+/// in projects using `tracing`.
 ///
 /// In order for a future to do work, it must be spawned on an executor. The
-/// `$crate::spawn!` macro spawns a future on the provided executor, or using the
+/// `spawn!` macro spawns a future on the provided executor, or using the
 /// [default executor] for the current execution context if none is provided.
 ///
 /// The default executor is **usually** a thread pool.
@@ -41,16 +41,13 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// Overriding the name of the span:
 ///
 /// ```rust
-/// # extern crate futures;
-/// #[macro_use]
-/// extern crate tracing_futures;
 /// # use futures::future;
 /// # fn doc() {
 /// let fut = future::lazy(|| {
 ///     // ...
 /// #    Ok(())
 /// });
-/// $crate::spawn!(name: "my_future", fut);
+/// tracing_futures::spawn!(name: "my_future", fut);
 /// # }
 ///  # fn main() {}
 /// ```
@@ -58,29 +55,22 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// Overriding the target:
 ///
 ///```rust
-/// # #[macro_use]
-/// # extern crate tracing_futures;
-/// # extern crate futures;
 /// # use futures::future;
 /// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
-/// $crate::spawn!(target: "spawned_futures", fut);
+/// tracing_futures::spawn!(target: "spawned_futures", fut);
 /// # }
 ///  # fn main() {}
 /// ```
 /// Overriding the level:
 ///
 ///```rust
-/// # extern crate futures;
-/// # #[macro_use]
-/// # extern crate tracing_futures;
-/// # extern crate tracing;
 /// # use futures::future;
 /// use tracing::Level;
 ///
 /// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
-/// $crate::spawn!(level: Level::INFO, fut);
+/// tracing_futures::spawn!(level: Level::INFO, fut);
 /// # }
 ///  # fn main() {}
 /// ```
@@ -88,15 +78,11 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// Any number of metadata items may be overridden:
 ///
 ///```rust
-/// # extern crate futures;
-/// # #[macro_use]
-/// # extern crate tracing_futures;
-/// # extern crate tracing;
 /// # use futures::future;
 /// # use tracing::Level;
 /// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
-/// $crate::spawn!(level: Level::WARN, target: "spawned_futures", name: "a_bad_future", fut);
+/// tracing_futures::spawn!(level: Level::WARN, target: "spawned_futures", name: "a_bad_future", fut);
 /// # }
 /// # fn main() {}
 /// ```
@@ -104,14 +90,10 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// Adding fields to the span:
 ///
 ///```rust
-/// # extern crate futures;
-/// # #[macro_use]
-/// # extern crate tracing_futures;
-/// # extern crate tracing;
 /// # use futures::future;
 /// # fn doc() {
 /// # let fut = future::lazy(|| { Ok(()) });
-/// $crate::spawn!(fut, foo = "bar", baz = 42);
+/// tracing_futures::spawn!(fut, foo = "bar", baz = 42);
 /// # }
 ///  # fn main() {}
 /// ```
@@ -128,7 +110,7 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 ///         // ...
 ///         # Ok(())
 ///     });
-///     $crate::spawn!(fut, number = 1);
+///     tracing_futures::spawn!(fut, number = 1);
 /// }
 /// # }
 /// # fn main() {}
@@ -136,14 +118,10 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// # Examples
 ///
 /// In this example, based on the example in the documentation for
-/// [`tokio::spawn`], a server is started and `$crate::spawn!` is used to start
+/// [`tokio::spawn`], a server is started and `spawn!` is used to start
 /// a new task that processes each received connection.
 ///
 /// ```rust
-/// # extern crate tokio;
-/// # extern crate futures;
-/// #[macro_use]
-/// extern crate tracing_futures;
 /// # use futures::{Future, Stream};
 /// use tokio::net::TcpListener;
 ///
@@ -157,7 +135,8 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// let server = listener.incoming()
 ///     .map_err(|e| println!("error = {:?}", e))
 ///     .for_each(|socket| {
-///         $crate::spawn!(process(socket))
+///         tracing_futures::spawn!(process(socket));
+///         Ok(())
 ///     });
 ///
 /// tokio::run(server);
@@ -167,14 +146,10 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 ///
 /// # Providing an Executor
 ///
-/// By default, `$crate::spawn!` uses the [`DefaultExecutor`]. However, an alternative
+/// By default, `spawn!` uses the [`DefaultExecutor`]. However, an alternative
 /// executor can be provided using the `on:` macro field. For example,
 ///
 /// ```rust
-/// # extern crate futures;
-/// # extern crate tokio
-/// #[macro_use]
-/// extern crate tracing_futures;
 /// # use futures::future;
 /// # fn doc() {
 /// let fut = future::lazy(|| {
@@ -183,11 +158,11 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// });
 /// # fn get_custom_executor() -> tokio::executor::DefaultExecutor {
 /// #    tokio::executor::DefaultExecutor::current()
-/// #}
-/// let my_executor = get_custom_executor();
-/// $crate::spawn!(name: "my_future", on: my_executor, fut);
 /// # }
-///  # fn main() {}
+/// let mut my_executor = get_custom_executor();
+/// tracing_futures::spawn!(name: "my_future", on: my_executor, fut);
+/// # }
+/// # fn main() {}
 /// ```
 ///
 /// The executor that spawned the future is recorded in the
@@ -202,7 +177,7 @@ pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 /// [default executor]: https://docs.rs/tokio/latest/tokio/executor/struct.DefaultExecutor.html
 /// [`DefaultExecutor`]: https://docs.rs/tokio/latest/tokio/executor/struct.DefaultExecutor.html
 /// [`tokio::spawn`]: https://docs.rs/tokio/latest/tokio/executor/fn.spawn.html
-/// [`TRACE` verbosity level]: https://docs.rs/tokio-trace/latest/tracing/struct.Level.html#associatedconstant.TRACE
+/// [`TRACE` verbosity level]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[macro_export]
 macro_rules! spawn {
@@ -314,7 +289,7 @@ macro_rules! spawn {
             $($field)*,
         )
     };
-    (on:  $ex:expr, $fut:expr) => {
+    (on: $ex:expr, $fut:expr) => {
         $crate::spawn!(on:  $ex, $fut,)
     };
 
