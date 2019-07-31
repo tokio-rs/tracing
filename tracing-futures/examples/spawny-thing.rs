@@ -1,39 +1,32 @@
-extern crate futures;
-extern crate tokio;
-#[macro_use]
-extern crate tracing;
-extern crate tracing_fmt;
-extern crate tracing_futures;
-
 use futures::future::{self, Future};
 use tracing::Level;
 use tracing_futures::Instrument;
 
-fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
+fn parent_task(subtasks: usize) -> impl Future<Item = (), Error = ()> {
     future::lazy(move || {
-        info!("spawning subtasks...");
-        let subtasks = (1..=how_many)
-            .map(|i| {
-                debug!(message = "creating subtask;", number = i);
-                subtask(i)
+        tracing::info!("spawning subtasks...");
+        let subtasks = (1..=subtasks)
+            .map(|number| {
+                tracing::debug!(message = "creating subtask;", number);
+                subtask(number)
             })
             .collect::<Vec<_>>();
         future::join_all(subtasks)
     })
     .map(|result| {
-        debug!("all subtasks completed");
+        tracing::debug!("all subtasks completed");
         let sum: usize = result.into_iter().sum();
-        info!(sum = sum);
+        tracing::info!(sum = sum);
     })
-    .instrument(span!(Level::TRACE, "parent_task", subtasks = how_many))
+    .instrument(tracing::span!(Level::TRACE, "parent_task", subtasks))
 }
 
 fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
     future::lazy(move || {
-        info!("polling subtask...");
+        tracing::info!("polling subtask...");
         Ok(number)
     })
-    .instrument(span!(Level::TRACE, "subtask", number = number))
+    .instrument(tracing::span!(Level::TRACE, "subtask", number))
 }
 
 fn main() {

@@ -1,26 +1,16 @@
 //! A demonstration of how a subscriber might use the spans created by the
-//! `tokio_trace_futures::spawn!` macro to track the number of
+//! `tracing_futures::spawn!` macro to track the number of
 //! currently-executing tasks.
 //!
 //! Note that this subscriber implementation is not optimized for production
 //! use. It is intended only for demonstration purposes.
-
-extern crate futures;
-extern crate tokio;
-#[macro_use]
-extern crate tokio_trace;
-#[macro_use]
-extern crate tokio_trace_futures;
-
 use futures::future::{self, Future};
-
-use tokio_trace::{
+use tracing::{
     field::{Field, Visit},
     span,
     subscriber::{self, Subscriber},
     Event, Metadata,
 };
-
 use std::{
     collections::HashMap,
     cell::Cell,
@@ -226,35 +216,35 @@ impl TaskCounter {
 }
 
 fn main() {
-    fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
+    fn parent_task(subtasks: usize) -> impl Future<Item = (), Error = ()> {
         future::lazy(move || {
             // Since this span does not directly correspond to a spawned task,
             // it will be ignored.
-            debug_span!("spawning subtasks", tasks = how_many).enter(|| {
-                for i in 1..=how_many {
-                    debug!(message = "spawning subtask", number = i);
-                    spawn!(subtask(i), number = i);
-                }
-            });
+            let span = tracing::debug_span!("spawning subtasks", subtasks);
+            let _enter = span.enter();
+            for number in 1..=subtasks {
+                tracing::debug!(message = "spawning subtask", number);
+                tracing_futures::spawn!(subtask(number), number);
+            }
 
             Ok(())
         })
         .map(|_| {
-            info!("all subtasks spawned");
+            tracing::info!("all subtasks spawned");
         })
     }
 
     fn subtask(number: usize) -> impl Future<Item = (), Error = ()> {
         future::lazy(move || {
-            debug!("polling subtask...");
+            tracing::debug!("polling subtask...");
             Ok(number)
         })
-        .map(|i| trace!(i = i))
+        .map(|i| tracing::trace!(i = i))
     }
 
-    tokio_trace::subscriber::with_default(TaskCounter::new(), || {
+    tracing::subscriber::with_default(TaskCounter::new(), || {
         tokio::run(future::lazy(|| {
-            spawn!(parent_task(10));
+            tracing_futures::spawn!(parent_task(10));
             Ok(())
         }))
     });
