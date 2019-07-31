@@ -93,7 +93,10 @@ impl PartialEq<Self> for ValueMatch {
             (ValueMatch::Bool(a), ValueMatch::Bool(b)) => a == b,
             (ValueMatch::I64(a), ValueMatch::I64(b)) => a == b,
             (ValueMatch::U64(a), ValueMatch::U64(b)) => a == b,
-            // TODO: T_T
+            // XXX: we cannot easily implement `PartialEq` for patterns, since the
+            // `regex_automata::DenseDFA` types that represent them internally
+            // do not implement `PartialEq`. having them never be equal is not
+            // technically correct, but it shouldn't matter in practice.
             (ValueMatch::Pat(_), ValueMatch::Pat(_)) => false,
             (_, _) => false,
         }
