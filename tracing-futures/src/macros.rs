@@ -209,8 +209,8 @@ macro_rules! spawn {
     (level: $lvl:expr, target: $tgt:expr, name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {{
         use $crate::{Instrument, macros::__Executor};
         let span = $crate::macros::__tracing_futures_span!(
-            $lvl,
             target: $tgt,
+            $lvl,
             $name,
             tokio.task.is_spawned = true,
             tokio.task.executor = ?$ex,
