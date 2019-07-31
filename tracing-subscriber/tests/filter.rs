@@ -137,7 +137,7 @@ fn field_filter_spans() {
         .event(
             event::mock()
                 .at_level(Level::INFO)
-                .with_fields(field::mock("thing")),
+                .with_fields(field::mock("something")),
         )
         .exit(span::mock().named("span1"))
         .enter(span::mock().named("span2"))
@@ -146,7 +146,7 @@ fn field_filter_spans() {
         .event(
             event::mock()
                 .at_level(Level::DEBUG)
-                .with_fields(field::mock("thing")),
+                .with_fields(field::mock("something")),
         )
         .exit(span::mock().named("span3"))
         .done()
@@ -157,13 +157,13 @@ fn field_filter_spans() {
         tracing::trace!("disabled");
         tracing::info!("also disabled");
         tracing::info_span!("span1", enabled = true).in_scope(|| {
-            tracing::info!(thing = 1);
+            tracing::info!(something = 1);
         });
         tracing::debug_span!("span2", enabled = false, foo = "hi").in_scope(|| {
-            tracing::warn!(thing = 2);
+            tracing::warn!(something = 2);
         });
         tracing::trace_span!("span3", enabled = true, answer = 42).in_scope(|| {
-            tracing::debug!(thing = 2);
+            tracing::debug!(something = 2);
         });
     });
 
