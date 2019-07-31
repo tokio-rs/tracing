@@ -46,21 +46,26 @@ impl<T> Local<T> {
         }
     }
 
-    fn get2<'a>(&'a self, i: usize) -> Option<LocalGuard<'a, T>> {
+    /// Returns a `LocalGuard` that dereferences to the local data for the
+    /// current thread. If no local data exists, the provided function is
+    /// invoked and the result is inserted.
+    pub fn get_or_else<'a>(&'a self, new: impl FnOnce() -> T) -> LocalGuard<'a, T> {
+        let i = Id::current().as_usize();
+        if let Some(guard) = self.try_get(i) {
+            guard
+        } else {
+            self.new_thread(i, new);
+            self.try_get(i).expect("data was just inserted")
+        }
+    }
+
+    // Returns a `LocalGuard` for the local data for this thread, or `None` if
+    // no local data has been inserted.
+    fn try_get<'a>(&'a self, i: usize) -> Option<LocalGuard<'a, T>> {
         let lock = try_lock!(self.inner.read(), else return None);
         let slot = lock.get(i)?.as_ref()?;
         let inner = slot.get();
         Some(LocalGuard { inner, _lock: lock })
-    }
-
-    pub fn get_or_else<'a>(&'a self, new: impl FnOnce() -> T) -> LocalGuard<'a, T> {
-        let i = Id::current().as_usize();
-        if let Some(guard) = self.get2(i) {
-            guard
-        } else {
-            self.new_thread(i, new);
-            self.get2(i).expect("data was just inserted")
-        }
     }
 
     #[cold]
@@ -73,6 +78,8 @@ impl<T> Local<T> {
 }
 
 impl<T: Default> Local<T> {
+    /// Returns a `LocalGuard` that dereferences to the local data for the
+    /// current thread. If no local data exists, the default value is inserted.
     pub fn get<'a>(&'a self) -> LocalGuard<'a, T> {
         self.get_or_else(T::default)
     }
