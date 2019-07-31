@@ -2,6 +2,18 @@
 name = "tracing-env-logger"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+documentation = "https://docs.rs/tracing-env-logger/0.1.0/tracing_env_logger"
+description = """
+A tracing subscriber that logs trace events using the `env_logger` crate
+"""
+categories = [
+    "development-tools::debugging",
+    "asynchronous",
+]
+keywords = ["logging", "tracing"]
+license = "MIT"
 
 [dependencies]
 tracing-log = { path = "../tracing-log" }

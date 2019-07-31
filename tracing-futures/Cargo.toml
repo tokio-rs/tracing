@@ -3,6 +3,19 @@ name = "tracing-futures"
 version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
+repository = "https://github.com/tokio-rs/tracing"
+documentation = "https://docs.rs/tracing-futures/0.0.1/tracing_futures"
+homepage = "https://tokio.rs"
+description = """
+Utilities for instrumenting `futures`
+"""
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["logging", "tracing"]
+license = "MIT"
 
 [features]
 default = ["futures-01", "tokio"]

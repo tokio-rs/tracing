@@ -3,6 +3,18 @@ name = "tracing-slog"
 version = "0.1.0"
 authors = ["David Barsky <dbarsky@amazon.com>"]
 edition = "2018"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+documentation = "https://docs.rs/tracing-slog/0.1.0/tracing_slog"
+description = """
+Provides compatibility between `tracing` and `slog` crate
+"""
+categories = [
+    "development-tools::debugging",
+    "asynchronous",
+]
+keywords = ["logging", "tracing"]
+license = "MIT"
 
 [dependencies]
 tracing = "0.1.3"
