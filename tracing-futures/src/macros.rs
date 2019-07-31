@@ -1,13 +1,13 @@
 #[cfg(feature = "tokio")]
 #[doc(hidden)]
-pub use tokio::executor::{Executor as __Executor, DefaultExecutor as DefaultExecutor};
+pub use tokio::executor::{DefaultExecutor, Executor as __Executor};
 #[cfg(all(feature = "tokio-executor", not(feature = "tokio")))]
 #[doc(hidden)]
-pub use tokio_executor::executor::{Executor as __Executor, DefaultExecutor as DefaultExecutor};
+pub use tokio_executor::executor::{DefaultExecutor, Executor as __Executor};
 
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
 #[doc(hidden)]
-pub use tracing::{span as __tracing_futures_span, Level as Level, field::debug};
+pub use tracing::{field::debug, span as __tracing_futures_span, Level};
 
 /// Spawns a future on the default executor, instrumented with its own span.
 ///
@@ -204,7 +204,6 @@ pub use tracing::{span as __tracing_futures_span, Level as Level, field::debug};
 /// [`tokio::spawn`]: https://docs.rs/tokio/latest/tokio/executor/fn.spawn.html
 /// [`TRACE` verbosity level]: https://docs.rs/tokio-trace/latest/tracing/struct.Level.html#associatedconstant.TRACE
 #[cfg(any(feature = "tokio", feature = "tokio-executor"))]
-#[macro_export(inner_local_macros)]
 macro_rules! spawn {
     (level: $lvl:expr, target: $tgt:expr, name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {{
         use $crate::{Instrument, macros::__Executor};
@@ -213,7 +212,7 @@ macro_rules! spawn {
             target: $tgt,
             $name,
             tokio.task.is_spawned = true,
-            tokio.task.executor = $crate::macros::debug(&$ex),
+            tokio.task.executor = ?$ex,
             $($field)*
         );
         $ex.spawn(Box::new($fut.instrument(span))).unwrap();
@@ -221,7 +220,7 @@ macro_rules! spawn {
     (level: $lvl:expr, name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
             level: $lvl,
-            target: __tracing_futures_module_path!(),
+            target: module_path!(),
             name: $name,
             on:  $ex,
             $fut,
@@ -235,7 +234,7 @@ macro_rules! spawn {
         spawn!(
             level: $lvl,
             target: $tgt,
-            name: __tracing_futures_stringify!($fut),
+            name: stringify!($fut),
             $fut,
             $($field)*
         )
@@ -264,7 +263,7 @@ macro_rules! spawn {
     };
     (name: $name:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
-            target: __tracing_futures_module_path!(),
+            target: module_path!(),
             name: $name,
             on:  $ex,
             $fut,
@@ -285,7 +284,7 @@ macro_rules! spawn {
     (level: $lvl:expr, on:  $ex:expr, $fut:expr) => {
         spawn!(
             level: $lvl,
-            name: __tracing_futures_stringify!($fut),
+            name: stringify!($fut),
             on:  $ex,
             $fut,
         )
@@ -299,8 +298,8 @@ macro_rules! spawn {
     (level: $lvl:expr, on:  $ex:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
             level: $lvl,
-            target: __tracing_futures_module_path!(),
-            name: __tracing_futures_stringify!($fut),
+            target: module_path!(),
+            name: stringify!($fut),
             on:  $ex,
             $fut,
             $($field)*
@@ -308,7 +307,7 @@ macro_rules! spawn {
     };
     (on:  $ex:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
-            name: __tracing_futures_stringify!($fut),
+            name: stringify!($fut),
             on:  $ex,
             $fut,
             $($field)*,
@@ -333,7 +332,7 @@ macro_rules! spawn {
     (level: $lvl:expr, name: $name:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
             level: $lvl,
-            target: __tracing_futures_module_path!(),
+            target: module_path!(),
             name: $name,
             $fut,
             $($field)*
@@ -346,7 +345,7 @@ macro_rules! spawn {
         spawn!(
             level: $lvl,
             target: $tgt,
-            name: __tracing_futures_stringify!($fut),
+            name: stringify!($fut),
             $fut,
             $($field)*
         )
@@ -373,7 +372,7 @@ macro_rules! spawn {
     };
     (name: $name:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
-            target: __tracing_futures_module_path!(),
+            target: module_path!(),
             name: $name,
             $fut,
             $($field)*
@@ -386,7 +385,7 @@ macro_rules! spawn {
         spawn!(target: $tgt, name: $name, $fut,)
     };
     (level: $lvl:expr, $fut:expr) => {
-        spawn!(level: $lvl, name: __tracing_futures_stringify!($fut), $fut,)
+        spawn!(level: $lvl, name: stringify!($fut), $fut,)
     };
     (target: $tgt:expr, $fut:expr) => {
         spawn!(target: $tgt, $fut,)
@@ -397,14 +396,14 @@ macro_rules! spawn {
     (level: $lvl:expr, $fut:expr, $($field:tt)*) => {
         spawn!(
             level: $lvl,
-            target: __tracing_futures_module_path!(),
-            name: __tracing_futures_stringify!($fut),
+            target: module_path!(),
+            name: stringify!($fut),
             $fut,
             $($field)*
         )
     };
     ($fut:expr, $($field:tt)*) => {
-        spawn!(name: __tracing_futures_stringify!($fut), $fut, $($field)*)
+        spawn!(name: stringify!($fut), $fut, $($field)*)
     };
 
     ($fut:expr) => {
@@ -415,7 +414,7 @@ macro_rules! spawn {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __tracing_futures_module_path {
+macro_rules! module_path {
     () => {
         module_path!()
     };
