@@ -90,7 +90,7 @@ unsafe impl<T> Sync for Local<T> {}
 impl<T: fmt::Debug> fmt::Debug for Local<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let id = Id::current();
-        match self.get2(id.as_usize()) {
+        match self.try_get(id.as_usize()) {
             Some(local) => f
                 .debug_struct("Local")
                 .field("thread", &id)
