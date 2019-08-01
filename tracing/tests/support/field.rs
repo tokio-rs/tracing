@@ -1,4 +1,5 @@
 use tracing::{
+    callsite,
     callsite::Callsite,
     field::{self, Field, Value, Visit},
     metadata::Kind,
@@ -119,12 +120,12 @@ impl Expect {
 impl fmt::Display for MockValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MockValue::I64(v) => write!(f, ": i64 = {:?}", v),
-            MockValue::U64(v) => write!(f, ": u64 = {:?}", v),
-            MockValue::Bool(v) => write!(f, ": bool = {:?}", v),
-            MockValue::Str(v) => write!(f, ": &str = {:?}", v),
-            MockValue::Debug(v) => write!(f, ": &fmt::Debug = {:?}", v),
-            MockValue::Any => write!(f, ": _ = _"),
+            MockValue::I64(v) => write!(f, "i64 = {:?}", v),
+            MockValue::U64(v) => write!(f, "u64 = {:?}", v),
+            MockValue::Bool(v) => write!(f, "bool = {:?}", v),
+            MockValue::Str(v) => write!(f, "&str = {:?}", v),
+            MockValue::Debug(v) => write!(f, "&fmt::Debug = {:?}", v),
+            MockValue::Any => write!(f, "_ = _"),
         }
     }
 }

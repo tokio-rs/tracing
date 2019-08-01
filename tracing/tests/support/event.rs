@@ -81,8 +81,9 @@ impl MockEvent {
     pub(in crate::support) fn check(&mut self, event: &tracing::Event) {
         let meta = event.metadata();
         let name = meta.name();
-        self.metadata.check(meta, format_args!("event {}", name));
-        assert!(meta.is_event(), "expected an event but got {:?}", event);
+        self.metadata
+            .check(meta, format_args!("event \"{}\"", name));
+        assert!(meta.is_event(), "expected {}, but got {:?}", self, event);
         if let Some(ref mut expected_fields) = self.fields {
             let mut checker = expected_fields.checker(format!("{}", name));
             event.record(&mut checker);
@@ -93,13 +94,6 @@ impl MockEvent {
 
 impl fmt::Display for MockEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "an event")?;
-        if let Some(ref name) = self.metadata.name {
-            write!(f, " named {:?}", name)?;
-        }
-        if let Some(ref fields) = self.fields {
-            write!(f, " with {}", fields)?
-        }
-        Ok(())
+        write!(f, "an event{}", self.metadata)
     }
 }

@@ -18,11 +18,36 @@ categories = [
 ]
 keywords = ["logging", "tracing", "metrics", "subscriber"]
 
+[features]
+default = ["filter", "smallvec"]
+filter = ["matchers", "regex", "lazy_static"]
+
 [dependencies]
 tracing-core = "0.1.2"
+crossbeam-utils = "0.6"
+
+# only required by the filter feature
+matchers = { optional = true, git = "https://github.com/hawkw/matchers.git" }
+regex = { optional = true, version = "1" }
+smallvec = { optional = true, version = "0.6.10"}
+lazy_static = { optional = true, version = "1" }
 
 [dev-dependencies]
+tracing-fmt = { path = "../tracing-fmt" }
 tracing = "0.1"
+
+# load generator demo
+tracing-tower = { path = "../tracing-tower" }
+tower = "0.1"
+tower-hyper = "0.1"
+tower-http-util = "0.1"
+tracing-futures = { path = "../tracing-futures" }
+futures = "0.1"
+hyper = "0.12"
+tokio = "0.1"
+tokio-tcp = "0.1"
+tokio-buf = "0.1"
+rand = "0.6"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }

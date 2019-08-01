@@ -31,7 +31,7 @@ http = { version = "0.1", optional = true }
 
 [dev-dependencies]
 bytes = "0.4"
-h2 = "=0.1.11"
+h2 = "0.1.11"
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
 string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"
