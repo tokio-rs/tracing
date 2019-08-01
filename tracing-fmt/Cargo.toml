@@ -1,12 +1,12 @@
 [package]
 name = "tracing-fmt"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-fmt/0.0.1-alpha.1/tracing_fmt"
+documentation = "https://docs.rs/tracing-fmt/0.0.1-alpha.2/tracing_fmt"
 description = """
 A (currently experimental) `tracing` subscriber that formats and logs trace data
 """
