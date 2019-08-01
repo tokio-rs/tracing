@@ -1,6 +1,14 @@
-//! Futures compatibility for `tracing`
+//! Futures compatibility for [`tracing`].
+//!
+//! `tracing` is a framework for instrumenting Rust programs to collect
+//! structured, event-based diagnostic information. This library provides
+//! utilities for instrumenting asynchronous code that uses futures.
 //!
 //! # Feature flags
+//!
+//! This crate provides a number of feature flags that enable compatibility
+//! features with other crates in the asynchronous ecosystem:
+//!
 //! - `tokio`: Enables compatibility with the `tokio` crate, including
 //!    [`Instrument`] and [`WithSubscriber`] implementations for
 //!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
@@ -11,9 +19,16 @@
 //!    This is intended primarily for use in crates which depend on
 //!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
 //!    should be used instead.
+//! - `std-future`: Enables compatibility with `std::future::Future`.
+//! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
+//!   crate.
 //!
+//! The `tokio` and `futures-01` features are enabled by default.
+//!
+//! [`tracing`]: https://crates.io/crates/tracing
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
+//! [`futures`]: https://crates.io/crates/futures
 #[cfg(feature = "futures-01")]
 extern crate futures;
 #[cfg(feature = "std-future")]
@@ -37,14 +52,29 @@ use tracing::{Dispatch, Span};
 #[cfg(feature = "tokio")]
 pub mod executor;
 
-// TODO: seal?
+/// Extension trait allowing futures, streams, and skins to be instrumented with
+/// a `tracing` `Span`.
 pub trait Instrument: Sized {
+    /// Instruments this type with the provided `Span`, returning an
+    /// `Instrumented` wrapper.
+    ///
+    /// When the wrapped future, stream, or sink is polled, the attached `Span`
+    /// will be entered for the duration of the poll.
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
 }
 
+/// Extension trait allowing futures, streams, and skins to be instrumented with
+/// a `tracing` `Subscriber`.
 pub trait WithSubscriber: Sized {
+    /// Attaches the provided subscriber to this type, returning a
+    /// `WithDispatch` wrapper.
+    ///
+    /// When the wrapped type is a future, stream, or sink is polled, the attached
+    /// subscriber will be set as the default for the duration of that poll.
+    /// When the wrapped type is an executor, the subscriber will be set as the
+    /// default for any futures spawned on that executor.
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
@@ -56,12 +86,15 @@ pub trait WithSubscriber: Sized {
     }
 }
 
+/// A future, stream, or sink that has been instrumented with a `tracing` span.
 #[derive(Debug, Clone)]
 pub struct Instrumented<T> {
     inner: T,
     span: Span,
 }
 
+/// A future, stream, sink, or executor that has been instrumented with a
+/// `tracing` subscriber.
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
     inner: T,
