@@ -7,14 +7,14 @@ repository = "https://github.com/tokio-rs/tracing"
 documentation = "https://docs.rs/tracing-futures/0.0.1/tracing_futures"
 homepage = "https://tokio.rs"
 description = """
-Utilities for instrumenting `futures`
+Utilities for instrumenting `futures` with `tracing`.
 """
 categories = [
     "development-tools::debugging",
     "development-tools::profiling",
     "asynchronous",
 ]
-keywords = ["logging", "tracing"]
+keywords = ["logging", "tracing", "futures"]
 license = "MIT"
 
 [features]
@@ -36,3 +36,4 @@ tracing-core = "0.1.2"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
+maintenance = { status = "experimental" }
