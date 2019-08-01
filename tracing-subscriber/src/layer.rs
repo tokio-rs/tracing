@@ -624,10 +624,10 @@ impl<'a, S> Clone for Context<'a, S> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
-    struct NopSubscriber;
+    pub(crate) struct NopSubscriber;
 
     impl Subscriber for NopSubscriber {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {

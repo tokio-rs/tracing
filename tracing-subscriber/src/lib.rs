@@ -14,47 +14,60 @@
 //! [`Subscriber`]: https://docs.rs/tracing/0.1.3/tracing/subscriber/trait.Subscriber.html
 use tracing_core::span::Id;
 
-pub mod layer;
-pub mod prelude;
-
-pub use layer::Layer;
-use std::{cell::RefCell, default::Default, thread};
-
-/// Tracks the currently executing span on a per-thread basis.
-#[derive(Clone)]
-pub struct CurrentSpanPerThread {
-    current: &'static thread::LocalKey<RefCell<Vec<Id>>>,
+#[macro_use]
+macro_rules! try_lock {
+    ($lock:expr) => {
+        try_lock!($lock, else return)
+    };
+    ($lock:expr, else $els:expr) => {
+        match $lock {
+            Ok(l) => l,
+            Err(_) if std::thread::panicking() => $els,
+            Err(_) => panic!("lock poisoned"),
+        }
+    };
 }
 
-impl CurrentSpanPerThread {
+#[cfg(feature = "filter")]
+pub mod filter;
+pub mod layer;
+pub mod prelude;
+pub mod reload;
+
+pub(crate) mod thread;
+pub use layer::Layer;
+use std::default::Default;
+
+pub type CurrentSpanPerThread = CurrentSpan;
+
+/// Tracks the currently executing span on a per-thread basis.
+pub struct CurrentSpan {
+    current: thread::Local<Vec<Id>>,
+}
+
+impl CurrentSpan {
     pub fn new() -> Self {
-        thread_local! {
-            static CURRENT: RefCell<Vec<Id>> = RefCell::new(vec![]);
-        };
-        Self { current: &CURRENT }
+        Self {
+            current: thread::Local::new(),
+        }
     }
 
     /// Returns the [`Id`](::Id) of the span in which the current thread is
     /// executing, or `None` if it is not inside of a span.
     pub fn id(&self) -> Option<Id> {
-        self.current
-            .with(|current| current.borrow().last().cloned())
+        self.current.get().last().cloned()
     }
 
     pub fn enter(&self, span: Id) {
-        self.current.with(|current| {
-            current.borrow_mut().push(span);
-        })
+        self.current.get().push(span)
     }
 
     pub fn exit(&self) {
-        self.current.with(|current| {
-            let _ = current.borrow_mut().pop();
-        })
+        self.current.get().pop();
     }
 }
 
-impl Default for CurrentSpanPerThread {
+impl Default for CurrentSpan {
     fn default() -> Self {
         Self::new()
     }

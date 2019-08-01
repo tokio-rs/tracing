@@ -48,7 +48,7 @@ impl Expect {
 impl fmt::Display for Expect {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref name) = self.name {
-            write!(f, "named `{}`", name)?;
+            write!(f, " named `{}`", name)?;
         }
 
         if let Some(ref level) = self.level {
