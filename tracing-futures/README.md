@@ -13,8 +13,7 @@ Utilities for instrumenting futures-based code with [`tracing`].
 [Documentation][docs-url] |
 [Chat][gitter-url]
 
-[tracing]: https://github.com/tokio-rs/tracing/tree/master/tracing
-[tracing-fmt]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
+[`tracing`]: https://github.com/tokio-rs/tracing/tree/master/tracing
 [crates-badge]: https://img.shields.io/crates/v/tracing-futures.svg
 [crates-url]: https://crates.io/crates/tracing-futures
 [docs-badge]: https://docs.rs/tracing-futures/badge.svg
