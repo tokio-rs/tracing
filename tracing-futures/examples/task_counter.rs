@@ -5,19 +5,20 @@
 //! Note that this subscriber implementation is not optimized for production
 //! use. It is intended only for demonstration purposes.
 use futures::future::{self, Future};
+use std::{
+    cell::Cell,
+    collections::HashMap,
+    fmt,
+    sync::{
+        atomic::{self, AtomicUsize, Ordering},
+        RwLock,
+    },
+};
 use tracing::{
     field::{Field, Visit},
     span,
     subscriber::{self, Subscriber},
     Event, Metadata,
-};
-use std::{
-    collections::HashMap,
-    cell::Cell,
-    fmt,
-    sync::{
-        atomic::{self, AtomicUsize, Ordering}, RwLock,
-    },
 };
 
 struct TaskCounter {
@@ -40,7 +41,10 @@ impl Subscriber for TaskCounter {
         if meta.is_event() {
             return subscriber::Interest::always();
         }
-        let is_task = meta.fields().iter().any(|key| key.name().starts_with("tokio.task"));
+        let is_task = meta
+            .fields()
+            .iter()
+            .any(|key| key.name().starts_with("tokio.task"));
         if is_task {
             let mut task_list = self.task_list.write().unwrap();
             task_list.insert(meta.name(), AtomicUsize::new(0));
@@ -59,7 +63,9 @@ impl Subscriber for TaskCounter {
         let id = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
 
         let task_list = self.task_list.read().unwrap();
-        task_list.get(meta.name()).map(|count| count.fetch_add(1, Ordering::Relaxed));
+        task_list
+            .get(meta.name())
+            .map(|count| count.fetch_add(1, Ordering::Relaxed));
 
         self.print_ctx(format_args!("task `{}` (id={}) spawned", meta.name(), id));
         let mut tasks = self.tasks.write().unwrap();
@@ -83,10 +89,7 @@ impl Subscriber for TaskCounter {
         }
         impl<'a> fmt::Display for FmtEvent<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                let mut rec = Recorder {
-                    f,
-                    pad: false,
-                };
+                let mut rec = Recorder { f, pad: false };
                 self.0.record(&mut rec);
                 Ok(())
             }
@@ -118,7 +121,11 @@ impl Subscriber for TaskCounter {
     }
 
     fn enabled(&self, meta: &Metadata) -> bool {
-        meta.is_event() || meta.fields().iter().any(|f| f.name().starts_with("tokio.task"))
+        meta.is_event()
+            || meta
+                .fields()
+                .iter()
+                .any(|f| f.name().starts_with("tokio.task"))
     }
 
     fn enter(&self, span: &span::Id) {
@@ -153,9 +160,16 @@ impl Subscriber for TaskCounter {
         };
         if is_closing {
             atomic::fence(Ordering::Release);
-            if let Some(task) = self.tasks.write().ok().and_then(|mut tasks| tasks.remove(&num)) {
+            if let Some(task) = self
+                .tasks
+                .write()
+                .ok()
+                .and_then(|mut tasks| tasks.remove(&num))
+            {
                 if let Ok(task_list) = self.task_list.read() {
-                    task_list.get(task.name).map(|count| count.fetch_sub(1, Ordering::Release));
+                    task_list
+                        .get(task.name)
+                        .map(|count| count.fetch_sub(1, Ordering::Release));
                 }
                 self.print_ctx(format_args!("task `{}` (id={}) completed", task.name, num));
             }
@@ -173,15 +187,18 @@ impl TaskCounter {
     }
 
     fn print_ctx(&self, msg: impl fmt::Display) {
-
         static LONGEST: AtomicUsize = AtomicUsize::new(20);
-        let curr  = self.tasks.read().ok().and_then(|tasks| {
-            let id = CURRENT_TASK.try_with(|id| id.get()).ok()?;
-            id
-                .and_then(|id| Some((tasks.get(&id)?, id)))
-                .map(|(task, id)| format!("{} (id={})", task.name, id))
-                .or_else(|| Some(String::new()))
-        }).unwrap_or_else(|| String::from("panicking"));
+        let curr = self
+            .tasks
+            .read()
+            .ok()
+            .and_then(|tasks| {
+                let id = CURRENT_TASK.try_with(|id| id.get()).ok()?;
+                id.and_then(|id| Some((tasks.get(&id)?, id)))
+                    .map(|(task, id)| format!("{} (id={})", task.name, id))
+                    .or_else(|| Some(String::new()))
+            })
+            .unwrap_or_else(|| String::from("panicking"));
 
         let lock = self.task_list.read().ok();
         let mut task_list = lock.iter().flat_map(|ts| ts.iter());
@@ -189,7 +206,13 @@ impl TaskCounter {
         if let Some((name, count)) = task_list.next() {
             use fmt::Write;
 
-            write!(&mut counts, "{{ {}: {}", name, count.load(Ordering::Acquire)).unwrap();
+            write!(
+                &mut counts,
+                "{{ {}: {}",
+                name,
+                count.load(Ordering::Acquire)
+            )
+            .unwrap();
             for (name, count) in task_list {
                 write!(&mut counts, ", {}: {}", name, count.load(Ordering::Acquire)).unwrap();
             }
