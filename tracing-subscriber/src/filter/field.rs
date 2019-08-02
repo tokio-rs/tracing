@@ -135,6 +135,7 @@ impl SpanMatch {
         MatchVisitor { inner: self }
     }
 
+    #[inline]
     pub fn is_matched(&self) -> bool {
         if self.has_matched.load(Ordering::Acquire) {
             return true;
@@ -142,6 +143,7 @@ impl SpanMatch {
         self.is_matched_slow()
     }
 
+    #[inline(never)]
     fn is_matched_slow(&self) -> bool {
         let matched = self
             .fields
@@ -153,6 +155,7 @@ impl SpanMatch {
         matched
     }
 
+    #[inline]
     pub fn filter(&self) -> Option<LevelFilter> {
         if self.is_matched() {
             Some(self.level.clone())
