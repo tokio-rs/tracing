@@ -37,7 +37,7 @@ tracing-fmt = "0.0.1-alpha.2"
 tracing = "0.1"
 
 # load generator demo
-tracing-tower = { path = "../tracing-tower" }
+tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tower = "0.1"
 tower-hyper = "0.1"
 tower-http-util = "0.1"
