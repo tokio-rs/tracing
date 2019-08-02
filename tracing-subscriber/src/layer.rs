@@ -190,6 +190,7 @@ where
     /// The returned `Layer` will call the methods on this `Layer` and then
     /// those of the new `Layer`, before calling the methods on the subscriber
     /// it wraps. For example:
+    ///
     /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
@@ -240,7 +241,8 @@ where
     /// ```
     ///
     /// Multiple layers may be composed in this manner:
-    ///    /// ```rust
+    ///
+    /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
     /// # fn main() {
