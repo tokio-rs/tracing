@@ -1,3 +1,4 @@
+//! Wrapper for a `Layer` to allow it to be dynamically reloaded.
 use crate::layer;
 
 use crossbeam_utils::sync::ShardedLock;
@@ -24,6 +25,7 @@ pub struct Handle<L, S> {
     _s: PhantomData<fn(S)>,
 }
 
+/// Indicates that an error occurred when reloading a layer.
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
@@ -180,6 +182,24 @@ impl Error {
     fn poisoned() -> Self {
         Self {
             kind: ErrorKind::Poisoned,
+        }
+    }
+
+    /// Returns `true` if this error occurred because the layer was poisoned by
+    /// a panic on another thread.
+    pub fn is_poisoned(&self) -> bool {
+        match self.kind {
+            ErrorKind::Poisoned => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this error occurred because the `Subscriber`
+    /// containing the reloadable layer was dropped.
+    pub fn is_dropped(&self) -> bool {
+        match self.kind {
+            ErrorKind::SubscriberGone => true,
+            _ => false,
         }
     }
 }
