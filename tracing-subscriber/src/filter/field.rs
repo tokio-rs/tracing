@@ -135,10 +135,6 @@ impl SpanMatch {
         MatchVisitor { inner: self }
     }
 
-    pub fn level(&self) -> LevelFilter {
-        self.level.clone()
-    }
-
     pub fn is_matched(&self) -> bool {
         if self.has_matched.load(Ordering::Acquire) {
             return true;

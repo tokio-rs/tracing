@@ -546,13 +546,7 @@ impl SpanMatcher {
     pub fn level(&self) -> LevelFilter {
         self.field_matches
             .iter()
-            .filter_map(|f| {
-                if f.is_matched() {
-                    Some(f.level())
-                } else {
-                    None
-                }
-            })
+            .filter_map(field::SpanMatch::filter)
             .max()
             .unwrap_or_else(|| self.base_level.clone())
     }
