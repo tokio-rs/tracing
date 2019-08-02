@@ -40,6 +40,7 @@ pub enum ValueMatch {
     Pat(Pattern),
 }
 
+/// Indicates that a field name specified in a filter directive was invalid.
 #[derive(Clone, Debug)]
 pub struct BadName {
     name: String,

@@ -56,6 +56,7 @@ pub struct MatchSet<T> {
     base_level: LevelFilter,
 }
 
+/// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
 pub struct ParseError {
     kind: ParseErrorKind,
