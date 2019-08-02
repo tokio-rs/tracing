@@ -11,14 +11,14 @@ use tracing_core::field::{Field, Visit};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Match {
-    pub(crate) name: String, // TODO: allow match patterns for names?
-    pub(crate) value: Option<ValueMatch>,
+    pub name: String, // TODO: allow match patterns for names?
+    pub value: Option<ValueMatch>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CallsiteMatch {
-    pub(crate) fields: FieldMap<ValueMatch>,
-    pub(crate) level: LevelFilter,
+    pub fields: FieldMap<ValueMatch>,
+    pub level: LevelFilter,
 }
 
 #[derive(Debug)]
@@ -33,13 +33,14 @@ pub struct MatchVisitor<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum ValueMatch {
+pub enum ValueMatch {
     Bool(bool),
     U64(u64),
     I64(i64),
     Pat(Pattern),
 }
 
+/// Indicates that a field name specified in a filter directive was invalid.
 #[derive(Clone, Debug)]
 pub struct BadName {
     name: String,
@@ -134,10 +135,7 @@ impl SpanMatch {
         MatchVisitor { inner: self }
     }
 
-    pub fn level(&self) -> LevelFilter {
-        self.level.clone()
-    }
-
+    #[inline]
     pub fn is_matched(&self) -> bool {
         if self.has_matched.load(Ordering::Acquire) {
             return true;
@@ -145,6 +143,7 @@ impl SpanMatch {
         self.is_matched_slow()
     }
 
+    #[inline(never)]
     fn is_matched_slow(&self) -> bool {
         let matched = self
             .fields
@@ -156,6 +155,7 @@ impl SpanMatch {
         matched
     }
 
+    #[inline]
     pub fn filter(&self) -> Option<LevelFilter> {
         if self.is_matched() {
             Some(self.level.clone())
