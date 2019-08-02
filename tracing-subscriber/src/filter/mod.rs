@@ -1,9 +1,10 @@
-pub mod field;
 pub mod level;
+pub use self::directive::ParseError;
+pub use self::field::BadName;
 pub use self::level::LevelFilter;
 mod directive;
+mod field;
 use self::directive::Directive;
-pub use self::directive::ParseError;
 
 use crate::{
     layer::{Context, Layer},

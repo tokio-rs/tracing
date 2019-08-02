@@ -11,14 +11,14 @@ use tracing_core::field::{Field, Visit};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Match {
-    pub(crate) name: String, // TODO: allow match patterns for names?
-    pub(crate) value: Option<ValueMatch>,
+    pub name: String, // TODO: allow match patterns for names?
+    pub value: Option<ValueMatch>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CallsiteMatch {
-    pub(crate) fields: FieldMap<ValueMatch>,
-    pub(crate) level: LevelFilter,
+    pub fields: FieldMap<ValueMatch>,
+    pub level: LevelFilter,
 }
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ pub struct MatchVisitor<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum ValueMatch {
+pub enum ValueMatch {
     Bool(bool),
     U64(u64),
     I64(i64),
