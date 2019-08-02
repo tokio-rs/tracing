@@ -1,3 +1,16 @@
+//! Wrapper for a `Layer` to allow it to be dynamically reloaded.
+//!
+//! This module provides a [`Layer` type] which wraps another type implementing
+//! the [`Layer` trait], allowing the wrapped type to be replaced with another
+//! instance of that type at runtime.
+//!
+//! This can be used in cases where a subset of `Subscriber` functionality
+//! should be dynamically reconfigured, such as when filtering directives may
+//! change at runtime. Note that this layer introduces a (relatively small)
+//! amount of overhead, and should thus obly be used as needed.
+//!
+//! [`Layer` type]: struct.Layer.html
+//! [`Layer` trait]: ../layer/trait.Layer.html
 use crate::layer;
 
 use crossbeam_utils::sync::ShardedLock;
@@ -12,18 +25,21 @@ use tracing_core::{
     Event, Metadata,
 };
 
+/// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
     inner: Arc<ShardedLock<L>>,
     _s: PhantomData<fn(S)>,
 }
 
+/// Allows reloading the state of an associated `Layer`.
 #[derive(Debug)]
 pub struct Handle<L, S> {
     inner: Weak<ShardedLock<L>>,
     _s: PhantomData<fn(S)>,
 }
 
+/// Indicates that an error occurred when reloading a layer.
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
@@ -98,6 +114,8 @@ where
     L: crate::Layer<S> + 'static,
     S: Subscriber,
 {
+    /// Wraps the given `Layer`, returning a `Layer` and a `Handle` that allows
+    /// the inner type to be modified at runtime.
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
             inner: Arc::new(ShardedLock::new(inner)),
@@ -122,6 +140,7 @@ where
     L: crate::Layer<S> + 'static,
     S: Subscriber,
 {
+    /// Replace the current layer with the provided `new_layer`.
     pub fn reload(&self, new_layer: impl Into<L>) -> Result<(), Error> {
         self.modify(|layer| {
             *layer = new_layer.into();
@@ -180,6 +199,24 @@ impl Error {
     fn poisoned() -> Self {
         Self {
             kind: ErrorKind::Poisoned,
+        }
+    }
+
+    /// Returns `true` if this error occurred because the layer was poisoned by
+    /// a panic on another thread.
+    pub fn is_poisoned(&self) -> bool {
+        match self.kind {
+            ErrorKind::Poisoned => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this error occurred because the `Subscriber`
+    /// containing the reloadable layer was dropped.
+    pub fn is_dropped(&self) -> bool {
+        match self.kind {
+            ErrorKind::SubscriberGone => true,
+            _ => false,
         }
     }
 }

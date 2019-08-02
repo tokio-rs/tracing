@@ -56,6 +56,7 @@ pub struct MatchSet<T> {
     base_level: LevelFilter,
 }
 
+/// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
 pub struct ParseError {
     kind: ParseErrorKind,
@@ -545,13 +546,7 @@ impl SpanMatcher {
     pub fn level(&self) -> LevelFilter {
         self.field_matches
             .iter()
-            .filter_map(|f| {
-                if f.is_matched() {
-                    Some(f.level())
-                } else {
-                    None
-                }
-            })
+            .filter_map(field::SpanMatch::filter)
             .max()
             .unwrap_or_else(|| self.base_level.clone())
     }

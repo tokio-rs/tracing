@@ -10,8 +10,8 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
-//! [`tracing`]: https://docs.rs/tracing/0.1.3/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing/0.1.3/tracing/subscriber/trait.Subscriber.html
+//! [`tracing`]: https://docs.rs/tracing/latest/tracing/
+//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 use tracing_core::span::Id;
 
 #[macro_use]
@@ -33,11 +33,15 @@ pub mod filter;
 pub mod layer;
 pub mod prelude;
 pub mod reload;
-
 pub(crate) mod thread;
+
+#[cfg(feature = "filter")]
+pub use filter::Filter;
 pub use layer::Layer;
+
 use std::default::Default;
 
+#[deprecated(since = "0.0.1-alpha.2", note = "renamed to `CurrentSpan`")]
 pub type CurrentSpanPerThread = CurrentSpan;
 
 /// Tracks the currently executing span on a per-thread basis.

@@ -1,3 +1,4 @@
+//! A composable abstraction for building `Subscriber`s.
 use tracing_core::{
     metadata::Metadata,
     span,
@@ -62,8 +63,8 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`Interest::never()`] from its [`register_callsite`] method, filter
 /// evaluation will short-circuit and the span or event will be disabled.
 ///
-/// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/trait.Subscriber.html
-/// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+/// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
 /// [`Context`]: struct.Context.html
 /// [the current span]: struct.Context.html#method.current_span
 /// [`register_callsite`]: #method.register_callsite
@@ -71,7 +72,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`on_enter`]: #method.on_enter
 /// [`Layer::register_callsite`]: #method.register_callsite
 /// [`Layer::enabled`]: #method.enabled
-/// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.never
+/// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
 pub trait Layer<S>
 where
     S: Subscriber,
@@ -101,10 +102,10 @@ where
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
-    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.register_callsite
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.never
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.always
+    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
+    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
+    /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
+    /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
     /// [`self.enabled`]: #method.enabled
     /// [`Layer::enabled`]: #method.enabled
     /// [`on_event`]: #method.on_event
@@ -138,21 +139,24 @@ where
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
+    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
     /// [`Context`]: ../struct.Context.html
-    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.enabled
+    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
     /// [`Layer::register_callsite`]: #method.reegister_callsite
     /// [`on_event`]: #method.on_event
     /// [`on_enter`]: #method.on_enter
     /// [`on_exit`]: #method.on_exit
     /// [the trait-level documentation]: #filtering-with-layers
-    fn enabled(&self, _metadata: &Metadata, _ctx: Context<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+        let _ = (metadata, ctx);
         true
     }
 
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
+    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
+        let _ = (attrs, id, ctx);
+    }
 
     /// Notifies this layer that a span with the given `Id` recorded the given
     /// `values`.
@@ -190,6 +194,7 @@ where
     /// The returned `Layer` will call the methods on this `Layer` and then
     /// those of the new `Layer`, before calling the methods on the subscriber
     /// it wraps. For example:
+    ///
     /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
@@ -240,7 +245,8 @@ where
     /// ```
     ///
     /// Multiple layers may be composed in this manner:
-    ///    /// ```rust
+    ///
+    /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
     /// # fn main() {
@@ -275,7 +281,7 @@ where
     /// impl<S: Subscriber> Layer<S> for BazLayer {
     ///     // ...
     /// }
-    /// # impl BazLayer { fn new() -> Self { BazLayer } }
+    /// # impl BazLayer { fn new() -> Self { BazLayer {} } }
     ///
     /// let subscriber = FooLayer::new()
     ///     .and_then(BarLayer::new())
@@ -337,6 +343,9 @@ where
     /// let subscriber = FooLayer::new()
     ///     .with_subscriber(MySubscriber::new());
     /// # }
+    ///```
+    ///
+    /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
     fn with_subscriber(self, inner: S) -> Layered<Self, S>
     where
         Self: Sized,
@@ -372,13 +381,21 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
     }
 }
 
-/// Represents information about the current context provided to `Layer`s by the
-/// wrapped `Subscriber`.
+/// Represents information about the current context provided to [`Layer`]s by the
+/// wrapped [`Subscriber`].
+///
+/// [`Layer`]: ../struct.Layer.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Debug)]
 pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
 }
 
+/// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
+/// [`Layer`]s.
+///
+/// [`Layer`]: ../struct.Layer.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Clone, Debug)]
 pub struct Layered<L, I, S = I> {
     layer: L,

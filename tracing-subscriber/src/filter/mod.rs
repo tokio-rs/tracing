@@ -1,9 +1,12 @@
-pub mod field;
+//! A `Layer` that enables or disables spans and events based on a set of
+//! filtering directives.
 pub mod level;
+pub use self::directive::ParseError;
+pub use self::field::BadName;
 pub use self::level::LevelFilter;
 mod directive;
+mod field;
 use self::directive::Directive;
-pub use self::directive::ParseError;
 
 use crate::{
     layer::{Context, Layer},
@@ -19,6 +22,9 @@ use tracing_core::{
     Metadata,
 };
 
+/// A `Layer` which filters spans and events based on a set of filter
+/// directives.
+// TODO(eliza): document filter directive syntax?
 #[derive(Debug)]
 pub struct Filter {
     // TODO: eventually, this should be exposed by the registry.
@@ -38,6 +44,8 @@ type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
 #[cfg(not(feature = "smallvec"))]
 type FilterVec<T> = Vec<T>;
 
+/// Indicates that an error occurred while parsing a `Filter` from an
+/// environment variable.
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,
