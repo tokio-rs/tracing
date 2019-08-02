@@ -104,7 +104,7 @@ where
     /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
     /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.register_callsite
     /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.never
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.always
+    /// [`Interest::always()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.always
     /// [`self.enabled`]: #method.enabled
     /// [`Layer::enabled`]: #method.enabled
     /// [`on_event`]: #method.on_event
