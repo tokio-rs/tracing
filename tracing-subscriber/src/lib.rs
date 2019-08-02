@@ -33,11 +33,15 @@ pub mod filter;
 pub mod layer;
 pub mod prelude;
 pub mod reload;
-
 pub(crate) mod thread;
+
+#[cfg(feature = "filter")]
+pub use filter::Filter;
 pub use layer::Layer;
+
 use std::default::Default;
 
+#[deprecated(since = "0.0.1-alpha.2", note = "renamed to `CurrentSpan`")]
 pub type CurrentSpanPerThread = CurrentSpan;
 
 /// Tracks the currently executing span on a per-thread basis.
