@@ -339,6 +339,9 @@ where
     /// let subscriber = FooLayer::new()
     ///     .with_subscriber(MySubscriber::new());
     /// # }
+    ///```
+    ///
+    /// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html
     fn with_subscriber(self, inner: S) -> Layered<Self, S>
     where
         Self: Sized,
