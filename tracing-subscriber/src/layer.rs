@@ -146,13 +146,16 @@ where
     /// [`on_enter`]: #method.on_enter
     /// [`on_exit`]: #method.on_exit
     /// [the trait-level documentation]: #filtering-with-layers
-    fn enabled(&self, _metadata: &Metadata, _ctx: Context<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+        let _ = (metadata, ctx);
         true
     }
 
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, _attrs: &span::Attributes, _id: &span::Id, _ctx: Context<S>) {}
+    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
+        let _ = (attrs, id, ctx);
+    }
 
     /// Notifies this layer that a span with the given `Id` recorded the given
     /// `values`.
@@ -377,13 +380,21 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
     }
 }
 
-/// Represents information about the current context provided to `Layer`s by the
-/// wrapped `Subscriber`.
+/// Represents information about the current context provided to [`Layer`]s by the
+/// wrapped [`Subscriber`].
+///
+/// [`Layer`]: ../struct.Layer.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Debug)]
 pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
 }
 
+/// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
+/// [`Layer`]s.
+///
+/// [`Layer`]: ../struct.Layer.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Clone, Debug)]
 pub struct Layered<L, I, S = I> {
     layer: L,
