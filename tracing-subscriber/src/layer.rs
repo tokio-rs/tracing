@@ -277,7 +277,7 @@ where
     /// impl<S: Subscriber> Layer<S> for BazLayer {
     ///     // ...
     /// }
-    /// # impl BazLayer { fn new() -> Self { BazLayer } }
+    /// # impl BazLayer { fn new() -> Self { BazLayer {} } }
     ///
     /// let subscriber = FooLayer::new()
     ///     .and_then(BarLayer::new())
