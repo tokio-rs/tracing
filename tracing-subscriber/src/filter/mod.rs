@@ -1,3 +1,5 @@
+//! A `Layer` that enables or disables spans and events based on a set of
+//! filtering directives.
 pub mod level;
 pub use self::directive::ParseError;
 pub use self::field::BadName;

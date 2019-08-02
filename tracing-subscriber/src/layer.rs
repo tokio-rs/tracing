@@ -1,3 +1,4 @@
+//! A composable abstraction for building `Subscriber`s.
 use tracing_core::{
     metadata::Metadata,
     span,
