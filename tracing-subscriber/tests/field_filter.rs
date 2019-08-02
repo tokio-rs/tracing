@@ -74,3 +74,39 @@ fn field_filter_spans() {
 
     finished.assert_finished();
 }
+
+#[test]
+fn record_after_created() {
+    let filter: Filter = "[{enabled=true}]=debug"
+        .parse()
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .enter(span::mock().named("span"))
+        .exit(span::mock().named("span"))
+        .record(
+            span::mock().named("span"),
+            field::mock("enabled").with_value(&true),
+        )
+        .enter(span::mock().named("span"))
+        .event(event::mock().at_level(Level::DEBUG))
+        .exit(span::mock().named("span"))
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        let span = tracing::info_span!("span", enabled = false);
+        span.in_scope(|| {
+            tracing::debug!("i'm disabled!");
+        });
+
+        span.record("enabled", &true);
+        span.in_scope(|| {
+            tracing::debug!("i'm enabled!");
+        });
+
+        tracing::debug!("i'm also disabled");
+    });
+
+    finished.assert_finished();
+}
