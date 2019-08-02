@@ -10,8 +10,8 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
-//! [`tracing`]: https://docs.rs/tracing/0.1.3/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing/0.1.3/tracing/subscriber/trait.Subscriber.html
+//! [`tracing`]: https://docs.rs/tracing/latest/tracing/
+//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 use tracing_core::span::Id;
 
 #[macro_use]

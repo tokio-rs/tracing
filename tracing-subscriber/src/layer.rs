@@ -62,8 +62,8 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`Interest::never()`] from its [`register_callsite`] method, filter
 /// evaluation will short-circuit and the span or event will be disabled.
 ///
-/// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/trait.Subscriber.html
-/// [span IDs]: https://docs.rs/tracing-core/0.1.1/tracing_core/span/struct.Id.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+/// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
 /// [`Context`]: struct.Context.html
 /// [the current span]: struct.Context.html#method.current_span
 /// [`register_callsite`]: #method.register_callsite
@@ -71,7 +71,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`on_enter`]: #method.on_enter
 /// [`Layer::register_callsite`]: #method.register_callsite
 /// [`Layer::enabled`]: #method.enabled
-/// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.never
+/// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
 pub trait Layer<S>
 where
     S: Subscriber,
@@ -101,10 +101,10 @@ where
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
-    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.register_callsite
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.never
-    /// [`Interest::always()`]: https://docs.rs/tracing-core/0.1.1/tracing_core/subscriber/struct.Interest.html#method.always
+    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
+    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
+    /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
+    /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
     /// [`self.enabled`]: #method.enabled
     /// [`Layer::enabled`]: #method.enabled
     /// [`on_event`]: #method.on_event
@@ -138,9 +138,9 @@ where
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/0.1.1/tracing_core/struct.Interest.html
+    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
     /// [`Context`]: ../struct.Context.html
-    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html#method.enabled
+    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
     /// [`Layer::register_callsite`]: #method.reegister_callsite
     /// [`on_event`]: #method.on_event
     /// [`on_enter`]: #method.on_enter
@@ -341,7 +341,7 @@ where
     /// # }
     ///```
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing-core/0.1.1/tracing_core/trait.Subscriber.html
+    /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
     fn with_subscriber(self, inner: S) -> Layered<Self, S>
     where
         Self: Sized,
