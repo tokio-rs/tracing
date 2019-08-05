@@ -262,9 +262,9 @@ impl AsTrace for log::Level {
 
 /// Extends log `Event`s to provide complete `Metadata`.
 ///
-/// In `tracing-log`, an `Event` produced by a log (through `AsTrace`) has an hard coded
-/// "log" target and no file, line, or module_path attributes. This happens because `Event`
-/// requires its `Metadata` to be `'static`, while log records provide them with a generic
+/// In `tracing-log`, an `Event` produced by a log (through [`AsTrace`]) has an hard coded
+/// "log" target and no `file`, `line`, or `module_path` attributes. This happens because `Event`
+/// requires its `Metadata` to be `'static`, while [`log::Record`]s provide them with a generic
 /// lifetime.
 ///
 /// However, these values are stored in the `Event`'s fields and
@@ -277,6 +277,8 @@ impl AsTrace for log::Level {
 /// regardless of the source of its source.
 ///
 /// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
+/// [`AsTrace`]: trait.AsTrace.html
+/// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
 pub trait NormalizeEvent<'a> {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes
@@ -369,11 +371,10 @@ impl<'a> Visit for LogVisitor<'a> {
 mod test {
     use super::*;
 
-    #[test]
-    fn log_callsite_is_correct() {
+    fn test_callsite(level: log::Level) {
         let record = log::Record::builder()
             .args(format_args!("Error!"))
-            .level(log::Level::Error)
+            .level(level)
             .target("myApp")
             .file(Some("server.rs"))
             .line(Some(144))
@@ -384,5 +385,15 @@ mod test {
         let (cs, _keys) = loglevel_to_cs(record.level());
         let cs_meta = cs.metadata();
         assert_eq!(meta.callsite(), cs_meta.callsite());
+        assert_eq!(meta.level(), &level.as_trace());
+    }
+
+    #[test]
+    fn log_callsite_is_correct() {
+        test_callsite(log::Level::Error);
+        test_callsite(log::Level::Warn);
+        test_callsite(log::Level::Info);
+        test_callsite(log::Level::Debug);
+        test_callsite(log::Level::Trace);
     }
 }
