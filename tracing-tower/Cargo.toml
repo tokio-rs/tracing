@@ -23,6 +23,7 @@ default = ["tower-layer", "tower-util", "http"]
 [dependencies]
 tracing = "0.1"
 tracing-futures = { path = "../tracing-futures" }
+tracing-subscriber = { path = "../tracing-subscriber" }
 futures = "0.1"
 tower-service = "0.2"
 tower-layer = { version = "0.1", optional = true }
@@ -34,15 +35,19 @@ bytes = "0.4"
 h2 = "0.1.11"
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
 string = { git = "https://github.com/carllerche/string" }
+hyper = "0.12"
+futures = "0.1"
 tokio = "0.1"
 tokio-current-thread = "0.1.1"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tracing-subscriber = { path = "../tracing-subscriber" }
-tracing-fmt = { path = "../tracing-fmt" }
 tokio-io = "0.1"
-ansi_term = "0.11"
-humantime = "1.1.1"
-env_logger = "0.5"
+tokio-tcp = "0.1"
+tokio-buf = "0.1"
+tower = "0.1"
+tower-hyper = "0.1"
+tower-http-util = "0.1"
+tracing-fmt = "0.0.1-alpha.2"
+rand = "0.7"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
