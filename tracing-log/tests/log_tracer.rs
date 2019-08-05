@@ -56,6 +56,12 @@ impl Subscriber for TestSubscriber {
 fn normalized_metadata() {
     LogTracer::init().unwrap();
 
+    let my_file = if cfg!(windows) {
+        "tracing-log\\tests\\log_tracer.rs"
+    } else {
+        "tracing-log/tests/log_tracer.rs"
+    };
+
     let me = Arc::new(State {
         last_normalized_metadata: Mutex::new((false, None)),
     });
@@ -70,8 +76,8 @@ fn normalized_metadata() {
                 target: "log_tracer".to_string(),
                 level: Level::INFO,
                 module_path: Some("log_tracer".to_string()),
-                file: Some("tracing-log/tests/log_tracer.rs".to_string()),
-                line: Some(64),
+                file: Some(my_file.to_string()),
+                line: Some(70),
             }),
         );
 
@@ -84,8 +90,8 @@ fn normalized_metadata() {
                 target: "specified".to_string(),
                 level: Level::INFO,
                 module_path: Some("log_tracer".to_string()),
-                file: Some("tracing-log/tests/log_tracer.rs".to_string()),
-                line: Some(78),
+                file: Some(my_file.to_string()),
+                line: Some(84),
             }),
         );
 
