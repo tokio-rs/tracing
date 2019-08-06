@@ -49,6 +49,7 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
         .collect();
     let param_names_clone = param_names.clone();
 
+    #[cfg(feature = "nightly")]
     if asyncness.is_some() {
         return quote_spanned!(call_site=>
             #(#attrs) *

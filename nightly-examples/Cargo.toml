@@ -16,4 +16,4 @@ tracing = "0.1"
 tracing-fmt = "0.0.1-alpha.2"
 tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
 tokio = { git = "https://github.com/tokio-rs/tokio.git" }
-tracing-proc-macros = { path = "../tracing-proc-macros" }
+tracing-proc-macros = { path = "../tracing-proc-macros", features = ["nightly"] }
