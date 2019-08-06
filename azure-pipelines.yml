@@ -47,6 +47,8 @@ stages:
          # https://github.com/tokio-rs/tracing/pull/191#issuecomment-513394436
          - bash: cd tracing-futures/test_std_future && cargo test
            displayName: "Test std::future support for tracing-futures"
+         - bash: cd nightly-examples && cargo test
+           displayName: "Test async-await examples"
  - stage: style
    displayName: Style linting
    dependsOn: check

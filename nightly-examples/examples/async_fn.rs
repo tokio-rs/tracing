@@ -34,7 +34,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     // Note that this is the Tokio TcpStream, which is fully async.
     let mut stream = connect(&addr).await?;
 
-    let result = write(&mut stream).await;
+    write(&mut stream).await;
 
     Ok(())
 }
