@@ -26,7 +26,7 @@ pub trait VisitOutput<Out>: Visit {
     }
 }
 
-pub trait RecordFields {
+pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
     fn record(&self, visitor: &mut dyn Visit);
 }
 
@@ -67,21 +67,21 @@ pub trait VisitFmt: VisitOutput<fmt::Result> {
 
 // === impl RecordFields ===
 
-// impl<'a> crate::sealed::Sealed for Event<'a> {}
+impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
 impl<'a> RecordFields for Event<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
         Event::record(&self, visitor)
     }
 }
 
-// impl<'a> crate::sealed::Sealed for Attributes<'a> {}
+impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'a> {}
 impl<'a> RecordFields for Attributes<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
         Attributes::record(&self, visitor)
     }
 }
 
-// impl<'a> crate::sealed::Sealed for Record<'a> {}
+impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Record<'a> {}
 impl<'a> RecordFields for Record<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
         Record::record(&self, visitor)
@@ -111,6 +111,11 @@ where
     M: MakeVisitor<T>,
     M::Visitor: VisitOutput<Out>,
 {
+}
+
+#[doc(hidden)]
+pub struct RecordFieldsMarker {
+    _p: (),
 }
 
 #[cfg(test)]
