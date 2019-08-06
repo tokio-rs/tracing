@@ -50,23 +50,25 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
     let param_names_clone = param_names.clone();
 
     #[cfg(feature = "nightly")]
-    if asyncness.is_some() {
-        return quote_spanned!(call_site=>
-            #(#attrs) *
-            #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
-                use tracing_futures::Instrument as __tracing_macros_futures_Instrument;
-                let __tracing_attr_span = tracing::span!(
-                    tracing::Level::TRACE,
-                    #ident_str,
-                    #(#param_names = tracing::field::debug(&#param_names_clone)),*
-                );
-                async {
-                    #block
-                }.instrument(__tracing_attr_span)
-                .await
-            }
-        )
-        .into();
+    {
+        if asyncness.is_some() {
+            return quote_spanned!(call_site=>
+                #(#attrs) *
+                #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
+                    use tracing_futures::Instrument as __tracing_macros_futures_Instrument;
+                    let __tracing_attr_span = tracing::span!(
+                        tracing::Level::TRACE,
+                        #ident_str,
+                        #(#param_names = tracing::field::debug(&#param_names_clone)),*
+                    );
+                    async {
+                        #block
+                    }.instrument(__tracing_attr_span)
+                    .await
+                }
+            )
+            .into();
+        }
     }
 
     quote_spanned!(call_site=>
