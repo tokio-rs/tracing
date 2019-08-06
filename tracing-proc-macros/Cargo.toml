@@ -15,21 +15,22 @@ categories = [
 ]
 keywords = ["logging", "tracing"]
 license = "MIT"
+edition = "2018"
 
 [lib]
 proc-macro = true
 
 [dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = "0.1"
 syn = { version = "0.15", features = ["full", "extra-traits"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
 
 [dev-dependencies]
-tracing-fmt = { path = "../tracing-fmt" }
-env_logger = "0.5"
-ansi_term = "0.11"
-humantime = "1.1.1"
+tracing-fmt = "0.0.1-alpha.2"
+tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
+tokio = { git = "https://github.com/tokio-rs/tokio.git" }
+
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
