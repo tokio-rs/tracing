@@ -55,48 +55,54 @@ impl Subscriber for TestSubscriber {
 #[test]
 fn normalized_metadata() {
     LogTracer::init().unwrap();
-
-    let my_file = if cfg!(windows) {
-        "tracing-log\\tests\\log_tracer.rs"
-    } else {
-        "tracing-log/tests/log_tracer.rs"
-    };
-
     let me = Arc::new(State {
         last_normalized_metadata: Mutex::new((false, None)),
     });
-    let a = me.clone();
+    let state = me.clone();
+
     with_default(TestSubscriber(me), || {
-        log::info!("log info message");
+        let log = log::Record::builder()
+            .args(format_args!("Error!"))
+            .level(log::Level::Info)
+            .build();
+        log::logger().log(&log);
         last(
-            &a,
+            &state,
             true,
             Some(OwnedMetadata {
                 name: "log event".to_string(),
-                target: "log_tracer".to_string(),
+                target: "".to_string(),
                 level: Level::INFO,
-                module_path: Some("log_tracer".to_string()),
-                file: Some(my_file.to_string()),
-                line: Some(70),
+                module_path: None,
+                file: None,
+                line: None,
             }),
         );
 
-        log::info!(target: "specified", "this time with a specified target");
+        let log = log::Record::builder()
+            .args(format_args!("Error!"))
+            .level(log::Level::Info)
+            .target("log_tracer_target")
+            .file(Some("server.rs"))
+            .line(Some(144))
+            .module_path(Some("log_tracer"))
+            .build();
+        log::logger().log(&log);
         last(
-            &a,
+            &state,
             true,
             Some(OwnedMetadata {
                 name: "log event".to_string(),
-                target: "specified".to_string(),
+                target: "log_tracer_target".to_string(),
                 level: Level::INFO,
                 module_path: Some("log_tracer".to_string()),
-                file: Some(my_file.to_string()),
-                line: Some(84),
+                file: Some("server.rs".to_string()),
+                line: Some(144),
             }),
         );
 
         tracing::info!("test with a tracing info");
-        last(&a, false, None);
+        last(&state, false, None);
     })
 }
 
