@@ -7,15 +7,35 @@ use tracing_core::{
 
 pub mod delimited;
 
+/// Creates new [visitors].
+///
+/// A type implementing `MakeVisitor` represents a composable factory for types
+/// implementing the [`Visit` trait][visitors]. The `MakeVisitor` trait defines
+/// a single function, `make_visitor`, which takes in a `T`-typed `target` and
+/// returns a type implementing `Visit` configured for that target. A target may
+/// be a string, output stream, or data structure that the visitor will record
+/// data to, configuration variables that determine the visitor's behavior, or
+/// `()` when no input is required to produce a visitor.
+///
+/// [visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 pub trait MakeVisitor<T> {
     type Visitor: Visit;
 
+    /// Make a new visitor for the provided `target`.
     fn make_visitor(&self, target: T) -> Self::Visitor;
 }
 
+/// A [visitor] that produces output once it has visited a set of fields.
+///
+/// [visitor]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 pub trait VisitOutput<Out>: Visit {
+    /// Completes the visitor, returning any output.
+    ///
+    /// This is called once a full set of fields has been visited.
     fn finish(self) -> Out;
 
+    /// Visit a set of fields, and return the output of finishing the visitor
+    /// once the fields have been visited.
     fn visit<R>(mut self, fields: &R) -> Out
     where
         R: RecordFields,
@@ -30,6 +50,8 @@ pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
     fn record(&self, visitor: &mut dyn Visit);
 }
 
+/// Extension trait implemented for all `MakeVisitor` implementations that
+/// produce a visitor implementing `VisitOutput`.
 pub trait MakeOutput<T, Out>
 where
     Self: MakeVisitor<T> + crate::sealed::Sealed<(T, Out)>,
@@ -51,9 +73,7 @@ where
     where
         F: RecordFields,
     {
-        let mut v = self.make_visitor(target);
-        fields.record(&mut v);
-        v.finish()
+        self.make_visitor(target).visit(fields)
     }
 }
 
@@ -87,6 +107,8 @@ impl<'a> RecordFields for Record<'a> {
         Record::record(&self, visitor)
     }
 }
+
+// === blanket impls ===
 
 impl<T, V, F> MakeVisitor<T> for F
 where
