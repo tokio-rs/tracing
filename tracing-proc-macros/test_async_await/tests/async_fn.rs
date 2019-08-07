@@ -1,15 +1,13 @@
 #![feature(async_await)]
 
-use test_async_await::{
+use test_std_future::{
     PollN,
     block_on_future,
     support::*,
 };
 
 use tokio_test::task::MockTask;
-use tracing::{subscriber::with_default, Level};
-
-use std::future::Future;
+use tracing::subscriber::with_default;
 
 #[tracing_proc_macros::trace]
 async fn test_async_fn(polls: usize) -> Result<(), ()> {
@@ -32,7 +30,7 @@ fn async_fn_only_enters_for_polls() {
         .run_with_handle();
     let mut task = MockTask::new();
     with_default(subscriber, || {
-        block_on_future(&mut task, async { test_async_fn(2).await });
+        block_on_future(&mut task, async { test_async_fn(2).await }).unwrap();
     });
     handle.assert_finished();
 }

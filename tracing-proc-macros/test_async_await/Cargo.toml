@@ -12,9 +12,10 @@ version = "0.0.0"
 publish = false
 edition = "2018"
 
-[dependencies]
+[dev-dependencies]
 tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
 tracing = "0.1"
 tracing-core = "0.1.2"
 tracing-futures = { path = "../../tracing-futures", features = ["std-future"] }
 tracing-proc-macros = { path = "..", features = ["nightly"] }
+test_std_future = { path = "../../tracing-futures/test_std_future" }
