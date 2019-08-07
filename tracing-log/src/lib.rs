@@ -57,12 +57,14 @@ extern crate tracing_subscriber;
 
 use lazy_static::lazy_static;
 
-use std::io;
+use std::{fmt, io};
 
 use tracing_core::{
     callsite::{self, Callsite},
-    dispatcher, field, identify_callsite,
-    metadata::Kind,
+    dispatcher,
+    field::{self, Field, Visit},
+    identify_callsite,
+    metadata::{Kind, Level},
     subscriber, Event, Metadata,
 };
 
@@ -78,13 +80,7 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
         return Ok(());
     };
 
-    let (cs, keys) = match record.level() {
-        log::Level::Trace => *TRACE_CS,
-        log::Level::Debug => *DEBUG_CS,
-        log::Level::Info => *INFO_CS,
-        log::Level::Warn => *WARN_CS,
-        log::Level::Error => *ERROR_CS,
-    };
+    let (cs, keys) = loglevel_to_cs(record.level());
 
     let log_module = record.module_path();
     let log_file = record.file();
@@ -144,6 +140,24 @@ static FIELD_NAMES: &'static [&'static str] = &[
     "log.line",
 ];
 
+impl Fields {
+    fn new(cs: &'static dyn Callsite) -> Self {
+        let fieldset = cs.metadata().fields();
+        let message = fieldset.field("message").unwrap();
+        let target = fieldset.field("log.target").unwrap();
+        let module = fieldset.field("log.module_path").unwrap();
+        let file = fieldset.field("log.file").unwrap();
+        let line = fieldset.field("log.line").unwrap();
+        Fields {
+            message,
+            target,
+            module,
+            file,
+            line,
+        }
+    }
+}
+
 macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
@@ -165,49 +179,48 @@ macro_rules! log_cs {
             }
         }
 
-        lazy_static! {
-            static ref FIELDS: Fields = {
-                let message = META.fields().field("message").unwrap();
-                let target = META.fields().field("log.target").unwrap();
-                let module = META.fields().field("log.module_path").unwrap();
-                let file = META.fields().field("log.file").unwrap();
-                let line = META.fields().field("log.line").unwrap();
-                Fields {
-                    message,
-                    target,
-                    module,
-                    file,
-                    line,
-                }
-            };
-        }
-        (&Callsite, &FIELDS)
+        &Callsite
     }};
 }
 
+static TRACE_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::TRACE);
+static DEBUG_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::DEBUG);
+static INFO_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::INFO);
+static WARN_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::WARN);
+static ERROR_CS: &'static dyn Callsite = log_cs!(tracing_core::Level::ERROR);
+
 lazy_static! {
-    static ref TRACE_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::TRACE);
-    static ref DEBUG_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::DEBUG);
-    static ref INFO_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::INFO);
-    static ref WARN_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::WARN);
-    static ref ERROR_CS: (&'static dyn Callsite, &'static Fields) =
-        log_cs!(tracing_core::Level::ERROR);
+    static ref TRACE_FIELDS: Fields = Fields::new(TRACE_CS);
+    static ref DEBUG_FIELDS: Fields = Fields::new(DEBUG_CS);
+    static ref INFO_FIELDS: Fields = Fields::new(INFO_CS);
+    static ref WARN_FIELDS: Fields = Fields::new(WARN_CS);
+    static ref ERROR_FIELDS: Fields = Fields::new(ERROR_CS);
+}
+
+fn level_to_cs(level: &Level) -> (&'static dyn Callsite, &'static Fields) {
+    match *level {
+        Level::TRACE => (TRACE_CS, &*TRACE_FIELDS),
+        Level::DEBUG => (DEBUG_CS, &*DEBUG_FIELDS),
+        Level::INFO => (INFO_CS, &*INFO_FIELDS),
+        Level::WARN => (WARN_CS, &*WARN_FIELDS),
+        Level::ERROR => (ERROR_CS, &*ERROR_FIELDS),
+    }
+}
+
+fn loglevel_to_cs(level: log::Level) -> (&'static dyn Callsite, &'static Fields) {
+    match level {
+        log::Level::Trace => (TRACE_CS, &*TRACE_FIELDS),
+        log::Level::Debug => (DEBUG_CS, &*DEBUG_FIELDS),
+        log::Level::Info => (INFO_CS, &*INFO_FIELDS),
+        log::Level::Warn => (WARN_CS, &*WARN_FIELDS),
+        log::Level::Error => (ERROR_CS, &*ERROR_FIELDS),
+    }
 }
 
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
-        let cs_id = match self.level() {
-            log::Level::Trace => identify_callsite!(TRACE_CS.0),
-            log::Level::Debug => identify_callsite!(DEBUG_CS.0),
-            log::Level::Info => identify_callsite!(INFO_CS.0),
-            log::Level::Warn => identify_callsite!(WARN_CS.0),
-            log::Level::Error => identify_callsite!(ERROR_CS.0),
-        };
+        let cs_id = identify_callsite!(loglevel_to_cs(self.level()).0);
         Metadata::new(
             "log record",
             self.target(),
@@ -244,5 +257,143 @@ impl AsTrace for log::Level {
             log::Level::Debug => tracing_core::Level::DEBUG,
             log::Level::Trace => tracing_core::Level::TRACE,
         }
+    }
+}
+
+/// Extends log `Event`s to provide complete `Metadata`.
+///
+/// In `tracing-log`, an `Event` produced by a log (through [`AsTrace`]) has an hard coded
+/// "log" target and no `file`, `line`, or `module_path` attributes. This happens because `Event`
+/// requires its `Metadata` to be `'static`, while [`log::Record`]s provide them with a generic
+/// lifetime.
+///
+/// However, these values are stored in the `Event`'s fields and
+/// the [`normalized_metadata`] method allows to build a new `Metadata`
+/// that only lives as long as its source `Event`, but provides complete
+/// data.
+///
+/// It can typically be used by `Subscriber`s when processing an `Event`,
+/// to allow accessing its complete metadata in a consistent way,
+/// regardless of the source of its source.
+///
+/// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
+/// [`AsTrace`]: trait.AsTrace.html
+/// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
+pub trait NormalizeEvent<'a> {
+    /// If this `Event` comes from a `log`, this method provides a new
+    /// normalized `Metadata` which has all available attributes
+    /// from the original log, including `file`, `line`, `module_path`
+    /// and `target`.
+    /// Returns `None` is the `Event` is not issued from a `log`.
+    fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
+    /// Returns wether this `Event` represents a log (from the `log` crate)
+    fn is_log(&self) -> bool;
+}
+
+impl<'a> NormalizeEvent<'a> for Event<'a> {
+    fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
+        let original = self.metadata();
+        if self.is_log() {
+            let mut fields = LogVisitor::new_for(self, level_to_cs(original.level()).1);
+            self.record(&mut fields);
+
+            Some(Metadata::new(
+                "log event",
+                fields.target.unwrap_or("log"),
+                original.level().clone(),
+                fields.file,
+                fields.line.map(|l| l as u32),
+                fields.module_path,
+                field::FieldSet::new(&["message"], original.callsite()),
+                Kind::EVENT,
+            ))
+        } else {
+            None
+        }
+    }
+
+    fn is_log(&self) -> bool {
+        self.metadata().callsite() == identify_callsite!(level_to_cs(self.metadata().level()).0)
+    }
+}
+
+struct LogVisitor<'a> {
+    target: Option<&'a str>,
+    module_path: Option<&'a str>,
+    file: Option<&'a str>,
+    line: Option<u64>,
+    fields: &'static Fields,
+}
+
+impl<'a> LogVisitor<'a> {
+    // We don't actually _use_ the provided event argument; it is simply to
+    // ensure that the `LogVisitor` does not outlive the event whose fields it
+    // is visiting, so that the reference casts in `record_str` are safe.
+    fn new_for(_event: &'a Event<'a>, fields: &'static Fields) -> Self {
+        Self {
+            target: None,
+            module_path: None,
+            file: None,
+            line: None,
+            fields,
+        }
+    }
+}
+
+impl<'a> Visit for LogVisitor<'a> {
+    fn record_debug(&mut self, _field: &Field, _value: &fmt::Debug) {}
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if field == &self.fields.line {
+            self.line = Some(value);
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        unsafe {
+            // The `Visit` API erases the string slice's lifetime. However, we
+            // know it is part of the `Event` struct with a lifetime of `'a`. If
+            // (and only if!) this `LogVisitor` was constructed with the same
+            // lifetime parameter `'a` as the event in question, it's safe to
+            // cast these string slices to the `'a` lifetime.
+            if field == &self.fields.file {
+                self.file = Some(&*(value as *const _));
+            } else if field == &self.fields.target {
+                self.target = Some(&*(value as *const _));
+            } else if field == &self.fields.module {
+                self.module_path = Some(&*(value as *const _));
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn test_callsite(level: log::Level) {
+        let record = log::Record::builder()
+            .args(format_args!("Error!"))
+            .level(level)
+            .target("myApp")
+            .file(Some("server.rs"))
+            .line(Some(144))
+            .module_path(Some("server"))
+            .build();
+
+        let meta = record.as_trace();
+        let (cs, _keys) = loglevel_to_cs(record.level());
+        let cs_meta = cs.metadata();
+        assert_eq!(meta.callsite(), cs_meta.callsite());
+        assert_eq!(meta.level(), &level.as_trace());
+    }
+
+    #[test]
+    fn log_callsite_is_correct() {
+        test_callsite(log::Level::Error);
+        test_callsite(log::Level::Warn);
+        test_callsite(log::Level::Info);
+        test_callsite(log::Level::Debug);
+        test_callsite(log::Level::Trace);
     }
 }
