@@ -1,26 +1,17 @@
 //! Demonstrates using the `trace` attribute macro to instrument `async`
 //! functions.
 //!
-//! This is based on the [`hello_world`] example from `tokio`.
+//! This is based on the [`hello_world`] example from `tokio`. and implements a
+//! simple client that opens a TCP stream, writes "hello world\n", and closes
+//! the connection.
 //!
-//! This server will create a TCP listener, accept connections in a loop, and
-//! write back everything that's read off of each TCP connection.
+//! You can test this out by running:
 //!
-//! Because the Tokio runtime uses a thread pool, each TCP connection is
-//! processed concurrently with all other TCP connections across multiple
-//! threads.
+//!     ncat -l 6142
 //!
-//! To see this server in action, you can run this in one terminal:
+//! And then in another terminal run:
 //!
-//!     cargo run --example echo
-//!
-//! and in another terminal you can run:
-//!
-//!     cargo run --example connect 127.0.0.1:8080
-//!
-//! Each line you type in to the `connect` terminal should be echo'd back to
-//! you! If you open up multiple terminals running the `connect` example you
-//! should be able to see them all make progress simultaneously.
+//!     cargo +nightly run --example async_fn
 //!
 //! [`hello_world`]: https://github.com/tokio-rs/tokio/blob/132e9f1da5965530b63554d7a1c59824c3de4e30/tokio/examples/hello_world.rs
 #![feature(async_await)]
