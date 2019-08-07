@@ -8,6 +8,7 @@ extern crate tracing;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use syn::spanned::Spanned;
 use syn::token::{Async, Const, Unsafe};
 use syn::{Abi, ArgCaptured, Attribute, Block, FnArg, Ident, ItemFn, Pat, PatIdent, Visibility};
 
@@ -49,27 +50,19 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
         .collect();
     let param_names_clone = param_names.clone();
 
-    #[cfg(feature = "nightly")]
-    {
-        if asyncness.is_some() {
-            return quote_spanned!(call_site=>
-                #(#attrs) *
-                #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
-                    use tracing_futures::Instrument as __tracing_macros_futures_Instrument;
-                    let __tracing_attr_span = tracing::span!(
-                        tracing::Level::TRACE,
-                        #ident_str,
-                        #(#param_names = tracing::field::debug(&#param_names_clone)),*
-                    );
-                    async {
-                        #block
-                    }.instrument(__tracing_attr_span)
-                    .await
-                }
-            )
-            .into();
-        }
-    }
+    // Generate the instrumented function body.
+    // If the function is an `async fn`, this will wrap it in an async block,
+    // which is `instrument`ed using `tracing-futures`, if we are on a new
+    // enough Rust version to support this. Otherwise, this will enter the span
+    // and then perform the rest of the body.
+    let body = if asyncness.is_some() {
+        async_await::gen_async_body(block, &call_site)
+    } else {
+        quote_spanned!(block.span()=>
+            let __tracing_attr_guard = __tracing_attr_span.enter();
+            #block
+        )
+    };
 
     quote_spanned!(call_site=>
         #(#attrs) *
@@ -79,9 +72,21 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
                 #ident_str,
                 #(#param_names = tracing::field::debug(&#param_names_clone)),*
             );
-            let __tracing_attr_guard = __tracing_attr_span.enter();
-            #block
+            #body
         }
     )
     .into()
 }
+
+mod async_await {
+    #[cfg(feature = "nightly")]
+    pub(crate) use super::nightly::*;
+
+    #[cfg(not(feature = "nightly"))]
+    pub(crate) use super::stable::*;
+}
+
+#[cfg(feature = "nightly")]
+mod nightly;
+#[cfg(not(feature = "nightly"))]
+mod stable;
