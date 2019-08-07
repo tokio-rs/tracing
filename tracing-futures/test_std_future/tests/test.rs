@@ -2,7 +2,7 @@
 extern crate tracing;
 extern crate tracing_core;
 
-use test_std_future::{block_on_fn, support::*, PollN};
+use test_std_future::{block_on_future, support::*, PollN};
 
 use tokio_test::task::MockTask;
 use tracing::{subscriber::with_default, Level};
