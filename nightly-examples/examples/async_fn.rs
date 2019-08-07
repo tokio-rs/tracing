@@ -19,6 +19,7 @@ use tokio;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
+use tracing::info;
 use tracing_proc_macros::trace;
 
 use std::{io, error::Error, net::SocketAddr};
@@ -33,7 +34,7 @@ async fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {
 #[trace]
 async fn write(stream: &mut TcpStream) -> io::Result<usize> {
     let result = stream.write(b"hello world\n").await;
-    tracing::info!("wrote to stream; success={:?}", result.is_ok());
+    info!("wrote to stream; success={:?}", result.is_ok());
     result
 }
 
