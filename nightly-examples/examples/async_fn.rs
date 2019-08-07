@@ -28,17 +28,19 @@ use tokio;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
-use std::error::Error;
+use tracing_proc_macros::trace;
 
-#[tracing_proc_macros::trace]
-async fn connect(addr: &std::net::SocketAddr) -> Result<TcpStream, std::io::Error> {
+use std::{io, error::Error, net::SocketAddr};
+
+#[trace]
+async fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {
     let stream = TcpStream::connect(&addr).await;
     tracing::info!("created stream");
     stream
 }
 
-#[tracing_proc_macros::trace]
-async fn write(stream: &mut TcpStream) -> Result<usize, std::io::Error> {
+#[trace]
+async fn write(stream: &mut TcpStream) -> io::Result<usize> {
     let result = stream.write(b"hello world\n").await;
     tracing::info!("wrote to stream; success={:?}", result.is_ok());
     result
