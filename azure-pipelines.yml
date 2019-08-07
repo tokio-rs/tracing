@@ -47,7 +47,7 @@ stages:
          # https://github.com/tokio-rs/tracing/pull/191#issuecomment-513394436
          - bash: cd tracing-futures/test_std_future && cargo test
            displayName: "Test std::future support for tracing-futures"
-         - bash: cd tracing-proc-macros/test_async_fn && cargo test
+         - bash: cd tracing-proc-macros/test_async_await && cargo test
            displayName: "Test async-await support for tracing-proc-macros"
          - bash: cd nightly-examples && cargo test
            displayName: "Test async-await examples"
