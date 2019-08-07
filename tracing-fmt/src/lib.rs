@@ -10,6 +10,8 @@ extern crate chrono;
 extern crate lock_api;
 extern crate owning_ref;
 extern crate parking_lot;
+#[cfg(feature = "tracing-log")]
+extern crate tracing_log;
 
 #[macro_use]
 extern crate lazy_static;
