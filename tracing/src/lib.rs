@@ -375,7 +375,6 @@ pub use self::{
     dispatcher::Dispatch,
     event::Event,
     field::Value,
-    span::Span,
     subscriber::Subscriber,
     tracing_core::{dispatcher, event, Level, Metadata},
 };
@@ -388,6 +387,11 @@ pub use self::{
         metadata,
     },
 };
+
+#[doc(inline)]
+pub use self::span::Span;
+#[doc(inline)]
+pub use tracing_attributes::instrument;
 
 #[macro_use]
 mod macros;
