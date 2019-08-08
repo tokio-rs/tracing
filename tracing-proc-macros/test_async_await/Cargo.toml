@@ -1,0 +1,21 @@
+# Note: these are tests for Rust features that are not yet stable., and must
+# therefore exist in a separate workspace to avoid breaking the build in the
+# main workspace on stable.
+#
+# Do not add these tests to the other tracing-futures tests until the minimum
+# supported stable Rust version supports async-await.
+[workspace]
+
+[package]
+name = "test_async_await"
+version = "0.0.0"
+publish = false
+edition = "2018"
+
+[dev-dependencies]
+tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
+tracing = "0.1"
+tracing-core = "0.1.2"
+tracing-futures = { path = "../../tracing-futures", features = ["std-future"] }
+tracing-proc-macros = { path = "..", features = ["nightly"] }
+test_std_future = { path = "../../tracing-futures/test_std_future" }
