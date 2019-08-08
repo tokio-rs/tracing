@@ -1,5 +1,5 @@
 #![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.0")]
-#![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
+#![deny(missing_debug_implementations, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
 //! A procedural macro attribute for instrumenting functions with [`tracing`].
