@@ -341,7 +341,7 @@ impl<'a> LogVisitor<'a> {
 }
 
 impl<'a> Visit for LogVisitor<'a> {
-    fn record_debug(&mut self, _field: &Field, _value: &fmt::Debug) {}
+    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
 
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field == &self.fields.line {
