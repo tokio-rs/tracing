@@ -82,7 +82,7 @@ use syn::{
 /// ```
 /// Overriding the generated span's target:
 /// ```
-/// /// # use tracing_attributes::instrument;
+/// # use tracing_attributes::instrument;
 /// #[instrument(target = "my_target")]
 /// pub fn my_function() {
 ///     // ...
