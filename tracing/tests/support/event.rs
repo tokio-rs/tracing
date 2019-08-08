@@ -78,7 +78,7 @@ impl MockEvent {
         }
     }
 
-    pub(in crate::support) fn check(&mut self, event: &tracing::Event) {
+    pub(in crate::support) fn check(&mut self, event: &tracing::Event<'_>) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata
@@ -93,7 +93,7 @@ impl MockEvent {
 }
 
 impl fmt::Display for MockEvent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "an event{}", self.metadata)
     }
 }

@@ -5,7 +5,7 @@ mod metadata;
 pub mod span;
 pub mod subscriber;
 
-extern crate tracing_core;
+
 
 #[derive(Debug, Eq, PartialEq)]
 pub(in crate::support) enum Parent {

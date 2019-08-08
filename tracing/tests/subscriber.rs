@@ -12,27 +12,27 @@ fn event_macros_dont_infinite_loop() {
     // won't cause an infinite loop of events.
     struct TestSubscriber;
     impl Subscriber for TestSubscriber {
-        fn register_callsite(&self, _: &Metadata) -> Interest {
+        fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
             // Always return sometimes so that `enabled` will be called
             // (which can loop).
             Interest::sometimes()
         }
 
-        fn enabled(&self, meta: &Metadata) -> bool {
+        fn enabled(&self, meta: &Metadata<'_>) -> bool {
             assert!(meta.fields().iter().any(|f| f.name() == "foo"));
             event!(Level::TRACE, bar = false);
             true
         }
 
-        fn new_span(&self, _: &span::Attributes) -> span::Id {
+        fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xAAAA)
         }
 
-        fn record(&self, _: &span::Id, _: &span::Record) {}
+        fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
 
         fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
-        fn event(&self, event: &Event) {
+        fn event(&self, event: &Event<'_>) {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
             event!(Level::TRACE, baz = false);
         }
