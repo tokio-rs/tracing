@@ -1,3 +1,19 @@
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.0")]
+#![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
+#![cfg_attr(test, deny(warnings))]
+
+//! A procedural macro attribute for instrumenting functions with [`tracing`].
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
+//! structured, event-based diagnostic information. This crate provides the
+//! `#[instrument]` procedural macro attribute.
+//!
+//! ## Feature Flags
+//! - `async-await`: Enables support for instrumenting `async fn`s with the
+//!   `#[instrument]` attribute. This also requires the `tracing_futures` crate
+//!   to be imported in `Cargo.toml`.
+//!
+//! [`tracing`]:https://crates.io/crates/tracing
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -8,6 +24,51 @@ use syn::{
     MetaNameValue, NestedMeta, Pat, PatIdent,
 };
 
+/// Instruments a function to create and enter a `tracing` [span] every time
+/// the function is called.
+///
+/// The generated span's name will be the name of the function, and any
+/// arguments to that function will be recorded as fields using `fmt::Debug`.
+///
+/// # Examples
+/// Instrumenting a function:
+/// ```
+/// # use tracing_proc_macros::instrument;
+/// #[instrument]
+/// pub fn my_function(my_arg: usize) {
+///     // This event will be recorded inside a span named `my_function` with the
+///     // field `my_arg`.
+///     tracing::info!("inside my_function!");
+///     // ...
+/// }
+/// # fn main() {}
+/// ```
+/// Setting the level for the generated span:
+/// ```
+/// # use tracing_proc_macros::instrument;
+/// #[instrument(level = "debug")]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// # fn main() {}
+/// ```
+/// Overriding the generated span's target:
+/// ```
+/// /// # use tracing_proc_macros::instrument;
+/// #[instrument(target = "my_target")]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// # fn main() {}
+/// ```
+///
+/// # Notes
+/// - All argument types must implement `fmt::Debug`
+/// - When using `#[instrument]` on an `async fn`, the `tracing_futures` must
+///   also be specified as a dependency in `Cargo.toml`.
+///
+/// [span]: https://docs.rs/tracing/0.1.3/tracing/span/index.html
+/// [`tracing`]: https://github.com/tokio-rs/tracing
 #[proc_macro_attribute]
 pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
