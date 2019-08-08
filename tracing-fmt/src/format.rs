@@ -247,6 +247,9 @@ impl<'a> field::Visit for Recorder<'a> {
         self.maybe_pad();
         let _ = match field.name() {
             "message" => write!(self.writer, "{:?}", value),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => Ok(()),
             name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
             name => write!(self.writer, "{}={:?}", name, value),
         };
