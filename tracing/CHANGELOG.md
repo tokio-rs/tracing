@@ -1,3 +1,9 @@
+# 0.1.4 (August 8, 2019)
+
+### Added
+
+- `#[instrument]` attribute for automatically adding spans to functions (#253)
+
 # 0.1.3 (July 11, 2019)
 
 ### Added
