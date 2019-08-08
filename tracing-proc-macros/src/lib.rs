@@ -65,11 +65,13 @@ pub fn trace(args: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let level = level(&args);
+    let target = target(&args);
 
     quote_spanned!(call_site=>
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
             let __tracing_attr_span = tracing::span!(
+                target: #target,
                 #level,
                 #ident_str,
                 #(#param_names = tracing::field::debug(&#param_names_clone)),*
@@ -124,6 +126,33 @@ fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
             )
         },
         None => quote!(tracing::Level::INFO),
+    }
+}
+
+fn target(args: &AttributeArgs) -> proc_macro2::TokenStream {
+    let mut levels = args.iter().filter_map(|arg| match arg {
+        NestedMeta::Meta(Meta::NameValue(MetaNameValue {
+            ref ident, ref lit, ..
+        })) if ident == "target" => Some(lit.clone()),
+        _ => None,
+    });
+    let level = levels.next();
+
+    // If we found more than one arg named "level", that's a syntax error...
+    if let Some(lit) = levels.next() {
+        return quote_spanned! {lit.span()=>
+            compile_error!("expected only a single `target` argument!")
+        };
+    }
+
+    match level {
+        Some(Lit::Str(ref lit)) => quote!(#lit),
+        Some(lit) => quote_spanned! {lit.span()=>
+            compile_error!(
+                "expected target to be a string literal"
+            )
+        },
+        None => quote!(module_path!()),
     }
 }
 
