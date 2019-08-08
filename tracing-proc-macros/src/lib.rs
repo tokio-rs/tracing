@@ -4,7 +4,6 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 extern crate proc_macro2;
-extern crate tracing;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
