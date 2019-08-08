@@ -116,22 +116,11 @@
 //! [dependencies]
 //! tracing = "0.1"
 //! ```
-//!
-//! Next, add this to your crate:
-//!
-//! ```rust
-//! #[macro_use]
-//! extern crate tracing;
-//! # fn main() {}
-//! ```
-//!
 //! `Span`s are constructed using the `span!` macro, and then _entered_
 //! to indicate that some code takes place within the context of that `Span`:
 //!
 //! ```rust
-//! # #[macro_use]
-//! # extern crate tracing;
-//! # use tracing::Level;
+//! use tracing::{span, Level};
 //! # fn main() {
 //! // Construct a new span named "my span" with trace log level.
 //! let span = span!(Level::TRACE, "my span");
@@ -150,10 +139,8 @@
 //! event is dropped:
 //!
 //! ```rust
-//! # #[macro_use]
-//! # extern crate tracing;
 //! # fn main() {
-//! use tracing::Level;
+//! use tracing::{event, Level};
 //! event!(Level::INFO, "something has happened!");
 //! # }
 //! ```
@@ -167,9 +154,7 @@
 //! Let's consider the `log` crate's yak-shaving example:
 //!
 //! ```rust
-//! #[macro_use]
-//! extern crate tracing;
-//! use tracing::Level;
+//! use tracing::{info, span, warn, Level};
 //!
 //! # #[derive(Debug)] pub struct Yak(String);
 //! # impl Yak { fn shave(&mut self, _: u32) {} }
@@ -204,7 +189,27 @@
 //! # }
 //! ```
 //!
-//! You can find examples showing how to use this crate in the examples
+//! The [`#[instrument]`][instrument] attribute provides an easy way to
+//! add `tracing` spans to functions. A function annotated with `#[instrument]`
+//! will create and enter a span with that function's name every time the
+//! function is called, with arguments to that function will be recorded as
+//! fields using `fmt::Debug`.
+//!
+//! For example:
+//! ```
+//! use tracing::instrument;
+//!
+//! #[instrument]
+//! pub fn my_function(my_arg: usize) {
+//!     // This event will be recorded inside a span named `my_function` with the
+//!     // field `my_arg`.
+//!     tracing::info!("inside my_function!");
+//!     // ...
+//! }
+//! # fn main() {}
+//! ```
+//!
+//! You can find more examples showing how to use this crate in the examples
 //! directory.
 //!
 //! ## In libraries
@@ -259,8 +264,6 @@
 //! of the closure. For example:
 //!
 //! ```rust
-//! #[macro_use]
-//! extern crate tracing;
 //! # pub struct FooSubscriber;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
 //! # impl tracing::Subscriber for FooSubscriber {
@@ -325,15 +328,19 @@
 //! The following crate feature flags are available:
 //!
 //! * A set of features controlling the [static verbosity level].
-//! * `log` causes trace instrumentation points to emit [`log`] records as well
+//! * `log`: causes trace instrumentation points to emit [`log`] records as well
 //!   as trace events. This is intended for use in libraries whose users may be
 //!   using either `tracing` or `log`.
 //!   **Note:** `log` support will not work when `tracing` is renamed in `Cargo.toml`,
 //!   due to oddities in macro expansion.
+//! * `async-await`: enables support for instrumenting `async fn`s with the
+//!   [`#[instrument]`][instrument] attribute.
+//!   **Note**: this also requires the [`tracing-futures`] crate with the
+//!   `std-future` feature flag enabled.
 //!
 //! ```toml
 //! [dependencies]
-//! tracing = { version = "0.1", features = ["log"] }
+//! tracing = { version = "0.1", features = ["log", "async-await"] }
 //! ```
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
@@ -357,6 +364,7 @@
 //! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
+//! [instrument]: https://docs.rs/tracing-attributes/0.1.0/tracing_attributes/attr.instrument.html
 #[macro_use]
 extern crate cfg_if;
 use tracing_core;
