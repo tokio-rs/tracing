@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.2")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.3")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -46,7 +46,7 @@
 //! [`ValueSet`]: field/struct.ValueSet.html
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
-//! [`tracing`]: https://github.com/tokio-rs/tracing
+//! [`tracing`]: https://crates.io/crates/tracing
 #[macro_use]
 extern crate lazy_static;
 
