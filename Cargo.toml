@@ -3,7 +3,7 @@
 members = [
     "tracing",
     "tracing-core",
-    "tracing-proc-macros",
+    "tracing-attributes",
     "tracing-fmt",
     "tracing-futures",
     "tracing-tower",

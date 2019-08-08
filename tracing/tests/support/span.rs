@@ -6,7 +6,7 @@ use std::fmt;
 ///
 /// This is intended for use with the mock subscriber API in the
 /// `subscriber` module.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MockSpan {
     pub(in crate::support) metadata: metadata::Expect,
 }
