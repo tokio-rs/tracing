@@ -33,9 +33,6 @@ proc-macro2 = "0.4"
 tracing = "0.1"
 tracing-core = "0.1"
 tracing-fmt = "0.0.1-alpha.2"
-env_logger = "0.5"
-ansi_term = "0.11"
-humantime = "1.1.1"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }

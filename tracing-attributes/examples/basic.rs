@@ -1,35 +1,23 @@
-#[macro_use]
-extern crate tracing;
-#[macro_use]
-extern crate tracing_attributes;
-extern crate env_logger;
-extern crate tracing_fmt;
-
-use tracing::{field, Level};
-
-fn main() {
-    env_logger::Builder::new().parse("trace").init();
-    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
-    tracing::subscriber::with_default(subscriber, || {
-        let num: u64 = 1;
-
-        let span = span!(
-            Level::TRACE,
-            "Getting rec from another function.",
-            number_of_recs = &num
-        );
-        let _enter = span.enter();
-        let band = suggest_band();
-        info!(
-            { band_recommendation = field::display(&band) },
-            "Got a rec."
-        );
-    });
-}
+use tracing::{debug, info, span, Level};
+use tracing_attributes::instrument;
 
 #[instrument]
 #[inline]
 fn suggest_band() -> String {
     debug!("Suggesting a band.");
     format!("Wild Pink")
+}
+
+fn main() {
+    let subscriber = tracing_fmt::FmtSubscriber::builder()
+        .with_filter(tracing_fmt::filter::EnvFilter::from("basic=trace"))
+        .finish();
+    tracing::subscriber::with_default(subscriber, || {
+        let num_recs = 1;
+
+        let span = span!(Level::TRACE, "get_band_rec", ?num_recs);
+        let _enter = span.enter();
+        let band = suggest_band();
+        info!(message = "Got a recomendation!", %band);
+    });
 }
