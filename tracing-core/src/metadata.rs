@@ -174,7 +174,7 @@ impl<'a> Metadata<'a> {
 }
 
 impl<'a> fmt::Debug for Metadata<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut meta = f.debug_struct("Metadata");
         meta.field("name", &self.name)
             .field("target", &self.target)
@@ -262,7 +262,7 @@ impl Level {
 }
 
 impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Level::TRACE => f.pad("TRACE"),
             Level::DEBUG => f.pad("DEBUG"),
@@ -331,7 +331,7 @@ pub struct ParseLevelError {
 }
 
 impl fmt::Display for ParseLevelError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(
             "error parsing level: expected one of \"error\", \"warn\", \
              \"info\", \"debug\", \"trace\", or a number 1-5",

@@ -238,7 +238,7 @@ pub struct SetGlobalDefaultError {
 }
 
 impl fmt::Display for SetGlobalDefaultError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("a global default trace dispatcher has already been set")
     }
 }
@@ -344,7 +344,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
     #[inline]
-    pub fn new_span(&self, span: &span::Attributes) -> span::Id {
+    pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         self.subscriber.new_span(span)
     }
 
@@ -356,7 +356,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`record`]: ../subscriber/trait.Subscriber.html#method.record
     #[inline]
-    pub fn record(&self, span: &span::Id, values: &span::Record) {
+    pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.subscriber.record(span, values)
     }
 
@@ -383,7 +383,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`enabled`]: ../subscriber/trait.Subscriber.html#method.enabled
     #[inline]
-    pub fn enabled(&self, metadata: &Metadata) -> bool {
+    pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.subscriber.enabled(metadata)
     }
 
@@ -396,7 +396,7 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`event`]: ../subscriber/trait.Subscriber.html#method.event
     #[inline]
-    pub fn event(&self, event: &Event) {
+    pub fn event(&self, event: &Event<'_>) {
         self.subscriber.event(event)
     }
 
@@ -512,7 +512,7 @@ impl Dispatch {
 }
 
 impl fmt::Debug for Dispatch {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Dispatch(...)")
     }
 }
@@ -534,18 +534,18 @@ impl Subscriber for NoSubscriber {
         subscriber::Interest::never()
     }
 
-    fn new_span(&self, _: &span::Attributes) -> span::Id {
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
         span::Id::from_u64(0xDEAD)
     }
 
-    fn event(&self, _event: &Event) {}
+    fn event(&self, _event: &Event<'_>) {}
 
-    fn record(&self, _span: &span::Id, _values: &span::Record) {}
+    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
     #[inline]
-    fn enabled(&self, _metadata: &Metadata) -> bool {
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
         false
     }
 
@@ -636,7 +636,7 @@ mod test {
 
     impl Callsite for TestCallsite {
         fn set_interest(&self, _: Interest) {}
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             &TEST_META
         }
     }
@@ -647,19 +647,19 @@ mod test {
         // won't cause an infinite loop of events.
         struct TestSubscriber;
         impl Subscriber for TestSubscriber {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
 
-            fn new_span(&self, _: &span::Attributes) -> span::Id {
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record) {}
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
-            fn event(&self, _: &Event) {
+            fn event(&self, _: &Event<'_>) {
                 static EVENTS: AtomicUsize = AtomicUsize::new(0);
                 assert_eq!(
                     EVENTS.fetch_add(1, Ordering::Relaxed),
@@ -695,11 +695,11 @@ mod test {
 
         struct TestSubscriber;
         impl Subscriber for TestSubscriber {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
 
-            fn new_span(&self, _: &span::Attributes) -> span::Id {
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
                 static NEW_SPANS: AtomicUsize = AtomicUsize::new(0);
                 assert_eq!(
                     NEW_SPANS.fetch_add(1, Ordering::Relaxed),
@@ -710,11 +710,11 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record) {}
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
-            fn event(&self, _: &Event) {}
+            fn event(&self, _: &Event<'_>) {}
 
             fn enter(&self, _: &span::Id) {}
 
@@ -728,29 +728,29 @@ mod test {
     fn global_dispatch() {
         struct TestSubscriberA;
         impl Subscriber for TestSubscriberA {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
-            fn new_span(&self, _: &span::Attributes) -> span::Id {
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
                 span::Id::from_u64(1)
             }
-            fn record(&self, _: &span::Id, _: &span::Record) {}
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-            fn event(&self, _: &Event) {}
+            fn event(&self, _: &Event<'_>) {}
             fn enter(&self, _: &span::Id) {}
             fn exit(&self, _: &span::Id) {}
         }
         struct TestSubscriberB;
         impl Subscriber for TestSubscriberB {
-            fn enabled(&self, _: &Metadata) -> bool {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
-            fn new_span(&self, _: &span::Attributes) -> span::Id {
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
                 span::Id::from_u64(1)
             }
-            fn record(&self, _: &span::Id, _: &span::Record) {}
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-            fn event(&self, _: &Event) {}
+            fn event(&self, _: &Event<'_>) {}
             fn enter(&self, _: &span::Id) {}
             fn exit(&self, _: &span::Id) {}
         }

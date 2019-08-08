@@ -346,7 +346,7 @@ where
 }
 
 impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
@@ -365,7 +365,7 @@ where
 }
 
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
@@ -390,7 +390,7 @@ impl Field {
 }
 
 impl fmt::Display for Field {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(self.name())
     }
 }
@@ -526,7 +526,7 @@ impl<'a> IntoIterator for &'a FieldSet {
 }
 
 impl fmt::Debug for FieldSet {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FieldSet")
             .field("names", &self.names)
             .field("callsite", &self.callsite)
@@ -535,7 +535,7 @@ impl fmt::Debug for FieldSet {
 }
 
 impl fmt::Display for FieldSet {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set()
             .entries(self.names.iter().map(display))
             .finish()
@@ -609,7 +609,7 @@ impl<'a> ValueSet<'a> {
 }
 
 impl<'a> fmt::Debug for ValueSet<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
             .fold(&mut f.debug_struct("ValueSet"), |dbg, (key, v)| {
@@ -624,7 +624,7 @@ impl<'a> fmt::Debug for ValueSet<'a> {
 }
 
 impl<'a> fmt::Display for ValueSet<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
             .fold(&mut f.debug_map(), |dbg, (key, v)| {
@@ -687,7 +687,7 @@ mod test {
             unimplemented!()
         }
 
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_1
         }
     }
@@ -708,7 +708,7 @@ mod test {
             unimplemented!()
         }
 
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_2
         }
     }

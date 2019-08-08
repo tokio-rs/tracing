@@ -61,7 +61,7 @@ pub trait Callsite: Sync {
     /// Returns the [metadata] associated with the callsite.
     ///
     /// [metadata]: ../metadata/struct.Metadata.html
-    fn metadata(&self) -> &Metadata;
+    fn metadata(&self) -> &Metadata<'_>;
 }
 
 /// Uniquely identifies a [`Callsite`]
@@ -127,7 +127,7 @@ impl PartialEq for Identifier {
 impl Eq for Identifier {}
 
 impl fmt::Debug for Identifier {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Identifier({:p})", self.0)
     }
 }
