@@ -17,5 +17,5 @@ tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
 tracing = "0.1"
 tracing-core = "0.1.2"
 tracing-futures = { path = "../../tracing-futures", features = ["std-future"] }
-tracing-attributes = { path = "..", features = ["nightly"] }
+tracing-attributes = { path = "..", features = ["async-await"] }
 test_std_future = { path = "../../tracing-futures/test_std_future" }

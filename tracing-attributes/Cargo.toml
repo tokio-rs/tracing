@@ -22,7 +22,7 @@ edition = "2018"
 proc-macro = true
 
 [features]
-nightly = []
+async-await = []
 
 [dependencies]
 syn = { version = "0.15", features = ["full", "extra-traits"] }

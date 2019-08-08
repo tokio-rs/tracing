@@ -260,14 +260,14 @@ fn target(args: &AttributeArgs) -> proc_macro2::TokenStream {
 }
 
 mod async_await {
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "async-await")]
     pub(crate) use super::nightly::*;
 
-    #[cfg(not(feature = "nightly"))]
+    #[cfg(not(feature = "async-await"))]
     pub(crate) use super::stable::*;
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "async-await")]
 mod nightly;
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "async-await"))]
 mod stable;
