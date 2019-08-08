@@ -1,17 +1,13 @@
 extern crate proc_macro;
-#[macro_use]
-extern crate syn;
-#[macro_use]
-extern crate quote;
-extern crate proc_macro2;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use quote::quote_spanned;
 use syn::{spanned::Spanned, ArgCaptured, FnArg, FnDecl, Ident, ItemFn, Pat, PatIdent};
 
 #[proc_macro_attribute]
 pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
-    let input: ItemFn = parse_macro_input!(item as ItemFn);
+    let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
     let call_site = Span::call_site();
 
     // these are needed ahead of time, as ItemFn contains the function body _and_

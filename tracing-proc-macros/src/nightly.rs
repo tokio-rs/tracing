@@ -1,3 +1,4 @@
+use quote::quote_spanned;
 use syn::spanned::Spanned;
 
 /// Generates the instrumented body for an `async fn`.
