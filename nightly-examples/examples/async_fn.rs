@@ -24,14 +24,14 @@ use tracing_proc_macros::trace;
 
 use std::{io, error::Error, net::SocketAddr};
 
-#[trace]
+#[instrument]
 async fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {
     let stream = TcpStream::connect(&addr).await;
     tracing::info!("created stream");
     stream
 }
 
-#[trace]
+#[instrument]
 async fn write(stream: &mut TcpStream) -> io::Result<usize> {
     let result = stream.write(b"hello world\n").await;
     info!("wrote to stream; success={:?}", result.is_ok());

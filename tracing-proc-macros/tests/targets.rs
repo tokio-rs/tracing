@@ -4,10 +4,10 @@ use support::*;
 use tracing::subscriber::with_default;=
 use tracing_proc_macros::trace;
 
-#[trace]
+#[instrument]
 fn default_target() {}
 
-#[trace(target = "my_target")]
+#[instrument(target = "my_target")]
 fn custom_target() {}
 
 mod my_mod {
@@ -15,10 +15,10 @@ mod my_mod {
 
     pub const MODULE_PATH: &str = module_path!();
 
-    #[trace]
+    #[instrument]
     pub fn default_target() {}
 
-    #[trace(target = "my_other_target")]
+    #[instrument(target = "my_other_target")]
     pub fn custom_target() {}
 }
 

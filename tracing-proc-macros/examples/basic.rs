@@ -27,7 +27,7 @@ fn main() {
     });
 }
 
-#[trace]
+#[instrument]
 #[inline]
 fn suggest_band() -> String {
     debug!("Suggesting a band.");

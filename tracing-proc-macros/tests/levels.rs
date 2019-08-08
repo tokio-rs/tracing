@@ -7,19 +7,19 @@ use tracing_proc_macros::trace;
 
 #[test]
 fn named_levels() {
-    #[trace(level = "trace")]
+    #[instrument(level = "trace")]
     fn trace() {}
 
-    #[trace(level = "Debug")]
+    #[instrument(level = "Debug")]
     fn debug() {}
 
-    #[trace(level = "INFO")]
+    #[instrument(level = "INFO")]
     fn info() {}
 
-    #[trace(level = "WARn")]
+    #[instrument(level = "WARn")]
     fn warn() {}
 
-    #[trace(level = "eRrOr")]
+    #[instrument(level = "eRrOr")]
     fn error() {}
     let (subscriber, handle) = subscriber::mock()
         .new_span(span::mock().named("trace").at_level(Level::TRACE))
@@ -53,19 +53,19 @@ fn named_levels() {
 
 #[test]
 fn numeric_levels() {
-    #[trace(level = 1)]
+    #[instrument(level = 1)]
     fn trace() {}
 
-    #[trace(level = 2)]
+    #[instrument(level = 2)]
     fn debug() {}
 
-    #[trace(level = 3)]
+    #[instrument(level = 3)]
     fn info() {}
 
-    #[trace(level = 4)]
+    #[instrument(level = 4)]
     fn warn() {}
 
-    #[trace(level = 5)]
+    #[instrument(level = 5)]
     fn error() {}
     let (subscriber, handle) = subscriber::mock()
         .new_span(span::mock().named("trace").at_level(Level::TRACE))

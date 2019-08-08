@@ -5,7 +5,7 @@ extern crate tracing_proc_macros;
 extern crate env_logger;
 extern crate tracing_fmt;
 
-#[trace]
+#[instrument]
 fn nth_fibonacci(n: u64) -> u64 {
     if n == 0 || n == 1 {
         debug!("Base case");
@@ -16,7 +16,7 @@ fn nth_fibonacci(n: u64) -> u64 {
     }
 }
 
-#[trace]
+#[instrument]
 fn fibonacci_seq(to: u64) -> Vec<u64> {
     let mut sequence = vec![];
 

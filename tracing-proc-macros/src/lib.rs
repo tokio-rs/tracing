@@ -9,7 +9,7 @@ use syn::{
 };
 
 #[proc_macro_attribute]
-pub fn trace(args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
     let args = syn::parse_macro_input!(args as AttributeArgs);
     let call_site = Span::call_site();
