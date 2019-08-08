@@ -52,16 +52,16 @@ API. However, this crate's API will change very infrequently, so it may be used
 when dependencies must be very stable.
 
 [`tracing`]: ../tracing
-[`Span`]: https://docs.rs/tracing-core/0.1.2/tracing_core/span/struct.Span.html
-[`Event`]: https://docs.rs/tracing-core/0.1.2/tracing_core/event/struct.Event.html
-[`Subscriber`]: https://docs.rs/tracing-core/0.1.2/tracing_core/subscriber/trait.Subscriber.html
-[`Metadata`]: https://docs.rs/tracing-core/0.1.2/tracing_core/metadata/struct.Metadata.html
-[`Callsite`]: https://docs.rs/tracing-core/0.1.2/tracing_core/callsite/trait.Callsite.html
-[`Field`]: https://docs.rs/tracing-core/0.1.2/tracing_core/field/struct.Field.html
-[`FieldSet`]: https://docs.rs/tracing-core/0.1.2/tracing_core/field/struct.FieldSet.html
-[`Value`]: https://docs.rs/tracing-core/0.1.2/tracing_core/field/trait.Value.html
-[`ValueSet`]: https://docs.rs/tracing-core/0.1.2/tracing_core/field/struct.ValueSet.html
-[`Dispatch`]: https://docs.rs/tracing-core/0.1.2/tracing_core/dispatcher/struct.Dispatch.html
+[`Span`]: https://docs.rs/tracing-core/0.1.3/tracing_core/span/struct.Span.html
+[`Event`]: https://docs.rs/tracing-core/0.1.3/tracing_core/event/struct.Event.html
+[`Subscriber`]: https://docs.rs/tracing-core/0.1.3/tracing_core/subscriber/trait.Subscriber.html
+[`Metadata`]: https://docs.rs/tracing-core/0.1.3/tracing_core/metadata/struct.Metadata.html
+[`Callsite`]: https://docs.rs/tracing-core/0.1.3/tracing_core/callsite/trait.Callsite.html
+[`Field`]: https://docs.rs/tracing-core/0.1.3/tracing_core/field/struct.Field.html
+[`FieldSet`]: https://docs.rs/tracing-core/0.1.3/tracing_core/field/struct.FieldSet.html
+[`Value`]: https://docs.rs/tracing-core/0.1.3/tracing_core/field/trait.Value.html
+[`ValueSet`]: https://docs.rs/tracing-core/0.1.3/tracing_core/field/struct.ValueSet.html
+[`Dispatch`]: https://docs.rs/tracing-core/0.1.3/tracing_core/dispatcher/struct.Dispatch.html
 
 ## License
 
