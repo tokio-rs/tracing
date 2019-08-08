@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 #[macro_use]
-extern crate tracing_proc_macros;
+extern crate tracing_attributes;
 extern crate env_logger;
 extern crate tracing_fmt;
 

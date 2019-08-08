@@ -9,7 +9,7 @@ use test_std_future::{
 use tokio_test::task::MockTask;
 use tracing::subscriber::with_default;
 
-#[tracing_proc_macros::instrument]
+#[tracing_attributes::instrument]
 async fn test_async_fn(polls: usize) -> Result<(), ()> {
     let future = PollN::new_ok(polls);
     tracing::trace!(awaiting = true);

@@ -3,7 +3,7 @@ use support::*;
 
 use tracing::subscriber::with_default;
 use tracing::Level;
-use tracing_proc_macros::trace;
+use tracing_attributes::instrument;
 
 #[test]
 fn named_levels() {

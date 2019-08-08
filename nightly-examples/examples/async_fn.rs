@@ -20,7 +20,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
 use tracing::info;
-use tracing_proc_macros::trace;
+use tracing_attributes::trace;
 
 use std::{io, error::Error, net::SocketAddr};
 

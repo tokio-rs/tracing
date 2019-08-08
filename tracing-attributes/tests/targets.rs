@@ -2,7 +2,7 @@ mod support;
 use support::*;
 
 use tracing::subscriber::with_default;
-use tracing_proc_macros::trace;
+use tracing_attributes::instrument;
 
 #[instrument]
 fn default_target() {}
@@ -11,7 +11,7 @@ fn default_target() {}
 fn custom_target() {}
 
 mod my_mod {
-    use tracing_proc_macros::trace;
+    use tracing_attributes::instrument;
 
     pub const MODULE_PATH: &str = module_path!();
 

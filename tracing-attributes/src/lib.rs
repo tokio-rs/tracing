@@ -95,6 +95,7 @@ use syn::{
 ///
 /// ```compile_fail
 /// // this compiles only with the `async-await` feature flag enabled
+/// # use tracing_attributes::instrument;
 ///
 /// #[instrument]
 /// pub async fn my_function() -> Result<(), ()> {
