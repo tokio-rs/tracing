@@ -6,14 +6,42 @@
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
 //! structured, event-based diagnostic information. This crate provides the
-//! `#[instrument]` procedural macro attribute.
+//! [`#[instrument]`][instrument] procedural macro attribute.
+//!
+//! Note that this macro is also re-exported by the main `tracing` crate.
+//!
+//! ## Usage
+//!
+//! First, add this to your `Cargo.toml`:
+//!
+//! ```toml
+//! [dependencies]
+//! tracing-attributes = "0.1.0"
+//! ```
+//!
+//! The [`#[instrument]`][instrument] attribute can now be added to a function
+//! to automatically create and enter `tracing` [span] when that function is
+//! called. For example:
+//!
+//! ```
+//! use tracing_attributes::instrument;
+//!
+//! #[instrument]
+//! pub fn my_function(my_arg: usize) {
+//!     // ...
+//! }
+//!
+//! # fn main() {}
+//! ```
 //!
 //! ## Feature Flags
 //! - `async-await`: Enables support for instrumenting `async fn`s with the
 //!   `#[instrument]` attribute. This also requires the `tracing_futures` crate
 //!   to be imported in `Cargo.toml`.
 //!
-//! [`tracing`]:https://crates.io/crates/tracing
+//! [`tracing`]: https://crates.io/crates/tracing
+//! [span]: https://docs.rs/tracing/0.1.3/tracing/span/index.html
+//! [instrument]: attr.instrument.html
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -33,7 +61,7 @@ use syn::{
 /// # Examples
 /// Instrumenting a function:
 /// ```
-/// # use tracing_proc_macros::instrument;
+/// # use tracing_attributes::instrument;
 /// #[instrument]
 /// pub fn my_function(my_arg: usize) {
 ///     // This event will be recorded inside a span named `my_function` with the
@@ -45,7 +73,7 @@ use syn::{
 /// ```
 /// Setting the level for the generated span:
 /// ```
-/// # use tracing_proc_macros::instrument;
+/// # use tracing_attributes::instrument;
 /// #[instrument(level = "debug")]
 /// pub fn my_function() {
 ///     // ...
@@ -54,10 +82,24 @@ use syn::{
 /// ```
 /// Overriding the generated span's target:
 /// ```
-/// /// # use tracing_proc_macros::instrument;
+/// /// # use tracing_attributes::instrument;
 /// #[instrument(target = "my_target")]
 /// pub fn my_function() {
 ///     // ...
+/// }
+/// # fn main() {}
+/// ```
+///
+/// When the `async-await` feature flag is enabled, `async fn`s may also be
+/// instrumented:
+///
+/// ```compile_fail
+/// // this compiles only with the `async-await` feature flag enabled
+///
+/// #[instrument]
+/// pub async fn my_function() -> Result<(), ()> {
+///     // ...
+///     # Ok(())
 /// }
 /// # fn main() {}
 /// ```

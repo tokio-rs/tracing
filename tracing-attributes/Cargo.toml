@@ -13,8 +13,9 @@ categories = [
     "development-tools::profiling",
     "asynchronous",
 ]
-keywords = ["logging", "tracing"]
+keywords = ["logging", "tracing", "macro", "instrument", "log"]
 license = "MIT"
+readme = "README.md"
 edition = "2018"
 
 [lib]
