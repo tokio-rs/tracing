@@ -1,3 +1,10 @@
+# 0.1.3 (August 8, 2019)
+
+### Added
+
+- `std::fmt::Display` implementation for `Level` (#194)
+- `std::str::FromStr` implementation for `Level` (#195)
+
 # 0.1.2 (July 10, 2019)
 
 ### Deprecated
