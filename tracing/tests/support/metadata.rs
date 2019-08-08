@@ -1,7 +1,7 @@
 use std::fmt;
 use tracing::Metadata;
 
-#[derive(Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct Expect {
     pub name: Option<String>,
     pub level: Option<tracing::Level>,
