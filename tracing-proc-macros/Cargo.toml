@@ -15,18 +15,22 @@ categories = [
 ]
 keywords = ["logging", "tracing"]
 license = "MIT"
+edition = "2018"
 
 [lib]
 proc-macro = true
 
+[features]
+nightly = []
+
 [dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = "0.1"
 syn = { version = "0.15", features = ["full", "extra-traits"] }
 quote = "0.6"
-proc-macro2 = { version = "0.4", features = ["nightly"] }
+proc-macro2 = "0.4"
 
 [dev-dependencies]
-tracing-fmt = { path = "../tracing-fmt" }
+tracing-fmt = "0.0.1-alpha.2"
 env_logger = "0.5"
 ansi_term = "0.11"
 humantime = "1.1.1"
