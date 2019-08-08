@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.3")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.4")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -197,13 +197,13 @@
 //!
 //! For example:
 //! ```
-//! use tracing::instrument;
+//! use tracing::{info, instrument};
 //!
 //! #[instrument]
 //! pub fn my_function(my_arg: usize) {
 //!     // This event will be recorded inside a span named `my_function` with the
 //!     // field `my_arg`.
-//!     tracing::info!("inside my_function!");
+//!     info!("inside my_function!");
 //!     // ...
 //! }
 //! # fn main() {}

@@ -5,8 +5,6 @@ mod metadata;
 pub mod span;
 pub mod subscriber;
 
-
-
 #[derive(Debug, Eq, PartialEq)]
 pub(in crate::support) enum Parent {
     ContextualRoot,
