@@ -165,7 +165,7 @@ pub trait Subscriber: 'static {
     /// [interested]: struct.Interest.html
     /// [`Interest::sometimes`]: struct.Interest.html#method.sometimes
     /// [`register_callsite`]: #method.register_callsite
-    fn enabled(&self, metadata: &Metadata) -> bool;
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
     /// Visit the construction of a new span, returning a new [span ID] for the
     /// span being constructed.
@@ -191,7 +191,7 @@ pub trait Subscriber: 'static {
     /// [`Attributes`]: ../span/struct.Attributes.html
     /// [visitor]: ../field/trait.Visit.html
     /// [`record` method]: ../span/struct.Attributes.html#method.record
-    fn new_span(&self, span: &span::Attributes) -> span::Id;
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id;
 
     // === Notification methods ===============================================
 
@@ -232,7 +232,7 @@ pub trait Subscriber: 'static {
     /// [visitor]: ../field/trait.Visit.html
     /// [`record`]: ../span/struct.Attributes.html#method.record
     /// [`record` method]: ../span/struct.Record.html#method.record
-    fn record(&self, span: &span::Id, values: &span::Record);
+    fn record(&self, span: &span::Id, values: &span::Record<'_>);
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -272,7 +272,7 @@ pub trait Subscriber: 'static {
     /// [visitor]: ../field/trait.Visit.html
     /// [`record` method]: ../event/struct.Event.html#method.record
     /// [`dispatch` method]: ../event/struct.Event.html#method.dispatch
-    fn event(&self, event: &Event);
+    fn event(&self, event: &Event<'_>);
 
     /// Records that a span has been entered.
     ///
