@@ -1,7 +1,7 @@
 mod support;
 use support::*;
 
-use tracing::subscriber::with_default;=
+use tracing::subscriber::with_default;
 use tracing_proc_macros::trace;
 
 #[instrument]
