@@ -17,14 +17,14 @@ pub trait AsField: crate::sealed::Sealed {
     ///
     /// If `metadata` defines this field, then the field is returned. Otherwise,
     /// this returns `None`.
-    fn as_field(&self, metadata: &Metadata) -> Option<Field>;
+    fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field>;
 }
 
 // ===== impl AsField =====
 
 impl AsField for Field {
     #[inline]
-    fn as_field(&self, metadata: &Metadata) -> Option<Field> {
+    fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field> {
         if self.callsite() == metadata.callsite() {
             Some(self.clone())
         } else {
@@ -35,7 +35,7 @@ impl AsField for Field {
 
 impl<'a> AsField for &'a Field {
     #[inline]
-    fn as_field(&self, metadata: &Metadata) -> Option<Field> {
+    fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field> {
         if self.callsite() == metadata.callsite() {
             Some((*self).clone())
         } else {
@@ -46,7 +46,7 @@ impl<'a> AsField for &'a Field {
 
 impl AsField for str {
     #[inline]
-    fn as_field(&self, metadata: &Metadata) -> Option<Field> {
+    fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field> {
         metadata.fields().field(&self)
     }
 }

@@ -9,7 +9,7 @@ pub struct Expect {
 }
 
 impl Expect {
-    pub(in crate::support) fn check(&self, actual: &Metadata, ctx: fmt::Arguments) {
+    pub(in crate::support) fn check(&self, actual: &Metadata<'_>, ctx: fmt::Arguments<'_>) {
         if let Some(ref expected_name) = self.name {
             let name = actual.name();
             assert!(
@@ -46,7 +46,7 @@ impl Expect {
 }
 
 impl fmt::Display for Expect {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref name) = self.name {
             write!(f, " named `{}`", name)?;
         }

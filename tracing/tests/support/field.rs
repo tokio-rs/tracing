@@ -118,7 +118,7 @@ impl Expect {
 }
 
 impl fmt::Display for MockValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MockValue::I64(v) => write!(f, "i64 = {:?}", v),
             MockValue::U64(v) => write!(f, "u64 = {:?}", v),
@@ -215,7 +215,7 @@ impl<'a> From<&'a dyn Value> for MockValue {
 }
 
 impl fmt::Display for Expect {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "fields ")?;
         let entries = self
             .fields

@@ -359,7 +359,7 @@
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 #[macro_use]
 extern crate cfg_if;
-extern crate tracing_core;
+use tracing_core;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]

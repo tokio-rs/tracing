@@ -10,8 +10,8 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
-extern crate ansi_term;
-extern crate humantime;
+use ansi_term;
+use humantime;
 use self::ansi_term::{Color, Style};
 use super::tracing::{
     self,
@@ -90,7 +90,7 @@ struct Event<'a> {
 struct ColorLevel<'a>(&'a Level);
 
 impl<'a> fmt::Display for ColorLevel<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
             &Level::TRACE => Color::Purple.paint("TRACE"),
             &Level::DEBUG => Color::Blue.paint("DEBUG"),
@@ -103,7 +103,7 @@ impl<'a> fmt::Display for ColorLevel<'a> {
 }
 
 impl Span {
-    fn new(parent: Option<Id>, attrs: &tracing::span::Attributes) -> Self {
+    fn new(parent: Option<Id>, attrs: &tracing::span::Attributes<'_>) -> Self {
         let mut span = Self {
             parent,
             kvs: Vec::new(),
@@ -198,11 +198,11 @@ impl SloggishSubscriber {
 }
 
 impl Subscriber for SloggishSubscriber {
-    fn enabled(&self, _metadata: &tracing::Metadata) -> bool {
+    fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }
 
-    fn new_span(&self, span: &tracing::span::Attributes) -> tracing::Id {
+    fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
         let id = tracing::Id::from_u64(next);
         let span = Span::new(self.current.id(), span);
@@ -210,7 +210,7 @@ impl Subscriber for SloggishSubscriber {
         id
     }
 
-    fn record(&self, span: &tracing::Id, values: &tracing::span::Record) {
+    fn record(&self, span: &tracing::Id, values: &tracing::span::Record<'_>) {
         let mut spans = self.spans.lock().expect("mutex poisoned!");
         if let Some(span) = spans.get_mut(span) {
             values.record(span);
@@ -253,7 +253,7 @@ impl Subscriber for SloggishSubscriber {
         }
     }
 
-    fn event(&self, event: &tracing::Event) {
+    fn event(&self, event: &tracing::Event<'_>) {
         let mut stderr = self.stderr.lock();
         let indent = self.stack.lock().unwrap().len();
         self.print_indent(&mut stderr, indent).unwrap();
