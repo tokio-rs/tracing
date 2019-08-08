@@ -30,7 +30,7 @@ impl<'a> Event<'a> {
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current subscriber.
     #[inline]
-    pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet) {
+    pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
         let event = Event {
             metadata,
             fields,
@@ -47,7 +47,7 @@ impl<'a> Event<'a> {
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         metadata: &'static Metadata<'static>,
-        fields: &'a field::ValueSet,
+        fields: &'a field::ValueSet<'_>,
     ) {
         let parent = match parent.into() {
             Some(p) => Parent::Explicit(p),
