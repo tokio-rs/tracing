@@ -100,14 +100,14 @@ impl MockSpan {
         }
     }
 
-    pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata) {
+    pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata<'_>) {
         self.metadata.check(actual, format_args!("span {}", self));
         assert!(actual.is_span(), "expected a span but got {:?}", actual);
     }
 }
 
 impl fmt::Display for MockSpan {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.metadata.name.is_some() {
             write!(f, "a span{}", self.metadata)
         } else {
@@ -160,7 +160,7 @@ impl NewSpan {
 }
 
 impl fmt::Display for NewSpan {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "a new span{}", self.span.metadata)?;
         if !self.fields.is_empty() {
             write!(f, " with {}", self.fields)?;

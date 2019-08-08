@@ -52,7 +52,7 @@ impl<'a> Visit for Count<'a> {
 }
 
 impl CounterSubscriber {
-    fn visitor(&self) -> Count {
+    fn visitor(&self) -> Count<'_> {
         Count {
             counters: self.counters.0.read().unwrap(),
         }
@@ -60,7 +60,7 @@ impl CounterSubscriber {
 }
 
 impl Subscriber for CounterSubscriber {
-    fn register_callsite(&self, meta: &Metadata) -> subscriber::Interest {
+    fn register_callsite(&self, meta: &Metadata<'_>) -> subscriber::Interest {
         let mut interest = subscriber::Interest::never();
         for key in meta.fields() {
             let name = key.name();
@@ -77,7 +77,7 @@ impl Subscriber for CounterSubscriber {
         interest
     }
 
-    fn new_span(&self, new_span: &span::Attributes) -> Id {
+    fn new_span(&self, new_span: &span::Attributes<'_>) -> Id {
         new_span.record(&mut self.visitor());
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         Id::from_u64(id as u64)
@@ -87,15 +87,15 @@ impl Subscriber for CounterSubscriber {
         // unimplemented
     }
 
-    fn record(&self, _: &Id, values: &span::Record) {
+    fn record(&self, _: &Id, values: &span::Record<'_>) {
         values.record(&mut self.visitor())
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         event.record(&mut self.visitor())
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         metadata.fields().iter().any(|f| f.name().contains("count"))
     }
 

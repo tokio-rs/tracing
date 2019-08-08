@@ -401,7 +401,7 @@ impl Span {
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     #[inline]
-    pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet) -> Span {
+    pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         let new_span = Attributes::new(meta, values);
         Self::make(meta, new_span)
     }
@@ -416,7 +416,7 @@ impl Span {
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     #[inline]
-    pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet) -> Span {
+    pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         Self::make(meta, Attributes::new_root(meta, values))
     }
 
@@ -432,7 +432,7 @@ impl Span {
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         meta: &'static Metadata<'static>,
-        values: &field::ValueSet,
+        values: &field::ValueSet<'_>,
     ) -> Span {
         let new_span = match parent.into() {
             Some(parent) => Attributes::child_of(parent, meta, values),
@@ -492,7 +492,7 @@ impl Span {
         })
     }
 
-    fn make(meta: &'static Metadata<'static>, new_span: Attributes) -> Span {
+    fn make(meta: &'static Metadata<'static>, new_span: Attributes<'_>) -> Span {
         let attrs = &new_span;
         let inner = dispatcher::get_default(move |dispatch| {
             let id = dispatch.new_span(attrs);
@@ -683,7 +683,7 @@ impl Span {
     }
 
     /// Visit all the fields in the span
-    pub fn record_all(&self, values: &field::ValueSet) -> &Self {
+    pub fn record_all(&self, values: &field::ValueSet<'_>) -> &Self {
         let record = Record::new(values);
         if let Some(ref inner) = self.inner {
             inner.record(&record);
@@ -781,7 +781,7 @@ impl Hash for Span {
 }
 
 impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut span = f.debug_struct("Span");
         if let Some(ref meta) = self.meta {
             span.field("name", &meta.name())
@@ -877,7 +877,7 @@ impl Inner {
         self.id.clone()
     }
 
-    fn record(&self, values: &Record) {
+    fn record(&self, values: &Record<'_>) {
         self.subscriber.record(&self.id, values)
     }
 
