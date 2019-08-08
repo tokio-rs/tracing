@@ -1,11 +1,7 @@
-#[macro_use]
-extern crate tracing;
-#[macro_use]
-extern crate tracing_proc_macros;
-extern crate env_logger;
-extern crate tracing_fmt;
+use tracing::{debug, info};
+use tracing_attributes::instrument;
 
-#[trace]
+#[instrument]
 fn nth_fibonacci(n: u64) -> u64 {
     if n == 0 || n == 1 {
         debug!("Base case");
@@ -16,7 +12,7 @@ fn nth_fibonacci(n: u64) -> u64 {
     }
 }
 
-#[trace]
+#[instrument]
 fn fibonacci_seq(to: u64) -> Vec<u64> {
     let mut sequence = vec![];
 
@@ -29,11 +25,12 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 }
 
 fn main() {
-    env_logger::Builder::new().parse("trace").init();
-    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder()
+        .with_filter(tracing_fmt::filter::EnvFilter::from("args=trace"))
+        .finish();
 
     tracing::subscriber::with_default(subscriber, || {
-        let n: u64 = 5;
+        let n = 5;
         let sequence = fibonacci_seq(n);
         info!("The first {} fibonacci numbers are {:?}", n, sequence);
     })

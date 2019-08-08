@@ -66,7 +66,7 @@ The crates included as part of Tracing are:
 
 * [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
 
-* [`tracing-proc-macros`]: Procedural macro attributes for automatically
+* [`tracing-attributes`]: Procedural macro attributes for automatically
     instrumenting functions (unstable).
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
@@ -88,7 +88,7 @@ The crates included as part of Tracing are:
 [`tracing-fmt`]: tracing-fmt
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
-[`tracing-proc-macros`]: tracing-proc-macros
+[`tracing-attributes`]: tracing-attributes
 [`tracing-log`]: tracing-log
 [`tracing-env-logger`]: tracing-env-logger
 [`tracing-serde`]: tracing-serde
