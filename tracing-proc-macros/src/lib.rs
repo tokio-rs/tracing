@@ -8,9 +8,7 @@ extern crate tracing;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::spanned::Spanned;
-use syn::token::{Async, Const, Unsafe};
-use syn::{Abi, ArgCaptured, Attribute, Block, FnArg, Ident, ItemFn, Pat, PatIdent, Visibility};
+use syn::{spanned::Spanned, ArgCaptured, FnArg, FnDecl, Ident, ItemFn, Pat, PatIdent};
 
 #[proc_macro_attribute]
 pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
@@ -20,25 +18,28 @@ pub fn trace(_args: TokenStream, item: TokenStream) -> TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
     // (Syn's ToTokens isn't implemented for ItemFn)
-    let attrs: Vec<Attribute> = input.clone().attrs;
-    let vis: Visibility = input.clone().vis;
-    let constness: Option<Const> = input.clone().constness;
-    let unsafety: Option<Unsafe> = input.clone().unsafety;
-    let asyncness: Option<Async> = input.clone().asyncness;
-    let abi: Option<Abi> = input.clone().abi;
-
-    // function body
-    let block: Box<Block> = input.clone().block;
+    let ItemFn {
+        attrs,
+        vis,
+        unsafety,
+        asyncness,
+        constness,
+        abi,
+        block,
+        ident,
+        decl,
+        ..
+    } = input;
     // function name
-    let ident: Ident = input.clone().ident;
     let ident_str = ident.to_string();
 
-    let return_type = input.clone().decl.output;
-    let params = input.clone().decl.inputs;
-    let param_names: Vec<Ident> = input
+    let FnDecl {
+        output: return_type,
+        inputs: params,
+        ..
+    } = *decl;
+    let param_names: Vec<Ident> = params
         .clone()
-        .decl
-        .inputs
         .into_iter()
         .filter_map(|param| match param {
             FnArg::Captured(ArgCaptured {
