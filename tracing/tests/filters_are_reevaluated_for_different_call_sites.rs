@@ -11,7 +11,6 @@ extern crate tracing;
 mod support;
 
 use self::support::*;
-use tracing::subscriber::with_default;
 use tracing::Level;
 
 use std::sync::{
@@ -47,7 +46,7 @@ fn filters_are_reevaluated_for_different_call_sites() {
 
     // Since this test is in its own file anyway, we can do this. Thus, this
     // test will work even with no-std.
-    subscriber::set_global_default(subscriber).unwrap();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 
     // Enter "charlie" and then "dave". The dispatcher expects to see "dave" but
     // not "charlie."

@@ -1468,6 +1468,7 @@ macro_rules! debug {
 /// # #[macro_use]
 /// # extern crate tracing;
 /// # // this is so the test will still work in no-std mode
+/// # #[derive(Debug)]
 /// # pub struct Ipv4Addr;
 /// # impl Ipv4Addr { fn new(o1: u8, o2: u8, o3: u8, o4: u8) -> Self { Self } }
 /// # fn main() {
@@ -1477,10 +1478,10 @@ macro_rules! debug {
 /// let addr = Ipv4Addr::new(127, 0, 0, 1);
 /// let conn = Connection { port: 40, speed: 3.20 };
 ///
-/// info!({ port = conn.port }, "connected to {}", addr);
+/// info!({ port = conn.port }, "connected to {:?}", addr);
 /// info!(
 ///     target: "connection_events",
-///     ip = %addr,
+///     ip = ?addr,
 ///     conn.port,
 ///     ?conn.speed,
 /// );
@@ -2114,7 +2115,7 @@ macro_rules! callsite {
                 kind: $kind,
             }
         };
-        static INTEREST: AtomicUsize = AtomicUsize::new(0)
+        static INTEREST: AtomicUsize = AtomicUsize::new(0);
         static REGISTRATION: Once = Once::new();
         impl MyCallsite {
             #[inline]

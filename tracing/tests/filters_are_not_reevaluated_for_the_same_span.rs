@@ -11,7 +11,6 @@ extern crate tracing;
 mod support;
 
 use self::support::*;
-use tracing::subscriber::with_default;
 use tracing::Level;
 
 use std::sync::{
@@ -41,9 +40,10 @@ fn filters_are_not_reevaluated_for_the_same_span() {
             _ => false,
         })
         .run_with_handle();
+
     // Since this test is in its own file anyway, we can do this. Thus, this
     // test will work even with no-std.
-    subscriber::set_global_default(subscriber).unwrap();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 
     // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
     // not "alice."
