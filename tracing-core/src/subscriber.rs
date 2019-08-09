@@ -62,7 +62,7 @@ use crate::stdlib::any::{Any, TypeId};
 ///
 /// [ID]: ../span/struct.Id.html
 /// [`new_span`]: trait.Subscriber.html#method.new_span
-/// [`register_callsite]: trait.Subscriber.html#method.register_callsite
+/// [`register_callsite`]: trait.Subscriber.html#method.register_callsite
 /// [`Interest`]: struct.Interest.html
 /// [`enabled`]: trait.Subscriber.html#method.enabled
 /// [`clone_span`]: trait.Subscriber.html#method.clone_span
@@ -451,8 +451,8 @@ impl dyn Subscriber {
 /// `Subscriber`s return an `Interest` from their [`register_callsite`] methods
 /// in order to determine whether that span should be enabled or disabled.
 ///
-/// [`Subscriber`] trait.Subscriber.html
-/// [clone_span]: trait.Subscriber.html#method.register_callsite
+/// [`Subscriber`] ../trait.Subscriber.html
+/// [clone_span]: ../trait.Subscriber.html#method.register_callsite
 #[derive(Clone, Debug)]
 pub struct Interest(InterestKind);
 

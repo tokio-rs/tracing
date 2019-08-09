@@ -221,14 +221,17 @@ pub mod span;
 pub(crate) mod stdlib;
 pub mod subscriber;
 
+#[doc(inline)]
 pub use self::{
     callsite::Callsite,
     dispatcher::Dispatch,
     event::Event,
     field::Field,
-    metadata::{Kind, Level, Metadata},
-    subscriber::{Interest, Subscriber},
+    metadata::{Level, Metadata},
+    subscriber::Subscriber,
 };
+
+pub use self::{metadata::Kind, subscriber::Interest};
 
 mod sealed {
     pub trait Sealed {}
