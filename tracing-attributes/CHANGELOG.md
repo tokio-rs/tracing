@@ -7,7 +7,7 @@
 
 ### Fixed
 
-- The `#[instrumented]` macro now works on generic functions (#262)
+- The `#[instrument]` macro now works on generic functions (#262)
 
 # 0.1.0 (August 8, 2019)
 
