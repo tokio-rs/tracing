@@ -139,6 +139,12 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let FnDecl {
         output: return_type,
         inputs: params,
+        generics:
+            syn::Generics {
+                params: gen_params,
+                where_clause,
+                ..
+            },
         ..
     } = *decl;
     let param_names: Vec<Ident> = params
@@ -173,7 +179,9 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 
     quote_spanned!(call_site=>
         #(#attrs) *
-        #vis #constness #unsafety #asyncness #abi fn #ident(#params) #return_type {
+        #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
+        #where_clause
+        {
             let __tracing_attr_span = tracing::span!(
                 target: #target,
                 #level,
