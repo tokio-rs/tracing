@@ -1,7 +1,6 @@
-#[macro_use]
-extern crate tracing_core;
 use tracing_core::{
     callsite::Callsite,
+    metadata,
     metadata::{Kind, Level, Metadata},
     subscriber::Interest,
 };

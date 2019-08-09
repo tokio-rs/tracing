@@ -1,15 +1,16 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
-use crate::{
-    dispatcher::{self, Dispatch, Registrar},
-    subscriber::Interest,
-    Metadata,
-};
-use std::{
+use crate::std::{
     fmt,
     hash::{Hash, Hasher},
     ptr,
     sync::Mutex,
+    vec::Vec,
+};
+use crate::{
+    dispatcher::{self, Dispatch, Registrar},
+    subscriber::Interest,
+    Metadata,
 };
 
 lazy_static! {
