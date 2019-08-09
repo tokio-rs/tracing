@@ -61,13 +61,15 @@ state, and are less stable than the `tracing` and `tracing-core` crates.
 The crates included as part of Tracing are:
 
 * [`tracing-fmt`]: A subscriber for formatting and logging trace events.
+  ([crates.io][fmt-crates]|[docs][fmt-docs])
 
-* [`tracing-futures`]: Utilities for instrumenting `futures` (unstable).
+* [`tracing-futures`]: Utilities for instrumenting `futures`.
+  ([crates.io][fut-crates]|[docs][fut-docs])
 
 * [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
 
 * [`tracing-attributes`]: Procedural macro attributes for automatically
-    instrumenting functions (unstable).
+    instrumenting functions. ([crates.io][attr-crates]|[docs][attr-docs])
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
@@ -77,7 +79,8 @@ The crates included as part of Tracing are:
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
-* [`tracing-subscriber`]: Utilities for subscriber implementations (unstable).
+* [`tracing-subscriber`]: Utilities for implementing and composing
+  `Subscriber`s. ([crates.io][sub-crates]|[docs][sub-docs])
 
 * [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
@@ -95,6 +98,18 @@ The crates included as part of Tracing are:
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
 [`tracing-tower-http`]: tracing-tower-http
+
+[fmt-crates]: https://crates.io/crates/tracing-fmt
+[fmt-docs]: https://docs.rs/tracing-fmt/0.0.1-alpha.2
+
+[fut-crates]: https://crates.io/crates/tracing-futures/0.0.1-alpha.1
+[fut-docs]: https://docs.rs/tracing-futures
+
+[attr-crates]: https://crates.io/crates/tracing-attributes
+[attr-docs]: https://docs.rs/tracing-attributes
+
+[sub-crates]: https://crates.io/crates/tracing-subscriber
+[sub-docs]: https://docs.rs/tracing-subscriber
 
 ## License
 
