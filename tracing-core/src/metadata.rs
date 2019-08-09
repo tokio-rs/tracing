@@ -1,6 +1,6 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use std::{fmt, str::FromStr};
+use crate::stdlib::{fmt, str::FromStr};
 
 /// Metadata describing a [span] or [event].
 ///
@@ -273,7 +273,8 @@ impl fmt::Display for Level {
     }
 }
 
-impl std::error::Error for ParseLevelError {}
+#[cfg(feature = "std")]
+impl crate::stdlib::error::Error for ParseLevelError {}
 
 impl FromStr for Level {
     type Err = ParseLevelError;

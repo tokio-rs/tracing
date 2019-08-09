@@ -26,14 +26,35 @@
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
 //!
+//! ## Usage
+//!
 //! Application authors will typically not use this crate directly. Instead,
-//! they will use the `tracing` crate, which provides a much more
+//! they will use the [`tracing`] crate, which provides a much more
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
+//!
+//! `Subscriber` implementations may depend on `tracing-core` rather than
+//! `tracing`, as the additional APIs provided by `tracing` are primarily useful
+//! for instrumenting libraries and applications, and are generally not
+//! necessary for `Subscriber` implementations.
 //!
 //! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
 //! `Subscriber` implementations, as well as utility and adapter crates.
+//!
+//! ### Crate Feature Flags
+//!
+//! The following crate feature flags are available:
+//!
+//! * `std`: Depend on the Rust standard library (enabled by default).
+//!
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing-core = { version = "0.1.4", default-features = false }
+//!   ```
+//!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!
 //! [`Span`]: span/struct.Span.html
 //! [`Event`]: event/struct.Event.html
@@ -47,6 +68,11 @@
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -192,6 +218,7 @@ pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
+pub(crate) mod stdlib;
 pub mod subscriber;
 
 pub use self::{
