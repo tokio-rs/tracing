@@ -89,7 +89,8 @@ use syn::{
 /// instrumented:
 ///
 /// ```compile_fail
-/// // this compiles only with the `async-await` feature flag enabled
+/// // this currently only compiles on nightly.
+/// #![feature(async-await)]
 /// # use tracing_attributes::instrument;
 ///
 /// #[instrument]
@@ -151,12 +152,15 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 
     // Generate the instrumented function body.
     // If the function is an `async fn`, this will wrap it in an async block,
-    // which is `instrument`ed using `tracing-futures`, if we are on a new
-    // enough Rust version to support this. Otherwise, this will enter the span
-    // and then perform the rest of the body.
+    // which is `instrument`ed using `tracing-futures`. Otherwise, this will
+    // enter the span and then perform the rest of the body.
     let body = if asyncness.is_some() {
-        let span = block.span();
-        let async_kwd = syn::token::Async { span };
+        // We can't quote these keywords in the `quote!` macro, since their
+        // presence in the file will make older Rust compilers fail to build
+        // this crate. Instead, we construct token structs for them so the
+        // strings "async" and "await" never actually appear in the source code
+        // of this file.
+        let async_kwd = syn::token::Async { span: block.span() };
         let await_kwd = syn::Ident::new("await", block.span());
         quote_spanned! {block.span()=>
             tracing_futures::Instrument::instrument(
