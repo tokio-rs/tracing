@@ -1,3 +1,13 @@
+# 0.1.4 (August 9, 2019)
+
+### Added
+
+- Support for `no-std` + `liballoc` (#256)
+
+### Fixed
+
+- Broken links in RustDoc (#259)
+
 # 0.1.3 (August 8, 2019)
 
 ### Added
