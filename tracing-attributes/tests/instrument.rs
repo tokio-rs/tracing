@@ -86,3 +86,35 @@ fn fields() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn generics() {
+    #[instrument]
+    fn my_fn<S, T: std::fmt::Debug>(arg1: S, arg2: T)
+    where
+        S: std::fmt::Debug,
+    {
+    }
+
+    let span = span::mock().named("my_fn");
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span.clone().with_field(
+                field::mock("arg1")
+                    .with_value(&format_args!("2"))
+                    .and(field::mock("arg2").with_value(&format_args!("false"))),
+            ),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        my_fn(2, false);
+    });
+
+    handle.assert_finished();
+}
