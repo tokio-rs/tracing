@@ -1,6 +1,6 @@
 //! Spans represent periods of time in the execution of a program.
 use crate::parent::Parent;
-use crate::std::num::NonZeroU64;
+use crate::stdlib::num::NonZeroU64;
 use crate::{field, Metadata};
 
 /// Identifies a span within the context of a subscriber.

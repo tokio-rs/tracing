@@ -38,7 +38,7 @@
 //! [`event`]:  ../subscriber/trait.Subscriber.html#method.record
 //! [`Visit`]: trait.Visit.html
 use crate::callsite;
-use crate::std::{
+use crate::stdlib::{
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
@@ -670,7 +670,7 @@ impl_valid_len! {
 mod test {
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
-    use crate::std::{borrow::ToOwned, string::String};
+    use crate::stdlib::{borrow::ToOwned, string::String};
 
     struct TestCallsite1;
     static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
@@ -771,7 +771,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::std::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -790,7 +790,7 @@ mod test {
         let valueset = fields.value_set(values);
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use crate::std::fmt::Write;
+            use crate::stdlib::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, "123".to_owned());

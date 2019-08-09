@@ -218,7 +218,7 @@ pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub(crate) mod std;
+pub(crate) mod stdlib;
 pub mod subscriber;
 
 pub use self::{

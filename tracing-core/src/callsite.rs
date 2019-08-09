@@ -1,6 +1,6 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
-use crate::std::{
+use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
     ptr,

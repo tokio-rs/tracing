@@ -1,7 +1,7 @@
 //! Subscribers collect and record trace data.
 use crate::{span, Event, Metadata};
 
-use crate::std::any::{Any, TypeId};
+use crate::stdlib::any::{Any, TypeId};
 
 /// Trait representing the functions required to collect trace data.
 ///

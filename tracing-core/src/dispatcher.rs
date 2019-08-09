@@ -143,7 +143,7 @@ use crate::{
     Event, Metadata,
 };
 
-use crate::std::{
+use crate::stdlib::{
     any::Any,
     fmt,
     sync::{
@@ -153,7 +153,7 @@ use crate::std::{
 };
 
 #[cfg(feature = "std")]
-use crate::std::{
+use crate::stdlib::{
     cell::{Cell, RefCell},
     error,
 };
@@ -649,7 +649,7 @@ impl Drop for ResetGuard {
 mod test {
     use super::*;
     #[cfg(feature = "std")]
-    use crate::std::sync::atomic::{AtomicUsize, Ordering};
+    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},

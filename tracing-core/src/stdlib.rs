@@ -1,8 +1,12 @@
 //! Re-exports either the Rust `std` library or `core` and `alloc` when `std` is
 //! disabled.
 //!
-//! `crate::std::...` should be used rather than `std::` when adding code that
+//! `crate::stdlib::...` should be used rather than `std::` when adding code that
 //! will be available with the standard library disabled.
+//!
+//! Note that this module is called `stdlib` rather than `std`, as Rust 1.34.0
+//! does not permit redefining the name `stdlib` (although this works on the
+//! latest stable Rust).
 #[cfg(feature = "std")]
 pub(crate) use std::*;
 
