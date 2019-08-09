@@ -4,6 +4,9 @@
 // added all filters are re-evaluated. The tests being run only in separate
 // threads with shared global state lets them interfere with each other
 
+#[cfg(not(feature = "std"))]
+extern crate std;
+
 #[macro_use]
 extern crate tracing;
 mod support;
@@ -40,25 +43,27 @@ fn filter_caching_is_lexically_scoped() {
         })
         .run();
 
-    with_default(subscriber, || {
-        // Call the function once. The filter should be re-evaluated.
-        assert!(my_great_function());
-        assert_eq!(count.load(Ordering::Relaxed), 1);
+    // Since this test is in its own file anyway, we can do this. Thus, this
+    // test will work even with no-std.
+    subscriber::set_global_default(subscriber).unwrap();
 
-        // Call the function again. The cached result should be used.
-        assert!(my_great_function());
-        assert_eq!(count.load(Ordering::Relaxed), 1);
+    // Call the function once. The filter should be re-evaluated.
+    assert!(my_great_function());
+    assert_eq!(count.load(Ordering::Relaxed), 1);
 
-        assert!(my_other_function());
-        assert_eq!(count.load(Ordering::Relaxed), 2);
+    // Call the function again. The cached result should be used.
+    assert!(my_great_function());
+    assert_eq!(count.load(Ordering::Relaxed), 1);
 
-        assert!(my_great_function());
-        assert_eq!(count.load(Ordering::Relaxed), 2);
+    assert!(my_other_function());
+    assert_eq!(count.load(Ordering::Relaxed), 2);
 
-        assert!(my_other_function());
-        assert_eq!(count.load(Ordering::Relaxed), 2);
+    assert!(my_great_function());
+    assert_eq!(count.load(Ordering::Relaxed), 2);
 
-        assert!(my_great_function());
-        assert_eq!(count.load(Ordering::Relaxed), 2);
-    });
+    assert!(my_other_function());
+    assert_eq!(count.load(Ordering::Relaxed), 2);
+
+    assert!(my_great_function());
+    assert_eq!(count.load(Ordering::Relaxed), 2);
 }

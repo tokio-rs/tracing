@@ -3,6 +3,8 @@
 // registry. The registry was changed so that each time a new dispatcher is
 // added all filters are re-evaluated. The tests being run only in separate
 // threads with shared global state lets them interfere with each other
+#[cfg(not(feature = "std"))]
+extern crate std;
 
 #[macro_use]
 extern crate tracing;
@@ -39,31 +41,33 @@ fn filters_are_not_reevaluated_for_the_same_span() {
             _ => false,
         })
         .run_with_handle();
+    // Since this test is in its own file anyway, we can do this. Thus, this
+    // test will work even with no-std.
+    subscriber::set_global_default(subscriber).unwrap();
 
-    with_default(subscriber, move || {
-        // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
-        // not "alice."
-        let alice = span!(Level::TRACE, "alice");
-        let bob = alice.in_scope(|| {
-            let bob = span!(Level::TRACE, "bob");
-            bob.in_scope(|| ());
-            bob
-        });
-
-        // The filter should have seen each span a single time.
-        assert_eq!(alice_count.load(Ordering::Relaxed), 1);
-        assert_eq!(bob_count.load(Ordering::Relaxed), 1);
-
-        alice.in_scope(|| bob.in_scope(|| {}));
-
-        // The subscriber should see "bob" again, but the filter should not have
-        // been called.
-        assert_eq!(alice_count.load(Ordering::Relaxed), 1);
-        assert_eq!(bob_count.load(Ordering::Relaxed), 1);
-
-        bob.in_scope(|| {});
-        assert_eq!(alice_count.load(Ordering::Relaxed), 1);
-        assert_eq!(bob_count.load(Ordering::Relaxed), 1);
+    // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
+    // not "alice."
+    let alice = span!(Level::TRACE, "alice");
+    let bob = alice.in_scope(|| {
+        let bob = span!(Level::TRACE, "bob");
+        bob.in_scope(|| ());
+        bob
     });
+
+    // The filter should have seen each span a single time.
+    assert_eq!(alice_count.load(Ordering::Relaxed), 1);
+    assert_eq!(bob_count.load(Ordering::Relaxed), 1);
+
+    alice.in_scope(|| bob.in_scope(|| {}));
+
+    // The subscriber should see "bob" again, but the filter should not have
+    // been called.
+    assert_eq!(alice_count.load(Ordering::Relaxed), 1);
+    assert_eq!(bob_count.load(Ordering::Relaxed), 1);
+
+    bob.in_scope(|| {});
+    assert_eq!(alice_count.load(Ordering::Relaxed), 1);
+    assert_eq!(bob_count.load(Ordering::Relaxed), 1);
+
     handle.assert_finished();
 }

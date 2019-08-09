@@ -35,7 +35,7 @@
 //! ```
 //!
 //! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters
-use std::cmp::Ordering;
+use crate::stdlib::cmp::Ordering;
 use tracing_core::Level;
 
 /// A filter comparable to trace verbosity `Level`.

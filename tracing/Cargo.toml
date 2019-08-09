@@ -27,7 +27,7 @@ keywords = ["logging", "tracing"]
 edition = "2018"
 
 [dependencies]
-tracing-core = "0.1.2"
+tracing-core = { version = "0.1.4", default-features = false }
 log = { version = "0.4", optional = true }
 tracing-attributes = "0.1.0"
 cfg-if = "0.1.9"
@@ -40,6 +40,8 @@ log = "0.4"
 criterion = { version = "0.2", default_features = false }
 
 [features]
+default = ["std"]
+
 max_level_off   = []
 max_level_error = []
 max_level_warn  = []
@@ -55,6 +57,8 @@ release_max_level_debug = []
 release_max_level_trace = []
 
 async-await = ["tracing-attributes/async-await"]
+std = ["tracing-core/std"]
+
 
 [[bench]]
 name = "subscriber"
@@ -67,3 +71,6 @@ harness = false
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "actively-developed" }
+
+[target.'cfg(not(feature = "std"))'.dependencies]
+spin = "0.5"

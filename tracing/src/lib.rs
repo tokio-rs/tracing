@@ -365,6 +365,11 @@
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/0.1.0/tracing_attributes/attr.instrument.html
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 #[macro_use]
 extern crate cfg_if;
 use tracing_core;
@@ -407,7 +412,19 @@ mod macros;
 pub mod field;
 pub mod level_filters;
 pub mod span;
+pub(crate) mod stdlib;
 pub mod subscriber;
+
+#[doc(hidden)]
+pub mod __macro_support {
+    pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+
+    #[cfg(feature = "std")]
+    pub use crate::stdlib::sync::Once;
+
+    #[cfg(not(feature = "std"))]
+    pub use spin::Once;
+}
 
 mod sealed {
     pub trait Sealed {}
