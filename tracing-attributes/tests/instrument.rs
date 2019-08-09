@@ -89,6 +89,9 @@ fn fields() {
 
 #[test]
 fn generics() {
+    #[derive(Debug)]
+    struct Foo;
+
     #[instrument]
     fn my_fn<S, T: std::fmt::Debug>(arg1: S, arg2: T)
     where
@@ -102,7 +105,7 @@ fn generics() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("2"))
+                    .with_value(&format_args!("Foo"))
                     .and(field::mock("arg2").with_value(&format_args!("false"))),
             ),
         )
@@ -113,7 +116,7 @@ fn generics() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        my_fn(2, false);
+        my_fn(Foo, false);
     });
 
     handle.assert_finished();
