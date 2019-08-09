@@ -68,6 +68,7 @@
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
 //!
+//! # #[cfg(feature = "std")]
 //! dispatcher::with_default(&my_dispatch, || {
 //!     // my_subscriber is the default
 //! });
@@ -113,6 +114,10 @@
 //! # }
 //! ```
 //!
+//! **Note**: the thread-local scoped dispatcher (`with_default`) requires the
+//! Rust standard library. `no_std` users should use [`set_global_default`]
+//! instead.
+//!
 //! Finally, `tokio` users should note that versions of `tokio` >= 0.1.22
 //! support an `experimental-tracing` feature flag. When this flag is enabled,
 //! the `tokio` runtime's thread pool will automatically propagate the default
@@ -138,14 +143,19 @@ use crate::{
     Event, Metadata,
 };
 
-use std::{
+use crate::stdlib::{
     any::Any,
-    cell::{Cell, RefCell},
-    error, fmt,
+    fmt,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Weak,
     },
+};
+
+#[cfg(feature = "std")]
+use crate::stdlib::{
+    cell::{Cell, RefCell},
+    error,
 };
 
 /// `Dispatch` trace data to a [`Subscriber`].
@@ -156,6 +166,7 @@ pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
 }
 
+#[cfg(feature = "std")]
 thread_local! {
     static CURRENT_STATE: State = State {
         default: RefCell::new(Dispatch::none()),
@@ -171,6 +182,7 @@ const INITIALIZED: usize = 2;
 static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
 
 /// The dispatch state of a thread.
+#[cfg(feature = "std")]
 struct State {
     /// This thread's current default dispatcher.
     default: RefCell<Dispatch>,
@@ -186,6 +198,7 @@ struct State {
 
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
+#[cfg(feature = "std")]
 struct ResetGuard(Option<Dispatch>);
 
 /// Sets this dispatch as the default for the duration of a closure.
@@ -193,9 +206,14 @@ struct ResetGuard(Option<Dispatch>);
 /// The default dispatcher is used when creating a new [span] or
 /// [`Event`].
 ///
+/// **Note**: This function requires the Rust standard library. `no_std` users
+/// should use [`set_global_default`] instead.
+///
 /// [span]: ../span/index.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: ../event/struct.Event.html
+/// [`set_global_default`]: ../fn.set_global_default.html
+#[cfg(feature = "std")]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this (rather than simply resetting after calling
@@ -243,6 +261,7 @@ impl fmt::Display for SetGlobalDefaultError {
     }
 }
 
+#[cfg(feature = "std")]
 impl error::Error for SetGlobalDefaultError {}
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
@@ -252,6 +271,7 @@ impl error::Error for SetGlobalDefaultError {}
 /// with `Dispatch::none` rather than the previously set dispatcher.
 ///
 /// [dispatcher]: ../dispatcher/struct.Dispatch.html
+#[cfg(feature = "std")]
 pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
@@ -274,14 +294,10 @@ where
 
                 let mut default = state.default.borrow_mut();
 
-                if default.is::<NoSubscriber>() && GLOBAL_INIT.load(Ordering::SeqCst) == INITIALIZED
-                {
-                    // don't redo this call on the next check
-                    unsafe {
-                        *default = GLOBAL_DISPATCH
-                            .as_ref()
-                            .expect("invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set")
-                            .clone()
+                if default.is::<NoSubscriber>() {
+                    if let Some(global) = get_global() {
+                        // don't redo this call on the next check
+                        *default = global.clone();
                     }
                 }
                 f(&*default)
@@ -290,6 +306,34 @@ where
             }
         })
         .unwrap_or_else(|_| f(&Dispatch::none()))
+}
+
+/// Executes a closure with a reference to the current [dispatcher].
+///
+/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+#[cfg(not(feature = "std"))]
+pub fn get_default<T, F>(mut f: F) -> T
+where
+    F: FnMut(&Dispatch) -> T,
+{
+    if let Some(d) = get_global() {
+        f(d)
+    } else {
+        f(&Dispatch::none())
+    }
+}
+
+fn get_global() -> Option<&'static Dispatch> {
+    if GLOBAL_INIT.load(Ordering::SeqCst) != INITIALIZED {
+        return None;
+    }
+    unsafe {
+        // This is safe given the invariant that setting the global dispatcher
+        // also sets `GLOBAL_INIT` to `INITIALIZED`.
+        Some(GLOBAL_DISPATCH.as_ref().expect(
+            "invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set",
+        ))
+    }
 }
 
 pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
@@ -568,6 +612,7 @@ impl Registrar {
 
 // ===== impl State =====
 
+#[cfg(feature = "std")]
 impl State {
     /// Replaces the current default dispatcher on this thread with the provided
     /// dispatcher.Any
@@ -588,6 +633,7 @@ impl State {
 
 // ===== impl ResetGuard =====
 
+#[cfg(feature = "std")]
 impl Drop for ResetGuard {
     #[inline]
     fn drop(&mut self) {
@@ -602,6 +648,8 @@ impl Drop for ResetGuard {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "std")]
+    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},
@@ -609,7 +657,6 @@ mod test {
         subscriber::{Interest, Subscriber},
         Event,
     };
-    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn dispatch_is() {
@@ -642,6 +689,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn events_dont_infinite_loop() {
         // This test ensures that an event triggered within a subscriber
         // won't cause an infinite loop of events.
@@ -680,6 +728,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn spans_dont_infinite_loop() {
         // This test ensures that a span created within a subscriber
         // won't cause an infinite loop of new spans.
@@ -740,7 +789,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
             fn exit(&self, _: &span::Id) {}
         }
+        #[cfg(feature = "std")]
         struct TestSubscriberB;
+
+        #[cfg(feature = "std")]
         impl Subscriber for TestSubscriberB {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
@@ -765,6 +817,7 @@ mod test {
             )
         });
 
+        #[cfg(feature = "std")]
         with_default(&Dispatch::new(TestSubscriberB), || {
             get_default(|current| {
                 assert!(

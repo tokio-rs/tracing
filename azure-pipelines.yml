@@ -34,6 +34,8 @@ stages:
            displayName: "Test log support"
          - bash: cd tracing/test_static_max_level_features && cargo test
            displayName: "Test static max level features"
+         - bash: cd tracing-core && cargo test --no-default-features
+           displayName: "Test tracing-core no-std support"
      - job: custom_nightly
        pool:
          vmImage: ubuntu-16.04

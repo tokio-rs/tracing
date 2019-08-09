@@ -46,10 +46,32 @@ The crate provides:
 In addition, it defines the global callsite registry and per-thread current
 dispatcher which other components of the tracing system rely on.
 
+## Usage
+
 Application authors will typically not use this crate directly. Instead, they
 will use the [`tracing`] crate, which provides a much more fully-featured
 API. However, this crate's API will change very infrequently, so it may be used
 when dependencies must be very stable.
+
+`Subscriber` implementations may depend on `tracing-core` rather than `tracing`,
+as the additional APIs provided by `tracing` are primarily useful for
+instrumenting libraries and applications, and are generally not necessary for
+`Subscriber` implementations.
+
+###  Crate Feature Flags
+
+The following crate feature flags are available:
+
+* `std`: Depend on the Rust standard library (enabled by default).
+
+   `no_std` users may disable this feature with `default-features = false`:
+
+  ```toml
+  [dependencies]
+  tracing-core = { version = "0.1.4", default-features = false }
+  ```
+
+  **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 
 [`tracing`]: ../tracing
 [`Span`]: https://docs.rs/tracing-core/0.1.3/tracing_core/span/struct.Span.html
