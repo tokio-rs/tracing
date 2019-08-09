@@ -53,6 +53,11 @@ mod no_std {
         pub(crate) use core::sync::*;
         pub(crate) use spin::MutexGuard;
 
+        /// This wraps `spin::Mutex` to return a `Result`, so that it can be
+        /// used with code written against `std::sync::Mutex`.
+        ///
+        /// Since `spin::Mutex` doesn't support poisoning, the `Result` returned
+        /// by `lock` will always be `Ok`.
         #[derive(Debug, Default)]
         pub(crate) struct Mutex<T> {
             inner: spin::Mutex<T>,
