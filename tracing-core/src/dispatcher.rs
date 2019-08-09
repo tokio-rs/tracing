@@ -132,7 +132,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: ../subscriber/struct.Subscriber.html
+//! [`Subscriber`]: struct.Subscriber.html
 //! [`with_default`]: fn.with_default.html
 //! [`set_global_default`]: fn.set_global_default.html
 //! [`get_default`]: fn.get_default.html
@@ -160,7 +160,7 @@ use crate::stdlib::{
 
 /// `Dispatch` trace data to a [`Subscriber`].
 ///
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+/// [`Subscriber`]: trait.Subscriber.html
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
