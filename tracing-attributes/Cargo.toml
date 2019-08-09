@@ -34,6 +34,8 @@ edition = "2018"
 proc-macro = true
 
 [features]
+
+# This feature flag is no longer necessary.
 async-await = []
 
 [dependencies]
