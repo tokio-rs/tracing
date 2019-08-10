@@ -11,6 +11,7 @@ pub use tracing_core::subscriber::*;
 /// [`Span`]: ../span/struct.Span.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: :../event/struct.Event.html
+#[cfg(feature = "std")]
 pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
 where
     S: Subscriber + Send + Sync + 'static,
