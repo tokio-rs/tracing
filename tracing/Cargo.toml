@@ -29,7 +29,7 @@ edition = "2018"
 [dependencies]
 tracing-core = "0.1.2"
 log = { version = "0.4", optional = true }
-tracing-attributes = "0.1.0"
+tracing-attributes = "0.1.1"
 cfg-if = "0.1.9"
 
 [dev-dependencies]
@@ -54,7 +54,8 @@ release_max_level_info  = []
 release_max_level_debug = []
 release_max_level_trace = []
 
-async-await = ["tracing-attributes/async-await"]
+# This feature flag is no longer necessary.
+async-await = []
 
 [[bench]]
 name = "subscriber"

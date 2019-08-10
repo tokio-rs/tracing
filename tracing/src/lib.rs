@@ -209,6 +209,9 @@
 //! # fn main() {}
 //! ```
 //!
+//! **Note**: using `#[instrument]` on `async fn`s requires the
+//! [`tracing-futures`] crate as a dependency, as well.
+//!
 //! You can find more examples showing how to use this crate in the examples
 //! directory.
 //!
@@ -333,15 +336,6 @@
 //!   using either `tracing` or `log`.
 //!   **Note:** `log` support will not work when `tracing` is renamed in `Cargo.toml`,
 //!   due to oddities in macro expansion.
-//! * `async-await`: enables support for instrumenting `async fn`s with the
-//!   [`#[instrument]`][instrument] attribute.
-//!   **Note**: this also requires the [`tracing-futures`] crate with the
-//!   `std-future` feature flag enabled.
-//!
-//! ```toml
-//! [dependencies]
-//! tracing = { version = "0.1", features = ["log", "async-await"] }
-//! ```
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
 //! [`span`]: span/index.html
@@ -364,7 +358,7 @@
 //! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
-//! [instrument]: https://docs.rs/tracing-attributes/0.1.0/tracing_attributes/attr.instrument.html
+//! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 #[macro_use]
 extern crate cfg_if;
 use tracing_core;
