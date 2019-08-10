@@ -1069,7 +1069,6 @@ macro_rules! event {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing;
-/// # use std::time::SystemTime;
 /// # #[derive(Debug, Copy, Clone)] struct Position { x: f32, y: f32 }
 /// # impl Position {
 /// # const ORIGIN: Self = Self { x: 0.0, y: 0.0 };
@@ -1468,7 +1467,10 @@ macro_rules! debug {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing;
-/// # use std::net::Ipv4Addr;
+/// # // this is so the test will still work in no-std mode
+/// # #[derive(Debug)]
+/// # pub struct Ipv4Addr;
+/// # impl Ipv4Addr { fn new(o1: u8, o2: u8, o3: u8, o4: u8) -> Self { Self } }
 /// # fn main() {
 /// # struct Connection { port: u32,  speed: f32 }
 /// use tracing::field;
@@ -1476,10 +1478,10 @@ macro_rules! debug {
 /// let addr = Ipv4Addr::new(127, 0, 0, 1);
 /// let conn = Connection { port: 40, speed: 3.20 };
 ///
-/// info!({ port = conn.port }, "connected to {}", addr);
+/// info!({ port = conn.port }, "connected to {:?}", addr);
 /// info!(
 ///     target: "connection_events",
-///     ip = %addr,
+///     ip = ?addr,
 ///     conn.port,
 ///     ?conn.speed,
 /// );
@@ -2101,11 +2103,7 @@ macro_rules! callsite {
         level: $lvl:expr,
         fields: $($fields:tt)*
     ) => {{
-        use std::sync::{
-            atomic::{self, AtomicUsize, Ordering},
-            Once,
-        };
-        use $crate::{callsite, subscriber::Interest, Metadata};
+        use $crate::{callsite, subscriber::Interest, Metadata, __macro_support::*};
         struct MyCallsite;
         static META: Metadata<'static> = {
             $crate::metadata! {
@@ -2117,10 +2115,7 @@ macro_rules! callsite {
                 kind: $kind,
             }
         };
-        // FIXME: Rust 1.34 deprecated ATOMIC_USIZE_INIT. When Tokio's minimum
-        // supported version is 1.34, replace this with the const fn `::new`.
-        #[allow(deprecated)]
-        static INTEREST: AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+        static INTEREST: AtomicUsize = AtomicUsize::new(0);
         static REGISTRATION: Once = Once::new();
         impl MyCallsite {
             #[inline]
