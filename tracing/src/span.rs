@@ -318,13 +318,13 @@
 //! [guard]: struct.Entered.html
 pub use tracing_core::span::{Attributes, Id, Record};
 
+use crate::stdlib::{
+    cmp, fmt,
+    hash::{Hash, Hasher},
+};
 use crate::{
     dispatcher::{self, Dispatch},
     field, Metadata,
-};
-use std::{
-    cmp, fmt,
-    hash::{Hash, Hasher},
 };
 
 /// Trait implemented by types which have a span `Id`.

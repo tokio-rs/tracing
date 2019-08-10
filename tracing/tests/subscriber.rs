@@ -1,3 +1,11 @@
+// These tests require the thread-local scoped dispatcher, which only works when
+// we have a standard library. The behaviour being tested should be the same
+// with the standard lib disabled.
+//
+// The alternative would be for each of these tests to be defined in a separate
+// file, which is :(
+#![cfg(feature = "std")]
+
 #[macro_use]
 extern crate tracing;
 use tracing::{

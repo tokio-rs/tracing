@@ -281,7 +281,7 @@
 //! # fn main() {
 //!
 //! let my_subscriber = FooSubscriber::new();
-//!
+//! # #[cfg(feature = "std")]
 //! tracing::subscriber::with_default(my_subscriber, || {
 //!     // Any trace events generated in this closure or by functions it calls
 //!     // will be collected by `my_subscriber`.
@@ -335,13 +335,24 @@
 //!   due to oddities in macro expansion.
 //! * `async-await`: enables support for instrumenting `async fn`s with the
 //!   [`#[instrument]`][instrument] attribute.
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing = { version = "0.1", features = ["async-await"] }
+//!   ```
+//!
 //!   **Note**: this also requires the [`tracing-futures`] crate with the
 //!   `std-future` feature flag enabled.
 //!
-//! ```toml
-//! [dependencies]
-//! tracing = { version = "0.1", features = ["log", "async-await"] }
-//! ```
+//! * `std`: Depend on the Rust standard library (enabled by default).
+//!
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing = { version = "0.1.5", default-features = false }
+//!   ```
+//!   **Note**:`tracing`'s `no_std` support requires `liballoc`.
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
 //! [`span`]: span/index.html
@@ -365,6 +376,11 @@
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/0.1.0/tracing_attributes/attr.instrument.html
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 #[macro_use]
 extern crate cfg_if;
 use tracing_core;
@@ -407,7 +423,19 @@ mod macros;
 pub mod field;
 pub mod level_filters;
 pub mod span;
+pub(crate) mod stdlib;
 pub mod subscriber;
+
+#[doc(hidden)]
+pub mod __macro_support {
+    pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+
+    #[cfg(feature = "std")]
+    pub use crate::stdlib::sync::Once;
+
+    #[cfg(not(feature = "std"))]
+    pub type Once = spin::Once<()>;
+}
 
 mod sealed {
     pub trait Sealed {}
