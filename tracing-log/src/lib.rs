@@ -74,10 +74,6 @@
 //! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-extern crate log;
-extern crate tracing_core;
-extern crate tracing_subscriber;
-
 use lazy_static::lazy_static;
 
 use std::{fmt, io};
@@ -95,10 +91,7 @@ pub mod log_tracer;
 pub mod trace_logger;
 
 #[doc(inline)]
-pub use self::{
-    log_tracer::LogTracer,
-    trace_logger::{Builder as TraceLoggerBuilder, TraceLogger},
-};
+pub use self::{log_tracer::LogTracer, trace_logger::TraceLogger};
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {

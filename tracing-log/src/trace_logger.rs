@@ -18,7 +18,7 @@ use tracing_core::{
 pub struct TraceLogger {
     settings: Builder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,
-    current: tracing_subscriber::CurrentSpanPerThread,
+    current: tracing_subscriber::CurrentSpan,
     next_id: AtomicUsize,
 }
 
