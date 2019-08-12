@@ -15,8 +15,8 @@
 //!
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
-//! - [`TraceLogger`], a [`tracing::Subscriber`] implementation that outputs
-//!   [`log::Record`]s as [`tracing::Event`]s, allowing an existing logger
+//! - [`TraceLogger`], a [`tracing::Subscriber`] implementation that consumes
+//!   [`tracing::Event`]s and outputs [`log::Record`], allowing an existing logger
 //!   implementation to be used to record trace events.
 //!
 //! ## Usage
