@@ -1,11 +1,11 @@
 [package]
 name = "tracing-log"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-log/0.0.1/tracing_log"
+documentation = "https://docs.rs/tracing-log/0.0.1-alpha.1/tracing_log"
 description = """
 Provides compatibility between `tracing` and the `log` crate.
 """

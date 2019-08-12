@@ -1,3 +1,6 @@
+#![doc(html_root_url = "https://docs.rs/tracing-log/0.0.1-alpha.1")]
+#![deny(missing_debug_implementations, unreachable_pub)]
+#![cfg_attr(test, deny(warnings))]
 //! Adapters for connecting unstructured log records from the `log` crate into
 //! the `tracing` ecosystem.
 //!

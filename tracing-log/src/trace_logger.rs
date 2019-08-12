@@ -22,6 +22,7 @@ pub struct TraceLogger {
     next_id: AtomicUsize,
 }
 
+#[derive(Debug)]
 pub struct Builder {
     log_span_closes: bool,
     log_enters: bool,
@@ -116,6 +117,7 @@ impl Default for TraceLogger {
     }
 }
 
+#[derive(Debug)]
 struct SpanLineBuilder {
     parent: Option<Id>,
     ref_count: usize,
@@ -364,5 +366,16 @@ impl<'a> fmt::Display for LogEvent<'a> {
 
         self.0.record(&mut format_fields);
         Ok(())
+    }
+}
+
+impl fmt::Debug for TraceLogger {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TraceLogger")
+            .field("settings", &self.settings)
+            .field("spans", &self.spans)
+            .field("current", &self.current.id())
+            .field("next_id", &self.next_id)
+            .finish()
     }
 }
