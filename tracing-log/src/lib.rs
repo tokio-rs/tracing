@@ -1,7 +1,27 @@
+#![doc(html_root_url = "https://docs.rs/tracing-log/0.0.1-alpha.1")]
+#![deny(missing_debug_implementations, unreachable_pub)]
+#![cfg_attr(test, deny(warnings))]
 //! Adapters for connecting unstructured log records from the `log` crate into
 //! the `tracing` ecosystem.
 //!
-//! ## Convert log records to tracing `Event`s
+//! ## Overview
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
+//! structured, event-based diagnostic information. This crate provides
+//! compatibility layers for using `tracing` alongside the logging facade provided
+//! by the [`log`] crate.
+//!
+//! This crate provides:
+//!
+//! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
+//!   and outputs them as [`tracing::Event`].
+//! - [`TraceLogger`], a [`tracing::Subscriber`] implementation that consumes
+//!   [`tracing::Event`]s and outputs [`log::Record`], allowing an existing logger
+//!   implementation to be used to record trace events.
+//!
+//! ## Usage
+//!
+//! ### Convert log records to tracing `Event`s
 //!
 //! To convert [`log::Record`]s as [`tracing::Event`]s, set `LogTracer` as the default
 //! logger by calling its [`init`] or [`init_with_filter`] methods.
@@ -28,12 +48,12 @@
 //! records emitted by dependencies which use `log` within the context of a
 //! trace.
 //!
-//! ## Convert tracing `Event`s to logs
+//! ### Convert tracing `Event`s to logs
 //!
 //! This conversion can be done with [`TraceLogger`], a [`Subscriber`] which
 //! records `tracing` spans and events and outputs log records.
 //!
-//! ## Caution: Mixing both conversions
+//! ### Caution: Mixing both conversions
 //!
 //! Note that logger implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
@@ -48,13 +68,15 @@
 //!
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
+//! [`LogTracer`]: struct.LogTracer.html
 //! [`TraceLogger`]: struct.TraceLogger.html
-//! [`tracing::Event`]: https://docs.rs/tracing/0.1.3/tracing/struct.Event.html
-//! [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
-extern crate log;
-extern crate tracing_core;
-extern crate tracing_subscriber;
-
+//! [`tracing`]: https://crates.io/crates/tracing
+//! [`log`]: https://crates.io/crates/log
+//! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
+//! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
+//! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 use lazy_static::lazy_static;
 
 use std::{fmt, io};
@@ -69,9 +91,10 @@ use tracing_core::{
 };
 
 pub mod log_tracer;
-pub use self::log_tracer::LogTracer;
 pub mod trace_logger;
-pub use self::trace_logger::{Builder as TraceLoggerBuilder, TraceLogger};
+
+#[doc(inline)]
+pub use self::{log_tracer::LogTracer, trace_logger::TraceLogger};
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record) -> io::Result<()> {
