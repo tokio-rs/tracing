@@ -1,3 +1,7 @@
+//! Utilities for working with [fields] and [field visitors].
+//!
+//! [field]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
+//! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 use std::{fmt, io};
 use tracing_core::{
     field::{Field, Visit},
@@ -46,6 +50,37 @@ pub trait VisitOutput<Out>: Visit {
     }
 }
 
+/// Extension trait implemented by types which can be recorded by a [visitor].
+///
+/// This allows writing code that is generic over `tracing_core`'s
+/// [`span::Attributes`], [`span::Record`], and [`Event`] types. These types all
+/// provide inherent `record` methods that allow a visitor to record their
+/// fields, but there is no common trait representing this.
+///
+/// With `RecordFields`, we can write code like this:
+/// ```
+/// use tracing_core::field::Visit;
+/// # use tracing_core::field::Field;
+/// use tracing_subscriber::field::RecordFields;
+///
+/// struct MyVisitor {
+///     // ...
+/// }
+/// # impl MyVisitor { fn new() -> Self { Self{} } }
+/// impl Visit for MyVisitor {
+///     // ...
+/// # fn record_debug(&mut self, _: &Field, _: &dyn std::fmt::Debug) {}
+/// }
+///
+/// fn record_with_my_visitor<R>(r: R)
+/// where
+///     R: RecordFields,
+/// {
+///     let mut visitor = MyVisitor::new();
+///     r.record(&mut visitor);
+/// }
+/// # fn main() {}
+/// ```
 pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
     fn record(&self, visitor: &mut dyn Visit);
 }
