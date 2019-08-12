@@ -21,19 +21,19 @@ struct OwnedMetadata {
 struct TestSubscriber(Arc<State>);
 
 impl Subscriber for TestSubscriber {
-    fn enabled(&self, _: &Metadata) -> bool {
+    fn enabled(&self, _: &Metadata<'_>) -> bool {
         true
     }
 
-    fn new_span(&self, _span: &Attributes) -> span::Id {
+    fn new_span(&self, _span: &Attributes<'_>) -> span::Id {
         span::Id::from_u64(42)
     }
 
-    fn record(&self, _span: &span::Id, _values: &Record) {}
+    fn record(&self, _span: &span::Id, _values: &Record<'_>) {}
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         *self.0.last_normalized_metadata.lock().unwrap() = (
             event.is_log(),
             event.normalized_metadata().map(|normalized| OwnedMetadata {
