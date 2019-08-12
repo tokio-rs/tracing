@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate tracing;
-use tracing_fmt;
-
-use tracing::Level;
+use tracing::{span, trace, debug, info, warn, error, Level};
 
 fn shave(yak: usize) -> bool {
     let span = span!(Level::TRACE, "shave", yak = yak);
