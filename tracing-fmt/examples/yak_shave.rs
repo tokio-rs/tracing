@@ -1,4 +1,4 @@
-use tracing::{span, trace, debug, info, warn, error, Level};
+use tracing::{debug, error, info, span, trace, warn, Level};
 
 fn shave(yak: usize) -> bool {
     let span = span!(Level::TRACE, "shave", yak = yak);
