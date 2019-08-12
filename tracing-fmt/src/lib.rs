@@ -1,3 +1,15 @@
+//! A `Subscriber` for formatting and logging `tracing` data.
+//!
+//! ## Overview
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
+//! structured, event-based diagnostic information. This crate provides an
+//! implementation of the [`Subscriber`] trait that records `tracing`'s `Event`s
+//! and `Span`s by formatting them as text and logging them to stdout.
+//!
+//!
+//! [`tracing`]: https://crates.io/crates/tracing
+//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
@@ -7,10 +19,10 @@ pub mod format;
 mod span;
 pub mod time;
 
-pub use crate::filter::Filter;
-pub use crate::format::FormatEvent;
-pub use crate::span::Context;
+#[doc(inline)]
+pub use crate::{filter::Filter, format::FormatEvent, span::Context};
 
+/// A `Subscriber` that logs formatted representations of `tracing` events.
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = format::NewRecorder,
@@ -24,6 +36,7 @@ pub struct FmtSubscriber<
     settings: Settings,
 }
 
+/// Configures and constructs `FmtSubscriber`s.
 #[derive(Debug, Default)]
 pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter>
 {

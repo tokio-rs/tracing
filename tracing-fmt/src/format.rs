@@ -1,5 +1,4 @@
-//! Default formatters for logs
-
+//! Formatters for logging `tracing` events.
 use crate::span;
 use crate::time::{self, FormatTime, SystemTime};
 #[cfg(feature = "tracing-log")]

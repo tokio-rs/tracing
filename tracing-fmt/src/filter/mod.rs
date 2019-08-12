@@ -1,7 +1,9 @@
+//! Filter implementations for determining what spans and events to record.
 use crate::span;
 
 use tracing_core::{subscriber::Interest, Metadata};
 
+/// A policy for determining what spans and events should be enabled.
 pub trait Filter<N> {
     fn callsite_enabled(&self, metadata: &Metadata<'_>, ctx: &span::Context<'_, N>) -> Interest {
         if self.enabled(metadata, ctx) {
@@ -17,6 +19,7 @@ pub trait Filter<N> {
 pub mod env;
 pub mod reload;
 
+#[doc(inline)]
 pub use self::{env::EnvFilter, reload::ReloadFilter};
 
 impl<'a, F, N> Filter<N> for F

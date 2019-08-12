@@ -14,6 +14,8 @@ pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
+/// Represents the `Subscriber`'s view of the current span context to a
+/// formatter.
 pub struct Context<'a, N> {
     store: &'a Store,
     new_visitor: &'a N,
