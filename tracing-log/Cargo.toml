@@ -1,24 +1,25 @@
 [package]
 name = "tracing-log"
 version = "0.0.1"
-authors = ["Eliza Weisman <eliza@buoyant.io>"]
+authors = ["Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
 documentation = "https://docs.rs/tracing-log/0.0.1/tracing_log"
 description = """
-Provides compatibility between `tracing` and `log` crate
+Provides compatibility between `tracing` and the `log` crate.
 """
 categories = [
     "development-tools::debugging",
     "asynchronous",
 ]
-keywords = ["logging", "tracing"]
+keywords = ["logging", "tracing", "log"]
 license = "MIT"
+readme = "README.md"
 
 [dependencies]
 tracing-core = "0.1.2"
-tracing-subscriber = { path = "../tracing-subscriber" }
+tracing-subscriber = "0.0.1-alpha.2"
 log = { version = "0.4", features = ["std"] }
 lazy_static = "1.3.0"
 
