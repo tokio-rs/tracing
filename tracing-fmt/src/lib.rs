@@ -1,22 +1,3 @@
-extern crate tracing_core;
-#[cfg(test)]
-#[macro_use]
-extern crate tracing;
-
-#[cfg(feature = "ansi")]
-extern crate ansi_term;
-#[cfg(feature = "chrono")]
-extern crate chrono;
-extern crate lock_api;
-extern crate owning_ref;
-extern crate parking_lot;
-#[cfg(feature = "tracing-log")]
-extern crate tracing_log;
-
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
-
 use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
@@ -78,7 +59,7 @@ where
     N: for<'a> NewVisitor<'a>,
 {
     #[inline]
-    fn ctx(&self) -> span::Context<N> {
+    fn ctx(&self) -> span::Context<'_, N> {
         span::Context::new(&self.spans, &self.new_visitor)
     }
 }
@@ -104,17 +85,17 @@ where
         self.filter.callsite_enabled(metadata, &self.ctx())
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.filter.enabled(metadata, &self.ctx())
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes) -> span::Id {
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
         self.spans.new_span(attrs, &self.new_visitor)
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record) {
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.spans.record(span, values, &self.new_visitor)
     }
 
@@ -122,7 +103,7 @@ where
         // TODO: implement this please
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         thread_local! {
             static BUF: RefCell<String> = RefCell::new(String::new());
         }

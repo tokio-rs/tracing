@@ -14,7 +14,7 @@ pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
 
-pub struct Context<'a, N: 'a> {
+pub struct Context<'a, N> {
     store: &'a Store,
     new_visitor: &'a N,
 }
@@ -110,7 +110,7 @@ impl<'a> Span<'a> {
         store: &'store Store,
     ) -> Result<(), E>
     where
-        F: FnMut(&Id, Span) -> Result<(), E>,
+        F: FnMut(&Id, Span<'_>) -> Result<(), E>,
     {
         if let Some(parent_id) = self.parent() {
             if Some(parent_id) != last_id {
@@ -140,7 +140,7 @@ impl<'a, N> Context<'a, N> {
     /// than potentially causing a double panic.
     pub fn visit_spans<F, E>(&self, mut f: F) -> Result<(), E>
     where
-        F: FnMut(&Id, Span) -> Result<(), E>,
+        F: FnMut(&Id, Span<'_>) -> Result<(), E>,
     {
         CONTEXT
             .try_with(|current| {
@@ -161,7 +161,7 @@ impl<'a, N> Context<'a, N> {
 
     pub fn with_current<F, R>(&self, f: F) -> Option<R>
     where
-        F: FnOnce((&Id, Span)) -> R,
+        F: FnOnce((&Id, Span<'_>)) -> R,
     {
         // If the lock is poisoned or the thread local has already been
         // destroyed, we might be in the middle of unwinding, so this
@@ -259,7 +259,7 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&self, attrs: &Attributes, new_visitor: &N) -> Id
+    pub fn new_span<N>(&self, attrs: &Attributes<'_>, new_visitor: &N) -> Id
     where
         N: for<'a> crate::NewVisitor<'a>,
     {
@@ -325,7 +325,7 @@ impl Store {
     /// Returns a `Span` to the span with the specified `id`, if one
     /// currently exists.
     #[inline]
-    pub fn get(&self, id: &Id) -> Option<Span> {
+    pub fn get(&self, id: &Id) -> Option<Span<'_>> {
         let lock = OwningHandle::try_new(self.inner.read(), |slab| {
             unsafe { &*slab }.read_slot(id_to_idx(id)).ok_or(())
         })
@@ -335,7 +335,7 @@ impl Store {
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub fn record<N>(&self, id: &Id, fields: &Record, new_recorder: &N)
+    pub fn record<N>(&self, id: &Id, fields: &Record<'_>, new_recorder: &N)
     where
         N: for<'a> crate::NewVisitor<'a>,
     {
@@ -391,7 +391,7 @@ impl Store {
 }
 
 impl Data {
-    pub(crate) fn new(attrs: &Attributes, store: &Store) -> Self {
+    pub(crate) fn new(attrs: &Attributes<'_>, store: &Store) -> Self {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
@@ -425,7 +425,7 @@ impl Drop for Data {
 }
 
 impl Slot {
-    fn new<N>(mut data: Data, attrs: &Attributes, new_visitor: &N) -> Self
+    fn new<N>(mut data: Data, attrs: &Attributes<'_>, new_visitor: &N) -> Self
     where
         N: for<'a> crate::NewVisitor<'a>,
     {
@@ -450,7 +450,7 @@ impl Slot {
         }
     }
 
-    fn fill<N>(&mut self, mut data: Data, attrs: &Attributes, new_visitor: &N) -> usize
+    fn fill<N>(&mut self, mut data: Data, attrs: &Attributes<'_>, new_visitor: &N) -> usize
     where
         N: for<'a> crate::NewVisitor<'a>,
     {
@@ -468,7 +468,7 @@ impl Slot {
         }
     }
 
-    fn record<N>(&mut self, fields: &Record, new_visitor: &N)
+    fn record<N>(&mut self, fields: &Record<'_>, new_visitor: &N)
     where
         N: for<'a> crate::NewVisitor<'a>,
     {
@@ -509,7 +509,7 @@ impl Slot {
 
 impl Slab {
     #[inline]
-    fn write_slot(&self, idx: usize) -> Option<RwLockWriteGuard<Slot>> {
+    fn write_slot(&self, idx: usize) -> Option<RwLockWriteGuard<'_, Slot>> {
         self.slab.get(idx).map(RwLock::write)
     }
 

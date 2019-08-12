@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate tracing;
-extern crate tracing_fmt;
+use tracing_fmt;
 
 use tracing::Level;
 

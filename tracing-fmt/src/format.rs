@@ -3,7 +3,7 @@
 use crate::span;
 use crate::time::{self, FormatTime, SystemTime};
 #[cfg(feature = "tracing-log")]
-use crate::tracing_log::NormalizeEvent;
+use tracing_log::NormalizeEvent;
 
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
@@ -26,18 +26,20 @@ pub trait FormatEvent<N> {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
         &self,
-        ctx: &span::Context<N>,
+        ctx: &span::Context<'_, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event,
+        event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<N> FormatEvent<N> for fn(&span::Context<N>, &mut dyn fmt::Write, &Event) -> fmt::Result {
+impl<N> FormatEvent<N>
+    for fn(&span::Context<'_, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+{
     fn format_event(
         &self,
-        ctx: &span::Context<N>,
+        ctx: &span::Context<'_, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event,
+        event: &Event<'_>,
     ) -> fmt::Result {
         (*self)(ctx, writer, event)
     }
@@ -135,9 +137,9 @@ where
 {
     fn format_event(
         &self,
-        ctx: &span::Context<N>,
+        ctx: &span::Context<'_, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event,
+        event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
@@ -172,9 +174,9 @@ where
 {
     fn format_event(
         &self,
-        ctx: &span::Context<N>,
+        ctx: &span::Context<'_, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event,
+        event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
@@ -256,7 +258,7 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
-struct FmtCtx<'a, N: 'a> {
+struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
     ansi: bool,
 }
@@ -272,7 +274,7 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N>
 where
     N: crate::NewVisitor<'a>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
             if seen {
@@ -311,7 +313,7 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     }
 }
 
-struct FullCtx<'a, N: 'a> {
+struct FullCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
     ansi: bool,
 }
@@ -327,7 +329,7 @@ impl<'a, N> fmt::Display for FullCtx<'a, N>
 where
     N: crate::NewVisitor<'a>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         let style = if self.ansi {
             Style::new().bold()
@@ -399,7 +401,7 @@ impl<'a> fmt::Display for FmtLevel<'a> {
 
 #[cfg(feature = "ansi")]
 impl<'a> fmt::Display for FmtLevel<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.ansi {
             match *self.level {
                 Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
