@@ -10,6 +10,8 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+#![doc(html_root_url = "https://docs.rs/tracing-f,t/0.0.1-alpha.3")]
+#![cfg_attr(test, deny(warnings))]
 use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
