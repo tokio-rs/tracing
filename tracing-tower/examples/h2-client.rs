@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use bytes::Bytes;
 use futures::*;
 use h2::Reason;
@@ -10,7 +12,6 @@ use tower_h2::client::Connect;
 use tower_h2::{Body, RecvBody};
 use tower_service::Service;
 use tower_util::MakeService;
-use tracing;
 use tracing_futures::Instrument;
 use tracing_tower::InstrumentableService;
 
@@ -34,7 +35,7 @@ fn main() {
     impl Service<()> for Conn {
         type Response = TcpStream;
         type Error = ::std::io::Error;
-        type Future = Box<Future<Item = TcpStream, Error = ::std::io::Error> + Send>;
+        type Future = Box<dyn Future<Item = TcpStream, Error = ::std::io::Error> + Send>;
 
         fn poll_ready(&mut self) -> Poll<(), Self::Error> {
             Ok(().into())
@@ -100,7 +101,7 @@ struct Serial {
         tower_h2::client::Connection<TcpStream, TaskExecutor, tower_h2::NoBody>,
         http::Request<tower_h2::NoBody>,
     >,
-    pending: Option<Box<Future<Item = (), Error = tower_h2::client::Error> + Send>>,
+    pending: Option<Box<dyn Future<Item = (), Error = tower_h2::client::Error> + Send>>,
 }
 
 impl Future for Serial {
