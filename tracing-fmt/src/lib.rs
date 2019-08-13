@@ -1,22 +1,17 @@
-extern crate tracing_core;
-#[cfg(test)]
-#[macro_use]
-extern crate tracing;
-
-#[cfg(feature = "ansi")]
-extern crate ansi_term;
-#[cfg(feature = "chrono")]
-extern crate chrono;
-extern crate lock_api;
-extern crate owning_ref;
-extern crate parking_lot;
-#[cfg(feature = "tracing-log")]
-extern crate tracing_log;
-
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
-
+//! A `Subscriber` for formatting and logging `tracing` data.
+//!
+//! ## Overview
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
+//! structured, event-based diagnostic information. This crate provides an
+//! implementation of the [`Subscriber`] trait that records `tracing`'s `Event`s
+//! and `Span`s by formatting them as text and logging them to stdout.
+//!
+//!
+//! [`tracing`]: https://crates.io/crates/tracing
+//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+#![doc(html_root_url = "https://docs.rs/tracing-f,t/0.0.1-alpha.3")]
+#![cfg_attr(test, deny(warnings))]
 use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
@@ -26,10 +21,10 @@ pub mod format;
 mod span;
 pub mod time;
 
-pub use crate::filter::Filter;
-pub use crate::format::FormatEvent;
-pub use crate::span::Context;
+#[doc(inline)]
+pub use crate::{filter::Filter, format::FormatEvent, span::Context};
 
+/// A `Subscriber` that logs formatted representations of `tracing` events.
 #[derive(Debug)]
 pub struct FmtSubscriber<
     N = format::NewRecorder,
@@ -43,6 +38,7 @@ pub struct FmtSubscriber<
     settings: Settings,
 }
 
+/// Configures and constructs `FmtSubscriber`s.
 #[derive(Debug, Default)]
 pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter>
 {
@@ -78,7 +74,7 @@ where
     N: for<'a> NewVisitor<'a>,
 {
     #[inline]
-    fn ctx(&self) -> span::Context<N> {
+    fn ctx(&self) -> span::Context<'_, N> {
         span::Context::new(&self.spans, &self.new_visitor)
     }
 }
@@ -104,17 +100,17 @@ where
         self.filter.callsite_enabled(metadata, &self.ctx())
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.filter.enabled(metadata, &self.ctx())
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes) -> span::Id {
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
         self.spans.new_span(attrs, &self.new_visitor)
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record) {
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.spans.record(span, values, &self.new_visitor)
     }
 
@@ -122,7 +118,7 @@ where
         // TODO: implement this please
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         thread_local! {
             static BUF: RefCell<String> = RefCell::new(String::new());
         }

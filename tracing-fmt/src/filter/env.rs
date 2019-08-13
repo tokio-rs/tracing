@@ -1,4 +1,5 @@
 use crate::{filter::Filter, span::Context};
+use lazy_static::lazy_static;
 use regex::Regex;
 use tracing_core::{subscriber::Interest, Level, Metadata};
 
@@ -154,7 +155,7 @@ impl Default for EnvFilter {
 }
 
 impl<N> Filter<N> for EnvFilter {
-    fn callsite_enabled(&self, metadata: &Metadata, _: &Context<N>) -> Interest {
+    fn callsite_enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, N>) -> Interest {
         if !self.includes_span_directive && self.max_level < *metadata.level() {
             return Interest::never();
         }
@@ -183,7 +184,7 @@ impl<N> Filter<N> for EnvFilter {
         interest
     }
 
-    fn enabled<'a>(&self, metadata: &Metadata, ctx: &Context<'a, N>) -> bool {
+    fn enabled<'a>(&self, metadata: &Metadata<'_>, ctx: &Context<'a, N>) -> bool {
         for directive in self.directives_for(metadata) {
             let accepts_level = directive.level >= *metadata.level();
             match directive.in_span.as_ref() {
@@ -253,7 +254,7 @@ fn try_parse_directives(spec: &str) -> Result<Vec<Directive>, ParseError> {
 }
 
 impl fmt::Display for EnvFilter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut directives = self.directives.iter();
         if let Some(d) = directives.next() {
             write!(f, "{}", d)?;
@@ -390,7 +391,7 @@ impl Default for Directive {
 }
 
 impl fmt::Display for Directive {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut write_equals = false;
 
         if let Some(ref tgt) = self.target {
@@ -443,7 +444,7 @@ impl From<env::VarError> for FromEnvError {
 }
 
 impl fmt::Display for FromEnvError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ErrorKind::Parse(ref p) => p.fmt(f),
             ErrorKind::Env(ref e) => e.fmt(f),
@@ -479,7 +480,7 @@ impl ParseError {
 }
 
 impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid filter directive '{}'", self.directive)
     }
 }
@@ -511,7 +512,7 @@ impl PartialOrd<Level> for LevelFilter {
 }
 
 impl fmt::Display for LevelFilter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LevelFilter::Off => f.pad("off"),
             LevelFilter::Level(Level::ERROR) => f.pad("error"),
@@ -535,7 +536,7 @@ mod tests {
 
     impl Callsite for Cs {
         fn set_interest(&self, _interest: Interest) {}
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             unimplemented!()
         }
     }
