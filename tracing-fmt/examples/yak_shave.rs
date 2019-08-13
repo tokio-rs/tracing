@@ -1,3 +1,4 @@
+#![deny(rust_2018_idioms)]
 use tracing::{debug, error, info, span, trace, warn, Level};
 
 fn shave(yak: usize) -> bool {

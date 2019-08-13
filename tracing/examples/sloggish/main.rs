@@ -10,10 +10,9 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
-#[macro_use]
-extern crate tracing;
+#![deny(rust_2018_idioms)]
 
-use tracing::{field, Level};
+use tracing::{debug, field, info, span, warn, Level};
 
 mod sloggish_subscriber;
 use self::sloggish_subscriber::SloggishSubscriber;
