@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 extern crate bytes;
 extern crate futures;
 extern crate h2;

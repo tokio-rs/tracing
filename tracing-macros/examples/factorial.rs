@@ -1,4 +1,6 @@
 //! Compare to the example given in the documentation for the `std::dbg` macro.
+#![deny(rust_2018_idioms)]
+
 #[macro_use]
 extern crate tracing;
 #[macro_use]

@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use bytes::Bytes;
 use futures::*;
 use h2::Reason;

@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 extern crate futures;
 extern crate tokio;
 #[macro_use]

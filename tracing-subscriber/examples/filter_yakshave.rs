@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use tracing::Level;
 use tracing_subscriber::prelude::*;
 

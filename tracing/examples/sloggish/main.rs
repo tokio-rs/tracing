@@ -10,6 +10,7 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
+#![deny(rust_2018_idioms)]
 #[macro_use]
 extern crate tracing;
 

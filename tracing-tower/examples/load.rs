@@ -20,7 +20,8 @@
 //! By dynamically changing the filter we can try to track down the cause of the
 //! error.
 //!
-//! As a hint: all spans and events from the load generator have the "gen" target.
+//! As a hint: all spans and events from the load generator have the "gen" target
+#![deny(rust_2018_idioms)]
 use futures::{future, Future, Poll, Stream};
 use hyper::{header, Method, Request, Response, StatusCode};
 use tokio_tcp::TcpListener;

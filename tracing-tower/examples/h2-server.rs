@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use bytes::{Bytes, IntoBuf};
 use futures::*;
 use http::Request;
