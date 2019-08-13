@@ -41,11 +41,11 @@ impl<F, N> Filter<N> for ReloadFilter<F, N>
 where
     F: Filter<N>,
 {
-    fn callsite_enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> Interest {
+    fn callsite_enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, N>) -> Interest {
         self.inner.read().callsite_enabled(metadata, ctx)
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: &Context<N>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, N>) -> bool {
         self.inner.read().enabled(metadata, ctx)
     }
 }
@@ -136,7 +136,7 @@ where
 // ===== impl Error =====
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         error::Error::description(self).fmt(f)
     }
 }
@@ -153,6 +153,7 @@ impl error::Error for Error {
 mod test {
     use crate::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use tracing::trace;
     use tracing_core::{
         dispatcher::{self, Dispatch},
         Metadata,
@@ -168,11 +169,11 @@ mod test {
             Two,
         }
         impl<N> filter::Filter<N> for Filter {
-            fn callsite_enabled(&self, _: &Metadata, _: &Context<N>) -> Interest {
+            fn callsite_enabled(&self, _: &Metadata<'_>, _: &Context<'_, N>) -> Interest {
                 Interest::sometimes()
             }
 
-            fn enabled(&self, _: &Metadata, _: &Context<N>) -> bool {
+            fn enabled(&self, _: &Metadata<'_>, _: &Context<'_, N>) -> bool {
                 match self {
                     Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
                     Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),

@@ -2,7 +2,7 @@
 
 **Warning: Until `tracing-fmt` has a 0.1.0 release on crates.io, please treat every release as potentially breaking.**
 
-A (currently experimental) [tracing] subscriber
+A (currently experimental) [`tracing`][tracing] subscriber
 that formats, colors, and logs trace data.
 
 [![Crates.io][crates-badge]][crates-url]
@@ -14,7 +14,7 @@ that formats, colors, and logs trace data.
 [Documentation][docs-url] |
 [Chat][gitter-url]
 
-[tracing]: https://github.com/tokio-rs/tracing/tree/master/tracing
+[tracing]: https://crates.io/crates/tracing
 [tracing-fmt]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
 [crates-badge]: https://img.shields.io/crates/v/tracing-fmt.svg
 [crates-url]: https://crates.io/crates/tracing-fmt
@@ -26,6 +26,13 @@ that formats, colors, and logs trace data.
 [azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
 [gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
 [gitter-url]: https://gitter.im/tokio-rs/tracing
+
+## Overview
+
+[`tracing`][tracing] is a framework for instrumenting Rust programs with context-aware,
+structured, event-based diagnostic information. This crate provides an
+implementation of the [`Subscriber`] trait that records `tracing`'s `Event`s
+and `Span`s by formatting them as text and logging them to stdout.
 
 ## License
 

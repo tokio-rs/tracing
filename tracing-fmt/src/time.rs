@@ -1,3 +1,5 @@
+//! Formatters for event timestamps.
+
 #[cfg(feature = "chrono")]
 use chrono;
 
