@@ -1,6 +1,6 @@
-extern crate env_logger;
-extern crate log;
-extern crate tracing_log;
+use env_logger;
+use log;
+use tracing_log;
 
 pub fn try_init() -> Result<(), log::SetLoggerError> {
     env_logger::Builder::from_default_env()

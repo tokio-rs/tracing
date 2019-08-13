@@ -1,22 +1,16 @@
-#[macro_use]
-extern crate serde_json;
-
-#[macro_use]
-extern crate tracing;
-
-
-
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
+use tracing::{debug, error, info, span, trace, warn};
 use tracing_core::{
     event::Event,
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
     subscriber::Subscriber,
 };
-
 use tracing_serde::AsSerde;
+
+use serde_json::json;
 
 pub struct JsonSubscriber {
     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter

@@ -1,13 +1,10 @@
 #![deny(rust_2018_idioms)]
 
-#[macro_use]
-extern crate tracing;
-
 use tracing::{
     field::{Field, Visit},
-    span,
+    info, span,
     subscriber::{self, Subscriber},
-    Event, Id, Level, Metadata,
+    warn, Event, Id, Level, Metadata,
 };
 
 use std::{

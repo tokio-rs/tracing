@@ -4,13 +4,7 @@ https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 */
 #![deny(rust_2018_idioms)]
 
-use tokio;
-#[macro_use]
-extern crate tracing;
-use tracing_fmt;
-
-
-use tracing::{field, Level};
+use tracing::{debug, field, info, span, Level};
 use tracing_futures::Instrument;
 
 use std::env;
@@ -35,8 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a TCP listener which will listen for incoming connections.
     let socket = TcpListener::bind(&listen_addr)?;
-    println!("Listening on: {}", listen_addr);
-    println!("Proxying to: {}", server_addr);
+    info!("Listening on: {}", listen_addr);
+    info!("Proxying to: {}", server_addr);
 
     let done = socket
         .incoming()
