@@ -46,7 +46,7 @@ tokio-buf = "0.1"
 tower = "0.1"
 tower-hyper = "0.1"
 tower-http-util = "0.1"
-tracing-fmt = "0.0.1-alpha.2"
+tracing-fmt = "0.0.1-alpha.3"
 rand = "0.7"
 
 [badges]

@@ -207,7 +207,6 @@ pub mod make {
             }))
         }
     }
-
 }
 
 // === impl Service ===
