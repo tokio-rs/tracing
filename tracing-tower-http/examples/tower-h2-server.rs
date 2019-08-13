@@ -66,7 +66,7 @@ impl Service<Request<RecvBody>> for Svc {
         if uri.path() != ROOT {
             let body = RspBody::empty();
             let rsp = rsp.status(404).body(body).unwrap();
-            warn!({ status_code = field::display(404), path = field::debug(uri.path()) }, "unrecognized URI");
+            warn!(message = "unrecognized URI", status_code = 404, path = ?uri.path());
             return future::ok(rsp);
         }
 
@@ -108,8 +108,8 @@ fn main() {
     let serve_span = span!(
         Level::TRACE,
         "serve",
-        local.ip = field::debug(addr.ip()),
-        local.port = addr.port() as u64
+        local.ip = %addr.ip(),
+        local.port = addr.port(),
     );
     let _enter = serve_span.enter();
 
@@ -124,8 +124,8 @@ fn main() {
             let conn_span = span!(
                 Level::TRACE,
                 "conn",
-                remote.ip = field::debug(addr.ip()),
-                remote.port = addr.port() as u64
+                remote.ip = %addr.ip(),
+                remote.port = addr.port(),
             );
             let _enter = conn_span.enter();
             if let Err(e) = sock.set_nodelay(true) {
@@ -136,7 +136,7 @@ fn main() {
 
             let serve = h2
                 .serve(sock)
-                .map_err(|e| error!("error {:?}", e))
+                .map_err(|e| error!(serve_error = ?e))
                 .and_then(|_| {
                     debug!("response finished");
                     future::ok(())
@@ -147,7 +147,7 @@ fn main() {
             Ok((h2, reactor))
         })
         .map_err(|e| {
-            error!("serve error {:?}", e);
+            error!(accept_error = ?error);
         })
         .map(|_| {})
         .instrument(serve_span.clone());

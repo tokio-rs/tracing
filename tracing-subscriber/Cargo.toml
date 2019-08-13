@@ -33,7 +33,7 @@ smallvec = { optional = true, version = "0.6.10"}
 lazy_static = { optional = true, version = "1" }
 
 [dev-dependencies]
-tracing-fmt = "0.0.1-alpha.2"
+tracing-fmt = "0.0.1-alpha.3"
 tracing = "0.1"
 
 [badges]
