@@ -17,7 +17,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-tracing-log = { path = "../tracing-log" }
+tracing-log = "0.0.1-alpha.1"
 env_logger = "0.5"
 log = "0.4"
 

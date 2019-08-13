@@ -4,7 +4,7 @@ https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 */
 #![deny(rust_2018_idioms)]
 
-use tracing::{debug, field, info, span, Level};
+use tracing::{debug, error, info, span, warn, Level};
 use tracing_futures::Instrument;
 
 use std::env;
@@ -17,6 +17,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
+    tracing::subscriber::set_global_default(subscriber)?;
+
     let listen_addr = env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:8081".to_string());
@@ -34,18 +37,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let done = socket
         .incoming()
-        .map_err(|e| debug!(msg = "error accepting socket", error = field::display(&e)))
+        .map_err(|error| error!(msg = "error accepting socket", %error))
         .for_each(move |client| {
             let server = TcpStream::connect(&server_addr);
             let mut client_addr = None;
             match client.peer_addr() {
-                Ok(x) => {
-                    client_addr = Some(x);
-                    info!(message = "client connected", client_addr = field::debug(x))
+                Ok(addr) => {
+                    client_addr = Some(addr);
+                    info!(message = "client connected", client_addr = %addr);
                 }
-                Err(e) => debug!(
+                Err(error) => warn!(
                     message = "Could not get client information",
-                    error = field::display(&e)
+                    %error
                 ),
             }
 
@@ -68,52 +71,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // After the copy is done we indicate to the remote side that we've
                 // finished by shutting down the connection.
                 let client_to_server = copy(client_reader, server_writer)
-                    .and_then(|(n, _, server_writer)| {
-                        info!(size = n);
-                        shutdown(server_writer).map(move |_| n)
+                    .and_then(|(size, _, server_writer)| {
+                        info!(size);
+                        shutdown(server_writer).map(move |_| size)
                     })
-                    .instrument(span!(Level::TRACE, "client_to_server"));
+                    .instrument(span!(Level::INFO, "client_to_server"));
 
                 let server_to_client = copy(server_reader, client_writer)
-                    .and_then(|(n, _, client_writer)| {
-                        info!(size = n);
-                        shutdown(client_writer).map(move |_| n)
+                    .and_then(|(size, _, client_writer)| {
+                        info!(size);
+                        shutdown(client_writer).map(move |_| size)
                     })
-                    .instrument(span!(Level::TRACE, "server_to_client"));
+                    .instrument(span!(Level::INFO, "server_to_client"));
 
                 client_to_server.join(server_to_client)
             });
 
             let msg = amounts
-                .map(move |(from_client, from_server)| {
+                .map(move |(client_to_server, server_to_client)| {
                     info!(
-                        client_to_server = from_client,
-                        server_to_client = from_server
+                        message = "transfer completed",
+                        client_to_server, server_to_client,
                     );
                 })
-                .map_err(|e| {
+                .map_err(|error| {
                     // Don't panic. Maybe the client just disconnected too soon.
-                    debug!(error = field::display(&e));
+                    debug!(%error);
                 })
-                .instrument(span!(
-                    Level::TRACE,
-                    "transfer completed",
-                    client_address = field::debug(&client_addr),
-                    server_address = field::debug(&server_addr)
-                ));
+                .instrument(span!(Level::TRACE, "transfer", ?client_addr, ?server_addr));
 
             tokio::spawn(msg);
 
             Ok(())
         });
 
-    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
-    let _ = tracing::subscriber::set_global_default(subscriber);
-    let done = done.instrument(span!(
-        Level::TRACE,
-        "proxy",
-        listen_addr = field::debug(&listen_addr)
-    ));
+    let done = done.instrument(span!(Level::TRACE, "proxy", %listen_addr));
     tokio::run(done);
 
     Ok(())
@@ -145,7 +137,7 @@ impl AsyncRead for MyTcpStream {}
 
 impl AsyncWrite for MyTcpStream {
     fn shutdown(&mut self) -> Poll<(), io::Error> {
-        r#try!(self.0.lock().unwrap().shutdown(Shutdown::Write));
+        self.0.lock().unwrap().shutdown(Shutdown::Write)?;
         Ok(().into())
     }
 }

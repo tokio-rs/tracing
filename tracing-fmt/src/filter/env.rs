@@ -803,5 +803,4 @@ mod tests {
                 .unwrap();
         let _: EnvFilter = format!("{}", f1).parse().unwrap();
     }
-
 }

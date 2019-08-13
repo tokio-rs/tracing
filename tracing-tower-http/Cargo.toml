@@ -34,7 +34,7 @@ tokio = "0.1"
 tokio-current-thread = "0.1.1"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 tracing-subscriber = { path = "../tracing-subscriber" }
-tracing-fmt = { path = "../tracing-fmt" }
+tracing-fmt = "0.0.1-alpha.3"
 tokio-io = "0.1"
 ansi_term = "0.11"
 humantime = "1.1.1"

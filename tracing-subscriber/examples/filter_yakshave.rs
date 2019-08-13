@@ -3,6 +3,7 @@
 use tracing::Level;
 use tracing_subscriber::prelude::*;
 
+#[tracing::instrument]
 fn shave(yak: usize) -> bool {
     tracing::debug!(
         message = "hello! I'm gonna shave a yak.",
@@ -17,6 +18,29 @@ fn shave(yak: usize) -> bool {
     }
 }
 
+fn shave_all(yaks: usize) -> usize {
+    let span = tracing::span!(Level::TRACE, "shaving_yaks", yaks_to_shave = yaks);
+    let _enter = span.enter();
+
+    tracing::info!("shaving yaks");
+
+    let mut num_shaved = 0;
+    for yak in 1..=yaks {
+        let shaved = shave(yak);
+        tracing::trace!(target: "yak_events", yak, shaved);
+
+        if !shaved {
+            tracing::error!(message = "failed to shave yak!", yak);
+        } else {
+            num_shaved += 1;
+        }
+
+        tracing::trace!(target: "yak_events", yaks_shaved = num_shaved);
+    }
+
+    num_shaved
+}
+
 fn main() {
     let subscriber = tracing_fmt::FmtSubscriber::builder()
         // Disable `tracing-fmt`'s filter implementation...
@@ -26,33 +50,14 @@ fn main() {
         .with(tracing_subscriber::filter::Filter::from_default_env());
 
     tracing::subscriber::with_default(subscriber, || {
-        let yaks_to_shave = 3;
-        let mut yaks_shaved = 0;
-        tracing::debug!("preparing to shave {} yaks", yaks_to_shave);
+        let number_of_yaks = 3;
+        tracing::debug!("preparing to shave {} yaks", number_of_yaks);
 
-        tracing::span!(Level::TRACE, "shaving_yaks", yaks_to_shave).in_scope(|| {
-            tracing::info!("shaving yaks");
-
-            for yak in 1..=yaks_to_shave {
-                let span = tracing::span!(Level::TRACE, "shave", yak);
-                let _e = span.enter();
-
-                let shaved = shave(yak);
-                tracing::trace!(shaved = shaved);
-
-                if !shaved {
-                    tracing::error!(message = "failed to shave yak!");
-                } else {
-                    yaks_shaved += 1;
-                }
-
-                tracing::trace!(yaks_shaved);
-            }
-        });
+        let number_shaved = shave_all(number_of_yaks);
 
         tracing::debug!(
             message = "yak shaving completed.",
-            all_yaks_shaved = yaks_shaved == yaks_to_shave,
+            all_yaks_shaved = number_shaved == number_of_yaks,
         );
     });
 }

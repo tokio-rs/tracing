@@ -219,5 +219,4 @@ mod test {
             .reload(EnvFilter::from_default_env())
             .expect("should reload");
     }
-
 }
