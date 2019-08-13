@@ -7,7 +7,7 @@ use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
-use tracing::{debug, error, field, info, span, warn, Level};
+use tracing::{debug, error, info, span, warn, Level};
 use tracing_futures::Instrument;
 
 type Response = http::Response<RspBody>;
@@ -136,7 +136,7 @@ fn main() {
 
             let serve = h2
                 .serve(sock)
-                .map_err(|e| error!(serve_error = ?e))
+                .map_err(|serve_error| error!(%serve_error))
                 .and_then(|_| {
                     debug!("response finished");
                     future::ok(())
@@ -146,8 +146,8 @@ fn main() {
 
             Ok((h2, reactor))
         })
-        .map_err(|e| {
-            error!(accept_error = ?error);
+        .map_err(|accept_error| {
+            error!(%accept_error);
         })
         .map(|_| {})
         .instrument(serve_span.clone());

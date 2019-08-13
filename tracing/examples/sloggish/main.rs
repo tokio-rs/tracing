@@ -12,7 +12,7 @@
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 #![deny(rust_2018_idioms)]
 
-use tracing::{debug, field, info, span, warn, Level};
+use tracing::{debug, info, span, warn, Level};
 
 mod sloggish_subscriber;
 use self::sloggish_subscriber::SloggishSubscriber;
@@ -22,7 +22,7 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
     let app_span = span!(Level::TRACE, "", version = %5.0);
-    let _e = span.enter();
+    let _e = app_span.enter();
 
     let server_span = span!(Level::TRACE, "server", host = "localhost", port = 8080);
     let _e2 = server_span.enter();

@@ -32,8 +32,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a TCP listener which will listen for incoming connections.
     let socket = TcpListener::bind(&listen_addr)?;
-    println!("Listening on: {}", listen_addr);
-    println!("Proxying to: {}", server_addr);
+    info!("Listening on: {}", listen_addr);
+    info!("Proxying to: {}", server_addr);
 
     let done = socket
         .incoming()
