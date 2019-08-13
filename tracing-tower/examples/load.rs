@@ -260,7 +260,7 @@ where
 {
     type Response = Response<Body>;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send + 'static>;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error> + Send + 'static>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         Ok(().into())
@@ -318,7 +318,7 @@ impl HandleError {
 }
 
 impl fmt::Display for HandleError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             HandleError::BadPath => f.pad("path must be a single ASCII character"),
             HandleError::NoContentLength => f.pad("request must have Content-Length header"),
@@ -331,7 +331,7 @@ impl fmt::Display for HandleError {
 impl std::error::Error for HandleError {}
 
 impl fmt::Display for WrongMethod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "unsupported method: please use one of {:?}", self.0)
     }
 }

@@ -1,14 +1,5 @@
 #![deny(rust_2018_idioms)]
 
-extern crate futures;
-extern crate hyper;
-#[macro_use]
-extern crate tracing;
-extern crate tokio;
-extern crate tracing_env_logger;
-extern crate tracing_fmt;
-extern crate tracing_futures;
-
 use futures::future;
 use hyper::rt::{Future, Stream};
 use hyper::server::conn::Http;
@@ -17,7 +8,7 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 
 use std::str;
 
-use tracing::{field, Level};
+use tracing::{debug, error, field, info, span, Level};
 use tracing_futures::{Instrument, Instrumented};
 
 type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;

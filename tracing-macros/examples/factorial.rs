@@ -5,8 +5,8 @@
 extern crate tracing;
 #[macro_use]
 extern crate tracing_macros;
-extern crate env_logger;
-extern crate tracing_log;
+use env_logger;
+use tracing_log;
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {

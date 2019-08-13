@@ -3,12 +3,12 @@ This example has been taken and modified from here :
 https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
 */
 #![deny(rust_2018_idioms)]
-extern crate futures;
-extern crate tokio;
+
+use tokio;
 #[macro_use]
 extern crate tracing;
-extern crate tracing_fmt;
-extern crate tracing_futures;
+use tracing_fmt;
+
 
 use tracing::{field, Level};
 use tracing_futures::Instrument;

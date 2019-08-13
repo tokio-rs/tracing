@@ -3,8 +3,8 @@ extern crate serde_json;
 
 #[macro_use]
 extern crate tracing;
-extern crate tracing_core;
-extern crate tracing_serde;
+
+
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -23,7 +23,7 @@ pub struct JsonSubscriber {
 }
 
 impl Subscriber for JsonSubscriber {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let json = json!({
         "enabled": {
             "metadata": metadata.as_serde(),
@@ -32,7 +32,7 @@ impl Subscriber for JsonSubscriber {
         true
     }
 
-    fn new_span(&self, attrs: &Attributes) -> Id {
+    fn new_span(&self, attrs: &Attributes<'_>) -> Id {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let id = Id::from_u64(id as u64);
         let json = json!({
@@ -44,7 +44,7 @@ impl Subscriber for JsonSubscriber {
         id
     }
 
-    fn record(&self, span: &Id, values: &Record) {
+    fn record(&self, span: &Id, values: &Record<'_>) {
         let json = json!({
         "record": {
             "span": span.as_serde(),
@@ -62,7 +62,7 @@ impl Subscriber for JsonSubscriber {
         println!("{}", json);
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         let json = json!({
             "event": event.as_serde(),
         });

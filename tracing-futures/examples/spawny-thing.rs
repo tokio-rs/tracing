@@ -1,14 +1,7 @@
 #![deny(rust_2018_idioms)]
 
-extern crate futures;
-extern crate tokio;
-#[macro_use]
-extern crate tracing;
-extern crate tracing_fmt;
-extern crate tracing_futures;
-
 use futures::future::{self, Future};
-use tracing::Level;
+use tracing::{debug, info, span, Level};
 use tracing_futures::Instrument;
 
 fn parent_task(how_many: usize) -> impl Future<Item = (), Error = ()> {
