@@ -22,6 +22,10 @@
 //! - `std-future`: Enables compatibility with `std::future::Future`.
 //! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
 //!   crate.
+//! - `futures-preview`: Enables compatibility with the `futures-preview`
+//!   crate's `Spawn` and `LocalSpawn` traits.
+//! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
+//!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
 //!
 //! The `tokio` and `futures-01` features are enabled by default.
 //!
