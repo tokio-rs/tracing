@@ -35,6 +35,7 @@ where
         deinstrument_err!(self.inner.execute(future))
     }
 }
+
 #[cfg(feature = "tokio")]
 pub use self::tokio::*;
 

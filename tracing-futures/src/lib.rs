@@ -190,7 +190,11 @@ impl<T: futures::Future> futures::Future for WithDispatch<T> {
 }
 
 impl<T> WithDispatch<T> {
-    #[cfg(feature = "tokio")]
+    #[cfg(any(
+        feature = "tokio",
+        feature = "tokio-alpha",
+        feature = "futures-preview"
+    ))]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
