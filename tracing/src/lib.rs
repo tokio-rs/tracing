@@ -38,11 +38,7 @@
 //!
 //! For example:
 //! ```
-//! #[macro_use]
-//! extern crate tracing;
-//!
-//! use tracing::Level;
-//!
+//! use tracing::{span, Level};
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my_span");
 //! // `enter` returns a RAII guard which, when dropped, exits the span. this
@@ -65,16 +61,17 @@
 //!
 //! For example:
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! use tracing::{event, span, Level};
+//!
 //! # fn main() {
 //! // records an event outside of any span context:
 //! event!(Level::INFO, "something happened");
 //!
-//! span!(Level::INFO, "my_span").in_scope(|| {
-//!     // records an event within "my_span".
-//!     event!(Level::DEBUG, "something happened inside my_span");
-//! });
+//! let span = span!(Level::INFO, "my_span");
+//! let _guard = span.enter();
+//!
+//! // records an event within "my_span".
+//! event!(Level::DEBUG, "something happened inside my_span");
 //! # }
 //!```
 //!
