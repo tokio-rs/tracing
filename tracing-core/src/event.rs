@@ -31,14 +31,40 @@ impl<'a> Event<'a> {
     /// and observes it with the current subscriber.
     #[inline]
     pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
-        let event = Event {
-            metadata,
-            fields,
-            parent: Parent::Current,
-        };
+        let event = Event::new(metadata, fields);
         crate::dispatcher::get_default(|current| {
             current.event(&event);
         });
+    }
+
+    /// Returns a new `Event` in the current span, with the specified metadata
+    /// and set of values.
+    #[inline]
+    pub fn new(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'a>) -> Self {
+        Event {
+            metadata,
+            fields,
+            parent: Parent::Current,
+        }
+    }
+
+    /// Returns a new `Event` as a child of the specified span, with the
+    /// provided metadata and set of values.
+    #[inline]
+    pub fn new_child_of(
+        parent: impl Into<Option<Id>>,
+        metadata: &'static Metadata<'static>,
+        fields: &'a field::ValueSet<'a>,
+    ) -> Self {
+        let parent = match parent.into() {
+            Some(p) => Parent::Explicit(p),
+            None => Parent::Root,
+        };
+        Event {
+            metadata,
+            fields,
+            parent,
+        }
     }
 
     /// Constructs a new `Event` with the specified metadata and set of values,
@@ -49,16 +75,7 @@ impl<'a> Event<'a> {
         metadata: &'static Metadata<'static>,
         fields: &'a field::ValueSet<'_>,
     ) {
-        let parent = match parent.into() {
-            Some(p) => Parent::Explicit(p),
-            None => Parent::Root,
-        };
-
-        let event = Event {
-            metadata,
-            fields,
-            parent,
-        };
+        let event = Self::new_child_of(parent, metadata, fields);
         crate::dispatcher::get_default(|current| {
             current.event(&event);
         });
