@@ -22,13 +22,15 @@ license = "MIT"
 default = ["futures-01", "tokio"]
 futures-01 = ["futures"]
 std-future = ["pin-utils"]
+tokio-alpha = ["std-future", "tokio_02"]
 
 [dependencies]
 futures = { version = "0.1", optional = true }
 pin-utils = { version = "0.1.0-alpha.4", optional = true }
 tracing = "0.1"
-tokio = { version = "0.1", optional = true }
 tokio-executor = { version = "0.1", optional = true }
+tokio = { version = "0.1", optional = true }
+tokio_02 = { package = "tokio", version = "0.2.0-alpha.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"

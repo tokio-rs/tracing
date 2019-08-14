@@ -33,8 +33,6 @@
 extern crate futures;
 #[cfg(feature = "std-future")]
 extern crate pin_utils;
-#[cfg(feature = "tokio")]
-extern crate tokio;
 #[cfg(feature = "tokio-executor")]
 extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
@@ -49,7 +47,6 @@ use futures::{Sink, StartSend, Stream};
 use tracing::dispatcher;
 use tracing::{Dispatch, Span};
 
-#[cfg(feature = "tokio")]
 pub mod executor;
 
 /// Extension trait allowing futures, streams, and skins to be instrumented with
