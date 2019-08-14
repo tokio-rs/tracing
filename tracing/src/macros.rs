@@ -4,9 +4,7 @@
 ///
 /// Creating a new span:
 /// ```
-/// #[macro_use]
-/// extern crate tracing;
-/// use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// let span = span!(Level::TRACE, "my span");
 /// let _enter = span.enter();
@@ -18,8 +16,7 @@
 ///
 /// Span fields are written using the syntax `key = value`.
 /// ```
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// // construct a new span with two fields:
 /// //  - "foo", with a value of 42,
@@ -29,9 +26,7 @@
 /// ```
 /// Note that a trailing comma on the final field is valid:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// span!(
 ///     Level::INFO,
@@ -45,9 +40,7 @@
 /// As shorthand, local variables may be used as field values without an
 /// assignment, similar to [struct initializers]. For example:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// let user = "ferris";
 ///
@@ -59,9 +52,7 @@
 ///
 /// Field names can include dots, but should not be terminated by them:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// let user = "ferris";
 /// let email = "ferris@rust-lang.org";
@@ -72,9 +63,7 @@
 /// Since field names can include dots, fields on local structs can be used
 /// using the local variable shorthand:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// # struct User {
 /// #    name: &'static str,
@@ -106,9 +95,7 @@
 // ///
 /// The `?` sigil is shorthand for [`field::debug`]:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// #[derive(Debug)]
 /// struct MyStruct {
@@ -128,9 +115,7 @@
 ///
 /// The `%` character is shorthand for [`field::display`]:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// # #[derive(Debug)]
 /// # struct MyStruct {
@@ -149,9 +134,7 @@
 ///
 /// The `%` and `?` sigils may also be used with local variable shorthand:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// # #[derive(Debug)]
 /// # struct MyStruct {
@@ -190,9 +173,7 @@
 ///
 /// Creating a span with custom target:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// span!(target: "app_span", Level::TRACE, "my span");
 /// # }
@@ -200,8 +181,7 @@
 ///
 /// Creating a span with an explicit parent:
 /// ```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// // Create, but do not enter, a span called "foo".
 /// let foo = span!(Level::INFO, "foo");
@@ -219,8 +199,7 @@
 /// Creating a span _without_ a parent:
 ///
 ///```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// let foo = span!(Level::INFO, "foo");
 /// let _enter = foo.enter();
@@ -234,8 +213,7 @@
 /// Both the parent and target may be overridden simultaenously:
 ///
 ///```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, Level};
 /// # fn main() {
 /// let foo = span!(Level::INFO, "foo");
 //
@@ -371,8 +349,7 @@ macro_rules! span {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{trace_span, span, Level};
 /// # fn main() {
 /// trace_span!("my_span");
 /// // is equivalent to:
@@ -381,8 +358,7 @@ macro_rules! span {
 /// ```
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// # use tracing::{trace_span, span, Level};
 /// # fn main() {
 /// let span = trace_span!("my span");
 /// span.in_scope(|| {
@@ -450,8 +426,7 @@ macro_rules! trace_span {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{debug_span, span, Level};
 /// # fn main() {
 /// debug_span!("my_span");
 /// // is equivalent to:
@@ -460,8 +435,7 @@ macro_rules! trace_span {
 /// ```
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// # use tracing::debug_span;
 /// # fn main() {
 /// let span = debug_span!("my span");
 /// span.in_scope(|| {
@@ -529,8 +503,7 @@ macro_rules! debug_span {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, info_span, Level};
 /// # fn main() {
 /// info_span!("my_span");
 /// // is equivalent to:
@@ -539,8 +512,7 @@ macro_rules! debug_span {
 /// ```
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// # use tracing::info_span;
 /// # fn main() {
 /// let span = info_span!("my span");
 /// span.in_scope(|| {
@@ -608,18 +580,16 @@ macro_rules! info_span {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{warn_span, span, Level};
 /// # fn main() {
-/// info_span!("my_span");
+/// warn_span!("my_span");
 /// // is equivalent to:
-/// span!(Level::INFO, "my_span");
+/// span!(Level::WARN, "my_span");
 /// # }
 /// ```
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// use tracing::warn_span;
 /// # fn main() {
 /// let span = warn_span!("my span");
 /// span.in_scope(|| {
@@ -686,8 +656,7 @@ macro_rules! warn_span {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use] extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{span, error_span, Level};
 /// # fn main() {
 /// error_span!("my_span");
 /// // is equivalent to:
@@ -696,8 +665,7 @@ macro_rules! warn_span {
 /// ```
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// # use tracing::error_span;
 /// # fn main() {
 /// let span = error_span!("my span");
 /// span.in_scope(|| {
@@ -758,19 +726,17 @@ macro_rules! error_span {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
-/// use tracing::{Level, field};
+/// use tracing::{event, Level};
 ///
 /// # fn main() {
 /// let data = (42, "fourty-two");
 /// let private_data = "private";
 /// let error = "a bad error";
 ///
-/// event!(Level::ERROR, { error = field::display(error) }, "Received error");
+/// event!(Level::ERROR, %error, message = "Received error");
 /// event!(target: "app_events", Level::WARN, {
-///         private_data = private_data,
-///         data = field::debug(data),
+///         private_data,
+///         ?data,
 ///     },
 ///     "App warning: {}", error
 /// );
@@ -794,9 +760,7 @@ macro_rules! error_span {
 /// ```
 /// Shorthand for `field::debug`:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{event, Level};
 /// # fn main() {
 /// #[derive(Debug)]
 /// struct MyStruct {
@@ -808,14 +772,12 @@ macro_rules! error_span {
 /// };
 ///
 /// // `my_struct` will be recorded using its `fmt::Debug` implementation.
-/// event!(Level::TRACE, my_struct = ?my_struct);
+/// event!(Level::TRACE, ?my_struct);
 /// # }
 /// ```
 /// Shorthand for `field::display`:
 /// ```
-/// # #[macro_use]
-/// # extern crate tracing;
-/// # use tracing::Level;
+/// # use tracing::{event, Level};
 /// # fn main() {
 /// # #[derive(Debug)]
 /// # struct MyStruct {
@@ -826,7 +788,7 @@ macro_rules! error_span {
 /// #     field: "Hello world!"
 /// # };
 /// // `my_struct.field` will be recorded using its `fmt::Display` implementation.
-/// event!(Level::TRACE, my_struct.field = %my_struct.field);
+/// event!(Level::TRACE, %my_struct.field);
 /// # }
 /// ```
 /// Events may have up to 32 fields. The following will not compile:
@@ -1067,8 +1029,7 @@ macro_rules! event {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// use tracing::trace;
 /// # #[derive(Debug, Copy, Clone)] struct Position { x: f32, y: f32 }
 /// # impl Position {
 /// # const ORIGIN: Self = Self { x: 0.0, y: 0.0 };
@@ -1078,14 +1039,12 @@ macro_rules! event {
 /// # }
 /// # }
 /// # fn main() {
-/// use tracing::field;
-///
 /// let pos = Position { x: 3.234, y: -1.223 };
 /// let origin_dist = pos.dist(Position::ORIGIN);
 ///
-/// trace!(position = field::debug(pos), origin_dist = field::debug(origin_dist));
+/// trace!(position = ?pos, ?origin_dist);
 /// trace!(target: "app_events",
-///         { position = field::debug(pos) },
+///         { position = ?pos },
 ///         "x is {} and y is {}",
 ///        if pos.x >= 0.0 { "positive" } else { "negative" },
 ///        if pos.y >= 0.0 { "positive" } else { "negative" });
@@ -1265,11 +1224,9 @@ macro_rules! trace {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// use tracing::debug;
 /// # fn main() {
 /// # #[derive(Debug)] struct Position { x: f32, y: f32 }
-/// use tracing::field;
 ///
 /// let pos = Position { x: 3.234, y: -1.223 };
 ///
@@ -1465,8 +1422,7 @@ macro_rules! debug {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// use tracing::info;
 /// # // this is so the test will still work in no-std mode
 /// # #[derive(Debug)]
 /// # pub struct Ipv4Addr;
@@ -1478,7 +1434,7 @@ macro_rules! debug {
 /// let addr = Ipv4Addr::new(127, 0, 0, 1);
 /// let conn = Connection { port: 40, speed: 3.20 };
 ///
-/// info!({ port = conn.port }, "connected to {:?}", addr);
+/// info!({ conn.port }, "connected to {:?}", addr);
 /// info!(
 ///     target: "connection_events",
 ///     ip = ?addr,
@@ -1675,15 +1631,13 @@ macro_rules! info {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// use tracing::warn;
 /// # fn main() {
-/// use tracing::field;
 ///
 /// let warn_description = "Invalid Input";
 /// let input = &[0x27, 0x45];
 ///
-/// warn!(input = field::debug(input), warning = warn_description);
+/// warn!(?input, warning = warn_description);
 /// warn!(
 ///     target: "input_events",
 ///     { warning = warn_description },
@@ -1879,13 +1833,12 @@ macro_rules! warn {
 /// # Examples
 ///
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing;
+/// use tracing::error;
 /// # fn main() {
-/// use tracing::field;
+///
 /// let (err_info, port) = ("No connection", 22);
 ///
-/// error!(port = port, error = field::display(err_info));
+/// error!(port, error = %err_info);
 /// error!(target: "app_events", "App Error: {}", err_info);
 /// error!({ info = err_info }, "error on port: {}", port);
 /// # }
