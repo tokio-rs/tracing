@@ -325,8 +325,10 @@ impl Value for str {
     }
 }
 
+#[cfg(feature = "std")]
 impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
 
+#[cfg(feature = "std")]
 impl Value for dyn std::error::Error + 'static {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_error(key, self)
