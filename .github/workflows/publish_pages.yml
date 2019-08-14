@@ -3,9 +3,10 @@ on:
   push:
     branches:
     - master
-    # # only rebuild RustDoc when source code has changed
-    # paths:
-    #   - /**/src/**
+    # only rebuild RustDoc when source code has changed, or the workflow is modified
+    paths:
+    - /**/src/**
+    - .github/workflows
 
 jobs:
   publish_doc:
