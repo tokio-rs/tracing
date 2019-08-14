@@ -1,4 +1,5 @@
 name: Publish Pages
+
 on:
   push:
     branches:
