@@ -1,24 +1,24 @@
-name: CI
+name: publish GitHub Pages
 
-on: [push]
+on:
+  push:
+    branches:
+    - master
+    # only rebuild RustDoc when source code has changed, or the workflow is modified
+    paths:
+    - /**/src/**
+    - .github/workflows
 
 jobs:
-  check: 
-  
+  publish_doc:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@master
-    - name: Check
-      run: cargo check --all
-
-  build:
-    needs: check
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@master
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+    # check out the repo
+    - uses: actions/checkout@v1
+    # This step references the directory that contains the action.
+    - name: build docs
+      run: cargo doc --all
+    - name: publish
+      uses: maxheld83/ghpages@v0.2.1
+      env:
+        BUILD_DIR=target/doc
