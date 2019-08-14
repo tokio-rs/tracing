@@ -1,0 +1,24 @@
+name: Publish Pages
+on:
+  push:
+    branches:
+    - master
+    # # only rebuild RustDoc when source code has changed
+    # paths:
+    #   - /**/src/**
+
+jobs:
+  publish_doc:
+    runs-on: ubuntu-latest
+    steps:
+    # check out the repo
+    - uses: actions/checkout@v1
+    # This step references the directory that contains the action.
+    - name: build docs
+      run: cargo doc --all
+    - name: publish
+      uses: maxheld83/ghpages@v0.2.1
+      env:
+        BUILD_DIR=target/doc
+
+
