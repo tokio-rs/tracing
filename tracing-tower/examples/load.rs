@@ -51,6 +51,8 @@ fn main() {
     let server = serve(MakeSvc, &addr, "serve")
         .join(admin)
         .join(load_gen(&addr))
+        .join(load_gen(&addr))
+        .join(load_gen(&addr))
         .map(|_| ())
         .map_err(|_| ());
 
@@ -81,12 +83,10 @@ where
         let span = tracing::debug_span!(
             "request",
             req.method = ?req.method(),
-            req.uri = ?req.uri(),
-            req.version = ?req.version(),
             req.path = ?req.uri().path(),
         );
         span.in_scope(|| {
-            tracing::debug!(message = "received request.", req.headers = ?req.headers());
+            tracing::debug!(message = "received request.", req.headers = ?req.headers(), req.version = ?req.version());
         });
         span
     };
@@ -340,7 +340,8 @@ impl std::error::Error for WrongMethod {}
 
 fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send + 'static> {
     use rand::Rng;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
+    use tokio::timer;
     use tokio_buf::util::BufStreamExt;
     use tower::ServiceExt;
     use tower_http_util::body::BodyExt;
@@ -355,7 +356,11 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
             .timeout(Duration::from_secs(5))
             .service(hyper);
 
-        tokio::timer::Interval::new_interval(Duration::from_millis(50))
+        timer::Interval::new_interval(Duration::from_millis(50))
+            .and_then(|_| {
+                let sleep = rand::thread_rng().gen_range(0, 25);
+                timer::Delay::new(Instant::now() + Duration::from_millis(sleep)).map_err(Into::into)
+            })
             .fold((svc, authority), |(svc, authority), _| {
                 let mut rng = rand::thread_rng();
                 let idx = rng.gen_range(0, ALPHABET.len()+1);
