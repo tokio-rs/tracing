@@ -4,7 +4,7 @@
 //! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 use std::{fmt, io};
 use tracing_core::{
-    field::{Field, Visit},
+    field::Visit,
     span::{Attributes, Record},
     Event,
 };
@@ -92,18 +92,8 @@ where
     Self: MakeVisitor<T> + crate::sealed::Sealed<(T, Out)>,
     Self::Visitor: VisitOutput<Out>,
 {
-    // fn delimited<D>(&self, delimiter: D) -> Delimited<D, Self>
-    // where
-    //     Self: Clone + Sized,
-    //     VisitDelimited<D, Self::Visitor>: Visit,
-    //     D: Clone,
-    // {
-    //     Delimited {
-    //         delimiter,
-    //         inner: self.clone(),
-    //     }
-    // }
-
+    /// Visits all fields in `fields` with a new visitor constructed from
+    /// `target`.
     fn visit_with<F>(&self, target: T, fields: &F) -> Out
     where
         F: RecordFields,
@@ -112,10 +102,13 @@ where
     }
 }
 
+/// Extension trait implemented by visitors to indicate that they write to an
+/// `io::Write` instance, and allow access to that writer.
 pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
     fn writer(&mut self) -> &mut dyn io::Write;
 }
-
+/// Extension trait implemented by visitors to indicate that they write to a
+/// `fmt::Write` instance, and allow access to that writer.
 pub trait VisitFmt: VisitOutput<fmt::Result> {
     fn writer(&mut self) -> &mut dyn fmt::Write;
 }
@@ -182,7 +175,7 @@ pub(in crate::field) mod test_util {
     use tracing_core::{
         callsite::Callsite,
         field::Value,
-        metadata::{self, Kind, Level, Metadata},
+        metadata::{Kind, Level, Metadata},
     };
 
     pub struct TestAttrs1;

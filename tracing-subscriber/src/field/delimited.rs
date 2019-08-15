@@ -3,12 +3,16 @@ use super::{MakeVisitor, VisitFmt, VisitOutput};
 use std::fmt;
 use tracing_core::field::{Field, Visit};
 
+/// A `MakeVisitor` wrapper that wraps a visitor that writes formatted output so
+/// that a delimiter is inserted between writing formatted field values.
 #[derive(Debug, Clone)]
 pub struct Delimited<D, V> {
     delimiter: D,
     inner: V,
 }
 
+/// A visitor wrapper that inserts a delimiter after the wrapped visitor formats
+/// a field value.
 #[derive(Debug)]
 pub struct VisitDelimited<D, V> {
     delimiter: D,
