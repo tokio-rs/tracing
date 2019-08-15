@@ -121,11 +121,11 @@ pub struct Iter {
 /// to be printed or stored in some other data structure.
 ///
 /// The `Visit` trait provides default implementations for `record_i64`,
-/// `record_u64`, `record_bool`, and `record_str` which simply forward the
-/// recorded value to `record_debug`. Thus, `record_debug` is the only method
-/// which a `Visit` implementation *must* implement. However, visitors may
-/// override the default implementations of these functions in order to
-/// implement type-specific behavior.
+/// `record_u64`, `record_bool`, `record_str`, and `record_error`, which simply
+/// forward the recorded value to `record_debug`. Thus, `record_debug` is the
+/// only method which a `Visit` implementation *must* implement. However,
+/// visitors may override the default implementations of these functions in
+/// order to implement type-specific behavior.
 ///
 /// Additionally, when a visitor receives a value of a type it does not care
 /// about, it is free to ignore those values completely. For example, a
@@ -162,6 +162,9 @@ pub struct Iter {
 /// `examples/counters.rs`, which demonstrates a very simple metrics system
 /// implemented using `tracing`.
 ///
+/// **Note:** the `record_error` trait method is only available when the Rust
+/// standard library is present, as it requires the `std::error::Error` trait.
+///
 /// [`Value`]: trait.Value.html
 /// [recorded]: trait.Value.html#method.record
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
@@ -188,6 +191,15 @@ pub trait Visit {
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         self.record_debug(field, &value)
+    }
+
+    /// Records a type implementing `Error`.
+    ///
+    /// **Note**: this is only enabled when the Rust standard library is
+    /// present.
+    #[cfg(feature = "std")]
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.record_debug(field, &format_args!("{}", value))
     }
 
     /// Visit a value implementing `fmt::Debug`.
@@ -310,6 +322,16 @@ impl crate::sealed::Sealed for str {}
 impl Value for str {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_str(key, &self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
+
+#[cfg(feature = "std")]
+impl Value for dyn std::error::Error + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_error(key, self)
     }
 }
 
