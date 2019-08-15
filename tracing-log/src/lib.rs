@@ -184,6 +184,7 @@ impl Fields {
 macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
+        static CALLSITE: Callsite = Callsite;
         static META: Metadata = Metadata::new(
             "log event",
             "log",
@@ -191,7 +192,7 @@ macro_rules! log_cs {
             None,
             None,
             None,
-            field::FieldSet::new(FIELD_NAMES, identify_callsite!(&Callsite)),
+            field::FieldSet::new(FIELD_NAMES, identify_callsite!(&CALLSITE)),
             Kind::EVENT,
         );
 
@@ -202,7 +203,7 @@ macro_rules! log_cs {
             }
         }
 
-        &Callsite
+        &CALLSITE
     }};
 }
 
@@ -407,16 +408,38 @@ mod test {
         let meta = record.as_trace();
         let (cs, _keys) = loglevel_to_cs(record.level());
         let cs_meta = cs.metadata();
-        assert_eq!(meta.callsite(), cs_meta.callsite());
+        assert_eq!(
+            meta.callsite(),
+            cs_meta.callsite(),
+            "actual: {:#?}\nexpected: {:#?}",
+            meta,
+            cs_meta
+        );
         assert_eq!(meta.level(), &level.as_trace());
     }
 
     #[test]
-    fn log_callsite_is_correct() {
+    fn error_callsite_is_correct() {
         test_callsite(log::Level::Error);
+    }
+
+    #[test]
+    fn warn_callsite_is_correct() {
         test_callsite(log::Level::Warn);
+    }
+
+    #[test]
+    fn info_callsite_is_correct() {
         test_callsite(log::Level::Info);
+    }
+
+    #[test]
+    fn debug_callsite_is_correct() {
         test_callsite(log::Level::Debug);
+    }
+
+    #[test]
+    fn trace_callsite_is_correct() {
         test_callsite(log::Level::Trace);
     }
 }
