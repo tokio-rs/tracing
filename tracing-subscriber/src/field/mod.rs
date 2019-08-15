@@ -4,7 +4,7 @@
 //! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 use std::{fmt, io};
 use tracing_core::{
-    field::Visit,
+    field::{Field, Visit},
     span::{Attributes, Record},
     Event,
 };

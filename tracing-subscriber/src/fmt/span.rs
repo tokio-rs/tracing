@@ -20,7 +20,7 @@ pub struct Span<'a> {
 #[derive(Debug)]
 pub struct Context<'a, N> {
     store: &'a Store,
-    new_visitor: &'a N,
+    make_visitor: &'a N,
 }
 
 /// Stores data associated with currently-active spans.
@@ -244,21 +244,18 @@ impl<'a, N> Context<'a, N> {
             .ok()?
     }
 
-    pub(crate) fn new(store: &'a Store, new_visitor: &'a N) -> Self {
-        Self { store, new_visitor }
+    pub(crate) fn new(store: &'a Store, make_visitor: &'a N) -> Self {
+        Self {
+            store,
+            make_visitor,
+        }
     }
 
-    /// Returns a new visitor that formats span fields to the provided writer.
-    /// The visitor configuration is provided by the subscriber.
-    pub fn new_visitor<'writer>(
-        &self,
-        writer: &'writer mut dyn fmt::Write,
-        is_empty: bool,
-    ) -> N::Visitor
+    pub fn make_visitor<'writer>(&self, writer: &'writer mut dyn fmt::Write) -> N::Visitor
     where
-        N: super::NewVisitor<'writer>,
+        N: crate::field::MakeVisitor<&'writer mut dyn fmt::Write>,
     {
-        self.new_visitor.make(writer, is_empty)
+        self.make_visitor.make_visitor(writer)
     }
 }
 
@@ -311,9 +308,9 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub(crate) fn new_span<N>(&self, attrs: &Attributes<'_>, new_visitor: &N) -> Id
+    pub fn new_span<N>(&self, attrs: &Attributes<'_>, make_visitor: &N) -> Id
     where
-        N: for<'a> super::NewVisitor<'a>,
+        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
     {
         let mut span = Some(Data::new(attrs, self));
 
@@ -343,7 +340,7 @@ impl Store {
                             // Is our snapshot still valid?
                             if self.next.compare_and_swap(head, next, Ordering::Release) == head {
                                 // We can finally fill the slot!
-                                slot.fill(span.take().unwrap(), attrs, new_visitor);
+                                slot.fill(span.take().unwrap(), attrs, make_visitor);
                                 return idx_to_id(head);
                             }
                         }
@@ -360,7 +357,7 @@ impl Store {
                 let len = this.slab.len();
 
                 // Insert the span into a new slot.
-                let slot = Slot::new(span.take().unwrap(), attrs, new_visitor);
+                let slot = Slot::new(span.take().unwrap(), attrs, make_visitor);
                 this.slab.push(RwLock::new(slot));
                 // TODO: can we grow the slab in chunks to avoid having to
                 // realloc as often?
@@ -390,7 +387,7 @@ impl Store {
     #[inline]
     pub(crate) fn record<N>(&self, id: &Id, fields: &Record<'_>, new_recorder: &N)
     where
-        N: for<'a> super::NewVisitor<'a>,
+        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
     {
         let slab = try_lock!(self.inner.read(), else return);
         let slot = slab.write_slot(id_to_idx(id));
@@ -481,13 +478,13 @@ impl Drop for Data {
 }
 
 impl Slot {
-    fn new<N>(mut data: Data, attrs: &Attributes<'_>, new_visitor: &N) -> Self
+    fn new<N>(mut data: Data, attrs: &Attributes<'_>, make_visitor: &N) -> Self
     where
-        N: for<'a> super::NewVisitor<'a>,
+        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
     {
         let mut fields = String::new();
         {
-            let mut recorder = new_visitor.make(&mut fields, true);
+            let mut recorder = make_visitor.make_visitor(&mut fields);
             attrs.record(&mut recorder);
         }
         if fields.is_empty() {
@@ -506,13 +503,13 @@ impl Slot {
         }
     }
 
-    fn fill<N>(&mut self, mut data: Data, attrs: &Attributes<'_>, new_visitor: &N) -> usize
+    fn fill<N>(&mut self, mut data: Data, attrs: &Attributes<'_>, make_visitor: &N) -> usize
     where
-        N: for<'a> super::NewVisitor<'a>,
+        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
     {
         let fields = &mut self.fields;
         {
-            let mut recorder = new_visitor.make(fields, true);
+            let mut recorder = make_visitor.make_visitor(fields);
             attrs.record(&mut recorder);
         }
         if fields.is_empty() {
@@ -524,9 +521,9 @@ impl Slot {
         }
     }
 
-    fn record<N>(&mut self, fields: &Record<'_>, new_visitor: &N)
+    fn record<N>(&mut self, fields: &Record<'_>, make_visitor: &N)
     where
-        N: for<'a> super::NewVisitor<'a>,
+        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
     {
         let state = &mut self.span;
         let buf = &mut self.fields;
@@ -534,7 +531,7 @@ impl Slot {
             State::Empty(_) => return,
             State::Full(ref mut data) => {
                 {
-                    let mut recorder = new_visitor.make(buf, data.is_empty);
+                    let mut recorder = make_visitor.make_visitor(buf);
                     fields.record(&mut recorder);
                 }
                 if buf.is_empty() {

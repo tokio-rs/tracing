@@ -10,9 +10,9 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-use tracing_core::{field, subscriber::Interest, Event, Metadata};
-
 use std::{any::TypeId, cell::RefCell, fmt, io};
+use tracing_core::{subscriber::Interest, Event, Metadata};
+
 pub mod format;
 mod span;
 pub mod time;
@@ -23,6 +23,7 @@ use crate::layer::{self, Layer};
 
 #[doc(inline)]
 pub use self::{format::FormatEvent, span::Context, writer::MakeWriter};
+use crate::field::MakeVisitor;
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 ///
@@ -177,7 +178,7 @@ where
 // === impl Formatter ===
 impl<N, E, W> Formatter<N, E, W>
 where
-    N: for<'a> NewVisitor<'a>,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write>,
 {
     #[inline]
     fn ctx(&self) -> span::Context<'_, N> {
@@ -187,7 +188,7 @@ where
 
 impl<N, E, W> tracing_core::Subscriber for Formatter<N, E, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
 {
@@ -281,28 +282,6 @@ where
     }
 }
 
-/// A type that can construct a new field visitor for formatting the fields on a
-/// span or event.
-pub trait NewVisitor<'a> {
-    /// The type of the returned `Visitor`.
-    type Visitor: field::Visit + 'a;
-    /// Returns a new `Visitor` that writes to the provided `writer`.
-    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor;
-}
-
-impl<'a, F, R> NewVisitor<'a> for F
-where
-    F: Fn(&'a mut dyn fmt::Write, bool) -> R,
-    R: field::Visit + 'a,
-{
-    type Visitor = R;
-
-    #[inline]
-    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor {
-        (self)(writer, is_empty)
-    }
-}
-
 // ===== impl Builder =====
 
 impl Default for Builder {
@@ -319,7 +298,7 @@ impl Default for Builder {
 
 impl<N, E, F, W> Builder<N, E, F, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
     F: Layer<Formatter<N, E, W>> + 'static,
@@ -341,7 +320,7 @@ where
 
 impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
 {
     /// Use the given `timer` for log message timestamps.
     pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F, W> {
@@ -421,7 +400,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// fields.
     pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F, W>
     where
-        N2: for<'a> NewVisitor<'a> + 'static,
+        N2: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     {
         Builder {
             new_visitor,
@@ -572,7 +551,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// See [`format::Compact`].
     pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F, W>
     where
-        N: for<'a> NewVisitor<'a> + 'static,
+        N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     {
         Builder {
             fmt_event: format::Format::default().compact(),
