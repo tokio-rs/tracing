@@ -6,7 +6,7 @@ use tracing_subscriber::{filter::Filter, prelude::*};
 #[test]
 fn level_filter_event() {
     let filter: Filter = "info".parse().expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::test()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::ERROR))
@@ -28,7 +28,7 @@ fn level_filter_event() {
 #[test]
 fn level_filter_event_with_target() {
     let filter: Filter = "info,stuff=debug".parse().expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::test()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
         .event(event::mock().at_level(Level::WARN).with_target("stuff"))
@@ -57,7 +57,7 @@ fn span_name_filter_is_dynamic() {
     let filter: Filter = "info,[cool_span]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::test()
         .event(event::mock().at_level(Level::INFO))
         .enter(span::mock().named("cool_span"))
         .event(event::mock().at_level(Level::DEBUG))
@@ -101,7 +101,7 @@ fn span_name_filter_is_dynamic() {
 #[test]
 fn field_filter_events() {
     let filter: Filter = "[{thing}]=debug".parse().expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::test()
         .event(
             event::mock()
                 .at_level(Level::INFO)

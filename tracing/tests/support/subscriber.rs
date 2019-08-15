@@ -43,21 +43,21 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
     filter: F,
 }
 
-pub struct MockSubscriber<F: Fn(&Metadata<'_>) -> bool> {
+pub struct SubscriberTest<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
     filter: F,
 }
 
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>);
 
-pub fn mock() -> MockSubscriber<fn(&Metadata<'_>) -> bool> {
-    MockSubscriber {
+pub fn test() -> SubscriberTest<fn(&Metadata<'_>) -> bool> {
+    SubscriberTest {
         expected: VecDeque::new(),
         filter: (|_: &Metadata<'_>| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
     }
 }
 
-impl<F> MockSubscriber<F>
+impl<F> SubscriberTest<F>
 where
     F: Fn(&Metadata<'_>) -> bool + 'static,
 {
@@ -108,11 +108,11 @@ where
         self
     }
 
-    pub fn with_filter<G>(self, filter: G) -> MockSubscriber<G>
+    pub fn with_filter<G>(self, filter: G) -> SubscriberTest<G>
     where
         G: Fn(&Metadata<'_>) -> bool + 'static,
     {
-        MockSubscriber {
+        SubscriberTest {
             filter,
             expected: self.expected,
         }
