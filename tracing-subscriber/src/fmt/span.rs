@@ -11,6 +11,8 @@ use std::collections::HashSet;
 pub(crate) use tracing_core::span::{Attributes, Current, Id, Record};
 use tracing_core::{dispatcher, Metadata};
 
+use crate::format::FormatFields;
+
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
@@ -18,9 +20,9 @@ pub struct Span<'a> {
 /// Represents the `Subscriber`'s view of the current span context to a
 /// formatter.
 #[derive(Debug)]
-pub struct Context<'a, N> {
+pub struct Context<'a, F> {
     store: &'a Store,
-    make_visitor: &'a N,
+    fmt_fields: &'a F,
 }
 
 /// Stores data associated with currently-active spans.
@@ -190,7 +192,7 @@ impl<'a> fmt::Debug for Span<'a> {
 
 // ===== impl Context =====
 
-impl<'a, N> Context<'a, N> {
+impl<'a, F> Context<'a, F> {
     /// Applies a function to each span in the current trace context.
     ///
     /// The function is applied in order, beginning with the root of the trace,
@@ -201,9 +203,9 @@ impl<'a, N> Context<'a, N> {
     ///
     /// Note that if we are currently unwinding, this will do nothing, rather
     /// than potentially causing a double panic.
-    pub fn visit_spans<F, E>(&self, mut f: F) -> Result<(), E>
+    pub fn visit_spans<N, E>(&self, mut f: N) -> Result<(), E>
     where
-        F: FnMut(&Id, Span<'_>) -> Result<(), E>,
+        N: FnMut(&Id, Span<'_>) -> Result<(), E>,
     {
         CONTEXT
             .try_with(|current| {
@@ -225,7 +227,7 @@ impl<'a, N> Context<'a, N> {
     /// Executes a closure with the reference to the current span.
     pub fn with_current<F, R>(&self, f: F) -> Option<R>
     where
-        F: FnOnce((&Id, Span<'_>)) -> R,
+        N: FnOnce((&Id, Span<'_>)) -> R,
     {
         // If the lock is poisoned or the thread local has already been
         // destroyed, we might be in the middle of unwinding, so this
@@ -244,18 +246,21 @@ impl<'a, N> Context<'a, N> {
             .ok()?
     }
 
-    pub(crate) fn new(store: &'a Store, make_visitor: &'a N) -> Self {
-        Self {
-            store,
-            make_visitor,
-        }
+    pub(crate) fn new(store: &'a Store, fmt_fields: &'a F) -> Self {
+        Self { store, fmt_fields }
     }
+}
 
-    pub fn make_visitor<'writer>(&self, writer: &'writer mut dyn fmt::Write) -> N::Visitor
+impl<'ctx, 'writer, F> FormatFields<'writer> for Context<'ctx, F>
+where
+    F: FormatFields<'writer>,
+{
+    #[inline]
+    fn format_fields<R>(&self, writer: &'writer mut dyn fmt::Write, fields: R) -> fmt::Result
     where
-        N: crate::field::MakeVisitor<&'writer mut dyn fmt::Write>,
+        R: crate::field::RecordFields,
     {
-        self.make_visitor.make_visitor(writer)
+        self.fmt_fields.format_fields(writer, fields)
     }
 }
 
@@ -308,9 +313,9 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&self, attrs: &Attributes<'_>, make_visitor: &N) -> Id
+    pub fn new_span<F>(&self, attrs: &Attributes<'_>, fmt_fields: &F) -> Id
     where
-        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
+        F: for<'writer> FormatFields<'writer>,
     {
         let mut span = Some(Data::new(attrs, self));
 
@@ -340,7 +345,7 @@ impl Store {
                             // Is our snapshot still valid?
                             if self.next.compare_and_swap(head, next, Ordering::Release) == head {
                                 // We can finally fill the slot!
-                                slot.fill(span.take().unwrap(), attrs, make_visitor);
+                                slot.fill(span.take().unwrap(), attrs, fmt_fields);
                                 return idx_to_id(head);
                             }
                         }
@@ -357,7 +362,7 @@ impl Store {
                 let len = this.slab.len();
 
                 // Insert the span into a new slot.
-                let slot = Slot::new(span.take().unwrap(), attrs, make_visitor);
+                let slot = Slot::new(span.take().unwrap(), attrs, fmt_fields);
                 this.slab.push(RwLock::new(slot));
                 // TODO: can we grow the slab in chunks to avoid having to
                 // realloc as often?
@@ -385,14 +390,14 @@ impl Store {
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub(crate) fn record<N>(&self, id: &Id, fields: &Record<'_>, new_recorder: &N)
+    pub fn record<F>(&self, id: &Id, fields: &Record<'_>, fmt_fields: &F)
     where
-        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
+        F: for<'writer> FormatFields<'writer>,
     {
         let slab = try_lock!(self.inner.read(), else return);
         let slot = slab.write_slot(id_to_idx(id));
         if let Some(mut slot) = slot {
-            slot.record(fields, new_recorder);
+            slot.record(fields, fmt_fields);
         }
     }
 
@@ -478,15 +483,14 @@ impl Drop for Data {
 }
 
 impl Slot {
-    fn new<N>(mut data: Data, attrs: &Attributes<'_>, make_visitor: &N) -> Self
+    fn new<F>(mut data: Data, attrs: &Attributes<'_>, fmt_fields: &F) -> Self
     where
-        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
+        F: for<'writer> FormatFields<'writer>,
     {
         let mut fields = String::new();
-        {
-            let mut recorder = make_visitor.make_visitor(&mut fields);
-            attrs.record(&mut recorder);
-        }
+        fmt_fields
+            .format_fields(&mut fields, attrs)
+            .expect("formatting to string should not fail");
         if fields.is_empty() {
             data.is_empty = false;
         }
@@ -503,15 +507,14 @@ impl Slot {
         }
     }
 
-    fn fill<N>(&mut self, mut data: Data, attrs: &Attributes<'_>, make_visitor: &N) -> usize
+    fn fill<F>(&mut self, mut data: Data, attrs: &Attributes<'_>, fmt_fields: &F) -> usize
     where
-        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
+        F: for<'writer> FormatFields<'writer>,
     {
         let fields = &mut self.fields;
-        {
-            let mut recorder = make_visitor.make_visitor(fields);
-            attrs.record(&mut recorder);
-        }
+        fmt_fields
+            .format_fields(fields, attrs)
+            .expect("formatting to string should not fail");
         if fields.is_empty() {
             data.is_empty = false;
         }
@@ -521,19 +524,18 @@ impl Slot {
         }
     }
 
-    fn record<N>(&mut self, fields: &Record<'_>, make_visitor: &N)
+    fn record<F>(&mut self, fields: &Record<'_>, fmt_fields: &F)
     where
-        N: for<'a> crate::field::MakeVisitor<&'a mut dyn fmt::Write>,
+        F: for<'writer> FormatFields<'writer>,
     {
         let state = &mut self.span;
         let buf = &mut self.fields;
         match state {
             State::Empty(_) => return,
             State::Full(ref mut data) => {
-                {
-                    let mut recorder = make_visitor.make_visitor(buf);
-                    fields.record(&mut recorder);
-                }
+                fmt_fields
+                    .format_fields(buf, fields)
+                    .expect("formatting to string should not fail");
                 if buf.is_empty() {
                     data.is_empty = false;
                 }

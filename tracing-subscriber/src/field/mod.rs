@@ -136,6 +136,16 @@ impl<'a> RecordFields for Record<'a> {
     }
 }
 
+impl<'a, F> crate::sealed::Sealed<RecordFieldsMarker> for &'a F where F: RecordFields {}
+impl<'a, F> RecordFields for &'a F
+where
+    F: RecordFields,
+{
+    fn record(&self, visitor: &mut dyn Visit) {
+        F::record(*self, visitor)
+    }
+}
+
 // === blanket impls ===
 
 impl<T, V, F> MakeVisitor<T> for F
