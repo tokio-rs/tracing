@@ -113,6 +113,20 @@ pub trait VisitFmt: VisitOutput<fmt::Result> {
     fn writer(&mut self) -> &mut dyn fmt::Write;
 }
 
+pub trait MakeFmtExt<T>
+where
+    Self: MakeVisitor<T> + Sized,
+    Self::Visitor: VisitFmt,
+    Self: crate::sealed::Sealed<MakeFmtMarker<T>>,
+{
+    fn delimited<D>(self, delimiter: D) -> delimited::Delimited<D, Self>
+    where
+        D: AsRef<str> + Clone,
+    {
+        delimited::Delimited::new(delimiter, self)
+    }
+}
+
 // === impl RecordFields ===
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
@@ -171,6 +185,26 @@ where
     M: MakeVisitor<T>,
     M::Visitor: VisitOutput<Out>,
 {
+}
+
+impl<T, M> crate::sealed::Sealed<MakeFmtMarker<T>> for M
+where
+    M: MakeVisitor<T> + Sized,
+    M::Visitor: VisitFmt,
+{
+}
+
+impl<T, M> MakeFmtExt<T> for M
+where
+    M: MakeVisitor<T> + Sized,
+    M::Visitor: VisitFmt,
+    M: crate::sealed::Sealed<MakeFmtMarker<T>>,
+{
+}
+
+#[doc(hidden)]
+pub struct MakeFmtMarker<T> {
+    _p: std::marker::PhantomData<T>,
 }
 
 #[doc(hidden)]

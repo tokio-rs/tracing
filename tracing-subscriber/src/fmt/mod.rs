@@ -398,6 +398,24 @@ where
 impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
+    ///
+    /// For example:
+    /// ```rust
+    /// use tracing_fmt::{FmtSubscriber, format};
+    /// use tracing_subscriber::prelude::*;
+    ///
+    /// let formatter =
+    ///     // Construct a custom formatter for `Debug` fields
+    ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
+    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+    ///         // formatter so that a delimiter is added between fields.
+    ///         .delimited(", ");
+    ///
+    /// let subscriber = FmtSubscriber::builder()
+    ///     .fmt_fields(formatter)
+    ///     .finish();
+    /// # drop(subscriber)
+    /// ```
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<N2, E, F>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,

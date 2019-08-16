@@ -4,7 +4,7 @@ use crate::time::{self, FormatTime, SystemTime};
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
 use tracing_core::{
-    field::{self, Field},
+    field::{self, Field, Visit},
     Event, Level,
 };
 #[cfg(feature = "tracing-log")]
@@ -50,6 +50,13 @@ pub trait FormatFields<'writer> {
         writer: &'writer mut dyn fmt::Write,
         fields: R,
     ) -> fmt::Result;
+}
+
+pub fn debug_fn<F>(f: F) -> FieldFn<F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+{
+    FieldFn(f)
 }
 
 #[derive(Debug, Clone)]
@@ -247,19 +254,6 @@ where
 
 // === impl FormatFields ===
 
-impl<'writer, F> FormatFields<'writer> for FieldsFn<F>
-where
-    F: Fn(&'writer mut dyn fmt::Write, &dyn RecordFields) -> fmt::Result,
-{
-    fn format_fields<R: RecordFields>(
-        &self,
-        writer: &'writer mut dyn fmt::Write,
-        fields: R,
-    ) -> fmt::Result {
-        (self.0)(writer, &fields)
-    }
-}
-
 impl<'writer, M> FormatFields<'writer> for M
 where
     M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,
@@ -275,11 +269,6 @@ where
         v.finish()
     }
 }
-
-// === impl FieldsFn ===
-
-pub fn field_fn
-
 
 pub struct DefaultFields;
 
@@ -548,6 +537,52 @@ impl<'a> fmt::Display for FmtLevel<'a> {
     }
 }
 
+impl<'a, F> MakeVisitor<&'a mut dyn fmt::Write> for FieldFn<F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+{
+    type Visitor = FieldFnVisitor<'a, F>;
+
+    fn make_visitor(&self, writer: &'a mut dyn fmt::Write) -> Self::Visitor {
+        FieldFnVisitor {
+            writer,
+            f: self.0.clone(),
+            result: Ok(()),
+        }
+    }
+}
+
+pub struct FieldFnVisitor<'a, F> {
+    f: F,
+    writer: &'a mut dyn fmt::Write,
+    result: fmt::Result,
+}
+
+impl<'a, F> Visit for FieldFnVisitor<'a, F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+{
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        if self.result.is_ok() {
+            self.result = (self.f)(&mut self.writer, field, value)
+        }
+    }
+}
+
+impl<'a, F> VisitOutput<fmt::Result> for FieldFnVisitor<'a, F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+{
+    fn finish(self) -> fmt::Result {
+        self.result
+    }
+}
+impl<'a, F> VisitFmt for FieldFnVisitor<'a, F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+{
+    fn writer(&mut self) -> &mut dyn fmt::Write {
+        &mut *self.writer
 #[cfg(test)]
 mod test {
 
