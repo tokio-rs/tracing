@@ -127,7 +127,7 @@ fn main() {
     let mut foo: u64 = 2;
     span!(Level::TRACE, "my_great_span", foo_count = &foo).in_scope(|| {
         foo += 1;
-        info!({ yak_shaved = true, yak_count = 1 }, "hi from inside my span");
+        info!(yak_shaved = true, yak_count = 1, "hi from inside my span");
         span!(
             Level::TRACE,
             "my other span",
@@ -135,7 +135,7 @@ fn main() {
             baz_count = 5
         )
         .in_scope(|| {
-            warn!({ yak_shaved = false, yak_count = -1 }, "failed to shave yak");
+            warn!(yak_shaved = false, yak_count = -1, "failed to shave yak");
         });
     });
 

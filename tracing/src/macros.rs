@@ -723,6 +723,10 @@ macro_rules! error_span {
 
 /// Constructs a new `Event`.
 ///
+/// The event macro is invoked with a `Level` and up to 32 key-value fields.
+/// Optionally, a format string and arguments may follow the fields; this will
+/// be used to construct an implicit field named "message".
+///
 /// # Examples
 ///
 /// ```rust
@@ -733,18 +737,20 @@ macro_rules! error_span {
 /// let private_data = "private";
 /// let error = "a bad error";
 ///
-/// event!(Level::ERROR, %error, message = "Received error");
-/// event!(target: "app_events", Level::WARN, {
-///         private_data,
-///         ?data,
-///     },
-///     "App warning: {}", error
+/// event!(Level::ERROR, %error, "Received error");
+/// event!(
+///     target: "app_events",
+///     Level::WARN,
+///     private_data,
+///     ?data,
+///     "App warning: {}",
+///     error
 /// );
 /// event!(Level::INFO, the_answer = data.0);
 /// # }
 /// ```
 ///
-/// Note that *unlike `$crate::span!`*, `$crate::event!` requires a value for all fields. As
+/// Note that *unlike `span!`*, `event!` requires a value for all fields. As
 /// events are recorded immediately when the macro is invoked, there is no
 /// opportunity for fields to be recorded later. A trailing comma on the final
 /// field is valid.
@@ -755,7 +761,7 @@ macro_rules! error_span {
 /// # extern crate tracing;
 /// # use tracing::Level;
 /// # fn main() {
-/// event!(Level::Info, foo = 5, bad_field, bar = "hello")
+/// event!(Level::INFO, foo = 5, bad_field, bar = "hello")
 /// #}
 /// ```
 /// Shorthand for `field::debug`:
@@ -1043,11 +1049,13 @@ macro_rules! event {
 /// let origin_dist = pos.dist(Position::ORIGIN);
 ///
 /// trace!(position = ?pos, ?origin_dist);
-/// trace!(target: "app_events",
-///         { position = ?pos },
-///         "x is {} and y is {}",
-///        if pos.x >= 0.0 { "positive" } else { "negative" },
-///        if pos.y >= 0.0 { "positive" } else { "negative" });
+/// trace!(
+///     target: "app_events",
+///     position = ?pos,
+///     "x is {} and y is {}",
+///     if pos.x >= 0.0 { "positive" } else { "negative" },
+///     if pos.y >= 0.0 { "positive" } else { "negative" }
+/// );
 /// # }
 /// ```
 #[macro_export]
@@ -1231,7 +1239,7 @@ macro_rules! trace {
 /// let pos = Position { x: 3.234, y: -1.223 };
 ///
 /// debug!(?pos.x, ?pos.y);
-/// debug!(target: "app_events", { position = ?pos }, "New position");
+/// debug!(target: "app_events", position = ?pos, "New position");
 /// # }
 /// ```
 #[macro_export]
@@ -1434,7 +1442,7 @@ macro_rules! debug {
 /// let addr = Ipv4Addr::new(127, 0, 0, 1);
 /// let conn = Connection { port: 40, speed: 3.20 };
 ///
-/// info!({ conn.port }, "connected to {:?}", addr);
+/// info!(conn.port, "connected to {:?}", addr);
 /// info!(
 ///     target: "connection_events",
 ///     ip = ?addr,
@@ -1640,7 +1648,7 @@ macro_rules! info {
 /// warn!(?input, warning = warn_description);
 /// warn!(
 ///     target: "input_events",
-///     { warning = warn_description },
+///     warning = warn_description,
 ///     "Received warning for input: {:?}", input,
 /// );
 /// # }

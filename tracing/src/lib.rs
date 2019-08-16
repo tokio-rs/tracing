@@ -171,7 +171,7 @@
 //!                 // We can add the razor as a field rather than formatting it
 //!                 // as part of the message, allowing subscribers to consume it
 //!                 // in a more structured manner:
-//!                 info!({ %razor }, "Razor located");
+//!                 info!(%razor, "Razor located");
 //!                 yak.shave(razor);
 //!                 break;
 //!             }
