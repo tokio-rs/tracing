@@ -46,8 +46,10 @@ fn main() {
     let formatter =
         // Construct a custom formatter for `Debug` fields
         format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
-            // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
-            // formatter so that a delimiter is added between fields.
+            // Use `tracing-subscriber`'s extension traits to add delimiters
+            // between fields, and ensure that fields named "message" are
+            // formatted using fmt::Display.
+            .display_messages()
             .delimited(", ");
 
     let subscriber = tracing_fmt::FmtSubscriber::builder()

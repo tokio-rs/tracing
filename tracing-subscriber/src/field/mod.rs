@@ -3,13 +3,13 @@
 //! [field]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
 //! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 use std::{fmt, io};
+pub use tracing_core::field::Visit;
 use tracing_core::{
-    field::{Field, Visit},
     span::{Attributes, Record},
     Event,
 };
-
 pub mod delimited;
+pub mod display;
 
 /// Creates new [visitors].
 ///
@@ -112,16 +112,20 @@ pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
 pub trait VisitFmt: VisitOutput<fmt::Result> {
     fn writer(&mut self) -> &mut dyn fmt::Write;
 }
-
-pub trait MakeFmtExt<T>
+/// Extension trait providing `MakeVisitor` combinators.
+pub trait MakeExt<T>
 where
     Self: MakeVisitor<T> + Sized,
-    Self::Visitor: VisitFmt,
-    Self: crate::sealed::Sealed<MakeFmtMarker<T>>,
+    Self: crate::sealed::Sealed<MakeExtMarker<T>>,
 {
+    fn display_messages(self) -> display::Messages<Self> {
+        display::Messages::new(self)
+    }
+
     fn delimited<D>(self, delimiter: D) -> delimited::Delimited<D, Self>
     where
         D: AsRef<str> + Clone,
+        Self::Visitor: VisitFmt,
     {
         delimited::Delimited::new(delimiter, self)
     }
@@ -187,23 +191,17 @@ where
 {
 }
 
-impl<T, M> crate::sealed::Sealed<MakeFmtMarker<T>> for M
-where
-    M: MakeVisitor<T> + Sized,
-    M::Visitor: VisitFmt,
-{
-}
+impl<T, M> crate::sealed::Sealed<MakeExtMarker<T>> for M where M: MakeVisitor<T> + Sized {}
 
-impl<T, M> MakeFmtExt<T> for M
+impl<T, M> MakeExt<T> for M
 where
     M: MakeVisitor<T> + Sized,
-    M::Visitor: VisitFmt,
-    M: crate::sealed::Sealed<MakeFmtMarker<T>>,
+    M: crate::sealed::Sealed<MakeExtMarker<T>>,
 {
 }
 
 #[doc(hidden)]
-pub struct MakeFmtMarker<T> {
+pub struct MakeExtMarker<T> {
     _p: std::marker::PhantomData<T>,
 }
 

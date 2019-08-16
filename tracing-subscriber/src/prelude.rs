@@ -4,7 +4,7 @@
 //! types defined here and in other crates.
 
 pub use crate::field::{
-    MakeFmtExt as __tracing_subscriber_field_RecordFieldsExt,
+    MakeExt as __tracing_subscriber_field_MakeExt,
     RecordFields as __tracing_subscriber_field_RecordFields,
 };
 pub use crate::layer::{
