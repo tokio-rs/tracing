@@ -1,3 +1,10 @@
+# 0.1.5 (August 16, 2019)
+
+### Added
+
+- `std::error::Error` as a new primitive `Value` type (#277)
+- `Event::new` and `Event::new_child_of` to manually construct `Event`s (#281)
+
 # 0.1.4 (August 9, 2019)
 
 ### Added
