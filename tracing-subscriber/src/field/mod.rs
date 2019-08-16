@@ -216,7 +216,7 @@ pub(in crate::field) mod test_util {
     use super::*;
     use tracing_core::{
         callsite::Callsite,
-        field::Value,
+        field::{Field, Value},
         metadata::{Kind, Level, Metadata},
     };
 

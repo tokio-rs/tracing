@@ -126,7 +126,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::field::{test_util::*, MakeOutput};
+    use crate::field::test_util::*;
 
     #[test]
     fn delimited_visitor() {
