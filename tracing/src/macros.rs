@@ -2131,7 +2131,7 @@ macro_rules! is_enabled {
 macro_rules! valueset {
 
     // === base case ===
-    (@ { $(,)* $($val:expr),* }, $next:expr, $(,)*) => {
+    (@ { $(,)* $($val:expr),* $(,)* }, $next:expr $(,)*) => {
         &[ $($val),* ]
     };
 
@@ -2184,6 +2184,42 @@ macro_rules! valueset {
             $($rest)*
         )
     };
+    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = ?$val:expr) => {
+        $crate::valueset!(
+            @ { $($out),+, (&$next, Some(&debug(&$val) as &Value)) },
+            $next,
+        )
+    };
+    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = %$val:expr) => {
+        $crate::valueset!(
+            @ { $($out),+, (&$next, Some(&display(&$val) as &Value)) },
+            $next,
+        )
+    };
+    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = $val:expr) => {
+        $crate::valueset!(
+            @ { $($out),+, (&$next, Some(&$val as &Value)) },
+            $next,
+        )
+    };
+    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+) => {
+        $crate::valueset!(
+            @ { $($out),+, (&$next, Some(&$($k).+ as &Value)) },
+            $next,
+        )
+    };
+    (@ { $($out:expr),+ }, $next:expr, ?$($k:ident).+) => {
+        $crate::valueset!(
+            @ { $($out),+, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            $next,
+        )
+    };
+    (@ { $($out:expr),+ }, $next:expr, %$($k:ident).+) => {
+        $crate::valueset!(
+            @ { $($out),+, (&$next, Some(&display(&$($k).+) as &Value)) },
+            $next,
+        )
+    };
 
     // == recursive case (more tts), empty out set ===
 
@@ -2210,10 +2246,29 @@ macro_rules! valueset {
     (@ { }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(@ { (&$next, Some(&display(&$($k).+) as &Value)) }, $next, $($rest)* )
     };
+    // no trailing comma
+    (@ { }, $next:expr, $($k:ident).+ = ?$val:expr) => {
+        $crate::valueset!(@ { (&$next, Some(&debug(&$val) as &Value)) }, $next )
+    };
+    (@ { }, $next:expr, $($k:ident).+ = %$val:expr) => {
+        $crate::valueset!(@ { (&$next, Some(&display(&$val) as &Value)) }, $next)
+    };
+    (@ { }, $next:expr, $($k:ident).+ = $val:expr) => {
+        $crate::valueset!(@ { (&$next, Some(&$val as &Value)) }, $next)
+    };
+    (@ { }, $next:expr, $($k:ident).+) => {
+        $crate::valueset!(@ { (&$next, Some(&$($k).+ as &Value)) }, $next)
+    };
+    (@ { }, $next:expr, ?$($k:ident).+) => {
+        $crate::valueset!(@ { (&$next, Some(&debug(&$($k).+) as &Value)) }, $next)
+    };
+    (@ { }, $next:expr, %$($k:ident).+) => {
+        $crate::valueset!(@ { (&$next, Some(&display(&$($k).+) as &Value)) }, $next)
+    };
 
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $($out:expr),* }, $next:expr, $($rest:tt)+) => {
-        $crate::valueset!(@ { $($out),+, (&$next, Some(&format_args!($($rest)+) as &Value)) }, $next, )
+        $crate::valueset!(@ { $($out),*, (&$next, Some(&format_args!($($rest)+) as &Value)) }, $next, )
     };
 
     // === entry ===
@@ -2225,7 +2280,7 @@ macro_rules! valueset {
             $fields.value_set($crate::valueset!(
                 @ { },
                 iter.next().expect("FieldSet corrupted (this is a bug)"),
-                $($kvs)+,
+                $($kvs)+
             ))
         }
     };
