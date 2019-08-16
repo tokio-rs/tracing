@@ -147,7 +147,7 @@ macro_rules! identify_callsite {
 ///
 /// [metadata]: metadata/struct.Metadata.html
 /// [`Metadata::new`]: metadata/struct.Metadata.html#method.new
-#[macro_export(local_inner_macros)]
+#[macro_export]
 macro_rules! metadata {
     (
         name: $name:expr,
@@ -178,36 +178,12 @@ macro_rules! metadata {
             $name,
             $target,
             $level,
-            Some(__tracing_core_file!()),
-            Some(__tracing_core_line!()),
-            Some(__tracing_core_module_path!()),
-            $crate::field::FieldSet::new($fields, identify_callsite!($callsite)),
+            Some(file!()),
+            Some(line!()),
+            Some(module_path!()),
+            $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
             $kind,
         )
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __tracing_core_module_path {
-    () => {
-        module_path!()
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __tracing_core_file {
-    () => {
-        file!()
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __tracing_core_line {
-    () => {
-        line!()
     };
 }
 
