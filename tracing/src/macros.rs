@@ -2123,7 +2123,7 @@ macro_rules! is_enabled {
 macro_rules! valueset {
 
     // === base case ===
-    (@ { $($val:expr),* }, $next:expr, $(,)*) => {
+    (@ { $(,)* $($val:expr),* }, $next:expr, $(,)*) => {
         &[ $($val),* ]
     };
 
@@ -2203,6 +2203,11 @@ macro_rules! valueset {
         $crate::valueset!(@ { (&$next, Some(&display(&$($k).+) as &Value)) }, $next, $($rest)* )
     };
 
+    // Remainder is unparseable, but exists --- must be format args!
+    (@ { $($out:expr),* }, $next:expr, $($rest:tt)+) => {
+        $crate::valueset!(@ { $($out),+, (&$next, Some(&format_args!($($rest)+) as &Value)) }, $next, )
+    };
+
     // === entry ===
     ($fields:expr, $($kvs:tt)+) => {
         {
@@ -2227,7 +2232,7 @@ macro_rules! valueset {
 #[macro_export]
 macro_rules! fieldset {
     // == base case ==
-    (@ { $($out:expr),* $(,)* } $(,)*) => {
+    (@ { $(,)* $($out:expr),* $(,)* } $(,)*) => {
         &[ $($out),* ]
     };
 
@@ -2280,6 +2285,11 @@ macro_rules! fieldset {
     };
     (@ { $($out:expr),+ } $($k:ident).+, $($rest:tt)*) => {
         $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    };
+
+    // Remainder is unparseable, but exists --- must be format args!
+    (@ { $($out:expr),* } $($rest:tt)+) => {
+        $crate::fieldset!(@ { $($out),*, "message" })
     };
 
     // == entry ==
