@@ -8,6 +8,7 @@ use tracing_core::{
     span::{Attributes, Record},
     Event,
 };
+pub mod debug;
 pub mod delimited;
 pub mod display;
 
@@ -118,6 +119,10 @@ where
     Self: MakeVisitor<T> + Sized,
     Self: crate::sealed::Sealed<MakeExtMarker<T>>,
 {
+    fn debug_alt(self) -> debug::Alt<Self> {
+        debug::Alt::new(self)
+    }
+
     fn display_messages(self) -> display::Messages<Self> {
         display::Messages::new(self)
     }
