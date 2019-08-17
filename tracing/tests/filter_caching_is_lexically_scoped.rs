@@ -32,7 +32,7 @@ fn filter_caching_is_lexically_scoped() {
     let count = Arc::new(AtomicUsize::new(0));
     let count2 = count.clone();
 
-    let subscriber = subscriber::test()
+    let subscriber = subscriber::SubscriberTest::new()
         .with_filter(move |meta| match meta.name() {
             "emily" | "frank" => {
                 count2.fetch_add(1, Ordering::Relaxed);

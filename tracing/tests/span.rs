@@ -21,7 +21,7 @@ fn handles_to_the_same_span_are_equal() {
     // `Subscriber::enabled`, so that the spans will be constructed. We
     // won't enter any spans in this test, so the subscriber won't actually
     // expect to see any spans.
-    with_default(subscriber::test().run(), || {
+    with_default(subscriber::SubscriberTest::new().run(), || {
         let foo1 = span!(Level::TRACE, "foo");
         let foo2 = foo1.clone();
         // Two handles that point to the same span are equal.
@@ -31,7 +31,7 @@ fn handles_to_the_same_span_are_equal() {
 
 #[test]
 fn handles_to_different_spans_are_not_equal() {
-    with_default(subscriber::test().run(), || {
+    with_default(subscriber::SubscriberTest::new().run(), || {
         // Even though these spans have the same name and fields, they will have
         // differing metadata, since they were created on different lines.
         let foo1 = span!(Level::TRACE, "foo", bar = 1u64, baz = false);
@@ -49,7 +49,7 @@ fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
         span!(Level::TRACE, "foo", bar = 1u64, baz = false)
     }
 
-    with_default(subscriber::test().run(), || {
+    with_default(subscriber::SubscriberTest::new().run(), || {
         let foo1 = make_span();
         let foo2 = make_span();
 
@@ -60,7 +60,7 @@ fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
 
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them() {
-    let subscriber1 = subscriber::test()
+    let subscriber1 = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
         .enter(span::mock().named("foo"))
@@ -68,7 +68,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them() {
         .drop_span(span::mock().named("foo"))
         .done()
         .run();
-    let subscriber2 = subscriber::test().run();
+    let subscriber2 = subscriber::SubscriberTest::new().run();
 
     let foo = with_default(subscriber1, || {
         let foo = span!(Level::TRACE, "foo");
@@ -82,7 +82,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them() {
 
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
-    let subscriber1 = subscriber::test()
+    let subscriber1 = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
         .enter(span::mock().named("foo"))
@@ -99,7 +99,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
     // Even though we enter subscriber 2's context, the subscriber that
     // tagged the span should see the enter/exit.
     thread::spawn(move || {
-        with_default(subscriber::test().run(), || {
+        with_default(subscriber::SubscriberTest::new().run(), || {
             foo.in_scope(|| {});
         })
     })
@@ -109,7 +109,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
 
 #[test]
 fn dropping_a_span_calls_drop_span() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
         .drop_span(span::mock().named("foo"))
@@ -126,7 +126,7 @@ fn dropping_a_span_calls_drop_span() {
 
 #[test]
 fn span_closes_after_event() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .event(event::mock())
         .exit(span::mock().named("foo"))
@@ -144,7 +144,7 @@ fn span_closes_after_event() {
 
 #[test]
 fn new_span_after_event() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .event(event::mock())
         .exit(span::mock().named("foo"))
@@ -166,7 +166,7 @@ fn new_span_after_event() {
 
 #[test]
 fn event_outside_of_span() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .event(event::mock())
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -183,7 +183,7 @@ fn event_outside_of_span() {
 
 #[test]
 fn cloning_a_span_calls_clone_span() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .clone_span(span::mock().named("foo"))
         .run_with_handle();
     with_default(subscriber, || {
@@ -196,7 +196,7 @@ fn cloning_a_span_calls_clone_span() {
 
 #[test]
 fn drop_span_when_exiting_dispatchers_context() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .clone_span(span::mock().named("foo"))
         .drop_span(span::mock().named("foo"))
         .drop_span(span::mock().named("foo"))
@@ -212,7 +212,7 @@ fn drop_span_when_exiting_dispatchers_context() {
 
 #[test]
 fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
-    let (subscriber1, handle1) = subscriber::test()
+    let (subscriber1, handle1) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
         .clone_span(span::mock().named("foo"))
@@ -221,7 +221,7 @@ fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
         .drop_span(span::mock().named("foo"))
         .drop_span(span::mock().named("foo"))
         .run_with_handle();
-    let subscriber2 = subscriber::test().done().run();
+    let subscriber2 = subscriber::SubscriberTest::new().done().run();
 
     let foo = with_default(subscriber1, || {
         let foo = span!(Level::TRACE, "foo");
@@ -242,7 +242,7 @@ fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
 
 #[test]
 fn span_closes_when_exited() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
         .drop_span(span::mock().named("foo"))
@@ -261,7 +261,7 @@ fn span_closes_when_exited() {
 
 #[test]
 fn enter() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("foo"))
         .event(event::mock())
         .exit(span::mock().named("foo"))
@@ -279,7 +279,7 @@ fn enter() {
 
 #[test]
 fn moved_field() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
@@ -307,7 +307,7 @@ fn moved_field() {
 
 #[test]
 fn dotted_field_name() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock()
                 .named("foo")
@@ -324,7 +324,7 @@ fn dotted_field_name() {
 
 #[test]
 fn borrowed_field() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
@@ -366,7 +366,7 @@ fn move_field_out_of_struct() {
         x: 3.234,
         y: -1.223,
     };
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("x")
@@ -401,7 +401,7 @@ fn move_field_out_of_struct() {
 /*
 #[test]
 fn add_field_after_new_span() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock()
                 .named("foo")
@@ -429,7 +429,7 @@ fn add_field_after_new_span() {
 
 #[test]
 fn add_fields_only_after_new_span() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .record(
             span::mock().named("foo"),
@@ -458,7 +458,7 @@ fn add_fields_only_after_new_span() {
 
 #[test]
 fn record_new_value_for_field() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
@@ -488,7 +488,7 @@ fn record_new_value_for_field() {
 
 #[test]
 fn record_new_values_for_fields() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
@@ -523,7 +523,7 @@ fn record_new_values_for_fields() {
 
 #[test]
 fn new_span_with_target_and_log_level() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock()
                 .named("foo")
@@ -542,7 +542,7 @@ fn new_span_with_target_and_log_level() {
 
 #[test]
 fn explicit_root_span_is_root() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo").with_explicit_parent(None))
         .done()
         .run_with_handle();
@@ -556,7 +556,7 @@ fn explicit_root_span_is_root() {
 
 #[test]
 fn explicit_root_span_is_root_regardless_of_ctx() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .enter(span::mock().named("foo"))
         .new_span(span::mock().named("bar").with_explicit_parent(None))
@@ -575,7 +575,7 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
 
 #[test]
 fn explicit_child() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .new_span(span::mock().named("bar").with_explicit_parent(Some("foo")))
         .done()
@@ -591,7 +591,7 @@ fn explicit_child() {
 
 #[test]
 fn explicit_child_at_levels() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .new_span(span::mock().named("a").with_explicit_parent(Some("foo")))
         .new_span(span::mock().named("b").with_explicit_parent(Some("foo")))
@@ -615,7 +615,7 @@ fn explicit_child_at_levels() {
 
 #[test]
 fn explicit_child_regardless_of_ctx() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .new_span(span::mock().named("bar"))
         .enter(span::mock().named("bar"))
@@ -634,7 +634,7 @@ fn explicit_child_regardless_of_ctx() {
 
 #[test]
 fn contextual_root() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo").with_contextual_parent(None))
         .done()
         .run_with_handle();
@@ -648,7 +648,7 @@ fn contextual_root() {
 
 #[test]
 fn contextual_child() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .enter(span::mock().named("foo"))
         .new_span(
@@ -671,7 +671,7 @@ fn contextual_child() {
 
 #[test]
 fn display_shorthand() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("my_span").with_field(
                 field::mock("my_field")
@@ -690,7 +690,7 @@ fn display_shorthand() {
 
 #[test]
 fn debug_shorthand() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("my_span").with_field(
                 field::mock("my_field")
@@ -709,7 +709,7 @@ fn debug_shorthand() {
 
 #[test]
 fn both_shorthands() {
-    let (subscriber, handle) = subscriber::test()
+    let (subscriber, handle) = subscriber::SubscriberTest::new()
         .new_span(
             span::mock().named("my_span").with_field(
                 field::mock("display_field")

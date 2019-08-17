@@ -6,7 +6,7 @@ use tracing_subscriber::{filter::Filter, prelude::*};
 #[test]
 fn field_filter_events() {
     let filter: Filter = "[{thing}]=debug".parse().expect("filter should parse");
-    let (subscriber, finished) = subscriber::test()
+    let (subscriber, finished) = subscriber::SubscriberTest::new()
         .event(
             event::mock()
                 .at_level(Level::INFO)
@@ -37,7 +37,7 @@ fn field_filter_spans() {
     let filter: Filter = "[{enabled=true}]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::test()
+    let (subscriber, finished) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("span1"))
         .event(
             event::mock()
@@ -80,7 +80,7 @@ fn record_after_created() {
     let filter: Filter = "[{enabled=true}]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::test()
+    let (subscriber, finished) = subscriber::SubscriberTest::new()
         .enter(span::mock().named("span"))
         .exit(span::mock().named("span"))
         .record(
