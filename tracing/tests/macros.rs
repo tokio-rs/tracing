@@ -298,6 +298,50 @@ fn event() {
 }
 
 #[test]
+fn locals_with_message() {
+    let data = (42, "fourty-two");
+    let private_data = "private";
+    let error = "a bad error";
+    event!(Level::ERROR, %error, "Received error");
+    event!(
+        target: "app_events",
+        Level::WARN,
+        private_data,
+        ?data,
+        "App warning: {}",
+        error
+    );
+}
+
+#[test]
+fn locals_no_message() {
+    let data = (42, "fourty-two");
+    let private_data = "private";
+    let error = "a bad error";
+    event!(
+        target: "app_events",
+        Level::WARN,
+        private_data,
+        ?data,
+    );
+    event!(
+        target: "app_events",
+        Level::WARN,
+        private_data,
+        ?data,
+        error,
+    );
+    event!(
+        target: "app_events",
+        Level::WARN,
+        private_data,
+        ?data,
+        error
+    );
+    event!(Level::WARN, private_data, ?data, error,);
+}
+
+#[test]
 fn trace() {
     trace!(foo = ?3, bar.baz = %2, quux = false);
     trace!(foo = 3, bar.baz = 2, quux = false);

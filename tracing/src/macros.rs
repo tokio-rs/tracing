@@ -845,7 +845,7 @@ macro_rules! event {
         }
     });
 
-    (target: $target:expr, parent: $parent:expr, $lvl:expr,  { $($fields:tt)* }, $($arg:tt)+ ) => ({
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => ({
         $crate::event!(
             target: $target,
             parent: $parent,
@@ -856,8 +856,8 @@ macro_rules! event {
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
         $crate::event!(target: $target, parent: $parent, $lvl, { $($k).+ = $($fields)* })
     );
-    (target: $target:expr, parent: $parent:expr, $lvl:expr, $($arg:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $lvl, { }, $($arg)+)
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $($arg:tt)+) => (
+        $crate::event!(target: $target, parent: $parent, $lvl, { $($arg)+ })
     );
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         {
@@ -901,7 +901,7 @@ macro_rules! event {
         $crate::event!(target: $target, $lvl, { $($k).+ = $($fields)* })
     );
     (target: $target:expr, $lvl:expr, $($arg:tt)+ ) => (
-        $crate::event!(target: $target, $lvl, { }, $($arg)+)
+        $crate::event!(target: $target, $lvl, { $($arg)+ })
     );
     (parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
         $crate::event!(
@@ -968,7 +968,7 @@ macro_rules! event {
         )
     );
     (parent: $parent:expr, $lvl:expr, $($arg:tt)+ ) => (
-        $crate::event!(target: module_path!(), parent: $parent, $lvl, { }, $($arg)+)
+        $crate::event!(target: module_path!(), parent: $parent, $lvl, { $($arg)+ })
     );
     ( $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
         $crate::event!(
@@ -1022,7 +1022,7 @@ macro_rules! event {
         $crate::event!($lvl, $($k).+,)
     );
     ( $lvl:expr, $($arg:tt)+ ) => (
-        $crate::event!(target: module_path!(), $lvl, { }, $($arg)+)
+        $crate::event!(target: module_path!(), $lvl, { $($arg)+ })
     );
 }
 
