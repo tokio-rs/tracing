@@ -62,6 +62,61 @@ fn event_with_message() {
 }
 
 #[test]
+fn message_without_delims() {
+    let (subscriber, handle) = subscriber::mock()
+        .event(
+            event::mock().with_fields(
+                field::mock("answer")
+                    .with_value(&42)
+                    .and(field::mock("question").with_value(&"life, the universe, and everything"))
+                    .and(
+                        field::mock("message").with_value(&tracing::field::debug(format_args!(
+                            "hello from my event! tricky? {:?}!",
+                            true
+                        ))),
+                    )
+                    .only(),
+            ),
+        )
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        let question = "life, the universe, and everything";
+        debug!(answer = 42, question, "hello from {where}! tricky? {:?}!", true, where = "my event");
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn string_message_without_delims() {
+    let (subscriber, handle) = subscriber::mock()
+        .event(
+            event::mock().with_fields(
+                field::mock("answer")
+                    .with_value(&42)
+                    .and(field::mock("question").with_value(&"life, the universe, and everything"))
+                    .and(
+                        field::mock("message").with_value(&tracing::field::debug(format_args!(
+                            "hello from my event"
+                        ))),
+                    )
+                    .only(),
+            ),
+        )
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        let question = "life, the universe, and everything";
+        debug!(answer = 42, question, "hello from my event");
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
 fn one_with_everything() {
     let (subscriber, handle) = subscriber::mock()
         .event(
