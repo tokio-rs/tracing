@@ -1,3 +1,3 @@
 fn main() {
-    tracing_macros::event!(foo = 3, bar.baz = "a string");
+    tracing_macros::event!(target: "my target", foo = 3, bar.baz = "a string");
 }
