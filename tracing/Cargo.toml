@@ -28,7 +28,7 @@ keywords = ["logging", "tracing"]
 edition = "2018"
 
 [dependencies]
-tracing-core = { version = "0.1.4", default-features = false }
+tracing-core = { version = "0.1.5", default-features = false }
 log = { version = "0.4", optional = true }
 tracing-attributes = "0.1.1"
 cfg-if = "0.1.9"
