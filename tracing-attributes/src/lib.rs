@@ -43,8 +43,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, quote_spanned};
 use syn::{
-    spanned::Spanned, ArgCaptured, AttributeArgs, FnArg, FnDecl, Ident, ItemFn, Lit, Meta,
-    MetaNameValue, NestedMeta, Pat, PatIdent,
+    spanned::Spanned, AttributeArgs, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaNameValue,
+    NestedMeta, Pat, PatIdent, PatType, Signature,
 };
 
 /// Instruments a function to create and enter a `tracing` [span] every time
@@ -120,21 +120,19 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let ItemFn {
         attrs,
         vis,
+        block,
+        sig,
+        ..
+    } = input;
+
+    let Signature {
+        output: return_type,
+        inputs: params,
         unsafety,
         asyncness,
         constness,
         abi,
-        block,
         ident,
-        decl,
-        ..
-    } = input;
-    // function name
-    let ident_str = ident.to_string();
-
-    let FnDecl {
-        output: return_type,
-        inputs: params,
         generics:
             syn::Generics {
                 params: gen_params,
@@ -142,15 +140,19 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
                 ..
             },
         ..
-    } = *decl;
+    } = sig;
+
+    // function name
+    let ident_str = ident.to_string();
+
     let param_names: Vec<Ident> = params
         .clone()
         .into_iter()
         .filter_map(|param| match param {
-            FnArg::Captured(ArgCaptured {
-                pat: Pat::Ident(PatIdent { ident, .. }),
-                ..
-            }) => Some(ident),
+            FnArg::Typed(PatType { pat, .. }) => match *pat {
+                Pat::Ident(PatIdent { ident, .. }) => Some(ident),
+                _ => None,
+            },
             _ => None,
         })
         .collect();
@@ -205,8 +207,8 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
-            ref ident, ref lit, ..
-        })) if ident == "level" => Some(lit.clone()),
+            ref path, ref lit, ..
+        })) if path.is_ident("level") => Some(lit.clone()),
         _ => None,
     });
     let level = levels.next();
@@ -216,6 +218,13 @@ fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
         return quote_spanned! {lit.span()=>
             compile_error!("expected only a single `level` argument!")
         };
+    }
+
+    fn is_level(lit: &LitInt, expected: u64) -> bool {
+        match lit.base10_parse::<u64>() {
+            Ok(value) => value == expected,
+            Err(_) => false,
+        }
     }
 
     match level {
@@ -234,11 +243,11 @@ fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
         Some(Lit::Str(ref lit)) if lit.value().eq_ignore_ascii_case("error") => {
             quote!(tracing::Level::ERROR)
         }
-        Some(Lit::Int(ref lit)) if lit.value() == 1 => quote!(tracing::Level::TRACE),
-        Some(Lit::Int(ref lit)) if lit.value() == 2 => quote!(tracing::Level::DEBUG),
-        Some(Lit::Int(ref lit)) if lit.value() == 3 => quote!(tracing::Level::INFO),
-        Some(Lit::Int(ref lit)) if lit.value() == 4 => quote!(tracing::Level::WARN),
-        Some(Lit::Int(ref lit)) if lit.value() == 5 => quote!(tracing::Level::ERROR),
+        Some(Lit::Int(ref lit)) if is_level(lit, 1) => quote!(tracing::Level::TRACE),
+        Some(Lit::Int(ref lit)) if is_level(lit, 2) => quote!(tracing::Level::DEBUG),
+        Some(Lit::Int(ref lit)) if is_level(lit, 3) => quote!(tracing::Level::INFO),
+        Some(Lit::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
+        Some(Lit::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
         Some(lit) => quote_spanned! {lit.span()=>
             compile_error!(
                 "unknown verbosity level, expected one of \"trace\", \
@@ -252,8 +261,8 @@ fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
 fn target(args: &AttributeArgs) -> proc_macro2::TokenStream {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
-            ref ident, ref lit, ..
-        })) if ident == "target" => Some(lit.clone()),
+            ref path, ref lit, ..
+        })) if path.is_ident("target") => Some(lit.clone()),
         _ => None,
     });
     let level = levels.next();
