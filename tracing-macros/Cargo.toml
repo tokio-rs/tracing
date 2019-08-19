@@ -17,13 +17,19 @@ categories = [
 keywords = ["logging", "tracing"]
 license = "MIT"
 
+
+[lib]
+proc-macro = true
+
+[features]
+
 [dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+syn = { version = "0.15", features = ["full", "extra-traits"] }
+quote = "0.6"
+proc-macro2 = "0.4"
+proc-macro-hack = "0.5"
 
-[dev-dependencies]
-tracing-log = { path = "../tracing-log" }
-env_logger = "0.5"
-
-[badges]
-azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
-maintenance = { status = "experimental" }
+# [dependencies]
+# syn = { version = "1.0", features = ["full", "extra-traits"] }
+# quote = "1.0"
+# proc-macro2 = "0.4"

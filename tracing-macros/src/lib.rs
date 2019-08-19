@@ -1,66 +1,49 @@
-extern crate tracing;
+#![doc(html_root_url = "https://docs.rs/tracing-macros/0.1.0")]
+#![deny(missing_debug_implementations, unreachable_pub)]
+#![cfg_attr(test, deny(warnings))]
+extern crate proc_macro;
 
-/// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
-#[macro_export(local_inner_macros)]
-macro_rules! trace_dbg {
-    (target: $target:expr, level: $level:expr, $ex:expr) => {
-        dbg!(target: $target, level: $level, $ex)
-    };
-    (level: $level:expr, $ex:expr) => {
-        dbg!(target: module_path!(), level: $level, $ex)
-    };
-    (target: $target:expr, $ex:expr) => {
-        dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
-    };
-    ($ex:expr) => {
-        dbg!(level: tracing::Level::DEBUG, $ex)
-    };
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use proc_macro_hack::proc_macro_hack;
+use quote::{quote, quote_spanned};
+use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
+use syn::Token;
+
+#[proc_macro_hack]
+pub fn event(item: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(item as KvFields);
+    let call_site = Span::call_site();
 }
 
-/// Similar to the `std::dbg!` macro, but generates `tracing` events rather
-/// than printing to stdout.
-///
-/// By default, the verbosity level for the generated events is `DEBUG`, but
-/// this can be customized.
-#[macro_export]
-macro_rules! dbg {
-    (target: $target:expr, level: $level:expr, $ex:expr) => {{
-        use tracing::callsite::Callsite;
-        use tracing::{
-            callsite,
-            field::{debug, Value},
-            Event, Id, Subscriber,
+#[derive(Debug)]
+struct KvFields {
+    fields: Punctuated<KvField, Token![,]>,
+}
+
+#[derive(Debug)]
+struct KvField {
+    name: Punctuated<syn::Ident, Token![.]>,
+    value: Option<Box<syn::Expr>>,
+}
+
+impl Parse for KvField {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name = Punctuated::parse_separated_nonempty(input)?;
+        let value = if input.lookahead1().peek(Token![=]) {
+            let _ = input.parse::<Token![=]>()?;
+            Some(input.parse()?)
+        } else {
+            None
         };
-        let callsite = callsite! {
-            name: concat!("event:trace_dbg(", stringify!($ex), ")"),
-            kind: tracing::metadata::Kind::EVENT,
-            target: $target,
-            level: $level,
-            fields: value,
-        };
-        let val = $ex;
-        if is_enabled!(callsite) {
-            let meta = callsite.metadata();
-            let fields = meta.fields();
-            let key = meta
-                .fields()
-                .into_iter()
-                .next()
-                .expect("trace_dbg event must have one field");
-            Event::dispatch(
-                meta,
-                &fields.value_set(&[(&key, Some(&debug(&val) as &Value))]),
-            );
-        }
-        val
-    }};
-    (level: $level:expr, $ex:expr) => {
-        dbg!(target: module_path!(), level: $level, $ex)
-    };
-    (target: $target:expr, $ex:expr) => {
-        dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
-    };
-    ($ex:expr) => {
-        dbg!(level: tracing::Level::DEBUG, $ex)
-    };
+        Ok(Self { name, value })
+    }
+}
+
+impl Parse for KvFields {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let fields = Punctuated::<KvField, Token![,]>::parse_terminated(input)?;
+        Ok(Self { fields })
+    }
 }
