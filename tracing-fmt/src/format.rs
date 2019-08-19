@@ -244,6 +244,17 @@ impl<'a> field::Visit for Recorder<'a> {
         }
     }
 
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        if let Some(source) = value.source() {
+            self.record_debug(
+                field,
+                &format_args!("{} {}.source={}", value, field, source),
+            )
+        } else {
+            self.record_debug(field, &format_args!("{}", value))
+        }
+    }
+
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.maybe_pad();
         let _ = match field.name() {

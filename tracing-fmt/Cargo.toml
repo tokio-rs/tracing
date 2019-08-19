@@ -26,7 +26,7 @@ default = ["ansi", "chrono", "tracing-log"]
 ansi = ["ansi_term"]
 
 [dependencies]
-tracing-core = "0.1.2"
+tracing-core = "0.1.5"
 tracing-log = { version = "0.0.1-alpha.1", optional = true }
 ansi_term = { version = "0.11", optional = true }
 regex = "1"
