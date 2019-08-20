@@ -40,8 +40,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro2::Span;
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     spanned::Spanned, AttributeArgs, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaNameValue,
     NestedMeta, Pat, PatIdent, PatType, Signature,
@@ -112,7 +111,6 @@ use syn::{
 pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
     let args = syn::parse_macro_input!(args as AttributeArgs);
-    let call_site = Span::call_site();
 
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
@@ -187,7 +185,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let level = level(&args);
     let target = target(&args);
 
-    quote_spanned!(call_site=>
+    quote!(
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
@@ -204,7 +202,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
+fn level(args: &AttributeArgs) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -258,7 +256,7 @@ fn level(args: &AttributeArgs) -> proc_macro2::TokenStream {
     }
 }
 
-fn target(args: &AttributeArgs) -> proc_macro2::TokenStream {
+fn target(args: &AttributeArgs) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
