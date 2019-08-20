@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     .write_all(&buf[0..n])
                     .await
                     .expect("failed to write data to socket");
-                
+
                 info!(message = "echo'd data", peer_addr = ?peer_addr, size = n);
             }
         });
