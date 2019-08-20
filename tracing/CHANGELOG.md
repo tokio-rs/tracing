@@ -1,3 +1,16 @@
+# 0.1.6 (August 20, 2019)
+
+### Added
+
+- `std::error::Error` as a new primitive type (#277)
+- Support for mixing key-value fields and `format_args` messages without curly
+  braces as delimiters (#288)
+
+### Changed
+
+- `tracing-core` dependency to 0.1.5 (#294)
+- `tracing-attributes` dependency to 0.1.2 (#297)
+
 # 0.1.5 (August 9, 2019)
 
 ### Added
