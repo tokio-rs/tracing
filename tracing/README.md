@@ -12,9 +12,9 @@ Application-level tracing for Rust.
 [Chat][gitter-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing
+[crates-url]: https://crates.io/crates/tracing/0.1.6
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing
+[docs-url]: https://docs.rs/tracing/0.1.6
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
@@ -47,7 +47,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing = "0.1.5"
+tracing = "0.1.6"
 ```
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
