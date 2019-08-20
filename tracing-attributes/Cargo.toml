@@ -41,7 +41,6 @@ async-await = []
 [dependencies]
 syn = { version = "1", features = ["full", "extra-traits"] }
 quote = "1"
-proc-macro2 = "1"
 
 [dev-dependencies]
 tracing = "0.1"
