@@ -3,6 +3,8 @@
 ### Changed
 
 - Updated `syn` and `quote` dependencies to 1.0 (#292)
+- Removed direct dependency on `proc-macro2` to avoid potential version
+  conflicts (#296)
 
 ### Fixed
 
