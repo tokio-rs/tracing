@@ -24,7 +24,7 @@ use tokio::net::TcpStream;
 use tracing::info;
 use tracing_attributes::instrument;
 
-use std::{io, error::Error, net::SocketAddr};
+use std::{error::Error, io, net::SocketAddr};
 
 #[instrument]
 async fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {

@@ -17,3 +17,4 @@ tracing-fmt = "0.0.1-alpha.3"
 tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
 tokio = { git = "https://github.com/tokio-rs/tokio.git" }
 tracing-attributes = { path = "../tracing-attributes" }
+futures-preview = "0.3.0-alpha.18"
