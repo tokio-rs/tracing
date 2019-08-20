@@ -1,3 +1,15 @@
+# 0.1.2 (August 19, 2019)
+
+### Changed
+
+- Updated `syn` and `quote` dependencies to 1.0 (#292)
+- Removed direct dependency on `proc-macro2` to avoid potential version
+  conflicts (#296)
+
+### Fixed
+
+- Outdated idioms in examples (#271, #273)
+
 # 0.1.1 (August 9, 2019)
 
 ### Changed
