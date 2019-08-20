@@ -1,7 +1,6 @@
 #![feature(async_await)]
 #![deny(rust_2018_idioms)]
 
-
 //! A proxy that forwards data to another server and forwards that server's
 //! responses back to clients.
 //!
