@@ -22,6 +22,10 @@
 //! - `std-future`: Enables compatibility with `std::future::Future`.
 //! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
 //!   crate.
+//! - `futures-preview`: Enables compatibility with the `futures-preview`
+//!   crate's `Spawn` and `LocalSpawn` traits.
+//! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
+//!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
 //!
 //! The `tokio` and `futures-01` features are enabled by default.
 //!
@@ -33,8 +37,6 @@
 extern crate futures;
 #[cfg(feature = "std-future")]
 extern crate pin_utils;
-#[cfg(feature = "tokio")]
-extern crate tokio;
 #[cfg(feature = "tokio-executor")]
 extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
@@ -49,7 +51,6 @@ use futures::{Sink, StartSend, Stream};
 use tracing::dispatcher;
 use tracing::{Dispatch, Span};
 
-#[cfg(feature = "tokio")]
 pub mod executor;
 
 /// Extension trait allowing futures, streams, and skins to be instrumented with
@@ -193,7 +194,11 @@ impl<T: futures::Future> futures::Future for WithDispatch<T> {
 }
 
 impl<T> WithDispatch<T> {
-    #[cfg(feature = "tokio")]
+    #[cfg(any(
+        feature = "tokio",
+        feature = "tokio-alpha",
+        feature = "futures-preview"
+    ))]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
