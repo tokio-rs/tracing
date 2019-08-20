@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.2")]
 #![deny(missing_debug_implementations, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -35,7 +35,7 @@
 //! ```
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/0.1.3/tracing/span/index.html
+//! [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
 //! [instrument]: attr.instrument.html
 extern crate proc_macro;
 
@@ -105,7 +105,7 @@ use syn::{
 /// - When using `#[instrument]` on an `async fn`, the `tracing_futures` must
 ///   also be specified as a dependency in `Cargo.toml`.
 ///
-/// [span]: https://docs.rs/tracing/0.1.3/tracing/span/index.html
+/// [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 #[proc_macro_attribute]
 pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {

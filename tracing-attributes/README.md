@@ -14,7 +14,7 @@ Macro attributes for application-level tracing.
 [crates-badge]: https://img.shields.io/crates/v/tracing-attributes.svg
 [crates-url]: https://crates.io/crates/tracing-attributes
 [docs-badge]: https://docs.rs/tracing-attributes/badge.svg
-[docs-url]: https://docs.rs/tracing-attributes
+[docs-url]: https://docs.rs/tracing-attributes/0.1.2
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
@@ -37,7 +37,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing-attributes = "0.1.0"
+tracing-attributes = "0.1.2"
 ```
 
 This crate provides the `#[instrument]` attribute for instrumenting a function
@@ -54,7 +54,7 @@ pub fn my_function(my_arg: usize) {
 
 
 [`tracing`]: https://crates.io/crates/tracing
-[span]: https://docs.rs/tracing/0.1.3/tracing/span/index.html
+[span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
 
 ## License
 
