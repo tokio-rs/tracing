@@ -1,4 +1,3 @@
-#![feature(async_await)]
 #![deny(rust_2018_idioms)]
 
 /// This is a example showing how information is scoped.
@@ -27,7 +26,7 @@ async fn parent_task(subtasks: usize) {
     let result = join_all(subtasks).await;
 
     debug!("all subtasks completed");
-    let sum = result.into_iter().sum();
+    let sum: usize = result.into_iter().sum();
     info!(sum);
 }
 
@@ -42,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = tracing_fmt::FmtSubscriber::builder()
         .with_filter("trace".parse::<tracing_fmt::filter::EnvFilter>()?)
         .finish();
-    tracing::subscriber::set_global_default(subscriber);
+    tracing::subscriber::set_global_default(subscriber)?;
     parent_task(10).await;
     Ok(())
 }

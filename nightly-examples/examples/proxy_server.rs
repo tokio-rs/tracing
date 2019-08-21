@@ -1,4 +1,3 @@
-#![feature(async_await)]
 #![deny(rust_2018_idioms)]
 
 //! A proxy that forwards data to another server and forwards that server's
@@ -23,7 +22,7 @@
 //! This final terminal will connect to our proxy, which will in turn connect to
 //! the echo server, and you'll be able to see data flowing between them.
 
-use futures::{future::try_join, FutureExt, TryFutureExt};
+use futures::{future::try_join, TryFutureExt};
 use tokio::{
     self,
     io::AsyncReadExt,
