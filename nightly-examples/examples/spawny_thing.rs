@@ -6,9 +6,8 @@
 /// You can run this example by running the following command in a terminal
 ///
 /// ```
-/// RUST_LOG=spawny_thing=trace cargo +nightly run --example spawny_thing
+/// cargo +nightly run --example spawny_thing
 /// ```
-
 use tokio;
 
 use futures::future::join_all;
@@ -28,8 +27,8 @@ async fn parent_task(subtasks: usize) {
     let result = join_all(subtasks).await;
 
     debug!("all subtasks completed");
-    let sum: usize = result.into_iter().sum();
-    info!(sum = sum);
+    let sum = result.into_iter().sum();
+    info!(sum);
 }
 
 #[instrument]
@@ -37,12 +36,13 @@ async fn subtask(number: usize) -> usize {
     info!("polling subtask... {}", number);
     number
 }
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter("trace".parse::<tracing_fmt::filter::EnvFilter>().unwrap())
+        .with_filter("trace".parse::<tracing_fmt::filter::EnvFilter>()?)
         .finish();
-    let _ = tracing::subscriber::set_global_default(subscriber);
+    tracing::subscriber::set_global_default(subscriber);
     parent_task(10).await;
     Ok(())
 }

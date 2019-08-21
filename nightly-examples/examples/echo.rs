@@ -1,4 +1,4 @@
-//! A "hello world" echo server with Tokio
+//! A "hello world" echo server [from Tokio][echo-example]
 //!
 //! This server will create a TCP listener, accept connections in a loop, and
 //! write back everything that's read off of each TCP connection.
@@ -9,19 +9,22 @@
 //!
 //! To see this server in action, you can run this in one terminal:
 //!
-//!     cargo run --example echo
+//!     cargo +nightly run --example echo
 //!
 //! and in another terminal you can run:
 //!
-//!     cargo run --example connect 127.0.0.1:8080
+//!     cargo +nightly run --example proxy_server 127.0.0.1:8081
 //!
 //! Each line you type in to the `connect` terminal should be echo'd back to
 //! you! If you open up multiple terminals running the `connect` example you
 //! should be able to see them all make progress simultaneously.
+//!
+//! [echo-example]: https://github.com/tokio-rs/tokio/blob/master/tokio/examples/echo.rs
 
 #![feature(async_await)]
 #![warn(rust_2018_idioms)]
 
+use futures::future::{FutureExt, TryFutureExt};
 use tokio;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -30,11 +33,14 @@ use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, info_span, instrument, trace, trace_span, warn};
+use tracing_futures::Instrument;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder()
+        .with_filter(tracing_fmt::filter::EnvFilter::new("echo=trace"))
+        .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
     // Allow passing an address to listen on as the first argument of this
@@ -47,13 +53,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
     let mut listener = TcpListener::bind(&addr)?;
-    info!("Listening on: {}", addr);
+    info!(message = "Listening on", %addr);
 
     loop {
         // Asynchronously wait for an inbound socket.
         let (mut socket, peer_addr) = listener.accept().await?;
 
-        info!("Got connection from: {}", peer_addr);
+        info!(message = "Got connection from", %peer_addr);
 
         // And this is where much of the magic of this server happens. We
         // crucially want all clients to make progress concurrently, rather than
@@ -68,8 +74,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // In a loop, read data from the socket and write the data back.
             loop {
-                let n = socket
+                let n: usize = socket
                     .read(&mut buf)
+                    .map(|bytes| {
+                        if let Ok(n) = bytes {
+                            debug!(message = "read bytes", n);
+                        }
+
+                        bytes
+                    })
+                    .map_err(|error| {
+                        warn!(%error);
+                        error
+                    })
+                    .instrument(trace_span!("read"))
                     .await
                     .expect("failed to read data from socket");
 
@@ -79,11 +97,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                 socket
                     .write_all(&buf[0..n])
+                    .map(|bytes| {
+                        if let Ok(()) = bytes {
+                            debug!(message = "wrote bytes", n);
+                        }
+
+                        bytes
+                    })
+                    .map_err(|error| {
+                        warn!(%error);
+                        error
+                    })
+                    .instrument(trace_span!("write"))
                     .await
                     .expect("failed to write data to socket");
 
-                info!(message = "echo'd data", peer_addr = ?peer_addr, size = n);
+                info!(message = "echo'd data", ?peer_addr, size = n);
             }
-        });
+        })
+        .instrument(info_span!("echo", %peer_addr));
     }
 }

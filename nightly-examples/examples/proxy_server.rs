@@ -14,7 +14,7 @@
 //!
 //! This in another terminal
 //!
-//!     cargo run --example echo
+//!     cargo +nightly run --example echo
 //!
 //! And finally this in another terminal
 //!
@@ -23,7 +23,7 @@
 //! This final terminal will connect to our proxy, which will in turn connect to
 //! the echo server, and you'll be able to see data flowing between them.
 
-use futures::{future::try_join, FutureExt};
+use futures::{future::try_join, FutureExt, TryFutureExt};
 use tokio::{
     self,
     io::AsyncReadExt,
@@ -31,8 +31,9 @@ use tokio::{
     prelude::*,
 };
 
-use tracing::{debug, info, warn};
+use tracing::{debug, debug_span, info, warn};
 use tracing_attributes::instrument;
+use tracing_futures::Instrument;
 
 use std::{env, net::SocketAddr};
 
@@ -46,8 +47,34 @@ async fn transfer(
     let (mut ri, mut wi) = inbound.split();
     let (mut ro, mut wo) = outbound.split();
 
-    let client_to_server = ri.copy(&mut wo);
-    let server_to_client = ro.copy(&mut wi);
+    let client_to_server = ri
+        .copy(&mut wo)
+        .map(|bytes| {
+            if let Ok(n) = bytes {
+                debug!(message = "copy finished", n);
+            }
+
+            bytes
+        })
+        .map_err(|error| {
+            warn!(%error);
+            error
+        })
+        .instrument(debug_span!("client_to_server"));
+    let server_to_client = ro
+        .copy(&mut wi)
+        .map(|bytes| {
+            if let Ok(n) = bytes {
+                debug!(message = "copy finished", n);
+            }
+
+            bytes
+        })
+        .map_err(|error| {
+            warn!(%error);
+            error
+        })
+        .instrument(debug_span!("server_to_client"));
 
     let (client_to_server, server_to_client) = try_join(client_to_server, server_to_client).await?;
     info!(
@@ -60,7 +87,9 @@ async fn transfer(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let subscriber = tracing_fmt::FmtSubscriber::builder().finish();
+    let subscriber = tracing_fmt::FmtSubscriber::builder()
+        .with_filter(tracing_fmt::filter::EnvFilter::new("proxy_server=trace"))
+        .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
     let listen_addr = env::args()
