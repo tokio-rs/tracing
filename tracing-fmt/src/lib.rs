@@ -411,6 +411,22 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     }
 }
 
+impl<N, E, F, W> Builder<N, E, F, W> {
+    /// Sets the Writer that the subscriber being built will use to log events.
+    pub fn with_writer<W2>(self, new_writer: W2) -> Builder<N, E, F, W2>
+    where
+        W2: NewWriter + 'static,
+    {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event,
+            filter: self.filter,
+            settings: self.settings,
+            new_writer,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
