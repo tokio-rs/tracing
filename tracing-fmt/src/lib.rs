@@ -37,18 +37,22 @@ pub struct FmtSubscriber<
     filter: F,
     spans: span::Store,
     settings: Settings,
-    new_writer: W
+    new_writer: W,
 }
 
 /// Configures and constructs `FmtSubscriber`s.
 #[derive(Debug, Default)]
-pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter, W = fn() -> io::Stdout>
-{
+pub struct Builder<
+    N = format::NewRecorder,
+    E = format::Format<format::Full>,
+    F = filter::EnvFilter,
+    W = fn() -> io::Stdout,
+> {
     new_visitor: N,
     fmt_event: E,
     filter: F,
     settings: Settings,
-    new_writer: W
+    new_writer: W,
 }
 
 #[derive(Debug, Default)]
@@ -98,7 +102,7 @@ where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
-    W: NewWriter + 'static
+    W: NewWriter + 'static,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
@@ -217,7 +221,11 @@ pub trait NewWriter {
     fn new_writer(&self) -> Self::Writer;
 }
 
-impl<F, W> NewWriter for F where F: Fn() -> W, W: io::Write {
+impl<F, W> NewWriter for F
+where
+    F: Fn() -> W,
+    W: io::Write,
+{
     type Writer = W;
 
     fn new_writer(&self) -> Self::Writer {
@@ -234,7 +242,7 @@ impl Default for Builder {
             new_visitor: format::NewRecorder,
             fmt_event: format::Format::default(),
             settings: Settings::default(),
-            new_writer: io::stdout
+            new_writer: io::stdout,
         }
     }
 }
@@ -244,7 +252,7 @@ where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
-    W: NewWriter + 'static
+    W: NewWriter + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F, W> {
         FmtSubscriber {
@@ -253,7 +261,7 @@ where
             filter: self.filter,
             spans: span::Store::with_capacity(32),
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 }
@@ -270,7 +278,7 @@ where
             fmt_event: self.fmt_event.with_timer(timer),
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 
@@ -281,7 +289,7 @@ where
             fmt_event: self.fmt_event.without_time(),
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 
@@ -315,7 +323,7 @@ where
             fmt_event: self.fmt_event,
             filter: filter::ReloadFilter::new(self.filter),
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 }
@@ -343,7 +351,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 
@@ -358,7 +366,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 
@@ -374,7 +382,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 
@@ -389,7 +397,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             fmt_event,
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer
+            new_writer: self.new_writer,
         }
     }
 
