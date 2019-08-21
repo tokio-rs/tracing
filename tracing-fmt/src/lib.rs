@@ -30,7 +30,7 @@ pub struct FmtSubscriber<
     N = format::NewRecorder,
     E = format::Format<format::Full>,
     F = filter::EnvFilter,
-    W = NewStdout
+    W = fn() -> io::Stdout,
 > {
     new_visitor: N,
     fmt_event: E,
@@ -42,7 +42,7 @@ pub struct FmtSubscriber<
 
 /// Configures and constructs `FmtSubscriber`s.
 #[derive(Debug, Default)]
-pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter, W = NewStdout>
+pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter, W = fn() -> io::Stdout>
 {
     new_visitor: N,
     fmt_event: E,
@@ -217,13 +217,11 @@ pub trait NewWriter {
     fn new_writer(&self) -> Self::Writer;
 }
 
-pub struct NewStdout;
-
-impl NewWriter for NewStdout {
-    type Writer = io::Stdout;
+impl<F, W> NewWriter for F where F: Fn() -> W, W: io::Write {
+    type Writer = W;
 
     fn new_writer(&self) -> Self::Writer {
-        io::stdout()
+        (self)()
     }
 }
 
@@ -236,7 +234,7 @@ impl Default for Builder {
             new_visitor: format::NewRecorder,
             fmt_event: format::Format::default(),
             settings: Settings::default(),
-            new_writer: NewStdout
+            new_writer: io::stdout
         }
     }
 }
