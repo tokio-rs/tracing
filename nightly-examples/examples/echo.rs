@@ -21,7 +21,6 @@
 //!
 //! [echo-example]: https://github.com/tokio-rs/tokio/blob/master/tokio/examples/echo.rs
 
-#![feature(async_await)]
 #![warn(rust_2018_idioms)]
 
 use futures::future::{FutureExt, TryFutureExt};
@@ -33,7 +32,7 @@ use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 
-use tracing::{debug, error, info, info_span, instrument, trace, trace_span, warn};
+use tracing::{debug, info, info_span, trace_span, warn};
 use tracing_futures::Instrument;
 
 #[tokio::main]
