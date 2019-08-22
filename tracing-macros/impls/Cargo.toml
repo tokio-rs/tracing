@@ -1,5 +1,5 @@
 [package]
-name = "tracing-macros"
+name = "tracing-macro-impls"
 version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
@@ -17,11 +17,15 @@ categories = [
 keywords = ["logging", "tracing"]
 license = "MIT"
 
-# [lib]
-# proc-macro = true
+[lib]
+proc-macro = true
 
 [features]
 
 [dependencies]
+syn = { version = "1", features = ["full", "extra-traits"] }
+quote = "1"
 proc-macro-hack = "0.5"
-tracing-macro-impls = {version = "0.1", path = "impls"}
+proc-macro2 = "1"
+lazy_static = "1"
+regex = "1"
