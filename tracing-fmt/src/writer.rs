@@ -68,11 +68,10 @@ mod test {
     use tracing::error;
     use tracing_core::dispatcher::{self, Dispatch};
 
-    fn test_writer<T: NewWriter + Send + Sync + 'static>(
-        new_writer: T,
-        msg: &str,
-        buf: &Mutex<Vec<u8>>,
-    ) {
+    fn test_writer<T>(new_writer: T, msg: &str, buf: &Mutex<Vec<u8>>)
+    where
+        T: NewWriter + Send + Sync + 'static,
+    {
         let subscriber = FmtSubscriber::builder()
             .with_writer(new_writer)
             .without_time()
