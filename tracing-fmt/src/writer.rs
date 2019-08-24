@@ -74,6 +74,24 @@ mod test {
         }
     }
 
+    struct MockNewWriter<'a> {
+        buf: &'a Mutex<Vec<u8>>,
+    }
+
+    impl<'a> MockNewWriter<'a> {
+        fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+            Self { buf }
+        }
+    }
+
+    impl<'a> NewWriter for MockNewWriter<'a> {
+        type Writer = MockWriter<'a>;
+
+        fn new_writer(&self) -> Self::Writer {
+            MockWriter::new(self.buf)
+        }
+    }
+
     #[test]
     fn customize_writer() {
         lazy_static! {
@@ -99,6 +117,35 @@ mod test {
         // TODO: remove time ANSI codes when `time::write` respects `with_ansi(false)`
         let expected =
             "\u{1b}[2m\u{1b}[0mERROR tracing_fmt::writer::test: my customized writer error\n";
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn custom_writer_struct() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let new_writer = MockNewWriter::new(&BUF);
+        let subscriber = FmtSubscriber::builder()
+            .with_writer(new_writer)
+            .without_time()
+            .with_ansi(false)
+            .finish();
+        let dispatch = Dispatch::from(subscriber);
+
+        fn event() {
+            error!("my customized writer struct error");
+        }
+
+        dispatcher::with_default(&dispatch, || {
+            event();
+        });
+
+        // TODO: remove time ANSI codes when `time::write` respects `with_ansi(false)`
+        let expected =
+            "\u{1b}[2m\u{1b}[0mERROR tracing_fmt::writer::test: my customized writer struct error\n";
         let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
         assert_eq!(actual, expected);
     }
