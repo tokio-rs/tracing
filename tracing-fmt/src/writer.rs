@@ -1,9 +1,34 @@
+//! Abstractions for creating [`io::Write`] instances.
+
 use super::Builder;
 use std::io;
 
+/// A type that can create [`io::Write`] instances.
+///
+/// `NewWriter` is used by [`FmtSubscriber`] to print formatted text representations of [`Event`]s.
+///
+/// This trait is already implemented for function pointers and immutably-borrowing closures that
+/// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
+///
+/// [`FmtSubscriber`]: crate::FmtSubscriber
+/// [`Event`]: tracing_core::Event
 pub trait NewWriter {
+    /// The concrete [`io::Write`] implementation returned by [`new_writer`].
+    ///
+    /// [`new_writer`]: NewWriter::new_writer
     type Writer: io::Write;
 
+    /// Returns an instance of [`Writer`].
+    ///
+    /// # Implementer notes
+    ///
+    /// [`FmtSubscriber`] will call this method each time an event is recorded. Ensure any state
+    /// that must be saved across writes is not lost when the [`Writer`] instance is dropped. If
+    /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
+    /// [`NewWriter`] to improve performance.
+    ///
+    /// [`Writer`]: NewWriter::Writer
+    /// [`FmtSubscriber`]: crate::FmtSubscriber
     fn new_writer(&self) -> Self::Writer;
 }
 
@@ -20,7 +45,7 @@ where
 }
 
 impl<N, E, F, W> Builder<N, E, F, W> {
-    /// Sets the Writer that the subscriber being built will use to log events.
+    /// Sets the [`NewWriter`] that the subscriber being built will use to write events.
     pub fn with_writer<W2>(self, new_writer: W2) -> Builder<N, E, F, W2>
     where
         W2: NewWriter + 'static,
