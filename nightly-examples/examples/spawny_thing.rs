@@ -32,7 +32,7 @@ async fn parent_task(subtasks: usize) {
 
 #[instrument]
 async fn subtask(number: usize) -> usize {
-    info!("polling subtask... {}", number);
+    info!("polling subtask...");
     number
 }
 
