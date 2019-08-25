@@ -55,6 +55,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{FmtSubscriber, MakeWriter};
+    use lazy_static::lazy_static;
     use std::io;
     use std::sync::{Mutex, MutexGuard, TryLockError};
     use tracing::error;
@@ -75,13 +76,9 @@ mod test {
             error!("{}", msg);
         });
 
-        // TODO: remove time ANSI codes when `crate::time::write` respects `with_ansi(false)`
-        let expected = format!(
-            "\u{1b}[2m\u{1b}[0mERROR tracing_fmt::writer::test: {}\n",
-            msg
-        );
+        let expected = format!("ERROR tracing_fmt::writer::test: {}\n", msg);
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(actual, expected);
+        assert!(actual.contains(expected.as_str()));
     }
 
     struct MockWriter<'a> {

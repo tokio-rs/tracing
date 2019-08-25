@@ -16,10 +16,6 @@ use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 use std::{any::TypeId, cell::RefCell, fmt, io};
 
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
-
 pub mod filter;
 pub mod format;
 mod span;
