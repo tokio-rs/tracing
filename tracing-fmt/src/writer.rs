@@ -56,6 +56,18 @@ where
 impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
     ///
+    /// # Examples
+    ///
+    /// Using `stderr` rather than `stdout`:
+    ///
+    /// ```rust
+    /// use std::io;
+    ///
+    /// let subscriber = tracing_fmt::FmtSubscriber::builder()
+    ///     .with_writer(io::stderr)
+    ///     .finish();
+    /// ```
+    ///
     /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
     where
