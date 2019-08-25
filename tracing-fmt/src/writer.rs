@@ -1,4 +1,6 @@
 //! Abstractions for creating [`io::Write`] instances.
+//!
+//! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 
 use super::Builder;
 use std::io;
@@ -11,12 +13,16 @@ use std::io;
 /// This trait is already implemented for function pointers and immutably-borrowing closures that
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
-/// [`FmtSubscriber`]: crate::FmtSubscriber
-/// [`Event`]: tracing_core::Event
+/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+/// [`FmtSubscriber`]: struct.FmtSubscriber.html
+/// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
+/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
+/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
 pub trait MakeWriter {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
-    /// [`make_writer`]: MakeWriter::make_writer
+    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+    /// [`make_writer`]: #tymethod.make_writer
     type Writer: io::Write;
 
     /// Returns an instance of [`Writer`].
@@ -28,8 +34,10 @@ pub trait MakeWriter {
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
     /// [`MakeWriter`] to improve performance.
     ///
-    /// [`Writer`]: MakeWriter::Writer
-    /// [`FmtSubscriber`]: crate::FmtSubscriber
+    /// [`Writer`]: #associatedtype.Writer
+    /// [`FmtSubscriber`]: struct.FmtSubscriber.html
+    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+    /// [`MakeWriter`]: trait.MakeWriter.html
     fn make_writer(&self) -> Self::Writer;
 }
 
@@ -47,6 +55,8 @@ where
 
 impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    ///
+    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
     where
         W2: MakeWriter + 'static,
