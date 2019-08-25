@@ -5,17 +5,18 @@ use std::io;
 
 /// A type that can create [`io::Write`] instances.
 ///
-/// `NewWriter` is used by [`FmtSubscriber`] to print formatted text representations of [`Event`]s.
+/// `MakeWriter` is used by [`FmtSubscriber`] to print formatted text representations of
+/// [`Event`]s.
 ///
 /// This trait is already implemented for function pointers and immutably-borrowing closures that
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
 /// [`FmtSubscriber`]: crate::FmtSubscriber
 /// [`Event`]: tracing_core::Event
-pub trait NewWriter {
-    /// The concrete [`io::Write`] implementation returned by [`new_writer`].
+pub trait MakeWriter {
+    /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
-    /// [`new_writer`]: NewWriter::new_writer
+    /// [`make_writer`]: MakeWriter::make_writer
     type Writer: io::Write;
 
     /// Returns an instance of [`Writer`].
@@ -25,55 +26,55 @@ pub trait NewWriter {
     /// [`FmtSubscriber`] will call this method each time an event is recorded. Ensure any state
     /// that must be saved across writes is not lost when the [`Writer`] instance is dropped. If
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
-    /// [`NewWriter`] to improve performance.
+    /// [`MakeWriter`] to improve performance.
     ///
-    /// [`Writer`]: NewWriter::Writer
+    /// [`Writer`]: MakeWriter::Writer
     /// [`FmtSubscriber`]: crate::FmtSubscriber
-    fn new_writer(&self) -> Self::Writer;
+    fn make_writer(&self) -> Self::Writer;
 }
 
-impl<F, W> NewWriter for F
+impl<F, W> MakeWriter for F
 where
     F: Fn() -> W,
     W: io::Write,
 {
     type Writer = W;
 
-    fn new_writer(&self) -> Self::Writer {
+    fn make_writer(&self) -> Self::Writer {
         (self)()
     }
 }
 
 impl<N, E, F, W> Builder<N, E, F, W> {
-    /// Sets the [`NewWriter`] that the subscriber being built will use to write events.
-    pub fn with_writer<W2>(self, new_writer: W2) -> Builder<N, E, F, W2>
+    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
     where
-        W2: NewWriter + 'static,
+        W2: MakeWriter + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
-            new_writer,
+            make_writer,
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{FmtSubscriber, NewWriter};
+    use crate::{FmtSubscriber, MakeWriter};
     use std::io;
     use std::sync::{Mutex, MutexGuard, TryLockError};
     use tracing::error;
     use tracing_core::dispatcher::{self, Dispatch};
 
-    fn test_writer<T>(new_writer: T, msg: &str, buf: &Mutex<Vec<u8>>)
+    fn test_writer<T>(make_writer: T, msg: &str, buf: &Mutex<Vec<u8>>)
     where
-        T: NewWriter + Send + Sync + 'static,
+        T: MakeWriter + Send + Sync + 'static,
     {
         let subscriber = FmtSubscriber::builder()
-            .with_writer(new_writer)
+            .with_writer(make_writer)
             .without_time()
             .with_ansi(false)
             .finish();
@@ -123,20 +124,20 @@ mod test {
         }
     }
 
-    struct MockNewWriter<'a> {
+    struct MockMakeWriter<'a> {
         buf: &'a Mutex<Vec<u8>>,
     }
 
-    impl<'a> MockNewWriter<'a> {
+    impl<'a> MockMakeWriter<'a> {
         fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
             Self { buf }
         }
     }
 
-    impl<'a> NewWriter for MockNewWriter<'a> {
+    impl<'a> MakeWriter for MockMakeWriter<'a> {
         type Writer = MockWriter<'a>;
 
-        fn new_writer(&self) -> Self::Writer {
+        fn make_writer(&self) -> Self::Writer {
             MockWriter::new(self.buf)
         }
     }
@@ -147,9 +148,9 @@ mod test {
             static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
         }
 
-        let new_writer = || MockWriter::new(&BUF);
+        let make_writer = || MockWriter::new(&BUF);
         let msg = "my custom writer closure error";
-        test_writer(new_writer, msg, &BUF);
+        test_writer(make_writer, msg, &BUF);
     }
 
     #[test]
@@ -158,8 +159,8 @@ mod test {
             static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
         }
 
-        let new_writer = MockNewWriter::new(&BUF);
+        let make_writer = MockMakeWriter::new(&BUF);
         let msg = "my custom writer struct error";
-        test_writer(new_writer, msg, &BUF);
+        test_writer(make_writer, msg, &BUF);
     }
 }

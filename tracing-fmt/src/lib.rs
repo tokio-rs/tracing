@@ -27,7 +27,7 @@ pub mod time;
 pub mod writer;
 
 #[doc(inline)]
-pub use crate::{filter::Filter, format::FormatEvent, span::Context, writer::NewWriter};
+pub use crate::{filter::Filter, format::FormatEvent, span::Context, writer::MakeWriter};
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 #[derive(Debug)]
@@ -42,7 +42,7 @@ pub struct FmtSubscriber<
     filter: F,
     spans: span::Store,
     settings: Settings,
-    new_writer: W,
+    make_writer: W,
 }
 
 /// Configures and constructs `FmtSubscriber`s.
@@ -57,7 +57,7 @@ pub struct Builder<
     fmt_event: E,
     filter: F,
     settings: Settings,
-    new_writer: W,
+    make_writer: W,
 }
 
 #[derive(Debug, Default)]
@@ -107,7 +107,7 @@ where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
-    W: NewWriter + 'static,
+    W: MakeWriter + 'static,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
@@ -153,7 +153,7 @@ where
             let ctx = span::Context::new(&self.spans, &self.new_visitor);
 
             if self.fmt_event.format_event(&ctx, buf, event).is_ok() {
-                let mut writer = self.new_writer.new_writer();
+                let mut writer = self.make_writer.make_writer();
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
@@ -228,7 +228,7 @@ impl Default for Builder {
             new_visitor: format::NewRecorder,
             fmt_event: format::Format::default(),
             settings: Settings::default(),
-            new_writer: io::stdout,
+            make_writer: io::stdout,
         }
     }
 }
@@ -238,7 +238,7 @@ where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
-    W: NewWriter + 'static,
+    W: MakeWriter + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F, W> {
         FmtSubscriber {
@@ -247,7 +247,7 @@ where
             filter: self.filter,
             spans: span::Store::with_capacity(32),
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 }
@@ -264,7 +264,7 @@ where
             fmt_event: self.fmt_event.with_timer(timer),
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 
@@ -275,7 +275,7 @@ where
             fmt_event: self.fmt_event.without_time(),
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 
@@ -309,7 +309,7 @@ where
             fmt_event: self.fmt_event,
             filter: filter::ReloadFilter::new(self.filter),
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 }
@@ -337,7 +337,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 
@@ -352,7 +352,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 
@@ -368,7 +368,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 
@@ -383,7 +383,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             fmt_event,
             filter: self.filter,
             settings: self.settings,
-            new_writer: self.new_writer,
+            make_writer: self.make_writer,
         }
     }
 
