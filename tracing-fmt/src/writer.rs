@@ -2,7 +2,6 @@
 //!
 //! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 
-use super::Builder;
 use std::io;
 
 /// A type that can create [`io::Write`] instances.
@@ -50,36 +49,6 @@ where
 
     fn make_writer(&self) -> Self::Writer {
         (self)()
-    }
-}
-
-impl<N, E, F, W> Builder<N, E, F, W> {
-    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
-    ///
-    /// # Examples
-    ///
-    /// Using `stderr` rather than `stdout`:
-    ///
-    /// ```rust
-    /// use std::io;
-    ///
-    /// let subscriber = tracing_fmt::FmtSubscriber::builder()
-    ///     .with_writer(io::stderr)
-    ///     .finish();
-    /// ```
-    ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
-    where
-        W2: MakeWriter + 'static,
-    {
-        Builder {
-            new_visitor: self.new_visitor,
-            fmt_event: self.fmt_event,
-            filter: self.filter,
-            settings: self.settings,
-            make_writer,
-        }
     }
 }
 
