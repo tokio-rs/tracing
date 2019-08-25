@@ -50,7 +50,7 @@ async fn transfer(
         .copy(&mut wo)
         .map(|bytes| {
             if let Ok(n) = bytes {
-                debug!(message = "copy finished", n);
+                debug!(bytes_copied = n);
             }
 
             bytes
@@ -64,7 +64,7 @@ async fn transfer(
         .copy(&mut wi)
         .map(|bytes| {
             if let Ok(n) = bytes {
-                debug!(message = "copy finished", n);
+                debug!(bytes_copied = n);
             }
 
             bytes
@@ -119,7 +119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let transfer = transfer(inbound, server_addr).map(|r| {
             if let Err(err) = r {
                 // Don't panic, maybe the client just disconnected too soon
-                debug!(%err);
+                debug!(error = %err);
             }
         });
 
