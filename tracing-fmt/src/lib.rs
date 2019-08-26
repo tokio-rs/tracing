@@ -20,9 +20,10 @@ pub mod filter;
 pub mod format;
 mod span;
 pub mod time;
+pub mod writer;
 
 #[doc(inline)]
-pub use crate::{filter::Filter, format::FormatEvent, span::Context};
+pub use crate::{filter::Filter, format::FormatEvent, span::Context, writer::MakeWriter};
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 #[derive(Debug)]
@@ -30,22 +31,29 @@ pub struct FmtSubscriber<
     N = format::NewRecorder,
     E = format::Format<format::Full>,
     F = filter::EnvFilter,
+    W = fn() -> io::Stdout,
 > {
     new_visitor: N,
     fmt_event: E,
     filter: F,
     spans: span::Store,
     settings: Settings,
+    make_writer: W,
 }
 
 /// Configures and constructs `FmtSubscriber`s.
 #[derive(Debug, Default)]
-pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter>
-{
+pub struct Builder<
+    N = format::NewRecorder,
+    E = format::Format<format::Full>,
+    F = filter::EnvFilter,
+    W = fn() -> io::Stdout,
+> {
     new_visitor: N,
     fmt_event: E,
     filter: F,
     settings: Settings,
+    make_writer: W,
 }
 
 #[derive(Debug, Default)]
@@ -69,7 +77,7 @@ impl Default for FmtSubscriber {
     }
 }
 
-impl<N, E, F> FmtSubscriber<N, E, F>
+impl<N, E, F, W> FmtSubscriber<N, E, F, W>
 where
     N: for<'a> NewVisitor<'a>,
 {
@@ -79,7 +87,7 @@ where
     }
 }
 
-impl<N, E, F> FmtSubscriber<N, E, filter::ReloadFilter<F, N>>
+impl<N, E, F, W> FmtSubscriber<N, E, filter::ReloadFilter<F, N>, W>
 where
     F: Filter<N> + 'static,
 {
@@ -90,11 +98,12 @@ where
     }
 }
 
-impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
+impl<N, E, F, W> tracing_core::Subscriber for FmtSubscriber<N, E, F, W>
 where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
+    W: MakeWriter + 'static,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.filter.callsite_enabled(metadata, &self.ctx())
@@ -140,8 +149,8 @@ where
             let ctx = span::Context::new(&self.spans, &self.new_visitor);
 
             if self.fmt_event.format_event(&ctx, buf, event).is_ok() {
-                // TODO: make the io object configurable
-                let _ = io::Write::write_all(&mut io::stdout(), buf.as_bytes());
+                let mut writer = self.make_writer.make_writer();
+                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
             buf.clear();
@@ -215,55 +224,60 @@ impl Default for Builder {
             new_visitor: format::NewRecorder,
             fmt_event: format::Format::default(),
             settings: Settings::default(),
+            make_writer: io::stdout,
         }
     }
 }
 
-impl<N, E, F> Builder<N, E, F>
+impl<N, E, F, W> Builder<N, E, F, W>
 where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
+    W: MakeWriter + 'static,
 {
-    pub fn finish(self) -> FmtSubscriber<N, E, F> {
+    pub fn finish(self) -> FmtSubscriber<N, E, F, W> {
         FmtSubscriber {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
             filter: self.filter,
             spans: span::Store::with_capacity(32),
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 }
 
-impl<N, L, T, F> Builder<N, format::Format<L, T>, F>
+impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
 where
     N: for<'a> NewVisitor<'a> + 'static,
     F: Filter<N> + 'static,
 {
     /// Use the given `timer` for log message timestamps.
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F> {
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F, W> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event.with_timer(timer),
             filter: self.filter,
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F> {
+    pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F, W> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event.without_time(),
             filter: self.filter,
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
-    pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<L, T>, F> {
+    pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<L, T>, F, W> {
         Builder {
             fmt_event: self.fmt_event.with_ansi(ansi),
             ..self
@@ -271,7 +285,7 @@ where
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Builder<N, format::Format<L, T>, F> {
+    pub fn with_target(self, display_target: bool) -> Builder<N, format::Format<L, T>, F, W> {
         Builder {
             fmt_event: self.fmt_event.with_target(display_target),
             ..self
@@ -279,23 +293,24 @@ where
     }
 }
 
-impl<N, E, F> Builder<N, E, F>
+impl<N, E, F, W> Builder<N, E, F, W>
 where
     F: Filter<N> + 'static,
 {
     /// Configures the subscriber being built to allow filter reloading at
     /// runtime.
-    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F, N>> {
+    pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F, N>, W> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
             filter: filter::ReloadFilter::new(self.filter),
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 }
 
-impl<N, E, F> Builder<N, E, filter::ReloadFilter<F, N>>
+impl<N, E, F, W> Builder<N, E, filter::ReloadFilter<F, N>, W>
 where
     F: Filter<N> + 'static,
 {
@@ -306,10 +321,10 @@ where
     }
 }
 
-impl<N, E, F> Builder<N, E, F> {
+impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
-    pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F>
+    pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F, W>
     where
         N2: for<'a> NewVisitor<'a> + 'static,
     {
@@ -318,12 +333,13 @@ impl<N, E, F> Builder<N, E, F> {
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 
     /// Sets the filter that the subscriber being built will use to determine if
     /// a span or event is enabled.
-    pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2>
+    pub fn with_filter<F2>(self, filter: F2) -> Builder<N, E, F2, W>
     where
         F2: Filter<N> + 'static,
     {
@@ -332,13 +348,14 @@ impl<N, E, F> Builder<N, E, F> {
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`].
-    pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F>
+    pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F, W>
     where
         N: for<'a> NewVisitor<'a> + 'static,
     {
@@ -347,12 +364,13 @@ impl<N, E, F> Builder<N, E, F> {
             filter: self.filter,
             new_visitor: self.new_visitor,
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 
     /// Sets the function that the subscriber being built should use to format
     /// events that occur.
-    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F>
+    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F, W>
     where
         E2: FormatEvent<N> + 'static,
     {
@@ -361,6 +379,7 @@ impl<N, E, F> Builder<N, E, F> {
             fmt_event,
             filter: self.filter,
             settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 
@@ -370,6 +389,36 @@ impl<N, E, F> Builder<N, E, F> {
         Builder {
             settings: Settings { inherit_fields },
             ..self
+        }
+    }
+}
+
+impl<N, E, F, W> Builder<N, E, F, W> {
+    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    ///
+    /// # Examples
+    ///
+    /// Using `stderr` rather than `stdout`:
+    ///
+    /// ```rust
+    /// use std::io;
+    ///
+    /// let subscriber = tracing_fmt::FmtSubscriber::builder()
+    ///     .with_writer(io::stderr)
+    ///     .finish();
+    /// ```
+    ///
+    /// [`MakeWriter`]: trait.MakeWriter.html
+    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
+    where
+        W2: MakeWriter + 'static,
+    {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event,
+            filter: self.filter,
+            settings: self.settings,
+            make_writer,
         }
     }
 }
