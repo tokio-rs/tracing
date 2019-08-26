@@ -13,7 +13,7 @@ use std::io;
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-/// [`FmtSubscriber`]: struct.FmtSubscriber.html
+/// [`FmtSubscriber`]: https://docs.rs/tracing-fmt/0.0.1-alpha.3/tracing_fmt/struct.FmtSubscriber.html
 /// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
@@ -34,7 +34,7 @@ pub trait MakeWriter {
     /// [`MakeWriter`] to improve performance.
     ///
     /// [`Writer`]: #associatedtype.Writer
-    /// [`FmtSubscriber`]: struct.FmtSubscriber.html
+    /// [`FmtSubscriber`]: https://docs.rs/tracing-fmt/0.0.1-alpha.3/tracing_fmt/struct.FmtSubscriber.html
     /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
     /// [`MakeWriter`]: trait.MakeWriter.html
     fn make_writer(&self) -> Self::Writer;
