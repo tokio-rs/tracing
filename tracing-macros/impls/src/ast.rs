@@ -22,12 +22,12 @@ pub(crate) struct EventBody {
 #[derive(Debug)]
 pub(crate) struct Attrs {
     target: Option<Target>,
-    parent: Option<Parent>,
+    pub(crate) parent: Option<Parent>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Parent {
-    parent: Expr,
+    pub(crate) parent: Expr,
 }
 
 #[derive(Debug)]
@@ -186,7 +186,7 @@ impl KvFields {
         self.fmt_str.is_some()
     }
 
-    pub(crate) fn gen_valueset(&self) -> impl ToTokens {
+    pub(crate) fn gen_valueset(&self) -> (impl ToTokens, impl ToTokens) {
         lazy_static! {
             static ref FORMAT_RE: Regex =
                 Regex::new(r"\{[^\{\}]*\}").expect("regex should comnpile");
@@ -197,24 +197,30 @@ impl KvFields {
             .enumerate()
             .map(|(i, _)| Ident::new(&format!("__tracing__arg{}", i), Span::call_site()))
             .collect::<Vec<_>>();
+        let next_field = quote! {
+            __tracing__fields.next().expect("field set corrupted (this is a bug)!")
+        };
         let values = if let Some(ref fmt) = self.fmt_str {
             let n_formats = FORMAT_RE.find_iter(&fmt.value()).count();
             let formatted_fields = arg_names.iter().take(n_formats);
-            quote!(format_args!(#fmt, #(#formatted_fields),*))
+            quote!(&[
+                (&#next_field, Some(&format_args!(#fmt, #(#formatted_fields),*) as &dyn tracing::Value)),
+                #(
+                    (&#next_field, Some(&#arg_names as &dyn tracing::Value))
+                ),*
+            ])
         } else {
-            quote!()
+            quote!(&[
+                #(
+                    (&#next_field, Some(&#arg_names as &dyn tracing::Value))
+            ),*])
         };
         let exprs = self.fields.iter().map(|field| field.value.clone().unwrap());
         let args = arg_names
             .iter()
             .zip(exprs)
             .map(|(arg_name, expr)| quote!(let #arg_name = &#expr;));
-        quote!(
-            #(
-                #args
-            )*
-            #values
-        )
+        (quote!( #(#args)* ), values)
     }
 
     pub(crate) fn gen_fieldset(&self) -> impl ToTokens {
@@ -228,7 +234,7 @@ impl KvFields {
             .map(|m| m as &dyn ToTokens)
             .chain(self.fields.iter().map(|field| &field.name as &dyn ToTokens));
         quote!(
-            &[ #(stringify!(#field_names)),* ]
+            &[ #(tracing::__tracing_stringify!(#field_names)),* ]
         )
     }
 }

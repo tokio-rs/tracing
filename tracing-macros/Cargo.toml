@@ -28,3 +28,4 @@ tracing-macro-impls = {version = "0.1", path = "impls"}
 
 [dev-dependencies]
 tracing = "0.1"
+tracing-fmt = "0.0.1-alpha.3"

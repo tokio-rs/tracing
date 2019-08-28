@@ -37,6 +37,7 @@
 /// # }
 /// ```
 ///
+
 /// As shorthand, local variables may be used as field values without an
 /// assignment, similar to [struct initializers]. For example:
 /// ```
