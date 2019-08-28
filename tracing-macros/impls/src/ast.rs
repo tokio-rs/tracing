@@ -8,6 +8,11 @@ use syn::{Expr, Ident, LitStr, Token};
 
 use std::{fmt, iter};
 
+pub(crate) enum Kind {
+    Event,
+    Span,
+}
+
 #[derive(Debug)]
 pub(crate) struct EventBody {
     pub(crate) attrs: Attrs,
@@ -53,6 +58,18 @@ impl Parse for EventBody {
     }
 }
 
+impl EventBody {
+    pub(crate) fn gen_callsite(&self, level: impl ToTokens) -> impl ToTokens {
+        gen_callsite(
+            &self.attrs,
+            &self.fields,
+            quote! { tracing::metadata::Kind::EVENT },
+            quote! { concat!("event at ", file!(), ":", line!()) },
+            level,
+        )
+    }
+}
+
 // === impl Attrs ===
 impl Parse for Attrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -71,6 +88,66 @@ impl Parse for Attrs {
             }
         }
         Ok(Self { target, parent })
+    }
+}
+
+fn gen_callsite(
+    attrs: &Attrs,
+    fields: &KvFields,
+    kind: impl ToTokens,
+    name: impl ToTokens,
+    level: impl ToTokens,
+) -> impl ToTokens {
+    let fields = fields.gen_fieldset();
+    let target = if let Some(Target { ref target }) = attrs.target {
+        quote! { #target }
+    } else {
+        quote! { module_path!() }
+    };
+    quote! {
+        use tracing::{callsite, subscriber::Interest, Metadata, __macro_support::*};
+        struct MyCallsite;
+        static MY_CALLSITE: MyCallsite = MyCallsite;
+        static META: Metadata<'static> = {
+            tracing::metadata! {
+                name: #name,
+                target: #target,
+                level: #level,
+                fields: #fields,
+                callsite: &MY_CALLSITE,
+                kind: #kind,
+            }
+        };
+        static INTEREST: AtomicUsize = AtomicUsize::new(0);
+        static REGISTRATION: Once = Once::new();
+        impl MyCallsite {
+            #[inline]
+            fn interest(&self) -> Interest {
+                match INTEREST.load(Ordering::Relaxed) {
+                    0 => Interest::never(),
+                    2 => Interest::always(),
+                    _ => Interest::sometimes(),
+                }
+            }
+        }
+        impl callsite::Callsite for MyCallsite {
+            fn set_interest(&self, interest: Interest) {
+                let interest = match () {
+                    _ if interest.is_never() => 0,
+                    _ if interest.is_always() => 2,
+                    _ => 1,
+                };
+                INTEREST.store(interest, Ordering::SeqCst);
+            }
+
+            fn metadata(&self) -> &Metadata {
+                &META
+            }
+        }
+        REGISTRATION.call_once(|| {
+            callsite::register(&MY_CALLSITE);
+        });
+        &MY_CALLSITE
     }
 }
 
