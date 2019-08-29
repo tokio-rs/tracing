@@ -1,4 +1,5 @@
 mod support;
+use support::subscriber::SubscriberTest;
 use support::*;
 
 use tracing::subscriber::with_default;
@@ -24,7 +25,7 @@ mod my_mod {
 
 #[test]
 fn default_targets() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(
             span::mock()
                 .named("default_target")
@@ -68,7 +69,7 @@ fn default_targets() {
 
 #[test]
 fn custom_targets() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(span::mock().named("custom_target").with_target("my_target"))
         .enter(span::mock().named("custom_target").with_target("my_target"))
         .exit(span::mock().named("custom_target").with_target("my_target"))

@@ -1,4 +1,5 @@
 mod support;
+use support::subscriber::SubscriberTest;
 use support::*;
 
 use tracing::subscriber::with_default;
@@ -21,7 +22,7 @@ fn override_everything() {
         .named("my_other_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(span.clone())
         .enter(span.clone())
         .exit(span.clone())
@@ -55,7 +56,7 @@ fn fields() {
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -101,7 +102,7 @@ fn generics() {
 
     let span = span::mock().named("my_fn");
 
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")

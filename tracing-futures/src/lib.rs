@@ -226,7 +226,7 @@ pub mod support;
 
 #[cfg(test)]
 mod tests {
-    use super::{test_support::*, *};
+    use super::{test_support::subscriber::SubscriberTest, test_support::*, *};
 
     struct PollN<T, E> {
         and_return: Option<Result<T, E>>,
@@ -280,7 +280,7 @@ mod tests {
 
         #[test]
         fn future_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::SubscriberTest::new()
+            let (subscriber, handle) = SubscriberTest::new()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -300,7 +300,7 @@ mod tests {
         #[cfg(feature = "futures-01")]
         #[test]
         fn future_error_ends_span() {
-            let (subscriber, handle) = subscriber::SubscriberTest::new()
+            let (subscriber, handle) = SubscriberTest::new()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -320,7 +320,7 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::SubscriberTest::new()
+            let (subscriber, handle) = SubscriberTest::new()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -343,7 +343,7 @@ mod tests {
 
         #[test]
         fn span_follows_future_onto_threadpool() {
-            let (subscriber, handle) = subscriber::SubscriberTest::new()
+            let (subscriber, handle) = SubscriberTest::new()
                 .enter(span::mock().named("a"))
                 .enter(span::mock().named("b"))
                 .exit(span::mock().named("b"))

@@ -10,6 +10,7 @@
 extern crate tracing;
 mod support;
 
+use self::support::subscriber::SubscriberTest;
 use self::support::*;
 
 use tracing::{
@@ -20,7 +21,7 @@ use tracing::{
 
 #[test]
 fn event_without_message() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("answer")
@@ -47,7 +48,7 @@ fn event_without_message() {
 
 #[test]
 fn event_with_message() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(event::mock().with_fields(field::mock("message").with_value(
             &tracing::field::debug(format_args!("hello from my event! yak shaved = {:?}", true)),
         )))
@@ -118,7 +119,7 @@ fn string_message_without_delims() {
 
 #[test]
 fn one_with_everything() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock()
                 .with_fields(
@@ -152,7 +153,7 @@ fn one_with_everything() {
 
 #[test]
 fn moved_field() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("foo")
@@ -172,7 +173,7 @@ fn moved_field() {
 
 #[test]
 fn dotted_field_name() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("foo.bar")
@@ -192,7 +193,7 @@ fn dotted_field_name() {
 
 #[test]
 fn borrowed_field() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("foo")
@@ -228,7 +229,7 @@ fn move_field_out_of_struct() {
         x: 3.234,
         y: -1.223,
     };
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("x")
@@ -254,7 +255,7 @@ fn move_field_out_of_struct() {
 
 #[test]
 fn display_shorthand() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("my_field")
@@ -273,7 +274,7 @@ fn display_shorthand() {
 
 #[test]
 fn debug_shorthand() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("my_field")
@@ -292,7 +293,7 @@ fn debug_shorthand() {
 
 #[test]
 fn both_shorthands() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .event(
             event::mock().with_fields(
                 field::mock("display_field")
@@ -312,7 +313,7 @@ fn both_shorthands() {
 
 #[test]
 fn explicit_child() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .event(event::mock().with_explicit_parent(Some("foo")))
         .done()
@@ -328,7 +329,7 @@ fn explicit_child() {
 
 #[test]
 fn explicit_child_at_levels() {
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(span::mock().named("foo"))
         .event(event::mock().with_explicit_parent(Some("foo")))
         .event(event::mock().with_explicit_parent(Some("foo")))

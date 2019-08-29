@@ -10,7 +10,7 @@ extern crate std;
 extern crate tracing;
 mod support;
 
-use self::support::*;
+use self::support::subscriber::SubscriberTest;
 use tracing::Level;
 
 use std::sync::{
@@ -27,7 +27,7 @@ fn filters_are_reevaluated_for_different_call_sites() {
     let charlie_count2 = charlie_count.clone();
     let dave_count2 = dave_count.clone();
 
-    let subscriber = subscriber::SubscriberTest::new()
+    let subscriber = SubscriberTest::new()
         .with_filter(move |meta| {
             println!("Filter: {:?}", meta.name());
             match meta.name() {

@@ -1,4 +1,5 @@
 mod support;
+use support::subscriber::SubscriberTest;
 use support::*;
 
 use tracing::subscriber::with_default;
@@ -21,7 +22,7 @@ fn named_levels() {
 
     #[instrument(level = "eRrOr")]
     fn error() {}
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(span::mock().named("trace").at_level(Level::TRACE))
         .enter(span::mock().named("trace").at_level(Level::TRACE))
         .exit(span::mock().named("trace").at_level(Level::TRACE))
@@ -67,7 +68,7 @@ fn numeric_levels() {
 
     #[instrument(level = 5)]
     fn error() {}
-    let (subscriber, handle) = subscriber::SubscriberTest::new()
+    let (subscriber, handle) = SubscriberTest::new()
         .new_span(span::mock().named("trace").at_level(Level::TRACE))
         .enter(span::mock().named("trace").at_level(Level::TRACE))
         .exit(span::mock().named("trace").at_level(Level::TRACE))
