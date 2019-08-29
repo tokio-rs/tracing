@@ -463,6 +463,7 @@ impl Span {
     /// span is not present.
     ///
     /// Entering, exiting, and recording values on this span will do nothing.
+    #[inline(always)]
     pub const fn none() -> Span {
         Self {
             inner: None,
