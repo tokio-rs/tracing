@@ -1,42 +1,61 @@
-#[macro_use]
-extern crate tracing;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate criterion;
-
-use criterion::Criterion;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
-fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("span_no_subscriber", |b| {
+fn bench_no_subscriber(c: &mut Criterion) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let mut group = c.benchmark_group("no_subscriber");
+
+    group.bench_function("span", |b| {
         b.iter(|| {
-            span!(Level::TRACE, "span");
+            black_box(tracing::span!(Level::TRACE, "span"));
         })
     });
-    c.bench_function("bench_log_no_logger", |b| {
+    group.bench_function("event", |b| {
         b.iter(|| {
-            log!(log::Level::Info, "log");
-        });
+            tracing::event!(Level::TRACE, "hello");
+        })
     });
-    c.bench_function("bench_costly_field_no_subscriber", |b| {
+    group.bench_function("relaxed_load", |b| {
+        let foo = AtomicUsize::new(1);
+        b.iter(|| black_box(foo.load(Ordering::Relaxed)));
+    });
+    group.bench_function("acquire_load", |b| {
+        let foo = AtomicUsize::new(1);
+        b.iter(|| black_box(foo.load(Ordering::Acquire)))
+    });
+    group.bench_function("log", |b| {
         b.iter(|| {
-            span!(
+            log::log!(log::Level::Info, "log");
+        })
+    });
+    group.finish();
+}
+
+fn bench_fields(c: &mut Criterion) {
+    let mut group = c.benchmark_group("no_subscriber_field");
+    group.bench_function("span", |b| {
+        b.iter(|| {
+            black_box(tracing::span!(
                 Level::TRACE,
                 "span",
                 foo = tracing::field::display(format!("bar {:?}", 2))
+            ));
+        })
+    });
+    group.bench_function("event", |b| {
+        b.iter(|| {
+            tracing::event!(
+                Level::TRACE,
+                foo = tracing::field::display(format!("bar {:?}", 2))
             );
-        });
+        })
     });
-    // This is just included as a baseline.
-    c.bench_function("bench_no_span_no_subscriber", |b| {
-        b.iter(|| {});
+    group.bench_function("log", |b| {
+        b.iter(|| log::log!(log::Level::Trace, "{}", format!("bar {:?}", 2)))
     });
-    c.bench_function("bench_1_atomic_load", |b| {
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        let foo = AtomicUsize::new(1);
-        b.iter(|| foo.load(Ordering::Relaxed));
-    });
+    group.finish();
 }
-criterion_group!(benches, criterion_benchmark);
+
+criterion_group!(benches, bench_no_subscriber, bench_fields);
 criterion_main!(benches);

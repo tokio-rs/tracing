@@ -35,7 +35,7 @@ cfg-if = "0.1.9"
 
 [dev-dependencies]
 futures = "0.1"
-criterion = { version = "0.2", default_features = false }
+criterion = { version = "0.3", default_features = false }
 log = "0.4"
 
 [features]
