@@ -30,7 +30,9 @@ stages:
          - template: azure/install-rust.yml@templates
            parameters:
             rust: stable
-         - bash: cd tracing/test-log-support && cargo test
+         - bash: |
+             (cd tracing/test-log-support && cargo test) &&
+             cargo test -p tracing --features log
            displayName: "Test log support"
          - bash: cd tracing/test_static_max_level_features && cargo test
            displayName: "Test static max level features"
