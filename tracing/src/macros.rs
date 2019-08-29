@@ -33,15 +33,14 @@ macro_rules! span {
                 fields: $($fields)*
             };
             let meta = callsite.metadata();
-
-            if $lvl <= $crate::level_filters::STATIC_MAX_LEVEL && $crate::is_enabled!(callsite) {
+            if $crate::level_enabled!($lvl) && $crate::is_enabled!(callsite) {
                 $crate::Span::child_of(
                     $parent,
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                 $crate::__tracing_disabled_span!(
+                $crate::__tracing_disabled_span!(
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*)
                 )
@@ -60,11 +59,10 @@ macro_rules! span {
                 fields: $($fields)*
             };
             let meta = callsite.metadata();
-
-            if $lvl <= $crate::level_filters::STATIC_MAX_LEVEL && $crate::is_enabled!(callsite) {
+            if $crate::level_enabled!($lvl) && $crate::is_enabled!(callsite) {
                 $crate::Span::new(
                     meta,
-                    &$crate::valueset!(meta.fields(), $($fields)*)
+                    &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
                 $crate::__tracing_disabled_span!(
@@ -73,7 +71,6 @@ macro_rules! span {
                 )
             }
         }
-
     };
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
         $crate::span!(target: $target, parent: $parent, $lvl, $name,)
@@ -585,7 +582,7 @@ macro_rules! event {
                 $($fields)*
             );
 
-            if $lvl <= $crate::level_filters::STATIC_MAX_LEVEL {
+            if $crate::level_enabled!($lvl) {
                 #[allow(unused_imports)]
                 use $crate::{callsite, dispatcher, Event, field::{Value, ValueSet}};
                 use $crate::callsite::Callsite;
@@ -630,8 +627,7 @@ macro_rules! event {
                 $lvl,
                 $($fields)*
             );
-
-            if $lvl <= $crate::level_filters::STATIC_MAX_LEVEL {
+            if $crate::level_enabled!($lvl) {
                 #[allow(unused_imports)]
                 use $crate::{callsite, dispatcher, Event, field::{Value, ValueSet}};
                 use $crate::callsite::Callsite;
@@ -1886,6 +1882,15 @@ macro_rules! callsite {
         });
         &MyCallsite
     }};
+}
+
+#[macro_export]
+// TODO: determine if this ought to be public API?
+#[doc(hidden)]
+macro_rules! level_enabled {
+    ($lvl:expr) => {
+        $crate::dispatcher::exists() && $lvl <= $crate::level_filters::STATIC_MAX_LEVEL
+    };
 }
 
 #[macro_export]

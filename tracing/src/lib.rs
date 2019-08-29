@@ -669,6 +669,8 @@ pub mod subscriber;
 pub mod __macro_support {
     pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
 
+    pub const LOG_ENABLED: bool = cfg!(feature = "log");
+
     #[cfg(feature = "std")]
     pub use crate::stdlib::sync::Once;
 
