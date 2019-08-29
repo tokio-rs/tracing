@@ -30,9 +30,7 @@ stages:
          - template: azure/install-rust.yml@templates
            parameters:
             rust: stable
-         - bash: |
-             (cd tracing/test-log-support && cargo test) &&
-             cargo test -p tracing --features log
+         - bash: cd tracing/test-log-support && cargo test
            displayName: "Test log support"
          - bash: cd tracing/test_static_max_level_features && cargo test
            displayName: "Test static max level features"
@@ -40,6 +38,8 @@ stages:
            displayName: "Test tracing-core no-std support"
          - bash: cd tracing && cargo test --no-default-features
            displayName: "Test tracing no-std support"
+         - bash: cargo test -p tracing --all-features
+           displayName: "Test tracing all features"
      - job: custom_nightly
        pool:
          vmImage: ubuntu-16.04
