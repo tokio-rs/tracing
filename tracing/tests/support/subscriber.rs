@@ -50,17 +50,19 @@ pub struct SubscriberTest<F: Fn(&Metadata<'_>) -> bool> {
 
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>);
 
-impl<F> SubscriberTest<F>
-where
-    F: Fn(&Metadata<'_>) -> bool + 'static,
-{
-    pub fn new() -> SubscriberTest<fn(&Metadata<'_>) -> bool> {
+impl SubscriberTest<fn(&Metadata<'_>) -> bool> {
+    pub fn new() -> Self {
         SubscriberTest {
             expected: VecDeque::new(),
             filter: (|_: &Metadata<'_>| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
         }
     }
+}
 
+impl<F> SubscriberTest<F>
+where
+    F: Fn(&Metadata<'_>) -> bool + 'static,
+{
     pub fn enter(mut self, span: MockSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
         self
