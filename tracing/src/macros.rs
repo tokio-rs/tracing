@@ -2222,7 +2222,7 @@ macro_rules! valueset {
     };
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
-        $crate::valueset!(@ { $($out),*, (&$next, Some(&format_args!($($rest)+) as &Value)) }, $next, )
+        $crate::valueset!(@ { (&$next, Some(&format_args!($($rest)+) as &Value)), $($out),* }, $next, )
     };
 
     // === entry ===
@@ -2280,7 +2280,7 @@ macro_rules! fieldset {
 
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* } $($rest:tt)+) => {
-        $crate::fieldset!(@ { $($out),*, "message" })
+        $crate::fieldset!(@ { "message", $($out),*, })
     };
 
     // == entry ==
