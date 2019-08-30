@@ -16,7 +16,7 @@
 //!     nc localhost 3000
 //!
 //! Each line you type in to the `netcat` terminal should be echo'd back to
-//! you! If you open up multiple terminals with `netcat` instances connected 
+//! you! If you open up multiple terminals with `netcat` instances connected
 //! to the same address you should be able to see them all make progress simultaneously.
 //!
 //! [echo-example]: https://github.com/tokio-rs/tokio/blob/master/tokio/examples/echo.rs
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
-    let mut listener = TcpListener::bind(&addr)?;
+    let mut listener = TcpListener::bind(&addr).await?;
     // Use `fmt::Debug` impl for `addr` using the `%` sybmol
     info!(message = "Listening on", %addr);
 
@@ -111,7 +111,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     .instrument(trace_span!("write"))
                     .await
                     .expect("failed to write data to socket");
-
 
                 info!(message = "echo'd data", %peer_addr, size = n);
             }
