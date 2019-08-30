@@ -252,9 +252,13 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     }
 }
 
+/// Returns true if a `tracing` dispatcher has ever been set.
+///
+/// This may be used to completely elide trace points if tracing is not in use
+/// at all or has yet to be initialized.
 #[doc(hidden)]
 #[inline(always)]
-pub fn exists() -> bool {
+pub fn has_been_set() -> bool {
     EXISTS.load(Ordering::Relaxed)
 }
 
