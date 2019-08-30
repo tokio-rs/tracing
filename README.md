@@ -111,6 +111,26 @@ The crates included as part of Tracing are:
 [sub-crates]: https://crates.io/crates/tracing-subscriber
 [sub-docs]: https://docs.rs/tracing-subscriber
 
+## External Resources
+
+This is a list of links to blog posts, conference talks, and tutorials about
+Tracing.
+
+#### Blog Posts
+
+* [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
+
+[tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
+
+#### Talks
+
+* [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+
+[bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
+
+Help us expand this list! If you've written or spoken about Tracing, or
+know of resources that aren't listed, please open a pull request adding them.
+
 ## License
 
 This project is licensed under the [MIT license](LICENSE).
@@ -120,5 +140,3 @@ This project is licensed under the [MIT license](LICENSE).
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in Tracing by you, shall be licensed as MIT, without any additional
 terms or conditions.
-
-[`tokio-trace`]: https://github.com/tokio-rs/tokio/tree/master/tokio-trace
