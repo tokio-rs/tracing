@@ -2417,68 +2417,38 @@ macro_rules! __tracing_disabled_span {
 #[macro_export]
 macro_rules! __mk_format_string {
     // === base case ===
-    (@ { $($out:expr),+ $(,)* } $(,)*) => {
-        concat!( $($out),+)
+    (@ { $(,)* $($out:expr),* $(,)* } $(,)*) => {
+        concat!( $($out),*)
     };
 
-    // === recursive case (more tts), non-empty out set ===
-
+    // === recursive case (more tts), ===
     // ====== shorthand field syntax ===
-    (@ { $($out:expr),+ }, ?$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, %$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, $($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
-
-    (@ { $($out:expr),+ }, message = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, "{} " }, $($rest)*)
+    // ====== kv field syntax ===
+    (@ { $(,)* $($out:expr),* }, message = $val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-
-
-
-    // === recursive case (more tts), empty out set ===
-    // ====== shorthand field syntax ===
-    (@ { }, ?$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { }, %$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { }, message = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { "{} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ {  tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
 
-    // === rest is unparseable ===
-    (@ { $($out:expr),* }, $($rest:tt)+) => {
+    // === rest is unparseable --- must be fmt args ===
+    (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
         tracing::__mk_format_string!(@ { "{}", $($out),* }, )
-    };
-    (@ { }, $($rest:tt)+) => {
-        tracing::__mk_format_string!(@ { "{}" }, )
     };
 
     // === entry ===
