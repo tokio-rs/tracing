@@ -101,7 +101,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "127.0.0.1:3000".to_string());
     let server_addr = server_addr.parse::<SocketAddr>()?;
 
-    let mut listener = TcpListener::bind(&listen_addr)?.incoming();
+    let mut listener = TcpListener::bind(&listen_addr).await?.incoming();
+
     info!("Listening on: {}", listen_addr);
     info!("Proxying to: {}", server_addr);
 
