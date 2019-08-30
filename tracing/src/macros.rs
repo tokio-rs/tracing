@@ -2135,139 +2135,93 @@ macro_rules! valueset {
         &[ $($val),* ]
     };
 
-    // === recursive case (more tts), non-empty out set ===
+    // === recursive case (more tts) ===
 
     // TODO(#1138): determine a new syntax for uninitialized span fields, and
     // re-enable this.
-    // (@{ $($out:expr),+ }, $next:expr, $($k:ident).+ = _, $($rest:tt)*) => {
-    //     $crate::valueset!(@ { $($out),+, (&$next, None) }, $next, $($rest)*)
+    // (@{ $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = _, $($rest:tt)*) => {
+    //     $crate::valueset!(@ { $($out),*, (&$next, None) }, $next, $($rest)*)
     // };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
             $next,
             $($rest)*
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
             $next,
             $($rest)*
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&$val as &Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &Value)) },
             $next,
             $($rest)*
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+, $($rest:tt)*) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&$($k).+ as &Value)) },
+            @ { $($out),*, (&$next, Some(&$($k).+ as &Value)) },
             $next,
             $($rest)*
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
             $next,
             $($rest)*
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&display(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
             $next,
             $($rest)*
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = ?$val:expr) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
             $next,
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = %$val:expr) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
             $next,
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+ = $val:expr) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&$val as &Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &Value)) },
             $next,
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, $($k:ident).+) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&$($k).+ as &Value)) },
+            @ { $($out),*, (&$next, Some(&$($k).+ as &Value)) },
             $next,
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, ?$($k:ident).+) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
             $next,
         )
     };
-    (@ { $($out:expr),+ }, $next:expr, %$($k:ident).+) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),+, (&$next, Some(&display(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
             $next,
         )
     };
-
-    // == recursive case (more tts), empty out set ===
-
-    // TODO(#1138): determine a new syntax for uninitialized span fields, and
-    // re-enable this.
-    // (@ { }, $next:expr, $($k:ident).+ = _, $($rest:tt)* ) => {
-    //     $crate::valueset!(@ { (&$next, None) }, $next, $($rest)* )
-    // };
-    (@ { }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)* ) => {
-        $crate::valueset!(@ { (&$next, Some(&debug(&$val) as &Value)) }, $next, $($rest)* )
-    };
-    (@ { }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(@ { (&$next, Some(&display(&$val) as &Value)) }, $next, $($rest)*)
-    };
-    (@ { }, $next:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::valueset!(@ { (&$next, Some(&$val as &Value)) }, $next, $($rest)*)
-    };
-    (@ { }, $next:expr, $($k:ident).+, $($rest:tt)*) => {
-        $crate::valueset!(@ { (&$next, Some(&$($k).+ as &Value)) }, $next, $($rest)* )
-    };
-    (@ { }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::valueset!(@ { (&$next, Some(&debug(&$($k).+) as &Value)) }, $next, $($rest)* )
-    };
-    (@ { }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
-        $crate::valueset!(@ { (&$next, Some(&display(&$($k).+) as &Value)) }, $next, $($rest)* )
-    };
-    // no trailing comma
-    (@ { }, $next:expr, $($k:ident).+ = ?$val:expr) => {
-        $crate::valueset!(@ { (&$next, Some(&debug(&$val) as &Value)) }, $next )
-    };
-    (@ { }, $next:expr, $($k:ident).+ = %$val:expr) => {
-        $crate::valueset!(@ { (&$next, Some(&display(&$val) as &Value)) }, $next)
-    };
-    (@ { }, $next:expr, $($k:ident).+ = $val:expr) => {
-        $crate::valueset!(@ { (&$next, Some(&$val as &Value)) }, $next)
-    };
-    (@ { }, $next:expr, $($k:ident).+) => {
-        $crate::valueset!(@ { (&$next, Some(&$($k).+ as &Value)) }, $next)
-    };
-    (@ { }, $next:expr, ?$($k:ident).+) => {
-        $crate::valueset!(@ { (&$next, Some(&debug(&$($k).+) as &Value)) }, $next)
-    };
-    (@ { }, $next:expr, %$($k:ident).+) => {
-        $crate::valueset!(@ { (&$next, Some(&display(&$($k).+) as &Value)) }, $next)
-    };
-
     // Remainder is unparseable, but exists --- must be format args!
-    (@ { $($out:expr),* }, $next:expr, $($rest:tt)+) => {
+    (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
         $crate::valueset!(@ { $($out),*, (&$next, Some(&format_args!($($rest)+) as &Value)) }, $next, )
     };
 
@@ -2299,59 +2253,33 @@ macro_rules! fieldset {
         &[ $($out),* ]
     };
 
-    // == empty out set, remaining tts ==
-    (@ { } $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    // == recursive cases (more tts) ==
+    (@ { $(,)* $($out:expr),* } $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     };
-    (@ { } $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    (@ { $(,)* $($out:expr),* } $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     };
-    (@ { } $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
-    };
-    // TODO(#1138): determine a new syntax for uninitialized span fields, and
-    // re-enable this.
-    // (@ { } $($k:ident).+ = _, $($rest:tt)*) => {
-    //     $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
-    // };
-    (@ { } ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
-    };
-    (@ { } %$($k:ident).+, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
-    };
-    (@ { } $($k:ident).+, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $crate::__tracing_stringify!($($k).+) } $($rest)*)
-    };
-
-
-    // == non-empty out set, remaining tts ==
-    (@ { $($out:expr),+ } $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $($out),+,$crate::__tracing_stringify!($($k).+) } $($rest)*)
-    };
-    (@ { $($out:expr),+ } $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
-    };
-    (@ { $($out:expr),+ } $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    (@ { $(,)* $($out:expr),* } $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     };
     // TODO(#1138): determine a new syntax for uninitialized span fields, and
     // re-enable this.
-    // (@ { $($out:expr),+ } $($k:ident).+ = _, $($rest:tt)*) => {
-    //     $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    // (@ { $($out:expr),* } $($k:ident).+ = _, $($rest:tt)*) => {
+    //     $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     // };
-    (@ { $($out:expr),+ } ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    (@ { $(,)* $($out:expr),* } ?$($k:ident).+, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     };
-    (@ { $($out:expr),+ } %$($k:ident).+, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    (@ { $(,)* $($out:expr),* } %$($k:ident).+, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     };
-    (@ { $($out:expr),+ } $($k:ident).+, $($rest:tt)*) => {
-        $crate::fieldset!(@ { $($out),+, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    (@ { $(,)* $($out:expr),* } $($k:ident).+, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
     };
 
     // Remainder is unparseable, but exists --- must be format args!
-    (@ { $($out:expr),* } $($rest:tt)+) => {
+    (@ { $(,)* $($out:expr),* } $($rest:tt)+) => {
         $crate::fieldset!(@ { $($out),*, "message" })
     };
 
@@ -2417,59 +2345,38 @@ macro_rules! __tracing_disabled_span {
 #[macro_export]
 macro_rules! __mk_format_string {
     // === base case ===
-    (@ { $($out:expr),+ } $(,)*) => {
-        concat!( $($out),+)
+    (@ { $(,)* $($out:expr),* $(,)* } $(,)*) => {
+        concat!( $($out),*)
     };
 
-    // === recursive case (more tts), non-empty out set ===
-
+    // === recursive case (more tts), ===
     // ====== shorthand field syntax ===
-    (@ { $($out:expr),+ }, ?$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, %$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
-    (@ { $($out:expr),+ }, $($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    };
+    // ====== kv field syntax ===
+    (@ { $(,)* $($out:expr),* }, message = $val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
 
-    (@ { $($out:expr),+ }, message = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, "{} " }, $($rest)*)
-    };
-    (@ { $($out:expr),+ }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { $($out:expr),+ }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { $($out:expr),+ }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),+, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-
-
-    // === recursive case (more tts), empty out set ===
-    // ====== shorthand field syntax ===
-    (@ { }, ?$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { }, %$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { }, message = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { "{} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ {  tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+    // === rest is unparseable --- must be fmt args ===
+    (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
+        tracing::__mk_format_string!(@ { "{}", $($out),* }, )
     };
 
     // === entry ===
@@ -2485,62 +2392,63 @@ macro_rules! __mk_format_string {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __mk_format_args {
-    // == base case ==
-    (@ { $($out:expr),* }, $fmt:expr, fields: $(,)*) => {
+    // === finished --- called into by base cases ===
+    (@ { $(,)* $($out:expr),* $(,)* }, $fmt:expr, fields: $(,)*) => {
         format_args!($fmt, $($out),*)
     };
 
-    // === recursive case (more tts), non-empty out set ===
-    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $($out),+, $val }, $fmt, fields: $($rest)*)
+    // === base case (no more tts) ===
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr $(,)*) => {
+        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: )
     };
-    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $($out),+, $val }, $fmt, fields: $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = %$val:expr $(,)*) => {
+        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: )
     };
-    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $($out),+, $val }, $fmt, fields: $($rest)*)
-    };
-    // ====== shorthand field syntax ===
-    (@ { $($out:expr),+ }, $fmt:expr, fields: ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $($out),+, &$($k).+ }, $fmt, fields: $($rest)*)
-    };
-    (@ { $($out:expr),+ }, $fmt:expr, fields: %$($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $($out),+, &$($k).+ }, $fmt, fields: $($rest)*)
-    };
-    (@ { $($out:expr),+ }, $fmt:expr, fields: $($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $($out),+, &$($k).+ }, $fmt, fields: $($rest)*)
-    };
-
-
-    // == recursive case (more tts), empty out set ===
-    (@ { }, $fmt:expr, fields: message = $val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
-    };
-    (@ { }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
-    };
-    (@ { }, $fmt:expr, fields: $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
-    };
-    (@ { }, $fmt:expr, fields: $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { $val }, $fmt, fields: $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = $val:expr $(,)*) => {
+        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: )
     };
     // ====== shorthand field syntax ===
-    (@ { }, $fmt:expr, fields: ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { &$($k).+ }, $fmt, fields: $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: ?$($k:ident).+ $(,)*) => {
+        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields:)
     };
-    (@ { }, $fmt:expr, fields: %$($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { &$($k).+ }, $fmt, fields: $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: %$($k:ident).+ $(,)*) => {
+        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: )
     };
-    (@ { }, $fmt:expr, fields: $($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_args!(@ { &$($k).+ }, $fmt, fields: $($rest)*)
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ $(,)*) => {
+        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: )
+    };
+
+    // === recursive case (more tts) ===
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr, $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: $($rest)+)
+    };
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = %$val:expr, $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: $($rest)+)
+    };
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = $val:expr, $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: $($rest)+)
+    };
+    // ====== shorthand field syntax ===
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: ?$($k:ident).+, $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: $($rest)+)
+    };
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: %$($k:ident).+, $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: $($rest)+)
+    };
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+, $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: $($rest)+)
+    };
+
+    // === rest is unparseable --- must be fmt args ===
+    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($rest:tt)+) => {
+        $crate::__mk_format_args!(@ { format_args!($($rest)+), $($out),* }, $fmt, fields: )
     };
 
     // === entry ===
     ($($kv:tt)*) => {
         {
             // use $crate::__mk_format_string;
-            $crate::__mk_format_args!(@ { }, tracing::__mk_format_string!($($kv)*), fields: $($kv)*,)
+            $crate::__mk_format_args!(@ { }, tracing::__mk_format_string!($($kv)*), fields: $($kv)*)
         }
     };
 }
