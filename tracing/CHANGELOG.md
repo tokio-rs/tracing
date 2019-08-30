@@ -1,3 +1,15 @@
+# 0.1.7 (August 30, 2019)
+
+### Changed
+
+- New (curly-brace free) event message syntax to place the message in the first
+  field rather than the last (#309)
+
+### Fixed
+
+- Fixed a regression causing macro stack exhaustion when the `log` feature flag
+  is enabled (#304)
+
 # 0.1.6 (August 20, 2019)
 
 ### Added
