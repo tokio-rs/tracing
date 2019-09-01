@@ -403,6 +403,12 @@ pub struct Layered<L, I, S = I> {
     _s: PhantomData<fn(S)>,
 }
 
+/// A layer that does nothing.
+#[derive(Clone, Debug)]
+pub struct Identity {
+    _p: (),
+}
+
 // === impl Layered ===
 
 impl<L, S> Subscriber for Layered<L, S>
@@ -603,6 +609,13 @@ where
     }
 }
 
+impl<L, S> Layered<L, S> {
+    // TODO(eliza): is there a compelling use-case for this being public?
+    pub(crate) fn into_inner(self) -> S {
+        self.inner
+    }
+}
+
 // === impl SubscriberExt ===
 
 impl<S: Subscriber> crate::sealed::Sealed for S {}
@@ -676,6 +689,20 @@ impl<'a, S> Clone for Context<'a, S> {
         };
         Context { subscriber }
     }
+}
+
+// === impl Identity ===
+//
+impl<S: Subscriber> Layer<S> for Identity {}
+
+impl Identity {
+    pub fn new() -> Self {
+        Self { _p: () }
+    }
+}
+
+pub fn identity() -> Identity {
+    Identity::new()
 }
 
 #[cfg(test)]

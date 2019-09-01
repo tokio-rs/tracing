@@ -30,6 +30,8 @@ macro_rules! try_lock {
 
 #[cfg(feature = "filter")]
 pub mod filter;
+#[cfg(feature = "fmt")]
+pub mod fmt;
 pub mod layer;
 pub mod prelude;
 pub mod reload;
@@ -38,6 +40,9 @@ pub(crate) mod thread;
 #[cfg(feature = "filter")]
 pub use filter::Filter;
 pub use layer::Layer;
+
+#[cfg(feature = "fmt")]
+pub use fmt::Subscriber as FmtSubscriber;
 
 use std::default::Default;
 

@@ -222,6 +222,15 @@ impl FromStr for Filter {
     }
 }
 
+impl<S> From<S> for Filter
+where
+    S: AsRef<str>,
+{
+    fn from(s: S) -> Self {
+        Self::new(s)
+    }
+}
+
 impl Default for Filter {
     fn default() -> Self {
         Self::from_directives(std::iter::empty())
