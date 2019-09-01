@@ -77,7 +77,7 @@ mod test {
             error!("{}", msg);
         });
 
-        let expected = format!("ERROR tracing_fmt::writer::test: {}\n", msg);
+        let expected = format!("ERROR {}: {}\n", module_path!(), msg);
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert!(actual.contains(expected.as_str()));
     }
