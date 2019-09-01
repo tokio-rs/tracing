@@ -155,7 +155,7 @@ where
                     b = String::new();
                     &mut b
                 }
-            };;
+            };
 
             if self.fmt_event.format_event(&self.ctx(), buf, event).is_ok() {
                 let mut writer = self.make_writer.make_writer();

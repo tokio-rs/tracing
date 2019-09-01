@@ -38,10 +38,10 @@ use std::{env, net::SocketAddr};
 
 #[instrument]
 async fn transfer(
-    inbound: TcpStream,
+    mut inbound: TcpStream,
     proxy_addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let outbound = TcpStream::connect(&proxy_addr).await?;
+    let mut outbound = TcpStream::connect(&proxy_addr).await?;
 
     let (mut ri, mut wi) = inbound.split();
     let (mut ro, mut wo) = outbound.split();
