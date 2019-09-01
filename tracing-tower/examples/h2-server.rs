@@ -95,10 +95,8 @@ impl tower_service::Service<()> for NewSvc {
 fn main() {
     // Set the default subscriber to record all traces emitted by this example
     // and by the `tracing_tower` library's helpers.
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::EnvFilter::from(
-            "h2_server=trace,tracing_tower=trace",
-        ))
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_filter("h2_server=trace,tracing_tower=trace")
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 

@@ -36,7 +36,7 @@ tokio_02 = { package = "tokio", version = "0.2.0-alpha.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
-tracing-fmt = "0.0.1-alpha.3"
+tracing-subscriber = { version = "0.0.1-alpha.3", path = "../tracing-subscriber" }
 tracing-core = "0.1.2"
 
 [badges]

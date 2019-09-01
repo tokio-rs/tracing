@@ -1,10 +1,11 @@
 #![deny(rust_2018_idioms)]
+#[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 
 fn main() {
     use tracing_subscriber::{fmt, Filter};
 
-    let subscriber = fmt::FmtSubscriber::builder()
+    let subscriber = fmt::Subscriber::builder()
         .with_filter(Filter::from_default_env())
         .finish();
 

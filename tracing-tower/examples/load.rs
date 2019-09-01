@@ -33,16 +33,15 @@ use std::{error::Error, fmt, net::SocketAddr};
 use tracing;
 use tracing_futures::Instrument;
 use tracing_subscriber::prelude::*;
+use tracing_subscriber::FmtSubscriber;
 
 fn main() {
-    let filter = tracing_subscriber::filter::Filter::new("info,load=debug");
-    let (filter, handle) = tracing_subscriber::reload::Layer::new(filter);
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::none())
-        .finish()
-        .with(filter);
+    let builder = FmtSubscriber::builder()
+        .with_filter("info,load=debug")
+        .with_filter_reloading();
+    let handle = builder.reload_handle();
 
-    let _ = tracing::subscriber::set_global_default(subscriber);
+    let _ = tracing::subscriber::set_global_default(builder.finish());
 
     let addr = "[::1]:3000".parse().unwrap();
     let admin_addr = "[::1]:3001".parse().unwrap();
