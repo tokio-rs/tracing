@@ -86,8 +86,8 @@ async fn transfer(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::EnvFilter::new("proxy_server=trace"))
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_filter("proxy_server=trace")
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
