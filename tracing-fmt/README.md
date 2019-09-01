@@ -1,15 +1,17 @@
 # tracing-fmt
 
-**Warning: Until `tracing-fmt` has a 0.1.0 release on crates.io, please treat every release as potentially breaking.**
-
-A (currently experimental) [`tracing`][tracing] subscriber
-that formats, colors, and logs trace data.
+**Note**: This library is now part of the [`tracing-subscriber`] crate. This
+crate now re-exports its public API from `tracing-subscriber`. Using
+`tracing-fmt` is now deprecated; users are encouraged to use the APIs in
+this library from their new home in `tracing-subscriber::fmt`.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
 [![Gitter chat][gitter-badge]][gitter-url]
+![deprecated](https://img.shields.io/badge/maintenance-deprecated-red.svg)
+
 
 [Documentation][docs-url] |
 [Chat][gitter-url]
@@ -27,6 +29,7 @@ that formats, colors, and logs trace data.
 [gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
 [gitter-url]: https://gitter.im/tokio-rs/tracing
 
+
 ## Overview
 
 [`tracing`][tracing] is a framework for instrumenting Rust programs with context-aware,
@@ -43,3 +46,6 @@ This project is licensed under the [MIT license](LICENSE).
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in Tracing by you, shall be licensed as MIT, without any additional
 terms or conditions.
+
+[`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+[`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber/
