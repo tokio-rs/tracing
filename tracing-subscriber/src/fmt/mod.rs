@@ -417,7 +417,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// ```rust
     /// use std::io;
     ///
-    /// let subscriber = tracing_fmt::Subscriber::builder()
+    /// let subscriber = tracing_subscriber::fmt::Subscriber::builder()
     ///     .with_writer(io::stderr)
     ///     .finish();
     /// ```
@@ -466,13 +466,10 @@ mod test {
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        let builder = Subscriber::builder();
-        #[cfg(features = "filter")]
-        let builder = builder.with_filter(crate::Filter::from_default_env());
-        let dispatch = Dispatch::new(builder.finish());
+        let subscriber = Subscriber::builder().finish();
+        let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::NewRecorder>().is_some());
-        #[cfg(feature = "filter")]
-        assert!(dispatch.downcast_ref::<crate::filter::Filter>().is_some());
+        assert!(dispatch.downcast_ref::<crate::layer::Identity>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
     }
 }
