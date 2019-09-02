@@ -37,8 +37,8 @@ use tracing_futures::Instrument;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::EnvFilter::new("echo=trace"))
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_filter("echo=trace")
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 

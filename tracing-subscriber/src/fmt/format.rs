@@ -1,6 +1,6 @@
 //! Formatters for logging `tracing` events.
-use crate::span;
-use crate::time::{self, FormatTime, SystemTime};
+use super::span;
+use super::time::{self, FormatTime, SystemTime};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
@@ -131,7 +131,7 @@ impl<F, T> Format<F, T> {
 
 impl<N, T> FormatEvent<N> for Format<Full, T>
 where
-    N: for<'a> crate::NewVisitor<'a>,
+    N: for<'a> super::NewVisitor<'a>,
     T: FormatTime,
 {
     fn format_event(
@@ -168,7 +168,7 @@ where
 
 impl<N, T> FormatEvent<N> for Format<Compact, T>
 where
-    N: for<'a> crate::NewVisitor<'a>,
+    N: for<'a> super::NewVisitor<'a>,
     T: FormatTime,
 {
     fn format_event(
@@ -226,7 +226,7 @@ impl<'a> Recorder<'a> {
     }
 }
 
-impl<'a> crate::NewVisitor<'a> for NewRecorder {
+impl<'a> super::NewVisitor<'a> for NewRecorder {
     type Visitor = Recorder<'a>;
 
     #[inline]
@@ -282,7 +282,7 @@ impl<'a, N: 'a> FmtCtx<'a, N> {
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FmtCtx<'a, N>
 where
-    N: crate::NewVisitor<'a>,
+    N: super::NewVisitor<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
@@ -337,7 +337,7 @@ impl<'a, N: 'a> FullCtx<'a, N> {
 #[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FullCtx<'a, N>
 where
-    N: crate::NewVisitor<'a>,
+    N: super::NewVisitor<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;

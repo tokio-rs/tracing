@@ -38,9 +38,7 @@ async fn subtask(number: usize) -> usize {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter("trace".parse::<tracing_fmt::filter::EnvFilter>()?)
-        .finish();
+    let subscriber = tracing_subscriber::fmt::Subscriber::new();
     tracing::subscriber::set_global_default(subscriber)?;
     parent_task(10).await;
     Ok(())

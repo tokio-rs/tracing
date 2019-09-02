@@ -92,10 +92,8 @@ impl tower_service::Service<()> for NewSvc {
 }
 
 fn main() {
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::EnvFilter::from(
-            "tower_h2_server=trace",
-        ))
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_filter("tower_h2_server=trace")
         .finish();
 
     let _ = tracing::subscriber::set_global_default(subscriber);

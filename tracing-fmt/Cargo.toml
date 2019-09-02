@@ -1,14 +1,14 @@
 [package]
 name = "tracing-fmt"
-version = "0.0.1-alpha.3"
+version = "0.0.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-fmt/0.0.1-alpha.3/tracing_fmt"
+documentation = "https://docs.rs/tracing-fmt/0.0.1/tracing_fmt"
 description = """
-A (currently experimental) `tracing` subscriber that formats and logs trace data
+A `tracing` subscriber that formats and logs trace data. Moved to the `tracing-subscriber` crate.
 """
 categories = [
     "development-tools::debugging",
@@ -19,21 +19,19 @@ readme = "README.md"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
-maintenance = { status = "experimental" }
+maintenance = { status = "deprecated" }
 
 [features]
 default = ["ansi", "chrono", "tracing-log"]
-ansi = ["ansi_term"]
 
-[dependencies]
-tracing-core = "0.1.5"
-tracing-log = { version = "0.0.1-alpha.1", optional = true }
-ansi_term = { version = "0.11", optional = true }
-regex = "1"
-lazy_static = "1"
-owning_ref = "0.4.0"
-parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"] }
-chrono = { version = "0.4", optional = true }
+ansi = ["tracing-subscriber/ansi"]
+chrono = ["tracing-subscriber/chrono"]
+tracing-log = ["tracing-subscriber/tracing-log"]
+
+[dependencies.tracing-subscriber]
+version = "0.0.1-alpha.3"
+path = "../tracing-subscriber"
+features = ["fmt", "filter"]
 
 [dev-dependencies]
 tracing = { version = "0.1" }

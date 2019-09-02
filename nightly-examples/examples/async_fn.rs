@@ -43,8 +43,8 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 pub async fn main() -> Result<(), Box<dyn Error>> {
     let addr = "127.0.0.1:6142".parse()?;
 
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::EnvFilter::from("async_fn=trace"))
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_filter("async_fn=trace")
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 

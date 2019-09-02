@@ -54,7 +54,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{FmtSubscriber, MakeWriter};
+    use super::MakeWriter;
+    use crate::fmt::Subscriber;
     use lazy_static::lazy_static;
     use std::io;
     use std::sync::{Mutex, MutexGuard, TryLockError};
@@ -65,7 +66,7 @@ mod test {
     where
         T: MakeWriter + Send + Sync + 'static,
     {
-        let subscriber = FmtSubscriber::builder()
+        let subscriber = Subscriber::builder()
             .with_writer(make_writer)
             .without_time()
             .with_ansi(false)
@@ -76,7 +77,7 @@ mod test {
             error!("{}", msg);
         });
 
-        let expected = format!("ERROR tracing_fmt::writer::test: {}\n", msg);
+        let expected = format!("ERROR {}: {}\n", module_path!(), msg);
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert!(actual.contains(expected.as_str()));
     }

@@ -192,7 +192,7 @@ impl<'a, N> Context<'a, N> {
         is_empty: bool,
     ) -> N::Visitor
     where
-        N: crate::NewVisitor<'writer>,
+        N: super::NewVisitor<'writer>,
     {
         self.new_visitor.make(writer, is_empty)
     }
@@ -263,7 +263,7 @@ impl Store {
     #[inline]
     pub fn new_span<N>(&self, attrs: &Attributes<'_>, new_visitor: &N) -> Id
     where
-        N: for<'a> crate::NewVisitor<'a>,
+        N: for<'a> super::NewVisitor<'a>,
     {
         let mut span = Some(Data::new(attrs, self));
 
@@ -339,7 +339,7 @@ impl Store {
     #[inline]
     pub fn record<N>(&self, id: &Id, fields: &Record<'_>, new_recorder: &N)
     where
-        N: for<'a> crate::NewVisitor<'a>,
+        N: for<'a> super::NewVisitor<'a>,
     {
         let slab = self.inner.read();
         let slot = slab.write_slot(id_to_idx(id));
@@ -429,7 +429,7 @@ impl Drop for Data {
 impl Slot {
     fn new<N>(mut data: Data, attrs: &Attributes<'_>, new_visitor: &N) -> Self
     where
-        N: for<'a> crate::NewVisitor<'a>,
+        N: for<'a> super::NewVisitor<'a>,
     {
         let mut fields = String::new();
         {
@@ -454,7 +454,7 @@ impl Slot {
 
     fn fill<N>(&mut self, mut data: Data, attrs: &Attributes<'_>, new_visitor: &N) -> usize
     where
-        N: for<'a> crate::NewVisitor<'a>,
+        N: for<'a> super::NewVisitor<'a>,
     {
         let fields = &mut self.fields;
         {
@@ -472,7 +472,7 @@ impl Slot {
 
     fn record<N>(&mut self, fields: &Record<'_>, new_visitor: &N)
     where
-        N: for<'a> crate::NewVisitor<'a>,
+        N: for<'a> super::NewVisitor<'a>,
     {
         let state = &mut self.span;
         let buf = &mut self.fields;
