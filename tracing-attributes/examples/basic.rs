@@ -11,8 +11,8 @@ fn suggest_band() -> String {
 }
 
 fn main() {
-    let subscriber = tracing_fmt::FmtSubscriber::builder()
-        .with_filter(tracing_fmt::filter::EnvFilter::from("basic=trace"))
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_filter("basic=trace")
         .finish();
     tracing::subscriber::with_default(subscriber, || {
         let num_recs = 1;
