@@ -19,36 +19,35 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![cfg_attr(test, deny(
-    missing_debug_implementations,
-    missing_docs,
-    rust_2018_idioms,
-    unreachable_pub,
-    bad-style,
-    const-err,
-    dead-code,
-    extra-requirement-in-impl,
-    improper-ctypes,
-    legacy-directory-ownership,
-    non-shorthand-field-patterns,
-    no-mangle-generic-items,
-    overflowing-literals,
-    path-statements ,
-    patterns-in-fns-without-body,
-    plugin-as-library,
-    private-in-public,
-    private-no-mangle-fns,
-    private-no-mangle-statics,
-    raw-pointer-derive,
-    safe-extern-statics,
-    unconditional-recursion,
-    unions-with-drop-fields,
-    unused,
-    unused-allocation,
-    unused-comparisons,
-    unused-parens,
-    while-true
-))]
+#![cfg_attr(
+    test,
+    deny(
+        missing_debug_implementations,
+        missing_docs,
+        rust_2018_idioms,
+        unreachable_pub,
+        bad_style,
+        const_err,
+        dead_code,
+        improper_ctypes,
+        legacy_directory_ownership,
+        non_shorthand_field_patterns,
+        no_mangle_generic_items,
+        overflowing_literals,
+        path_statements,
+        patterns_in_fns_without_body,
+        plugin_as_library,
+        private_in_public,
+        safe_extern_statics,
+        unconditional_recursion,
+        unions_with_drop_fields,
+        unused,
+        unused_allocation,
+        unused_comparisons,
+        unused_parens,
+        while_true
+    )
+)]
 use tracing_core::span::Id;
 
 #[macro_use]
