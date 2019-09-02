@@ -12,6 +12,43 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.0")]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
+#![cfg_attr(test, deny(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    bad-style,
+    const-err,
+    dead-code,
+    extra-requirement-in-impl,
+    improper-ctypes,
+    legacy-directory-ownership,
+    non-shorthand-field-patterns,
+    no-mangle-generic-items,
+    overflowing-literals,
+    path-statements ,
+    patterns-in-fns-without-body,
+    plugin-as-library,
+    private-in-public,
+    private-no-mangle-fns,
+    private-no-mangle-statics,
+    raw-pointer-derive,
+    safe-extern-statics,
+    unconditional-recursion,
+    unions-with-drop-fields,
+    unused,
+    unused-allocation,
+    unused-comparisons,
+    unused-parens,
+    while-true
+))]
 use tracing_core::span::Id;
 
 #[macro_use]
