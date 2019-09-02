@@ -32,7 +32,6 @@ use tower_hyper::server::Server;
 use std::{error::Error, fmt, net::SocketAddr};
 use tracing;
 use tracing_futures::Instrument;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {

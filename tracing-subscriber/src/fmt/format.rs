@@ -205,15 +205,27 @@ where
     }
 }
 
-pub struct NewRecorder;
+/// The default implementation of `NewVisitor` that records fields using the
+/// default format.
+#[derive(Debug)]
+pub struct NewRecorder {
+    _p: (),
+}
 
+impl NewRecorder {
+    pub(crate) fn new() -> Self {
+        Self { _p: () }
+    }
+}
+
+/// A visitor that records fields using the default format.
 pub struct Recorder<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,
 }
 
 impl<'a> Recorder<'a> {
-    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
+    pub(crate) fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
         Self { writer, is_empty }
     }
 
@@ -268,13 +280,23 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
+// This has to be a manual impl, as `&mut dyn Writer` doesn't implement `Debug`.
+impl<'a> fmt::Debug for Recorder<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Recorder")
+            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("is_empty", &self.is_empty)
+            .finish()
+    }
+}
+
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
     ansi: bool,
 }
 
 impl<'a, N: 'a> FmtCtx<'a, N> {
-    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 }
@@ -329,7 +351,7 @@ struct FullCtx<'a, N> {
 }
 
 impl<'a, N: 'a> FullCtx<'a, N> {
-    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 }
@@ -391,7 +413,7 @@ struct FmtLevel<'a> {
 }
 
 impl<'a> FmtLevel<'a> {
-    pub fn new(level: &'a Level, ansi: bool) -> Self {
+    pub(crate) fn new(level: &'a Level, ansi: bool) -> Self {
         Self { level, ansi }
     }
 }

@@ -16,6 +16,7 @@ pub struct Span<'a> {
 
 /// Represents the `Subscriber`'s view of the current span context to a
 /// formatter.
+#[derive(Debug)]
 pub struct Context<'a, N> {
     store: &'a Store,
     new_visitor: &'a N,
@@ -127,6 +128,17 @@ impl<'a> Span<'a> {
     }
 }
 
+impl<'a> fmt::Debug for Span<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Span")
+            .field("name", &self.name())
+            .field("parent", &self.parent())
+            .field("metadata", self.metadata())
+            .field("fields", &self.fields())
+            .finish()
+    }
+}
+
 // ===== impl Context =====
 
 impl<'a, N> Context<'a, N> {
@@ -161,6 +173,7 @@ impl<'a, N> Context<'a, N> {
             .unwrap_or(Ok(()))
     }
 
+    /// Executes a closure with the reference to the current span.
     pub fn with_current<F, R>(&self, f: F) -> Option<R>
     where
         F: FnOnce((&Id, Span<'_>)) -> R,
@@ -186,6 +199,8 @@ impl<'a, N> Context<'a, N> {
         Self { store, new_visitor }
     }
 
+    /// Returns a new visitor that formats span fields to the provided writer.
+    /// The visitor configuration is provided by the subscriber.
     pub fn new_visitor<'writer>(
         &self,
         writer: &'writer mut dyn fmt::Write,
@@ -209,7 +224,7 @@ fn id_to_idx(id: &Id) -> usize {
 }
 
 impl Store {
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
         Store {
             inner: RwLock::new(Slab {
                 slab: Vec::with_capacity(capacity),
@@ -219,13 +234,13 @@ impl Store {
     }
 
     #[inline]
-    pub fn current(&self) -> Option<Id> {
+    pub(crate) fn current(&self) -> Option<Id> {
         CONTEXT
             .try_with(|current| current.borrow().last().map(|span| self.clone_span(span)))
             .ok()?
     }
 
-    pub fn push(&self, id: &Id) {
+    pub(crate) fn push(&self, id: &Id) {
         let _ = CONTEXT.try_with(|current| {
             let mut current = current.borrow_mut();
             if current.contains(id) {
@@ -236,7 +251,7 @@ impl Store {
         });
     }
 
-    pub fn pop(&self, expected_id: &Id) {
+    pub(crate) fn pop(&self, expected_id: &Id) {
         let id = CONTEXT
             .try_with(|current| {
                 let mut current = current.borrow_mut();
@@ -261,7 +276,7 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<N>(&self, attrs: &Attributes<'_>, new_visitor: &N) -> Id
+    pub(crate) fn new_span<N>(&self, attrs: &Attributes<'_>, new_visitor: &N) -> Id
     where
         N: for<'a> super::NewVisitor<'a>,
     {
@@ -327,7 +342,7 @@ impl Store {
     /// Returns a `Span` to the span with the specified `id`, if one
     /// currently exists.
     #[inline]
-    pub fn get(&self, id: &Id) -> Option<Span<'_>> {
+    pub(crate) fn get(&self, id: &Id) -> Option<Span<'_>> {
         let lock = OwningHandle::try_new(self.inner.read(), |slab| {
             unsafe { &*slab }.read_slot(id_to_idx(id)).ok_or(())
         })
@@ -337,7 +352,7 @@ impl Store {
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub fn record<N>(&self, id: &Id, fields: &Record<'_>, new_recorder: &N)
+    pub(crate) fn record<N>(&self, id: &Id, fields: &Record<'_>, new_recorder: &N)
     where
         N: for<'a> super::NewVisitor<'a>,
     {
@@ -352,7 +367,7 @@ impl Store {
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    pub fn drop_span(&self, id: Id) -> bool {
+    pub(crate) fn drop_span(&self, id: Id) -> bool {
         let this = self.inner.read();
         let idx = id_to_idx(&id);
 
@@ -376,7 +391,7 @@ impl Store {
         true
     }
 
-    pub fn clone_span(&self, id: &Id) -> Id {
+    pub(crate) fn clone_span(&self, id: &Id) -> Id {
         let this = self.inner.read();
         let idx = id_to_idx(id);
 
