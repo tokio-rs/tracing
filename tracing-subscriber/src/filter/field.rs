@@ -10,30 +10,30 @@ use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Match {
-    pub name: String, // TODO: allow match patterns for names?
-    pub value: Option<ValueMatch>,
+pub(crate) struct Match {
+    pub(crate) name: String, // TODO: allow match patterns for names?
+    pub(crate) value: Option<ValueMatch>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct CallsiteMatch {
-    pub fields: FieldMap<ValueMatch>,
-    pub level: LevelFilter,
+pub(crate) struct CallsiteMatch {
+    pub(crate) fields: FieldMap<ValueMatch>,
+    pub(crate) level: LevelFilter,
 }
 
 #[derive(Debug)]
-pub struct SpanMatch {
+pub(crate) struct SpanMatch {
     fields: FieldMap<(ValueMatch, AtomicBool)>,
     level: LevelFilter,
     has_matched: AtomicBool,
 }
 
-pub struct MatchVisitor<'a> {
+pub(crate) struct MatchVisitor<'a> {
     inner: &'a SpanMatch,
 }
 
 #[derive(Debug, Clone)]
-pub enum ValueMatch {
+pub(crate) enum ValueMatch {
     Bool(bool),
     U64(u64),
     I64(i64),
@@ -65,12 +65,12 @@ impl FromStr for Match {
 }
 
 impl Match {
-    pub fn has_value(&self) -> bool {
+    pub(crate) fn has_value(&self) -> bool {
         self.value.is_some()
     }
 
     // TODO: reference count these strings?
-    pub fn name(&self) -> String {
+    pub(crate) fn name(&self) -> String {
         self.name.clone()
     }
 }
@@ -110,13 +110,13 @@ impl Eq for ValueMatch {}
 impl Error for BadName {}
 
 impl fmt::Display for BadName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid field name `{}`", self.name)
     }
 }
 
 impl CallsiteMatch {
-    pub fn to_span_match(&self) -> SpanMatch {
+    pub(crate) fn to_span_match(&self) -> SpanMatch {
         let fields = self
             .fields
             .iter()
@@ -131,12 +131,12 @@ impl CallsiteMatch {
 }
 
 impl SpanMatch {
-    pub fn visitor<'a>(&'a self) -> MatchVisitor<'a> {
+    pub(crate) fn visitor<'a>(&'a self) -> MatchVisitor<'a> {
         MatchVisitor { inner: self }
     }
 
     #[inline]
-    pub fn is_matched(&self) -> bool {
+    pub(crate) fn is_matched(&self) -> bool {
         if self.has_matched.load(Ordering::Acquire) {
             return true;
         }
@@ -156,7 +156,7 @@ impl SpanMatch {
     }
 
     #[inline]
-    pub fn filter(&self) -> Option<LevelFilter> {
+    pub(crate) fn filter(&self) -> Option<LevelFilter> {
         if self.is_matched() {
             Some(self.level.clone())
         } else {

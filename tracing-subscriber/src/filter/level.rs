@@ -62,7 +62,7 @@ impl PartialOrd<Level> for LevelFilter {
 }
 
 impl fmt::Display for LevelFilter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
             Inner::Off => f.pad("OFF"),
             Inner::Level(Level::ERROR) => f.pad("ERROR"),
@@ -75,7 +75,7 @@ impl fmt::Display for LevelFilter {
 }
 
 impl fmt::Debug for LevelFilter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
             Inner::Off => f.pad("LevelFilter::OFF"),
             Inner::Level(Level::ERROR) => f.pad("LevelFilter::ERROR"),
@@ -142,7 +142,7 @@ impl From<Level> for LevelFilter {
 // === impl ParseError ===
 
 impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid level`")
     }
 }

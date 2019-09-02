@@ -274,7 +274,7 @@ struct FmtCtx<'a, N> {
 }
 
 impl<'a, N: 'a> FmtCtx<'a, N> {
-    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 }
@@ -329,7 +329,7 @@ struct FullCtx<'a, N> {
 }
 
 impl<'a, N: 'a> FullCtx<'a, N> {
-    pub fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 }
@@ -391,7 +391,7 @@ struct FmtLevel<'a> {
 }
 
 impl<'a> FmtLevel<'a> {
-    pub fn new(level: &'a Level, ansi: bool) -> Self {
+    pub(crate) fn new(level: &'a Level, ansi: bool) -> Self {
         Self { level, ansi }
     }
 }

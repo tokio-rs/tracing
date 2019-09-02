@@ -13,7 +13,7 @@ use tracing_core::{span, Metadata};
 /// A single filtering directive.
 // TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
-pub struct Directive {
+pub(crate) struct Directive {
     target: Option<String>,
     in_span: Option<String>,
     fields: FilterVec<field::Match>,
@@ -24,34 +24,34 @@ pub struct Directive {
 ///
 /// Unlike a dynamic directive, this can be cached by the callsite.
 #[derive(Debug, PartialEq, Eq)]
-pub struct StaticDirective {
+pub(crate) struct StaticDirective {
     target: Option<String>,
     field_names: FilterVec<String>,
     level: LevelFilter,
 }
 
-pub trait Match {
-    fn cares_about(&self, meta: &Metadata) -> bool;
+pub(crate) trait Match {
+    fn cares_about(&self, meta: &Metadata<'_>) -> bool;
     fn level(&self) -> &LevelFilter;
 }
 
 /// A set of dynamic filtering directives.
-pub type Dynamics = DirectiveSet<Directive>;
+pub(crate) type Dynamics = DirectiveSet<Directive>;
 
 /// A set of static filtering directives.
-pub type Statics = DirectiveSet<StaticDirective>;
+pub(crate) type Statics = DirectiveSet<StaticDirective>;
 
 #[derive(Debug)]
-pub struct DirectiveSet<T> {
+pub(crate) struct DirectiveSet<T> {
     directives: BTreeSet<T>,
     max_level: LevelFilter,
 }
 
-pub type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
-pub type SpanMatcher = MatchSet<field::SpanMatch>;
+pub(crate) type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
+pub(crate) type SpanMatcher = MatchSet<field::SpanMatch>;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct MatchSet<T> {
+pub(crate) struct MatchSet<T> {
     field_matches: FilterVec<T>,
     base_level: LevelFilter,
 }
@@ -102,7 +102,7 @@ impl Directive {
         self.has_name() || self.has_fields()
     }
 
-    pub fn field_matcher(&self, meta: &Metadata) -> Option<field::CallsiteMatch> {
+    pub(crate) fn field_matcher(&self, meta: &Metadata<'_>) -> Option<field::CallsiteMatch> {
         let fieldset = meta.fields();
         let fields = self
             .fields
@@ -144,7 +144,7 @@ impl Directive {
 }
 
 impl Match for Directive {
-    fn cares_about(&self, meta: &Metadata) -> bool {
+    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
         // Does this directive have a target filter, and does it match the
         // metadata's target?
         if let Some(ref target) = self.target.as_ref() {
@@ -309,7 +309,7 @@ impl Ord for Directive {
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.directives.is_empty()
     }
 }
@@ -359,7 +359,7 @@ impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
 // === impl Dynamics ===
 
 impl Dynamics {
-    pub fn matcher(&self, metadata: &Metadata) -> Option<CallsiteMatcher> {
+    pub(crate) fn matcher(&self, metadata: &Metadata<'_>) -> Option<CallsiteMatcher> {
         let mut base_level = None;
         let field_matches = self
             .directives_for(metadata)
@@ -395,12 +395,12 @@ impl Dynamics {
 // === impl Statics ===
 
 impl Statics {
-    pub fn enabled(&self, meta: &Metadata) -> bool {
+    pub(crate) fn enabled(&self, meta: &Metadata<'_>) -> bool {
         let level = meta.level();
         self.directives_for(meta).any(|d| d.level >= *level)
     }
 
-    pub fn add(&mut self, directive: StaticDirective) {
+    pub(crate) fn add(&mut self, directive: StaticDirective) {
         if directive.level > self.max_level {
             self.max_level = directive.level.clone();
         }
@@ -434,7 +434,7 @@ impl Ord for StaticDirective {
 // ===== impl StaticDirective =====
 
 impl Match for StaticDirective {
-    fn cares_about(&self, meta: &Metadata) -> bool {
+    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
         // Does this directive have a target filter, and does it match the
         // metadata's target?
         if let Some(ref target) = self.target.as_ref() {
@@ -481,7 +481,7 @@ impl ParseError {
 }
 
 impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ParseErrorKind::Other => f.pad("invalid filter directive"),
             ParseErrorKind::Level(ref l) => l.fmt(f),
@@ -524,7 +524,7 @@ impl From<level::ParseError> for ParseError {
 
 impl CallsiteMatcher {
     /// Create a new `SpanMatch` for a given instance of the matched callsite.
-    pub fn to_span_match(&self, attrs: &span::Attributes) -> SpanMatcher {
+    pub(crate) fn to_span_match(&self, attrs: &span::Attributes<'_>) -> SpanMatcher {
         let field_matches = self
             .field_matches
             .iter()
@@ -543,7 +543,7 @@ impl CallsiteMatcher {
 
 impl SpanMatcher {
     /// Returns the level currently enabled for this callsite.
-    pub fn level(&self) -> LevelFilter {
+    pub(crate) fn level(&self) -> LevelFilter {
         self.field_matches
             .iter()
             .filter_map(field::SpanMatch::filter)
@@ -551,7 +551,7 @@ impl SpanMatcher {
             .unwrap_or_else(|| self.base_level.clone())
     }
 
-    pub fn record_update(&self, record: &span::Record) {
+    pub(crate) fn record_update(&self, record: &span::Record<'_>) {
         for m in &self.field_matches {
             record.record(&mut m.visitor())
         }

@@ -147,14 +147,14 @@ where
     /// [`on_enter`]: #method.on_enter
     /// [`on_exit`]: #method.on_exit
     /// [the trait-level documentation]: #filtering-with-layers
-    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
         let _ = (metadata, ctx);
         true
     }
 
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -163,30 +163,30 @@ where
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_record(&self, _span: &span::Id, _values: &span::Record, _ctx: Context<S>) {}
+    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that a span with the ID `span` recorded that it
     /// follows from the span with the ID `follows`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<S>) {}
+    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that an event has occurred.
-    fn on_event(&self, _event: &Event, _ctx: Context<S>) {}
+    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that a span with the given ID was entered.
-    fn on_enter(&self, _id: &span::Id, _ctx: Context<S>) {}
+    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that the span with the given ID was exited.
-    fn on_exit(&self, _id: &span::Id, _ctx: Context<S>) {}
+    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that the span with the given ID has been closed.
-    fn on_close(&self, _id: span::Id, _ctx: Context<S>) {}
+    fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
-    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<S>) {}
+    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, S>) {}
 
     /// Composes this layer around the given `Layer`, returning a `Layered`
     /// struct implementing `Layer`.
@@ -435,7 +435,7 @@ where
         }
     }
 
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         if self.layer.enabled(metadata, self.ctx()) {
             // if the outer layer enables the callsite metadata, ask the subscriber.
             self.inner.enabled(metadata)
@@ -445,13 +445,13 @@ where
         }
     }
 
-    fn new_span(&self, span: &span::Attributes) -> span::Id {
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         let id = self.inner.new_span(span);
         self.layer.new_span(span, &id, self.ctx());
         id
     }
 
-    fn record(&self, span: &span::Id, values: &span::Record) {
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.inner.record(span, values);
         self.layer.on_record(span, values, self.ctx());
     }
@@ -461,7 +461,7 @@ where
         self.layer.on_follows_from(span, follows, self.ctx());
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
         self.layer.on_event(event, self.ctx());
     }
@@ -532,7 +532,7 @@ where
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, ctx: Context<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
         if self.layer.enabled(metadata, ctx.clone()) {
             // if the outer layer enables the callsite metadata, ask the inner layer.
             self.inner.enabled(metadata, ctx)
@@ -543,49 +543,49 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, ctx: Context<S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         self.inner.new_span(attrs, id, ctx.clone());
         self.layer.new_span(attrs, id, ctx);
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record, ctx: Context<S>) {
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         self.inner.on_record(span, values, ctx.clone());
         self.layer.on_record(span, values, ctx);
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<S>) {
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_follows_from(span, follows, ctx.clone());
         self.layer.on_follows_from(span, follows, ctx);
     }
 
     #[inline]
-    fn on_event(&self, event: &Event, ctx: Context<S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         self.inner.on_event(event, ctx.clone());
         self.layer.on_event(event, ctx);
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<S>) {
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_enter(id, ctx.clone());
         self.layer.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<S>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_exit(id, ctx.clone());
         self.layer.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<S>) {
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         self.inner.on_close(id.clone(), ctx.clone());
         self.layer.on_close(id, ctx);
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<S>) {
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_id_change(old, new, ctx.clone());
         self.layer.on_id_change(old, new, ctx);
     }
@@ -602,7 +602,7 @@ impl<L, S> Layered<L, S>
 where
     S: Subscriber,
 {
-    fn ctx(&self) -> Context<S> {
+    fn ctx(&self) -> Context<'_, S> {
         Context {
             subscriber: Some(&self.inner),
         }
@@ -636,7 +636,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
 
     /// Returns whether the wrapped subscriber would enable the current span.
     #[inline]
-    pub fn enabled(&self, metadata: &Metadata) -> bool {
+    pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.subscriber
             .map(|subscriber| subscriber.enabled(metadata))
             // If this context is `None`, we are registering a callsite, so
@@ -666,7 +666,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.enabled
     /// [`Context::enabled`]: #method.enabled
     #[inline]
-    pub fn event(&self, event: &Event) {
+    pub fn event(&self, event: &Event<'_>) {
         if let Some(ref subscriber) = self.subscriber {
             subscriber.event(event);
         }
