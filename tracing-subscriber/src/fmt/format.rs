@@ -205,6 +205,8 @@ where
     }
 }
 
+/// The default implementation of `NewVisitor` that records fields using the
+/// default format.
 #[derive(Debug)]
 pub struct NewRecorder {
     _p: (),
@@ -216,6 +218,7 @@ impl NewRecorder {
     }
 }
 
+/// A visitor that records fields using the default format.
 pub struct Recorder<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,

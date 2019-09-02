@@ -369,6 +369,7 @@ where
 
 /// Extension trait adding a `with(Layer)` combinator to `Subscriber`s.
 pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
+    /// Wraps `self` with the provided `layer`.
     fn with<L>(self, layer: L) -> Layered<L, Self>
     where
         L: Layer<Self>,
@@ -697,13 +698,10 @@ impl<'a, S> Clone for Context<'a, S> {
 impl<S: Subscriber> Layer<S> for Identity {}
 
 impl Identity {
+    /// Returns a new `Identity` layer.
     pub fn new() -> Self {
         Self { _p: () }
     }
-}
-
-pub fn identity() -> Identity {
-    Identity::new()
 }
 
 #[cfg(test)]

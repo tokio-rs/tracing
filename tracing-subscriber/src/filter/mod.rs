@@ -1,9 +1,12 @@
 //! A `Layer` that enables or disables spans and events based on a set of
 //! filtering directives.
-pub mod level;
-pub use self::directive::ParseError;
-pub use self::field::BadName;
-pub use self::level::LevelFilter;
+mod level;
+#[doc(inline)]
+pub use self::{
+    directive::ParseError,
+    field::BadName as BadFieldName,
+    level::{LevelFilter, ParseError as LevelParseError},
+};
 mod directive;
 mod field;
 use self::directive::Directive;
@@ -58,6 +61,11 @@ enum ErrorKind {
 }
 
 impl Filter {
+    /// The default environment variable used by [`Filter::from_default_env`]
+    /// and [`Filter::try_from_default_env`].
+    ///
+    /// [`Filter::from_default_env`]: #method.from_default_env
+    /// [`Filter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     /// Returns a new `Filter` from the value of the `RUST_LOG` environment
@@ -292,15 +300,15 @@ mod tests {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
             subscriber::Interest::always()
         }
-        fn new_span(&self, _: &span::Attributes) -> span::Id {
+        fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xDEAD)
         }
-        fn event(&self, _event: &Event) {}
-        fn record(&self, _span: &span::Id, _values: &span::Record) {}
+        fn event(&self, _event: &Event<'_>) {}
+        fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
         fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
         #[inline]
-        fn enabled(&self, _metadata: &Metadata) -> bool {
+        fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
             true
         }
         fn enter(&self, _span: &span::Id) {}
@@ -310,7 +318,7 @@ mod tests {
     struct Cs;
     impl Callsite for Cs {
         fn set_interest(&self, _interest: Interest) {}
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             unimplemented!()
         }
     }

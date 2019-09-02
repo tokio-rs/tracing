@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, fmt, str::FromStr};
 use tracing_core::Level;
 
+/// A filter which is enabled for a given verbosity level and below.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LevelFilter(Inner);
 

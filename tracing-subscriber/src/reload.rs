@@ -125,6 +125,7 @@ where
         (this, handle)
     }
 
+    /// Returns a `Handle` that can be used to reload the wrapped `Layer`.
     pub fn handle(&self) -> Handle<L, S> {
         Handle {
             inner: Arc::downgrade(&self.inner),

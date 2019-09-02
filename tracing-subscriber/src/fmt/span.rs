@@ -173,6 +173,7 @@ impl<'a, N> Context<'a, N> {
             .unwrap_or(Ok(()))
     }
 
+    /// Executes a closure with the reference to the current span.
     pub fn with_current<F, R>(&self, f: F) -> Option<R>
     where
         F: FnOnce((&Id, Span<'_>)) -> R,
@@ -198,6 +199,8 @@ impl<'a, N> Context<'a, N> {
         Self { store, new_visitor }
     }
 
+    /// Returns a new visitor that formats span fields to the provided writer.
+    /// The visitor configuration is provided by the subscriber.
     pub fn new_visitor<'writer>(
         &self,
         writer: &'writer mut dyn fmt::Write,

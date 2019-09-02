@@ -52,16 +52,19 @@ pub struct Builder<
     make_writer: W,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Settings {
     inherit_fields: bool,
+    initial_span_capacity: usize,
 }
 
 impl Subscriber {
+    /// Returns a new `Builder` for configuring a format subscriber.
     pub fn builder() -> Builder {
         Builder::default()
     }
 
+    /// Returns a new format subscriber with the default configuration.
     pub fn new() -> Self {
         Default::default()
     }
@@ -97,17 +100,6 @@ where
         span::Context::new(&self.spans, &self.new_visitor)
     }
 }
-
-// impl<N, E, W> Subscriber<N, E, filter::ReloadFilter<F, N>, W>
-// where
-//     F: Filter<N> + 'static,
-// {
-//     /// Returns a `Handle` that may be used to reload this subscriber's
-//     /// filter.
-//     pub fn reload_handle(&self) -> filter::reload::Handle<F, N> {
-//         self.filter.handle()
-//     }
-// }
 
 impl<N, E, W> tracing_core::Subscriber for Subscriber<N, E, W>
 where
@@ -205,9 +197,12 @@ where
     }
 }
 
+/// A type that can construct a new field visitor for formatting the fields on a
+/// span or event.
 pub trait NewVisitor<'a> {
+    /// The type of the returned `Visitor`.
     type Visitor: field::Visit + 'a;
-
+    /// Returns a new `Visitor` that writes to the provided `writer`.
     fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor;
 }
 
@@ -229,7 +224,7 @@ where
 impl Default for Builder {
     fn default() -> Self {
         Builder {
-            filter: layer::identity(),
+            filter: layer::Identity::new(),
             new_visitor: format::NewRecorder::new(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
@@ -245,11 +240,12 @@ where
     W: MakeWriter + 'static,
     F: Layer<Subscriber<N, E, W>> + 'static,
 {
+    /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> layer::Layered<F, Subscriber<N, E, W>> {
         let subscriber = Subscriber {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
-            spans: span::Store::with_capacity(32),
+            spans: span::Store::with_capacity(self.settings.initial_span_capacity),
             settings: self.settings,
             make_writer: self.make_writer,
         };
@@ -401,10 +397,27 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// by default).
     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
         Builder {
-            settings: Settings { inherit_fields },
+            settings: Settings {
+                inherit_fields,
+                ..self.settings
+            },
             ..self
         }
     }
+
+    // TODO(eliza): should this be publicly exposed?
+    // /// Configures the initial capacity for the span slab used to store
+    // /// in-progress span data. This may be used for tuning the subscriber's
+    // /// allocation performance, but in general does not need to be manually configured..
+    // pub fn initial_span_capacity(self, initial_span_capacity: usize) -> Self {
+    //     Builder {
+    //         settings: Settings {
+    //             initial_span_capacity,
+    //             ..self.settings
+    //         },
+    //         ..self
+    //     }
+    // }
 }
 
 impl<N, E, F, W> Builder<N, E, F, W> {
@@ -433,6 +446,15 @@ impl<N, E, F, W> Builder<N, E, F, W> {
             filter: self.filter,
             settings: self.settings,
             make_writer,
+        }
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            inherit_fields: false,
+            initial_span_capacity: 32,
         }
     }
 }

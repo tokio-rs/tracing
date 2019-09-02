@@ -82,6 +82,7 @@ pub use fmt::Subscriber as FmtSubscriber;
 
 use std::default::Default;
 
+/// Tracks the currently executing span on a per-thread basis.
 #[deprecated(since = "0.0.1-alpha.2", note = "renamed to `CurrentSpan`")]
 pub type CurrentSpanPerThread = CurrentSpan;
 
@@ -92,6 +93,7 @@ pub struct CurrentSpan {
 }
 
 impl CurrentSpan {
+    /// Returns a new `CurrentSpan`.
     pub fn new() -> Self {
         Self {
             current: thread::Local::new(),
@@ -104,10 +106,12 @@ impl CurrentSpan {
         self.current.get().last().cloned()
     }
 
+    /// Records that the current thread has entered the span with the provided ID.
     pub fn enter(&self, span: Id) {
         self.current.get().push(span)
     }
 
+    /// Records that the current thread has exited a span.
     pub fn exit(&self) {
         self.current.get().pop();
     }
