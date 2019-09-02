@@ -86,6 +86,7 @@ use std::default::Default;
 pub type CurrentSpanPerThread = CurrentSpan;
 
 /// Tracks the currently executing span on a per-thread basis.
+#[derive(Debug)]
 pub struct CurrentSpan {
     current: thread::Local<Vec<Id>>,
 }
@@ -119,8 +120,6 @@ impl Default for CurrentSpan {
 }
 
 mod sealed {
-    pub struct SealedTy {
-        _p: (),
-    }
-    pub trait Sealed<A = SealedTy> {}
+
+    pub trait Sealed<A = ()> {}
 }

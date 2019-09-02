@@ -230,7 +230,7 @@ impl Default for Builder {
     fn default() -> Self {
         Builder {
             filter: layer::identity(),
-            new_visitor: format::NewRecorder,
+            new_visitor: format::NewRecorder::new(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
             make_writer: io::stdout,

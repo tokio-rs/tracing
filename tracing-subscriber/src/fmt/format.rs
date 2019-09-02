@@ -205,7 +205,16 @@ where
     }
 }
 
-pub struct NewRecorder;
+#[derive(Debug)]
+pub struct NewRecorder {
+    _p: (),
+}
+
+impl NewRecorder {
+    pub(crate) fn new() -> Self {
+        Self { _p: () }
+    }
+}
 
 pub struct Recorder<'a> {
     writer: &'a mut dyn Write,
@@ -213,7 +222,7 @@ pub struct Recorder<'a> {
 }
 
 impl<'a> Recorder<'a> {
-    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
+    pub(crate) fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
         Self { writer, is_empty }
     }
 

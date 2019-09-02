@@ -252,11 +252,11 @@ mod test {
             Two,
         }
         impl<S: Subscriber> crate::Layer<S> for Filter {
-            fn register_callsite(&self, _: &Metadata) -> Interest {
+            fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
                 Interest::sometimes()
             }
 
-            fn enabled(&self, _: &Metadata, _: layer::Context<S>) -> bool {
+            fn enabled(&self, _: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
                 match self {
                     Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
                     Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
