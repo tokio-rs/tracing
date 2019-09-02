@@ -10,13 +10,13 @@ use std::{
 
 use crossbeam_utils::sync::{ShardedLock, ShardedLockReadGuard};
 
-pub struct Local<T> {
+pub(crate) struct Local<T> {
     inner: ShardedLock<Inner<T>>,
 }
 
 type Inner<T> = Vec<Option<UnsafeCell<T>>>;
 
-pub struct LocalGuard<'a, T> {
+pub(crate) struct LocalGuard<'a, T> {
     inner: *mut T,
     /// Hold the read guard for the lifetime of this guard. We're not actually
     /// accessing the data behind that guard, but holding the read lock will
@@ -35,7 +35,7 @@ pub(crate) struct Id {
 // === impl Local ===
 
 impl<T> Local<T> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let len = Id::current().as_usize();
         // Preallocate up to the current thread ID, so we don't have to inside
         // the lock.
@@ -49,7 +49,7 @@ impl<T> Local<T> {
     /// Returns a `LocalGuard` that dereferences to the local data for the
     /// current thread. If no local data exists, the provided function is
     /// invoked and the result is inserted.
-    pub fn get_or_else<'a>(&'a self, new: impl FnOnce() -> T) -> LocalGuard<'a, T> {
+    pub(crate) fn get_or_else<'a>(&'a self, new: impl FnOnce() -> T) -> LocalGuard<'a, T> {
         let i = Id::current().as_usize();
         if let Some(guard) = self.try_get(i) {
             guard
@@ -80,7 +80,7 @@ impl<T> Local<T> {
 impl<T: Default> Local<T> {
     /// Returns a `LocalGuard` that dereferences to the local data for the
     /// current thread. If no local data exists, the default value is inserted.
-    pub fn get<'a>(&'a self) -> LocalGuard<'a, T> {
+    pub(crate) fn get<'a>(&'a self) -> LocalGuard<'a, T> {
         self.get_or_else(T::default)
     }
 }
@@ -88,7 +88,7 @@ impl<T: Default> Local<T> {
 unsafe impl<T> Sync for Local<T> {}
 
 impl<T: fmt::Debug> fmt::Debug for Local<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let id = Id::current();
         match self.try_get(id.as_usize()) {
             Some(local) => f
@@ -131,13 +131,13 @@ impl<'a, T> DerefMut for LocalGuard<'a, T> {
 }
 
 impl<'a, T: fmt::Debug> fmt::Debug for LocalGuard<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.deref().fmt(f)
     }
 }
 
 impl<'a, T: fmt::Display> fmt::Display for LocalGuard<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.deref().fmt(f)
     }
 }
@@ -180,13 +180,13 @@ impl Id {
     }
 
     /// Returns true if the local thread ID was accessed while unwinding.
-    pub fn is_poisoned(&self) -> bool {
+    pub(crate) fn is_poisoned(&self) -> bool {
         self.id == std::usize::MAX
     }
 }
 
 impl fmt::Debug for Id {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_poisoned() {
             f.debug_tuple("Id")
                 .field(&format_args!("<poisoned>"))

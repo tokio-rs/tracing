@@ -1,9 +1,12 @@
 //! A `Layer` that enables or disables spans and events based on a set of
 //! filtering directives.
-pub mod level;
-pub use self::directive::ParseError;
-pub use self::field::BadName;
-pub use self::level::LevelFilter;
+mod level;
+#[doc(inline)]
+pub use self::{
+    directive::ParseError,
+    field::BadName as BadFieldName,
+    level::{LevelFilter, ParseError as LevelParseError},
+};
 mod directive;
 mod field;
 use self::directive::Directive;
@@ -58,6 +61,11 @@ enum ErrorKind {
 }
 
 impl Filter {
+    /// The default environment variable used by [`Filter::from_default_env`]
+    /// and [`Filter::try_from_default_env`].
+    ///
+    /// [`Filter::from_default_env`]: #method.from_default_env
+    /// [`Filter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     /// Returns a new `Filter` from the value of the `RUST_LOG` environment
@@ -161,7 +169,7 @@ impl<S: Subscriber> Layer<S> for Filter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata, _: Context<S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
         for filter in self.scope.get().iter() {
             if filter >= level {
@@ -174,7 +182,7 @@ impl<S: Subscriber> Layer<S> for Filter {
         false
     }
 
-    fn new_span(&self, attrs: &span::Attributes, id: &span::Id, _: Context<S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -182,13 +190,13 @@ impl<S: Subscriber> Layer<S> for Filter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record, _: Context<S>) {
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
 
-    fn on_enter(&self, id: &span::Id, _: Context<S>) {
+    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -197,13 +205,13 @@ impl<S: Subscriber> Layer<S> for Filter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<S>) {
+    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
         if self.cares_about_span(id) {
             self.scope.get().pop();
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<S>) {
+    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -256,7 +264,7 @@ impl From<env::VarError> for FromEnvError {
 }
 
 impl fmt::Display for FromEnvError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ErrorKind::Parse(ref p) => p.fmt(f),
             ErrorKind::Env(ref e) => e.fmt(f),
@@ -292,15 +300,15 @@ mod tests {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
             subscriber::Interest::always()
         }
-        fn new_span(&self, _: &span::Attributes) -> span::Id {
+        fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xDEAD)
         }
-        fn event(&self, _event: &Event) {}
-        fn record(&self, _span: &span::Id, _values: &span::Record) {}
+        fn event(&self, _event: &Event<'_>) {}
+        fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
         fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
         #[inline]
-        fn enabled(&self, _metadata: &Metadata) -> bool {
+        fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
             true
         }
         fn enter(&self, _span: &span::Id) {}
@@ -310,7 +318,7 @@ mod tests {
     struct Cs;
     impl Callsite for Cs {
         fn set_interest(&self, _interest: Interest) {}
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             unimplemented!()
         }
     }
