@@ -16,6 +16,7 @@ pub struct Span<'a> {
 
 /// Represents the `Subscriber`'s view of the current span context to a
 /// formatter.
+#[derive(Debug)]
 pub struct Context<'a, N> {
     store: &'a Store,
     new_visitor: &'a N,
@@ -124,6 +125,17 @@ impl<'a> Span<'a> {
             }
         }
         f(my_id, self)
+    }
+}
+
+impl<'a> fmt::Debug for Span<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Span")
+            .field("name", &self.name())
+            .field("parent", &self.parent())
+            .field("metadata", self.metadata())
+            .field("fields", &self.fields())
+            .finish()
     }
 }
 

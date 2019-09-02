@@ -277,6 +277,16 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
+// This has to be a manual impl, as `&mut dyn Writer` doesn't implement `Debug`.
+impl<'a> fmt::Debug for Recorder<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Recorder")
+            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("is_empty", &self.is_empty)
+            .finish()
+    }
+}
+
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
     ansi: bool,
