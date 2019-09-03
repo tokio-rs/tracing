@@ -24,7 +24,7 @@ log = "0.4"
 [dev-dependencies]
 tracing = "0.1"
 tracing-futures = { path = "../tracing-futures" }
-tracing-subscriber = { version = "0.0.1-alpha.3", path = "../tracing-subscriber" }
+tracing-subscriber = "0.0.1-alpha.4"
 hyper = "0.12.25"
 futures = "0.1"
 tokio = "0.1.22"
