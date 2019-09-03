@@ -1,6 +1,3 @@
-#![doc(html_root_url = "https://docs.rs/tracing-log/0.0.1-alpha.1")]
-#![deny(missing_debug_implementations, unreachable_pub)]
-#![cfg_attr(test, deny(warnings))]
 //! Adapters for connecting unstructured log records from the `log` crate into
 //! the `tracing` ecosystem.
 //!
@@ -66,6 +63,11 @@
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
+//! # Feature Flags
+//!
+//! * `trace-logger`: enables the `TraceLogger` type (on by default)
+//! * `log-tracer`: enables the `LogTracer` type (on by default)
+//!
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
 //! [`LogTracer`]: struct.LogTracer.html
@@ -77,6 +79,42 @@
 //! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+#![doc(html_root_url = "https://docs.rs/tracing-log/0.0.1-alpha.1")]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
+#![cfg_attr(
+    test,
+    deny(
+        missing_debug_implementations,
+        missing_docs,
+        rust_2018_idioms,
+        unreachable_pub,
+        bad_style,
+        const_err,
+        dead_code,
+        improper_ctypes,
+        legacy_directory_ownership,
+        non_shorthand_field_patterns,
+        no_mangle_generic_items,
+        overflowing_literals,
+        path_statements,
+        patterns_in_fns_without_body,
+        plugin_as_library,
+        private_in_public,
+        safe_extern_statics,
+        unconditional_recursion,
+        unions_with_drop_fields,
+        unused,
+        unused_allocation,
+        unused_comparisons,
+        unused_parens,
+        while_true
+    )
+)]
 use lazy_static::lazy_static;
 
 use std::{fmt, io};
@@ -90,14 +128,22 @@ use tracing_core::{
     subscriber, Event, Metadata,
 };
 
+#[cfg(feature = "log-tracer")]
 pub mod log_tracer;
+
+#[cfg(feature = "trace-logger")]
 pub mod trace_logger;
 
+#[cfg(feature = "log-tracer")]
 #[doc(inline)]
-pub use self::{log_tracer::LogTracer, trace_logger::TraceLogger};
+pub use self::log_tracer::LogTracer;
+
+#[cfg(feature = "trace-logger")]
+#[doc(inline)]
+pub use self::trace_logger::TraceLogger;
 
 /// Format a log record as a trace event in the current span.
-pub fn format_trace(record: &log::Record) -> io::Result<()> {
+pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     let filter_meta = record.as_trace();
     if !dispatcher::get_default(|dispatch| dispatch.enabled(&filter_meta)) {
         return Ok(());
@@ -127,15 +173,25 @@ pub fn format_trace(record: &log::Record) -> io::Result<()> {
     Ok(())
 }
 
-pub trait AsLog {
+/// Trait implemented for `tracing` types that can be converted to a `log`
+/// equivalent.
+pub trait AsLog: crate::sealed::Sealed {
+    /// The `log` type that this type can be converted into.
     type Log;
+    /// Returns the `log` equivalent of `self`.
     fn as_log(&self) -> Self::Log;
 }
 
-pub trait AsTrace {
+/// Trait implemented for `log` types that can be converted to a `tracing`
+/// equivalent.
+pub trait AsTrace: crate::sealed::Sealed {
+    /// The `tracing` type that this type can be converted into.
     type Trace;
+    /// Returns the `tracing` equivalent of `self`.
     fn as_trace(&self) -> Self::Trace;
 }
+
+impl<'a> crate::sealed::Sealed for Metadata<'a> {}
 
 impl<'a> AsLog for Metadata<'a> {
     type Log = log::Metadata<'a>;
@@ -185,7 +241,7 @@ macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
         static CALLSITE: Callsite = Callsite;
-        static META: Metadata = Metadata::new(
+        static META: Metadata<'static> = Metadata::new(
             "log event",
             "log",
             $level,
@@ -241,6 +297,8 @@ fn loglevel_to_cs(level: log::Level) -> (&'static dyn Callsite, &'static Fields)
     }
 }
 
+impl<'a> crate::sealed::Sealed for log::Record<'a> {}
+
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
@@ -258,6 +316,8 @@ impl<'a> AsTrace for log::Record<'a> {
     }
 }
 
+impl crate::sealed::Sealed for tracing_core::Level {}
+
 impl AsLog for tracing_core::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
@@ -270,6 +330,8 @@ impl AsLog for tracing_core::Level {
         }
     }
 }
+
+impl crate::sealed::Sealed for log::Level {}
 
 impl AsTrace for log::Level {
     type Trace = tracing_core::Level;
@@ -303,7 +365,7 @@ impl AsTrace for log::Level {
 /// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
 /// [`AsTrace`]: trait.AsTrace.html
 /// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
-pub trait NormalizeEvent<'a> {
+pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes
     /// from the original log, including `file`, `line`, `module_path`
@@ -313,6 +375,8 @@ pub trait NormalizeEvent<'a> {
     /// Returns wether this `Event` represents a log (from the `log` crate)
     fn is_log(&self) -> bool;
 }
+
+impl<'a> crate::sealed::Sealed for Event<'a> {}
 
 impl<'a> NormalizeEvent<'a> for Event<'a> {
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
@@ -389,6 +453,10 @@ impl<'a> Visit for LogVisitor<'a> {
             }
         }
     }
+}
+
+mod sealed {
+    pub trait Sealed {}
 }
 
 #[cfg(test)]

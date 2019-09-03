@@ -1,3 +1,13 @@
+//! A `tracing` [`Subscriber`] that uses the [`log`] crate as a backend for
+//! formatting `tracing` spans and events.
+//!
+//! When a [`TraceLogger`] is set as the current subscriber, it will record
+//! traces by emitting [`log::Record`]s that can be collected by a logger.
+//!
+//! [`log`]: https://docs.rs/log/0.4.8/log/index.html
+//! [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
+//! [`TraceLogger`]: struct.TraceLogger.html
+//! [`log::Record`]: https://docs.rs/log/0.4.8/log/struct.Record.html
 use crate::AsLog;
 use std::{
     cell::RefCell,
@@ -14,8 +24,10 @@ use tracing_core::{
     Event, Metadata, Subscriber,
 };
 
-/// A `tracing_core::Subscriber` implementation that logs all recorded
+/// A `tracing` [`Subscriber`] implementation that logs all recorded
 /// trace events.
+///
+//. [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 pub struct TraceLogger {
     settings: Builder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,
@@ -25,7 +37,9 @@ pub struct TraceLogger {
 thread_local! {
     static CURRENT: RefCell<Vec<Id>> = RefCell::new(Vec::new());
 }
-
+/// Configures and constructs a [`TraceLogger`].
+///
+/// [`TraceLogger`]: struct.TraceLogger.html
 #[derive(Debug)]
 pub struct Builder {
     log_span_closes: bool,
@@ -39,10 +53,12 @@ pub struct Builder {
 // ===== impl TraceLogger =====
 
 impl TraceLogger {
+    /// Returns a new `TraceLogger` with the default configuration.
     pub fn new() -> Self {
         Self::builder().finish()
     }
 
+    /// Returns a `Builder` for configuring a `TraceLogger`.
     pub fn builder() -> Builder {
         Default::default()
     }
@@ -62,6 +78,10 @@ impl TraceLogger {
 // ===== impl Builder =====
 
 impl Builder {
+    /// Configures whether or not the [`TraceLogger`] being constructed will log
+    /// when a span closes.
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn with_span_closes(self, log_span_closes: bool) -> Self {
         Self {
             log_span_closes,
@@ -69,6 +89,10 @@ impl Builder {
         }
     }
 
+    /// Configures whether or not the [`TraceLogger`] being constructed will
+    /// include the fields of parent spans when formatting events.
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn with_parent_fields(self, parent_fields: bool) -> Self {
         Self {
             parent_fields,
@@ -76,22 +100,44 @@ impl Builder {
         }
     }
 
+    /// Configures whether or not the [`TraceLogger`] being constructed will log
+    /// when a span is entered.
+    ///
+    /// If this is set to false, fields from the current span will still be
+    /// recorded as context, but the actual entry will not create a log record.
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn with_span_entry(self, log_enters: bool) -> Self {
         Self { log_enters, ..self }
     }
 
+    /// Configures whether or not the [`TraceLogger`] being constructed will log
+    /// when a span is exited.
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn with_span_exits(self, log_exits: bool) -> Self {
         Self { log_exits, ..self }
     }
 
+    /// Configures whether or not the [`TraceLogger`] being constructed will
+    /// include span IDs when formatting log output.
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn with_ids(self, log_ids: bool) -> Self {
         Self { log_ids, ..self }
     }
 
+    /// Configures whether or not the [`TraceLogger`] being constructed will
+    /// include the names of parent spans as context when formatting events.
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn with_parent_names(self, log_parent: bool) -> Self {
         Self { log_parent, ..self }
     }
 
+    /// Complete the builder, returning a configured [`TraceLogger`].
+    ///
+    /// [`TraceLogger`]: struct.TraceLogger.html
     pub fn finish(self) -> TraceLogger {
         TraceLogger::from_builder(self)
     }
@@ -134,7 +180,7 @@ struct SpanLineBuilder {
 }
 
 impl SpanLineBuilder {
-    fn new(parent: Option<Id>, meta: &Metadata, fields: String) -> Self {
+    fn new(parent: Option<Id>, meta: &Metadata<'_>, fields: String) -> Self {
         Self {
             parent,
             ref_count: 1,
@@ -148,7 +194,7 @@ impl SpanLineBuilder {
         }
     }
 
-    fn log_meta(&self) -> log::Metadata {
+    fn log_meta(&self) -> log::Metadata<'_> {
         log::MetadataBuilder::new()
             .level(self.level)
             .target(self.target.as_ref())
@@ -181,11 +227,11 @@ impl field::Visit for SpanLineBuilder {
 }
 
 impl Subscriber for TraceLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, attrs: &span::Attributes) -> Id {
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> Id {
         let id = self.next_id();
         let mut spans = self.spans.lock().unwrap();
         let mut fields = String::new();
@@ -203,7 +249,7 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn record(&self, span: &Id, values: &span::Record) {
+    fn record(&self, span: &Id, values: &span::Record<'_>) {
         let mut spans = self.spans.lock().unwrap();
         if let Some(span) = spans.get_mut(span) {
             values.record(span);
@@ -302,7 +348,7 @@ impl Subscriber for TraceLogger {
         }
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         let meta = event.metadata();
         let log_meta = meta.as_log();
         let logger = log::logger();
@@ -376,7 +422,7 @@ impl TraceLogger {
 struct LogEvent<'a>(&'a Event<'a>);
 
 impl<'a> fmt::Display for LogEvent<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut has_logged = false;
         let mut format_fields = |field: &field::Field, value: &dyn fmt::Debug| {
             let name = field.name();
@@ -396,7 +442,7 @@ impl<'a> fmt::Display for LogEvent<'a> {
 }
 
 impl fmt::Debug for TraceLogger {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TraceLogger")
             .field("settings", &self.settings)
             .field("spans", &self.spans)
