@@ -29,7 +29,7 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 fn main() {
     use tracing_subscriber::{fmt, Filter};
     let subscriber = fmt::Subscriber::builder()
-        .with_filter(Filter::from("args=trace"))
+        .with_filter(Filter::from("attrs_args=trace"))
         .finish();
 
     tracing::subscriber::with_default(subscriber, || {
