@@ -30,11 +30,13 @@
 //!
 //! ## Spans
 //!
-//! A [`span`] represents a _period of time_ during which a program was executing
-//! in some context. A thread of execution is said to _enter_ a span when it
-//! begins executing in that context, and to _exit_ the span when switching to
-//! another context. The span in which a thread is currently executing is
-//! referred to as the _current_ span.
+//! To record the flow of execution through a program, `tracing` introduces the
+//! concept of [spans][span]. Unlike a log line that represents a _moment in
+//! time_, a span represents a _period of time_ with a beginning and an end. When a
+//! program begins executing in a context or performing a unit of work, it
+//! _enters_ that context's span, and when it stops executing in that context,
+//! it _exits_ the span. The span in which a thread is currently executing is
+//! referred to as that thread's _current_ span.
 //!
 //! For example:
 //! ```
@@ -48,16 +50,15 @@
 //! # }
 //!```
 //!
-//! The [`span` module]'s documentation provides further details on how to use spans.
+//! The [`span` module][span]'s documentation provides further details on how to
+//! use spans.
 //!
 //! ## Events
 //!
-//! An [`Event`] represents a _point_ in time. It signifies something that
-//! happened while the trace was executing. `Event`s are comparable to the log
+//! An [`Event`] represents a _moment_ in time. It signifies something that
+//! happened while a trace was being recorded. `Event`s are comparable to the log
 //! records emitted by unstructured logging code, but unlike a typical log line,
-//! an `Event` may occur within the context of a `Span`. Like a `Span`, it
-//! may have fields, and implicitly inherits any of the fields present on its
-//! parent span.
+//! an `Event` may occur within the context of a span.
 //!
 //! For example:
 //! ```
@@ -75,25 +76,21 @@
 //! # }
 //!```
 //!
-//! Essentially, `Event`s  bridge the gap between traditional unstructured
-//! logging and span-based tracing. Similar to log records, they
-//! may be recorded at a number of levels, and can have unstructured,
-//! human-readable messages; however, they also carry key-value data and exist
-//! within the context of the tree of spans that comprise a trace. Thus,
-//! individual log record-like events can be pinpointed not only in time, but
-//! in the logical execution flow of the system.
-//!
 //! In general, events should be used to represent points in time _within_ a
 //! span — a request returned with a given status code, _n_ new items were
 //! taken from a queue, and so on.
 //!
-//! ## `Subscriber`s
+//! The [`Event` struct][`Event`] documentation provides further details on using
+//! events.
+//!
+//! ## Subscribers
 //!
 //! As `Span`s and `Event`s occur, they are recorded or aggregated by
 //! implementations of the [`Subscriber`] trait. `Subscriber`s are notified
 //! when an `Event` takes place and when a `Span` is entered or exited. These
 //! notifications are represented by the following `Subscriber` trait methods:
-//! + [`observe_event`], called when an `Event` takes place,
+//!
+//! + [`event`][Subscriber::event], called when an `Event` takes place,
 //! + [`enter`], called when execution enters a `Span`,
 //! + [`exit`], called when execution exits a `Span`
 //!
@@ -113,8 +110,19 @@
 //! [dependencies]
 //! tracing = "0.1"
 //! ```
-//! `Span`s are constructed using the `span!` macro, and then _entered_
-//! to indicate that some code takes place within the context of that `Span`:
+//!
+//! ## Recording Spans and Events
+//!
+//! Spans and events are recorded using macros.
+//!
+//! ### Spans
+//!
+//! The [`span!`] macro expands to a [`Span` struct][`Span`] which is used to
+//! record a span. The [`Span::enter`] method on that struct records that the
+//! span has been entered, and returns a [RAII] guard object, which will exit
+//! the span when dropped.
+//!
+//! For example:
 //!
 //! ```rust
 //! use tracing::{span, Level};
@@ -132,8 +140,37 @@
 //! # }
 //! ```
 //!
-//! `Event`s are created using the `event!` macro, and are recorded when the
-//! event is dropped:
+//! The [`#[instrument]`][instrument] attribute provides an easy way to
+//! add `tracing` spans to functions. A function annotated with `#[instrument]`
+//! will create and enter a span with that function's name every time the
+//! function is called, with arguments to that function will be recorded as
+//! fields using `fmt::Debug`.
+//!
+//! For example:
+//! ```
+//! use tracing::{Level, event, instrument};
+//!
+//! #[instrument]
+//! pub fn my_function(my_arg: usize) {
+//!     // This event will be recorded inside a span named `my_function` with the
+//!     // field `my_arg`.
+//!     event!(Level::INFO, "inside my_function!");
+//!     // ...
+//! }
+//! # fn main() {}
+//! ```
+//!
+//! **Note**: using `#[instrument]` on `async fn`s requires the
+//! [`tracing-futures`] crate as a dependency, as well.
+//!
+//! You can find more examples showing how to use this crate [here][examples].
+//!
+//! [RAII]: https://github.com/rust-unofficial/patterns/blob/master/patterns/RAII.md
+//! [examples]: https://github.com/tokio-rs/tracing/tree/master/tracing/examples
+//!
+//! ### Events
+//!
+//! [`Event`]s are recorded using the [`event!`] macro:
 //!
 //! ```rust
 //! # fn main() {
@@ -141,6 +178,237 @@
 //! event!(Level::INFO, "something has happened!");
 //! # }
 //! ```
+//!
+//! ## Using the Macros
+//!
+//! The [`span!`] and [`event!`] macros use fairly similar syntax, with some
+//! exceptions.
+//!
+//! ### Configuring Attributes
+//!
+//! Both macros require a [`Level`] specifying the verbosity of the span or
+//! event. Optionally, the [target] and [parent span] may be overridden. If the
+//! target and parent span are not overridden, they will default to the
+//! module path where the macro was invoked and the current span (as determined
+//! by the subscriber), respectively.
+//!
+//! For example:
+//!
+//! ```
+//! # use tracing::{span, event, Level};
+//! # fn main() {
+//! span!(target: "app_spans", Level::TRACE, "my span");
+//! event!(target: "app_events", Level::INFO, "something has happened!");
+//! # }
+//! ```
+//! ```
+//! # use tracing::{span, event, Level};
+//! # fn main() {
+//! let span = span!(Level::TRACE, "my span");
+//! event!(parent: &span, Level::INFO, "something has happened!");
+//! # }
+//! ```
+//!
+//! The span macros also take a string literal after the level, to set the name
+//! of the span.
+//!
+//! ### Recording Fields
+//!
+//! Structured fields on spans and events are specified using the syntax
+//! `field_name = field_value`. Fields are separated by commas.
+//!
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! // records an event with two fields:
+//! //  - "answer", with the value 42
+//! //  - "question", with the value "life, the universe and everything"
+//! event!(Level::INFO, answer = 42, question = "life, the universe, and everything");
+//! # }
+//! ```
+//!
+//! As shorthand, local variables may be used as field values without an
+//! assignment, similar to [struct initializers]. For example:
+//!
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! let user = "ferris";
+//!
+//! span!(Level::TRACE, "login", user);
+//! // is equivalent to:
+//! span!(Level::TRACE, "login", user = user);
+//! # }
+//!```
+//!
+//! Field names can include dots, but should not be terminated by them:
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! let user = "ferris";
+//! let email = "ferris@rust-lang.org";
+//! span!(Level::TRACE, "login", user, user.email = email);
+//! # }
+//!```
+//!
+//! Since field names can include dots, fields on local structs can be used
+//! using the local variable shorthand:
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! # struct User {
+//! #    name: &'static str,
+//! #    email: &'static str,
+//! # }
+//! let user = User {
+//!     name: "ferris",
+//!     email: "ferris@rust-lang.org",
+//! };
+//! // the span will have the fields `user.name = "ferris"` and
+//! // `user.email = "ferris@rust-lang.org"`.
+//! span!(Level::TRACE, "login", user.name, user.email);
+//! # }
+//!```
+//!
+//! The `?` sigil is shorthand that specifies a field should be recorded using
+//! its [`fmt::Debug`] implementation:
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! #[derive(Debug)]
+//! struct MyStruct {
+//!     field: &'static str,
+//! }
+//!
+//! let my_struct = MyStruct {
+//!     field: "Hello world!"
+//! };
+//!
+//! // `my_struct` will be recorded using its `fmt::Debug` implementation.
+//! event!(Level::TRACE, greeting = ?my_struct);
+//! // is equivalent to:
+//! event!(Level::TRACE, greeting = tracing::field::debug(&my_struct));
+//! # }
+//! ```
+//!
+//! The `%` sigil operates similarly, but indicates that the value should be
+//! recorded using its [`fmt::Display`] implementation:
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! # #[derive(Debug)]
+//! # struct MyStruct {
+//! #     field: &'static str,
+//! # }
+//! #
+//! # let my_struct = MyStruct {
+//! #     field: "Hello world!"
+//! # };
+//! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+//! event!(Level::TRACE, greeting = %my_struct.field);
+//! // is equivalent to:
+//! event!(Level::TRACE, greeting = tracing::field::display(&my_struct.field));
+//! # }
+//! ```
+//!
+//! The `%` and `?` sigils may also be used with local variable shorthand:
+//!
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! # #[derive(Debug)]
+//! # struct MyStruct {
+//! #     field: &'static str,
+//! # }
+//! #
+//! # let my_struct = MyStruct {
+//! #     field: "Hello world!"
+//! # };
+//! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+//! event!(Level::TRACE,  %my_struct.field);
+//! # }
+//! ```
+//!
+//! Note that a span may have up to 32 fields. The following will not compile:
+//!
+//! ```rust,compile_fail
+//! # use tracing::Level;
+//! # fn main() {
+//! let bad_span = span!(
+//!     Level::TRACE,
+//!     "too many fields!",
+//!     a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9,
+//!     j = 10, k = 11, l = 12, m = 13, n = 14, o = 15, p = 16, q = 17,
+//!     r = 18, s = 19, t = 20, u = 21, v = 22, w = 23, x = 24, y = 25,
+//!     z = 26, aa = 27, bb = 28, cc = 29, dd = 30, ee = 31, ff = 32, gg = 33
+//! );
+//! # }
+//! ```
+//!
+//! Finally, events may also include human-readable messages, in the form of a
+//! [format string][fmt] and (optional) arguments, **after** the event's
+//! key-value fields. If a format string and arguments are provided,
+//! they will implicitly create a new field named `message` whose value is the
+//! provided set of format arguments.
+//!
+//! For example:
+//!
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! let question = "the answer to the ultimate question of life, the universe, and everything";
+//! let answer = 42;
+//! // records an event with the following fields:
+//! // - `question.answer` with the value 42,
+//! // - `question.tricky` with the value `true`,
+//! // - "message", with the value "the answer to the ultimate question of life, the
+//! //    universe, and everthing is 42."
+//! event!(
+//!     Level::DEBUG,
+//!     question.answer = answer,
+//!     question.tricky = true,
+//!     "the answer to {} is {}.", question, answer
+//! );
+//! # }
+//! ```
+//!
+//! Specifying a formatted message in this manner does not allocate by default.
+//!
+//! [struct initializers]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-the-field-init-shorthand-when-variables-and-fields-have-the-same-name
+//! [target]: struct.Metadata.html#method.target
+//! [parent span]: span/struct.Attributes.html#method.parent
+//! [determined contextually]: span/struct.Attributes.html#method.is_contextual
+//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//!
+//! ### Shorthand Macros
+//!
+//! `tracing` also offers a number of macros with preset verbosity levels.
+//! The [`trace!`], [`debug!`], [`info!`], [`warn!]`, and [`error!`] behave
+//! similarly to the [`event!`] macro, but with the [`Level`] argument already
+//! specified, while the corresponding [`trace_span!`], [`debug_span!`],
+//! [`info_span!`], [`warn_span!`], and [`error_span!`] macros are the same,
+//! but for the `[span!`] macro.
+//!
+//! These are intended both as a shorthand, and for compatibility with the [`log`]
+//! crate (see the next section).
+//!
+//! [`span!`]: macro.span.html
+//! [`event!`]: macro.event.html
+//! [`trace!`]: macro.trace.html
+//! [`debug!`]: macro.debug.html
+//! [`info!`]: macro.info.html
+//! [`warn!`]: macro.warn.html
+//! [`error!`]: macro.error.html
+//! [`trace_span!`]: macro.trace_span.html
+//! [`debug_span!`]: macro.debug_span.html
+//! [`info_span!`]: macro.info_span.html
+//! [`warn_span!`]: macro.warn_span.html
+//! [`error_span!`]: macro.error_span.html
+//! [`Level`]: struct.Level.html
+//!
+//! ### For `log` Users
 //!
 //! Users of the [`log`] crate should note that `tracing` exposes a set of
 //! macros for creating `Event`s (`trace!`, `debug!`, `info!`, `warn!`, and
@@ -186,32 +454,6 @@
 //! # }
 //! ```
 //!
-//! The [`#[instrument]`][instrument] attribute provides an easy way to
-//! add `tracing` spans to functions. A function annotated with `#[instrument]`
-//! will create and enter a span with that function's name every time the
-//! function is called, with arguments to that function will be recorded as
-//! fields using `fmt::Debug`.
-//!
-//! For example:
-//! ```
-//! use tracing::{info, instrument};
-//!
-//! #[instrument]
-//! pub fn my_function(my_arg: usize) {
-//!     // This event will be recorded inside a span named `my_function` with the
-//!     // field `my_arg`.
-//!     info!("inside my_function!");
-//!     // ...
-//! }
-//! # fn main() {}
-//! ```
-//!
-//! **Note**: using `#[instrument]` on `async fn`s requires the
-//! [`tracing-futures`] crate as a dependency, as well.
-//!
-//! You can find more examples showing how to use this crate in the examples
-//! directory.
-//!
 //! ## In libraries
 //!
 //! Libraries should link only to the `tracing` crate, and use the provided
@@ -223,6 +465,9 @@
 //! In order to record trace events, executables have to use a `Subscriber`
 //! implementation compatible with `tracing`. A `Subscriber` implements a
 //! way of collecting trace data, such as by logging it to standard output.
+//!
+//! This library does not contain any `Subscriber` implementations; these are
+//! provided by [other crates](#related-crates).
 //!
 //! The simplest way to use a subscriber is to call the [`set_global_default`]
 //! function:
@@ -298,6 +543,8 @@
 //! Once a subscriber has been set, instrumentation points may be added to the
 //! executable using the `tracing` crate's macros.
 //!
+//! ## Related Crates
+//!
 //! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 //! contains several additional crates designed to be used with the `tracing` ecosystem.
 //! This includes a collection of `Subscriber` implementations, as well as utility
@@ -308,9 +555,8 @@
 //!
 //!  - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
-//!  - [`tracing-fmt`] provides a `Subscriber` implementation for
-//!    logging formatted trace data to stdout, with similar filtering and
-//!    formatting to the `env-logger` crate.
+//!  - [`tracing-subscriber`] provides `Subscriber` implementations and
+//!    utilities for working with `Subscriber`s.
 //!  - [`tracing-log`] provides a compatibility layer with the `log` crate,
 //!    allowing log messages to be recorded as `tracing` `Event`s within the
 //!    trace tree. This is useful when a project using `tracing` have
@@ -344,12 +590,12 @@
 //!   **Note**:`tracing`'s `no_std` support requires `liballoc`.
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
-//! [`span`]: span/index.html
-//! [`span` module]: span/index.html
+//! [span]: span/index.html
+//! [`Span`]: span/struct.Span.html
 //! [`in_scope`]: span/struct.Span.html#method.in_scope
 //! [`Event`]: struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`observe_event`]: subscriber/trait.Subscriber.html#tymethod.observe_event
+//! [Subscriber::event]: subscriber/trait.Subscriber.html#tymethod.event
 //! [`enter`]: subscriber/trait.Subscriber.html#tymethod.enter
 //! [`exit`]: subscriber/trait.Subscriber.html#tymethod.exit
 //! [`enabled`]: subscriber/trait.Subscriber.html#tymethod.enabled
@@ -359,9 +605,9 @@
 //! [`set_global_default`]: subscriber/fn.set_global_default.html
 //! [`with_default`]: subscriber/fn.with_default.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
-//! [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
-//! [`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
-//! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
+//! [`tracing-futures`]: https://crates.io/crates/tracing-futures
+//! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
+//! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
