@@ -1,7 +1,5 @@
 # tracing-log
 
-**Warning: Until `tracing-log` has a 0.1.0 release on crates.io, please treat every release as potentially breaking.**
-
 [`log`] compatibility for [`tracing`].
 
 [![Crates.io][crates-badge]][crates-url]
