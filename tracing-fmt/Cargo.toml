@@ -1,6 +1,6 @@
 [package]
 name = "tracing-fmt"
-version = "0.0.1"
+version = "0.1.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 license = "MIT"
