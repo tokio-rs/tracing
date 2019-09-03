@@ -89,7 +89,8 @@
 //! implementations of the [`Subscriber`] trait. `Subscriber`s are notified
 //! when an `Event` takes place and when a `Span` is entered or exited. These
 //! notifications are represented by the following `Subscriber` trait methods:
-//! + [`observe_event`], called when an `Event` takes place,
+//!
+//! + [`event`][Subscriber::event], called when an `Event` takes place,
 //! + [`enter`], called when execution enters a `Span`,
 //! + [`exit`], called when execution exits a `Span`
 //!
@@ -594,7 +595,7 @@
 //! [`in_scope`]: span/struct.Span.html#method.in_scope
 //! [`Event`]: struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`observe_event`]: subscriber/trait.Subscriber.html#tymethod.observe_event
+//! [Subscriber::event]: subscriber/trait.Subscriber.html#tymethod.event
 //! [`enter`]: subscriber/trait.Subscriber.html#tymethod.enter
 //! [`exit`]: subscriber/trait.Subscriber.html#tymethod.exit
 //! [`enabled`]: subscriber/trait.Subscriber.html#tymethod.enabled
