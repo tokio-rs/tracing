@@ -195,14 +195,14 @@
 //! For example:
 //!
 //! ```
-//! # use tracing::{span, Level};
+//! # use tracing::{span, event, Level};
 //! # fn main() {
 //! span!(target: "app_spans", Level::TRACE, "my span");
 //! event!(target: "app_events", Level::INFO, "something has happened!");
 //! # }
 //! ```
 //! ```
-//! # use tracing::{span, Level};
+//! # use tracing::{span, event, Level};
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my span");
 //! event!(parent: &span, Level::INFO, "something has happened!");
