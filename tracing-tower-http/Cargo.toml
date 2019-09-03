@@ -33,7 +33,7 @@ string = { git = "https://github.com/carllerche/string" }
 tokio = "0.1"
 tokio-current-thread = "0.1.1"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tracing-subscriber = { version = "0.0.1-alpha.3", path = "../tracing-subscriber" }
+tracing-subscriber = { version = "0.0.1-alpha.4", path = "../tracing-subscriber" }
 tokio-io = "0.1"
 ansi_term = "0.11"
 humantime = "1.1.1"
