@@ -218,7 +218,7 @@ macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
         static CALLSITE: Callsite = Callsite;
-        static META: Metadata = Metadata::new(
+        static META: Metadata<'static> = Metadata::new(
             "log event",
             "log",
             $level,
