@@ -160,15 +160,25 @@ pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     Ok(())
 }
 
+/// Trait implemented for `tracing` types that can be converted to a `log`
+/// equivalent.
 pub trait AsLog: crate::sealed::Sealed {
+    /// The `log` type that this type can be converted into.
     type Log;
+    /// Returns the `log` equivalent of `self`.
     fn as_log(&self) -> Self::Log;
 }
 
-pub trait AsTrace {
+/// Trait implemented for `log` types that can be converted to a `tracing`
+/// equivalent.
+pub trait AsTrace: crate::sealed::Sealed {
+    /// The `tracing` type that this type can be converted into.
     type Trace;
+    /// Returns the `tracing` equivalent of `self`.
     fn as_trace(&self) -> Self::Trace;
 }
+
+impl<'a> crate::sealed::Sealed for Metadata<'a> {}
 
 impl<'a> AsLog for Metadata<'a> {
     type Log = log::Metadata<'a>;
@@ -274,6 +284,8 @@ fn loglevel_to_cs(level: log::Level) -> (&'static dyn Callsite, &'static Fields)
     }
 }
 
+impl<'a> crate::sealed::Sealed for log::Record<'a> {}
+
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
@@ -291,6 +303,8 @@ impl<'a> AsTrace for log::Record<'a> {
     }
 }
 
+impl crate::sealed::Sealed for tracing_core::Level {}
+
 impl AsLog for tracing_core::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
@@ -303,6 +317,8 @@ impl AsLog for tracing_core::Level {
         }
     }
 }
+
+impl crate::sealed::Sealed for log::Level {}
 
 impl AsTrace for log::Level {
     type Trace = tracing_core::Level;
@@ -346,6 +362,8 @@ pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// Returns wether this `Event` represents a log (from the `log` crate)
     fn is_log(&self) -> bool;
 }
+
+impl<'a> crate::sealed::Sealed for Event<'a> {}
 
 impl<'a> NormalizeEvent<'a> for Event<'a> {
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
