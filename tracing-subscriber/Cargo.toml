@@ -1,6 +1,6 @@
 [package]
 name = "tracing-subscriber"
-version = "0.0.1-alpha.4"
+version = "0.1.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 license = "MIT"
