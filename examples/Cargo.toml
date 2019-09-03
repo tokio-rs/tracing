@@ -10,7 +10,7 @@ edition = "2018"
 tracing = "0.1.7"
 tracing-core = "0.1"
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
-tracing-subscriber = { version = "0.0.1-alpha.4", path = "../tracing-subscriber" }
+tracing-subscriber = { version = "0.1", path = "../tracing-subscriber" }
 tracing-futures = { version = "0.0.1-alpha.1", path = "../tracing-futures" }
 tracing-attributes =  "0.1.2"
 tracing-log = { path = "../tracing-log", version = "0.1" }
