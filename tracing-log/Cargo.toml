@@ -17,6 +17,11 @@ keywords = ["logging", "tracing", "log"]
 license = "MIT"
 readme = "README.md"
 
+[features]
+default = ["log-tracer", "trace-logger"]
+log-tracer = []
+trace-logger = []
+
 [dependencies]
 tracing-core = "0.1.2"
 log = { version = "0.4", features = ["std"] }

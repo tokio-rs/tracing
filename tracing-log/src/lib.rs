@@ -63,6 +63,11 @@
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
+//! # Feature Flags
+//!
+//! * `trace-logger`: enables the `TraceLogger` type (on by default)
+//! * `log-tracer`: enables the `LogTracer` type (on by default)
+//!
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
 //! [`LogTracer`]: struct.LogTracer.html
@@ -123,11 +128,19 @@ use tracing_core::{
     subscriber, Event, Metadata,
 };
 
+#[cfg(feature = "log-tracer")]
 pub mod log_tracer;
+
+#[cfg(feature = "trace-logger")]
 pub mod trace_logger;
 
+#[cfg(feature = "log-tracer")]
 #[doc(inline)]
-pub use self::{log_tracer::LogTracer, trace_logger::TraceLogger};
+pub use self::log_tracer::LogTracer;
+
+#[cfg(feature = "trace-logger")]
+#[doc(inline)]
+pub use self::trace_logger::TraceLogger;
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
