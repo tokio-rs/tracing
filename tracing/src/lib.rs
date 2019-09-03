@@ -293,7 +293,7 @@
 //! The `%` sigil operates similarly, but indicates that the value should be
 //! recorded using its [`fmt::Display`] implementation:
 //! ```
-//! # use tracing::{span, Level};
+//! # use tracing::{event, Level};
 //! # fn main() {
 //! # #[derive(Debug)]
 //! # struct MyStruct {
@@ -313,7 +313,7 @@
 //! The `%` and `?` sigils may also be used with local variable shorthand:
 //!
 //! ```
-//! # use tracing::{span, Level};
+//! # use tracing::{event, Level};
 //! # fn main() {
 //! # #[derive(Debug)]
 //! # struct MyStruct {
