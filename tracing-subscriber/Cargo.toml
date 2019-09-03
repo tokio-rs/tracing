@@ -36,7 +36,7 @@ smallvec = { optional = true, version = "0.6.10"}
 lazy_static = { optional = true, version = "1" }
 
 # fmt
-tracing-log = { version = "0.0.1-alpha.1", optional = true }
+tracing-log = { version = "0.0.1-alpha.2", path = "../tracing-log", optional = true }
 ansi_term = { version = "0.11", optional = true }
 owning_ref = { version = "0.4.0", optional = true }
 parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
