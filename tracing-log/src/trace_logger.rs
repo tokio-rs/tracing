@@ -1,5 +1,6 @@
 use crate::AsLog;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fmt::{self, Write},
     sync::{
@@ -18,8 +19,11 @@ use tracing_core::{
 pub struct TraceLogger {
     settings: Builder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,
-    current: tracing_subscriber::CurrentSpan,
     next_id: AtomicUsize,
+}
+
+thread_local! {
+    static CURRENT: RefCell<Vec<Id>> = RefCell::new(Vec::new());
 }
 
 #[derive(Debug)]
@@ -111,7 +115,6 @@ impl Default for TraceLogger {
         TraceLogger {
             settings: Default::default(),
             spans: Default::default(),
-            current: Default::default(),
             next_id: AtomicUsize::new(1),
         }
     }
@@ -186,7 +189,7 @@ impl Subscriber for TraceLogger {
         let id = self.next_id();
         let mut spans = self.spans.lock().unwrap();
         let mut fields = String::new();
-        let parent = self.current.id();
+        let parent = self.current_id();
         if self.settings.parent_fields {
             let mut next_parent = parent.as_ref();
             while let Some(ref parent) = next_parent.and_then(|p| spans.get(&p)) {
@@ -218,14 +221,21 @@ impl Subscriber for TraceLogger {
     }
 
     fn enter(&self, id: &Id) {
-        self.current.enter(id.clone());
+        let _ = CURRENT.try_with(|current| {
+            let mut current = current.borrow_mut();
+            if current.contains(id) {
+                // Ignore duplicate enters.
+                return;
+            }
+            current.push(id.clone());
+        });
         let spans = self.spans.lock().unwrap();
         if self.settings.log_enters {
             if let Some(span) = spans.get(id) {
                 let log_meta = span.log_meta();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
-                    let current_id = self.current.id();
+                    let current_id = self.current_id();
                     let current_fields = current_id
                         .as_ref()
                         .and_then(|id| spans.get(&id))
@@ -263,7 +273,14 @@ impl Subscriber for TraceLogger {
     }
 
     fn exit(&self, id: &Id) {
-        self.current.exit();
+        let _ = CURRENT.try_with(|current| {
+            let mut current = current.borrow_mut();
+            if current.last() == Some(id) {
+                current.pop()
+            } else {
+                None
+            }
+        });
         if self.settings.log_exits {
             let spans = self.spans.lock().unwrap();
             if let Some(span) = spans.get(id) {
@@ -291,7 +308,7 @@ impl Subscriber for TraceLogger {
         let logger = log::logger();
         if logger.enabled(&log_meta) {
             let spans = self.spans.lock().unwrap();
-            let current = self.current.id().and_then(|id| spans.get(&id));
+            let current = self.current_id().and_then(|id| spans.get(&id));
             let (current_fields, parent) = current
                 .map(|span| {
                     let fields = span.fields.as_ref();
@@ -347,6 +364,15 @@ impl Subscriber for TraceLogger {
     }
 }
 
+impl TraceLogger {
+    #[inline]
+    fn current_id(&self) -> Option<Id> {
+        CURRENT
+            .try_with(|current| current.borrow().last().map(|span| self.clone_span(span)))
+            .ok()?
+    }
+}
+
 struct LogEvent<'a>(&'a Event<'a>);
 
 impl<'a> fmt::Display for LogEvent<'a> {
@@ -374,7 +400,7 @@ impl fmt::Debug for TraceLogger {
         f.debug_struct("TraceLogger")
             .field("settings", &self.settings)
             .field("spans", &self.spans)
-            .field("current", &self.current.id())
+            .field("current", &self.current_id())
             .field("next_id", &self.next_id)
             .finish()
     }
