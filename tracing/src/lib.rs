@@ -116,7 +116,7 @@
 //!
 //! ### Spans
 //!
-//! The `span!` macro expands to a [`Span` struct][`Span`] which is used to
+//! The [`span!`] macro expands to a [`Span` struct][`Span`] which is used to
 //! record a span. The [`Span::enter`] method on that struct records that the
 //! span has been entered, and returns a [RAII] guard object, which will exit
 //! the span when dropped.
@@ -169,7 +169,7 @@
 //!
 //! ### Events
 //!
-//!`Event`s are recorded using the `event!` macro:
+//! [`Event`]s are recorded using the [`event!`] macro:
 //!
 //! ```rust
 //! # fn main() {
@@ -178,9 +178,233 @@
 //! # }
 //! ```
 //!
-//! ### Using the Macros
+//! ## Using the Macros
 //!
-//! The `span!` and `event!` macros
+//! The [`span!`] and [`event!`] macros use fairly similar syntax, with some
+//! exceptions.
+//!
+//! ### Configuring Attributes
+//!
+//! Both macros require a [`Level`] specifying the verbosity of the span or
+//! event. Optionally, the [target] and [parent span] may be overridden. If the
+//! target and parent span are not overridden, they will default to the
+//! module path where the macro was invoked and the current span (as determined
+//! by the subscriber), respectively.
+//!
+//! For example:
+//!
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! span!(target: "app_spans", Level::TRACE, "my span");
+//! event!(target: "app_events", Level::INFO, "something has happened!");
+//! # }
+//! ```
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! let span = span!(Level::TRACE, "my span");
+//! event!(parent: &span, Level::INFO, "something has happened!");
+//! ```
+//!
+//! The span macros also take a string literal after the level, to set the name
+//! of the span.
+//!
+//! ### Recording Fields
+//!
+//! Structured fields on spans and events are specified using the syntax
+//! `field_name = field_value`. Fields are separated by commas.
+//!
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! // records an event with two fields:
+//! //  - "answer", with the value 42
+//! //  - "question", with the value "life, the universe and everything"
+//! event!(Level::INFO, answer = 42, question = "life, the universe, and everything");
+//! # }
+//! ```
+//!
+//! As shorthand, local variables may be used as field values without an
+//! assignment, similar to [struct initializers]. For example:
+//!
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! let user = "ferris";
+//!
+//! span!(Level::TRACE, "login", user);
+//! // is equivalent to:
+//! span!(Level::TRACE, "login", user = user);
+//! # }
+//!```
+//!
+//! Field names can include dots, but should not be terminated by them:
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! let user = "ferris";
+//! let email = "ferris@rust-lang.org";
+//! span!(Level::TRACE, "login", user, user.email = email);
+//! # }
+//!```
+//!
+//! Since field names can include dots, fields on local structs can be used
+//! using the local variable shorthand:
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! # struct User {
+//! #    name: &'static str,
+//! #    email: &'static str,
+//! # }
+//! let user = User {
+//!     name: "ferris",
+//!     email: "ferris@rust-lang.org",
+//! };
+//! // the span will have the fields `user.name = "ferris"` and
+//! // `user.email = "ferris@rust-lang.org"`.
+//! span!(Level::TRACE, "login", user.name, user.email);
+//! # }
+//!```
+//!
+//! The `?` sigil is shorthand that specifies a field should be recorded using
+//! its [`fmt::Debug`] implementation:
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! #[derive(Debug)]
+//! struct MyStruct {
+//!     field: &'static str,
+//! }
+//!
+//! let my_struct = MyStruct {
+//!     field: "Hello world!"
+//! };
+//!
+//! // `my_struct` will be recorded using its `fmt::Debug` implementation.
+//! event!(Level::TRACE, greeting = ?my_struct);
+//! // is equivalent to:
+//! event!(Level::TRACE, greeting = tracing::field::debug(&my_struct));
+//! # }
+//! ```
+//!
+//! The `%` sigil operates similarly, but indicates that the value should be
+//! recorded using its [`fmt::Display`] implementation:
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! # #[derive(Debug)]
+//! # struct MyStruct {
+//! #     field: &'static str,
+//! # }
+//! #
+//! # let my_struct = MyStruct {
+//! #     field: "Hello world!"
+//! # };
+//! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+//! event!(Level::TRACE, greeting = %my_struct.field);
+//! // is equivalent to:
+//! event!(Level::TRACE, greeting = tracing::field::display(&my_struct.field));
+//! # }
+//! ```
+//!
+//! The `%` and `?` sigils may also be used with local variable shorthand:
+//!
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! # #[derive(Debug)]
+//! # struct MyStruct {
+//! #     field: &'static str,
+//! # }
+//! #
+//! # let greeting = MyStruct {
+//! #     field: "Hello world!"
+//! # };
+//! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
+//! event!(Level::TRACE, "my span", %greeting.field);
+//! # }
+//! ```
+//!
+//! Note that a span may have up to 32 fields. The following will not compile:
+//!
+//! ```rust,compile_fail
+//! # use tracing::Level;
+//! # fn main() {
+//! let bad_span = span!(
+//!     Level::TRACE,
+//!     "too many fields!",
+//!     a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9,
+//!     j = 10, k = 11, l = 12, m = 13, n = 14, o = 15, p = 16, q = 17,
+//!     r = 18, s = 19, t = 20, u = 21, v = 22, w = 23, x = 24, y = 25,
+//!     z = 26, aa = 27, bb = 28, cc = 29, dd = 30, ee = 31, ff = 32, gg = 33
+//! );
+//! # }
+//! ```
+//!
+//! Finally, events may also include human-readable messages, in the form of a
+//! [format string][fmt] and (optional) arguments, **after** the event's
+//! key-value fields. If a format string and arguments are provided,
+//! they will implicitly create a new field named `message` whose value is the
+//! provided set of format arguments.
+//!
+//! For example:
+//!
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! let question = "the answer to the ultimate question of life, the universe, and everything";
+//! let answer = 42;
+//! // records an event with the following fields:
+//! // - `question.answer` with the value 42,
+//! // - `question.tricky` with the value `true`,
+//! // - "message", with the value "the answer to the ultimate question of life, the
+//! //    universe, and everthing is 42."
+//! event!(
+//!     Level::DEBUG,
+//!     question.answer = answer,
+//!     question.tricky = true,
+//!     "the answer to {} is {}.", question, answer
+//! );
+//! # }
+//! ```
+//!
+//! Specifying a formatted message in this manner does not allocate by default.
+//!
+//! [struct initializers]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-the-field-init-shorthand-when-variables-and-fields-have-the-same-name
+//! [target]: struct.Metadata.html#method.target
+//! [parent span]: span/struct.Attributes.html#method.parent
+//! [determined contextually]: span/struct.Attributes.html#method.is_contextual
+//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//!
+//! ### Shorthand Macros
+//!
+//! `tracing` also offers a number of macros with preset verbosity levels.
+//! The [`trace!`], [`debug!`], [`info!`], [`warn!]`, and [`error!`] behave
+//! similarly to the [`event!`] macro, but with the [`Level`] argument already
+//! specified, while the corresponding [`trace_span!`], [`debug_span!`],
+//! [`info_span!`], [`warn_span!`], and [`error_span!`] macros are the same,
+//! but for the `[span!`] macro.
+//!
+//! These are intended both as a shorthand, and for compatibility with the [`log`]
+//! crate (see the next section).
+//!
+//! [`span!`]: macro.span.html
+//! [`event!`]: macro.event.html
+//! [`trace!`]: macro.trace.html
+//! [`debug!`]: macro.debug.html
+//! [`info!`]: macro.info.html
+//! [`warn!`]: macro.warn.html
+//! [`error!`]: macro.error.html
+//! [`trace_span!`]: macro.trace_span.html
+//! [`debug_span!`]: macro.debug_span.html
+//! [`info_span!`]: macro.info_span.html
+//! [`warn_span!`]: macro.warn_span.html
+//! [`error_span!`]: macro.error_span.html
+//! [`Level`]: struct.Level.html
 //!
 //! ### For `log` Users
 //!
@@ -366,6 +590,7 @@
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
 //! [span]: span/index.html
+//! [`Span`]: span/struct.Span.html
 //! [`in_scope`]: span/struct.Span.html#method.in_scope
 //! [`Event`]: struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
