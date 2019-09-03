@@ -604,9 +604,9 @@
 //! [`set_global_default`]: subscriber/fn.set_global_default.html
 //! [`with_default`]: subscriber/fn.with_default.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
-//! [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
+//! [`tracing-futures`]: https://crates.io/crates/tracing-futures
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
-//! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
+//! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
