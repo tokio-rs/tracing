@@ -554,9 +554,8 @@
 //!
 //!  - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
-//!  - [`tracing-fmt`] provides a `Subscriber` implementation for
-//!    logging formatted trace data to stdout, with similar filtering and
-//!    formatting to the `env-logger` crate.
+//!  - [`tracing-subscriber`] provides `Subscriber` implementations and
+//!    utilities for working with `Subscriber`s.
 //!  - [`tracing-log`] provides a compatibility layer with the `log` crate,
 //!    allowing log messages to be recorded as `tracing` `Event`s within the
 //!    trace tree. This is useful when a project using `tracing` have
@@ -606,7 +605,7 @@
 //! [`with_default`]: subscriber/fn.with_default.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
-//! [`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
+//! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
 //! [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
