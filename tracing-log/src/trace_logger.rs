@@ -134,7 +134,7 @@ struct SpanLineBuilder {
 }
 
 impl SpanLineBuilder {
-    fn new(parent: Option<Id>, meta: &Metadata, fields: String) -> Self {
+    fn new(parent: Option<Id>, meta: &Metadata<'_>, fields: String) -> Self {
         Self {
             parent,
             ref_count: 1,
@@ -148,7 +148,7 @@ impl SpanLineBuilder {
         }
     }
 
-    fn log_meta(&self) -> log::Metadata {
+    fn log_meta(&self) -> log::Metadata<'_> {
         log::MetadataBuilder::new()
             .level(self.level)
             .target(self.target.as_ref())
@@ -181,11 +181,11 @@ impl field::Visit for SpanLineBuilder {
 }
 
 impl Subscriber for TraceLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         log::logger().enabled(&metadata.as_log())
     }
 
-    fn new_span(&self, attrs: &span::Attributes) -> Id {
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> Id {
         let id = self.next_id();
         let mut spans = self.spans.lock().unwrap();
         let mut fields = String::new();
@@ -203,7 +203,7 @@ impl Subscriber for TraceLogger {
         id
     }
 
-    fn record(&self, span: &Id, values: &span::Record) {
+    fn record(&self, span: &Id, values: &span::Record<'_>) {
         let mut spans = self.spans.lock().unwrap();
         if let Some(span) = spans.get_mut(span) {
             values.record(span);
@@ -302,7 +302,7 @@ impl Subscriber for TraceLogger {
         }
     }
 
-    fn event(&self, event: &Event) {
+    fn event(&self, event: &Event<'_>) {
         let meta = event.metadata();
         let log_meta = meta.as_log();
         let logger = log::logger();
@@ -376,7 +376,7 @@ impl TraceLogger {
 struct LogEvent<'a>(&'a Event<'a>);
 
 impl<'a> fmt::Display for LogEvent<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut has_logged = false;
         let mut format_fields = |field: &field::Field, value: &dyn fmt::Debug| {
             let name = field.name();
@@ -396,7 +396,7 @@ impl<'a> fmt::Display for LogEvent<'a> {
 }
 
 impl fmt::Debug for TraceLogger {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TraceLogger")
             .field("settings", &self.settings)
             .field("spans", &self.spans)

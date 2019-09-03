@@ -130,7 +130,7 @@ pub mod trace_logger;
 pub use self::{log_tracer::LogTracer, trace_logger::TraceLogger};
 
 /// Format a log record as a trace event in the current span.
-pub fn format_trace(record: &log::Record) -> io::Result<()> {
+pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     let filter_meta = record.as_trace();
     if !dispatcher::get_default(|dispatch| dispatch.enabled(&filter_meta)) {
         return Ok(());

@@ -134,7 +134,7 @@ impl Default for LogTracer {
 }
 
 impl log::Log for LogTracer {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         if self.ignore_crates.is_empty() {
             return true;
         }
@@ -148,7 +148,7 @@ impl log::Log for LogTracer {
             .any(|ignored| target.starts_with(ignored))
     }
 
-    fn log(&self, record: &log::Record) {
+    fn log(&self, record: &log::Record<'_>) {
         let enabled = dispatcher::get_default(|dispatch| {
             // TODO: can we cache this for each log record, so we can get
             // similar to the callsite cache?
