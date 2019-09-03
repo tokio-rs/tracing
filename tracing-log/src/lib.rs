@@ -160,7 +160,7 @@ pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     Ok(())
 }
 
-pub trait AsLog {
+pub trait AsLog: crate::sealed::Sealed {
     type Log;
     fn as_log(&self) -> Self::Log;
 }
@@ -336,7 +336,7 @@ impl AsTrace for log::Level {
 /// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
 /// [`AsTrace`]: trait.AsTrace.html
 /// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
-pub trait NormalizeEvent<'a> {
+pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes
     /// from the original log, including `file`, `line`, `module_path`
@@ -422,6 +422,10 @@ impl<'a> Visit for LogVisitor<'a> {
             }
         }
     }
+}
+
+mod sealed {
+    pub trait Sealed {}
 }
 
 #[cfg(test)]

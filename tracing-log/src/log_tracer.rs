@@ -1,21 +1,42 @@
+//! An adapter for converting [`log`] records into `tracing` `Event`s.
+//!
+//! This module provides the [`LogTracer`] type which implements `log`'s [logger
+//! interface] by recording log records as `tracing` `Event`s. This is intended for
+//! use in conjunction with a `tracing` `Subscriber` to consume events from
+//! dependencies that emit [`log`] records within a trace context.
+//!
+//! # Usage
+//!
+//! To create and initialize a `LogTracer` with the default configurations, use:
+//!
+//! * [`init`] if you want to convert all logs, regardless of log level,
+//!   allowing the tracing `Subscriber` to perform any filtering
+//! * [`init_with_filter`] to convert all logs up to a specified log level
+//!
+//! In addition, a [builder] is available for cases where more advanced
+//! configuration is required. In particular, the builder can be used to [ignore
+//! log records][ignore] emitted by particular crates. This is useful in cases
+//! such as when a crate emits both `tracing` diagnostics _and_ log records by
+//! default.
+//!
+//! [`LogTracer`]: struct.LogTracer.html
+//! [`log`]: https://docs.rs/log/0.4.8/log/
+//! [logger interface]: https://docs.rs/log/0.4.8/log/trait.Log.html
+//! [`init`]: struct.LogTracer.html#method.init.html
+//! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter.html
+//! [builder]: struct.LogTracer.html#method.builder
+//! [ignore]: struct.Builder.html#method.ignore_crate
 use crate::{format_trace, AsTrace};
 use log;
 use tracing_core::dispatcher;
 
 /// A simple "logger" that converts all log records into `tracing` `Event`s.
-///
-/// Can be initialized with:
-///
-/// * [`init`] if you want to convert all logs and do the filtering in a subscriber
-/// * [`init_with_filter`] if you know in advance a log level you want to filter
-///
-/// [`init`]: ../fn.init.html
-/// [`init_with_filter`]: ../fn.init_with_filter.html
 #[derive(Debug)]
 pub struct LogTracer {
     ignore_crates: Box<[String]>,
 }
 
+/// Configures a new `LogTracer`.
 #[derive(Debug)]
 pub struct Builder {
     ignore_crates: Vec<String>,
@@ -170,6 +191,9 @@ impl log::Log for LogTracer {
 // ===== impl Builder =====
 
 impl Builder {
+    /// Returns a new `Builder` to construct a [`LogTracer`].
+    ///
+    /// [`LogTracer`]: struct.LogTracer.html
     pub fn new() -> Self {
         Self::default()
     }
