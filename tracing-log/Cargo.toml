@@ -1,11 +1,11 @@
 [package]
 name = "tracing-log"
-version = "0.0.1-alpha.2"
+version = "0.1.0"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-log/0.0.1-alpha.1/tracing_log"
+documentation = "https://docs.rs/tracing-log/0.1.0/tracing_log"
 description = """
 Provides compatibility between `tracing` and the `log` crate.
 """
@@ -32,4 +32,4 @@ tracing = "0.1"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
-maintenance = { status = "experimental" }
+maintenance = { status = "actively-maintained" }
