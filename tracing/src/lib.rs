@@ -148,7 +148,7 @@
 //!
 //! For example:
 //! ```
-//! use tracing::{info, instrument};
+//! use tracing::{Level, event, instrument};
 //!
 //! #[instrument]
 //! pub fn my_function(my_arg: usize) {
@@ -206,6 +206,7 @@
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my span");
 //! event!(parent: &span, Level::INFO, "something has happened!");
+//! # }
 //! ```
 //!
 //! The span macros also take a string literal after the level, to set the name
@@ -320,11 +321,11 @@
 //! #     field: &'static str,
 //! # }
 //! #
-//! # let greeting = MyStruct {
+//! # let my_struct = MyStruct {
 //! #     field: "Hello world!"
 //! # };
 //! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
-//! event!(Level::TRACE, "my span", %greeting.field);
+//! event!(Level::TRACE,  %my_struct.field);
 //! # }
 //! ```
 //!
