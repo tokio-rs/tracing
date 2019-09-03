@@ -34,10 +34,7 @@ tracing-attributes = "0.1.2"
 cfg-if = "0.1.9"
 
 [dev-dependencies]
-ansi_term = "0.11"
-humantime = "1.2"
 futures = "0.1"
-log = "0.4"
 criterion = { version = "0.2", default_features = false }
 
 [features]

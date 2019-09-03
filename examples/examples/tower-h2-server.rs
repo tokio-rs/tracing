@@ -96,7 +96,7 @@ fn main() {
     // Set the default subscriber to record all traces emitted by this example
     // and by the `tracing_tower` library's helpers.
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_filter("h2_server=trace,tracing_tower=trace")
+        .with_filter("tower_h2_server=trace,tracing_tower=trace")
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 
