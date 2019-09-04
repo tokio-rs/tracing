@@ -98,17 +98,19 @@ impl CurrentSpan {
     /// Returns the [`Id`](::Id) of the span in which the current thread is
     /// executing, or `None` if it is not inside of a span.
     pub fn id(&self) -> Option<Id> {
-        self.current.get().last().cloned()
+        self.current.with(|current| current.last().cloned())?
     }
 
     /// Records that the current thread has entered the span with the provided ID.
     pub fn enter(&self, span: Id) {
-        self.current.get().push(span)
+        self.current.with(|current| current.push(span));
     }
 
     /// Records that the current thread has exited a span.
     pub fn exit(&self) {
-        self.current.get().pop();
+        self.current.with(|current| {
+            let _ = current.pop();
+        });
     }
 }
 
