@@ -12,7 +12,7 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.0.1-alpha.4")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.0")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -81,11 +81,6 @@ pub use layer::Layer;
 pub use fmt::Subscriber as FmtSubscriber;
 
 use std::default::Default;
-
-/// Tracks the currently executing span on a per-thread basis.
-#[deprecated(since = "0.0.1-alpha.2", note = "renamed to `CurrentSpan`")]
-pub type CurrentSpanPerThread = CurrentSpan;
-
 /// Tracks the currently executing span on a per-thread basis.
 #[derive(Debug)]
 pub struct CurrentSpan {
