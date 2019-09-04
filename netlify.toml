@@ -1,0 +1,7 @@
+[build]
+  command = "curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env && cargo doc --no-deps"
+  publish = "target/doc"
+
+[[redirects]]
+  from = "/"
+  to = "/tracing"

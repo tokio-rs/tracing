@@ -4,6 +4,7 @@ Application-level tracing for Rust.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
+[![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
 [![Gitter chat][gitter-badge]][gitter-url]
@@ -12,6 +13,8 @@ Application-level tracing for Rust.
 [crates-url]: https://crates.io/crates/tracing
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
+[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
+[docs-master-url]: https://tracing-rs.netlify.com
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
@@ -20,7 +23,7 @@ Application-level tracing for Rust.
 [gitter-url]: https://gitter.im/tokio-rs/tracing
 
 [Website](https://tokio.rs) |
-[Chat](https://gitter.im/tracing-rs/tracing)
+[Chat](https://gitter.im/tracing-rs/tracing) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
 
 ## Overview
 

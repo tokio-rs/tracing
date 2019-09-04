@@ -6,6 +6,7 @@ Utilities for instrumenting futures-based code with [`tracing`].
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
+[![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
 [![Gitter chat][gitter-badge]][gitter-url]
@@ -18,6 +19,8 @@ Utilities for instrumenting futures-based code with [`tracing`].
 [crates-url]: https://crates.io/crates/tracing-futures
 [docs-badge]: https://docs.rs/tracing-futures/badge.svg
 [docs-url]: https://docs.rs/tracing-futures
+[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
+[docs-master-url]: https://tracing-rs.netlify.com/tracing_futures
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
