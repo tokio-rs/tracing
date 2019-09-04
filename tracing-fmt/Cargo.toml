@@ -29,7 +29,7 @@ chrono = ["tracing-subscriber/chrono"]
 tracing-log = ["tracing-subscriber/tracing-log"]
 
 [dependencies.tracing-subscriber]
-version = "0.0.1-alpha.3"
+version = "0.1"
 path = "../tracing-subscriber"
 features = ["fmt", "filter"]
 
