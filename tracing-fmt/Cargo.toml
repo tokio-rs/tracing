@@ -30,7 +30,6 @@ tracing-log = ["tracing-subscriber/tracing-log"]
 
 [dependencies.tracing-subscriber]
 version = "0.1"
-path = "../tracing-subscriber"
 features = ["fmt", "filter"]
 
 [dev-dependencies]
