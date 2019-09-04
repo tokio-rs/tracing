@@ -16,37 +16,37 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber/
-#![doc(html_root_url = "https://docs.rs/tracing-fmt/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/tracing-fmt/0.1.1")]
 #![cfg_attr(test, deny(warnings))]
-#![deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::fmt`")]
+#![deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::fmt`")]
 
-#[deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::fmt`")]
+#[deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::fmt`")]
 #[doc(inline)]
 pub use crate::{format::FormatEvent, writer::MakeWriter};
 
-#[deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::fmt`")]
+#[deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::fmt`")]
 #[doc(inline)]
 pub use tracing_subscriber::{fmt::Builder, fmt::Context, FmtSubscriber};
 
-#[deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::fmt::format`")]
+#[deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::fmt::format`")]
 pub mod format {
     #[doc(inline)]
     pub use tracing_subscriber::fmt::format::*;
 }
 
-#[deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::fmt::writer`")]
+#[deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::fmt::writer`")]
 pub mod writer {
     #[doc(inline)]
     pub use tracing_subscriber::fmt::writer::*;
 }
 
-#[deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::fmt::time`")]
+#[deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::fmt::time`")]
 pub mod time {
     #[doc(inline)]
     pub use tracing_subscriber::fmt::time::*;
 }
 
-#[deprecated(since = "0.0.1", note = "moved to `tracing-subscriber::filter`")]
+#[deprecated(since = "0.1.1", note = "moved to `tracing-subscriber::filter`")]
 pub mod filter {
     #[doc(inline)]
     pub use tracing_subscriber::Filter as EnvFilter;
