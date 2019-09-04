@@ -20,7 +20,7 @@ Application-level tracing for Rust.
 [gitter-url]: https://gitter.im/tokio-rs/tracing
 
 [Website](https://tokio.rs) |
-[Chat](https://gitter.im/tracing-rs/tracing)
+[Chat](https://gitter.im/tracing-rs/tracing) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
 
 ## Overview
 
