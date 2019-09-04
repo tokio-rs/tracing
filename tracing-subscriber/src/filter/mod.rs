@@ -171,15 +171,19 @@ impl<S: Subscriber> Layer<S> for Filter {
 
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
-        for filter in self.scope.get().iter() {
-            if filter >= level {
-                return true;
-            }
-        }
+        self.scope
+            .with(|scope| {
+                for filter in scope.iter() {
+                    if filter >= level {
+                        return true;
+                    }
+                }
 
-        // TODO: other filters...
+                // TODO: other filters...
 
-        false
+                false
+            })
+            .unwrap_or(false)
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
@@ -201,13 +205,13 @@ impl<S: Subscriber> Layer<S> for Filter {
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            self.scope.get().push(span.level());
+            self.scope.with(|scope| scope.push(span.level()));
         }
     }
 
     fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
         if self.cares_about_span(id) {
-            self.scope.get().pop();
+            self.scope.with(|scope| scope.pop());
         }
     }
 
