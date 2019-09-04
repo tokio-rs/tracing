@@ -262,10 +262,11 @@ In particular, the following crates are likely to be of interest:
 
  - [`tracing-futures`] provides a compatibility layer with the `futures`
    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
- - [`tracing-fmt`] provides a `Subscriber` implementation for
-   logging formatted trace data to stdout, with similar filtering and
-   formatting to the `env-logger` crate.
- - [`tracing-log`] provides a compatibility layer with the `log` crate,
+ - [`tracing-subscriber`] provides `Subscriber` implementations and
+   utilities for working with `Subscriber`s. This includes a [`FmtSubscriber`]
+   `FmtSubscriber` for logging formatted trace data to stdout, with similar
+   filtering and formatting to the [`env_logger`] crate.
+ - [`tracing-log`] provides a compatibility layer with the [`log`] crate,
    allowing log messages to be recorded as `tracing` `Event`s within the
    trace tree. This is useful when a project using `tracing` have
    dependencies which use `log`.
@@ -281,9 +282,11 @@ undergoing active development. They may be less stable than `tracing` and
 [`log`]: https://docs.rs/log/0.4.6/log/
 [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
-[`tracing-fmt`]: https://github.com/tokio-rs/tracing/tree/master/tracing-fmt
+[`tracing-subscriber`]: https://github.com/tokio-rs/tracing/tree/master/tracing-subscriber
 [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
 [`tracing-timing`]: https://crates.io/crates/tracing-timing
+[`env_logger`]: https://crates.io/crates/env_logger
+[`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 
 ## License
 

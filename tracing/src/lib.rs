@@ -556,8 +556,10 @@
 //!  - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
 //!  - [`tracing-subscriber`] provides `Subscriber` implementations and
-//!    utilities for working with `Subscriber`s.
-//!  - [`tracing-log`] provides a compatibility layer with the `log` crate,
+//!    utilities for working with `Subscriber`s. This includes a [`FmtSubscriber`]
+//!    `FmtSubscriber` for logging formatted trace data to stdout, with similar
+//!    filtering and formatting to the [`env_logger`] crate.
+//!  - [`tracing-log`] provides a compatibility layer with the [`log`] crate,
 //!    allowing log messages to be recorded as `tracing` `Event`s within the
 //!    trace tree. This is useful when a project using `tracing` have
 //!    dependencies which use `log`.
@@ -609,6 +611,8 @@
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
+//! [`env_logger`]: https://crates.io/crates/env_logger
+//! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 #![cfg_attr(not(feature = "std"), no_std)]
