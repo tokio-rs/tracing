@@ -205,6 +205,8 @@ example would explicitly use `Timeout::new`. For example:
 /// # }
 ```
 
+To reduce the effort required to review documentation-related changes, `tracing`'s CI system generates preview websites containing the `rustdoc` output for the entire repository for each PR.
+
 ### Commits
 
 It is a recommended best practice to keep your changes as logically grouped as
