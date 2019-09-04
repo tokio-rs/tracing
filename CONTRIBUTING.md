@@ -205,7 +205,11 @@ example would explicitly use `Timeout::new`. For example:
 /// # }
 ```
 
-To reduce the effort required to review documentation-related changes, `tracing`'s CI system generates preview websites containing the `rustdoc` output for the entire repository for each PR.
+To reduce the effort required to review documentation-related changes,
+`tracing`'s CI system generates preview websites containing the
+`rustdoc` output for the entire repository for each PR. The preview can
+be viewed by clicking the `details` link on the
+`netlify/tracing-rs/deploy-preview check` on all pull requests.
 
 ### Commits
 
