@@ -2141,10 +2141,9 @@ macro_rules! __tracing_mk_span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                $crate::__tracing_disabled_span!(
-                    meta,
-                    &$crate::valueset!(meta.fields(), $($fields)*)
-                )
+                let span = $crate::Span::new_disabled(meta);
+                span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
+                span
             }
         }
     };
@@ -2166,7 +2165,7 @@ macro_rules! __tracing_mk_span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                let span = $crate::Span::new_disabled($meta);
+                let span = $crate::Span::new_disabled(meta);
                 span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
                 span
             }
