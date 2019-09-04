@@ -12,7 +12,7 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.1")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
