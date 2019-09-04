@@ -1,7 +1,5 @@
 # tracing-subscriber
 
-**Warning: Until `tracing-subscriber` has a 0.1.0 release on crates.io, please treat every release as potentially breaking.**
-
 Utilities for implementing and composing [`tracing`][tracing] subscribers.
 
 [![Crates.io][crates-badge]][crates-url]
