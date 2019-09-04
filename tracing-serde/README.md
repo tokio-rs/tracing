@@ -2,7 +2,14 @@
 
 An adapter for serializing `tracing` types using `serde`.
 
-[Documentation](https://docs.rs/tracing-serde/0.1.0/tracing_serde/index.html)
+
+[![Documentation][docs-badge]][docs-url]
+[![Documentation (master)][docs-master-badge]][docs-master-url]
+
+[docs-badge]: https://docs.rs/tracing-serde/badge.svg
+[docs-url]: https://docs.rs/tracing-serde
+[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
+[docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 
 ## Overview
 
