@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.7")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.8")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -585,7 +585,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.5", default-features = false }
+//!   tracing = { version = "0.1.8", default-features = false }
 //!   ```
 //!   **Note**:`tracing`'s `no_std` support requires `liballoc`.
 //!

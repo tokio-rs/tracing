@@ -1,3 +1,14 @@
+# 0.1.8 (September 3, 2019)
+
+### Changed
+
+- Reorganized and improved API documentation (#317)
+
+### Removed
+
+- Dev-dependencies on `ansi_term` and `humantime` crates, which were used only
+  for examples (#316)
+
 # 0.1.7 (August 30, 2019)
 
 ### Changed
