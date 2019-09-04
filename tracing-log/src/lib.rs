@@ -1,7 +1,7 @@
 //! Adapters for connecting unstructured log records from the `log` crate into
 //! the `tracing` ecosystem.
 //!
-//! ## Overview
+//! # Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides
@@ -10,15 +10,18 @@
 //!
 //! This crate provides:
 //!
+//! - [`AsTrace`] and [`AsLog`] traits for converting between `tracing` and `log` types.
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
 //! - [`TraceLogger`], a [`tracing::Subscriber`] implementation that consumes
 //!   [`tracing::Event`]s and outputs [`log::Record`], allowing an existing logger
 //!   implementation to be used to record trace events.
+//! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
+//!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
-//! ## Usage
+//! # Usage
 //!
-//! ### Convert log records to tracing `Event`s
+//! ## Convert log records to tracing `Event`s
 //!
 //! To convert [`log::Record`]s as [`tracing::Event`]s, set `LogTracer` as the default
 //! logger by calling its [`init`] or [`init_with_filter`] methods.
@@ -45,12 +48,12 @@
 //! records emitted by dependencies which use `log` within the context of a
 //! trace.
 //!
-//! ### Convert tracing `Event`s to logs
+//! ## Convert tracing `Event`s to logs
 //!
 //! This conversion can be done with [`TraceLogger`], a [`Subscriber`] which
 //! records `tracing` spans and events and outputs log records.
 //!
-//! ### Caution: Mixing both conversions
+//! ## Caution: Mixing both conversions
 //!
 //! Note that logger implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
@@ -67,19 +70,25 @@
 //!
 //! * `trace-logger`: enables the `TraceLogger` type (on by default)
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
+//! * `env_logger`: enables the `env_logger` module, with helpers for working
+//!   with the [`env_logger` crate].
 //!
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
+//! [`AsTrace`]: trait.AsTrace.html
+//! [`AsLog`]: trait.AsLog.html
 //! [`LogTracer`]: struct.LogTracer.html
 //! [`TraceLogger`]: struct.TraceLogger.html
+//! [`env_logger`]: env_logger/index.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
+//! [`env_logger` crate]: https://crates.io/crates/env-logger
 //! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
 //! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
 //! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-#![doc(html_root_url = "https://docs.rs/tracing-log/0.0.1-alpha.1")]
+#![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -141,6 +150,9 @@ pub use self::log_tracer::LogTracer;
 #[cfg(feature = "trace-logger")]
 #[doc(inline)]
 pub use self::trace_logger::TraceLogger;
+
+#[cfg(feature = "env_logger")]
+pub mod env_logger;
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {

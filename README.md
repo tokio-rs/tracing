@@ -63,9 +63,6 @@ state, and are less stable than the `tracing` and `tracing-core` crates.
 
 The crates included as part of Tracing are:
 
-* [`tracing-fmt`]: A subscriber for formatting and logging trace events.
-  ([crates.io][fmt-crates]|[docs][fmt-docs])
-
 * [`tracing-futures`]: Utilities for instrumenting `futures`.
   ([crates.io][fut-crates]|[docs][fut-docs])
 
@@ -76,36 +73,26 @@ The crates included as part of Tracing are:
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-* [`tracing-env-logger`]: A subscriber that logs trace events using the
-    `env_logger` crate (unstable).
-
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
-* [`tracing-subscriber`]: Utilities for implementing and composing
-  `Subscriber`s. ([crates.io][sub-crates]|[docs][sub-docs])
+* [`tracing-subscriber`]: Subscriber implementations, and utilities for
+  implementing and composing `Subscriber`s.
+  ([crates.io][sub-crates]|[docs][sub-docs])
 
 * [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
-* [`tracing-tower-http`]: `tower` compatibility for HTTP services (unstable).
-
 [`tracing`]: tracing
 [`tracing-core`]: tracing
-[`tracing-fmt`]: tracing-fmt
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
 [`tracing-log`]: tracing-log
-[`tracing-env-logger`]: tracing-env-logger
 [`tracing-serde`]: tracing-serde
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
-[`tracing-tower-http`]: tracing-tower-http
 
-[fmt-crates]: https://crates.io/crates/tracing-fmt
-[fmt-docs]: https://docs.rs/tracing-fmt/0.0.1-alpha.2
-
-[fut-crates]: https://crates.io/crates/tracing-futures/0.0.1-alpha.1
+[fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
 
 [attr-crates]: https://crates.io/crates/tracing-attributes
