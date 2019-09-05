@@ -205,11 +205,13 @@ where
 {
 }
 
+#[derive(Debug)]
 #[doc(hidden)]
 pub struct MakeExtMarker<T> {
     _p: std::marker::PhantomData<T>,
 }
 
+#[derive(Debug)]
 #[doc(hidden)]
 pub struct RecordFieldsMarker {
     _p: (),
@@ -225,11 +227,11 @@ pub(in crate::field) mod test_util {
         metadata::{Kind, Level, Metadata},
     };
 
-    pub struct TestAttrs1;
-    pub struct TestAttrs2;
+    pub(crate) struct TestAttrs1;
+    pub(crate) struct TestAttrs2;
 
     impl TestAttrs1 {
-        pub fn with<T>(f: impl FnOnce(Attributes) -> T) -> T {
+        pub(crate) fn with<T>(f: impl FnOnce(Attributes<'_>) -> T) -> T {
             let fieldset = TEST_META_1.fields();
             let values = &[
                 (
@@ -253,7 +255,7 @@ pub(in crate::field) mod test_util {
     }
 
     impl TestAttrs2 {
-        pub fn with<T>(f: impl FnOnce(Attributes) -> T) -> T {
+        pub(crate) fn with<T>(f: impl FnOnce(Attributes<'_>) -> T) -> T {
             let fieldset = TEST_META_1.fields();
             let none = tracing_core::field::debug(&Option::<&str>::None);
             let values = &[
@@ -296,19 +298,19 @@ pub(in crate::field) mod test_util {
             unimplemented!()
         }
 
-        fn metadata(&self) -> &Metadata {
+        fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_1
         }
     }
 
-    pub struct MakeDebug;
-    pub struct DebugVisitor<'a> {
+    pub(crate) struct MakeDebug;
+    pub(crate) struct DebugVisitor<'a> {
         writer: &'a mut dyn fmt::Write,
         err: fmt::Result,
     }
 
     impl<'a> DebugVisitor<'a> {
-        pub fn new(writer: &'a mut dyn fmt::Write) -> Self {
+        pub(crate) fn new(writer: &'a mut dyn fmt::Write) -> Self {
             Self {
                 writer,
                 err: Ok(()),

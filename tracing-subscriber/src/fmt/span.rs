@@ -313,7 +313,7 @@ impl Store {
     /// recently emptied span will be reused. Otherwise, a new allocation will
     /// be added to the slab.
     #[inline]
-    pub fn new_span<F>(&self, attrs: &Attributes<'_>, fmt_fields: &F) -> Id
+    pub(crate) fn new_span<F>(&self, attrs: &Attributes<'_>, fmt_fields: &F) -> Id
     where
         F: for<'writer> FormatFields<'writer>,
     {
@@ -390,7 +390,7 @@ impl Store {
 
     /// Records that the span with the given `id` has the given `fields`.
     #[inline]
-    pub fn record<F>(&self, id: &Id, fields: &Record<'_>, fmt_fields: &F)
+    pub(crate) fn record<F>(&self, id: &Id, fields: &Record<'_>, fmt_fields: &F)
     where
         F: for<'writer> FormatFields<'writer>,
     {
