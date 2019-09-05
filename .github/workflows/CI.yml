@@ -20,7 +20,7 @@ jobs:
         rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - name: Check
-      run: cargo check --all --bins --examples --tests
+      run: cargo check --all --bins --examples --tests --benches
 
   test-versions:
     # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
@@ -105,3 +105,15 @@ jobs:
     - uses: actions/checkout@master
     - name: rustfmt
       run: cargo fmt --all -- --check
+
+  warnings:
+    # Check for any warnings. This is informational and thus is allowed to fail.
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable
+    - uses: actions/checkout@master
+    - name: warnings
+      run: RUSTFLAGS="-Dwarnings" cargo check --all
