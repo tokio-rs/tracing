@@ -20,7 +20,7 @@ jobs:
         rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - name: Check
-      run: cargo check --all
+      run: cargo check --all --bins --examples --tests
 
   test-versions:
     # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
