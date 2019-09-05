@@ -9,6 +9,7 @@ on:
 
 jobs:
   check:
+    # Run `cargo check` first to ensure that the pushed code at least compiles.
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -21,12 +22,12 @@ jobs:
     - name: Check
       run: cargo check --all
 
-  test:
+  test-versions:
+    # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
     needs: check
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
         rust: [stable, beta, nightly, 1.34.0]
     steps:
     - uses: hecrj/setup-rust-action@v1
@@ -38,7 +39,25 @@ jobs:
     - name: Run tests
       run: cargo test --all
 
+  test-os:
+    # Test against stable Rust across macOS, Windows, and Linux.
+    needs: check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
+    - uses: actions/checkout@master
+    - name: Build
+      run: cargo build
+    - name: Run tests
+      run: cargo test --all
+
   features-stable:
+    # Feature flag tests that run on stable Rust.
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -58,6 +77,7 @@ jobs:
       run: cargo test -p tracing --all-features
 
   features-nightly:
+    # Feature flag tests for features that require nightly Rust.
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -75,6 +95,7 @@ jobs:
       run: (cd nightly-examples && cargo test)
 
   style:
+    # Check style.
     needs: check
     runs-on: ubuntu-latest
     steps:
