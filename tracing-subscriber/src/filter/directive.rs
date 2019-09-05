@@ -6,7 +6,12 @@ use super::{
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::{
-    cmp::Ordering, collections::BTreeSet, error::Error, fmt, iter::FromIterator, str::FromStr,
+    cmp::Ordering,
+    collections::btree_set::{self, BTreeSet},
+    error::Error,
+    fmt,
+    iter::FromIterator,
+    str::FromStr,
 };
 use tracing_core::{span, Metadata};
 
@@ -41,7 +46,7 @@ pub(crate) type Dynamics = DirectiveSet<Directive>;
 /// A set of static filtering directives.
 pub(crate) type Statics = DirectiveSet<StaticDirective>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct DirectiveSet<T> {
     directives: BTreeSet<T>,
     max_level: LevelFilter,
@@ -306,11 +311,51 @@ impl Ord for Directive {
     }
 }
 
+impl fmt::Display for Directive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut wrote_any = false;
+        if let Some(ref target) = self.target {
+            fmt::Display::fmt(target, f)?;
+            wrote_any = true;
+        }
+
+        if self.in_span.is_some() || !self.fields.is_empty() {
+            f.write_str("[")?;
+
+            if let Some(ref span) = self.in_span {
+                fmt::Display::fmt(span, f)?;
+            }
+
+            let mut fields = self.fields.iter();
+            if let Some(field) = fields.next() {
+                write!(f, "{{{}", field)?;
+                for field in fields {
+                    write!(f, ",{}", field)?;
+                }
+                f.write_str("}")?;
+            }
+
+            f.write_str("]")?;
+            wrote_any = true;
+        }
+
+        if wrote_any {
+            f.write_str("=")?;
+        }
+
+        fmt::Display::fmt(&self.level, f)
+    }
+}
+
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
     pub(crate) fn is_empty(&self) -> bool {
         self.directives.is_empty()
+    }
+
+    pub(crate) fn iter<'a>(&'a self) -> btree_set::Iter<'a, T> {
+        self.directives.iter()
     }
 }
 
@@ -467,6 +512,38 @@ impl Default for StaticDirective {
             field_names: FilterVec::new(),
             level: LevelFilter::ERROR,
         }
+    }
+}
+
+impl fmt::Display for StaticDirective {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut wrote_any = false;
+        if let Some(ref target) = self.target {
+            fmt::Display::fmt(target, f)?;
+            wrote_any = true;
+        }
+
+        if !self.field_names.is_empty() {
+            f.write_str("[")?;
+
+            let mut fields = self.field_names.iter();
+            if let Some(field) = fields.next() {
+                write!(f, "{{{}", field)?;
+                for field in fields {
+                    write!(f, ",{}", field)?;
+                }
+                f.write_str("}")?;
+            }
+
+            f.write_str("]")?;
+            wrote_any = true;
+        }
+
+        if wrote_any {
+            f.write_str("=")?;
+        }
+
+        fmt::Display::fmt(&self.level, f)
     }
 }
 

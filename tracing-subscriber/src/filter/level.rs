@@ -65,12 +65,12 @@ impl PartialOrd<Level> for LevelFilter {
 impl fmt::Display for LevelFilter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Inner::Off => f.pad("OFF"),
-            Inner::Level(Level::ERROR) => f.pad("ERROR"),
-            Inner::Level(Level::WARN) => f.pad("WARN"),
-            Inner::Level(Level::INFO) => f.pad("INFO"),
-            Inner::Level(Level::DEBUG) => f.pad("DEBUG"),
-            Inner::Level(Level::TRACE) => f.pad("TRACE"),
+            Inner::Off => f.pad("off"),
+            Inner::Level(Level::ERROR) => f.pad("error"),
+            Inner::Level(Level::WARN) => f.pad("warn"),
+            Inner::Level(Level::INFO) => f.pad("info"),
+            Inner::Level(Level::DEBUG) => f.pad("debug"),
+            Inner::Level(Level::TRACE) => f.pad("trace"),
         }
     }
 }
