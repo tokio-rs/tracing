@@ -5,6 +5,7 @@ on:
   paths:
   - '*.rs'
   - 'Cargo.toml'
+  - '.github/workflows/CI.yml'
 
 jobs:
   check:
