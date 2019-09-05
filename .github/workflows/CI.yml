@@ -1,11 +1,11 @@
 name: CI
 
 on:
-- push:
-  paths:
-  - '*.rs'
-  - 'Cargo.toml'
-  - '.github/workflows/CI.yml'
+  push:
+    paths:
+    - '*.rs'
+    - 'Cargo.toml'
+    - '.github/workflows/CI.yml'
 
 jobs:
   check:
