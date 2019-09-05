@@ -49,7 +49,7 @@ jobs:
     steps:
     - uses: hecrj/setup-rust-action@v1
       with:
-        rust-version: ${{ matrix.rust }}
+        rust-version: stable
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
