@@ -249,6 +249,33 @@ impl Default for Filter {
     }
 }
 
+impl fmt::Display for Filter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut statics = self.statics.iter();
+        let wrote_statics = if let Some(next) = statics.next() {
+            fmt::Display::fmt(next, f)?;
+            for directive in statics {
+                write!(f, ",{}", directive)?;
+            }
+            true
+        } else {
+            false
+        };
+
+        let mut dynamics = self.dynamics.iter();
+        if let Some(next) = dynamics.next() {
+            if wrote_statics {
+                f.write_str(",")?;
+            }
+            fmt::Display::fmt(next, f)?;
+            for directive in dynamics {
+                write!(f, ",{}", directive)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 // ===== impl FromEnvError =====
 
 impl From<ParseError> for FromEnvError {
@@ -417,5 +444,16 @@ mod tests {
 
         let interest = filter.register_callsite(&META);
         assert!(interest.is_never());
+    }
+
+    #[test]
+    fn roundtrip() {
+        let f1: Filter =
+            "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug"
+                .parse()
+                .unwrap();
+        let f2: Filter = format!("{}", f1).parse().unwrap();
+        assert_eq!(f1.statics, f2.statics);
+        assert_eq!(f1.dynamics, f2.dynamics);
     }
 }

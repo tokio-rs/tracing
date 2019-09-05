@@ -3,7 +3,10 @@ use std::{
     error::Error,
     fmt,
     str::FromStr,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use super::{FieldMap, LevelFilter};
@@ -37,7 +40,13 @@ pub(crate) enum ValueMatch {
     Bool(bool),
     U64(u64),
     I64(i64),
-    Pat(Pattern),
+    Pat(MatchPattern),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct MatchPattern {
+    pub(crate) matcher: Pattern,
+    pattern: Arc<str>,
 }
 
 /// Indicates that a field name specified in a filter directive was invalid.
@@ -75,6 +84,16 @@ impl Match {
     }
 }
 
+impl fmt::Display for Match {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.name, f)?;
+        if let Some(ref value) = self.value {
+            write!(f, "={}", value)?;
+        }
+        Ok(())
+    }
+}
+
 // === impl ValueMatch ===
 
 impl FromStr for ValueMatch {
@@ -84,7 +103,7 @@ impl FromStr for ValueMatch {
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
             .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
-            .or_else(|_| s.parse::<Pattern>().map(ValueMatch::Pat))
+            .or_else(|_| s.parse::<MatchPattern>().map(ValueMatch::Pat))
     }
 }
 
@@ -94,11 +113,7 @@ impl PartialEq<Self> for ValueMatch {
             (ValueMatch::Bool(a), ValueMatch::Bool(b)) => a == b,
             (ValueMatch::I64(a), ValueMatch::I64(b)) => a == b,
             (ValueMatch::U64(a), ValueMatch::U64(b)) => a == b,
-            // XXX: we cannot easily implement `PartialEq` for patterns, since the
-            // `regex_automata::DenseDFA` types that represent them internally
-            // do not implement `PartialEq`. having them never be equal is not
-            // technically correct, but it shouldn't matter in practice.
-            (ValueMatch::Pat(_), ValueMatch::Pat(_)) => false,
+            (ValueMatch::Pat(a), ValueMatch::Pat(b)) => a.as_ref() == b.as_ref(),
             (_, _) => false,
         }
     }
@@ -106,7 +121,58 @@ impl PartialEq<Self> for ValueMatch {
 
 impl Eq for ValueMatch {}
 
+impl fmt::Display for ValueMatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValueMatch::Bool(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::I64(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::U64(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::Pat(ref inner) => fmt::Display::fmt(inner, f),
+        }
+    }
+}
+
+// === impl MatchPattern ===
+
+impl FromStr for MatchPattern {
+    type Err = matchers::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let matcher = s.parse::<Pattern>()?;
+        Ok(Self {
+            matcher,
+            pattern: s.to_owned().into(),
+        })
+    }
+}
+
+impl fmt::Display for MatchPattern {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&*self.pattern, f)
+    }
+}
+
+impl AsRef<str> for MatchPattern {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.pattern.as_ref()
+    }
+}
+
+impl MatchPattern {
+    #[inline]
+    fn str_matches(&self, s: &impl AsRef<str>) -> bool {
+        self.matcher.matches(s)
+    }
+
+    #[inline]
+    fn debug_matches(&self, d: &impl fmt::Debug) -> bool {
+        self.matcher.debug_matches(d)
+    }
+}
+
 // === impl BadName ===
+
 impl Error for BadName {}
 
 impl fmt::Display for BadName {
@@ -200,7 +266,7 @@ impl<'a> Visit for MatchVisitor<'a> {
 
     fn record_str(&mut self, field: &Field, value: &str) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::Pat(ref e), ref matched)) if e.matches(&value) => {
+            Some((ValueMatch::Pat(ref e), ref matched)) if e.str_matches(&value) => {
                 matched.store(true, Ordering::Release);
             }
             _ => {}
