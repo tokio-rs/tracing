@@ -147,7 +147,7 @@ use crate::stdlib::{
     any::Any,
     fmt,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Weak,
     },
 };
@@ -174,7 +174,9 @@ thread_local! {
     };
 }
 
+static EXISTS: AtomicBool = AtomicBool::new(false);
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
@@ -243,10 +245,21 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
             GLOBAL_DISPATCH = Some(dispatcher.clone());
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
+        EXISTS.store(true, Ordering::Release);
         Ok(())
     } else {
         Err(SetGlobalDefaultError { _no_construct: () })
     }
+}
+
+/// Returns true if a `tracing` dispatcher has ever been set.
+///
+/// This may be used to completely elide trace points if tracing is not in use
+/// at all or has yet to be initialized.
+#[doc(hidden)]
+#[inline(always)]
+pub fn has_been_set() -> bool {
+    EXISTS.load(Ordering::Relaxed)
 }
 
 /// Returned if setting the global dispatcher fails.
@@ -627,6 +640,7 @@ impl State {
                 state.default.replace(new_dispatch)
             })
             .ok();
+        EXISTS.store(true, Ordering::Release);
         ResetGuard(prior)
     }
 }

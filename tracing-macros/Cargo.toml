@@ -18,10 +18,10 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 
 [dependencies]
-tracing = { version = "0.1", path = "../tracing" }
+tracing = "0.1"
 
 [dev-dependencies]
-tracing-log = { path = "../tracing-log" }
+tracing-log = "0.1"
 env_logger = "0.5"
 
 [badges]
