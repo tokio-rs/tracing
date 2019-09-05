@@ -1,6 +1,7 @@
 //! Formatters for logging `tracing` events.
-use crate::span;
-use crate::time::{self, FormatTime, SystemTime};
+use super::span;
+use super::time::{self, FormatTime, SystemTime};
+use crate::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
 use tracing_core::{
@@ -9,7 +10,6 @@ use tracing_core::{
 };
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
-use tracing_subscriber::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
 
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
@@ -346,13 +346,13 @@ impl<'a> field::Visit for Visitor<'a> {
     }
 }
 
-impl<'a> tracing_subscriber::field::VisitOutput<fmt::Result> for Visitor<'a> {
+impl<'a> crate::field::VisitOutput<fmt::Result> for Visitor<'a> {
     fn finish(self) -> fmt::Result {
         self.result
     }
 }
 
-impl<'a> tracing_subscriber::field::VisitFmt for Visitor<'a> {
+impl<'a> crate::field::VisitFmt for Visitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         self.writer
     }

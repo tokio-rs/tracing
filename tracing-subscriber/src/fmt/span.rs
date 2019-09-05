@@ -11,7 +11,7 @@ use std::collections::HashSet;
 pub(crate) use tracing_core::span::{Attributes, Current, Id, Record};
 use tracing_core::{dispatcher, Metadata};
 
-use crate::format::FormatFields;
+use super::format::FormatFields;
 
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
@@ -225,7 +225,7 @@ impl<'a, F> Context<'a, F> {
     }
 
     /// Executes a closure with the reference to the current span.
-    pub fn with_current<F, R>(&self, f: F) -> Option<R>
+    pub fn with_current<N, R>(&self, f: N) -> Option<R>
     where
         N: FnOnce((&Id, Span<'_>)) -> R,
     {
