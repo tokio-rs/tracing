@@ -23,9 +23,29 @@ use crate::layer::{self, Layer};
 #[doc(inline)]
 pub use self::{format::FormatEvent, span::Context, writer::MakeWriter};
 
+#[cfg(feature = "filter")]
+type DefaultFilter = crate::filter::Filter;
+#[cfg(not(feature = "filter"))]
+type DefaultFilter = crate::layer::Identity;
+
+
 /// A `Subscriber` that logs formatted representations of `tracing` events.
+///
+/// This consists of an inner`Formatter` wrapped in a layer that performs filtering.
 #[derive(Debug)]
 pub struct Subscriber<
+    N = format::NewRecorder,
+    E = format::Format<format::Full>,
+    F = DefaultFilter,
+    W = fn() -> io::Stdout,
+> {
+    inner: layer::Layered<F, Formatter<N, E, W>>,
+}
+
+/// A `Subscriber` that logs formatted representations of `tracing` events.
+/// This type only logs formatted events; it does not perform any filtering.
+#[derive(Debug)]
+pub struct Formatter<
     N = format::NewRecorder,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
@@ -38,11 +58,11 @@ pub struct Subscriber<
 }
 
 /// Configures and constructs `Subscriber`s.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Builder<
     N = format::NewRecorder,
     E = format::Format<format::Full>,
-    F = layer::Identity,
+    F = DefaultFilter,
     W = fn() -> io::Stdout,
 > {
     filter: F,
@@ -51,7 +71,6 @@ pub struct Builder<
     settings: Settings,
     make_writer: W,
 }
-
 #[derive(Debug)]
 struct Settings {
     inherit_fields: bool,
@@ -72,26 +91,86 @@ impl Subscriber {
 
 impl Default for Subscriber {
     fn default() -> Self {
-        Builder::default().finish().into_inner()
-    }
-}
-
-impl Default for layer::Layered<layer::Identity, Subscriber> {
-    fn default() -> Self {
         Builder::default().finish()
     }
 }
+// === impl Subscriber ===
 
-#[cfg(feature = "filter")]
-impl Default for layer::Layered<crate::Filter, Subscriber> {
-    fn default() -> Self {
-        Builder::default()
-            .with_filter(crate::filter::Filter::from_default_env())
-            .finish()
+impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
+where
+    N: for<'a> NewVisitor<'a> + 'static,
+    E: FormatEvent<N> + 'static,
+    F: Layer<Formatter<N, E, W>> + 'static,
+    W: MakeWriter + 'static,
+    layer::Layered<F, Formatter<N, E, W>>: tracing_core::Subscriber,
+{
+    #[inline]
+    fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
+        self.inner.register_callsite(meta)
+    }
+
+    #[inline]
+    fn enabled(&self, meta: &Metadata<'_>) -> bool {
+        self.inner.enabled(meta)
+    }
+
+    #[inline]
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+        self.inner.new_span(attrs)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.inner.record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.inner.record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.inner.event(event);
+    }
+
+    #[inline]
+    fn enter(&self, id: &span::Id) {
+        // TODO: add on_enter hook
+        self.inner.enter(id);
+    }
+
+    #[inline]
+    fn exit(&self, id: &span::Id) {
+        self.inner.exit(id);
+    }
+
+    #[inline]
+    fn current_span(&self) -> span::Current {
+        self.inner.current_span()
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.inner.clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.inner.try_close(id)
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        if id == TypeId::of::<Self>() {
+            Some(self as *const Self as *const ())
+        } else {
+            self.inner.downcast_raw(id)
+        }
     }
 }
 
-impl<N, E, W> Subscriber<N, E, W>
+// === impl Formatter ===
+impl<N, E, W> Formatter<N, E, W>
 where
     N: for<'a> NewVisitor<'a>,
 {
@@ -101,7 +180,7 @@ where
     }
 }
 
-impl<N, E, W> tracing_core::Subscriber for Subscriber<N, E, W>
+impl<N, E, W> tracing_core::Subscriber for Formatter<N, E, W>
 where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
@@ -224,7 +303,10 @@ where
 impl Default for Builder {
     fn default() -> Self {
         Builder {
+            #[cfg(not(feature = "filter"))]
             filter: layer::Identity::new(),
+            #[cfg(feature = "filter")]
+            filter: crate::Filter::from_default_env(),
             new_visitor: format::NewRecorder::new(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
@@ -238,18 +320,20 @@ where
     N: for<'a> NewVisitor<'a> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
-    F: Layer<Subscriber<N, E, W>> + 'static,
+    F: Layer<Formatter<N, E, W>> + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
-    pub fn finish(self) -> layer::Layered<F, Subscriber<N, E, W>> {
-        let subscriber = Subscriber {
+    pub fn finish(self) -> Subscriber<N, E, F, W> {
+        let subscriber = Formatter {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
             spans: span::Store::with_capacity(self.settings.initial_span_capacity),
             settings: self.settings,
             make_writer: self.make_writer,
         };
-        self.filter.with_subscriber(subscriber)
+        Subscriber {
+            inner: self.filter.with_subscriber(subscriber),
+        }
     }
 }
 
@@ -300,13 +384,13 @@ where
 #[cfg(feature = "filter")]
 impl<N, E, W> Builder<N, E, crate::Filter, W>
 where
-    Subscriber<N, E, W>: tracing_core::Subscriber + 'static,
+    Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
     /// Configures the subscriber being built to allow filter reloading at
     /// runtime.
     pub fn with_filter_reloading(
         self,
-    ) -> Builder<N, E, crate::reload::Layer<crate::Filter, Subscriber<N, E, W>>, W> {
+    ) -> Builder<N, E, crate::reload::Layer<crate::Filter, Formatter<N, E, W>>, W> {
         let (filter, _) = crate::reload::Layer::new(self.filter);
         Builder {
             new_visitor: self.new_visitor,
@@ -319,13 +403,13 @@ where
 }
 
 #[cfg(feature = "filter")]
-impl<N, E, W> Builder<N, E, crate::reload::Layer<crate::Filter, Subscriber<N, E, W>>, W>
+impl<N, E, W> Builder<N, E, crate::reload::Layer<crate::Filter, Formatter<N, E, W>>, W>
 where
-    Subscriber<N, E, W>: tracing_core::Subscriber + 'static,
+    Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed subscriber's
     /// filter.
-    pub fn reload_handle(&self) -> crate::reload::Handle<crate::Filter, Subscriber<N, E, W>> {
+    pub fn reload_handle(&self) -> crate::reload::Handle<crate::Filter, Formatter<N, E, W>> {
         self.filter.handle()
     }
 }
@@ -351,7 +435,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     #[cfg(feature = "filter")]
     pub fn with_filter(self, filter: impl Into<crate::Filter>) -> Builder<N, E, crate::Filter, W>
     where
-        Subscriber<N, E, W>: tracing_core::Subscriber + 'static,
+        Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
