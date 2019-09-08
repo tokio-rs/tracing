@@ -31,7 +31,6 @@ fn same_length_targets() {
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::ERROR))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
