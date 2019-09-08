@@ -26,6 +26,25 @@ fn level_filter_event() {
 }
 
 #[test]
+fn same_length_targets() {
+    let filter: Filter = "foo=trace,bar=trace".parse().expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .event(event::mock().at_level(Level::TRACE))
+        .event(event::mock().at_level(Level::TRACE))
+        .event(event::mock().at_level(Level::ERROR))
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::trace!(target: "foo", "foo");
+        tracing::trace!(target: "bar", "bar");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
 fn level_filter_event_with_target() {
     let filter: Filter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()

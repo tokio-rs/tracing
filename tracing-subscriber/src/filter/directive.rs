@@ -290,17 +290,23 @@ impl PartialOrd for Directive {
             _ => {}
         }
 
-        match (self.fields.len(), other.fields.len()) {
-            (a, b) if a == b => {}
-            (a, b) => return Some(a.cmp(&b)),
-        }
-
-        match (self.target.as_ref(), other.target.as_ref()) {
-            (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
-            (Some(_), None) => Some(Ordering::Greater),
-            (None, Some(_)) => Some(Ordering::Less),
-            (None, None) => Some(Ordering::Equal),
-        }
+        Some(
+            self.fields
+                .len()
+                .cmp(&other.fields.len())
+                .then_with(|| match (self.target.as_ref(), other.target.as_ref()) {
+                    (Some(a), Some(b)) => a.len().cmp(&b.len()).then_with(|| a.cmp(b)),
+                    (Some(_), None) => Ordering::Greater,
+                    (None, Some(_)) => Ordering::Less,
+                    (None, None) => Ordering::Equal,
+                })
+                .then_with(|| match (self.in_span.as_ref(), other.in_span.as_ref()) {
+                    (Some(a), Some(b)) => a.cmp(b),
+                    (Some(_), None) => Ordering::Greater,
+                    (None, Some(_)) => Ordering::Less,
+                    (None, None) => Ordering::Equal,
+                }),
+        )
     }
 }
 
@@ -455,17 +461,25 @@ impl Statics {
 
 impl PartialOrd for StaticDirective {
     fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
-        match (self.field_names.len(), other.field_names.len()) {
-            (a, b) if a == b => {}
-            (a, b) => return Some(a.cmp(&b)),
-        }
-
-        match (self.target.as_ref(), other.target.as_ref()) {
-            (Some(a), Some(b)) => Some(a.len().cmp(&b.len())),
-            (Some(_), None) => Some(Ordering::Greater),
-            (None, Some(_)) => Some(Ordering::Less),
-            (None, None) => Some(Ordering::Equal),
-        }
+        Some(
+            self.field_names
+                .len()
+                .cmp(&other.field_names.len())
+                .then_with(|| match (self.target.as_ref(), other.target.as_ref()) {
+                    (Some(a), Some(b)) => a.len().cmp(&b.len()).then_with(|| a.cmp(b)),
+                    (Some(_), None) => Ordering::Greater,
+                    (None, Some(_)) => Ordering::Less,
+                    (None, None) => Ordering::Equal,
+                })
+                .then_with(
+                    || match (self.field_names.get(0), other.field_names.get(0)) {
+                        (Some(a), Some(b)) => a.cmp(b),
+                        (Some(_), None) => Ordering::Greater,
+                        (None, Some(_)) => Ordering::Less,
+                        (None, None) => Ordering::Equal,
+                    },
+                ),
+        )
     }
 }
 
@@ -644,6 +658,19 @@ mod test {
             .split(',')
             .filter_map(|s| s.parse().ok())
             .collect()
+    }
+
+    #[test]
+    fn parse_directives_ralith() {
+        let dirs = parse_directives("common=trace,server=trace");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::TRACE);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::TRACE);
+        assert_eq!(dirs[1].in_span, None);
     }
 
     #[test]
