@@ -316,12 +316,23 @@ impl PartialOrd for Directive {
                 .then_with(|| self.in_span.cmp(&other.in_span))
                 .then_with(|| FieldOrdering(&self.fields).cmp(&FieldOrdering(&other.fields)))
         };
-        Some(
-            target_lengths
-                .then_with(has_span_name)
-                .then_with(field_nums)
-                .then_with(lexicographical),
-        )
+
+        let ordering = target_lengths
+            .then_with(has_span_name)
+            .then_with(field_nums)
+            .then_with(lexicographical);
+
+        #[cfg(debug_assertions)]
+        {
+            if ordering == Ordering::Equal {
+                debug_assert_eq!(
+                    self, other,
+                    "invariant violated: Ordering::Equal must imply a == b"
+                );
+            }
+        }
+
+        Some(ordering)
     }
 }
 
@@ -499,11 +510,22 @@ impl PartialOrd for StaticDirective {
                 FieldOrdering(&self.field_names).cmp(&FieldOrdering(&other.field_names))
             })
         };
-        Some(
-            target_lengths
-                .then_with(field_nums)
-                .then_with(lexicographical),
-        )
+
+        let ordering = target_lengths
+            .then_with(field_nums)
+            .then_with(lexicographical);
+
+        #[cfg(debug_assertions)]
+        {
+            if ordering == Ordering::Equal {
+                debug_assert_eq!(
+                    self, other,
+                    "invariant violated: Ordering::Equal must imply a == b"
+                );
+            }
+        }
+
+        Some(ordering)
     }
 }
 
