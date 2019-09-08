@@ -36,7 +36,7 @@ pub(crate) struct MatchVisitor<'a> {
     inner: &'a SpanMatch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq)]
 pub(crate) enum ValueMatch {
     Bool(bool),
     U64(u64),
@@ -134,56 +134,6 @@ impl FromStr for ValueMatch {
     }
 }
 
-impl PartialEq<Self> for ValueMatch {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (ValueMatch::Bool(a), ValueMatch::Bool(b)) => a == b,
-            (ValueMatch::I64(a), ValueMatch::I64(b)) => a == b,
-            (ValueMatch::U64(a), ValueMatch::U64(b)) => a == b,
-            (ValueMatch::Pat(a), ValueMatch::Pat(b)) => a.as_ref() == b.as_ref(),
-            (_, _) => false,
-        }
-    }
-}
-
-impl PartialOrd for ValueMatch {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // These need to be ordered so that a `Match` directive can have a total
-        // order.
-        // Ordering for `ValueMatch`es is based on the type being matched, and
-        // if the type is equal, than on the expected value as well.
-        //
-        // Note that this ordering is not semantically meaningful --- it simply
-        // determines where the directives are inserted into a `BTreeMap` if
-        // they expect the same field names.
-        Some(match (self, other) {
-            (ValueMatch::Bool(a), ValueMatch::Bool(b)) => a.cmp(b),
-            (ValueMatch::Bool(_), _) => Ordering::Greater,
-            (ValueMatch::I64(a), ValueMatch::I64(b)) => a.cmp(b),
-            (ValueMatch::I64(_), ValueMatch::Bool(_)) => Ordering::Less,
-            (ValueMatch::I64(_), ValueMatch::U64(_)) | (ValueMatch::I64(_), ValueMatch::Pat(_)) => {
-                Ordering::Greater
-            }
-            (ValueMatch::U64(a), ValueMatch::U64(b)) => a.cmp(b),
-            (ValueMatch::U64(_), ValueMatch::Bool(_))
-            | (ValueMatch::U64(_), ValueMatch::I64(_)) => Ordering::Less,
-            (ValueMatch::U64(_), ValueMatch::Pat(_)) => Ordering::Greater,
-            (ValueMatch::Pat(a), ValueMatch::Pat(b)) => a.pattern.cmp(&b.pattern),
-            (ValueMatch::Pat(_), _) => Ordering::Less,
-        })
-    }
-}
-
-impl Ord for ValueMatch {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("ValueMatch ordering should be total")
-    }
-}
-
-impl Eq for ValueMatch {}
-
 impl fmt::Display for ValueMatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -231,6 +181,29 @@ impl MatchPattern {
     #[inline]
     fn debug_matches(&self, d: &impl fmt::Debug) -> bool {
         self.matcher.debug_matches(d)
+    }
+}
+
+impl PartialEq for MatchPattern {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.pattern == other.pattern
+    }
+}
+
+impl Eq for MatchPattern {}
+
+impl PartialOrd for MatchPattern {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.pattern.cmp(&other.pattern))
+    }
+}
+
+impl Ord for MatchPattern {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.pattern.cmp(&other.pattern)
     }
 }
 
