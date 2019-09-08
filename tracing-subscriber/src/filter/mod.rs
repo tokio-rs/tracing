@@ -3,7 +3,7 @@
 mod level;
 #[doc(inline)]
 pub use self::{
-    directive::{ParseError, Directive},
+    directive::{Directive, ParseError},
     field::BadName as BadFieldName,
     level::{LevelFilter, ParseError as LevelParseError},
 };
