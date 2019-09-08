@@ -3,13 +3,12 @@
 mod level;
 #[doc(inline)]
 pub use self::{
-    directive::ParseError,
+    directive::{ParseError, Directive},
     field::BadName as BadFieldName,
     level::{LevelFilter, ParseError as LevelParseError},
 };
 mod directive;
 mod field;
-use self::directive::Directive;
 
 use crate::{
     layer::{Context, Layer},
@@ -116,6 +115,35 @@ impl Filter {
     /// any invalid filter directives.
     pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
         env::var(env.as_ref())?.parse().map_err(Into::into)
+    }
+
+    /// Add a filtering directive to this `Filter`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tracing_subscriber::filter::{Filter, LevelFilter};
+    /// # fn main() {
+    /// let mut filter = Filter::from_default_env()
+    ///     .with_directive(LevelFilter::INFO);
+    /// # }
+    /// ```
+    /// ```rust
+    /// use tracing_subscriber::filter::{Filter, Directive};
+    /// # fn try_mk_filter() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// let mut filter = Filter::try_from_default_env()?
+    ///     .with_directive("my_crate::module=trace".parse::<Directive>()?);
+    /// # Ok(())
+    /// # }
+    /// # fn main() {}
+    /// ```
+    pub fn with_directive(mut self, directive: impl Into<Directive>) -> Self {
+        let directive = directive.into();
+        if let Some(stat) = directive.to_static() {
+            self.statics.add(stat)
+        } else {
+            self.dynamics.add(directive);
+        }
+        self
     }
 
     fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
