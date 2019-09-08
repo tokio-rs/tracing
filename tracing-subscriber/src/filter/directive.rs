@@ -144,9 +144,7 @@ impl Directive {
             .filter_map(|d| d.to_static())
             .chain(dyns.iter().filter_map(Directive::to_static))
             .collect();
-        let dyns = Dynamics::from_iter(dyns);
-        println!("dynamics: {:#?}\nstatics: {:#?}", dyns, statics);
-        (dyns, statics)
+        (Dynamics::from_iter(dyns), statics)
     }
 }
 
