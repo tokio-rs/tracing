@@ -1,10 +1,11 @@
 use matchers::Pattern;
 use std::{
+    cmp::Ordering,
     error::Error,
     fmt,
     str::FromStr,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, Ordering::*},
         Arc,
     },
 };
@@ -12,7 +13,7 @@ use std::{
 use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Ord)]
 pub(crate) struct Match {
     pub(crate) name: String, // TODO: allow match patterns for names?
     pub(crate) value: Option<ValueMatch>,
@@ -94,6 +95,32 @@ impl fmt::Display for Match {
     }
 }
 
+impl PartialOrd for Match {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // Ordering for `Match` directives is based first on _whether_ a value
+        // is matched or not. This is semantically meaningful --- we would
+        // prefer to check directives that match values first as they are more
+        // specific.
+        let has_value = match (self.value.as_ref(), other.value.as_ref()) {
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            _ => Ordering::Equal,
+        };
+        // If both directives match a value, we fall back to the field names in
+        // length + lexicographic ordering, and if these are equal as well, we
+        // compare the match directives.
+        //
+        // This ordering is no longer semantically meaningful but is necessary
+        // so that the directives can be stored in the `BTreeMap` in a defined
+        // order.
+        Some(
+            has_value
+                .then_with(|| self.name.cmp(&other.name))
+                .then_with(|| self.value.cmp(&other.value)),
+        )
+    }
+}
+
 // === impl ValueMatch ===
 
 impl FromStr for ValueMatch {
@@ -116,6 +143,42 @@ impl PartialEq<Self> for ValueMatch {
             (ValueMatch::Pat(a), ValueMatch::Pat(b)) => a.as_ref() == b.as_ref(),
             (_, _) => false,
         }
+    }
+}
+
+impl PartialOrd for ValueMatch {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // These need to be ordered so that a `Match` directive can have a total
+        // order.
+        // Ordering for `ValueMatch`es is based on the type being matched, and
+        // if the type is equal, than on the expected value as well.
+        //
+        // Note that this ordering is not semantically meaningful --- it simply
+        // determines where the directives are inserted into a `BTreeMap` if
+        // they expect the same field names.
+        Some(match (self, other) {
+            (ValueMatch::Bool(a), ValueMatch::Bool(b)) => a.cmp(b),
+            (ValueMatch::Bool(_), _) => Ordering::Greater,
+            (ValueMatch::I64(a), ValueMatch::I64(b)) => a.cmp(b),
+            (ValueMatch::I64(_), ValueMatch::Bool(_)) => Ordering::Less,
+            (ValueMatch::I64(_), ValueMatch::U64(_)) | (ValueMatch::I64(_), ValueMatch::Pat(_)) => {
+                Ordering::Greater
+            }
+            (ValueMatch::U64(a), ValueMatch::U64(b)) => a.cmp(b),
+            (ValueMatch::U64(_), ValueMatch::Bool(_))
+            | (ValueMatch::U64(_), ValueMatch::I64(_)) => Ordering::Less,
+            (ValueMatch::U64(_), ValueMatch::Pat(_)) => Ordering::Greater,
+            (ValueMatch::Pat(a), ValueMatch::Pat(b)) => a.pattern.cmp(&b.pattern),
+            (ValueMatch::Pat(_), _) => Ordering::Less,
+        })
+    }
+}
+
+impl Ord for ValueMatch {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other)
+            .expect("ValueMatch ordering should be total")
     }
 }
 
@@ -203,7 +266,7 @@ impl SpanMatch {
 
     #[inline]
     pub(crate) fn is_matched(&self) -> bool {
-        if self.has_matched.load(Ordering::Acquire) {
+        if self.has_matched.load(Acquire) {
             return true;
         }
         self.is_matched_slow()
@@ -214,9 +277,9 @@ impl SpanMatch {
         let matched = self
             .fields
             .values()
-            .all(|(_, matched)| matched.load(Ordering::Acquire));
+            .all(|(_, matched)| matched.load(Acquire));
         if matched {
-            self.has_matched.store(true, Ordering::Release);
+            self.has_matched.store(true, Release);
         }
         matched
     }
@@ -237,10 +300,10 @@ impl<'a> Visit for MatchVisitor<'a> {
 
         match self.inner.fields.get(field) {
             Some((ValueMatch::I64(ref e), ref matched)) if value == *e => {
-                matched.store(true, Ordering::Release);
+                matched.store(true, Release);
             }
             Some((ValueMatch::U64(ref e), ref matched)) if Ok(value) == (*e).try_into() => {
-                matched.store(true, Ordering::Release);
+                matched.store(true, Release);
             }
             _ => {}
         }
@@ -249,7 +312,7 @@ impl<'a> Visit for MatchVisitor<'a> {
     fn record_u64(&mut self, field: &Field, value: u64) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::U64(ref e), ref matched)) if value == *e => {
-                matched.store(true, Ordering::Release);
+                matched.store(true, Release);
             }
             _ => {}
         }
@@ -258,7 +321,7 @@ impl<'a> Visit for MatchVisitor<'a> {
     fn record_bool(&mut self, field: &Field, value: bool) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::Bool(ref e), ref matched)) if value == *e => {
-                matched.store(true, Ordering::Release);
+                matched.store(true, Release);
             }
             _ => {}
         }
@@ -267,7 +330,7 @@ impl<'a> Visit for MatchVisitor<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::Pat(ref e), ref matched)) if e.str_matches(&value) => {
-                matched.store(true, Ordering::Release);
+                matched.store(true, Release);
             }
             _ => {}
         }
@@ -276,7 +339,7 @@ impl<'a> Visit for MatchVisitor<'a> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::Pat(ref e), ref matched)) if e.debug_matches(&value) => {
-                matched.store(true, Ordering::Release);
+                matched.store(true, Release);
             }
             _ => {}
         }

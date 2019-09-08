@@ -144,7 +144,9 @@ impl Directive {
             .filter_map(|d| d.to_static())
             .chain(dyns.iter().filter_map(Directive::to_static))
             .collect();
-        (Dynamics::from_iter(dyns), statics)
+        let dyns = Dynamics::from_iter(dyns);
+        println!("dynamics: {:#?}\nstatics: {:#?}", dyns, statics);
+        (dyns, statics)
     }
 }
 
@@ -284,23 +286,41 @@ impl Default for Directive {
 
 impl PartialOrd for Directive {
     fn partial_cmp(&self, other: &Directive) -> Option<Ordering> {
-        match (self.has_name(), other.has_name()) {
-            (true, false) => return Some(Ordering::Greater),
-            (false, true) => return Some(Ordering::Less),
-            _ => {}
-        }
+        // We attempt to order directives by how "specific" they are. This
+        // ensures that we try the most specific directives first when
+        // attempting to match a piece of metadata.
 
+        // First, we compare based on whether a target is specified, and the
+        // lengths of those targets if both have targets.
+        let target_lengths = match (self.target.as_ref(), other.target.as_ref()) {
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(a), Some(b)) => a.len().cmp(&b.len()),
+            (None, None) => Ordering::Equal,
+        };
+        // Next compare based on the presence of span names.
+        let has_span_name = || match (self.in_span.is_some(), other.in_span.is_some()) {
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            (_, _) => Ordering::Equal,
+        };
+        // Then we compare how many fields are defined by each directive.
+        let field_nums = || self.fields.len().cmp(&other.fields.len());
+        // Finally, we fall back to lexicographicaal ordering if the directives are
+        // equally specific. Although this is no longer semantically important,
+        // we need to define a total ordering to determine the directive's place
+        // in the BTreeMap.
+        let lexicographical = || {
+            self.target
+                .cmp(&other.target)
+                .then_with(|| self.in_span.cmp(&other.in_span))
+                .then_with(|| FieldOrdering(&self.fields).cmp(&FieldOrdering(&other.fields)))
+        };
         Some(
-            self.fields
-                .len()
-                .cmp(&other.fields.len())
-                .then_with(|| match (self.target.as_ref(), other.target.as_ref()) {
-                    (Some(a), Some(b)) => a.len().cmp(&b.len()).then_with(|| a.cmp(b)),
-                    (Some(_), None) => Ordering::Greater,
-                    (None, Some(_)) => Ordering::Less,
-                    (None, None) => Ordering::Equal,
-                })
-                .then_with(|| self.in_span.as_ref().cmp(&other.in_span.as_ref())),
+            target_lengths
+                .then_with(has_span_name)
+                .then_with(field_nums)
+                .then_with(lexicographical),
         )
     }
 }
@@ -456,17 +476,33 @@ impl Statics {
 
 impl PartialOrd for StaticDirective {
     fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
+        // We attempt to order directives by how "specific" they are. This
+        // ensures that we try the most specific directives first when
+        // attempting to match a piece of metadata.
+
+        // First, we compare based on whether a target is specified, and the
+        // lengths of those targets if both have targets.
+        let target_lengths = match (self.target.as_ref(), other.target.as_ref()) {
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(a), Some(b)) => a.len().cmp(&b.len()),
+            (None, None) => Ordering::Equal,
+        };
+        // Then we compare how many field names are matched by each directive.
+        let field_nums = || self.field_names.len().cmp(&other.field_names.len());
+        // Finally, we fall back to lexicographicaal ordering if the directives are
+        // equally specific. Although this is no longer semantically important,
+        // we need to define a total ordering to determine the directive's place
+        // in the BTreeMap.
+        let lexicographical = || {
+            self.target.cmp(&other.target).then_with(|| {
+                FieldOrdering(&self.field_names).cmp(&FieldOrdering(&other.field_names))
+            })
+        };
         Some(
-            self.field_names
-                .len()
-                .cmp(&other.field_names.len())
-                .then_with(|| match (self.target.as_ref(), other.target.as_ref()) {
-                    (Some(a), Some(b)) => a.len().cmp(&b.len()).then_with(|| a.cmp(b)),
-                    (Some(_), None) => Ordering::Greater,
-                    (None, Some(_)) => Ordering::Less,
-                    (None, None) => Ordering::Equal,
-                })
-                .then_with(|| self.field_names.get(0).cmp(&other.field_names.get(0))),
+            target_lengths
+                .then_with(field_nums)
+                .then_with(lexicographical),
         )
     }
 }
@@ -596,6 +632,30 @@ impl From<level::ParseError> for ParseError {
         Self {
             kind: ParseErrorKind::Level(l),
         }
+    }
+}
+
+#[derive(Eq, PartialEq, Ord)]
+struct FieldOrdering<'a, T>(&'a FilterVec<T>);
+
+impl<'a, T> PartialOrd for FieldOrdering<'a, T>
+where
+    T: Ord,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.0.len().cmp(&other.0.len()) {
+            Ordering::Equal => {}
+            o => return Some(o),
+        }
+
+        for (a, b) in self.0.iter().zip(other.0.iter()) {
+            match a.cmp(&b) {
+                Ordering::Equal => {}
+                o => return Some(o),
+            }
+        }
+
+        Some(Ordering::Equal)
     }
 }
 
