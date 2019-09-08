@@ -300,12 +300,7 @@ impl PartialOrd for Directive {
                     (None, Some(_)) => Ordering::Less,
                     (None, None) => Ordering::Equal,
                 })
-                .then_with(|| match (self.in_span.as_ref(), other.in_span.as_ref()) {
-                    (Some(a), Some(b)) => a.cmp(b),
-                    (Some(_), None) => Ordering::Greater,
-                    (None, Some(_)) => Ordering::Less,
-                    (None, None) => Ordering::Equal,
-                }),
+                .then_with(|| self.in_span.as_ref().cmp(&other.in_span.as_ref())),
         )
     }
 }
@@ -471,14 +466,7 @@ impl PartialOrd for StaticDirective {
                     (None, Some(_)) => Ordering::Less,
                     (None, None) => Ordering::Equal,
                 })
-                .then_with(
-                    || match (self.field_names.get(0), other.field_names.get(0)) {
-                        (Some(a), Some(b)) => a.cmp(b),
-                        (Some(_), None) => Ordering::Greater,
-                        (None, Some(_)) => Ordering::Less,
-                        (None, None) => Ordering::Equal,
-                    },
-                ),
+                .then_with(|| self.field_names.get(0).cmp(&other.field_names.get(0))),
         )
     }
 }
