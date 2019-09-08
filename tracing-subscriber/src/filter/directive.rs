@@ -292,35 +292,26 @@ impl PartialOrd for Directive {
 
         // First, we compare based on whether a target is specified, and the
         // lengths of those targets if both have targets.
-        let target_lengths = match (self.target.as_ref(), other.target.as_ref()) {
-            (Some(_), None) => Ordering::Greater,
-            (None, Some(_)) => Ordering::Less,
-            (Some(a), Some(b)) => a.len().cmp(&b.len()),
-            (None, None) => Ordering::Equal,
-        };
-        // Next compare based on the presence of span names.
-        let has_span_name = || match (self.in_span.is_some(), other.in_span.is_some()) {
-            (true, false) => Ordering::Greater,
-            (false, true) => Ordering::Less,
-            (_, _) => Ordering::Equal,
-        };
-        // Then we compare how many fields are defined by each directive.
-        let field_nums = || self.fields.len().cmp(&other.fields.len());
-        // Finally, we fall back to lexicographicaal ordering if the directives are
-        // equally specific. Although this is no longer semantically important,
-        // we need to define a total ordering to determine the directive's place
-        // in the BTreeMap.
-        let lexicographical = || {
-            self.target
-                .cmp(&other.target)
-                .then_with(|| self.in_span.cmp(&other.in_span))
-                .then_with(|| FieldOrdering(&self.fields).cmp(&FieldOrdering(&other.fields)))
-        };
-
-        let ordering = target_lengths
-            .then_with(has_span_name)
-            .then_with(field_nums)
-            .then_with(lexicographical);
+        let ordering = self
+            .target
+            .as_ref()
+            .map(String::len)
+            .cmp(&other.target.as_ref().map(String::len))
+            // Next compare based on the presence of span names.
+            .then_with(|| self.in_span.is_some().cmp(&other.in_span.is_some()))
+            // Then we compare how many fields are defined by each
+            // directive.
+            .then_with(|| self.fields.len().cmp(&other.fields.len()))
+            // Finally, we fall back to lexicographical ordering if the directives are
+            // equally specific. Although this is no longer semantically important,
+            // we need to define a total ordering to determine the directive's place
+            // in the BTreeMap.
+            .then_with(|| {
+                self.target
+                    .cmp(&other.target)
+                    .then_with(|| self.in_span.cmp(&other.in_span))
+                    .then_with(|| FieldOrdering(&self.fields).cmp(&FieldOrdering(&other.fields)))
+            });
 
         #[cfg(debug_assertions)]
         {
@@ -493,27 +484,22 @@ impl PartialOrd for StaticDirective {
 
         // First, we compare based on whether a target is specified, and the
         // lengths of those targets if both have targets.
-        let target_lengths = match (self.target.as_ref(), other.target.as_ref()) {
-            (Some(_), None) => Ordering::Greater,
-            (None, Some(_)) => Ordering::Less,
-            (Some(a), Some(b)) => a.len().cmp(&b.len()),
-            (None, None) => Ordering::Equal,
-        };
-        // Then we compare how many field names are matched by each directive.
-        let field_nums = || self.field_names.len().cmp(&other.field_names.len());
-        // Finally, we fall back to lexicographicaal ordering if the directives are
-        // equally specific. Although this is no longer semantically important,
-        // we need to define a total ordering to determine the directive's place
-        // in the BTreeMap.
-        let lexicographical = || {
-            self.target.cmp(&other.target).then_with(|| {
-                FieldOrdering(&self.field_names).cmp(&FieldOrdering(&other.field_names))
-            })
-        };
-
-        let ordering = target_lengths
-            .then_with(field_nums)
-            .then_with(lexicographical);
+        let ordering = self
+            .target
+            .as_ref()
+            .map(String::len)
+            .cmp(&other.target.as_ref().map(String::len))
+            // Then we compare how many field names are matched by each directive.
+            .then_with(|| self.field_names.len().cmp(&other.field_names.len()))
+            // Finally, we fall back to lexicographical ordering if the directives are
+            // equally specific. Although this is no longer semantically important,
+            // we need to define a total ordering to determine the directive's place
+            // in the BTreeMap.
+            .then_with(|| {
+                self.target.cmp(&other.target).then_with(|| {
+                    FieldOrdering(&self.field_names).cmp(&FieldOrdering(&other.field_names))
+                })
+            });
 
         #[cfg(debug_assertions)]
         {
