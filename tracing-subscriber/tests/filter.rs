@@ -44,6 +44,91 @@ fn same_length_targets() {
 }
 
 #[test]
+fn same_num_fields_event() {
+    let filter: Filter = "[{foo}]=trace,[{bar}]=trace"
+        .parse()
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .event(
+            event::mock()
+                .at_level(Level::TRACE)
+                .with_fields(field::mock("foo")),
+        )
+        .event(
+            event::mock()
+                .at_level(Level::TRACE)
+                .with_fields(field::mock("bar")),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+    with_default(subscriber, || {
+        tracing::trace!(foo = 1);
+        tracing::trace!(bar = 3);
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn same_num_fields_and_name_len() {
+    let filter: Filter = "[foo{bar=1}]=trace,[baz{boz=1}]=trace"
+        .parse()
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("bar")),
+        )
+        .new_span(
+            span::mock()
+                .named("baz")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("boz")),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+    with_default(subscriber, || {
+        tracing::trace_span!("foo", bar = 1);
+        tracing::trace_span!("baz", boz = 1);
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn same_name_spans() {
+    let filter: Filter = "[foo{bar}]=trace,[foo{baz}]=trace"
+        .parse()
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("bar")),
+        )
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("baz")),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+    with_default(subscriber, || {
+        tracing::trace_span!("foo", bar = 1);
+        tracing::trace_span!("foo", baz = 1);
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
 fn level_filter_event_with_target() {
     let filter: Filter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
