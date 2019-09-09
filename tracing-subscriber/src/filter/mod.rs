@@ -119,24 +119,36 @@ impl Filter {
 
     /// Add a filtering directive to this `Filter`.
     ///
+    /// The added directive will be used in addition to any previously set
+    /// directives, either added using this method or provided when the filter
+    /// is constructed.
+    ///
+    /// Directives may be [`LevelFilter`]s, which will enable all traces at or
+    /// below a certain verbosity level, or parsed from a string specifying a
+    /// directive.
+    ///
+    /// [`LevelFilter`]: struct.LevelFilter.html
+    ///
     /// # Examples
     /// ```rust
     /// use tracing_subscriber::filter::{Filter, LevelFilter};
     /// # fn main() {
     /// let mut filter = Filter::from_default_env()
-    ///     .with_directive(LevelFilter::INFO);
+    ///     .add_directive(LevelFilter::INFO);
     /// # }
     /// ```
     /// ```rust
     /// use tracing_subscriber::filter::{Filter, Directive};
+    ///
     /// # fn try_mk_filter() -> Result<(), Box<dyn ::std::error::Error>> {
     /// let mut filter = Filter::try_from_default_env()?
-    ///     .with_directive("my_crate::module=trace".parse::<Directive>()?);
+    ///     .add_directive("my_crate::module=trace".parse::<Directive>()?)
+    ///     .add_directive("my_crate::my_other_module::something=info".parse::<Directive>()?);
     /// # Ok(())
     /// # }
     /// # fn main() {}
     /// ```
-    pub fn with_directive(mut self, directive: impl Into<Directive>) -> Self {
+    pub fn add_directive(mut self, directive: impl Into<Directive>) -> Self {
         let directive = directive.into();
         if let Some(stat) = directive.to_static() {
             self.statics.add(stat)
