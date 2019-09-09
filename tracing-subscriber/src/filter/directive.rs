@@ -316,8 +316,16 @@ impl PartialOrd for Directive {
         {
             if ordering == Ordering::Equal {
                 debug_assert_eq!(
-                    self, other,
-                    "invariant violated: Ordering::Equal must imply a == b"
+                    self.target, other.target,
+                    "invariant violated: Ordering::Equal must imply a.target == b.target"
+                );
+                debug_assert_eq!(
+                    self.in_span, other.in_span,
+                    "invariant violated: Ordering::Equal must imply a.in_span == b.in_span"
+                );
+                debug_assert_eq!(
+                    self.fields, other.fields,
+                    "invariant violated: Ordering::Equal must imply a.fields == b.fields"
                 );
             }
         }
@@ -514,8 +522,12 @@ impl PartialOrd for StaticDirective {
         {
             if ordering == Ordering::Equal {
                 debug_assert_eq!(
-                    self, other,
-                    "invariant violated: Ordering::Equal must imply a == b"
+                    self.target, other.target,
+                    "invariant violated: Ordering::Equal must imply a.target == b.target"
+                );
+                debug_assert_eq!(
+                    self.field_names, other.field_names,
+                    "invariant violated: Ordering::Equal must imply a.field_names == b.field_names"
                 );
             }
         }
