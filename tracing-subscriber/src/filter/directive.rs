@@ -308,7 +308,7 @@ impl PartialOrd for Directive {
                 self.target
                     .cmp(&other.target)
                     .then_with(|| self.in_span.cmp(&other.in_span))
-                    .then_with(|| FieldOrdering(&self.fields).cmp(&FieldOrdering(&other.fields)))
+                    .then_with(|| self.fields[..].cmp(&other.fields[..]))
             });
 
         #[cfg(debug_assertions)]
@@ -494,9 +494,9 @@ impl PartialOrd for StaticDirective {
             // we need to define a total ordering to determine the directive's place
             // in the BTreeMap.
             .then_with(|| {
-                self.target.cmp(&other.target).then_with(|| {
-                    FieldOrdering(&self.field_names).cmp(&FieldOrdering(&other.field_names))
-                })
+                self.target
+                    .cmp(&other.target)
+                    .then_with(|| self.field_names[..].cmp(&other.field_names[..]))
             });
 
         #[cfg(debug_assertions)]
@@ -638,30 +638,6 @@ impl From<level::ParseError> for ParseError {
         Self {
             kind: ParseErrorKind::Level(l),
         }
-    }
-}
-
-#[derive(Eq, PartialEq, Ord)]
-struct FieldOrdering<'a, T>(&'a FilterVec<T>);
-
-impl<'a, T> PartialOrd for FieldOrdering<'a, T>
-where
-    T: Ord,
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match self.0.len().cmp(&other.0.len()) {
-            Ordering::Equal => {}
-            o => return Some(o),
-        }
-
-        for (a, b) in self.0.iter().zip(other.0.iter()) {
-            match a.cmp(&b) {
-                Ordering::Equal => {}
-                o => return Some(o),
-            }
-        }
-
-        Some(Ordering::Equal)
     }
 }
 
