@@ -577,7 +577,7 @@ mod test {
         let subscriber = Subscriber::builder().finish();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::NewRecorder>().is_some());
-        assert!(dispatch.downcast_ref::<crate::layer::Identity>().is_some());
+        assert!(dispatch.downcast_ref::<DefaultFilter>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
     }
 }
