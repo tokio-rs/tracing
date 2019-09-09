@@ -690,6 +690,103 @@ mod test {
             .collect()
     }
 
+    fn expect_parse(dirs: impl AsRef<str>) -> Vec<Directive> {
+        dirs.as_ref()
+            .split(',')
+            .map(|s| {
+                s.parse()
+                    .unwrap_or_else(|err| panic!("directive '{:?}' should parse: {}", s, err))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn directive_ordering_by_target_len() {
+        // TODO(eliza): it would be nice to have a property-based test for this
+        // instead.
+        let mut dirs = expect_parse(
+            "foo::bar=debug,foo::bar::baz=trace,foo=info,a_really_long_name_with_no_colons=warn",
+        );
+        dirs.sort_unstable();
+
+        let expected = vec![
+            "foo",
+            "foo::bar",
+            "foo::bar::baz",
+            "a_really_long_name_with_no_colons",
+        ];
+        let sorted = dirs
+            .iter()
+            .map(|d| d.target.as_ref().unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, sorted);
+    }
+    #[test]
+    fn directive_ordering_by_span() {
+        // TODO(eliza): it would be nice to have a property-based test for this
+        // instead.
+        let mut dirs = expect_parse("bar[span]=trace,foo=debug,baz::quux=info,a[span]=warn");
+        dirs.sort_unstable();
+
+        let expected = vec!["a", "foo", "bar", "baz::quux"];
+        let sorted = dirs
+            .iter()
+            .map(|d| d.target.as_ref().unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, sorted);
+    }
+
+    #[test]
+    fn directive_ordering_uses_lexicographic_when_equal() {
+        // TODO(eliza): it would be nice to have a property-based test for this
+        // instead.
+        let mut dirs = expect_parse("span[b]=debug,b=debug,a=trace,c=info,span[a]=info");
+        dirs.sort_unstable();
+
+        let expected = vec![
+            ("a", None),
+            ("b", None),
+            ("c", None),
+            ("span", Some("a")),
+            ("span", Some("b")),
+        ];
+        let sorted = dirs
+            .iter()
+            .map(|d| {
+                (
+                    d.target.as_ref().unwrap().as_ref(),
+                    d.in_span.as_ref().map(String::as_ref),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, sorted);
+    }
+
+    // TODO: this test requires the parser to support directives with multiple
+    // fields, which it currently can't handle. We should enable this test when
+    // that's implemented.
+    #[test]
+    #[ignore]
+    fn directive_ordering_by_field_num() {
+        // TODO(eliza): it would be nice to have a property-based test for this
+        // instead.
+        let mut dirs = expect_parse(
+            "b[{foo,bar}]=info,c[{baz,quuux,quuux}]=debug,a[{foo}]=warn,bar[{field}]=trace,foo=debug,baz::quux=info"
+        );
+        dirs.sort_unstable();
+
+        let expected = vec!["a", "b", "c", "foo", "bar", "baz::quux"];
+        let sorted = dirs
+            .iter()
+            .map(|d| d.target.as_ref().unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, sorted);
+    }
+
     #[test]
     fn parse_directives_ralith() {
         let dirs = parse_directives("common=trace,server=trace");
