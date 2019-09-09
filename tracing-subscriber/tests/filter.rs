@@ -26,6 +26,35 @@ fn level_filter_event() {
 }
 
 #[test]
+fn same_name_spans() {
+    let filter: Filter = "[foo{bar}]=trace,[foo{baz}]=trace"
+        .parse()
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("bar")),
+        )
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("baz")),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+    with_default(subscriber, || {
+        tracing::trace_span!("foo", bar = 1);
+        tracing::trace_span!("foo", baz = 1);
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
 fn level_filter_event_with_target() {
     let filter: Filter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
