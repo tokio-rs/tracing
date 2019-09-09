@@ -302,11 +302,13 @@ where
 
 impl Default for Builder {
     fn default() -> Self {
+        #[cfg(feature = "filter")]
+        let filter = crate::Filter::from_default_env()
+            .add_directive(crate::filter::LevelFilter::INFO);
+        #[cfg(not(feature = "filter"))]
+        let filter = layer::Identity::new();
         Builder {
-            #[cfg(not(feature = "filter"))]
-            filter: layer::Identity::new(),
-            #[cfg(feature = "filter")]
-            filter: crate::Filter::from_default_env(),
+            filter,
             new_visitor: format::NewRecorder::new(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
