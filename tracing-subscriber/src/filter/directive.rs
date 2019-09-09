@@ -18,7 +18,7 @@ use tracing_core::{span, Metadata};
 /// A single filtering directive.
 // TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) struct Directive {
+pub struct Directive {
     target: Option<String>,
     in_span: Option<String>,
     fields: FilterVec<field::Match>,
@@ -316,8 +316,16 @@ impl PartialOrd for Directive {
         {
             if ordering == Ordering::Equal {
                 debug_assert_eq!(
-                    self, other,
-                    "invariant violated: Ordering::Equal must imply a == b"
+                    self.target, other.target,
+                    "invariant violated: Ordering::Equal must imply a.target == b.target"
+                );
+                debug_assert_eq!(
+                    self.in_span, other.in_span,
+                    "invariant violated: Ordering::Equal must imply a.in_span == b.in_span"
+                );
+                debug_assert_eq!(
+                    self.fields, other.fields,
+                    "invariant violated: Ordering::Equal must imply a.fields == b.fields"
                 );
             }
         }
@@ -369,6 +377,15 @@ impl fmt::Display for Directive {
     }
 }
 
+impl From<LevelFilter> for Directive {
+    fn from(level: LevelFilter) -> Self {
+        Self {
+            level,
+            ..Self::default()
+        }
+    }
+}
+
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
@@ -390,7 +407,7 @@ impl<T: Ord> Default for DirectiveSet<T> {
     }
 }
 
-impl<T: Match> DirectiveSet<T> {
+impl<T: Match + Ord> DirectiveSet<T> {
     fn directives_for<'a>(
         &'a self,
         metadata: &'a Metadata<'a>,
@@ -398,6 +415,14 @@ impl<T: Match> DirectiveSet<T> {
         self.directives
             .iter()
             .filter(move |d| d.cares_about(metadata))
+    }
+
+    pub(crate) fn add(&mut self, directive: T) {
+        let level = directive.level();
+        if level > &self.max_level {
+            self.max_level = level.clone();
+        }
+        let _ = self.directives.replace(directive);
     }
 }
 
@@ -465,13 +490,6 @@ impl Statics {
         let level = meta.level();
         self.directives_for(meta).any(|d| d.level >= *level)
     }
-
-    pub(crate) fn add(&mut self, directive: StaticDirective) {
-        if directive.level > self.max_level {
-            self.max_level = directive.level.clone();
-        }
-        self.directives.insert(directive);
-    }
 }
 
 impl PartialOrd for StaticDirective {
@@ -504,8 +522,12 @@ impl PartialOrd for StaticDirective {
         {
             if ordering == Ordering::Equal {
                 debug_assert_eq!(
-                    self, other,
-                    "invariant violated: Ordering::Equal must imply a == b"
+                    self.target, other.target,
+                    "invariant violated: Ordering::Equal must imply a.target == b.target"
+                );
+                debug_assert_eq!(
+                    self.field_names, other.field_names,
+                    "invariant violated: Ordering::Equal must imply a.field_names == b.field_names"
                 );
             }
         }
