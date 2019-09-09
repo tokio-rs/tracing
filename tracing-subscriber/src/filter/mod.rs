@@ -3,13 +3,12 @@
 mod level;
 #[doc(inline)]
 pub use self::{
-    directive::ParseError,
+    directive::{Directive, ParseError},
     field::BadName as BadFieldName,
     level::{LevelFilter, ParseError as LevelParseError},
 };
 mod directive;
 mod field;
-use self::directive::Directive;
 
 use crate::{
     layer::{Context, Layer},
@@ -116,6 +115,51 @@ impl Filter {
     /// any invalid filter directives.
     pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
         env::var(env.as_ref())?.parse().map_err(Into::into)
+    }
+
+    /// Add a filtering directive to this `Filter`.
+    ///
+    /// The added directive will be used in addition to any previously set
+    /// directives, either added using this method or provided when the filter
+    /// is constructed.
+    ///
+    /// Directives may be [`LevelFilter`]s, which will enable all traces at or
+    /// below a certain verbosity level, or parsed from a string specifying a
+    /// directive.
+    ///
+    /// If a filter directive is inserted that matches exactly the same spans
+    /// and events as a previous filter, but sets a different level for those
+    /// spans and events, the previous directive is overwritten.
+    ///
+    /// [`LevelFilter`]: struct.LevelFilter.html
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tracing_subscriber::filter::{Filter, LevelFilter};
+    /// # fn main() {
+    /// let mut filter = Filter::from_default_env()
+    ///     .add_directive(LevelFilter::INFO);
+    /// # }
+    /// ```
+    /// ```rust
+    /// use tracing_subscriber::filter::{Filter, Directive};
+    ///
+    /// # fn try_mk_filter() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// let mut filter = Filter::try_from_default_env()?
+    ///     .add_directive("my_crate::module=trace".parse::<Directive>()?)
+    ///     .add_directive("my_crate::my_other_module::something=info".parse::<Directive>()?);
+    /// # Ok(())
+    /// # }
+    /// # fn main() {}
+    /// ```
+    pub fn add_directive(mut self, directive: impl Into<Directive>) -> Self {
+        let directive = directive.into();
+        if let Some(stat) = directive.to_static() {
+            self.statics.add(stat)
+        } else {
+            self.dynamics.add(directive);
+        }
+        self
     }
 
     fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
