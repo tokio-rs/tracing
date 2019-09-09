@@ -127,6 +127,10 @@ impl Filter {
     /// below a certain verbosity level, or parsed from a string specifying a
     /// directive.
     ///
+    /// If a filter directive is inserted that matches exactly the same spans
+    /// and events as a previous filter, but sets a different level for those
+    /// spans and events, the previous directive is overwritten.
+    ///
     /// [`LevelFilter`]: struct.LevelFilter.html
     ///
     /// # Examples

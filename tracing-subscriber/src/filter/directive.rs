@@ -414,7 +414,7 @@ impl<T: Match + Ord> DirectiveSet<T> {
         if level > &self.max_level {
             self.max_level = level.clone();
         }
-        self.directives.insert(directive);
+        let _ = self.directives.replace(directive);
     }
 }
 
