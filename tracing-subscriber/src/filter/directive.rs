@@ -309,7 +309,8 @@ impl PartialOrd for Directive {
                     .cmp(&other.target)
                     .then_with(|| self.in_span.cmp(&other.in_span))
                     .then_with(|| self.fields[..].cmp(&other.fields[..]))
-            });
+            })
+            .reverse();
 
         #[cfg(debug_assertions)]
         {
@@ -396,7 +397,6 @@ impl<T: Match> DirectiveSet<T> {
     ) -> impl Iterator<Item = &'a T> + 'a {
         self.directives
             .iter()
-            .rev()
             .filter(move |d| d.cares_about(metadata))
     }
 }
@@ -497,7 +497,8 @@ impl PartialOrd for StaticDirective {
                 self.target
                     .cmp(&other.target)
                     .then_with(|| self.field_names[..].cmp(&other.field_names[..]))
-            });
+            })
+            .reverse();
 
         #[cfg(debug_assertions)]
         {
@@ -710,10 +711,10 @@ mod test {
         dirs.sort_unstable();
 
         let expected = vec![
-            "foo",
-            "foo::bar",
-            "foo::bar::baz",
             "a_really_long_name_with_no_colons",
+            "foo::bar::baz",
+            "foo::bar",
+            "foo",
         ];
         let sorted = dirs
             .iter()
@@ -729,7 +730,7 @@ mod test {
         let mut dirs = expect_parse("bar[span]=trace,foo=debug,baz::quux=info,a[span]=warn");
         dirs.sort_unstable();
 
-        let expected = vec!["a", "foo", "bar", "baz::quux"];
+        let expected = vec!["baz::quux", "bar", "foo", "a"];
         let sorted = dirs
             .iter()
             .map(|d| d.target.as_ref().unwrap())
@@ -746,11 +747,11 @@ mod test {
         dirs.sort_unstable();
 
         let expected = vec![
-            ("a", None),
-            ("b", None),
-            ("c", None),
-            ("span", Some("a")),
             ("span", Some("b")),
+            ("span", Some("a")),
+            ("c", None),
+            ("b", None),
+            ("a", None),
         ];
         let sorted = dirs
             .iter()
@@ -778,7 +779,7 @@ mod test {
         );
         dirs.sort_unstable();
 
-        let expected = vec!["a", "b", "c", "foo", "bar", "baz::quux"];
+        let expected = vec!["baz::quux", "bar", "foo", "c", "b", "a"];
         let sorted = dirs
             .iter()
             .map(|d| d.target.as_ref().unwrap())
