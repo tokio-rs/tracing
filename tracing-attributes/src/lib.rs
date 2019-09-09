@@ -184,6 +184,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 
     let level = level(&args);
     let target = target(&args);
+    let span_name = name(&args, ident_str);
 
     quote!(
         #(#attrs) *
@@ -193,7 +194,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             let __tracing_attr_span = tracing::span!(
                 target: #target,
                 #level,
-                #ident_str,
+                #span_name,
                 #(#param_names = tracing::field::debug(&#param_names_clone)),*
             );
             #body
@@ -280,5 +281,31 @@ fn target(args: &AttributeArgs) -> impl ToTokens {
             )
         },
         None => quote!(module_path!()),
+    }
+}
+
+fn name(args: &AttributeArgs, default_name: String) -> impl ToTokens {
+    let mut names = args.iter().filter_map(|arg| match arg {
+        NestedMeta::Meta(Meta::NameValue(MetaNameValue {
+            ref path, ref lit, ..
+        })) if path.is_ident("name") => Some(lit.clone()),
+        _ => None,
+    });
+
+    let name = names.next();
+
+    // If we found more than one arg named "name", that's a syntax error.
+    if let Some(lit) = names.next() {
+        return quote_spanned! {lit.span() =>
+            compile_error!("expected only a single `name` argument!")
+        };
+    }
+
+    match name {
+        Some(Lit::Str(ref lit)) => quote!(#lit),
+        Some(lit) => {
+            quote_spanned! { lit.span() => compile_error!("expected name to be a string literal") }
+        }
+        None => quote!(#default_name),
     }
 }
