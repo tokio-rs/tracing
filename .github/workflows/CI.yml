@@ -1,11 +1,6 @@
 name: CI
 
-on:
-  push:
-    paths:
-    - '*.rs'
-    - 'Cargo.toml'
-    - '.github/workflows/CI.yml'
+on: [push]
 
 jobs:
   check:
