@@ -611,12 +611,12 @@ where
     }
 }
 
-impl<L, S> Layered<L, S> {
-    // TODO(eliza): is there a compelling use-case for this being public?
-    pub(crate) fn into_inner(self) -> S {
-        self.inner
-    }
-}
+// impl<L, S> Layered<L, S> {
+//     // TODO(eliza): is there a compelling use-case for this being public?
+//     pub(crate) fn into_inner(self) -> S {
+//         self.inner
+//     }
+// }
 
 // === impl SubscriberExt ===
 

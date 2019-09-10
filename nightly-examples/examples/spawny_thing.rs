@@ -38,7 +38,9 @@ async fn subtask(number: usize) -> usize {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let subscriber = tracing_subscriber::fmt::Subscriber::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_max_level(tracing::Level::DEBUG)
+        .finish();
     tracing::subscriber::set_global_default(subscriber)?;
     parent_task(10).await;
     Ok(())
