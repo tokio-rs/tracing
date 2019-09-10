@@ -19,14 +19,11 @@ pub mod time;
 pub mod writer;
 
 use crate::layer::{self, Layer};
+use crate::filter::LevelFilter;
 
 #[doc(inline)]
 pub use self::{format::FormatEvent, span::Context, writer::MakeWriter};
 
-#[cfg(feature = "filter")]
-type DefaultFilter = crate::filter::Filter;
-#[cfg(not(feature = "filter"))]
-type DefaultFilter = crate::layer::Identity;
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 ///
@@ -35,7 +32,7 @@ type DefaultFilter = crate::layer::Identity;
 pub struct Subscriber<
     N = format::NewRecorder,
     E = format::Format<format::Full>,
-    F = DefaultFilter,
+    F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
     inner: layer::Layered<F, Formatter<N, E, W>>,
@@ -61,7 +58,7 @@ pub struct Formatter<
 pub struct Builder<
     N = format::NewRecorder,
     E = format::Format<format::Full>,
-    F = DefaultFilter,
+    F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
     filter: F,
@@ -70,6 +67,7 @@ pub struct Builder<
     settings: Settings,
     make_writer: W,
 }
+
 #[derive(Debug)]
 struct Settings {
     inherit_fields: bool,
@@ -77,6 +75,15 @@ struct Settings {
 }
 
 impl Subscriber {
+    /// The maximum [verbosity level] that is enabled by a `Subscriber` by
+    /// default.
+    ///
+    /// This can be overridden with the [`Builder::with_max_level`] method.
+    ///
+    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [`Builder::with_max_level`]: struct.Builder.html#method.with_max_level
+    pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
+
     /// Returns a new `Builder` for configuring a format subscriber.
     pub fn builder() -> Builder {
         Builder::default()
@@ -301,13 +308,8 @@ where
 
 impl Default for Builder {
     fn default() -> Self {
-        #[cfg(feature = "filter")]
-        let filter =
-            crate::Filter::from_default_env().add_directive(crate::filter::LevelFilter::INFO);
-        #[cfg(not(feature = "filter"))]
-        let filter = layer::Identity::new();
         Builder {
-            filter,
+            filter: Subscriber::DEFAULT_MAX_LEVEL,
             new_visitor: format::NewRecorder::new(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
@@ -431,17 +433,111 @@ impl<N, E, F, W> Builder<N, E, F, W> {
         }
     }
 
-    /// Sets the filter that the subscriber being built will use to determine if
+    /// Sets the [`Filter`] that the subscriber will use to determine if
     /// a span or event is enabled.
+    ///
+    /// Note that this method requires the "filter" feature flag to be enabled.
+    ///
+    /// If a filter was previously set, or a maximum level was set by the
+    /// [`with_max_level`] method, that value is replaced by the new filter.
+    ///
+    /// # Examples
+    ///
+    /// Setting a filter based on the value of the `RUST_LOG` environment
+    /// variable:
+    /// ```rust
+    /// use tracing_subscriber::{FmtSubscriber, Filter};
+    ///
+    /// let subscriber = FmtSubscriber::builder()
+    ///     .with_filter(Filter::from_default_env())
+    ///     .finish();
+    /// ```
+    ///
+    /// Setting a filter based on a pre-set filter directive string:
+    /// ```rust
+    /// use tracing_subscriber::FmtSubscriber;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let subscriber = FmtSubscriber::builder()
+    ///     .with_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace".parse()?)
+    ///     .finish();
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// Adding additional directives to a filter constructed from an env var:
+    /// ```rust
+    /// use tracing_subscriber::{
+    ///     FmtSubscriber,
+    ///     filter::{Filter, LevelFilter},
+    /// };
+    ///
+    /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
+    /// let filter = Filter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
+    ///     // Set the base level when not matched by other directives to WARN.
+    ///     .with_directive(LevelFilter::WARN)
+    ///     // Set the max level for `my_crate::my_mod` to DEBUG, overriding
+    ///     // any directives parsed from the env variable.
+    ///     .with_directive("my_crate::my_mod=debug".parse::<Directive>()?);
+    ///
+    /// let subscriber = FmtSubscriber::builder()
+    ///     .with_filter(filter)
+    ///     .finish();
+    /// # Ok(())}
+    /// ```
+    /// [`Filter`]: ../filter/struct.Filter.html
+    /// [`with_max_level`]: #method.with_max_level
     #[cfg(feature = "filter")]
-    pub fn with_filter(self, filter: impl Into<crate::Filter>) -> Builder<N, E, crate::Filter, W>
+    pub fn with_filter(self, filter: crate::Filter) -> Builder<N, E, crate::Filter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
-            filter: filter.into(),
+            filter,
+            settings: self.settings,
+            make_writer: self.make_writer,
+        }
+    }
+
+    /// Sets the maximum [verbosity level] that will be enabled by the
+    /// subscriber.
+    ///
+    /// If the max level has already been set, or a [`Filter`] was added by
+    /// [`with_filter`], this replaces that configuration with the new
+    /// maximum level.
+    ///
+    /// # Examples
+    ///
+    /// Enable up to the `DEBUG` verbosity level:
+    /// ```rust
+    /// use tracing_subscriber::FmtSubscriber;
+    /// use tracing::Level;
+    ///
+    /// let subscriber = FmtSubscriber::builder()
+    ///     .with_max_level(Level::DEBUG)
+    ///     .finish();
+    /// ```
+    /// This subscriber won't record any spans or events!
+    /// ```rust
+    /// use tracing_subscriber::{
+    ///     FmtSubscriber,
+    ///     filter::LevelFilter,
+    /// };
+    ///
+    /// let subscriber = FmtSubscriber::builder()
+    ///     .with_max_level(LevelFilter::OFF)
+    ///     .finish();
+    /// ```
+    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [`Filter`]: ../filter/struct.Filter.html
+    /// [`with_filter`]: #method.with_filter
+    pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {
+        let filter = filter.into();
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event,
+            filter,
             settings: self.settings,
             make_writer: self.make_writer,
         }
@@ -576,7 +672,7 @@ mod test {
         let subscriber = Subscriber::builder().finish();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::NewRecorder>().is_some());
-        assert!(dispatch.downcast_ref::<DefaultFilter>().is_some());
+        assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
     }
 }
