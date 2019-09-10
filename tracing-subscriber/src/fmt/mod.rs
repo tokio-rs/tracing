@@ -18,12 +18,11 @@ mod span;
 pub mod time;
 pub mod writer;
 
-use crate::layer::{self, Layer};
 use crate::filter::LevelFilter;
+use crate::layer::{self, Layer};
 
 #[doc(inline)]
 pub use self::{format::FormatEvent, span::Context, writer::MakeWriter};
-
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 ///

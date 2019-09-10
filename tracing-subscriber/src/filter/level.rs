@@ -1,5 +1,8 @@
 use std::{cmp::Ordering, fmt, str::FromStr};
-use tracing_core::{Level, Metadata, subscriber::{Subscriber, Interest}};
+use tracing_core::{
+    subscriber::{Interest, Subscriber},
+    Level, Metadata,
+};
 
 /// A filter which is enabled for a given verbosity level and below.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -57,7 +60,6 @@ impl<S: Subscriber> crate::Layer<S> for LevelFilter {
         self >= metadata.level()
     }
 }
-
 
 impl PartialEq<Level> for LevelFilter {
     fn eq(&self, other: &Level) -> bool {

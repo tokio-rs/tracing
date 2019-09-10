@@ -1,8 +1,5 @@
-use super::{
-    field,
-    FieldMap, FilterVec,
-};
 use super::super::level::{self, LevelFilter};
+use super::{field, FieldMap, FilterVec};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::{

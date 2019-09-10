@@ -12,9 +12,9 @@ mod directive;
 mod field;
 
 use crate::{
+    filter::LevelFilter,
     layer::{Context, Layer},
     thread,
-    filter::{LevelFilter},
 };
 use crossbeam_utils::sync::ShardedLock;
 use std::{collections::HashMap, env, error::Error, fmt, str::FromStr};

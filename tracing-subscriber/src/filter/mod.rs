@@ -2,9 +2,9 @@
 //! subscriber.
 //!
 //! [`Layer`]: ../trait.Layer.html
-mod level;
 #[cfg(feature = "filter")]
 mod env;
+mod level;
 
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
 
