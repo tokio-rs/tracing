@@ -10,8 +10,32 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
+//! ## Feature Flags
+//!
+//! - `filter`: Enables the [`Filter`] type, which implements filtering similar
+//!   to the [`env_logger` crate]. Enabled by default.
+//! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
+//!   implementation for printing formatted representations of trace events.
+//!   Enabled by default.
+//! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by default.
+//!
+//! ### Optional Dependencies
+//!
+//! - [`tracing-log`]: Enables better formatting for events emitted by `log`
+//!   macros in the `fmt` subscriber. On by default.
+//! - [`chrono`]: Enables human-readable time formatting in the `fmt` subscriber.
+//!   Enabled by default.
+//! - [`smallvec`]: Causes the `Filter` type to use the `smallvec` crate (rather
+//!   than `Vec`) as a performance optimization. Enabled by default.
+//!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Filter`]: filter/struct.Filter.html
+//! [`fmt`]: fmt/index.html
+//! [`tracing-log`]: https://crates.io/crates/tracing-log
+//! [`smallvec`]: https://crates.io/crates/smallvec
+//! [`chrono`]: https://crates.io/crates/chrono
+//! [`env_logger` crate]: https://crates.io/crates/env_logger
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.1")]
 #![warn(
     missing_debug_implementations,
@@ -64,7 +88,6 @@ macro_rules! try_lock {
     };
 }
 
-#[cfg(feature = "filter")]
 pub mod filter;
 #[cfg(feature = "fmt")]
 pub mod fmt;
