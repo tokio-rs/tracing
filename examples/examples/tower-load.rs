@@ -35,8 +35,9 @@ use tracing_futures::Instrument;
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {
+    let filter = "info,tower_load=debug".parse().expect("filter should be valid");
     let builder = FmtSubscriber::builder()
-        .with_filter("info,tower_load=debug")
+        .with_filter(filter)
         .with_filter_reloading();
     let handle = builder.reload_handle();
 
