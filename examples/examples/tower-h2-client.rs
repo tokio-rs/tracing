@@ -18,7 +18,7 @@ use tracing_tower::InstrumentableService;
 pub struct Conn(SocketAddr);
 
 fn main() {
-    use tracing_subscriber::filter::{Directive, Filter};
+    use tracing_subscriber::filter::Filter;
     // Set the default subscriber to record all traces emitted by this example
     // and by the `tracing_tower` library's helpers.
     let filter = Filter::from_default_env()

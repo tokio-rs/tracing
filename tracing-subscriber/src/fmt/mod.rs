@@ -458,7 +458,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace".parse()?)
+    ///     .with_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
     ///     .finish();
     /// # Ok(()) }
     /// ```
@@ -486,10 +486,11 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// [`Filter`]: ../filter/struct.Filter.html
     /// [`with_max_level`]: #method.with_max_level
     #[cfg(feature = "filter")]
-    pub fn with_filter(self, filter: crate::Filter) -> Builder<N, E, crate::Filter, W>
+    pub fn with_filter(self, filter: impl Into<crate::Filter>) -> Builder<N, E, crate::Filter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
+        let filter = filter.into();
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
