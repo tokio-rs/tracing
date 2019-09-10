@@ -474,10 +474,10 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
     /// let filter = Filter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
     ///     // Set the base level when not matched by other directives to WARN.
-    ///     .with_directive(LevelFilter::WARN)
+    ///     .add_directive(LevelFilter::WARN.into())
     ///     // Set the max level for `my_crate::my_mod` to DEBUG, overriding
     ///     // any directives parsed from the env variable.
-    ///     .with_directive("my_crate::my_mod=debug".parse::<Directive>()?);
+    ///     .add_directive("my_crate::my_mod=debug".parse()?);
     ///
     /// let subscriber = FmtSubscriber::builder()
     ///     .with_filter(filter)

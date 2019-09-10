@@ -97,8 +97,8 @@ fn main() {
     // and by the `tracing_tower` library's helpers.
     use tracing_subscriber::filter::{Directive, Filter};
     let filter = Filter::from_default_env()
-        .add_directive("tower_h2_server=trace".parse::<Directive>().unwrap())
-        .add_directive("tracing_tower=trace".parse::<Directive>().unwrap());
+        .add_directive("tower_h2_server=trace".parse().unwrap())
+        .add_directive("tracing_tower=trace".parse().unwrap());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_filter(filter)
         .finish();

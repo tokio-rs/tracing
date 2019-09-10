@@ -125,9 +125,9 @@ impl Filter {
     /// directives, either added using this method or provided when the filter
     /// is constructed.
     ///
-    /// Directives may be [`LevelFilter`]s, which will enable all traces at or
-    /// below a certain verbosity level, or parsed from a string specifying a
-    /// directive.
+    /// Filters may be created from may be [`LevelFilter`]s, which will
+    /// enable all traces at or below a certain verbosity level, or
+    /// parsed from a string specifying a directive.
     ///
     /// If a filter directive is inserted that matches exactly the same spans
     /// and events as a previous filter, but sets a different level for those
@@ -140,7 +140,7 @@ impl Filter {
     /// use tracing_subscriber::filter::{Filter, LevelFilter};
     /// # fn main() {
     /// let mut filter = Filter::from_default_env()
-    ///     .add_directive(LevelFilter::INFO);
+    ///     .add_directive(LevelFilter::INFO.into());
     /// # }
     /// ```
     /// ```rust
@@ -148,14 +148,13 @@ impl Filter {
     ///
     /// # fn try_mk_filter() -> Result<(), Box<dyn ::std::error::Error>> {
     /// let mut filter = Filter::try_from_default_env()?
-    ///     .add_directive("my_crate::module=trace".parse::<Directive>()?)
-    ///     .add_directive("my_crate::my_other_module::something=info".parse::<Directive>()?);
+    ///     .add_directive("my_crate::module=trace".parse()?)
+    ///     .add_directive("my_crate::my_other_module::something=info".parse()?);
     /// # Ok(())
     /// # }
     /// # fn main() {}
     /// ```
-    pub fn add_directive(mut self, directive: impl Into<Directive>) -> Self {
-        let directive = directive.into();
+    pub fn add_directive(mut self, directive: Directive) -> Self {
         if let Some(stat) = directive.to_static() {
             self.statics.add(stat)
         } else {

@@ -22,8 +22,8 @@ fn main() {
     // Set the default subscriber to record all traces emitted by this example
     // and by the `tracing_tower` library's helpers.
     let filter = Filter::from_default_env()
-        .add_directive("tower_h2_client=trace".parse::<Directive>().unwrap())
-        .add_directive("tracing_tower=trace".parse::<Directive>().unwrap());
+        .add_directive("tower_h2_client=trace".parse().unwrap())
+        .add_directive("tracing_tower=trace".parse().unwrap());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_filter(filter)
         .finish();
