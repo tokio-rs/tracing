@@ -44,7 +44,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let addr = "127.0.0.1:6142".parse()?;
 
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-        .with_filter("async_fn=trace")
+        .with_filter("async_fn=trace".parse()?)
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
