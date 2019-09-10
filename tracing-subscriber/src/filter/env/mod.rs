@@ -1,6 +1,9 @@
 //! A `Layer` that enables or disables spans and events based on a set of
 //! filtering directives.
-#[doc(inline)]
+
+// these are publically re-exported, but the compiler doesn't realize
+// that for some reason.
+#[allow(unreachable_pub)]
 pub use self::{
     directive::{Directive, ParseError},
     field::BadName as BadFieldName,
