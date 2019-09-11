@@ -30,7 +30,7 @@ use tracing_core::{
 /// directives.
 // TODO(eliza): document filter directive syntax?
 #[derive(Debug)]
-pub struct Filter {
+pub struct EnvFilter {
     // TODO: eventually, this should be exposed by the registry.
     scope: thread::Local<Vec<LevelFilter>>,
 
@@ -48,7 +48,7 @@ type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
 #[cfg(not(feature = "smallvec"))]
 type FilterVec<T> = Vec<T>;
 
-/// Indicates that an error occurred while parsing a `Filter` from an
+/// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
 #[derive(Debug)]
 pub struct FromEnvError {
@@ -61,27 +61,27 @@ enum ErrorKind {
     Env(env::VarError),
 }
 
-impl Filter {
-    /// The default environment variable used by [`Filter::from_default_env`]
-    /// and [`Filter::try_from_default_env`].
+impl EnvFilter {
+    /// The default environment variable used by [`EnvFilter::from_default_env`]
+    /// and [`EnvFilter::try_from_default_env`].
     ///
-    /// [`Filter::from_default_env`]: #method.from_default_env
-    /// [`Filter::try_from_default_env`]: #method.try_from_default_env
+    /// [`EnvFilter::from_default_env`]: #method.from_default_env
+    /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
-    /// Returns a new `Filter` from the value of the `RUST_LOG` environment
+    /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
     /// variable, ignoring any invalid filter directives.
     pub fn from_default_env() -> Self {
         Self::from_env(Self::DEFAULT_ENV)
     }
 
-    /// Returns a new `Filter` from the value of the given environment
+    /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, ignoring any invalid filter directives.
     pub fn from_env<A: AsRef<str>>(env: A) -> Self {
         env::var(env.as_ref()).map(Self::new).unwrap_or_default()
     }
 
-    /// Returns a new `Filter` from the directives in the given string,
+    /// Returns a new `EnvFilter` from the directives in the given string,
     /// ignoring any that are invalid.
     pub fn new<S: AsRef<str>>(dirs: S) -> Self {
         let directives = dirs.as_ref().split(',').filter_map(|s| match s.parse() {
@@ -94,7 +94,7 @@ impl Filter {
         Self::from_directives(directives)
     }
 
-    /// Returns a new `Filter` from the directives in the given string,
+    /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
     pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
         let directives = dirs
@@ -105,21 +105,21 @@ impl Filter {
         Ok(Self::from_directives(directives))
     }
 
-    /// Returns a new `Filter` from the value of the `RUST_LOG` environment
+    /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
     /// variable, or an error if the environment variable contains any invalid
     /// filter directives.
     pub fn try_from_default_env() -> Result<Self, FromEnvError> {
         Self::try_from_env(Self::DEFAULT_ENV)
     }
 
-    /// Returns a new `Filter` from the value of the given environment
+    /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, or an error if the environment variable is unset or contains
     /// any invalid filter directives.
     pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
         env::var(env.as_ref())?.parse().map_err(Into::into)
     }
 
-    /// Add a filtering directive to this `Filter`.
+    /// Add a filtering directive to this `EnvFilter`.
     ///
     /// The added directive will be used in addition to any previously set
     /// directives, either added using this method or provided when the filter
@@ -137,17 +137,17 @@ impl Filter {
     ///
     /// # Examples
     /// ```rust
-    /// use tracing_subscriber::filter::{Filter, LevelFilter};
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     /// # fn main() {
-    /// let mut filter = Filter::from_default_env()
+    /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(LevelFilter::INFO.into());
     /// # }
     /// ```
     /// ```rust
-    /// use tracing_subscriber::filter::{Filter, Directive};
+    /// use tracing_subscriber::filter::{EnvFilter, Directive};
     ///
     /// # fn try_mk_filter() -> Result<(), Box<dyn ::std::error::Error>> {
-    /// let mut filter = Filter::try_from_default_env()?
+    /// let mut filter = EnvFilter::try_from_default_env()?
     ///     .add_directive("my_crate::module=trace".parse()?)
     ///     .add_directive("my_crate::my_other_module::something=info".parse()?);
     /// # Ok(())
@@ -193,7 +193,7 @@ impl Filter {
     }
 }
 
-impl<S: Subscriber> Layer<S> for Filter {
+impl<S: Subscriber> Layer<S> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -271,7 +271,7 @@ impl<S: Subscriber> Layer<S> for Filter {
     }
 }
 
-impl FromStr for Filter {
+impl FromStr for EnvFilter {
     type Err = ParseError;
 
     fn from_str(spec: &str) -> Result<Self, Self::Err> {
@@ -279,7 +279,7 @@ impl FromStr for Filter {
     }
 }
 
-impl<S> From<S> for Filter
+impl<S> From<S> for EnvFilter
 where
     S: AsRef<str>,
 {
@@ -288,13 +288,13 @@ where
     }
 }
 
-impl Default for Filter {
+impl Default for EnvFilter {
     fn default() -> Self {
         Self::from_directives(std::iter::empty())
     }
 }
 
-impl fmt::Display for Filter {
+impl fmt::Display for EnvFilter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut statics = self.statics.iter();
         let wrote_statics = if let Some(next) = statics.next() {
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_no_span_directive() {
-        let filter = Filter::new("app=debug").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app=debug").with_subscriber(NoSubscriber);
         static META: &'static Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn callsite_off() {
-        let filter = Filter::new("app=off").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app=off").with_subscriber(NoSubscriber);
         static META: &'static Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -437,7 +437,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive() {
-        let filter = Filter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
         static META: &'static Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive_field() {
         let filter =
-            Filter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
+            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
         static META: &'static Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
-        let filter = Filter::new("app[mySpan{field=\"value\",field2=2}]=debug")
+        let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
             .with_subscriber(NoSubscriber);
         static META: &'static Metadata<'static> = &Metadata::new(
             "mySpan",
@@ -493,11 +493,11 @@ mod tests {
 
     #[test]
     fn roundtrip() {
-        let f1: Filter =
+        let f1: EnvFilter =
             "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug"
                 .parse()
                 .unwrap();
-        let f2: Filter = format!("{}", f1).parse().unwrap();
+        let f2: EnvFilter = format!("{}", f1).parse().unwrap();
         assert_eq!(f1.statics, f2.statics);
         assert_eq!(f1.dynamics, f2.dynamics);
     }

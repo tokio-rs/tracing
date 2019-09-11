@@ -12,7 +12,7 @@
 //!
 //! ## Feature Flags
 //!
-//! - `filter`: Enables the [`Filter`] type, which implements filtering similar
+//! - `filter`: Enables the [`EnvFilter`] type, which implements filtering similar
 //!   to the [`env_logger` crate]. Enabled by default.
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
@@ -25,12 +25,12 @@
 //!   macros in the `fmt` subscriber. On by default.
 //! - [`chrono`]: Enables human-readable time formatting in the `fmt` subscriber.
 //!   Enabled by default.
-//! - [`smallvec`]: Causes the `Filter` type to use the `smallvec` crate (rather
+//! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-//! [`Filter`]: filter/struct.Filter.html
+//! [`EnvFilter`]: filter/struct.EnvFilter.html
 //! [`fmt`]: fmt/index.html
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
@@ -97,7 +97,9 @@ pub mod reload;
 pub(crate) mod thread;
 
 #[cfg(feature = "filter")]
-pub use filter::Filter;
+#[allow(deprecated)]
+pub use filter::{Filter, EnvFilter};
+
 pub use layer::Layer;
 
 #[cfg(feature = "fmt")]
