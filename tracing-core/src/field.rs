@@ -219,6 +219,8 @@ pub trait Value: crate::sealed::Sealed {
 }
 
 /// A `Value` which serializes as a string using `fmt::Display`.
+/// Uses `record_debug` in the `Value` implementation to
+/// avoid an unnecessary evaluation.
 #[derive(Clone)]
 pub struct DisplayValue<T: fmt::Display>(T);
 
