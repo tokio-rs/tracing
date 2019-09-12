@@ -2322,7 +2322,7 @@ macro_rules! __tracing_log {
     };
 }
 
-#[cfg(all(not(feature = "log"), not(feature = "log-always")))]
+#[cfg(not(feature = "log"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {
