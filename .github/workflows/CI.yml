@@ -82,6 +82,8 @@ jobs:
     - uses: actions/checkout@master
     - name: "Test tracing-futures std::future support"
       run: (cd tracing-futures/test_std_future && cargo test)
+    - name: "Test tracing-futures tokio alpha support"
+      run: (cd tracing-futures && cargo check --no-default-features --features "tokio-alpha")
     - name: "Test tracing-attributes async/await support"
       run: (cd tracing/test_static_max_level_features && cargo test)
     - name: "Test tracing-core no-std support"
