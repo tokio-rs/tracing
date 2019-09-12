@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.2")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.3")]
 #![deny(missing_debug_implementations, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
