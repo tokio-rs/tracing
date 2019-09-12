@@ -387,14 +387,17 @@ pub struct Entered<'a> {
 // ===== impl Span =====
 
 macro_rules! if_log {
-    ($e:expr;) => { if_log!{ $e }};
+    ($e:expr;) => {
+        if_log! { $e }
+    };
     ($if_log:expr) => {
-        #[cfg(feature = "log")] {
+        #[cfg(feature = "log")]
+        {
             if __tracing_should_log!() {
                 $if_log
             }
         }
-    }
+    };
 }
 
 impl Span {

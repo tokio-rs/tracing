@@ -2319,8 +2319,8 @@ macro_rules! __tracing_log {
 #[macro_export]
 macro_rules! __tracing_should_log {
     () => {
-       !$crate::dispatcher::has_been_set()
-    }
+        !$crate::dispatcher::has_been_set()
+    };
 }
 
 #[cfg(all(feature = "log", feature = "log-always"))]
@@ -2329,5 +2329,5 @@ macro_rules! __tracing_should_log {
 macro_rules! __tracing_should_log {
     () => {
         true
-    }
+    };
 }
