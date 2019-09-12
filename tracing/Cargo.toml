@@ -59,6 +59,7 @@ release_max_level_trace = []
 async-await = []
 
 std = ["tracing-core/std"]
+log-always = ["log"]
 
 [[bench]]
 name = "subscriber"
