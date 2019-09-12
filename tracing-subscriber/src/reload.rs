@@ -248,19 +248,19 @@ mod test {
         static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
         static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
 
-        enum Filter {
+        enum EnvFilter {
             One,
             Two,
         }
-        impl<S: Subscriber> crate::Layer<S> for Filter {
+        impl<S: Subscriber> crate::Layer<S> for EnvFilter {
             fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
                 Interest::sometimes()
             }
 
             fn enabled(&self, _: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
                 match self {
-                    Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
-                    Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
+                    EnvFilter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
+                    EnvFilter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
                 };
                 true
             }
@@ -269,7 +269,7 @@ mod test {
             tracing::trace!("my event");
         }
 
-        let (layer, handle) = Layer::new(Filter::One);
+        let (layer, handle) = Layer::new(EnvFilter::One);
 
         let subscriber =
             tracing_core::dispatcher::Dispatch::new(crate::layer::tests::NopSubscriber.with(layer));
@@ -283,7 +283,7 @@ mod test {
             assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 1);
             assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
 
-            handle.reload(Filter::Two).expect("should reload");
+            handle.reload(EnvFilter::Two).expect("should reload");
 
             event();
 

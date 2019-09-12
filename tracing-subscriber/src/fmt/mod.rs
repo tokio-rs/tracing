@@ -383,8 +383,8 @@ where
     }
 }
 
-#[cfg(feature = "filter")]
-impl<N, E, W> Builder<N, E, crate::Filter, W>
+#[cfg(feature = "env-filter")]
+impl<N, E, W> Builder<N, E, crate::EnvFilter, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
@@ -392,7 +392,7 @@ where
     /// runtime.
     pub fn with_filter_reloading(
         self,
-    ) -> Builder<N, E, crate::reload::Layer<crate::Filter, Formatter<N, E, W>>, W> {
+    ) -> Builder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W> {
         let (filter, _) = crate::reload::Layer::new(self.filter);
         Builder {
             new_visitor: self.new_visitor,
@@ -404,14 +404,14 @@ where
     }
 }
 
-#[cfg(feature = "filter")]
-impl<N, E, W> Builder<N, E, crate::reload::Layer<crate::Filter, Formatter<N, E, W>>, W>
+#[cfg(feature = "env-filter")]
+impl<N, E, W> Builder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed subscriber's
     /// filter.
-    pub fn reload_handle(&self) -> crate::reload::Handle<crate::Filter, Formatter<N, E, W>> {
+    pub fn reload_handle(&self) -> crate::reload::Handle<crate::EnvFilter, Formatter<N, E, W>> {
         self.filter.handle()
     }
 }
@@ -432,10 +432,10 @@ impl<N, E, F, W> Builder<N, E, F, W> {
         }
     }
 
-    /// Sets the [`Filter`] that the subscriber will use to determine if
+    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
     /// a span or event is enabled.
     ///
-    /// Note that this method requires the "filter" feature flag to be enabled.
+    /// Note that this method requires the "env-filter" feature flag to be enabled.
     ///
     /// If a filter was previously set, or a maximum level was set by the
     /// [`with_max_level`] method, that value is replaced by the new filter.
@@ -445,10 +445,10 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// Setting a filter based on the value of the `RUST_LOG` environment
     /// variable:
     /// ```rust
-    /// use tracing_subscriber::{FmtSubscriber, Filter};
+    /// use tracing_subscriber::{FmtSubscriber, EnvFilter};
     ///
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter(Filter::from_default_env())
+    ///     .with_env_filter(EnvFilter::from_default_env())
     ///     .finish();
     /// ```
     ///
@@ -458,7 +458,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
+    ///     .with_env_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
     ///     .finish();
     /// # Ok(()) }
     /// ```
@@ -467,11 +467,11 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// ```rust
     /// use tracing_subscriber::{
     ///     FmtSubscriber,
-    ///     filter::{Filter, LevelFilter},
+    ///     filter::{EnvFilter, LevelFilter},
     /// };
     ///
     /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
-    /// let filter = Filter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
+    /// let filter = EnvFilter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
     ///     // Set the base level when not matched by other directives to WARN.
     ///     .add_directive(LevelFilter::WARN.into())
     ///     // Set the max level for `my_crate::my_mod` to DEBUG, overriding
@@ -479,14 +479,17 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///     .add_directive("my_crate::my_mod=debug".parse()?);
     ///
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter(filter)
+    ///     .with_env_filter(filter)
     ///     .finish();
     /// # Ok(())}
     /// ```
-    /// [`Filter`]: ../filter/struct.Filter.html
+    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_max_level`]: #method.with_max_level
-    #[cfg(feature = "filter")]
-    pub fn with_filter(self, filter: impl Into<crate::Filter>) -> Builder<N, E, crate::Filter, W>
+    #[cfg(feature = "env-filter")]
+    pub fn with_env_filter(
+        self,
+        filter: impl Into<crate::EnvFilter>,
+    ) -> Builder<N, E, crate::EnvFilter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
@@ -500,10 +503,31 @@ impl<N, E, F, W> Builder<N, E, F, W> {
         }
     }
 
+    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
+    /// a span or event is enabled.
+    ///
+    /// **Note**: this method was renamed to [`with_env_filter`] in version
+    /// 0.1.2. This method just wraps a call to `with_env_filter`, and will be
+    /// removed in version 0.2.
+    ///
+    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
+    /// [`with_env_filter`]: #method.with_env_filter
+    #[cfg(feature = "env-filter")]
+    #[deprecated(since = "0.1.2", note = "renamed to `with_env_filter`")]
+    pub fn with_filter(
+        self,
+        filter: impl Into<crate::EnvFilter>,
+    ) -> Builder<N, E, crate::EnvFilter, W>
+    where
+        Formatter<N, E, W>: tracing_core::Subscriber + 'static,
+    {
+        self.with_env_filter(filter)
+    }
+
     /// Sets the maximum [verbosity level] that will be enabled by the
     /// subscriber.
     ///
-    /// If the max level has already been set, or a [`Filter`] was added by
+    /// If the max level has already been set, or a [`EnvFilter`] was added by
     /// [`with_filter`], this replaces that configuration with the new
     /// maximum level.
     ///
@@ -530,7 +554,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///     .finish();
     /// ```
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`Filter`]: ../filter/struct.Filter.html
+    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_filter`]: #method.with_filter
     pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {
         let filter = filter.into();

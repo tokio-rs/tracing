@@ -36,7 +36,7 @@ use tracing_subscriber::FmtSubscriber;
 
 fn main() {
     let builder = FmtSubscriber::builder()
-        .with_filter("info,tower_load=debug")
+        .with_env_filter("info,tower_load=debug")
         .with_filter_reloading();
     let handle = builder.reload_handle();
 
@@ -224,7 +224,7 @@ impl Service<()> for MakeSvc {
 }
 
 struct AdminSvc<S> {
-    handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::Filter, S>,
+    handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::EnvFilter, S>,
 }
 
 impl<S> Clone for AdminSvc<S> {
@@ -296,7 +296,7 @@ where
         let body = str::from_utf8(&bytes.as_ref()).map_err(|e| format!("{}", e))?;
         tracing::trace!(request.body = ?body);
         let new_filter = body
-            .parse::<tracing_subscriber::filter::Filter>()
+            .parse::<tracing_subscriber::filter::EnvFilter>()
             .map_err(|e| format!("{}", e))?;
         self.handle.reload(new_filter).map_err(|e| format!("{}", e))
     }
