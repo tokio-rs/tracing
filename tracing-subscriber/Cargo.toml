@@ -25,7 +25,7 @@ env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["owning_ref", "parking_lot"]
 ansi = ["fmt", "ansi_term"]
 
-# Alias for `env-filter`; renamed in version 0.1.2, and will be renamed in 0.2.
+# Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
 filter = ["env-filter"]
 
 [dependencies]
