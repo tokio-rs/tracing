@@ -2291,23 +2291,43 @@ macro_rules! __mk_format_args {
 #[macro_export]
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
-        use $crate::log;
-        let level = $crate::level_to_log!(&$level);
-        if level <= log::STATIC_MAX_LEVEL {
-            let log_meta = log::Metadata::builder()
-                .level(level)
-                .target($target)
-                .build();
-            let logger = log::logger();
-            if logger.enabled(&log_meta) {
-                logger.log(&log::Record::builder()
-                    .file(Some(file!()))
-                    .module_path(Some(module_path!()))
-                    .line(Some(line!()))
-                    .metadata(log_meta)
-                    .args($crate::__mk_format_args!($($field)+))
-                    .build());
+        if $crate::__tracing_should_log!() {
+            use $crate::log;
+            let level = $crate::level_to_log!(&$level);
+            if level <= log::STATIC_MAX_LEVEL {
+                let log_meta = log::Metadata::builder()
+                    .level(level)
+                    .target($target)
+                    .build();
+                let logger = log::logger();
+                if logger.enabled(&log_meta) {
+                    logger.log(&log::Record::builder()
+                        .file(Some(file!()))
+                        .module_path(Some(module_path!()))
+                        .line(Some(line!()))
+                        .metadata(log_meta)
+                        .args($crate::__mk_format_args!($($field)+))
+                        .build());
+                }
             }
         }
     };
+}
+
+#[cfg(all(feature = "log", not(feature = "log-always")))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_should_log {
+    () => {
+       !$crate::dispatcher::has_been_set()
+    }
+}
+
+#[cfg(all(feature = "log", feature = "log-always"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_should_log {
+    () => {
+        true
+    }
 }
