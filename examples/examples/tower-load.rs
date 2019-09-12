@@ -36,8 +36,8 @@ use tracing_subscriber::FmtSubscriber;
 
 fn main() {
     let builder = FmtSubscriber::builder()
-        .with_filter("info,tower_load=debug")
-        .with_filter_reloading();
+        .with_env_filter("info,tower_load=debug")
+        .with_env_filter_reloading();
     let handle = builder.reload_handle();
 
     let _ = tracing::subscriber::set_global_default(builder.finish());

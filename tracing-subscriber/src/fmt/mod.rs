@@ -448,7 +448,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// use tracing_subscriber::{FmtSubscriber, EnvFilter};
     ///
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter(EnvFilter::from_default_env())
+    ///     .with_env_filter(EnvFilter::from_default_env())
     ///     .finish();
     /// ```
     ///
@@ -458,7 +458,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
+    ///     .with_env_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
     ///     .finish();
     /// # Ok(()) }
     /// ```
@@ -479,7 +479,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///     .add_directive("my_crate::my_mod=debug".parse()?);
     ///
     /// let subscriber = FmtSubscriber::builder()
-    ///     .with_filter(filter)
+    ///     .with_env_filter(filter)
     ///     .finish();
     /// # Ok(())}
     /// ```

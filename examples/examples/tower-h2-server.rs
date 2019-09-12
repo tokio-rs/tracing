@@ -100,7 +100,7 @@ fn main() {
         .add_directive("tower_h2_server=trace".parse().unwrap())
         .add_directive("tracing_tower=trace".parse().unwrap());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_filter(filter)
+        .with_env_filter(filter)
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 

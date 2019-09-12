@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
     let subscriber = FmtSubscriber::builder()
-        .with_filter(EnvFilter::from_default_env().add_directive("echo=trace".parse()?))
+        .with_env_filter(EnvFilter::from_default_env().add_directive("echo=trace".parse()?))
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
