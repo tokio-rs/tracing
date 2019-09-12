@@ -218,7 +218,10 @@ pub trait Value: crate::sealed::Sealed {
     fn record(&self, key: &Field, visitor: &mut dyn Visit);
 }
 
-/// A `Value` which serializes as a string using `fmt::Display`.
+/// A `Value` which serializes using `fmt::Display`.
+///
+/// Uses `record_debug` in the `Value` implementation to
+/// avoid an unnecessary evaluation.
 #[derive(Clone)]
 pub struct DisplayValue<T: fmt::Display>(T);
 
