@@ -386,20 +386,6 @@ pub struct Entered<'a> {
 
 // ===== impl Span =====
 
-macro_rules! if_log {
-    ($e:expr;) => {
-        if_log! { $e }
-    };
-    ($if_log:expr) => {
-        #[cfg(feature = "log")]
-        {
-            if __tracing_should_log!() {
-                $if_log
-            }
-        }
-    };
-}
-
 impl Span {
     /// Constructs a new `Span` with the given [metadata] and set of
     /// [field values].
@@ -519,9 +505,9 @@ impl Span {
             meta: Some(meta),
         };
 
-        if_log! {
+        if_log_enabled! {{
             span.log(format_args!("++ {}; {}", meta.name(), FmtAttrs(attrs)));
-        }
+        }}
 
         span
     }
@@ -603,11 +589,11 @@ impl Span {
             inner.subscriber.enter(&inner.id);
         }
 
-        if_log! {
+        if_log_enabled! {{
             if let Some(ref meta) = self.meta {
                 self.log(format_args!("-> {}", meta.name()));
             }
-        }
+        }}
 
         Entered { span: self }
     }
@@ -704,11 +690,11 @@ impl Span {
             inner.record(&record);
         }
 
-        if_log! {
+        if_log_enabled! {{
             if let Some(ref meta) = self.meta {
                 self.log(format_args!("{}; {}", meta.name(), FmtValues(&record)));
             }
-        }
+        }}
 
         self
     }
@@ -855,11 +841,11 @@ impl Drop for Span {
             subscriber.try_close(id.clone());
         }
 
-        if_log! {
+        if_log_enabled!({
             if let Some(ref meta) = self.meta {
                 self.log(format_args!("-- {}", meta.name()));
             }
-        }
+        })
     }
 }
 
@@ -936,11 +922,11 @@ impl<'a> Drop for Entered<'a> {
             inner.subscriber.exit(&inner.id);
         }
 
-        if_log! {
+        if_log_enabled! {{
             if let Some(ref meta) = self.span.meta {
                 self.span.log(format_args!("<- {}", meta.name()));
             }
-        }
+        }}
     }
 }
 
