@@ -16,7 +16,9 @@ fn log_is_enabled() {
         }
     }
     tracing_log::LogTracer::init().expect("logger should be unset");
-    let filter: EnvFilter = "filter_log::my_module=info".parse().expect("filter should parse");
+    let filter: EnvFilter = "filter_log::my_module=info"
+        .parse()
+        .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))
