@@ -4,11 +4,11 @@
 mod support;
 use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
-use tracing_subscriber::{filter::Filter, prelude::*};
+use tracing_subscriber::{filter::EnvFilter, prelude::*};
 
 #[test]
 fn same_length_targets() {
-    let filter: Filter = "foo=trace,bar=trace".parse().expect("filter should parse");
+    let filter: EnvFilter = "foo=trace,bar=trace".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::TRACE))
@@ -26,7 +26,7 @@ fn same_length_targets() {
 
 #[test]
 fn same_num_fields_event() {
-    let filter: Filter = "[{foo}]=trace,[{bar}]=trace"
+    let filter: EnvFilter = "[{foo}]=trace,[{bar}]=trace"
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
@@ -53,7 +53,7 @@ fn same_num_fields_event() {
 
 #[test]
 fn same_num_fields_and_name_len() {
-    let filter: Filter = "[foo{bar=1}]=trace,[baz{boz=1}]=trace"
+    let filter: EnvFilter = "[foo{bar=1}]=trace,[baz{boz=1}]=trace"
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()

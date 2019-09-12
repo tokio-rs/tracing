@@ -1,6 +1,6 @@
 [package]
 name = "tracing-subscriber"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 license = "MIT"
@@ -20,10 +20,13 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 
 [features]
 
-default = ["filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
-filter = ["matchers", "regex", "lazy_static"]
+default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
+env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["owning_ref", "parking_lot"]
 ansi = ["fmt", "ansi_term"]
+
+# Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
+filter = ["env-filter"]
 
 [dependencies]
 tracing-core = "0.1.2"
