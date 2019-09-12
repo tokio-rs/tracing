@@ -12,8 +12,10 @@
 //!
 //! ## Feature Flags
 //!
-//! - `filter`: Enables the [`EnvFilter`] type, which implements filtering similar
-//!   to the [`env_logger` crate]. Enabled by default.
+//! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
+//!   similar to the [`env_logger` crate]. Enabled by default.
+//! - `filter`: Alias for `env-filter`. This feature flag was renamed in version
+//!   0.1.2, and will be removed in version 0.2.
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
@@ -96,7 +98,7 @@ pub mod prelude;
 pub mod reload;
 pub(crate) mod thread;
 
-#[cfg(feature = "filter")]
+#[cfg(feature = "env-filter")]
 #[allow(deprecated)]
 pub use filter::{Filter, EnvFilter};
 
@@ -146,6 +148,5 @@ impl Default for CurrentSpan {
 }
 
 mod sealed {
-
     pub trait Sealed<A = ()> {}
 }

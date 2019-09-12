@@ -383,7 +383,7 @@ where
     }
 }
 
-#[cfg(feature = "filter")]
+#[cfg(feature = "env-filter")]
 impl<N, E, W> Builder<N, E, crate::EnvFilter, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
@@ -404,7 +404,7 @@ where
     }
 }
 
-#[cfg(feature = "filter")]
+#[cfg(feature = "env-filter")]
 impl<N, E, W> Builder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
@@ -435,7 +435,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
     /// a span or event is enabled.
     ///
-    /// Note that this method requires the "filter" feature flag to be enabled.
+    /// Note that this method requires the "env-filter" feature flag to be enabled.
     ///
     /// If a filter was previously set, or a maximum level was set by the
     /// [`with_max_level`] method, that value is replaced by the new filter.
@@ -485,7 +485,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// ```
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_max_level`]: #method.with_max_level
-    #[cfg(feature = "filter")]
+    #[cfg(feature = "env-filter")]
     pub fn with_env_filter(self, filter: impl Into<crate::EnvFilter>) -> Builder<N, E, crate::EnvFilter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
@@ -509,7 +509,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_env_filter`]: #method.with_env_filter
-    #[cfg(feature = "filter")]
+    #[cfg(feature = "env-filter")]
     #[deprecated(since = "0.1.2", note = "renamed to `with_env_filter`")]
     pub fn with_filter(self, filter: impl Into<crate::EnvFilter>) -> Builder<N, E, crate::EnvFilter, W>
     where
