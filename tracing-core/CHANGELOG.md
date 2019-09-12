@@ -1,4 +1,14 @@
-# 0.1.5 (August 16, 2019)
+# 0.1.6 (September 12, 2019)
+
+### Added
+
+- Internal APIs to support performance optimizations (#326)
+
+### Fixed
+
+- Clarified wording in `field::display` documentation (#340)
+
+# 0.1.6 (August 16, 2019)
 
 ### Added
 
