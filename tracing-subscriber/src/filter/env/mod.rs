@@ -231,11 +231,14 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
                     }
                 }
 
-                // TODO: other filters...
-
-                false
+                // Otherwise, fall back to checking if the callsite is
+                // statically enabled.
+                // TODO(eliza): we *might* want to check this only if the `log`
+                // feature is enabled, since if this is a `tracing` event with a
+                // real callsite, it would already have been statically enabled...
+                self.statics.enabled(metadata)
             })
-            .unwrap_or(false)
+            .unwrap_or_else(|| self.statics.enabled(metadata))
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
