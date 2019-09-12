@@ -486,7 +486,10 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_max_level`]: #method.with_max_level
     #[cfg(feature = "env-filter")]
-    pub fn with_env_filter(self, filter: impl Into<crate::EnvFilter>) -> Builder<N, E, crate::EnvFilter, W>
+    pub fn with_env_filter(
+        self,
+        filter: impl Into<crate::EnvFilter>,
+    ) -> Builder<N, E, crate::EnvFilter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
@@ -511,7 +514,10 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// [`with_env_filter`]: #method.with_env_filter
     #[cfg(feature = "env-filter")]
     #[deprecated(since = "0.1.2", note = "renamed to `with_env_filter`")]
-    pub fn with_filter(self, filter: impl Into<crate::EnvFilter>) -> Builder<N, E, crate::EnvFilter, W>
+    pub fn with_filter(
+        self,
+        filter: impl Into<crate::EnvFilter>,
+    ) -> Builder<N, E, crate::EnvFilter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
