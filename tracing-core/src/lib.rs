@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.5")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.6")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -52,7 +52,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.5", default-features = false }
+//!   tracing-core = { version = "0.1.6", default-features = false }
 //!   ```
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!
