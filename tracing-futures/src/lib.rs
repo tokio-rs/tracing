@@ -47,7 +47,6 @@ use std::{pin::Pin, task::Context};
 
 #[cfg(feature = "futures-01")]
 use futures::{Sink, StartSend, Stream};
-#[cfg(feature = "futures-01")]
 use tracing::dispatcher;
 use tracing::{Dispatch, Span};
 
@@ -190,6 +189,21 @@ impl<T: futures::Future> futures::Future for WithDispatch<T> {
     fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
         dispatcher::with_default(&self.dispatch, || inner.poll())
+    }
+}
+
+#[cfg(feature = "std-future")]
+impl<T: std::future::Future> WithDispatch<T> {
+    pin_utils::unsafe_pinned!(inner: T);
+}
+
+#[cfg(feature = "std-future")]
+impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
+    type Output = T::Output;
+
+    fn poll(mut self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
+        let dispatch = self.as_ref().dispatch.clone();
+        dispatcher::with_default(&dispatch, || self.as_mut().inner().poll(lw))
     }
 }
 
