@@ -1,3 +1,10 @@
+# 0.1.3 (September 12, 2019)
+
+### Fixed
+
+- Fixed `#[instrument]`ed async functions not compiling on `nightly-2019-09-11`
+  or newer (#342)
+
 # 0.1.2 (August 19, 2019)
 
 ### Changed
