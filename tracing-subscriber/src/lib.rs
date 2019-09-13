@@ -29,6 +29,8 @@
 //!   Enabled by default.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
+//! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
+//!   rather than the Rust standard library's implementation.
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
@@ -38,6 +40,7 @@
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
+//! [`parking_lot`]: https://crates.io/crates/parking_lot
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.1")]
 #![warn(
     missing_debug_implementations,
@@ -96,6 +99,7 @@ pub mod fmt;
 pub mod layer;
 pub mod prelude;
 pub mod reload;
+pub(crate) mod sync;
 pub(crate) mod thread;
 
 #[cfg(feature = "env-filter")]

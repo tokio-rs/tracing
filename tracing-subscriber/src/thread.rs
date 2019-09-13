@@ -1,14 +1,16 @@
+use crate::sync::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{
     cell::{Cell, UnsafeCell},
     fmt,
     marker::PhantomData,
 };
-
-use crossbeam_utils::sync::ShardedLock;
-
 pub(crate) struct Local<T> {
-    inner: ShardedLock<Inner<T>>,
+    // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
+    // eventually wish to replace it with a sharded lock implementation on top
+    // of our internal `RwLock` wrapper type. If possible, we should profile
+    // this first to determine if it's necessary.
+    inner: RwLock<Inner<T>>,
 }
 
 type Inner<T> = Vec<Option<UnsafeCell<T>>>;
@@ -31,7 +33,7 @@ impl<T> Local<T> {
         let mut data = Vec::with_capacity(len);
         data.resize_with(len, || None);
         Local {
-            inner: ShardedLock::new(data),
+            inner: RwLock::new(data),
         }
     }
 
