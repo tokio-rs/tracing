@@ -50,7 +50,12 @@ parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional 
 tracing = "0.1"
 log = "0.4"
 tracing-log = "0.1"
+criterion = { version = "0.3", default_features = false }
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
+
+[[bench]]
+name = "filter"
+harness = false
