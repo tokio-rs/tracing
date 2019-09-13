@@ -96,6 +96,7 @@ pub mod fmt;
 pub mod layer;
 pub mod prelude;
 pub mod reload;
+pub(crate) mod sync;
 pub(crate) mod thread;
 
 #[cfg(feature = "env-filter")]
