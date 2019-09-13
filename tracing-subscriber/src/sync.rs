@@ -1,4 +1,12 @@
 //! Abstracts over sync primitive implementations.
+//!
+//! Optionally, we allow the Rust standard library's `RwLock` to be replaced
+//! with the `parking_lot` crate's implementation. This may provide improved
+//! performance in some cases. However, the `parking_lot` dependency is an
+//! opt-in feature flag. Because `parking_lot::RwLock` has a slightly different
+//! API than `std::sync::RwLock` (it does not support poisoning on panics), we
+//! wrap it with a type that provides the same method signatures. This allows us
+//! to transparently swap `parking_lot` in without changing code at the callsite.
 #[allow(unused_imports)] // may be used later;
 pub(crate) use std::sync::{LockResult, PoisonError, TryLockResult};
 

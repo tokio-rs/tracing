@@ -28,6 +28,10 @@ use tracing_core::{
 /// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
+    // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
+    // eventually wish to replace it with a sharded lock implementation on top
+    // of our internal `RwLock` wrapper type. If possible, we should profile
+    // this first to determine if it's necessary.
     inner: Arc<RwLock<L>>,
     _s: PhantomData<fn(S)>,
 }

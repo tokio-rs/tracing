@@ -6,6 +6,10 @@ use std::{
     marker::PhantomData,
 };
 pub(crate) struct Local<T> {
+    // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
+    // eventually wish to replace it with a sharded lock implementation on top
+    // of our internal `RwLock` wrapper type. If possible, we should profile
+    // this first to determine if it's necessary.
     inner: RwLock<Inner<T>>,
 }
 
