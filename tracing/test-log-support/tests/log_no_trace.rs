@@ -29,14 +29,12 @@ fn test_always_log() {
     });
     test.assert_logged("<- foo");
 
-    span!(Level::TRACE, "foo", bar = 3, baz = false);
+    drop(foo);
+    test.assert_logged("-- foo");
+
+
+    let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
     test.assert_logged("foo; bar=3 baz=false");
 
-    // TODO(#1138): determine a new syntax for uninitialized span fields, and
-    // re-enable these.
-    // let span = span!(Level::TRACE, "foo", bar = _, baz = _);
-    // span.record("bar", &3);
-    // test.assert_logged("foo; bar=3");
-    // span.record("baz", &"a string");
-    // test.assert_logged("foo; baz=\"a string\"");
+    drop(foo);
 }
