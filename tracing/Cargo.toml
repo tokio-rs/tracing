@@ -28,7 +28,7 @@ keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
 
 [dependencies]
-tracing-core = { version = "0.1.5", path = "../tracing-core", default-features = false }
+tracing-core = { version = "0.1.6", default-features = false }
 log = { version = "0.4", optional = true }
 tracing-attributes = "0.1.2"
 cfg-if = "0.1.9"
@@ -59,6 +59,7 @@ release_max_level_trace = []
 async-await = []
 
 std = ["tracing-core/std"]
+log-always = ["log"]
 
 [[bench]]
 name = "subscriber"
