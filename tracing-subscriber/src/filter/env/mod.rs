@@ -14,9 +14,9 @@ mod field;
 use crate::{
     filter::LevelFilter,
     layer::{Context, Layer},
+    sync::RwLock,
     thread,
 };
-use crossbeam_utils::sync::ShardedLock;
 use std::{collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
@@ -44,8 +44,8 @@ pub struct EnvFilter {
     statics: directive::Statics,
     dynamics: directive::Dynamics,
 
-    by_id: ShardedLock<HashMap<span::Id, directive::SpanMatcher>>,
-    by_cs: ShardedLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
+    by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
+    by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
 }
 
 type FieldMap<T> = HashMap<Field, T>;
@@ -181,8 +181,8 @@ impl EnvFilter {
             scope: thread::Local::new(),
             statics,
             dynamics,
-            by_id: ShardedLock::new(HashMap::new()),
-            by_cs: ShardedLock::new(HashMap::new()),
+            by_id: RwLock::new(HashMap::new()),
+            by_cs: RwLock::new(HashMap::new()),
         }
     }
 

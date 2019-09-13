@@ -4,8 +4,8 @@ use std::{
     sync::atomic::{self, AtomicUsize, Ordering},
 };
 
+use crate::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use owning_ref::OwningHandle;
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub(crate) use tracing_core::span::{Attributes, Current, Id, Record};
 use tracing_core::{dispatcher, Metadata};
@@ -295,13 +295,13 @@ impl Store {
             {
                 // Try to insert the span without modifying the overall
                 // structure of the stack.
-                let this = self.inner.read();
+                let this = try_lock!(self.inner.read(), else return Id::from_u64(0xDEADFACE));
 
                 // Can we insert without reallocating?
                 if head < this.slab.len() {
                     // If someone else is writing to the head slot, we need to
                     // acquire a new snapshot!
-                    if let Some(mut slot) = this.slab[head].try_write() {
+                    if let Ok(mut slot) = this.slab[head].try_write() {
                         // Is the slot we locked actually empty? If not, fall
                         // through and try to grow the slab.
                         if let Some(next) = slot.next() {
@@ -321,7 +321,7 @@ impl Store {
             }
 
             // We need to grow the slab, and must acquire a write lock.
-            if let Some(mut this) = self.inner.try_write() {
+            if let Ok(mut this) = self.inner.try_write() {
                 let len = this.slab.len();
 
                 // Insert the span into a new slot.
@@ -343,7 +343,8 @@ impl Store {
     /// currently exists.
     #[inline]
     pub(crate) fn get(&self, id: &Id) -> Option<Span<'_>> {
-        let lock = OwningHandle::try_new(self.inner.read(), |slab| {
+        let read = try_lock!(self.inner.read(), else return None);
+        let lock = OwningHandle::try_new(read, |slab| {
             unsafe { &*slab }.read_slot(id_to_idx(id)).ok_or(())
         })
         .ok()?;
@@ -356,7 +357,7 @@ impl Store {
     where
         N: for<'a> super::NewVisitor<'a>,
     {
-        let slab = self.inner.read();
+        let slab = try_lock!(self.inner.read(), else return);
         let slot = slab.write_slot(id_to_idx(id));
         if let Some(mut slot) = slot {
             slot.record(fields, new_recorder);
@@ -368,13 +369,16 @@ impl Store {
     ///
     /// The allocated span slot will be reused when a new span is created.
     pub(crate) fn drop_span(&self, id: Id) -> bool {
-        let this = self.inner.read();
+        let this = try_lock!(self.inner.read(), else return false);
         let idx = id_to_idx(&id);
 
         if !this
             .slab
             .get(idx)
-            .map(|span| span.read().drop_ref())
+            .and_then(|lock| {
+                let span = try_lock!(lock.read(), else return None);
+                Some(span.drop_ref())
+            })
             .unwrap_or_else(|| {
                 debug_panic!("tried to drop {:?} but it no longer exists!", id);
                 false
@@ -392,10 +396,10 @@ impl Store {
     }
 
     pub(crate) fn clone_span(&self, id: &Id) -> Id {
-        let this = self.inner.read();
+        let this = try_lock!(self.inner.read(), else return id.clone());
         let idx = id_to_idx(id);
 
-        if let Some(span) = this.slab.get(idx).map(|span| span.read()) {
+        if let Some(span) = this.slab.get(idx).and_then(|span| span.read().ok()) {
             span.clone_ref();
         } else {
             debug_panic!(
@@ -527,14 +531,14 @@ impl Slot {
 impl Slab {
     #[inline]
     fn write_slot(&self, idx: usize) -> Option<RwLockWriteGuard<'_, Slot>> {
-        self.slab.get(idx).map(RwLock::write)
+        self.slab.get(idx).and_then(|slot| slot.write().ok())
     }
 
     #[inline]
     fn read_slot(&self, idx: usize) -> Option<RwLockReadGuard<'_, Slot>> {
         self.slab
             .get(idx)
-            .map(RwLock::read)
+            .and_then(|slot| slot.read().ok())
             .and_then(|lock| match lock.span {
                 State::Empty(_) => None,
                 State::Full(_) => Some(lock),
@@ -550,7 +554,7 @@ impl Slab {
             let head = next.load(Ordering::Relaxed);
 
             // Empty the data stored at that slot.
-            let mut slot = self.slab[idx].write();
+            let mut slot = try_lock!(self.slab[idx].write(), else return None);
             let data = match mem::replace(&mut slot.span, State::Empty(head)) {
                 State::Full(data) => data,
                 state => {
