@@ -30,7 +30,6 @@ filter = ["env-filter"]
 
 [dependencies]
 tracing-core = "0.1.2"
-crossbeam-utils = "0.6"
 
 # only required by the filter feature
 matchers = { optional = true, version = "0.0.1" }

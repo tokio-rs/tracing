@@ -12,8 +12,8 @@
 //! [`Layer` type]: struct.Layer.html
 //! [`Layer` trait]: ../layer/trait.Layer.html
 use crate::layer;
+use crate::sync::RwLock;
 
-use crossbeam_utils::sync::ShardedLock;
 use std::{
     error, fmt,
     marker::PhantomData,
@@ -28,14 +28,14 @@ use tracing_core::{
 /// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
-    inner: Arc<ShardedLock<L>>,
+    inner: Arc<RwLock<L>>,
     _s: PhantomData<fn(S)>,
 }
 
 /// Allows reloading the state of an associated `Layer`.
 #[derive(Debug)]
 pub struct Handle<L, S> {
-    inner: Weak<ShardedLock<L>>,
+    inner: Weak<RwLock<L>>,
     _s: PhantomData<fn(S)>,
 }
 
@@ -118,7 +118,7 @@ where
     /// the inner type to be modified at runtime.
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
-            inner: Arc::new(ShardedLock::new(inner)),
+            inner: Arc::new(RwLock::new(inner)),
             _s: PhantomData,
         };
         let handle = this.handle();
