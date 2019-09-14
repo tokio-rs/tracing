@@ -66,11 +66,11 @@ impl<S, R> InstrumentableService<R> for S where S: Service<R> + Sized {}
 #[cfg(feature = "tower-util")]
 impl<M, T, R> InstrumentMake<T, R> for M where M: tower_util::MakeService<T, R> {}
 
-pub trait GetSpan<T>: crate::sealed::Sealed<T> {
+pub trait GetSpan<T> {
     fn span_for(&self, target: &T) -> tracing::Span;
 }
 
-impl<T, F> crate::sealed::Sealed<T> for F where F: Fn(&T) -> tracing::Span {}
+// impl<T, F> crate::sealed::Sealed<T> for F where F: Fn(&T) -> tracing::Span {}
 
 impl<T, F> GetSpan<T> for F
 where
@@ -82,7 +82,24 @@ where
     }
 }
 
-impl<T> crate::sealed::Sealed<T> for tracing::Span {}
+impl<T> GetSpan<T> for std::sync::Arc<dyn Fn(&T) -> tracing::Span> {
+    #[inline]
+    fn span_for(&self, target: &T) -> tracing::Span {
+        (self.as_ref())(target)
+    }
+}
+
+impl<T, F> GetSpan<T> for std::sync::Arc<F>
+where
+    F: Fn(&T) -> tracing::Span,
+{
+    #[inline]
+    fn span_for(&self, target: &T) -> tracing::Span {
+        (self.as_ref())(target)
+    }
+}
+
+// impl<T> crate::sealed::Sealed<T> for tracing::Span {}
 
 impl<T> GetSpan<T> for tracing::Span {
     #[inline]
