@@ -226,8 +226,8 @@ where
 
     fn call(&mut self, request: R) -> Self::Future {
         let span = self.get_span.span_for(&request);
-        let _enter = span.enter();
-        self.inner.call(request).instrument(span.clone())
+        span.in_scope(move || self.inner.call(request))
+            .instrument(span)
     }
 }
 
