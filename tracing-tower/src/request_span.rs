@@ -85,16 +85,16 @@ pub mod make {
 
     #[cfg(feature = "tower-layer")]
     #[derive(Debug)]
-    pub struct MakeLayer<R, T, G = fn(&R) -> tracing::Span>
+    pub struct MakeLayer<R, G = fn(&R) -> tracing::Span>
     where
         G: GetSpan<R> + Clone,
     {
         get_span: G,
-        _p: PhantomData<fn(T, R)>,
+        _p: PhantomData<fn(R)>,
     }
 
     #[cfg(feature = "tower-layer")]
-    pub fn layer<R, T, G>(get_span: G) -> MakeLayer<R, T, G>
+    pub fn layer<R, G>(get_span: G) -> MakeLayer<R, G>
     where
         G: GetSpan<R> + Clone,
     {
@@ -107,9 +107,8 @@ pub mod make {
     // === impl MakeLayer ===
 
     #[cfg(feature = "tower-layer")]
-    impl<S, R, G, T> tower_layer::Layer<S> for MakeLayer<R, T, G>
+    impl<S, R, G> tower_layer::Layer<S> for MakeLayer<R, G>
     where
-        S: tower_util::MakeService<T, R>,
         G: GetSpan<R> + Clone,
     {
         type Service = MakeService<S, R, G>;
@@ -120,7 +119,7 @@ pub mod make {
     }
 
     #[cfg(feature = "tower-layer")]
-    impl<R, T, G> Clone for MakeLayer<R, T, G>
+    impl<R, G> Clone for MakeLayer<R, G>
     where
         G: GetSpan<R> + Clone,
     {
@@ -162,10 +161,7 @@ pub mod make {
     where
         G: GetSpan<R> + Clone,
     {
-        pub fn new<T>(inner: S, get_span: G) -> Self
-        where
-            S: tower_util::MakeService<T, R>,
-        {
+        pub fn new(inner: S, get_span: G) -> Self {
             Self {
                 get_span,
                 inner,
