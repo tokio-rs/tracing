@@ -501,6 +501,11 @@ where
         }
     }
 
+    #[inline]
+    fn current_span(&self) -> span::Current {
+        self.inner.current_span()
+    }
+
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         self.layer
