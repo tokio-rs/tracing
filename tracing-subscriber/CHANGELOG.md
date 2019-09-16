@@ -1,3 +1,10 @@
+# 0.1.3 (September 16, 2019)
+
+### Fixed
+
+- `Layered` subscribers not properly forwarding calls to `current_span`
+  (#350)
+
 # 0.1.2 (September 12, 2019)
 
 ### Fixed
