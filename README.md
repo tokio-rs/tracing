@@ -115,8 +115,10 @@ Tracing.
 #### Talks
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+* [RustConf 2019 - Tokio-Trace: Scoped, Structured, Async-Aware Diagnostics][rust-conf-2019-08], August 2019
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
+[rust-conf-2019-08]: https://www.youtube.com/watch?v=JjItsfqFIdo
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.
