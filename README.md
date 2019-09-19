@@ -115,8 +115,11 @@ Tracing.
 #### Talks
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+* [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
+[rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
+[rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.
