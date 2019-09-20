@@ -7,5 +7,5 @@ publish = false
 edition = "2018"
 
 [dependencies]
-tracing = { path = "..", features = ["log"] }
+tracing = { path = "..", features = ["log", "log-always"] }
 log = { version = "0.4", features = ["std"] }

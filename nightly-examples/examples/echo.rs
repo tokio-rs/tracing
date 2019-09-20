@@ -37,8 +37,10 @@ use tracing_futures::Instrument;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-        .with_filter("echo=trace")
+    use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env().add_directive("echo=trace".parse()?))
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 

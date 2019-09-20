@@ -12,8 +12,8 @@
 //! [`Layer` type]: struct.Layer.html
 //! [`Layer` trait]: ../layer/trait.Layer.html
 use crate::layer;
+use crate::sync::RwLock;
 
-use crossbeam_utils::sync::ShardedLock;
 use std::{
     error, fmt,
     marker::PhantomData,
@@ -28,14 +28,18 @@ use tracing_core::{
 /// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
-    inner: Arc<ShardedLock<L>>,
+    // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
+    // eventually wish to replace it with a sharded lock implementation on top
+    // of our internal `RwLock` wrapper type. If possible, we should profile
+    // this first to determine if it's necessary.
+    inner: Arc<RwLock<L>>,
     _s: PhantomData<fn(S)>,
 }
 
 /// Allows reloading the state of an associated `Layer`.
 #[derive(Debug)]
 pub struct Handle<L, S> {
-    inner: Weak<ShardedLock<L>>,
+    inner: Weak<RwLock<L>>,
     _s: PhantomData<fn(S)>,
 }
 
@@ -118,7 +122,7 @@ where
     /// the inner type to be modified at runtime.
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
-            inner: Arc::new(ShardedLock::new(inner)),
+            inner: Arc::new(RwLock::new(inner)),
             _s: PhantomData,
         };
         let handle = this.handle();
@@ -248,19 +252,19 @@ mod test {
         static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
         static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
 
-        enum Filter {
+        enum EnvFilter {
             One,
             Two,
         }
-        impl<S: Subscriber> crate::Layer<S> for Filter {
+        impl<S: Subscriber> crate::Layer<S> for EnvFilter {
             fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
                 Interest::sometimes()
             }
 
             fn enabled(&self, _: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
                 match self {
-                    Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
-                    Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
+                    EnvFilter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
+                    EnvFilter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
                 };
                 true
             }
@@ -269,7 +273,7 @@ mod test {
             tracing::trace!("my event");
         }
 
-        let (layer, handle) = Layer::new(Filter::One);
+        let (layer, handle) = Layer::new(EnvFilter::One);
 
         let subscriber =
             tracing_core::dispatcher::Dispatch::new(crate::layer::tests::NopSubscriber.with(layer));
@@ -283,7 +287,7 @@ mod test {
             assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 1);
             assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
 
-            handle.reload(Filter::Two).expect("should reload");
+            handle.reload(EnvFilter::Two).expect("should reload");
 
             event();
 

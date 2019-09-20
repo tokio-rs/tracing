@@ -1,5 +1,8 @@
 use std::{cmp::Ordering, fmt, str::FromStr};
-use tracing_core::Level;
+use tracing_core::{
+    subscriber::{Interest, Subscriber},
+    Level, Metadata,
+};
 
 /// A filter which is enabled for a given verbosity level and below.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -42,6 +45,20 @@ impl LevelFilter {
     ///
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: LevelFilter = LevelFilter(Inner::Level(Level::TRACE));
+}
+
+impl<S: Subscriber> crate::Layer<S> for LevelFilter {
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        if self >= metadata.level() {
+            Interest::always()
+        } else {
+            Interest::never()
+        }
+    }
+
+    fn enabled(&self, metadata: &Metadata<'_>, _: crate::layer::Context<'_, S>) -> bool {
+        self >= metadata.level()
+    }
 }
 
 impl PartialEq<Level> for LevelFilter {

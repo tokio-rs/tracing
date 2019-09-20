@@ -2141,9 +2141,13 @@ macro_rules! __tracing_mk_span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                let span = $crate::Span::new_disabled(meta);
-                span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
-                span
+                $crate::if_log_enabled! {{
+                    let span = $crate::Span::new_disabled(meta);
+                    span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
+                    span
+                } else {
+                    $crate::Span::none()
+                }}
             }
         }
     };
@@ -2165,9 +2169,13 @@ macro_rules! __tracing_mk_span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                let span = $crate::Span::new_disabled(meta);
-                span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
-                span
+                $crate::if_log_enabled! {{
+                    let span = $crate::Span::new_disabled(meta);
+                    span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
+                    span
+                } else {
+                    $crate::Span::none()
+                }}
             }
         }
     };
@@ -2291,23 +2299,74 @@ macro_rules! __mk_format_args {
 #[macro_export]
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
-        use $crate::log;
-        let level = $crate::level_to_log!(&$level);
-        if level <= log::STATIC_MAX_LEVEL {
-            let log_meta = log::Metadata::builder()
-                .level(level)
-                .target($target)
-                .build();
-            let logger = log::logger();
-            if logger.enabled(&log_meta) {
-                logger.log(&log::Record::builder()
-                    .file(Some(file!()))
-                    .module_path(Some(module_path!()))
-                    .line(Some(line!()))
-                    .metadata(log_meta)
-                    .args($crate::__mk_format_args!($($field)+))
-                    .build());
+        $crate::if_log_enabled! {{
+            use $crate::log;
+            let level = $crate::level_to_log!(&$level);
+            if level <= log::STATIC_MAX_LEVEL {
+                let log_meta = log::Metadata::builder()
+                    .level(level)
+                    .target($target)
+                    .build();
+                let logger = log::logger();
+                if logger.enabled(&log_meta) {
+                    logger.log(&log::Record::builder()
+                        .file(Some(file!()))
+                        .module_path(Some(module_path!()))
+                        .line(Some(line!()))
+                        .metadata(log_meta)
+                        .args($crate::__mk_format_args!($($field)+))
+                        .build());
+                }
             }
+        }}
+    };
+}
+
+#[cfg(not(feature = "log"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! if_log_enabled {
+    ($e:expr;) => {
+        $crate::if_log_enabled! {{ $e }}
+    };
+    ($if_log:block) => {
+        $crate::if_log_enabled! { $if_log else {} }
+    };
+    ($if_log:block else $else_block:block) => {
+        $else_block
+    };
+}
+
+#[cfg(all(feature = "log", not(feature = "log-always")))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! if_log_enabled {
+    ($e:expr;) => {
+        $crate::if_log_enabled! {{ $e }}
+    };
+    ($if_log:block) => {
+        $crate::if_log_enabled! { $if_log else {} }
+    };
+    ($if_log:block else $else_block:block) => {
+        if !$crate::dispatcher::has_been_set() {
+            $if_log
+        } else {
+            $else_block
         }
+    };
+}
+
+#[cfg(all(feature = "log", feature = "log-always"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! if_log_enabled {
+    ($e:expr;) => {
+        $crate::if_log_enabled! {{ $e }}
+    };
+    ($if_log:block) => {
+        $crate::if_log_enabled! { $if_log else {} }
+    };
+    ($if_log:block else $else_block:block) => {
+        $if_log
     };
 }

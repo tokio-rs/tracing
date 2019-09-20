@@ -1,13 +1,13 @@
 [package]
 name = "tracing-subscriber"
-version = "0.1.1"
+version = "0.1.3"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-subscriber/0.1.1/tracing-subscriber"
+documentation = "https://docs.rs/tracing-subscriber/0.1.3/tracing-subscriber"
 description = """
 Utilities for implementing and composing `tracing` subscribers.
 """
@@ -20,14 +20,16 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 
 [features]
 
-default = ["filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
-filter = ["matchers", "regex", "lazy_static"]
-fmt = ["owning_ref", "parking_lot"]
+default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
+env-filter = ["matchers", "regex", "lazy_static"]
+fmt = ["owning_ref"]
 ansi = ["fmt", "ansi_term"]
+
+# Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
+filter = ["env-filter"]
 
 [dependencies]
 tracing-core = "0.1.2"
-crossbeam-utils = "0.6"
 
 # only required by the filter feature
 matchers = { optional = true, version = "0.0.1" }
@@ -39,12 +41,21 @@ lazy_static = { optional = true, version = "1" }
 tracing-log = { version = "0.1", optional = true, default-features = false }
 ansi_term = { version = "0.11", optional = true }
 owning_ref = { version = "0.4.0", optional = true }
-parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
 chrono = { version = "0.4", optional = true }
+
+# opt-in deps
+parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
 
 [dev-dependencies]
 tracing = "0.1"
+log = "0.4"
+tracing-log = "0.1"
+criterion = { version = "0.3", default_features = false }
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
+
+[[bench]]
+name = "filter"
+harness = false

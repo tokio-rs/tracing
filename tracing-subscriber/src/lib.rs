@@ -10,9 +10,38 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
+//! ## Feature Flags
+//!
+//! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
+//!   similar to the [`env_logger` crate]. Enabled by default.
+//! - `filter`: Alias for `env-filter`. This feature flag was renamed in version
+//!   0.1.2, and will be removed in version 0.2.
+//! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
+//!   implementation for printing formatted representations of trace events.
+//!   Enabled by default.
+//! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by default.
+//!
+//! ### Optional Dependencies
+//!
+//! - [`tracing-log`]: Enables better formatting for events emitted by `log`
+//!   macros in the `fmt` subscriber. On by default.
+//! - [`chrono`]: Enables human-readable time formatting in the `fmt` subscriber.
+//!   Enabled by default.
+//! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
+//!   than `Vec`) as a performance optimization. Enabled by default.
+//! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
+//!   rather than the Rust standard library's implementation.
+//!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.1")]
+//! [`EnvFilter`]: filter/struct.EnvFilter.html
+//! [`fmt`]: fmt/index.html
+//! [`tracing-log`]: https://crates.io/crates/tracing-log
+//! [`smallvec`]: https://crates.io/crates/smallvec
+//! [`chrono`]: https://crates.io/crates/chrono
+//! [`env_logger` crate]: https://crates.io/crates/env_logger
+//! [`parking_lot`]: https://crates.io/crates/parking_lot
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.3")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -64,17 +93,19 @@ macro_rules! try_lock {
     };
 }
 
-#[cfg(feature = "filter")]
 pub mod filter;
 #[cfg(feature = "fmt")]
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
 pub mod reload;
+pub(crate) mod sync;
 pub(crate) mod thread;
 
-#[cfg(feature = "filter")]
-pub use filter::Filter;
+#[cfg(feature = "env-filter")]
+#[allow(deprecated)]
+pub use filter::{EnvFilter, Filter};
+
 pub use layer::Layer;
 
 #[cfg(feature = "fmt")]
@@ -121,6 +152,5 @@ impl Default for CurrentSpan {
 }
 
 mod sealed {
-
     pub trait Sealed<A = ()> {}
 }

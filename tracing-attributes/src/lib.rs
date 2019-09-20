@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.2")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.3")]
 #![deny(missing_debug_implementations, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -170,7 +170,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         let await_kwd = syn::Ident::new("await", block.span());
         quote_spanned! {block.span()=>
             tracing_futures::Instrument::instrument(
-                #async_kwd { #block },
+                #async_kwd move { #block },
                 __tracing_attr_span
             )
                 .#await_kwd

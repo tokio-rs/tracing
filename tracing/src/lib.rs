@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.8")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.9")]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
 
@@ -577,17 +577,23 @@
 //!
 //! * A set of features controlling the [static verbosity level].
 //! * `log`: causes trace instrumentation points to emit [`log`] records as well
-//!   as trace events. This is intended for use in libraries whose users may be
-//!   using either `tracing` or `log`.
+//!   as trace events, if a default `tracing` subscriber has not been set. This
+//!   is intended for use in libraries whose users may be using either `tracing`
+//!   or `log`.
 //!   **Note:** `log` support will not work when `tracing` is renamed in `Cargo.toml`,
 //!   due to oddities in macro expansion.
+//! * `log-always`: Emit `log` records from all `tracing` spans and events, even
+//!   a `tracing` subscriber has been set. This should be set only by
+//!   applications which intend to collect traces and logs separately; if an
+//!   adapter is used to convert `log` records into `tracing` events, this will
+//!   cause duplicate events to occur.
 //! * `std`: Depend on the Rust standard library (enabled by default).
 //!
 //!   `no_std` users may disable this feature with `default-features = false`:
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.8", default-features = false }
+//!   tracing = { version = "0.1.9", default-features = false }
 //!   ```
 //!   **Note**:`tracing`'s `no_std` support requires `liballoc`.
 //!
@@ -668,8 +674,6 @@ pub mod subscriber;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
-
-    pub const LOG_ENABLED: bool = cfg!(feature = "log");
 
     #[cfg(feature = "std")]
     pub use crate::stdlib::sync::Once;

@@ -109,7 +109,9 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
-    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
     let mut builder = env_logger::Builder::new();
     builder
         .filter(Some("hyper_echo"), log::LevelFilter::Off)

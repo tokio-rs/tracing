@@ -501,6 +501,11 @@ where
         }
     }
 
+    #[inline]
+    fn current_span(&self) -> span::Current {
+        self.inner.current_span()
+    }
+
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         self.layer
@@ -611,12 +616,12 @@ where
     }
 }
 
-impl<L, S> Layered<L, S> {
-    // TODO(eliza): is there a compelling use-case for this being public?
-    pub(crate) fn into_inner(self) -> S {
-        self.inner
-    }
-}
+// impl<L, S> Layered<L, S> {
+//     // TODO(eliza): is there a compelling use-case for this being public?
+//     pub(crate) fn into_inner(self) -> S {
+//         self.inner
+//     }
+// }
 
 // === impl SubscriberExt ===
 

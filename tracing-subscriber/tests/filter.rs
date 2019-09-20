@@ -1,11 +1,11 @@
 mod support;
 use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
-use tracing_subscriber::{filter::Filter, prelude::*};
+use tracing_subscriber::{filter::EnvFilter, prelude::*};
 
 #[test]
 fn level_filter_event() {
-    let filter: Filter = "info".parse().expect("filter should parse");
+    let filter: EnvFilter = "info".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))
@@ -26,8 +26,37 @@ fn level_filter_event() {
 }
 
 #[test]
+fn same_name_spans() {
+    let filter: EnvFilter = "[foo{bar}]=trace,[foo{baz}]=trace"
+        .parse()
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("bar")),
+        )
+        .new_span(
+            span::mock()
+                .named("foo")
+                .at_level(Level::TRACE)
+                .with_field(field::mock("baz")),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+    with_default(subscriber, || {
+        tracing::trace_span!("foo", bar = 1);
+        tracing::trace_span!("foo", baz = 1);
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
 fn level_filter_event_with_target() {
-    let filter: Filter = "info,stuff=debug".parse().expect("filter should parse");
+    let filter: EnvFilter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
@@ -54,7 +83,7 @@ fn level_filter_event_with_target() {
 
 #[test]
 fn span_name_filter_is_dynamic() {
-    let filter: Filter = "info,[cool_span]=debug"
+    let filter: EnvFilter = "info,[cool_span]=debug"
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
@@ -100,7 +129,7 @@ fn span_name_filter_is_dynamic() {
 
 #[test]
 fn field_filter_events() {
-    let filter: Filter = "[{thing}]=debug".parse().expect("filter should parse");
+    let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(
             event::mock()
