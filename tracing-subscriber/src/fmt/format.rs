@@ -146,7 +146,7 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        time::write(&self.timer, writer)?;
+        time::write(&self.timer, writer, self.ansi)?;
         write!(
             writer,
             "{} {}{}: ",
@@ -183,7 +183,7 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        time::write(&self.timer, writer)?;
+        time::write(&self.timer, writer, self.ansi)?;
         write!(
             writer,
             "{} {}{}: ",
@@ -292,6 +292,7 @@ impl<'a> fmt::Debug for Recorder<'a> {
 
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
+    #[allow(unused)]
     ansi: bool,
 }
 
@@ -329,7 +330,7 @@ where
 
 #[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FmtCtx<'a, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
             if seen {
@@ -347,6 +348,7 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
 
 struct FullCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
+    #[allow(unused)]
     ansi: bool,
 }
 
@@ -388,7 +390,7 @@ where
 
 #[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FullCtx<'a, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
             write!(f, "{}", span.name())?;
@@ -409,6 +411,7 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
 
 struct FmtLevel<'a> {
     level: &'a Level,
+    #[allow(unused)]
     ansi: bool,
 }
 
@@ -420,7 +423,7 @@ impl<'a> FmtLevel<'a> {
 
 #[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.level {
             Level::TRACE => f.pad("TRACE"),
             Level::DEBUG => f.pad("DEBUG"),
