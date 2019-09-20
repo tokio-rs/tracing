@@ -66,11 +66,23 @@ mod test {
     where
         T: MakeWriter + Send + Sync + 'static,
     {
-        let subscriber = Subscriber::builder()
-            .with_writer(make_writer)
-            .without_time()
-            .with_ansi(false)
-            .finish();
+        let subscriber = {
+            #[cfg(feature = "ansi")]
+            {
+                Subscriber::builder()
+                    .with_writer(make_writer)
+                    .without_time()
+                    .with_ansi(false)
+                    .finish()
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                Subscriber::builder()
+                    .with_writer(make_writer)
+                    .without_time()
+                    .finish()
+            }
+        };
         let dispatch = Dispatch::from(subscriber);
 
         dispatcher::with_default(&dispatch, || {
