@@ -389,7 +389,7 @@
 //! similarly to the [`event!`] macro, but with the [`Level`] argument already
 //! specified, while the corresponding [`trace_span!`], [`debug_span!`],
 //! [`info_span!`], [`warn_span!`], and [`error_span!`] macros are the same,
-//! but for the `[span!`] macro.
+//! but for the [`span!`] macro.
 //!
 //! These are intended both as a shorthand, and for compatibility with the [`log`]
 //! crate (see the next section).
