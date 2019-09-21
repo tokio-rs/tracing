@@ -385,7 +385,7 @@
 //! ### Shorthand Macros
 //!
 //! `tracing` also offers a number of macros with preset verbosity levels.
-//! The [`trace!`], [`debug!`], [`info!`], [`warn!]`, and [`error!`] behave
+//! The [`trace!`], [`debug!`], [`info!`], [`warn!`], and [`error!`] behave
 //! similarly to the [`event!`] macro, but with the [`Level`] argument already
 //! specified, while the corresponding [`trace_span!`], [`debug_span!`],
 //! [`info_span!`], [`warn_span!`], and [`error_span!`] macros are the same,
