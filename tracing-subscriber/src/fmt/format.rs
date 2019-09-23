@@ -97,20 +97,33 @@ pub trait FormatEvent<N> {
     }
 }
 
+/// A type that can format the context for a log line.
+///
+/// This includes the current span context, a timestamp, and the metadata of the
+/// span or event being logged.
 pub trait FormatCtx {
+    /// Formats the context portion of a log line for a span or event with the
+    /// provided metadata.
     fn format_ctx<N, T>(&self, ctx: &span::Context<'_, N>, timer: &T, writer: &mut dyn fmt::Write, metadata: &Metadata<'_>) -> fmt::Result
     where
         N: for<'a> NewVisitor<'a>,
         T: FormatTime,
     ;
 
+    /// Sets whether ANSI formatting should be enabled, returning a new
+    /// `FormatCtx`.
     #[cfg(feature = "ansi")]
     fn with_ansi(self, with_ansi: bool) -> Self;
 
+    /// Returns true if ANSI formatting is enabled.
     #[cfg(feature = "ansi")]
-    fn has_ansi(&self,) -> bool;
+    fn has_ansi(&self) -> bool;
 
+    /// Sets whether the target should be included in the formatted output,
+    /// returning a new `FormatCtx`.
     fn with_target(self, with_target: bool) -> Self;
+
+    /// Returns true if targets are included in the formatted output.
     fn has_target(&self) -> bool;
 }
 
@@ -157,6 +170,7 @@ pub trait SpanLifecycle {
     ;
 }
 
+/// A type that formats log lines for enter/exit events.
 pub trait SpanEntry {
     /// Write a log message for [entering a span][enter] with the given
     /// `Id` in the given `Context` to the provided `Write`.

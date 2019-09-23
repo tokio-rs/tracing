@@ -244,6 +244,7 @@ impl<'a, N> Context<'a, N> {
             .ok()?
     }
 
+    /// Returns data stored for the span with the given ID, if it exists.
     #[inline]
     pub fn span(&self, id: &Id) -> Option<Span<'_>> {
         self.store.get(id)
