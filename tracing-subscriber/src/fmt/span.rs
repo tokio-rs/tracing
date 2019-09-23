@@ -298,7 +298,7 @@ impl Store {
             .try_with(|current| current.borrow_mut().pop(expected_id))
             .ok()
             .and_then(|i| i);
-        if let Some(id) = id {
+        if let Some(ref id) = id {
             let _ = self.drop_span(id);
         }
     }
@@ -403,9 +403,9 @@ impl Store {
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    pub(crate) fn drop_span(&self, id: Id) -> bool {
+    pub(crate) fn drop_span(&self, id: &Id) -> bool {
         let this = try_lock!(self.inner.read(), else return false);
-        let idx = id_to_idx(&id);
+        let idx = id_to_idx(id);
 
         if !this
             .slab

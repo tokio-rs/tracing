@@ -178,7 +178,38 @@ where
 impl<N, E, W> Formatter<N, E, W>
 where
     N: for<'a> NewVisitor<'a>,
+    W: MakeWriter + 'static,
 {
+    fn with_buf(&self, f: impl FnOnce(&mut String) -> fmt::Result) {
+        thread_local! {
+            static BUF: RefCell<String> = RefCell::new(String::new());
+        }
+
+        BUF.with(|buf| {
+            let borrow = buf.try_borrow_mut();
+            let mut a;
+            let mut b;
+            let buf = match borrow {
+                Ok(buf) => {
+                    a = buf;
+                    &mut *a
+                }
+                _ => {
+                    b = String::new();
+                    &mut b
+                }
+            };
+            let res = f(buf);
+            if !buf.is_empty() {
+                if res.is_ok() {
+                    let mut writer = self.make_writer.make_writer();
+                    let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+                }
+                buf.clear();
+            }
+        })
+    }
+
     #[inline]
     fn ctx(&self) -> span::Context<'_, N> {
         span::Context::new(&self.spans, &self.new_visitor)
@@ -201,6 +232,9 @@ where
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+        self.with_buf(|buf| {
+            self.fmt_event.format_new_span(&self.ctx(), buf, attrs)
+        });
         self.spans.new_span(attrs, &self.new_visitor)
     }
 
@@ -214,40 +248,22 @@ where
     }
 
     fn event(&self, event: &Event<'_>) {
-        thread_local! {
-            static BUF: RefCell<String> = RefCell::new(String::new());
-        }
-
-        BUF.with(|buf| {
-            let borrow = buf.try_borrow_mut();
-            let mut a;
-            let mut b;
-            let buf = match borrow {
-                Ok(buf) => {
-                    a = buf;
-                    &mut *a
-                }
-                _ => {
-                    b = String::new();
-                    &mut b
-                }
-            };
-
-            if self.fmt_event.format_event(&self.ctx(), buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
-                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
-            }
-
-            buf.clear();
-        });
+        self.with_buf(|buf| {
+            self.fmt_event.format_event(&self.ctx(), buf, event)
+        })
     }
 
     fn enter(&self, id: &span::Id) {
-        // TODO: add on_enter hook
+        self.with_buf(|buf| {
+            self.fmt_event.format_enter(&self.ctx(), buf, id)
+        });
         self.spans.push(id);
     }
 
     fn exit(&self, id: &span::Id) {
+        self.with_buf(|buf| {
+            self.fmt_event.format_exit(&self.ctx(), buf, id)
+        });
         self.spans.pop(id);
     }
 
@@ -267,7 +283,13 @@ where
 
     #[inline]
     fn try_close(&self, id: span::Id) -> bool {
-        self.spans.drop_span(id)
+        let closed = self.spans.drop_span(&id);
+        if closed {
+            self.with_buf(|buf| {
+                self.fmt_event.format_close(&self.ctx(), buf, &id)
+            });
+        }
+        closed
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {

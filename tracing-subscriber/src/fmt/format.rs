@@ -29,6 +29,70 @@ pub trait FormatEvent<N> {
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
+
+    /// Write a log message for [creating a new span][new_span] with the given
+    /// `Attributes` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [new_span]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.new_span
+    fn format_new_span(
+        &self,
+        _ctx: &span::Context<'_, N>,
+        _writer: &mut dyn fmt::Write,
+        _attrs: &span::Attributes<'_>,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    /// Write a log message for [closing a span][close] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [close]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#method.try_close
+    fn format_close(
+        &self,
+        _ctx: &span::Context<'_, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    /// Write a log message for [entering a span][enter] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [enter]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.enter
+    fn format_enter(
+        &self,
+        _ctx: &span::Context<'_, N>,
+        _writer: &mut dyn fmt::Write,
+        _attrs: &span::Id,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    /// Write a log message for [exiting a span][close] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [close]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.exit
+    fn format_exit(
+        &self,
+        _ctx: &span::Context<'_, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+    ) -> fmt::Result {
+        Ok(())
+    }
 }
 
 impl<N> FormatEvent<N>
