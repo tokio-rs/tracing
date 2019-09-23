@@ -108,21 +108,16 @@ fn skip() {
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
-                field::mock("arg1")
-                    .with_value(&format_args!("2"))
-                    .only(),
-            ),
+            span.clone()
+                .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .new_span(
-            span2.clone().with_field(
-                field::mock("arg1")
-                    .with_value(&format_args!("3"))
-                    .only(),
-            ),
+            span2
+                .clone()
+                .with_field(field::mock("arg1").with_value(&format_args!("3")).only()),
         )
         .enter(span2.clone())
         .exit(span2.clone())
