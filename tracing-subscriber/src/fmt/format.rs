@@ -104,7 +104,12 @@ pub trait FormatCtx {
         T: FormatTime,
     ;
 
+    #[cfg(feature = "ansi")]
     fn with_ansi(self, with_ansi: bool) -> Self;
+
+    #[cfg(feature = "ansi")]
+    fn has_ansi(&self,) -> bool;
+
     fn with_target(self, with_target: bool) -> Self;
     fn has_target(&self) -> bool;
 }
@@ -530,6 +535,7 @@ impl SpanEntry for () {
     }
 }
 
+#[cfg(not(feature = "ansi"))]
 impl SpanLifecycle for WithSpans {
     fn format_new_span<N, F, T>(
         formatter: &F,
@@ -567,7 +573,6 @@ impl SpanLifecycle for WithSpans {
         T: FormatTime,
     {
         if let Some(span) = ctx.span(id) {
-            // TODO: add ansi
             formatter.format_ctx(ctx, timer, writer, span.metadata())?;
             write!(writer, "close {}", span.name())?;
             let fields = span.fields();
@@ -580,6 +585,7 @@ impl SpanLifecycle for WithSpans {
     }
 }
 
+#[cfg(not(feature = "ansi"))]
 impl SpanEntry for WithSpans {
     fn format_enter<N, F, T>(
         formatter: &F,
@@ -594,7 +600,6 @@ impl SpanEntry for WithSpans {
         T: FormatTime,
     {
         if let Some(span) = ctx.span(id) {
-            // TODO: add ansi
             formatter.format_ctx(ctx, timer, writer, span.metadata())?;
             write!(writer, "enter {}", span.name())?;
             let fields = span.fields();
@@ -619,12 +624,133 @@ impl SpanEntry for WithSpans {
         T: FormatTime,
     {
         if let Some(span) = ctx.span(id) {
-            // TODO: add ansi
             formatter.format_ctx(ctx, timer, writer, span.metadata())?;
             write!(writer, "exit {}", span.name())?;
             let fields = span.fields();
             if !fields.is_empty() {
                 write!(writer, "{{{}}}", fields)?;
+            }
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+}
+
+
+#[cfg(feature = "ansi")]
+impl SpanEntry for WithSpans {
+    fn format_enter<N, F, T>(
+        formatter: &F,
+        timer: &T,
+        ctx: &span::Context<'_, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result
+    where
+        N: for<'a> NewVisitor<'a>,
+        F: FormatCtx,
+        T: FormatTime,
+    {
+        if let Some(span) = ctx.span(id) {
+            formatter.format_ctx(ctx, timer, writer, span.metadata())?;
+            let style = if formatter.has_ansi() {
+                Style::new().bold()
+            } else {
+                Style::new()
+            };
+            write!(writer, "enter {}", style.paint(span.name()))?;
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(writer, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
+            }
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+
+    fn format_exit<N, F, T>(
+        formatter: &F,
+        timer: &T,
+        ctx: &span::Context<'_, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result
+    where
+        N: for<'a> NewVisitor<'a>,
+        F: FormatCtx,
+        T: FormatTime,
+    {
+        if let Some(span) = ctx.span(id) {
+            formatter.format_ctx(ctx, timer, writer, span.metadata())?;
+            let style = if formatter.has_ansi() {
+                Style::new().bold()
+            } else {
+                Style::new()
+            };
+            write!(writer, "exit {}", style.paint(span.name()))?;
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(writer, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
+            }
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "ansi")]
+impl SpanLifecycle for WithSpans {
+    fn format_new_span<N, F, T>(
+        formatter: &F,
+        timer: &T,
+        ctx: &span::Context<'_, N>,
+        writer: &mut dyn fmt::Write,
+        attrs: &span::Attributes<'_>,
+    ) -> fmt::Result
+    where
+        N: for<'a> NewVisitor<'a>,
+        F: FormatCtx,
+        T: FormatTime,
+    {
+        let meta = attrs.metadata();
+        formatter.format_ctx(ctx, timer, writer, meta)?;
+        let style = if formatter.has_ansi() {
+            Style::new().bold()
+        } else {
+            Style::new()
+        };
+        write!(writer, "{}", style.paint(meta.name()))?;
+        if !attrs.is_empty() {
+            write!(writer, "{}", style.paint("{"))?;
+            attrs.record(&mut ctx.new_visitor(writer, true));
+            write!(writer, "{}", style.paint("}"))?;
+        }
+        writeln!(writer)
+    }
+
+    fn format_close<N, F, T>(
+        formatter: &F,
+        timer: &T,
+        ctx: &span::Context<'_, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result
+    where
+        N: for<'a> NewVisitor<'a>,
+        F: FormatCtx,
+        T: FormatTime,
+    {
+        if let Some(span) = ctx.span(id) {
+            formatter.format_ctx(ctx, timer, writer, span.metadata())?;
+            let style = if formatter.has_ansi() {
+                Style::new().bold()
+            } else {
+                Style::new()
+            };
+            write!(writer, "close {}", style.paint(span.name()))?;
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(writer, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
             }
             writeln!(writer)?;
         }
@@ -652,8 +778,14 @@ impl FormatCtx for Full {
         )
     }
 
+    #[cfg(feature = "ansi")]
     fn with_ansi(self, ansi: bool) -> Self {
         Self { ansi, ..self }
+    }
+
+    #[cfg(feature = "ansi")]
+    fn has_ansi(&self) -> bool {
+        self.ansi
     }
 
     fn with_target(self, display_target: bool) -> Self  {
@@ -685,8 +817,14 @@ impl FormatCtx for Compact {
         )
     }
 
+    #[cfg(feature = "ansi")]
     fn with_ansi(self, ansi: bool) -> Self {
         Self { ansi, ..self }
+    }
+
+    #[cfg(feature = "ansi")]
+    fn has_ansi(&self) -> bool {
+        self.ansi
     }
 
     fn with_target(self, display_target: bool) -> Self  {
