@@ -146,7 +146,10 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let ident_str = ident.to_string();
 
     // Pull out the arguments-to-be-skipped first, so we can filter results below.
-    let skips = skips(&args);
+    let skips = match skips(&args) {
+        Ok(skips) => skips,
+        Err(err) => return quote!(#err).into(),
+    };
 
     let param_names: Vec<Ident> = params
         .clone()
@@ -209,7 +212,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-fn skips(args: &AttributeArgs) -> HashSet<Ident> {
+fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
     let mut skips = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::List(MetaList {
             ref path,
@@ -221,24 +224,22 @@ fn skips(args: &AttributeArgs) -> HashSet<Ident> {
     let skip = skips.next();
 
     // Ensure there's only one skip directive.
-    if let Some(_list) = skips.next() {
-        /*
-        return quote_spanned! {
-            lit.span() => compile_error!("expected only a single `skip` argument!")
-        };
-        */
-        panic!("not sure how to make this return an error -- the examples below return impl ToTokens and get stuck into the output.");
+    if let Some(list) = skips.next() {
+        return Err(quote_spanned! {
+            list.span() => compile_error!("expected only a single `skip` argument!")
+        });
     }
 
     // Collect the Idents inside the `skip(...)`, if it exists
-    skip.iter()
+    Ok(skip
+        .iter()
         .map(|list| list.iter())
         .flatten()
         .filter_map(|meta| match meta {
             NestedMeta::Meta(Meta::Path(p)) => p.get_ident().map(Clone::clone),
             _ => None,
         })
-        .collect()
+        .collect())
 }
 
 fn level(args: &AttributeArgs) -> impl ToTokens {
