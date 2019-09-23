@@ -261,10 +261,10 @@ where
     }
 
     fn exit(&self, id: &span::Id) {
+        self.spans.pop(id);
         self.with_buf(|buf| {
             self.fmt_event.format_exit(&self.ctx(), buf, id)
         });
-        self.spans.pop(id);
     }
 
     fn current_span(&self) -> span::Current {
