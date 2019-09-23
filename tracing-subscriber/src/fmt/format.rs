@@ -8,9 +8,8 @@ use tracing_log::NormalizeEvent;
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
 use tracing_core::{
-    Metadata,
     field::{self, Field},
-    Event, Level,
+    Event, Level, Metadata,
 };
 
 #[cfg(feature = "ansi")]
@@ -104,11 +103,16 @@ pub trait FormatEvent<N> {
 pub trait FormatCtx {
     /// Formats the context portion of a log line for a span or event with the
     /// provided metadata.
-    fn format_ctx<N, T>(&self, ctx: &span::Context<'_, N>, timer: &T, writer: &mut dyn fmt::Write, metadata: &Metadata<'_>) -> fmt::Result
+    fn format_ctx<N, T>(
+        &self,
+        ctx: &span::Context<'_, N>,
+        timer: &T,
+        writer: &mut dyn fmt::Write,
+        metadata: &Metadata<'_>,
+    ) -> fmt::Result
     where
         N: for<'a> NewVisitor<'a>,
-        T: FormatTime,
-    ;
+        T: FormatTime;
 
     /// Sets whether ANSI formatting should be enabled, returning a new
     /// `FormatCtx`.
@@ -146,8 +150,7 @@ pub trait SpanLifecycle {
     where
         N: for<'a> NewVisitor<'a>,
         F: FormatCtx,
-        T: FormatTime,
-    ;
+        T: FormatTime;
 
     /// Write a log message for [closing a span][close] with the given
     /// `Id` in the given `Context` to the provided `Write`.
@@ -166,8 +169,7 @@ pub trait SpanLifecycle {
     where
         N: for<'a> NewVisitor<'a>,
         F: FormatCtx,
-        T: FormatTime,
-    ;
+        T: FormatTime;
 }
 
 /// A type that formats log lines for enter/exit events.
@@ -189,8 +191,7 @@ pub trait SpanEntry {
     where
         N: for<'a> NewVisitor<'a>,
         F: FormatCtx,
-        T: FormatTime,
-    ;
+        T: FormatTime;
 
     /// Write a log message for [exiting a span][close] with the given
     /// `Id` in the given `Context` to the provided `Write`.
@@ -209,8 +210,7 @@ pub trait SpanEntry {
     where
         N: for<'a> NewVisitor<'a>,
         F: FormatCtx,
-        T: FormatTime,
-    ;
+        T: FormatTime;
 }
 
 impl<N> FormatEvent<N>
@@ -339,7 +339,11 @@ where
 
     /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T, L, E> {
-        Format { ansi, fmt_ctx: self.fmt_ctx.with_ansi(ansi), ..self }
+        Format {
+            ansi,
+            fmt_ctx: self.fmt_ctx.with_ansi(ansi),
+            ..self
+        }
     }
 
     /// Sets whether or not an event's target is displayed.
@@ -447,7 +451,6 @@ where
             .unwrap_or(Ok(()))?;
         writeln!(writer)
     }
-
 
     #[inline]
     fn format_new_span(
@@ -650,7 +653,6 @@ impl SpanEntry for WithSpans {
     }
 }
 
-
 #[cfg(feature = "ansi")]
 impl SpanEntry for WithSpans {
     fn format_enter<N, F, T>(
@@ -773,7 +775,13 @@ impl SpanLifecycle for WithSpans {
 }
 
 impl FormatCtx for Full {
-    fn format_ctx<N, T>(&self, ctx: &span::Context<'_, N>, timer: &T, writer: &mut dyn fmt::Write, meta: &Metadata<'_>) -> fmt::Result
+    fn format_ctx<N, T>(
+        &self,
+        ctx: &span::Context<'_, N>,
+        timer: &T,
+        writer: &mut dyn fmt::Write,
+        meta: &Metadata<'_>,
+    ) -> fmt::Result
     where
         N: for<'a> NewVisitor<'a>,
         T: FormatTime,
@@ -802,8 +810,11 @@ impl FormatCtx for Full {
         self.ansi
     }
 
-    fn with_target(self, display_target: bool) -> Self  {
-        Self { display_target, ..self }
+    fn with_target(self, display_target: bool) -> Self {
+        Self {
+            display_target,
+            ..self
+        }
     }
 
     fn has_target(&self) -> bool {
@@ -812,7 +823,13 @@ impl FormatCtx for Full {
 }
 
 impl FormatCtx for Compact {
-    fn format_ctx<N, T>(&self, ctx: &span::Context<'_, N>, timer: &T, writer: &mut dyn fmt::Write, meta: &Metadata<'_>) -> fmt::Result
+    fn format_ctx<N, T>(
+        &self,
+        ctx: &span::Context<'_, N>,
+        timer: &T,
+        writer: &mut dyn fmt::Write,
+        meta: &Metadata<'_>,
+    ) -> fmt::Result
     where
         N: for<'a> NewVisitor<'a>,
         T: FormatTime,
@@ -841,15 +858,17 @@ impl FormatCtx for Compact {
         self.ansi
     }
 
-    fn with_target(self, display_target: bool) -> Self  {
-        Self { display_target, ..self }
+    fn with_target(self, display_target: bool) -> Self {
+        Self {
+            display_target,
+            ..self
+        }
     }
 
     fn has_target(&self) -> bool {
         self.display_target
     }
 }
-
 
 /// The default implementation of `NewVisitor` that records fields using the
 /// default format.
