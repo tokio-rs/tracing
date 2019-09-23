@@ -43,7 +43,6 @@ fn override_everything() {
 
 #[test]
 fn fields() {
-
     #[instrument(target = "my_target", level = "debug")]
     fn my_fn(arg1: usize, arg2: bool) {}
 
