@@ -39,11 +39,13 @@
 //! [instrument]: attr.instrument.html
 extern crate proc_macro;
 
+use std::collections::HashSet;
+
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    spanned::Spanned, AttributeArgs, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaNameValue,
-    NestedMeta, Pat, PatIdent, PatType, Signature,
+    spanned::Spanned, AttributeArgs, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
+    MetaNameValue, NestedMeta, Pat, PatIdent, PatType, Signature,
 };
 
 /// Instruments a function to create and enter a `tracing` [span] every time
@@ -143,6 +145,9 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     // function name
     let ident_str = ident.to_string();
 
+    // Pull out the arguments-to-be-skipped first, so we can filter results below.
+    let skips = skips(&args);
+
     let param_names: Vec<Ident> = params
         .clone()
         .into_iter()
@@ -153,6 +158,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             },
             _ => None,
         })
+        .filter(|ident| !skips.contains(ident))
         .collect();
     let param_names_clone = param_names.clone();
 
@@ -201,6 +207,38 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         }
     )
     .into()
+}
+
+fn skips(args: &AttributeArgs) -> HashSet<Ident> {
+    let mut skips = args.iter().filter_map(|arg| match arg {
+        NestedMeta::Meta(Meta::List(MetaList {
+            ref path,
+            ref nested,
+            ..
+        })) if path.is_ident("skip") => Some(nested),
+        _ => None,
+    });
+    let skip = skips.next();
+
+    // Ensure there's only one skip directive.
+    if let Some(_list) = skips.next() {
+        /*
+        return quote_spanned! {
+            lit.span() => compile_error!("expected only a single `skip` argument!")
+        };
+        */
+        panic!("not sure how to make this return an error -- the examples below return impl ToTokens and get stuck into the output.");
+    }
+
+    // Collect the Idents inside the `skip(...)`, if it exists
+    skip.iter()
+        .map(|list| list.iter())
+        .flatten()
+        .filter_map(|meta| match meta {
+            NestedMeta::Meta(Meta::Path(p)) => p.get_ident().map(Clone::clone),
+            _ => None,
+        })
+        .collect()
 }
 
 fn level(args: &AttributeArgs) -> impl ToTokens {

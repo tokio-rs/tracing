@@ -43,8 +43,10 @@ fn override_everything() {
 
 #[test]
 fn fields() {
-    #[instrument(target = "my_target", level = "debug")]
-    fn my_fn(arg1: usize, arg2: bool) {}
+    struct UnDebug(pub u32);
+
+    #[instrument(target = "my_target", level = "debug", skip(_arg3, _arg4))]
+    fn my_fn(arg1: usize, arg2: bool, _arg3: UnDebug, _arg4: UnDebug) {}
 
     let span = span::mock()
         .named("my_fn")
@@ -80,8 +82,8 @@ fn fields() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        my_fn(2, false);
-        my_fn(3, true);
+        my_fn(2, false, UnDebug(0), UnDebug(1));
+        my_fn(3, true, UnDebug(0), UnDebug(1));
     });
 
     handle.assert_finished();
