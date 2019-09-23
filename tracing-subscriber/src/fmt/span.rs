@@ -244,6 +244,11 @@ impl<'a, N> Context<'a, N> {
             .ok()?
     }
 
+    #[inline]
+    pub fn span(&self, id: &Id) -> Option<Span<'_>> {
+        self.store.get(id)
+    }
+
     pub(crate) fn new(store: &'a Store, new_visitor: &'a N) -> Self {
         Self { store, new_visitor }
     }

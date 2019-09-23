@@ -361,12 +361,13 @@ where
     }
 }
 
-impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
+impl<N, C, T, F, W, L, E> Builder<N, format::Format<C, T, L, E>, F, W>
 where
     N: for<'a> NewVisitor<'a> + 'static,
+    C: format::FormatCtx,
 {
     /// Use the given `timer` for log message timestamps.
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F, W> {
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<C, T2, L, E>, F, W> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event.with_timer(timer),
@@ -377,7 +378,7 @@ where
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F, W> {
+    pub fn without_time(self) -> Builder<N, format::Format<C, (), L, E>, F, W> {
         Builder {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event.without_time(),
@@ -389,7 +390,7 @@ where
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
-    pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<L, T>, F, W> {
+    pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<C, T, L, E>, F, W> {
         Builder {
             fmt_event: self.fmt_event.with_ansi(ansi),
             ..self
@@ -397,10 +398,32 @@ where
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Builder<N, format::Format<L, T>, F, W> {
+    pub fn with_target(self, display_target: bool) -> Builder<N, format::Format<C, T, L, E>, F, W> {
         Builder {
             fmt_event: self.fmt_event.with_target(display_target),
             ..self
+        }
+    }
+
+    /// Configures the formatter to log when spans are created and closed.
+    pub fn with_spans(self) -> Builder<N, format::Format<C, T, format::WithSpans, E>, F, W> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event.with_spans(),
+            filter: self.filter,
+            settings: self.settings,
+            make_writer: self.make_writer,
+        }
+    }
+
+    /// Configures the formatter to log when spans are entered and exited.
+    pub fn with_entry(self) -> Builder<N, format::Format<C, T, L, format::WithSpans>, F, W> {
+        Builder {
+            new_visitor: self.new_visitor,
+            fmt_event: self.fmt_event.with_entry(),
+            filter: self.filter,
+            settings: self.settings,
+            make_writer: self.make_writer,
         }
     }
 }
