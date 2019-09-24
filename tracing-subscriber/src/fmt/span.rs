@@ -7,6 +7,7 @@ use std::{
 use crate::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use owning_ref::OwningHandle;
 
+use std::collections::HashSet;
 pub(crate) use tracing_core::span::{Attributes, Current, Id, Record};
 use tracing_core::{dispatcher, Metadata};
 
@@ -62,14 +63,56 @@ enum State {
     Empty(usize),
 }
 
-#[derive(Debug)]
-struct ContextId {
+struct SpanStackElement {
     id: Id,
     duplicate: bool,
 }
 
+struct SpanStack {
+    stack: Vec<SpanStackElement>,
+    ids: HashSet<Id>,
+}
+
+impl SpanStack {
+    fn new() -> Self {
+        SpanStack {
+            stack: vec![],
+            ids: HashSet::new(),
+        }
+    }
+
+    fn push(&mut self, id: Id) {
+        let duplicate = self.ids.contains(&id);
+        if !duplicate {
+            self.ids.insert(id.clone());
+        }
+        self.stack.push(SpanStackElement { id, duplicate })
+    }
+
+    fn pop(&mut self, expected_id: &Id) -> Option<Id> {
+        if self.stack.last().map(|elt| &elt.id) == Some(expected_id) {
+            let SpanStackElement { id, duplicate } = self.stack.pop()?;
+            if !duplicate {
+                self.ids.remove(&id);
+            }
+            Some(id)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn find_last_no_duplicate(&self) -> Option<&Id> {
+        self.stack
+            .iter()
+            .rev()
+            .find(|context_id| !context_id.duplicate)
+            .map(|context_id| &context_id.id)
+    }
+}
+
 thread_local! {
-    static CONTEXT: RefCell<Vec<ContextId>> = RefCell::new(vec![]);
+    static CONTEXT: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
 
 macro_rules! debug_panic {
@@ -164,7 +207,7 @@ impl<'a, N> Context<'a, N> {
     {
         CONTEXT
             .try_with(|current| {
-                if let Some(id) = find_last_no_duplicate(&current.borrow()) {
+                if let Some(id) = current.borrow().find_last_no_duplicate() {
                     if let Some(span) = self.store.get(id) {
                         // with_parent uses the call stack to visit the span
                         // stack in reverse order, without having to allocate
@@ -189,7 +232,7 @@ impl<'a, N> Context<'a, N> {
         // will just do nothing rather than cause a double panic.
         CONTEXT
             .try_with(|current| {
-                if let Some(id) = find_last_no_duplicate(&current.borrow()) {
+                if let Some(id) = current.borrow().find_last_no_duplicate() {
                     if let Some(span) = self.store.get(&id) {
                         return Some(f((&id, span)));
                     } else {
@@ -229,15 +272,6 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-#[inline]
-fn find_last_no_duplicate(stack: &[ContextId]) -> Option<&Id> {
-    stack
-        .iter()
-        .rev()
-        .find(|context_id| !context_id.duplicate)
-        .map(|context_id| &context_id.id)
-}
-
 impl Store {
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Store {
@@ -252,36 +286,25 @@ impl Store {
     pub(crate) fn current(&self) -> Option<Id> {
         CONTEXT
             .try_with(|current| {
-                find_last_no_duplicate(&current.borrow()).map(|id| self.clone_span(id))
+                current
+                    .borrow()
+                    .find_last_no_duplicate()
+                    .map(|id| self.clone_span(id))
             })
             .ok()?
     }
 
     pub(crate) fn push(&self, id: &Id) {
-        let _ = CONTEXT.try_with(|current| {
-            let mut current = current.borrow_mut();
-            let duplicate = current.iter().any(|context_id| id == &context_id.id);
-            current.push(ContextId {
-                id: self.clone_span(id),
-                duplicate,
-            });
-        });
+        let _ = CONTEXT.try_with(|current| current.borrow_mut().push(self.clone_span(id)));
     }
 
     pub(crate) fn pop(&self, expected_id: &Id) {
         let id = CONTEXT
-            .try_with(|current| {
-                let mut current = current.borrow_mut();
-                if current.last().map(|context_id| &context_id.id) == Some(expected_id) {
-                    current.pop()
-                } else {
-                    None
-                }
-            })
+            .try_with(|current| current.borrow_mut().pop(expected_id))
             .ok()
             .and_then(|i| i);
         if let Some(id) = id {
-            let _ = self.drop_span(id.id);
+            let _ = self.drop_span(id);
         }
     }
 
