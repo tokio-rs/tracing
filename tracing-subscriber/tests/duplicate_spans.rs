@@ -11,27 +11,38 @@ fn duplicate_spans() {
 
     with_default(subscriber, || {
         let root = tracing::debug_span!("root");
-        let _enter = root.enter();
-        // root:
-        assert_eq!(root, Span::current());
-        {
-            let leaf = tracing::debug_span!("leaf");
-            let _enter_leaf = leaf.enter();
-            // root:leaf:
-            assert_eq!(leaf, Span::current());
-
-            let _reenter_root = root.enter();
-            // root:leaf:
-            assert_eq!(leaf, Span::current());
-        }
-        // root:
-        assert_eq!(root, Span::current());
-        {
-            let _reenter_root = root.enter();
+        root.in_scope(|| {
             // root:
-            assert_eq!(root, Span::current());
-        }
-        // root:
-        assert_eq!(root, Span::current());
+            assert_eq!(root, Span::current(), "Current span must be 'root'");
+            let leaf = tracing::debug_span!("leaf");
+            leaf.in_scope(|| {
+                // root:leaf:
+                assert_eq!(leaf, Span::current(), "Current span must be 'leaf'");
+                root.in_scope(|| {
+                    // root:leaf:
+                    assert_eq!(
+                        leaf,
+                        Span::current(),
+                        "Current span must be 'leaf' after entering twice the 'root' span"
+                    );
+                })
+            });
+            // root:
+            assert_eq!(
+                root,
+                Span::current(),
+                "Current span must be root ('leaf' exited, nested 'root' exited)"
+            );
+
+            root.in_scope(|| {
+                assert_eq!(root, Span::current(), "Current span must be root");
+            });
+            // root:
+            assert_eq!(
+                root,
+                Span::current(),
+                "Current span must still be root after exiting nested 'root'"
+            );
+        });
     });
 }
