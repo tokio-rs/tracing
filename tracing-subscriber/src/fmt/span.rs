@@ -296,17 +296,14 @@ impl Store {
     }
 
     pub(crate) fn push(&self, id: &Id) {
-        let _ = CONTEXT.try_with(|current| current.borrow_mut().push(self.clone_span(id)));
+        let _ = CONTEXT.try_with(|current| current.borrow_mut().push(id.clone()));
     }
 
     pub(crate) fn pop(&self, expected_id: &Id) {
-        let id = CONTEXT
+        CONTEXT
             .try_with(|current| current.borrow_mut().pop(expected_id))
             .ok()
             .and_then(|i| i);
-        if let Some(ref id) = id {
-            let _ = self.drop_span(id);
-        }
     }
 
     /// Inserts a new span with the given data and fields into the slab,
@@ -479,6 +476,7 @@ impl Drop for Data {
         if self.parent.is_some() {
             dispatcher::get_default(|subscriber| {
                 if let Some(parent) = self.parent.take() {
+                    println!("try close parent");
                     let _ = subscriber.try_close(parent);
                 }
             })
@@ -552,7 +550,7 @@ impl Slot {
 
     fn drop_ref(&self) -> bool {
         match self.span {
-            State::Full(ref data) => data.ref_count.fetch_sub(1, Ordering::Release) == 1,
+            State::Full(ref data) => data.ref_count.fetch_sub(1, Ordering::Release) <= 1,
             State::Empty(_) => false,
         }
     }
@@ -560,7 +558,7 @@ impl Slot {
     fn clone_ref(&self) {
         match self.span {
             State::Full(ref data) => {
-                let _ = data.ref_count.fetch_sub(1, Ordering::Release);
+                let _ = data.ref_count.fetch_add(1, Ordering::Release);
             }
             State::Empty(_) => {
                 unreachable!("tried to clone a ref to a span that no longer exists, this is a bug")

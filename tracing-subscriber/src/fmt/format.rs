@@ -597,6 +597,8 @@ impl SpanLifecycle for WithSpans {
                 write!(writer, "{{{}}}", fields)?;
             }
             writeln!(writer)?;
+        } else {
+            writeln!(writer, "close {:?}", id);
         }
         Ok(())
     }
@@ -769,6 +771,8 @@ impl SpanLifecycle for WithSpans {
                 write!(writer, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
             }
             writeln!(writer)?;
+        } else {
+            writeln!(writer, "close {:?}", id)?;
         }
         Ok(())
     }
