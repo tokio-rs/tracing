@@ -63,13 +63,13 @@ enum State {
     Empty(usize),
 }
 
-struct SpanStackElement {
+struct ContextId {
     id: Id,
     duplicate: bool,
 }
 
 struct SpanStack {
-    stack: Vec<SpanStackElement>,
+    stack: Vec<ContextId>,
     ids: HashSet<Id>,
 }
 
@@ -86,12 +86,12 @@ impl SpanStack {
         if !duplicate {
             self.ids.insert(id.clone());
         }
-        self.stack.push(SpanStackElement { id, duplicate })
+        self.stack.push(ContextId { id, duplicate })
     }
 
     fn pop(&mut self, expected_id: &Id) -> Option<Id> {
-        if self.stack.last().map(|elt| &elt.id) == Some(expected_id) {
-            let SpanStackElement { id, duplicate } = self.stack.pop()?;
+        if &self.stack.last()?.id == expected_id {
+            let ContextId { id, duplicate } = self.stack.pop()?;
             if !duplicate {
                 self.ids.remove(&id);
             }
@@ -102,7 +102,7 @@ impl SpanStack {
     }
 
     #[inline]
-    fn find_last_no_duplicate(&self) -> Option<&Id> {
+    fn current(&self) -> Option<&Id> {
         self.stack
             .iter()
             .rev()
@@ -207,7 +207,7 @@ impl<'a, N> Context<'a, N> {
     {
         CONTEXT
             .try_with(|current| {
-                if let Some(id) = current.borrow().find_last_no_duplicate() {
+                if let Some(id) = current.borrow().current() {
                     if let Some(span) = self.store.get(id) {
                         // with_parent uses the call stack to visit the span
                         // stack in reverse order, without having to allocate
@@ -232,7 +232,7 @@ impl<'a, N> Context<'a, N> {
         // will just do nothing rather than cause a double panic.
         CONTEXT
             .try_with(|current| {
-                if let Some(id) = current.borrow().find_last_no_duplicate() {
+                if let Some(id) = current.borrow().current() {
                     if let Some(span) = self.store.get(&id) {
                         return Some(f((&id, span)));
                     } else {
@@ -285,12 +285,7 @@ impl Store {
     #[inline]
     pub(crate) fn current(&self) -> Option<Id> {
         CONTEXT
-            .try_with(|current| {
-                current
-                    .borrow()
-                    .find_last_no_duplicate()
-                    .map(|id| self.clone_span(id))
-            })
+            .try_with(|current| current.borrow().current().map(|id| self.clone_span(id)))
             .ok()?
     }
 
