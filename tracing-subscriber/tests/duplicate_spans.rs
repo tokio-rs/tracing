@@ -1,7 +1,6 @@
 mod support;
-use self::support::*;
-use tracing::{self, subscriber::with_default, Level, Span};
-use tracing_subscriber::{filter::EnvFilter, prelude::*, FmtSubscriber};
+use tracing::{self, subscriber::with_default, Span};
+use tracing_subscriber::{filter::EnvFilter, FmtSubscriber};
 
 #[test]
 fn duplicate_spans() {
