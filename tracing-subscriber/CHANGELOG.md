@@ -1,3 +1,10 @@
+# 0.1.4 (September 25, 2019)
+
+### Fixed
+
+- Spans entered twice on the same thread sometimes being completely exited when
+  the more deeply-nested entry is exited (#361)
+
 # 0.1.3 (September 16, 2019)
 
 ### Fixed
