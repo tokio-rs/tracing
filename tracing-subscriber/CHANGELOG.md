@@ -1,3 +1,14 @@
+# 0.1.4 (September 26, 2019)
+
+### Fixed
+
+- Spans entered twice on the same thread sometimes being completely exited when
+  the more deeply-nested entry is exited (#361)
+- Setting `with_ansi(false)` on `FmtSubscriber` not disabling ANSI color
+  formatting for timestamps (#354)
+- Incorrect reference counting in `FmtSubscriber` that could cause spans to not
+  be closed when all references are dropped (#366)
+
 # 0.1.3 (September 16, 2019)
 
 ### Fixed
