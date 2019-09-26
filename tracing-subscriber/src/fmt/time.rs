@@ -98,22 +98,28 @@ impl FormatTime for Uptime {
 
 #[inline(always)]
 #[cfg(feature = "ansi")]
-pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write) -> fmt::Result
+pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write, with_ansi: bool) -> fmt::Result
 where
     T: FormatTime,
 {
-    let style = Style::new().dimmed();
-    write!(writer, "{}", style.prefix())?;
-    timer.format_time(writer)?;
-    write!(writer, "{}", style.suffix())?;
+    if with_ansi {
+        let style = Style::new().dimmed();
+        write!(writer, "{}", style.prefix())?;
+        timer.format_time(writer)?;
+        write!(writer, "{}", style.suffix())?;
+    } else {
+        timer.format_time(writer)?;
+        write!(writer, " ")?;
+    }
     Ok(())
 }
 
 #[inline(always)]
 #[cfg(not(feature = "ansi"))]
-pub(crate) fn write<T>(timer: T, writer: &mut fmt::Write) -> fmt::Result
+pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write) -> fmt::Result
 where
     T: FormatTime,
 {
-    timer.format_time(writer)
+    timer.format_time(writer)?;
+    write!(writer, " ")
 }

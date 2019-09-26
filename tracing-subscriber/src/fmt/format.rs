@@ -146,12 +146,30 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
+        #[cfg(feature = "ansi")]
+        time::write(&self.timer, writer, self.ansi)?;
+        #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
+
+        let (fmt_level, full_ctx) = {
+            #[cfg(feature = "ansi")]
+            {
+                (
+                    FmtLevel::new(meta.level(), self.ansi),
+                    FullCtx::new(&ctx, self.ansi),
+                )
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+            }
+        };
+
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel::new(meta.level(), self.ansi),
-            FullCtx::new(&ctx, self.ansi),
+            fmt_level,
+            full_ctx,
             if self.display_target {
                 meta.target()
             } else {
@@ -183,12 +201,29 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
+        #[cfg(feature = "ansi")]
+        time::write(&self.timer, writer, self.ansi)?;
+        #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
+
+        let (fmt_level, fmt_ctx) = {
+            #[cfg(feature = "ansi")]
+            {
+                (
+                    FmtLevel::new(meta.level(), self.ansi),
+                    FmtCtx::new(&ctx, self.ansi),
+                )
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
+            }
+        };
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel::new(meta.level(), self.ansi),
-            FmtCtx::new(&ctx, self.ansi),
+            fmt_level,
+            fmt_ctx,
             if self.display_target {
                 meta.target()
             } else {
@@ -292,12 +327,19 @@ impl<'a> fmt::Debug for Recorder<'a> {
 
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a, N: 'a> FmtCtx<'a, N> {
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
+        Self { ctx }
     }
 }
 
@@ -329,7 +371,7 @@ where
 
 #[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FmtCtx<'a, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
             if seen {
@@ -347,12 +389,19 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
 
 struct FullCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a, N: 'a> FullCtx<'a, N> {
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
+        Self { ctx }
     }
 }
 
@@ -388,7 +437,7 @@ where
 
 #[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FullCtx<'a, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
             write!(f, "{}", span.name())?;
@@ -409,18 +458,25 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
 
 struct FmtLevel<'a> {
     level: &'a Level,
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a> FmtLevel<'a> {
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(level: &'a Level, ansi: bool) -> Self {
         Self { level, ansi }
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(level: &'a Level) -> Self {
+        Self { level }
     }
 }
 
 #[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.level {
             Level::TRACE => f.pad("TRACE"),
             Level::DEBUG => f.pad("DEBUG"),
@@ -451,5 +507,90 @@ impl<'a> fmt::Display for FmtLevel<'a> {
                 Level::ERROR => f.pad("ERROR"),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use crate::fmt::test::MockWriter;
+    use crate::fmt::time::FormatTime;
+    use lazy_static::lazy_static;
+    use tracing::{self, subscriber::with_default};
+
+    use std::fmt;
+    use std::sync::Mutex;
+
+    struct MockTime;
+    impl FormatTime for MockTime {
+        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+            write!(w, "fake time")
+        }
+    }
+
+    #[cfg(feature = "ansi")]
+    #[test]
+    fn with_ansi_true() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let expected = "\u{1b}[2mfake time\u{1b}[0m\u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: some ansi test\n";
+        test_ansi(make_writer, expected, true, &BUF);
+    }
+
+    #[cfg(feature = "ansi")]
+    #[test]
+    fn with_ansi_false() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let expected = "fake time INFO tracing_subscriber::fmt::format::test: some ansi test\n";
+
+        test_ansi(make_writer, expected, false, &BUF);
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    #[test]
+    fn without_ansi() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let expected = "fake time INFO tracing_subscriber::fmt::format::test: some ansi test\n";
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("some ansi test");
+        });
+
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(expected, actual.as_str());
+    }
+
+    #[cfg(feature = "ansi")]
+    fn test_ansi<T>(make_writer: T, expected: &str, is_ansi: bool, buf: &Mutex<Vec<u8>>)
+    where
+        T: crate::fmt::MakeWriter + Send + Sync + 'static,
+    {
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_ansi(is_ansi)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("some ansi test");
+        });
+
+        let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(expected, actual.as_str());
     }
 }
