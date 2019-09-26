@@ -1,3 +1,10 @@
+# 0.1.4 (September 26, 2019)
+
+### Added
+
+- Optional `skip` argument to `#[instrument]` for excluding function parameters
+  from generated spans (#359)
+
 # 0.1.3 (September 12, 2019)
 
 ### Fixed
