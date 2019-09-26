@@ -116,7 +116,7 @@ where
 
 #[inline(always)]
 #[cfg(not(feature = "ansi"))]
-pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write, _with_ansi: bool) -> fmt::Result
+pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write) -> fmt::Result
 where
     T: FormatTime,
 {

@@ -146,12 +146,30 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
+        #[cfg(feature = "ansi")]
         time::write(&self.timer, writer, self.ansi)?;
+        #[cfg(not(feature = "ansi"))]
+        time::write(&self.timer, writer)?;
+
+        let (fmt_level, full_ctx) = {
+            #[cfg(feature = "ansi")]
+            {
+                (
+                    FmtLevel::new(meta.level(), self.ansi),
+                    FullCtx::new(&ctx, self.ansi),
+                )
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+            }
+        };
+
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel::new(meta.level(), self.ansi),
-            FullCtx::new(&ctx, self.ansi),
+            fmt_level,
+            full_ctx,
             if self.display_target {
                 meta.target()
             } else {
@@ -183,12 +201,29 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
+        #[cfg(feature = "ansi")]
         time::write(&self.timer, writer, self.ansi)?;
+        #[cfg(not(feature = "ansi"))]
+        time::write(&self.timer, writer)?;
+
+        let (fmt_level, fmt_ctx) = {
+            #[cfg(feature = "ansi")]
+            {
+                (
+                    FmtLevel::new(meta.level(), self.ansi),
+                    FmtCtx::new(&ctx, self.ansi),
+                )
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
+            }
+        };
         write!(
             writer,
             "{} {}{}: ",
-            FmtLevel::new(meta.level(), self.ansi),
-            FmtCtx::new(&ctx, self.ansi),
+            fmt_level,
+            fmt_ctx,
             if self.display_target {
                 meta.target()
             } else {
@@ -292,13 +327,19 @@ impl<'a> fmt::Debug for Recorder<'a> {
 
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
-    #[allow(unused)]
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a, N: 'a> FmtCtx<'a, N> {
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
+        Self { ctx }
     }
 }
 
@@ -348,13 +389,19 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
 
 struct FullCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
-    #[allow(unused)]
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a, N: 'a> FullCtx<'a, N> {
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
+        Self { ctx }
     }
 }
 
@@ -411,13 +458,19 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
 
 struct FmtLevel<'a> {
     level: &'a Level,
-    #[allow(unused)]
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a> FmtLevel<'a> {
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(level: &'a Level, ansi: bool) -> Self {
         Self { level, ansi }
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(level: &'a Level) -> Self {
+        Self { level }
     }
 }
 
