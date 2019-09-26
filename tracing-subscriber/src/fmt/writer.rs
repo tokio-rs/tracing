@@ -55,10 +55,10 @@ where
 #[cfg(test)]
 mod test {
     use super::MakeWriter;
+    use crate::fmt::test::{MockMakeWriter, MockWriter};
     use crate::fmt::Subscriber;
     use lazy_static::lazy_static;
-    use std::io;
-    use std::sync::{Mutex, MutexGuard, TryLockError};
+    use std::sync::Mutex;
     use tracing::error;
     use tracing_core::dispatcher::{self, Dispatch};
 
@@ -92,55 +92,6 @@ mod test {
         let expected = format!("ERROR {}: {}\n", module_path!(), msg);
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert!(actual.contains(expected.as_str()));
-    }
-
-    struct MockWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
-    }
-
-    impl<'a> MockWriter<'a> {
-        fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
-            Self { buf }
-        }
-
-        fn map_error<Guard>(err: TryLockError<Guard>) -> io::Error {
-            match err {
-                TryLockError::WouldBlock => io::Error::from(io::ErrorKind::WouldBlock),
-                TryLockError::Poisoned(_) => io::Error::from(io::ErrorKind::Other),
-            }
-        }
-
-        fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
-            self.buf.try_lock().map_err(Self::map_error)
-        }
-    }
-
-    impl<'a> io::Write for MockWriter<'a> {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            self.buf()?.write(buf)
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            self.buf()?.flush()
-        }
-    }
-
-    struct MockMakeWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
-    }
-
-    impl<'a> MockMakeWriter<'a> {
-        fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
-            Self { buf }
-        }
-    }
-
-    impl<'a> MakeWriter for MockMakeWriter<'a> {
-        type Writer = MockWriter<'a>;
-
-        fn make_writer(&self) -> Self::Writer {
-            MockWriter::new(self.buf)
-        }
     }
 
     #[test]
