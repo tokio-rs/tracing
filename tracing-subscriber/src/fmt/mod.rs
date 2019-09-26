@@ -666,8 +666,61 @@ impl Default for Settings {
 
 #[cfg(test)]
 mod test {
+    use super::writer::MakeWriter;
     use super::*;
+    use crate::fmt::Subscriber;
+    use std::io;
+    use std::sync::{Mutex, MutexGuard, TryLockError};
     use tracing_core::dispatcher::Dispatch;
+
+    pub(crate) struct MockWriter<'a> {
+        buf: &'a Mutex<Vec<u8>>,
+    }
+
+    impl<'a> MockWriter<'a> {
+        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+            Self { buf }
+        }
+
+        pub(crate) fn map_error<Guard>(err: TryLockError<Guard>) -> io::Error {
+            match err {
+                TryLockError::WouldBlock => io::Error::from(io::ErrorKind::WouldBlock),
+                TryLockError::Poisoned(_) => io::Error::from(io::ErrorKind::Other),
+            }
+        }
+
+        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+            self.buf.try_lock().map_err(Self::map_error)
+        }
+    }
+
+    impl<'a> io::Write for MockWriter<'a> {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buf()?.write(buf)
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.buf()?.flush()
+        }
+    }
+
+    pub(crate) struct MockMakeWriter<'a> {
+        buf: &'a Mutex<Vec<u8>>,
+    }
+
+    impl<'a> MockMakeWriter<'a> {
+        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+            Self { buf }
+        }
+    }
+
+    impl<'a> MakeWriter for MockMakeWriter<'a> {
+        type Writer = MockWriter<'a>;
+
+        fn make_writer(&self) -> Self::Writer {
+            MockWriter::new(self.buf)
+        }
+    }
 
     #[test]
     fn impls() {
