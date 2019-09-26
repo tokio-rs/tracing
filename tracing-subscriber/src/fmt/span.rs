@@ -546,7 +546,19 @@ impl Slot {
 
     fn drop_ref(&self) -> bool {
         match self.span {
-            State::Full(ref data) => data.ref_count.fetch_sub(1, Ordering::Release) == 1,
+            State::Full(ref data) => {
+                let refs = data.ref_count.fetch_sub(1, Ordering::Release);
+                debug_assert!(
+                    if std::thread::panicking() {
+                        // don't cause a double panic, even if the ref-count is wrong...
+                        true
+                    } else {
+                        refs != std::usize::MAX
+                    },
+                    "reference count overflow!"
+                );
+                refs == 1
+            }
             State::Empty(_) => false,
         }
     }
@@ -554,7 +566,8 @@ impl Slot {
     fn clone_ref(&self) {
         match self.span {
             State::Full(ref data) => {
-                let _ = data.ref_count.fetch_sub(1, Ordering::Release);
+                let _refs = data.ref_count.fetch_add(1, Ordering::Release);
+                debug_assert!(_refs != 0, "tried to clone a span that already closed!");
             }
             State::Empty(_) => {
                 unreachable!("tried to clone a ref to a span that no longer exists, this is a bug")
