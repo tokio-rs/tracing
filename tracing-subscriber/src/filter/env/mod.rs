@@ -227,7 +227,9 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
             .with(|scope| {
                 for filter in scope.iter() {
                     if filter >= level {
-                        return true;
+                        if self.dynamics.match_target(metadata) {
+                            return true;
+                        }
                     }
                 }
 

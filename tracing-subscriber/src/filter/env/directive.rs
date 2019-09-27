@@ -447,6 +447,20 @@ impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
 // === impl Dynamics ===
 
 impl Dynamics {
+    pub(crate) fn match_target(&self, metadata: &Metadata<'_>) -> bool {
+        // We want this to default to true in case there are not targets set
+        // in that case all targets match.
+        let mut target_matched = true;
+
+        for target in self.directives.iter().filter_map(|d| d.target.as_ref()) {
+            if !metadata.target().starts_with(target) {
+                target_matched = false;
+            }
+        }
+
+        target_matched
+    }
+
     pub(crate) fn matcher(&self, metadata: &Metadata<'_>) -> Option<CallsiteMatcher> {
         let mut base_level = None;
         let field_matches = self
