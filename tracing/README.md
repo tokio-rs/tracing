@@ -8,9 +8,10 @@ Application-level tracing for Rust.
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
 [![Gitter chat][gitter-badge]][gitter-url]
+[![Discord chat][discord-badge]][discord-url]
 
 [Documentation][docs-url] |
-[Chat][gitter-url]
+[Chat (gitter)][gitter-url] | [Chat (discord)][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
 [crates-url]: https://crates.io/crates/tracing/0.1.9
@@ -24,6 +25,9 @@ Application-level tracing for Rust.
 [azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
 [gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
 [gitter-url]: https://gitter.im/tokio-rs/tracing
+[discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
+[discord-url]: https://discordapp.com/invite/XdPzyTZ
+
 
 ## Overview
 
