@@ -50,6 +50,7 @@ pub(crate) type Statics = DirectiveSet<StaticDirective>;
 pub(crate) struct DirectiveSet<T> {
     directives: BTreeSet<T>,
     max_level: LevelFilter,
+    target: TargetFilter,
 }
 
 pub(crate) type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
@@ -59,6 +60,7 @@ pub(crate) type SpanMatcher = MatchSet<field::SpanMatch>;
 pub(crate) struct MatchSet<T> {
     field_matches: FilterVec<T>,
     base_level: LevelFilter,
+    target: TargetFilter,
 }
 
 /// Indicates that a string could not be parsed as a filtering directive.
@@ -403,6 +405,7 @@ impl<T: Ord> Default for DirectiveSet<T> {
         Self {
             directives: BTreeSet::new(),
             max_level: LevelFilter::OFF,
+            target: None.into(),
         }
     }
 }
@@ -471,11 +474,13 @@ impl Dynamics {
             Some(CallsiteMatcher {
                 field_matches,
                 base_level,
+                target: self.target.clone(),
             })
         } else if !field_matches.is_empty() {
             Some(CallsiteMatcher {
                 field_matches,
                 base_level: base_level.unwrap_or(LevelFilter::OFF),
+                target: self.target.clone(),
             })
         } else {
             None
@@ -680,6 +685,7 @@ impl CallsiteMatcher {
         SpanMatcher {
             field_matches,
             base_level: self.base_level.clone(),
+            target: self.target.clone(),
         }
     }
 }
@@ -695,11 +701,12 @@ impl SpanMatcher {
     }
 
     pub(crate) fn target(&self) -> TargetFilter {
-        self.field_matches
-            .iter()
-            .map(field::SpanMatch::target)
-            .next()
-            .unwrap_or(TargetFilter::from(None))
+        // self.field_matches
+        //     .iter()
+        //     .map(field::SpanMatch::target)
+        //     .next()
+        //     .unwrap_or(TargetFilter::from(None))
+        self.target.clone()
     }
 
     pub(crate) fn record_update(&self, record: &span::Record<'_>) {

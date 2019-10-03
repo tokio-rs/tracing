@@ -268,10 +268,6 @@ impl SpanMatch {
             None
         }
     }
-
-    pub(crate) fn target(&self) -> TargetFilter {
-        self.target.clone().into()
-    }
 }
 
 impl<'a> Visit for MatchVisitor<'a> {
