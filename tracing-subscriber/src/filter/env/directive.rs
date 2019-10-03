@@ -701,11 +701,6 @@ impl SpanMatcher {
     }
 
     pub(crate) fn target(&self) -> TargetFilter {
-        // self.field_matches
-        //     .iter()
-        //     .map(field::SpanMatch::target)
-        //     .next()
-        //     .unwrap_or(TargetFilter::from(None))
         self.target.clone()
     }
 
