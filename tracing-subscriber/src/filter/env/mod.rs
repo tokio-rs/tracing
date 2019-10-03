@@ -17,7 +17,7 @@ use crate::{
     sync::RwLock,
     thread,
 };
-use std::{collections::HashMap, env, error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, env, error::Error, fmt, str::FromStr, sync::Arc};
 use tracing_core::{
     callsite,
     field::Field,
@@ -39,7 +39,7 @@ use tracing_core::{
 #[derive(Debug)]
 pub struct EnvFilter {
     // TODO: eventually, this should be exposed by the registry.
-    scope: thread::Local<Vec<LevelFilter>>,
+    scope: thread::Local<Vec<(Option<Arc<str>>, LevelFilter)>>,
 
     statics: directive::Statics,
     dynamics: directive::Dynamics,
@@ -223,11 +223,14 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
+        let target = metadata.target();
         self.scope
             .with(|scope| {
-                for filter in scope.iter() {
-                    if filter >= level {
-                        if self.dynamics.match_target(metadata) {
+                for (target_filter, level_filter) in scope.iter() {
+                    if level_filter >= level {
+                        if let Some(filter) = target_filter {
+                            return &filter[..] == &target[..];
+                        } else {
                             return true;
                         }
                     }
@@ -262,7 +265,8 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            self.scope.with(|scope| scope.push(span.level()));
+            let filter = (span.target(), span.level());
+            self.scope.with(|scope| scope.push(filter));
         }
     }
 

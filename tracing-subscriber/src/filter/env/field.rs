@@ -23,12 +23,14 @@ pub(crate) struct Match {
 pub(crate) struct CallsiteMatch {
     pub(crate) fields: FieldMap<ValueMatch>,
     pub(crate) level: LevelFilter,
+    pub(crate) target: Option<Arc<str>>,
 }
 
 #[derive(Debug)]
 pub(crate) struct SpanMatch {
     fields: FieldMap<(ValueMatch, AtomicBool)>,
     level: LevelFilter,
+    target: Option<Arc<str>>,
     has_matched: AtomicBool,
 }
 
@@ -228,6 +230,7 @@ impl CallsiteMatch {
             fields,
             level: self.level.clone(),
             has_matched: AtomicBool::new(false),
+            target: self.target.clone(),
         }
     }
 }
@@ -264,6 +267,10 @@ impl SpanMatch {
         } else {
             None
         }
+    }
+
+    pub(crate) fn target(&self) -> Option<Arc<str>> {
+        self.target.clone()
     }
 }
 

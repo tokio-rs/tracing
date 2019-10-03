@@ -9,6 +9,7 @@ use std::{
     fmt,
     iter::FromIterator,
     str::FromStr,
+    sync::Arc,
 };
 use tracing_core::{span, Metadata};
 
@@ -124,9 +125,11 @@ impl Directive {
             )
             .collect::<Result<FieldMap<_>, ()>>()
             .ok()?;
+        let target = meta.target();
         Some(field::CallsiteMatch {
             fields,
             level: self.level.clone(),
+            target: Some(Arc::from(target)),
         })
     }
 
@@ -447,6 +450,7 @@ impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
 // === impl Dynamics ===
 
 impl Dynamics {
+    #[allow(dead_code)]
     pub(crate) fn match_target(&self, metadata: &Metadata<'_>) -> bool {
         // We want this to default to true in case there are not targets set
         // in that case all targets match.
@@ -704,6 +708,13 @@ impl SpanMatcher {
             .filter_map(field::SpanMatch::filter)
             .max()
             .unwrap_or_else(|| self.base_level.clone())
+    }
+
+    pub(crate) fn target(&self) -> Option<Arc<str>> {
+        self.field_matches
+            .iter()
+            .filter_map(field::SpanMatch::target)
+            .next()
     }
 
     pub(crate) fn record_update(&self, record: &span::Record<'_>) {
