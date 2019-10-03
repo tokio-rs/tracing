@@ -12,12 +12,12 @@ mod directive;
 mod field;
 
 use crate::{
-    filter::LevelFilter,
+    filter::{LevelFilter, TargetFilter},
     layer::{Context, Layer},
     sync::RwLock,
     thread,
 };
-use std::{collections::HashMap, env, error::Error, fmt, str::FromStr, sync::Arc};
+use std::{collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
     field::Field,
@@ -39,7 +39,7 @@ use tracing_core::{
 #[derive(Debug)]
 pub struct EnvFilter {
     // TODO: eventually, this should be exposed by the registry.
-    scope: thread::Local<Vec<(Option<Arc<str>>, LevelFilter)>>,
+    scope: thread::Local<Vec<ScopedFilter>>,
 
     statics: directive::Statics,
     dynamics: directive::Dynamics,
@@ -54,6 +54,12 @@ type FieldMap<T> = HashMap<Field, T>;
 type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
 #[cfg(not(feature = "smallvec"))]
 type FilterVec<T> = Vec<T>;
+
+#[derive(Debug)]
+struct ScopedFilter {
+    target: TargetFilter,
+    level: LevelFilter,
+}
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
@@ -226,13 +232,9 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         let target = metadata.target();
         self.scope
             .with(|scope| {
-                for (target_filter, level_filter) in scope.iter() {
-                    if level_filter >= level {
-                        if let Some(filter) = target_filter {
-                            return &filter[..] == &target[..];
-                        } else {
-                            return true;
-                        }
+                for filter in scope.iter() {
+                    if &filter.level >= level {
+                        return filter.target.matches(&target);
                     }
                 }
 
@@ -265,8 +267,12 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            let filter = (span.target(), span.level());
-            self.scope.with(|scope| scope.push(filter));
+            self.scope.with(|scope| {
+                scope.push(ScopedFilter {
+                    level: span.level(),
+                    target: span.target(),
+                })
+            });
         }
     }
 

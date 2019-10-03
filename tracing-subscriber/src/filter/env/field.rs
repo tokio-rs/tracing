@@ -10,7 +10,7 @@ use std::{
     },
 };
 
-use super::{FieldMap, LevelFilter};
+use super::{FieldMap, LevelFilter, TargetFilter};
 use tracing_core::field::{Field, Visit};
 
 #[derive(Debug, Eq, PartialEq, Ord)]
@@ -269,8 +269,8 @@ impl SpanMatch {
         }
     }
 
-    pub(crate) fn target(&self) -> Option<Arc<str>> {
-        self.target.clone()
+    pub(crate) fn target(&self) -> TargetFilter {
+        self.target.clone().into()
     }
 }
 
