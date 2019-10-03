@@ -329,7 +329,7 @@ where
         let subscriber = Formatter {
             new_visitor: self.new_visitor,
             fmt_event: self.fmt_event,
-            spans: span::Store::with_capacity(self.settings.initial_span_capacity),
+            spans: span::Store::new(),
             settings: self.settings,
             make_writer: self.make_writer,
         };

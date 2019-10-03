@@ -22,7 +22,7 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 
 default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
 env-filter = ["matchers", "regex", "lazy_static"]
-fmt = ["owning_ref"]
+fmt = ["owning_ref", "sharded-slab"]
 ansi = ["fmt", "ansi_term"]
 
 # Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
@@ -38,6 +38,7 @@ smallvec = { optional = true, version = "0.6.10"}
 lazy_static = { optional = true, version = "1" }
 
 # fmt
+sharded-slab = { version = "0.0.1", optional = true }
 tracing-log = { version = "0.1", optional = true, default-features = false }
 ansi_term = { version = "0.11", optional = true }
 owning_ref = { version = "0.4.0", optional = true }
