@@ -682,10 +682,18 @@ impl CallsiteMatcher {
                 m
             })
             .collect();
+
+        let target = self
+            .field_matches
+            .iter()
+            .map(|m| m.target.clone())
+            .next()
+            .unwrap_or(TargetFilter::from(None));
+
         SpanMatcher {
             field_matches,
             base_level: self.base_level.clone(),
-            target: self.target.clone(),
+            target,
         }
     }
 }
