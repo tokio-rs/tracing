@@ -7,6 +7,9 @@ use std::{
 use tracing::{dispatcher::Dispatch, span, Event, Id, Metadata};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
+mod support;
+use support::MultithreadedBench;
+
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
 
@@ -39,42 +42,6 @@ impl tracing::Subscriber for EnabledSubscriber {
 
     fn exit(&self, span: &Id) {
         let _ = span;
-    }
-}
-
-#[derive(Clone)]
-struct MultithreadedBench {
-    start: Arc<Barrier>,
-    end: Arc<Barrier>,
-    dispatch: Dispatch,
-}
-
-impl MultithreadedBench {
-    fn new(dispatch: Dispatch) -> Self {
-        Self {
-            start: Arc::new(Barrier::new(5)),
-            end: Arc::new(Barrier::new(5)),
-            dispatch,
-        }
-    }
-
-    fn thread(&self, f: impl FnOnce(&Barrier) + Send + 'static) -> &Self {
-        let this = self.clone();
-        thread::spawn(move || {
-            let dispatch = this.dispatch.clone();
-            tracing::dispatcher::with_default(&dispatch, move || {
-                f(&*this.start);
-                this.end.wait();
-            })
-        });
-        self
-    }
-
-    fn run(&self) -> Duration {
-        self.start.wait();
-        let t0 = Instant::now();
-        self.end.wait();
-        t0.elapsed()
     }
 }
 
@@ -111,20 +78,16 @@ fn bench_static(c: &mut Criterion) {
             for _ in 0..iters {
                 let bench = MultithreadedBench::new(dispatch.clone());
                 let elapsed = bench
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::info!(target: "static_filter", "hi");
                     })
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::debug!(target: "static_filter", "hi");
                     })
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::warn!(target: "static_filter", "hi");
                     })
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::warn!(target: "foo", "hi");
                     })
                     .run();
@@ -143,20 +106,16 @@ fn bench_static(c: &mut Criterion) {
             for _ in 0..iters {
                 let bench = MultithreadedBench::new(dispatch.clone());
                 let elapsed = bench
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::info!(target: "static_filter", "hi");
                     })
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::debug!(target: "static_filter", "hi");
                     })
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::warn!(target: "static_filter", "hi");
                     })
-                    .thread(|start| {
-                        start.wait();
+                    .thread(|| {
                         tracing::warn!(target: "foo", "hi");
                     })
                     .run();
@@ -207,25 +166,25 @@ fn bench_dynamic(c: &mut Criterion) {
             for _ in 0..iters {
                 let bench = MultithreadedBench::new(dispatch.clone());
                 let elapsed = bench
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         let span = tracing::info_span!("foo");
                         start.wait();
                         let _ = span.enter();
                         tracing::info!("hi");
                     })
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         let span = tracing::info_span!("foo");
                         start.wait();
                         let _ = span.enter();
                         tracing::debug!("hi");
                     })
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         let span = tracing::info_span!("bar");
                         start.wait();
                         let _ = span.enter();
                         tracing::debug!("hi");
                     })
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         start.wait();
                         tracing::trace!("hi");
                     })
@@ -243,25 +202,25 @@ fn bench_dynamic(c: &mut Criterion) {
             for _ in 0..iters {
                 let bench = MultithreadedBench::new(dispatch.clone());
                 let elapsed = bench
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         let span = tracing::info_span!("foo");
                         start.wait();
                         let _ = span.enter();
                         tracing::info!("hi");
                     })
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         let span = tracing::info_span!("foo");
                         start.wait();
                         let _ = span.enter();
                         tracing::debug!("hi");
                     })
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         let span = tracing::info_span!("bar");
                         start.wait();
                         let _ = span.enter();
                         tracing::debug!("hi");
                     })
-                    .thread(|start| {
+                    .thread_with_setup(|start| {
                         start.wait();
                         tracing::trace!("hi");
                     })
