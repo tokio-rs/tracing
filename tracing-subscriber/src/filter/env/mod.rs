@@ -233,10 +233,8 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         self.scope
             .with(|scope| {
                 for filter in scope.iter() {
-                    if &filter.level >= level {
-                        if filter.target.matches(&target) {
-                            return true;
-                        }
+                    if &filter.level >= level && filter.target.matches(&target) {
+                        return true;
                     }
                 }
 
