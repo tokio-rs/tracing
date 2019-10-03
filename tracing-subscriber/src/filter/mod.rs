@@ -21,7 +21,7 @@ use std::sync::Arc;
 #[deprecated(since = "0.1.2", note = "renamed to `EnvFilter`")]
 pub type Filter = EnvFilter;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct TargetFilter(Option<Arc<str>>);
 
 impl TargetFilter {
@@ -32,10 +32,20 @@ impl TargetFilter {
             true
         }
     }
+
+    pub(crate) fn len(&self) -> Option<usize> {
+        self.0.as_ref().map(|s| s[..].len())
+    }
 }
 
-impl From<Option<Arc<str>>> for TargetFilter {
-    fn from(t: Option<Arc<str>>) -> TargetFilter {
-        TargetFilter(t)
+impl<'a> From<Option<&'a str>> for TargetFilter {
+    fn from(t: Option<&'a str>) -> TargetFilter {
+        TargetFilter(t.map(Arc::from))
+    }
+}
+
+impl AsRef<Option<Arc<str>>> for TargetFilter {
+    fn as_ref(&self) -> &Option<Arc<str>> {
+        &self.0
     }
 }

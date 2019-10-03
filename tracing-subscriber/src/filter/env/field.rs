@@ -23,14 +23,14 @@ pub(crate) struct Match {
 pub(crate) struct CallsiteMatch {
     pub(crate) fields: FieldMap<ValueMatch>,
     pub(crate) level: LevelFilter,
-    pub(crate) target: Option<Arc<str>>,
+    pub(crate) target: TargetFilter,
 }
 
 #[derive(Debug)]
 pub(crate) struct SpanMatch {
     fields: FieldMap<(ValueMatch, AtomicBool)>,
     level: LevelFilter,
-    target: Option<Arc<str>>,
+    target: TargetFilter,
     has_matched: AtomicBool,
 }
 
