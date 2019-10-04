@@ -37,7 +37,6 @@ pub(crate) struct Data {
     parent: Option<Id>,
     metadata: &'static Metadata<'static>,
     ref_count: AtomicUsize,
-    is_empty: AtomicBool,
     fields: RwLock<String>,
 }
 
@@ -311,14 +310,9 @@ impl Store {
             return;
         };
         let mut lock = try_lock!(data.fields.write(), else return);
-        {
-            let empty = data.is_empty.load(Ordering::Acquire);
-            let mut recorder = new_recorder.make(&mut *lock, empty);
-            fields.record(&mut recorder);
-        }
-        if !lock.is_empty() {
-            data.is_empty.store(false, Ordering::Release);
-        }
+        let empty = lock.is_empty();
+        let mut recorder = new_recorder.make(&mut *lock, empty);
+        fields.record(&mut recorder);
     }
 
     /// Decrements the reference count of the span with the given `id`, and
@@ -374,12 +368,10 @@ impl Data {
             let mut recorder = new_visitor.make(&mut fields, true);
             attrs.record(&mut recorder);
         };
-        let empty = fields.is_empty();
         Self {
             metadata: attrs.metadata(),
             parent,
             ref_count: AtomicUsize::new(1),
-            is_empty: AtomicBool::new(empty),
             fields: RwLock::new(fields),
         }
     }
