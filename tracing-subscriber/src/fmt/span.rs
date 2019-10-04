@@ -240,9 +240,7 @@ fn id_to_idx(id: &Id) -> usize {
 
 impl Store {
     pub(crate) fn new() -> Self {
-        Store {
-            inner: Slab::new(),
-        }
+        Store { inner: Slab::new() }
     }
 
     #[inline]
@@ -289,10 +287,7 @@ impl Store {
     pub(crate) fn get(&self, id: &Id) -> Option<Span<'_>> {
         let data = self.inner.get(id_to_idx(id))?;
         let lock = data.fields.read().ok()?;
-        Some(Span {
-            data,
-            lock,
-        })
+        Some(Span { data, lock })
     }
 
     /// Records that the span with the given `id` has the given `fields`.
@@ -301,7 +296,6 @@ impl Store {
     where
         N: for<'a> super::NewVisitor<'a>,
     {
-
         let data = if let Some(data) = self.inner.get(id_to_idx(id)) {
             data
         } else {
