@@ -285,7 +285,7 @@ impl Store {
     #[inline]
     pub(crate) fn current(&self) -> Option<Id> {
         CONTEXT
-            .try_with(|current| current.borrow().current().map(|id| self.clone_span(id)))
+            .try_with(|current| current.borrow().current().cloned())
             .ok()?
     }
 
@@ -451,7 +451,7 @@ impl Data {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
-            store.current()
+            store.current().as_ref().map(|id| store.clone_span(id))
         } else {
             attrs.parent().map(|id| store.clone_span(id))
         };
