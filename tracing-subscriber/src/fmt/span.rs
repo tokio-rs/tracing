@@ -1,12 +1,10 @@
 use std::{
     cell::RefCell,
-    fmt, mem, str,
-    sync::atomic::{self, AtomicUsize, AtomicBool,
-    Ordering},
+    fmt, str,
+    sync::atomic::{self, AtomicUsize, Ordering},
 };
 
-use crate::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-// use owning_ref::OwningHandle;
+use crate::sync::{RwLock, RwLockReadGuard};
 use sharded_slab::Slab;
 
 use std::collections::HashSet;
