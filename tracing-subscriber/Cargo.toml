@@ -38,7 +38,7 @@ smallvec = { optional = true, version = "0.6.10"}
 lazy_static = { optional = true, version = "1" }
 
 # fmt
-sharded-slab = { version = "0.0.1", optional = true }
+sharded-slab = { version = "0.0.2", optional = true }
 tracing-log = { version = "0.1", optional = true, default-features = false }
 ansi_term = { version = "0.11", optional = true }
 chrono = { version = "0.4", optional = true }
