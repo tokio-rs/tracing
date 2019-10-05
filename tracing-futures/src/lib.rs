@@ -35,13 +35,13 @@
 //! [`futures`]: https://crates.io/crates/futures
 #[cfg(feature = "futures-01")]
 extern crate futures;
-#[cfg(feature = "std-future")]
-extern crate pin_utils;
 #[cfg(feature = "tokio-executor")]
 extern crate tokio_executor;
 #[cfg_attr(test, macro_use)]
 extern crate tracing;
 
+#[cfg(feature = "std-future")]
+use pin_project::pin_project;
 #[cfg(feature = "std-future")]
 use std::{pin::Pin, task::Context};
 
@@ -87,16 +87,27 @@ pub trait WithSubscriber: Sized {
 }
 
 /// A future, stream, or sink that has been instrumented with a `tracing` span.
+#[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Debug, Clone)]
 pub struct Instrumented<T> {
+    #[cfg(feature = "std-future")]
+    #[pin]
+    inner: T,
+    #[cfg(not(feature = "std-future"))]
     inner: T,
     span: Span,
 }
 
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
+#[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
+    // cfg_attr doesn't work inside structs, apparently...
+    #[cfg(feature = "std-future")]
+    #[pin]
+    inner: T,
+    #[cfg(not(feature = "std-future"))]
     inner: T,
     dispatch: Dispatch,
 }
@@ -104,23 +115,15 @@ pub struct WithDispatch<T> {
 impl<T: Sized> Instrument for T {}
 
 #[cfg(feature = "std-future")]
-impl<T: std::future::Future> Instrumented<T> {
-    pin_utils::unsafe_pinned!(inner: T);
-}
-
-#[cfg(feature = "std-future")]
 impl<T: std::future::Future> std::future::Future for Instrumented<T> {
     type Output = T::Output;
 
-    fn poll(mut self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
-        let span = self.as_ref().span.clone();
-        let _enter = span.enter();
-        self.as_mut().inner().poll(lw)
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> std::task::Poll<Self::Output> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        this.inner.poll(cx)
     }
 }
-
-#[cfg(feature = "std-future")]
-impl<T: Unpin> Unpin for Instrumented<T> {}
 
 #[cfg(feature = "futures-01")]
 impl<T: futures::Future> futures::Future for Instrumented<T> {
@@ -193,17 +196,14 @@ impl<T: futures::Future> futures::Future for WithDispatch<T> {
 }
 
 #[cfg(feature = "std-future")]
-impl<T: std::future::Future> WithDispatch<T> {
-    pin_utils::unsafe_pinned!(inner: T);
-}
-
-#[cfg(feature = "std-future")]
 impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
-    fn poll(mut self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Self::Output> {
-        let dispatch = self.as_ref().dispatch.clone();
-        dispatcher::with_default(&dispatch, || self.as_mut().inner().poll(lw))
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> std::task::Poll<Self::Output> {
+        let this = self.project();
+        let dispatch = this.dispatch;
+        let future = this.inner;
+        dispatcher::with_default(dispatch, || future.poll(cx))
     }
 }
 
