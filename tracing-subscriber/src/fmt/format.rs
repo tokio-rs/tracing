@@ -62,6 +62,12 @@ where
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
 
+pub struct FieldFnVisitor<'a, F> {
+    f: F,
+    writer: &'a mut dyn fmt::Write,
+    result: fmt::Result,
+}
+
 /// Marker for `Format` that indicates that the compact log format should be used.
 ///
 /// The compact format only includes the fields from the most recently entered span.
@@ -360,6 +366,17 @@ impl<'a> crate::field::VisitFmt for Visitor<'a> {
     }
 }
 
+impl<'a> fmt::Debug for Visitor<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Visitor")
+            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("is_empty", &self.is_empty)
+            .field("result", &self.result)
+            .finish()
+    }
+}
+
+
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
     #[cfg(feature = "ansi")]
@@ -539,6 +556,8 @@ impl<'a> fmt::Display for FmtLevel<'a> {
     }
 }
 
+// === impl FieldFn ===
+
 impl<'a, F> MakeVisitor<&'a mut dyn fmt::Write> for FieldFn<F>
 where
     F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -552,12 +571,6 @@ where
             result: Ok(()),
         }
     }
-}
-
-pub struct FieldFnVisitor<'a, F> {
-    f: F,
-    writer: &'a mut dyn fmt::Write,
-    result: fmt::Result,
 }
 
 impl<'a, F> Visit for FieldFnVisitor<'a, F>
@@ -588,6 +601,17 @@ where
         &mut *self.writer
     }
 }
+
+impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FieldFnVisitor")
+            .field("f", &format_args!("<Fn>"))
+            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("result", &self.result)
+            .finish()
+    }
+}
+
 
 #[cfg(test)]
 mod test {
