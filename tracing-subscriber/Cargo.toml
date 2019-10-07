@@ -1,13 +1,13 @@
 [package]
 name = "tracing-subscriber"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-subscriber/0.1.4/tracing-subscriber"
+documentation = "https://docs.rs/tracing-subscriber/0.1.5/tracing-subscriber"
 description = """
 Utilities for implementing and composing `tracing` subscribers.
 """

@@ -41,7 +41,7 @@
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.4")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.5")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
