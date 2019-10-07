@@ -45,7 +45,7 @@ pub struct Subscriber<
 /// This type only logs formatted events; it does not perform any filtering.
 #[derive(Debug)]
 pub struct Formatter<
-    N = format::NewRecorder,
+    N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
 > {
@@ -107,7 +107,7 @@ impl Default for Subscriber {
 
 impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     F: Layer<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
@@ -307,8 +307,8 @@ where
     F: Layer<Formatter<N, E, W>> + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
-    pub fn finish(self) -> layer::Layered<F, Subscriber<N, E, W>> {
-        let subscriber = Subscriber {
+    pub fn finish(self) -> Subscriber<N, E, F, W> {
+        let subscriber = Formatter {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             spans: span::Store::with_capacity(self.settings.initial_span_capacity),
@@ -495,7 +495,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     {
         let filter = filter.into();
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,

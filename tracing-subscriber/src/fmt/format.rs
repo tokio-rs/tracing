@@ -579,12 +579,16 @@ where
         self.result
     }
 }
+
 impl<'a, F> VisitFmt for FieldFnVisitor<'a, F>
 where
     F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
 {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         &mut *self.writer
+    }
+}
+
 #[cfg(test)]
 mod test {
 
