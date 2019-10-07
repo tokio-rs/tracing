@@ -63,6 +63,10 @@ pub trait Instrument: Sized {
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
+    #[inline]
+    fn in_current_span(self) -> Instrumented<Self> {
+        self.instrument(Span::current())
+    }
 }
 
 /// Extension trait allowing futures, streams, and skins to be instrumented with
@@ -82,6 +86,13 @@ pub trait WithSubscriber: Sized {
         WithDispatch {
             inner: self,
             dispatch: subscriber.into(),
+        }
+    }
+    #[inline]
+    fn with_current_subscriber(self) -> WithDispatch<Self> {
+        WithDispatch {
+            inner: self,
+            dispatch: dispatcher::get_default(|default| default.clone()),
         }
     }
 }
