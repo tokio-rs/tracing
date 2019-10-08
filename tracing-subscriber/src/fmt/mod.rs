@@ -10,9 +10,9 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-use tracing_core::{field, subscriber::Interest, Event, Metadata};
+use std::{any::TypeId, cell::RefCell, io};
+use tracing_core::{subscriber::Interest, Event, Metadata};
 
-use std::{any::TypeId, cell::RefCell, fmt, io};
 pub mod format;
 mod span;
 pub mod time;
@@ -22,14 +22,18 @@ use crate::filter::LevelFilter;
 use crate::layer::{self, Layer};
 
 #[doc(inline)]
-pub use self::{format::FormatEvent, span::Context, writer::MakeWriter};
+pub use self::{
+    format::{FormatEvent, FormatFields},
+    span::Context,
+    writer::MakeWriter,
+};
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 ///
-/// This consists of an inner`Formatter` wrapped in a layer that performs filtering.
+/// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
 #[derive(Debug)]
 pub struct Subscriber<
-    N = format::NewRecorder,
+    N = format::DefaultFields,
     E = format::Format<format::Full>,
     F = LevelFilter,
     W = fn() -> io::Stdout,
@@ -41,11 +45,11 @@ pub struct Subscriber<
 /// This type only logs formatted events; it does not perform any filtering.
 #[derive(Debug)]
 pub struct Formatter<
-    N = format::NewRecorder,
+    N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
 > {
-    new_visitor: N,
+    fmt_fields: N,
     fmt_event: E,
     spans: span::Store,
     settings: Settings,
@@ -55,13 +59,13 @@ pub struct Formatter<
 /// Configures and constructs `Subscriber`s.
 #[derive(Debug)]
 pub struct Builder<
-    N = format::NewRecorder,
+    N = format::DefaultFields,
     E = format::Format<format::Full>,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
     filter: F,
-    new_visitor: N,
+    fmt_fields: N,
     fmt_event: E,
     settings: Settings,
     make_writer: W,
@@ -103,7 +107,7 @@ impl Default for Subscriber {
 
 impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     F: Layer<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
@@ -177,17 +181,17 @@ where
 // === impl Formatter ===
 impl<N, E, W> Formatter<N, E, W>
 where
-    N: for<'a> NewVisitor<'a>,
+    N: for<'writer> FormatFields<'writer>,
 {
     #[inline]
     fn ctx(&self) -> span::Context<'_, N> {
-        span::Context::new(&self.spans, &self.new_visitor)
+        span::Context::new(&self.spans, &self.fmt_fields)
     }
 }
 
 impl<N, E, W> tracing_core::Subscriber for Formatter<N, E, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
 {
@@ -201,12 +205,12 @@ where
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        self.spans.new_span(attrs, &self.new_visitor)
+        self.spans.new_span(attrs, &self.fmt_fields)
     }
 
     #[inline]
     fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.spans.record(span, values, &self.new_visitor)
+        self.spans.record(span, values, &self.fmt_fields)
     }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
@@ -275,31 +279,9 @@ where
             _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
             // _ if id == TypeId::of::<F>() => Some(&self.filter as *const F as *const ()),
             _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
-            _ if id == TypeId::of::<N>() => Some(&self.new_visitor as *const N as *const ()),
+            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
             _ => None,
         }
-    }
-}
-
-/// A type that can construct a new field visitor for formatting the fields on a
-/// span or event.
-pub trait NewVisitor<'a> {
-    /// The type of the returned `Visitor`.
-    type Visitor: field::Visit + 'a;
-    /// Returns a new `Visitor` that writes to the provided `writer`.
-    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor;
-}
-
-impl<'a, F, R> NewVisitor<'a> for F
-where
-    F: Fn(&'a mut dyn fmt::Write, bool) -> R,
-    R: field::Visit + 'a,
-{
-    type Visitor = R;
-
-    #[inline]
-    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor {
-        (self)(writer, is_empty)
     }
 }
 
@@ -309,7 +291,7 @@ impl Default for Builder {
     fn default() -> Self {
         Builder {
             filter: Subscriber::DEFAULT_MAX_LEVEL,
-            new_visitor: format::NewRecorder::new(),
+            fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
             make_writer: io::stdout,
@@ -319,7 +301,7 @@ impl Default for Builder {
 
 impl<N, E, F, W> Builder<N, E, F, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
     F: Layer<Formatter<N, E, W>> + 'static,
@@ -327,7 +309,7 @@ where
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Subscriber<N, E, F, W> {
         let subscriber = Formatter {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             spans: span::Store::with_capacity(self.settings.initial_span_capacity),
             settings: self.settings,
@@ -341,12 +323,12 @@ where
 
 impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Use the given `timer` for log message timestamps.
     pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F, W> {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event.with_timer(timer),
             filter: self.filter,
             settings: self.settings,
@@ -357,7 +339,7 @@ where
     /// Do not emit timestamps with log messages.
     pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F, W> {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event.without_time(),
             filter: self.filter,
             settings: self.settings,
@@ -395,7 +377,7 @@ where
     ) -> Builder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W> {
         let (filter, _) = crate::reload::Layer::new(self.filter);
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
@@ -419,12 +401,30 @@ where
 impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
-    pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F, W>
+    ///
+    /// For example:
+    /// ```rust
+    /// use tracing_subscriber::fmt::{Subscriber, format};
+    /// use tracing_subscriber::prelude::*;
+    ///
+    /// let formatter =
+    ///     // Construct a custom formatter for `Debug` fields
+    ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
+    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+    ///         // formatter so that a delimiter is added between fields.
+    ///         .delimited(", ");
+    ///
+    /// let subscriber = Subscriber::builder()
+    ///     .fmt_fields(formatter)
+    ///     .finish();
+    /// # drop(subscriber)
+    /// ```
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<N2, E, F, W>
     where
-        N2: for<'a> NewVisitor<'a> + 'static,
+        N2: for<'writer> FormatFields<'writer> + 'static,
     {
         Builder {
-            new_visitor,
+            fmt_fields: fmt_fields.into(),
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
@@ -495,7 +495,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     {
         let filter = filter.into();
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
@@ -559,7 +559,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {
         let filter = filter.into();
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
@@ -572,12 +572,12 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// See [`format::Compact`].
     pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F, W>
     where
-        N: for<'a> NewVisitor<'a> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
     {
         Builder {
             fmt_event: format::Format::default().compact(),
             filter: self.filter,
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             settings: self.settings,
             make_writer: self.make_writer,
         }
@@ -590,7 +590,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
         E2: FormatEvent<N> + 'static,
     {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event,
             filter: self.filter,
             settings: self.settings,
@@ -646,7 +646,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
         W2: MakeWriter + 'static,
     {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
@@ -748,7 +748,7 @@ mod test {
     fn subscriber_downcasts_to_parts() {
         let subscriber = Subscriber::builder().finish();
         let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<format::NewRecorder>().is_some());
+        assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
     }

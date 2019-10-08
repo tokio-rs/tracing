@@ -1,15 +1,15 @@
 //! Formatters for logging `tracing` events.
 use super::span;
 use super::time::{self, FormatTime, SystemTime};
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
-
+use crate::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
 use tracing_core::{
-    field::{self, Field},
+    field::{self, Field, Visit},
     Event, Level,
 };
+#[cfg(feature = "tracing-log")]
+use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
@@ -20,7 +20,10 @@ use ansi_term::{Colour, Style};
 /// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
 /// emit a log message.
 ///
-/// This trait is already implemented for function pointers with the same signature as `format`.
+/// This trait is already implemented for function pointers with the same
+/// signature as `format_event`.
+///
+/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
 pub trait FormatEvent<N> {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
@@ -43,7 +46,50 @@ impl<N> FormatEvent<N>
         (*self)(ctx, writer, event)
     }
 }
+/// A type that can format a [set of fields] to a `fmt::Write`.
+///
+/// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
+/// time a span or event with fields is recorded, the subscriber will format
+/// those fields with its associated `FormatFields` implementation.
+///
+/// [set of fields]: ../field/trait.RecordFields.html
+/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
+pub trait FormatFields<'writer> {
+    /// Format the provided `fields` to the provided `writer`, returning a result.
+    fn format_fields<R: RecordFields>(
+        &self,
+        writer: &'writer mut dyn fmt::Write,
+        fields: R,
+    ) -> fmt::Result;
+}
 
+/// Returns a [`FormatFields`] implementation that formats fields using the
+/// provided function or closure.
+///
+/// [`FormatFields`]: trait.FormatFields.html
+pub fn debug_fn<F>(f: F) -> FieldFn<F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+{
+    FieldFn(f)
+}
+
+/// A [`FormatFields`] implementation that formats fields by calling a function
+/// or closure.
+///
+/// [`FormatFields`]: trait.FormatFields.html
+#[derive(Debug, Clone)]
+pub struct FieldFn<F>(F);
+/// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
+///
+/// [visitor]: ../../field/trait.Visit.html
+/// [`FieldFn`]: struct.FieldFn.html
+/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+pub struct FieldFnVisitor<'a, F> {
+    f: F,
+    writer: &'a mut dyn fmt::Write,
+    result: fmt::Result,
+}
 /// Marker for `Format` that indicates that the compact log format should be used.
 ///
 /// The compact format only includes the fields from the most recently entered span.
@@ -131,7 +177,7 @@ impl<F, T> Format<F, T> {
 
 impl<N, T> FormatEvent<N> for Format<Full, T>
 where
-    N: for<'a> super::NewVisitor<'a>,
+    N: for<'writer> FormatFields<'writer>,
     T: FormatTime,
 {
     fn format_event(
@@ -176,17 +222,14 @@ where
                 ""
             }
         )?;
-        {
-            let mut recorder = ctx.new_visitor(writer, true);
-            event.record(&mut recorder);
-        }
+        ctx.format_fields(writer, event)?;
         writeln!(writer)
     }
 }
 
 impl<N, T> FormatEvent<N> for Format<Compact, T>
 where
-    N: for<'a> super::NewVisitor<'a>,
+    N: for<'writer> FormatFields<'writer>,
     T: FormatTime,
 {
     fn format_event(
@@ -230,60 +273,107 @@ where
                 ""
             }
         )?;
-        {
-            let mut recorder = ctx.new_visitor(writer, true);
-            event.record(&mut recorder);
-        }
+        ctx.format_fields(writer, event)?;
         ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
             .unwrap_or(Ok(()))?;
         writeln!(writer)
     }
 }
 
-/// The default implementation of `NewVisitor` that records fields using the
-/// default format.
+// === impl FormatFields ===
+
+impl<'writer, M> FormatFields<'writer> for M
+where
+    M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,
+    M::Visitor: VisitFmt + VisitOutput<fmt::Result>,
+{
+    fn format_fields<R: RecordFields>(
+        &self,
+        writer: &'writer mut dyn fmt::Write,
+        fields: R,
+    ) -> fmt::Result {
+        let mut v = self.make_visitor(writer);
+        fields.record(&mut v);
+        v.finish()
+    }
+}
+/// The default [`FormatFields`] implementation.
+///
+/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
-pub struct NewRecorder {
-    _p: (),
+pub struct DefaultFields {
+    // reserve the ability to add fields to this without causing a breaking
+    // change in the future.
+    _private: (),
 }
 
-impl NewRecorder {
-    pub(crate) fn new() -> Self {
-        Self { _p: () }
+/// The [visitor] produced by [`DefaultFields`]'s [`MakeVisitor`] implementation.
+///
+/// [visitor]: ../../field/trait.Visit.html
+/// [`DefaultFields`]: struct.DefaultFields.html
+/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+pub struct DefaultVisitor<'a> {
+    writer: &'a mut dyn Write,
+    is_empty: bool,
+    result: fmt::Result,
+}
+
+impl DefaultFields {
+    /// Returns a new default [`FormatFields`] implementation.
+    ///
+    /// [`FormatFields`]: trait.FormatFields.html
+    pub fn new() -> Self {
+        Self { _private: () }
     }
 }
 
-/// A visitor that records fields using the default format.
-pub struct Recorder<'a> {
-    writer: &'a mut dyn Write,
-    is_empty: bool,
+impl Default for DefaultFields {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-impl<'a> Recorder<'a> {
-    pub(crate) fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
-        Self { writer, is_empty }
+impl<'a> MakeVisitor<&'a mut dyn Write> for DefaultFields {
+    type Visitor = DefaultVisitor<'a>;
+
+    #[inline]
+    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
+        DefaultVisitor::new(target, true)
+    }
+}
+
+// === impl DefaultVisitor ===
+
+impl<'a> DefaultVisitor<'a> {
+    /// Returns a new default visitor that formats to the provided `writer`.
+    ///
+    /// # Arguments
+    /// - `writer`: the writer to format to.
+    /// - `is_empty`: whether or not any fields have been previously written to
+    ///   that writer.
+    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
+        Self {
+            writer,
+            is_empty,
+            result: Ok(()),
+        }
     }
 
     fn maybe_pad(&mut self) {
         if self.is_empty {
             self.is_empty = false;
         } else {
-            let _ = write!(self.writer, " ");
+            self.result = write!(self.writer, " ");
         }
     }
 }
 
-impl<'a> super::NewVisitor<'a> for NewRecorder {
-    type Visitor = Recorder<'a>;
-
-    #[inline]
-    fn make(&self, writer: &'a mut dyn Write, is_empty: bool) -> Self::Visitor {
-        Recorder::new(writer, is_empty)
-    }
-}
-
-impl<'a> field::Visit for Recorder<'a> {
+impl<'a> field::Visit for DefaultVisitor<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
+        if self.result.is_err() {
+            return;
+        }
+
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))
         } else {
@@ -303,8 +393,12 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        if self.result.is_err() {
+            return;
+        }
+
         self.maybe_pad();
-        let _ = match field.name() {
+        self.result = match field.name() {
             "message" => write!(self.writer, "{:?}", value),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
@@ -315,12 +409,24 @@ impl<'a> field::Visit for Recorder<'a> {
     }
 }
 
-// This has to be a manual impl, as `&mut dyn Writer` doesn't implement `Debug`.
-impl<'a> fmt::Debug for Recorder<'a> {
+impl<'a> crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'a> {
+    fn finish(self) -> fmt::Result {
+        self.result
+    }
+}
+
+impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
+    fn writer(&mut self) -> &mut dyn fmt::Write {
+        self.writer
+    }
+}
+
+impl<'a> fmt::Debug for DefaultVisitor<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Recorder")
+        f.debug_struct("DefaultVisitor")
             .field("writer", &format_args!("<dyn fmt::Write>"))
             .field("is_empty", &self.is_empty)
+            .field("result", &self.result)
             .finish()
     }
 }
@@ -344,10 +450,7 @@ impl<'a, N: 'a> FmtCtx<'a, N> {
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, N> fmt::Display for FmtCtx<'a, N>
-where
-    N: super::NewVisitor<'a>,
-{
+impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
@@ -406,10 +509,7 @@ impl<'a, N: 'a> FullCtx<'a, N> {
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, N> fmt::Display for FullCtx<'a, N>
-where
-    N: super::NewVisitor<'a>,
-{
+impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         let style = if self.ansi {
@@ -507,6 +607,62 @@ impl<'a> fmt::Display for FmtLevel<'a> {
                 Level::ERROR => f.pad("ERROR"),
             }
         }
+    }
+}
+
+// === impl FieldFn ===
+
+impl<'a, F> MakeVisitor<&'a mut dyn fmt::Write> for FieldFn<F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+{
+    type Visitor = FieldFnVisitor<'a, F>;
+
+    fn make_visitor(&self, writer: &'a mut dyn fmt::Write) -> Self::Visitor {
+        FieldFnVisitor {
+            writer,
+            f: self.0.clone(),
+            result: Ok(()),
+        }
+    }
+}
+
+impl<'a, F> Visit for FieldFnVisitor<'a, F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+{
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        if self.result.is_ok() {
+            self.result = (self.f)(&mut self.writer, field, value)
+        }
+    }
+}
+
+impl<'a, F> VisitOutput<fmt::Result> for FieldFnVisitor<'a, F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+{
+    fn finish(self) -> fmt::Result {
+        self.result
+    }
+}
+
+impl<'a, F> VisitFmt for FieldFnVisitor<'a, F>
+where
+    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+{
+    fn writer(&mut self) -> &mut dyn fmt::Write {
+        &mut *self.writer
+    }
+}
+
+impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FieldFnVisitor")
+            .field("f", &format_args!("<Fn>"))
+            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("result", &self.result)
+            .finish()
     }
 }
 

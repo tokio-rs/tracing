@@ -93,6 +93,7 @@ macro_rules! try_lock {
     };
 }
 
+pub mod field;
 pub mod filter;
 #[cfg(feature = "fmt")]
 pub mod fmt;
