@@ -34,12 +34,13 @@
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
-#[cfg(feature = "futures-01")]
-extern crate futures;
-#[cfg(feature = "tokio-executor")]
-extern crate tokio_executor;
-#[cfg_attr(test, macro_use)]
-extern crate tracing;
+#![doc(html_root_url = "https://docs.rs/tracing-futures/0.1.0")]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
 
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
@@ -208,7 +209,7 @@ impl<T: Sized> Instrument for T {}
 impl<T: std::future::Future> std::future::Future for Instrumented<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> std::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
         this.inner.poll(cx)
@@ -289,7 +290,7 @@ impl<T: futures::Future> futures::Future for WithDispatch<T> {
 impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> std::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Self::Output> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
@@ -322,11 +323,12 @@ impl<T> WithDispatch<T> {
 }
 
 #[cfg(test)]
-pub use self::support as test_support;
+pub(crate) use self::support as test_support;
 // This has to have the same name as the module in `tracing`.
 #[path = "../../tracing/tests/support/mod.rs"]
 #[cfg(test)]
-pub mod support;
+#[allow(unreachable_pub)]
+pub(crate) mod support;
 
 #[cfg(test)]
 mod tests {
@@ -358,10 +360,8 @@ mod tests {
 
     #[cfg(feature = "futures-01")]
     mod futures_tests {
-        extern crate tokio;
-
         use futures::{future, stream, task, Async, Future};
-        use tracing::{subscriber::with_default, Level};
+        use tracing::subscriber::with_default;
 
         use super::*;
 
@@ -394,7 +394,7 @@ mod tests {
                 .run_with_handle();
             with_default(subscriber, || {
                 PollN::new_ok(2)
-                    .instrument(span!(Level::TRACE, "foo"))
+                    .instrument(tracing::trace_span!("foo"))
                     .wait()
                     .unwrap();
             });
@@ -414,7 +414,7 @@ mod tests {
                 .run_with_handle();
             with_default(subscriber, || {
                 PollN::new_err(2)
-                    .instrument(span!(Level::TRACE, "foo"))
+                    .instrument(tracing::trace_span!("foo"))
                     .wait()
                     .unwrap_err();
             });
@@ -437,7 +437,7 @@ mod tests {
                 .run_with_handle();
             with_default(subscriber, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
-                    .instrument(span!(Level::TRACE, "foo"))
+                    .instrument(tracing::trace_span!("foo"))
                     .for_each(|_| future::ok(()))
                     .wait()
                     .unwrap();
@@ -460,11 +460,11 @@ mod tests {
                 .run_with_handle();
             let mut runtime = tokio::runtime::Runtime::new().unwrap();
             with_default(subscriber, || {
-                span!(Level::TRACE, "a").in_scope(|| {
+                tracing::trace_span!("a").in_scope(|| {
                     let future = PollN::new_ok(2)
-                        .instrument(span!(Level::TRACE, "b"))
+                        .instrument(tracing::trace_span!("b"))
                         .map(|_| {
-                            span!(Level::TRACE, "c").in_scope(|| {
+                            tracing::trace_span!("c").in_scope(|| {
                                 // "c" happens _outside_ of the instrumented future's
                                 // span, so we don't expect it.
                             })
