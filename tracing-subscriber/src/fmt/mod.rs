@@ -30,7 +30,7 @@ pub use self::{
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 ///
-/// This consists of an inner`Formatter` wrapped in a layer that performs filtering.
+/// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
 #[derive(Debug)]
 pub struct Subscriber<
     N = format::DefaultFields,
