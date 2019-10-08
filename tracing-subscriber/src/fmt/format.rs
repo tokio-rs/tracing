@@ -302,18 +302,19 @@ where
 /// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
 pub struct DefaultFields;
+
 /// The [visitor] produced by [`DefaultFields`]'s [`MakeVisitor`] implementation.
 ///
 /// [visitor]: ../../field/trait.Visit.html
 /// [`DefaultFields`]: struct.DefaultFields.html
 /// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
-pub struct Visitor<'a> {
+pub struct DefaultVisitor<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,
     result: fmt::Result,
 }
 
-impl<'a> Visitor<'a> {
+impl<'a> DefaultVisitor<'a> {
     /// Returns a new default visitor that formats to the provided `writer`.
     ///
     /// # Arguments
@@ -338,7 +339,7 @@ impl<'a> Visitor<'a> {
 }
 
 impl<'a> MakeVisitor<&'a mut dyn Write> for DefaultFields {
-    type Visitor = Visitor<'a>;
+    type Visitor = DefaultVisitor<'a>;
 
     #[inline]
     fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
@@ -346,7 +347,7 @@ impl<'a> MakeVisitor<&'a mut dyn Write> for DefaultFields {
     }
 }
 
-impl<'a> field::Visit for Visitor<'a> {
+impl<'a> field::Visit for DefaultVisitor<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.result.is_err() {
             return;
@@ -387,21 +388,21 @@ impl<'a> field::Visit for Visitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for Visitor<'a> {
+impl<'a> crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'a> {
     fn finish(self) -> fmt::Result {
         self.result
     }
 }
 
-impl<'a> crate::field::VisitFmt for Visitor<'a> {
+impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         self.writer
     }
 }
 
-impl<'a> fmt::Debug for Visitor<'a> {
+impl<'a> fmt::Debug for DefaultVisitor<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Visitor")
+        f.debug_struct("DefaultVisitor")
             .field("writer", &format_args!("<dyn fmt::Write>"))
             .field("is_empty", &self.is_empty)
             .field("result", &self.result)
