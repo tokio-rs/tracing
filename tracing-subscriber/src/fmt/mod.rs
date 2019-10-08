@@ -404,7 +404,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///
     /// For example:
     /// ```rust
-    /// use tracing_fmt::{FmtSubscriber, format};
+    /// use tracing_subscriber::fmt::{Subscriber, format};
     /// use tracing_subscriber::prelude::*;
     ///
     /// let formatter =
@@ -414,7 +414,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
-    /// let subscriber = FmtSubscriber::builder()
+    /// let subscriber = Subscriber::builder()
     ///     .fmt_fields(formatter)
     ///     .finish();
     /// # drop(subscriber)
