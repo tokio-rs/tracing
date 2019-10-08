@@ -1,9 +1,19 @@
 //! Futures compatibility for [`tracing`].
 //!
-//! `tracing` is a framework for instrumenting Rust programs to collect
-//! structured, event-based diagnostic information. This library provides
-//! utilities for instrumenting asynchronous code that uses futures and
+//! # Overview
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
+//! structured, event-based diagnostic information. This crate provides utilities
+//! for using `tracing` to instrument asynchronous code written using futures and
 //! async/await.
+//!
+//! The crate provides the following traits:
+//!
+//! * [`Instrument`] allows a `tracing` [span] to be attached to a future, sink,
+//!   stream, or executor.
+//!
+//! * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
+//!   future, sink, stream, or executor.
 //!
 //! # Feature flags
 //!
@@ -31,6 +41,8 @@
 //! The `tokio` and `futures-01` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
+//! [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
+//! [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/index.html
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
