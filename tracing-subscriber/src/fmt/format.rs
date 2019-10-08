@@ -376,7 +376,6 @@ impl<'a> fmt::Debug for Visitor<'a> {
     }
 }
 
-
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
     #[cfg(feature = "ansi")]
@@ -611,7 +610,6 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
             .finish()
     }
 }
-
 
 #[cfg(test)]
 mod test {
