@@ -37,6 +37,7 @@ where
 }
 
 #[cfg(feature = "tokio")]
+#[allow(unreachable_pub)] // https://github.com/rust-lang/rust/issues/57411
 pub use self::tokio::*;
 
 #[cfg(feature = "tokio")]
