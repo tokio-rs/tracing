@@ -1,3 +1,4 @@
+//! `MakeVisitor` wrappers for working with `fmt::Displag` fields.
 use super::{MakeVisitor, VisitFmt, VisitOutput, VisitWrite};
 use tracing_core::field::{Field, Visit};
 
@@ -14,6 +15,10 @@ pub struct Messages<V>(V);
 // === impl Messages ===
 //
 impl<V> Messages<V> {
+    /// Returns a new [`MakeVisitor`] implementation that will wrap `inner` so
+    /// that any strings named `message` are formatted using `fmt::Display`.
+    ///
+    /// [`MakeVisitor`]: ../trait.MakeVisitor.html
     pub fn new(inner: V) -> Self {
         Messages(inner)
     }

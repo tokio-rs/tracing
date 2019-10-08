@@ -20,7 +20,10 @@ use ansi_term::{Colour, Style};
 /// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
 /// emit a log message.
 ///
-/// This trait is already implemented for function pointers with the same signature as `format`.
+/// This trait is already implemented for function pointers with the same
+/// signature as `format_event`.
+///
+/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
 pub trait FormatEvent<N> {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
@@ -43,8 +46,16 @@ impl<N> FormatEvent<N>
         (*self)(ctx, writer, event)
     }
 }
-
+/// A type that can format a [set of fields] to a `fmt::Write`.
+///
+/// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
+/// time a span or event with fields is recorded, the subscriber will format
+/// those fields with its associated `FormatFields` implementation.
+///
+/// [set of fields]: ../field/trait.RecordFields.html
+/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
 pub trait FormatFields<'writer> {
+    /// Format the provided `fields` to the provided `writer`, returning a result.
     fn format_fields<R: RecordFields>(
         &self,
         writer: &'writer mut dyn fmt::Write,
@@ -52,6 +63,10 @@ pub trait FormatFields<'writer> {
     ) -> fmt::Result;
 }
 
+/// Returns a [`FormatFields`] implementation that formats fields using the
+/// provided function or closure.
+///
+/// [`FormatFields`]: trait.FormatFields.html
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
     F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -59,15 +74,22 @@ where
     FieldFn(f)
 }
 
+/// A [`FormatFields`] implementation that formats fields by calling a function
+/// or closure.
+///
+/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
-
+/// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
+///
+/// [visitor]: ../../field/trait.Visit.html
+/// [`FieldFn`]: struct.FieldFn.html
+/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
 pub struct FieldFnVisitor<'a, F> {
     f: F,
     writer: &'a mut dyn fmt::Write,
     result: fmt::Result,
 }
-
 /// Marker for `Format` that indicates that the compact log format should be used.
 ///
 /// The compact format only includes the fields from the most recently entered span.
@@ -275,11 +297,16 @@ where
         v.finish()
     }
 }
-
-/// The default formatting for fields.
+/// The default [`FormatFields`] implementation.
+///
+/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
 pub struct DefaultFields;
-
+/// The [visitor] produced by [`DefaultFields`]'s [`MakeVisitor`] implementation.
+///
+/// [visitor]: ../../field/trait.Visit.html
+/// [`DefaultFields`]: struct.DefaultFields.html
+/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
 pub struct Visitor<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,
@@ -287,6 +314,12 @@ pub struct Visitor<'a> {
 }
 
 impl<'a> Visitor<'a> {
+    /// Returns a new default visitor that formats to the provided `writer`.
+    ///
+    /// # Arguments
+    /// - `writer`: the writer to format to.
+    /// - `is_empty`: whether or not any fields have been previously written to
+    ///   that writer.
     pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
         Self {
             writer,

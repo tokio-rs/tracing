@@ -24,6 +24,7 @@ pub mod display;
 ///
 /// [visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 pub trait MakeVisitor<T> {
+    /// The visitor type produced by this `MakeVisitor`.
     type Visitor: Visit;
 
     /// Make a new visitor for the provided `target`.
@@ -83,6 +84,7 @@ pub trait VisitOutput<Out>: Visit {
 /// # fn main() {}
 /// ```
 pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
+    /// Record all the fields in `self` with the provided `visitor`.
     fn record(&self, visitor: &mut dyn Visit);
 }
 
@@ -106,27 +108,37 @@ where
 /// Extension trait implemented by visitors to indicate that they write to an
 /// `io::Write` instance, and allow access to that writer.
 pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
+    /// Returns the writer that this visitor writes to.
     fn writer(&mut self) -> &mut dyn io::Write;
 }
+
 /// Extension trait implemented by visitors to indicate that they write to a
 /// `fmt::Write` instance, and allow access to that writer.
 pub trait VisitFmt: VisitOutput<fmt::Result> {
+    /// Returns the formatter that this visitor writes to.
     fn writer(&mut self) -> &mut dyn fmt::Write;
 }
+
 /// Extension trait providing `MakeVisitor` combinators.
 pub trait MakeExt<T>
 where
     Self: MakeVisitor<T> + Sized,
     Self: crate::sealed::Sealed<MakeExtMarker<T>>,
 {
+    /// Wraps `self` so that any `fmt::Debug` fields are recorded using the
+    /// alternate formatter (`{:#?}`).
     fn debug_alt(self) -> debug::Alt<Self> {
         debug::Alt::new(self)
     }
 
+    /// Wraps `self` so that any string fields named "message" are recorded
+    /// using `fmt::Display`.
     fn display_messages(self) -> display::Messages<Self> {
         display::Messages::new(self)
     }
 
+    /// Wraps `self` so that when fields are formatted to a writer, they are
+    /// separated by the provided `delimiter`.
     fn delimited<D>(self, delimiter: D) -> delimited::Delimited<D, Self>
     where
         D: AsRef<str> + Clone,
