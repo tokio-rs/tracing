@@ -27,7 +27,7 @@ tokio-alpha = ["std-future", "tokio_02"]
 
 [dependencies]
 futures = { version = "0.1", optional = true }
-futures-core-preview = { version = "0.3.0-alpha.18", optional = true }
+futures-core-preview = { version = "0.3.0-alpha.19", optional = true }
 pin-project = { version = "0.4", optional = true}
 tracing = "0.1"
 tokio-executor = { version = "0.1", optional = true }
