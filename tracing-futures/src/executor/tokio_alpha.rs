@@ -21,8 +21,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(async_await)]
-    ///
     /// use tokio_executor::Executor;
     ///
     /// # fn docs(my_executor: &mut dyn Executor) {
@@ -57,8 +55,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(async_await)]
-    ///
     /// use tokio_executor::Executor;
     ///
     /// # fn docs(my_executor: &mut dyn Executor) {
@@ -95,8 +91,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(async_await)]
-    ///
     /// use tokio_executor::Executor;
     ///
     /// # fn docs(my_executor: &mut dyn Executor) {
@@ -131,8 +125,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(async_await)]
-    ///
     /// use tokio_executor::Executor;
     ///
     /// # fn docs(my_executor: &mut dyn Executor) {
