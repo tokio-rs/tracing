@@ -323,9 +323,7 @@ impl DefaultFields {
     ///
     /// [`FormatFields`]: trait.FormatFields.html
     pub fn new() -> Self {
-        Self {
-            _private: (),
-        }
+        Self { _private: () }
     }
 }
 
