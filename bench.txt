@@ -1,0 +1,472 @@
+new_span/single_thread/10
+                        time:   [4.3778 us 4.4086 us 4.4425 us]
+                        thrpt:  [2.2510 Melem/s 2.2683 Melem/s 2.2843 Melem/s]
+                 change:
+                        time:   [+33.693% +36.187% +39.651%] (p = 0.00 < 0.05)
+                        thrpt:  [-28.393% -26.572% -25.202%]
+                        Performance has regressed.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low mild
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+Benchmarking new_span/multithreaded/10: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 14.1s or reduce sample count to 40
+new_span/multithreaded/10
+                        time:   [95.721 us 97.943 us 99.922 us]
+                        thrpt:  [100.08 Kelem/s 102.10 Kelem/s 104.47 Kelem/s]
+                 change:
+                        time:   [+8.8543% +11.173% +13.539%] (p = 0.00 < 0.05)
+                        thrpt:  [-11.925% -10.050% -8.1341%]
+                        Performance has regressed.
+Found 7 outliers among 100 measurements (7.00%)
+  3 (3.00%) low mild
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+new_span/single_thread/30
+                        time:   [13.527 us 13.632 us 13.742 us]
+                        thrpt:  [2.1832 Melem/s 2.2006 Melem/s 2.2178 Melem/s]
+                 change:
+                        time:   [+40.301% +44.904% +51.861%] (p = 0.00 < 0.05)
+                        thrpt:  [-34.150% -30.989% -28.724%]
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+Benchmarking new_span/multithreaded/30: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 14.4s or reduce sample count to 40
+new_span/multithreaded/30
+                        time:   [86.640 us 87.788 us 89.095 us]
+                        thrpt:  [336.72 Kelem/s 341.73 Kelem/s 346.26 Kelem/s]
+                 change:
+                        time:   [-59.991% -58.640% -57.177%] (p = 0.00 < 0.05)
+                        thrpt:  [+133.52% +141.78% +149.94%]
+                        Performance has improved.
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) high mild
+  5 (5.00%) high severe
+new_span/single_thread/50
+                        time:   [22.419 us 22.550 us 22.687 us]
+                        thrpt:  [2.2039 Melem/s 2.2173 Melem/s 2.2302 Melem/s]
+                 change:
+                        time:   [+36.314% +40.919% +47.506%] (p = 0.00 < 0.05)
+                        thrpt:  [-32.206% -29.037% -26.640%]
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+Benchmarking new_span/multithreaded/50: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 13.6s or reduce sample count to 40
+new_span/multithreaded/50
+                        time:   [107.87 us 109.92 us 112.22 us]
+                        thrpt:  [445.54 Kelem/s 454.88 Kelem/s 463.52 Kelem/s]
+                 change:
+                        time:   [-69.043% -67.980% -66.735%] (p = 0.00 < 0.05)
+                        thrpt:  [+200.62% +212.30% +223.03%]
+                        Performance has improved.
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) low mild
+  8 (8.00%) high mild
+  3 (3.00%) high severe
+new_span/single_thread/100
+                        time:   [46.807 us 48.190 us 49.802 us]
+                        thrpt:  [2.0080 Melem/s 2.0751 Melem/s 2.1364 Melem/s]
+                 change:
+                        time:   [+24.313% +29.495% +35.277%] (p = 0.00 < 0.05)
+                        thrpt:  [-26.077% -22.777% -19.558%]
+                        Performance has regressed.
+Found 11 outliers among 100 measurements (11.00%)
+  7 (7.00%) high mild
+  4 (4.00%) high severe
+Benchmarking new_span/multithreaded/100: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 18.2s or reduce sample count to 30
+new_span/multithreaded/100
+                        time:   [206.93 us 209.89 us 213.05 us]
+                        thrpt:  [469.37 Kelem/s 476.44 Kelem/s 483.26 Kelem/s]
+                 change:
+                        time:   [-74.180% -73.121% -72.087%] (p = 0.00 < 0.05)
+                        thrpt:  [+258.25% +272.04% +287.30%]
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+new_span/single_thread/300
+                        time:   [144.19 us 144.89 us 145.64 us]
+                        thrpt:  [2.0599 Melem/s 2.0705 Melem/s 2.0805 Melem/s]
+                 change:
+                        time:   [+39.325% +43.423% +47.190%] (p = 0.00 < 0.05)
+                        thrpt:  [-32.061% -30.276% -28.225%]
+                        Performance has regressed.
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) low mild
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+Benchmarking new_span/multithreaded/300: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 19.2s or reduce sample count to 30
+new_span/multithreaded/300
+                        time:   [385.25 us 392.68 us 400.34 us]
+                        thrpt:  [749.36 Kelem/s 763.99 Kelem/s 778.72 Kelem/s]
+                 change:
+                        time:   [-85.731% -85.334% -84.936%] (p = 0.00 < 0.05)
+                        thrpt:  [+563.83% +581.87% +600.81%]
+                        Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) low mild
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+new_span/single_thread/500
+                        time:   [234.17 us 241.17 us 249.11 us]
+                        thrpt:  [2.0071 Melem/s 2.0732 Melem/s 2.1352 Melem/s]
+                 change:
+                        time:   [+38.398% +43.038% +48.962%] (p = 0.00 < 0.05)
+                        thrpt:  [-32.869% -30.089% -27.745%]
+                        Performance has regressed.
+Found 9 outliers among 100 measurements (9.00%)
+  4 (4.00%) high mild
+  5 (5.00%) high severe
+Benchmarking new_span/multithreaded/500: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 20.3s or reduce sample count to 30
+new_span/multithreaded/500
+                        time:   [531.58 us 548.51 us 567.89 us]
+                        thrpt:  [880.45 Kelem/s 911.56 Kelem/s 940.58 Kelem/s]
+                 change:
+                        time:   [-89.972% -89.586% -89.185%] (p = 0.00 < 0.05)
+                        thrpt:  [+824.67% +860.26% +897.23%]
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+event/root/single_threaded/10
+                        time:   [18.261 us 18.373 us 18.489 us]
+                        thrpt:  [540.86 Kelem/s 544.28 Kelem/s 547.61 Kelem/s]
+                 change:
+                        time:   [-24.935% -22.372% -20.040%] (p = 0.00 < 0.05)
+                        thrpt:  [+25.062% +28.819% +33.217%]
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+Benchmarking event/root/multithreaded/10: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 17.4s or reduce sample count to 30
+event/root/multithreaded/10
+                        time:   [143.07 us 149.93 us 157.31 us]
+                        thrpt:  [63.569 Kelem/s 66.699 Kelem/s 69.895 Kelem/s]
+                 change:
+                        time:   [-40.929% -33.082% -23.898%] (p = 0.00 < 0.05)
+                        thrpt:  [+31.403% +49.436% +69.288%]
+                        Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) low mild
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+event/unique_parent/single_threaded/10
+                        time:   [20.910 us 21.286 us 21.793 us]
+                        thrpt:  [458.87 Kelem/s 469.79 Kelem/s 478.24 Kelem/s]
+                 change:
+                        time:   [-25.089% -16.670% -6.9503%] (p = 0.00 < 0.05)
+                        thrpt:  [+7.4695% +20.005% +33.492%]
+                        Performance has improved.
+Found 15 outliers among 100 measurements (15.00%)
+  3 (3.00%) high mild
+  12 (12.00%) high severe
+Benchmarking event/unique_parent/multithreaded/10: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 15.1s or reduce sample count to 40
+event/unique_parent/multithreaded/10
+                        time:   [81.796 us 85.921 us 90.341 us]
+                        thrpt:  [110.69 Kelem/s 116.39 Kelem/s 122.25 Kelem/s]
+                 change:
+                        time:   [-51.604% -46.044% -40.076%] (p = 0.00 < 0.05)
+                        thrpt:  [+66.878% +85.335% +106.63%]
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking event/shared_parent/multithreaded/10: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 16.7s or reduce sample count to 30
+event/shared_parent/multithreaded/10
+                        time:   [90.030 us 91.528 us 92.946 us]
+                        thrpt:  [107.59 Kelem/s 109.26 Kelem/s 111.07 Kelem/s]
+                 change:
+                        time:   [-31.837% -29.696% -27.537%] (p = 0.00 < 0.05)
+                        thrpt:  [+38.001% +42.240% +46.707%]
+                        Performance has improved.
+Found 11 outliers among 100 measurements (11.00%)
+  3 (3.00%) low mild
+  5 (5.00%) high mild
+  3 (3.00%) high severe
+event/root/single_threaded/30
+                        time:   [55.430 us 56.042 us 56.759 us]
+                        thrpt:  [528.55 Kelem/s 535.31 Kelem/s 541.22 Kelem/s]
+                 change:
+                        time:   [-41.326% -36.137% -30.904%] (p = 0.00 < 0.05)
+                        thrpt:  [+44.725% +56.585% +70.433%]
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+Benchmarking event/root/multithreaded/30: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 13.7s or reduce sample count to 40
+event/root/multithreaded/30
+                        time:   [227.52 us 233.53 us 238.69 us]
+                        thrpt:  [125.68 Kelem/s 128.46 Kelem/s 131.86 Kelem/s]
+                 change:
+                        time:   [-13.200% -9.2128% -5.1474%] (p = 0.00 < 0.05)
+                        thrpt:  [+5.4267% +10.148% +15.208%]
+                        Performance has improved.
+event/unique_parent/single_threaded/30
+                        time:   [64.423 us 65.947 us 67.917 us]
+                        thrpt:  [441.72 Kelem/s 454.91 Kelem/s 465.67 Kelem/s]
+                 change:
+                        time:   [-10.050% -8.7446% -7.0628%] (p = 0.00 < 0.05)
+                        thrpt:  [+7.5996% +9.5825% +11.173%]
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+Benchmarking event/unique_parent/multithreaded/30: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 14.0s or reduce sample count to 40
+event/unique_parent/multithreaded/30
+                        time:   [165.83 us 167.36 us 168.88 us]
+                        thrpt:  [177.64 Kelem/s 179.26 Kelem/s 180.91 Kelem/s]
+                 change:
+                        time:   [-23.358% -22.239% -21.036%] (p = 0.00 < 0.05)
+                        thrpt:  [+26.639% +28.599% +30.476%]
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low severe
+  3 (3.00%) high mild
+Benchmarking event/shared_parent/multithreaded/30: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 19.9s or reduce sample count to 30
+event/shared_parent/multithreaded/30
+                        time:   [180.26 us 185.33 us 190.70 us]
+                        thrpt:  [157.31 Kelem/s 161.87 Kelem/s 166.42 Kelem/s]
+                 change:
+                        time:   [-15.141% -13.051% -11.048%] (p = 0.00 < 0.05)
+                        thrpt:  [+12.420% +15.010% +17.842%]
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+event/root/single_threaded/50
+                        time:   [100.35 us 101.74 us 103.25 us]
+                        thrpt:  [484.24 Kelem/s 491.45 Kelem/s 498.27 Kelem/s]
+                 change:
+                        time:   [-13.958% -11.772% -9.2837%] (p = 0.00 < 0.05)
+                        thrpt:  [+10.234% +13.343% +16.222%]
+                        Performance has improved.
+Found 14 outliers among 100 measurements (14.00%)
+  3 (3.00%) low mild
+  5 (5.00%) high mild
+  6 (6.00%) high severe
+Benchmarking event/root/multithreaded/50: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 19.7s or reduce sample count to 30
+event/root/multithreaded/50
+                        time:   [288.83 us 302.66 us 317.70 us]
+                        thrpt:  [157.38 Kelem/s 165.20 Kelem/s 173.11 Kelem/s]
+                 change:
+                        time:   [-7.5812% -3.6514% +0.2527%] (p = 0.08 > 0.05)
+                        thrpt:  [-0.2521% +3.7898% +8.2031%]
+                        No change in performance detected.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+event/unique_parent/single_threaded/50
+                        time:   [113.83 us 114.56 us 115.36 us]
+                        thrpt:  [433.42 Kelem/s 436.46 Kelem/s 439.27 Kelem/s]
+                 change:
+                        time:   [-13.717% -10.966% -6.9956%] (p = 0.00 < 0.05)
+                        thrpt:  [+7.5218% +12.316% +15.898%]
+                        Performance has improved.
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  7 (7.00%) high severe
+Benchmarking event/unique_parent/multithreaded/50: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 19.8s or reduce sample count to 30
+event/unique_parent/multithreaded/50
+                        time:   [295.57 us 302.63 us 309.70 us]
+                        thrpt:  [161.45 Kelem/s 165.22 Kelem/s 169.16 Kelem/s]
+                 change:
+                        time:   [+1.6974% +6.2417% +10.530%] (p = 0.00 < 0.05)
+                        thrpt:  [-9.5267% -5.8750% -1.6691%]
+                        Performance has regressed.
+Found 12 outliers among 100 measurements (12.00%)
+  5 (5.00%) low mild
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+Benchmarking event/shared_parent/multithreaded/50: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 17.6s or reduce sample count to 30
+event/shared_parent/multithreaded/50
+                        time:   [258.37 us 266.11 us 274.92 us]
+                        thrpt:  [181.87 Kelem/s 187.89 Kelem/s 193.52 Kelem/s]
+                 change:
+                        time:   [-0.8111% +2.1806% +5.4336%] (p = 0.19 > 0.05)
+                        thrpt:  [-5.1536% -2.1340% +0.8178%]
+                        No change in performance detected.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+event/root/single_threaded/100
+                        time:   [193.27 us 196.23 us 199.75 us]
+                        thrpt:  [500.63 Kelem/s 509.62 Kelem/s 517.42 Kelem/s]
+                 change:
+                        time:   [-14.354% -12.686% -11.051%] (p = 0.00 < 0.05)
+                        thrpt:  [+12.424% +14.529% +16.760%]
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  6 (6.00%) high mild
+Benchmarking event/root/multithreaded/100: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 17.2s or reduce sample count to 30
+event/root/multithreaded/100
+                        time:   [527.85 us 549.12 us 571.82 us]
+                        thrpt:  [174.88 Kelem/s 182.11 Kelem/s 189.45 Kelem/s]
+                 change:
+                        time:   [+6.9663% +11.733% +17.473%] (p = 0.00 < 0.05)
+                        thrpt:  [-14.874% -10.501% -6.5126%]
+                        Performance has regressed.
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+event/unique_parent/single_threaded/100
+                        time:   [223.15 us 225.55 us 227.98 us]
+                        thrpt:  [438.64 Kelem/s 443.36 Kelem/s 448.14 Kelem/s]
+                 change:
+                        time:   [-17.366% -14.732% -12.090%] (p = 0.00 < 0.05)
+                        thrpt:  [+13.753% +17.277% +21.016%]
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+Benchmarking event/unique_parent/multithreaded/100: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 17.8s or reduce sample count to 30
+event/unique_parent/multithreaded/100
+                        time:   [492.22 us 507.91 us 522.05 us]
+                        thrpt:  [191.55 Kelem/s 196.89 Kelem/s 203.16 Kelem/s]
+                 change:
+                        time:   [-4.1959% -1.4340% +1.4633%] (p = 0.34 > 0.05)
+                        thrpt:  [-1.4422% +1.4548% +4.3797%]
+                        No change in performance detected.
+Benchmarking event/shared_parent/multithreaded/100: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 19.0s or reduce sample count to 30
+event/shared_parent/multithreaded/100
+                        time:   [535.93 us 546.49 us 556.13 us]
+                        thrpt:  [179.81 Kelem/s 182.99 Kelem/s 186.59 Kelem/s]
+                 change:
+                        time:   [-2.5593% -0.2865% +2.1357%] (p = 0.82 > 0.05)
+                        thrpt:  [-2.0910% +0.2873% +2.6265%]
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low severe
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+event/root/single_threaded/300
+                        time:   [609.33 us 612.49 us 615.76 us]
+                        thrpt:  [487.20 Kelem/s 489.80 Kelem/s 492.34 Kelem/s]
+                 change:
+                        time:   [-8.5213% -7.4586% -6.3235%] (p = 0.00 < 0.05)
+                        thrpt:  [+6.7504% +8.0597% +9.3151%]
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+Benchmarking event/root/multithreaded/300: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 24.5s or reduce sample count to 30
+event/root/multithreaded/300
+                        time:   [1.2298 ms 1.2718 ms 1.3174 ms]
+                        thrpt:  [227.72 Kelem/s 235.89 Kelem/s 243.94 Kelem/s]
+                 change:
+                        time:   [-14.841% -10.836% -6.6808%] (p = 0.00 < 0.05)
+                        thrpt:  [+7.1591% +12.153% +17.428%]
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  5 (5.00%) high mild
+event/unique_parent/single_threaded/300
+                        time:   [685.76 us 691.05 us 696.54 us]
+                        thrpt:  [430.70 Kelem/s 434.12 Kelem/s 437.47 Kelem/s]
+                 change:
+                        time:   [-5.6197% -4.5444% -3.4716%] (p = 0.00 < 0.05)
+                        thrpt:  [+3.5965% +4.7607% +5.9543%]
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) low mild
+  2 (2.00%) high severe
+Benchmarking event/unique_parent/multithreaded/300: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 22.2s or reduce sample count to 30
+event/unique_parent/multithreaded/300
+                        time:   [1.3142 ms 1.3474 ms 1.3836 ms]
+                        thrpt:  [216.83 Kelem/s 222.66 Kelem/s 228.27 Kelem/s]
+                 change:
+                        time:   [-8.7067% -6.7753% -4.6768%] (p = 0.00 < 0.05)
+                        thrpt:  [+4.9062% +7.2677% +9.5370%]
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking event/shared_parent/multithreaded/300: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 23.9s or reduce sample count to 30
+event/shared_parent/multithreaded/300
+                        time:   [1.3937 ms 1.4305 ms 1.4677 ms]
+                        thrpt:  [204.40 Kelem/s 209.71 Kelem/s 215.25 Kelem/s]
+                 change:
+                        time:   [-5.0796% -1.8818% +1.4597%] (p = 0.27 > 0.05)
+                        thrpt:  [-1.4387% +1.9179% +5.3514%]
+                        No change in performance detected.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking event/root/single_threaded/500: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 5.4s or reduce sample count to 60
+event/root/single_threaded/500
+                        time:   [1.0026 ms 1.0300 ms 1.0650 ms]
+                        thrpt:  [469.46 Kelem/s 485.44 Kelem/s 498.72 Kelem/s]
+                 change:
+                        time:   [-15.355% -12.523% -9.4474%] (p = 0.00 < 0.05)
+                        thrpt:  [+10.433% +14.316% +18.141%]
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  4 (4.00%) high mild
+  3 (3.00%) high severe
+Benchmarking event/root/multithreaded/500: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 25.4s or reduce sample count to 30
+event/root/multithreaded/500
+                        time:   [1.9635 ms 1.9952 ms 2.0270 ms]
+                        thrpt:  [246.67 Kelem/s 250.60 Kelem/s 254.64 Kelem/s]
+                 change:
+                        time:   [-15.010% -12.926% -10.705%] (p = 0.00 < 0.05)
+                        thrpt:  [+11.988% +14.845% +17.661%]
+                        Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  6 (6.00%) high mild
+  3 (3.00%) high severe
+Benchmarking event/unique_parent/single_threaded/500: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 6.0s or reduce sample count to 60
+event/unique_parent/single_threaded/500
+                        time:   [1.1314 ms 1.1494 ms 1.1687 ms]
+                        thrpt:  [427.81 Kelem/s 435.03 Kelem/s 441.94 Kelem/s]
+                 change:
+                        time:   [-9.7773% -6.4457% -3.1996%] (p = 0.00 < 0.05)
+                        thrpt:  [+3.3054% +6.8898% +10.837%]
+                        Performance has improved.
+Found 10 outliers among 100 measurements (10.00%)
+  5 (5.00%) high mild
+  5 (5.00%) high severe
+Benchmarking event/unique_parent/multithreaded/500: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 32.5s or reduce sample count to 20
+event/unique_parent/multithreaded/500
+                        time:   [2.0853 ms 2.1203 ms 2.1581 ms]
+                        thrpt:  [231.69 Kelem/s 235.82 Kelem/s 239.78 Kelem/s]
+                 change:
+                        time:   [-22.309% -20.200% -18.177%] (p = 0.00 < 0.05)
+                        thrpt:  [+22.216% +25.314% +28.715%]
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) high mild
+  3 (3.00%) high severe
+Benchmarking event/shared_parent/multithreaded/500: Warming up for 3.0000 s
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 25.0s or reduce sample count to 30
+event/shared_parent/multithreaded/500
+                        time:   [2.1709 ms 2.2292 ms 2.2879 ms]
+                        thrpt:  [218.54 Kelem/s 224.30 Kelem/s 230.31 Kelem/s]
+                 change:
+                        time:   [-8.0618% -5.5073% -2.7645%] (p = 0.00 < 0.05)
+                        thrpt:  [+2.8431% +5.8283% +8.7688%]
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  6 (6.00%) high mild
