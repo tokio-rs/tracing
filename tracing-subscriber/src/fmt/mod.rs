@@ -291,7 +291,7 @@ impl Default for Builder {
     fn default() -> Self {
         Builder {
             filter: Subscriber::DEFAULT_MAX_LEVEL,
-            fmt_fields: format::DefaultFields,
+            fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             settings: Settings::default(),
             make_writer: io::stdout,

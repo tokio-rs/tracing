@@ -301,7 +301,11 @@ where
 ///
 /// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
-pub struct DefaultFields;
+pub struct DefaultFields {
+    // reserve the ability to add fields to this without causing a breaking
+    // change in the future.
+    _private: (),
+}
 
 /// The [visitor] produced by [`DefaultFields`]'s [`MakeVisitor`] implementation.
 ///
@@ -313,6 +317,34 @@ pub struct DefaultVisitor<'a> {
     is_empty: bool,
     result: fmt::Result,
 }
+
+impl DefaultFields {
+    /// Returns a new default [`FormatFields`] implementation.
+    ///
+    /// [`FormatFields`]: trait.FormatFields.html
+    pub fn new() -> Self {
+        Self {
+            _private: (),
+        }
+    }
+}
+
+impl Default for DefaultFields {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> MakeVisitor<&'a mut dyn Write> for DefaultFields {
+    type Visitor = DefaultVisitor<'a>;
+
+    #[inline]
+    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
+        DefaultVisitor::new(target, true)
+    }
+}
+
+// === impl DefaultVisitor ===
 
 impl<'a> DefaultVisitor<'a> {
     /// Returns a new default visitor that formats to the provided `writer`.
@@ -335,15 +367,6 @@ impl<'a> DefaultVisitor<'a> {
         } else {
             self.result = write!(self.writer, " ");
         }
-    }
-}
-
-impl<'a> MakeVisitor<&'a mut dyn Write> for DefaultFields {
-    type Visitor = DefaultVisitor<'a>;
-
-    #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
-        Visitor::new(target, true)
     }
 }
 
