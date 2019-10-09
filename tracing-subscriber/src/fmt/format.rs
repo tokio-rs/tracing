@@ -2,17 +2,25 @@
 use super::span;
 use super::time::{self, FormatTime, SystemTime};
 use crate::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
+
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
 use tracing_core::{
     field::{self, Field, Visit},
     Event, Level,
 };
+
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
+#[cfg(feature = "json")]
+use tracing_serde::AsSerde;
+
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
+
+#[cfg(feature = "json")]
+use serde_json::{json, Value};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -102,6 +110,13 @@ pub struct Compact;
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
 
+/// Marker for `Format` that indicates that the verbose json log format should be used.
+///
+/// The full format includes fields from all entered spans.
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg(feature = "json")]
+pub struct Json;
+
 /// A pre-configured event formatter.
 ///
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
@@ -133,6 +148,19 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`Compact`].
     pub fn compact(self) -> Format<Compact, T> {
+        Format {
+            format: PhantomData,
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+        }
+    }
+
+    /// Use the full JSON format.
+    ///
+    /// See [`Json`].
+    #[cfg(feature = "json")]
+    pub fn json(self) -> Format<Json, T> {
         Format {
             format: PhantomData,
             timer: self.timer,
@@ -290,8 +318,41 @@ where
     }
 }
 
-// === impl FormatFields ===
+#[cfg(feature = "json")]
+impl<N, T> FormatEvent<N> for Format<Json, T>
+where
+    N: for<'writer> FormatFields<'writer>,
+    T: FormatTime,
+{
+    fn format_event(
+        &self,
+        ctx: &span::Context<'_, N>,
+        writer: &mut dyn fmt::Write,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        let mut timestamp = String::new();
+        self.timer.format_time(&mut timestamp)?;
 
+        let mut log_data = json!({
+            "timestamp": timestamp.trim(),
+            "event": event.as_serde(),
+        });
+
+        {
+            let log_data = log_data.as_object_mut().unwrap();
+
+            ctx.with_current(|(_, span)| {
+                log_data.insert(String::from("span"), Value::from(span.name()));
+                log_data.insert(String::from("fields"), Value::from(span.fields()));
+            });
+        }
+
+        write!(writer, "{}", serde_json::to_string(&log_data).unwrap())?;
+        writeln!(writer)
+    }
+}
+
+// === impl FormatFields ===
 impl<'writer, M> FormatFields<'writer> for M
 where
     M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,
@@ -687,6 +748,9 @@ mod test {
     use std::fmt;
     use std::sync::Mutex;
 
+    #[cfg(feature = "json")]
+    use serde_json::{json, Value};
+
     struct MockTime;
     impl FormatTime for MockTime {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
@@ -741,6 +805,38 @@ mod test {
         assert_eq!(expected, actual.as_str());
     }
 
+    #[cfg(feature = "json")]
+    #[test]
+    fn json() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+
+        let expected = json!({
+            "event": {
+                "message": "some json test",
+                "metadata": {
+                    "fields": [
+                        "message"
+                    ],
+                    "file": "tracing-subscriber/src/fmt/format.rs",
+                    "is_event": true,
+                    "is_span": false,
+                    "level": "INFO",
+                    "line": 861,
+                    "module_path": "tracing_subscriber::fmt::format::test",
+                    "name": "event tracing-subscriber/src/fmt/format.rs:861",
+                    "target": "tracing_subscriber::fmt::format::test"
+                },
+            },
+            "timestamp": "fake time",
+        });
+
+        test_json(make_writer, &expected, &BUF);
+    }
+
     #[cfg(feature = "ansi")]
     fn test_ansi<T>(make_writer: T, expected: &str, is_ansi: bool, buf: &Mutex<Vec<u8>>)
     where
@@ -758,5 +854,24 @@ mod test {
 
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert_eq!(expected, actual.as_str());
+    }
+
+    #[cfg(feature = "json")]
+    fn test_json<T>(make_writer: T, expected: &Value, buf: &Mutex<Vec<u8>>)
+    where
+        T: crate::fmt::MakeWriter + Send + Sync + 'static,
+    {
+        let subscriber = crate::fmt::Subscriber::builder()
+            .json()
+            .with_writer(make_writer)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("some json test");
+        });
+
+        let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(&format!("{}\n", expected), actual.as_str());
     }
 }
