@@ -16,6 +16,9 @@ use tracing_core::{
 };
 
 /// A bridge between `fmt::Write` and `io::Write`.
+///
+/// This is needed because tracing-subscriber's FormatEvent expects a fmt::Write
+/// while serde_json's Serializer expects an io::Write.
 pub struct WriteAdaptor<'a> {
     fmt_write: &'a mut dyn fmt::Write,
 }
