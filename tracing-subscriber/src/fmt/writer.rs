@@ -67,7 +67,7 @@ mod test {
         T: MakeWriter + Send + Sync + 'static,
     {
         let subscriber = {
-            #[cfg(feature = "ansi")]
+            #[cfg(all(feature = "ansi", not(feature = "json")))]
             {
                 Subscriber::builder()
                     .with_writer(make_writer)
@@ -75,7 +75,7 @@ mod test {
                     .with_ansi(false)
                     .finish()
             }
-            #[cfg(not(feature = "ansi"))]
+            #[cfg(any(not(feature = "ansi"), feature = "json"))]
             {
                 Subscriber::builder()
                     .with_writer(make_writer)
