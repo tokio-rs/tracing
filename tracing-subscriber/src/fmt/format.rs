@@ -331,9 +331,8 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        let mut serializer = Serializer::new(WriteAdaptor::new(writer));
-
         let mut visit = || {
+            let mut serializer = Serializer::new(WriteAdaptor::new(writer));
             let mut serializer = serializer.serialize_map(None)?;
 
             serializer.serialize_key("timestamp")?;
@@ -359,7 +358,8 @@ where
             visitor.finish()
         };
 
-        visit().map_err(|_| fmt::Error)
+        visit().map_err(|_| fmt::Error)?;
+        writeln!(writer)
     }
 }
 
@@ -823,7 +823,7 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::test\",\"message\":\"some json test\"}";
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::test\",\"message\":\"some json test\"}\n";
 
         test_json(make_writer, expected, &BUF);
     }
