@@ -348,7 +348,7 @@ where
     }
 
     /// Enable ANSI encoding for formatted events.
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<L, T>, F, W> {
         Builder {
             fmt_event: self.fmt_event.with_ansi(ansi),

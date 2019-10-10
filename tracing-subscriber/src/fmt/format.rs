@@ -13,7 +13,7 @@ use tracing_core::{
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-#[cfg(all(feature = "ansi", not(feature = "json")))]
+#[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
 #[cfg(feature = "json")]
@@ -129,7 +129,6 @@ pub struct Json;
 pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
     timer: T,
-    #[cfg(not(feature = "json"))]
     ansi: bool,
     display_target: bool,
 }
@@ -139,7 +138,6 @@ impl Default for Format<Full, SystemTime> {
         Format {
             format: PhantomData,
             timer: SystemTime,
-            #[cfg(not(feature = "json"))]
             ansi: true,
             display_target: true,
         }
@@ -154,7 +152,6 @@ impl<F, T> Format<F, T> {
         Format {
             format: PhantomData,
             timer: self.timer,
-            #[cfg(not(feature = "json"))]
             ansi: self.ansi,
             display_target: self.display_target,
         }
@@ -168,6 +165,7 @@ impl<F, T> Format<F, T> {
         Format {
             format: PhantomData,
             timer: self.timer,
+            ansi: self.ansi,
             display_target: self.display_target,
         }
     }
@@ -177,7 +175,6 @@ impl<F, T> Format<F, T> {
         Format {
             format: self.format,
             timer,
-            #[cfg(not(feature = "json"))]
             ansi: self.ansi,
             display_target: self.display_target,
         }
@@ -188,14 +185,12 @@ impl<F, T> Format<F, T> {
         Format {
             format: self.format,
             timer: (),
-            #[cfg(not(feature = "json"))]
             ansi: self.ansi,
             display_target: self.display_target,
         }
     }
 
     /// Enable ANSI terminal colors for formatted output.
-    #[cfg(not(feature = "json"))]
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
         Format { ansi, ..self }
     }
@@ -226,20 +221,20 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(all(feature = "ansi", not(feature = "json")))]
+        #[cfg(feature = "ansi")]
         time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(any(not(feature = "ansi"), feature = "json"))]
+        #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
         let (fmt_level, full_ctx) = {
-            #[cfg(all(feature = "ansi", not(feature = "json")))]
+            #[cfg(feature = "ansi")]
             {
                 (
                     FmtLevel::new(meta.level(), self.ansi),
                     FullCtx::new(&ctx, self.ansi),
                 )
             }
-            #[cfg(any(not(feature = "ansi"), feature = "json"))]
+            #[cfg(not(feature = "ansi"))]
             {
                 (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
             }
@@ -278,20 +273,20 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(all(feature = "ansi", not(feature = "json")))]
+        #[cfg(feature = "ansi")]
         time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(any(not(feature = "ansi"), feature = "json"))]
+        #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
         let (fmt_level, fmt_ctx) = {
-            #[cfg(all(feature = "ansi", not(feature = "json")))]
+            #[cfg(feature = "ansi")]
             {
                 (
                     FmtLevel::new(meta.level(), self.ansi),
                     FmtCtx::new(&ctx, self.ansi),
                 )
             }
-            #[cfg(any(not(feature = "ansi"), feature = "json"))]
+            #[cfg(not(feature = "ansi"))]
             {
                 (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
             }
@@ -520,23 +515,23 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
 
 struct FmtCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a, N: 'a> FmtCtx<'a, N> {
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 
-    #[cfg(any(not(feature = "ansi"), feature = "json"))]
+    #[cfg(not(feature = "ansi"))]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
         Self { ctx }
     }
 }
 
-#[cfg(all(feature = "ansi", not(feature = "json")))]
+#[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
@@ -559,7 +554,7 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     }
 }
 
-#[cfg(any(not(feature = "ansi"), feature = "json"))]
+#[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
@@ -579,23 +574,23 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
 
 struct FullCtx<'a, N> {
     ctx: &'a span::Context<'a, N>,
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a, N: 'a> FullCtx<'a, N> {
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 
-    #[cfg(any(not(feature = "ansi"), feature = "json"))]
+    #[cfg(not(feature = "ansi"))]
     pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
         Self { ctx }
     }
 }
 
-#[cfg(all(feature = "ansi", not(feature = "json")))]
+#[cfg(feature = "ansi")]
 impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
@@ -622,7 +617,7 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
     }
 }
 
-#[cfg(any(not(feature = "ansi"), feature = "json"))]
+#[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
@@ -645,23 +640,23 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
 
 struct FmtLevel<'a> {
     level: &'a Level,
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
 impl<'a> FmtLevel<'a> {
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     pub(crate) fn new(level: &'a Level, ansi: bool) -> Self {
         Self { level, ansi }
     }
 
-    #[cfg(any(not(feature = "ansi"), feature = "json"))]
+    #[cfg(not(feature = "ansi"))]
     pub(crate) fn new(level: &'a Level) -> Self {
         Self { level }
     }
 }
 
-#[cfg(any(not(feature = "ansi"), feature = "json"))]
+#[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.level {
@@ -674,7 +669,7 @@ impl<'a> fmt::Display for FmtLevel<'a> {
     }
 }
 
-#[cfg(all(feature = "ansi", not(feature = "json")))]
+#[cfg(feature = "ansi")]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.ansi {
@@ -771,7 +766,7 @@ mod test {
         }
     }
 
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
         lazy_static! {
@@ -783,7 +778,7 @@ mod test {
         test_ansi(make_writer, expected, true, &BUF);
     }
 
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_false() {
         lazy_static! {
@@ -796,7 +791,7 @@ mod test {
         test_ansi(make_writer, expected, false, &BUF);
     }
 
-    #[cfg(any(not(feature = "ansi"), feature = "json"))]
+    #[cfg(not(feature = "ansi"))]
     #[test]
     fn without_ansi() {
         lazy_static! {
@@ -833,7 +828,7 @@ mod test {
         test_json(make_writer, expected, &BUF);
     }
 
-    #[cfg(all(feature = "ansi", not(feature = "json")))]
+    #[cfg(feature = "ansi")]
     fn test_ansi<T>(make_writer: T, expected: &str, is_ansi: bool, buf: &Mutex<Vec<u8>>)
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,

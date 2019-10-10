@@ -3,7 +3,7 @@
 #[cfg(feature = "chrono")]
 use chrono;
 
-#[cfg(all(feature = "ansi", not(feature = "json")))]
+#[cfg(feature = "ansi")]
 use ansi_term::Style;
 
 use std::fmt;
@@ -97,7 +97,7 @@ impl FormatTime for Uptime {
 }
 
 #[inline(always)]
-#[cfg(all(feature = "ansi", not(feature = "json")))]
+#[cfg(feature = "ansi")]
 pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write, with_ansi: bool) -> fmt::Result
 where
     T: FormatTime,
@@ -115,7 +115,7 @@ where
 }
 
 #[inline(always)]
-#[cfg(any(not(feature = "ansi"), feature = "json"))]
+#[cfg(not(feature = "ansi"))]
 pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write) -> fmt::Result
 where
     T: FormatTime,
