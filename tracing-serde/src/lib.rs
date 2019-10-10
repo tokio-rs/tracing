@@ -1,7 +1,7 @@
 extern crate serde;
 extern crate tracing_core;
 
-use std::fmt;
+use std::{fmt, io};
 
 use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},
@@ -14,6 +14,33 @@ use tracing_core::{
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
 };
+
+/// A bridge between `fmt::Write` and `io::Write`.
+pub struct WriteAdaptor<'a> {
+    fmt_write: &'a mut dyn fmt::Write,
+}
+
+impl<'a> WriteAdaptor<'a> {
+    pub fn new(fmt_write: &'a mut dyn fmt::Write) -> Self {
+        Self { fmt_write, }
+    }
+}
+
+impl<'a> io::Write for WriteAdaptor<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let s = String::from_utf8_lossy(buf);
+
+        self.fmt_write.write_str(&s).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, e)
+        })?;
+
+        Ok(s.as_bytes().len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 pub struct SerializeField(Field);
@@ -156,18 +183,27 @@ impl<'a> Serialize for SerializeRecord<'a> {
         S: Serializer,
     {
         let serializer = serializer.serialize_map(None)?;
-        let mut visitor = SerdeMapVisitor {
-            serializer,
-            state: Ok(()),
-        };
+        let mut visitor = SerdeMapVisitor::new(serializer, Ok(()));
         self.0.record(&mut visitor);
         visitor.finish()
     }
 }
 
-struct SerdeMapVisitor<S: SerializeMap> {
+pub struct SerdeMapVisitor<S: SerializeMap> {
     serializer: S,
     state: Result<(), S::Error>,
+}
+
+impl<S> SerdeMapVisitor<S>
+where
+    S: SerializeMap,
+{
+    pub fn new(serializer: S, state: Result<(), S::Error>) -> Self {
+        Self {
+            serializer,
+            state,
+        }
+    }
 }
 
 impl<S> Visit for SerdeMapVisitor<S>
@@ -213,7 +249,7 @@ impl<S: SerializeMap> SerdeMapVisitor<S> {
     /// Completes serializing the visited object, returning `Ok(())` if all
     /// fields were serialized correctly, or `Error(S::Error)` if a field could
     /// not be serialized.
-    fn finish(self) -> Result<S::Ok, S::Error> {
+    pub fn finish(self) -> Result<S::Ok, S::Error> {
         self.state?;
         self.serializer.end()
     }

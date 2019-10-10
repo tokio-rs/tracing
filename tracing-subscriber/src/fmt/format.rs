@@ -13,14 +13,15 @@ use tracing_core::{
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-#[cfg(feature = "json")]
-use tracing_serde::AsSerde;
-
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
 #[cfg(feature = "json")]
-use serde_json::{json, Value};
+use tracing_serde::{WriteAdaptor, SerdeMapVisitor};
+#[cfg(feature = "json")]
+use serde_json::Serializer;
+#[cfg(feature = "json")]
+use serde::ser::{Serializer as _, SerializeMap};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -333,22 +334,48 @@ where
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
 
-        let mut log_data = json!({
-            "timestamp": timestamp.trim(),
-            "event": event.as_serde(),
-        });
+        #[cfg(feature = "tracing-log")]
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+        #[cfg(not(feature = "tracing-log"))]
+        let meta = event.metadata();
 
-        {
-            let log_data = log_data.as_object_mut().unwrap();
+        let fmt_ctx = {
+            #[cfg(feature = "ansi")]
+            {
+                FmtCtx::new(&ctx, false)
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                FmtCtx::new(&ctx)
+            }
+        };
 
-            ctx.with_current(|(_, span)| {
-                log_data.insert(String::from("span"), Value::from(span.name()));
-                log_data.insert(String::from("fields"), Value::from(span.fields()));
-            });
-        }
+        let mut serializer = Serializer::new(WriteAdaptor::new(writer));
 
-        write!(writer, "{}", serde_json::to_string(&log_data).unwrap())?;
-        writeln!(writer)
+        let mut visit = || {
+            let mut serializer = serializer.serialize_map(None)?;
+
+            serializer.serialize_key("timestamp")?;
+            serializer.serialize_value(timestamp.trim())?;
+            serializer.serialize_key("level")?;
+            serializer.serialize_value(&format!("{}", meta.level()))?;
+            serializer.serialize_key("context")?;
+            serializer.serialize_value(&format!("{}", fmt_ctx))?;
+
+            if self.display_target {
+                serializer.serialize_key("target")?;
+                serializer.serialize_value(&format!("{}", meta.target()))?;
+            }
+
+            let mut visitor = SerdeMapVisitor::new(serializer, Ok(()));
+            event.record(&mut visitor);
+
+            visitor.finish()
+        };
+
+        visit().map_err(|_| fmt::Error)
     }
 }
 
@@ -748,9 +775,6 @@ mod test {
     use std::fmt;
     use std::sync::Mutex;
 
-    #[cfg(feature = "json")]
-    use serde_json::{json, Value};
-
     struct MockTime;
     impl FormatTime for MockTime {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
@@ -814,27 +838,10 @@ mod test {
 
         let make_writer = || MockWriter::new(&BUF);
 
-        let expected = json!({
-            "event": {
-                "message": "some json test",
-                "metadata": {
-                    "fields": [
-                        "message"
-                    ],
-                    "file": "tracing-subscriber/src/fmt/format.rs",
-                    "is_event": true,
-                    "is_span": false,
-                    "level": "INFO",
-                    "line": 861,
-                    "module_path": "tracing_subscriber::fmt::format::test",
-                    "name": "event tracing-subscriber/src/fmt/format.rs:861",
-                    "target": "tracing_subscriber::fmt::format::test"
-                },
-            },
-            "timestamp": "fake time",
-        });
+        let expected =
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"context\":\"\",\"target\":\"tracing_subscriber::fmt::format::test\",\"message\":\"some json test\"}";
 
-        test_json(make_writer, &expected, &BUF);
+        test_json(make_writer, expected, &BUF);
     }
 
     #[cfg(feature = "ansi")]
@@ -857,7 +864,7 @@ mod test {
     }
 
     #[cfg(feature = "json")]
-    fn test_json<T>(make_writer: T, expected: &Value, buf: &Mutex<Vec<u8>>)
+    fn test_json<T>(make_writer: T, expected: &str, buf: &Mutex<Vec<u8>>)
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
@@ -872,6 +879,6 @@ mod test {
         });
 
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(&format!("{}\n", expected), actual.as_str());
+        assert_eq!(expected, actual.as_str());
     }
 }
