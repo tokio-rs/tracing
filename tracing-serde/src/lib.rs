@@ -22,7 +22,7 @@ pub struct WriteAdaptor<'a> {
 
 impl<'a> WriteAdaptor<'a> {
     pub fn new(fmt_write: &'a mut dyn fmt::Write) -> Self {
-        Self { fmt_write, }
+        Self { fmt_write }
     }
 }
 
@@ -30,9 +30,9 @@ impl<'a> io::Write for WriteAdaptor<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s = String::from_utf8_lossy(buf);
 
-        self.fmt_write.write_str(&s).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, e)
-        })?;
+        self.fmt_write
+            .write_str(&s)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(s.as_bytes().len())
     }
@@ -199,10 +199,7 @@ where
     S: SerializeMap,
 {
     pub fn new(serializer: S, state: Result<(), S::Error>) -> Self {
-        Self {
-            serializer,
-            state,
-        }
+        Self { serializer, state }
     }
 }
 
