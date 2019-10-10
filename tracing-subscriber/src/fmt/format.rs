@@ -341,17 +341,6 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        let fmt_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FmtCtx::new(&ctx, false)
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FmtCtx::new(&ctx)
-            }
-        };
-
         let mut serializer = Serializer::new(WriteAdaptor::new(writer));
 
         let mut visit = || {
@@ -361,8 +350,12 @@ where
             serializer.serialize_value(timestamp.trim())?;
             serializer.serialize_key("level")?;
             serializer.serialize_value(&format!("{}", meta.level()))?;
-            serializer.serialize_key("context")?;
-            serializer.serialize_value(&format!("{}", fmt_ctx))?;
+
+            ctx.with_current(|(_, span)| {
+                serializer
+                    .serialize_key("span")
+                    .and_then(|_| serializer.serialize_value(span.name()))
+            }).unwrap_or(Ok(()))?;
 
             if self.display_target {
                 serializer.serialize_key("target")?;
@@ -839,7 +832,7 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"context\":\"\",\"target\":\"tracing_subscriber::fmt::format::test\",\"message\":\"some json test\"}";
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::test\",\"message\":\"some json test\"}";
 
         test_json(make_writer, expected, &BUF);
     }
