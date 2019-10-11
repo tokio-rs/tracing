@@ -345,7 +345,7 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            let mut visitor = SerdeMapVisitor::new(serializer, Ok(()));
+            let mut visitor = SerdeMapVisitor::new(serializer);
             event.record(&mut visitor);
 
             visitor.finish()
