@@ -356,7 +356,7 @@ impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     }
 }
 
-impl<'a> AsSerde<'a> for tracing_core::metadata::Level {
+impl<'a> AsSerde<'a> for Level {
     type Serializable = SerializeLevel<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
