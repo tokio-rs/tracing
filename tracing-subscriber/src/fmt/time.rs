@@ -79,20 +79,21 @@ impl From<Instant> for Uptime {
 #[cfg(feature = "chrono")]
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        write!(w, "{} ", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
+        write!(w, "{}", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
     }
 }
+
 #[cfg(not(feature = "chrono"))]
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
-        write!(w, "{:?} ", std::time::SystemTime::now())
+        write!(w, "{:?}", std::time::SystemTime::now())
     }
 }
 
 impl FormatTime for Uptime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let e = self.epoch.elapsed();
-        write!(w, "{:4}.{:09}s ", e.as_secs(), e.subsec_nanos())
+        write!(w, "{:4}.{:09}s", e.as_secs(), e.subsec_nanos())
     }
 }
 
