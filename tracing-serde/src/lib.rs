@@ -356,11 +356,21 @@ impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     }
 }
 
+impl<'a> AsSerde<'a> for tracing_core::metadata::Level {
+    type Serializable = SerializeLevel<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeLevel(self)
+    }
+}
+
 impl<'a> self::sealed::Sealed for Event<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 
 impl self::sealed::Sealed for Id {}
+
+impl self::sealed::Sealed for Level {}
 
 impl<'a> self::sealed::Sealed for Record<'a> {}
 

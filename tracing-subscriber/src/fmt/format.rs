@@ -21,7 +21,7 @@ use serde::ser::{SerializeMap, Serializer as _};
 #[cfg(feature = "json")]
 use serde_json::Serializer;
 #[cfg(feature = "json")]
-use tracing_serde::{SerdeMapVisitor, WriteAdaptor};
+use tracing_serde::{AsSerde, SerdeMapVisitor, WriteAdaptor};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -345,21 +345,14 @@ where
             let mut serializer = Serializer::new(WriteAdaptor::new(writer));
             let mut serializer = serializer.serialize_map(None)?;
 
-            serializer.serialize_key("timestamp")?;
-            serializer.serialize_value(timestamp.trim())?;
-            serializer.serialize_key("level")?;
-            serializer.serialize_value(&format!("{}", meta.level()))?;
+            serializer.serialize_entry("timestamp", &timestamp)?;
+            serializer.serialize_entry("level", &meta.level().as_serde())?;
 
-            ctx.with_current(|(_, span)| {
-                serializer
-                    .serialize_key("span")
-                    .and_then(|_| serializer.serialize_value(span.name()))
-            })
-            .unwrap_or(Ok(()))?;
+            ctx.with_current(|(_, span)| serializer.serialize_entry("span", span.name()))
+                .unwrap_or(Ok(()))?;
 
             if self.display_target {
-                serializer.serialize_key("target")?;
-                serializer.serialize_value(&format!("{}", meta.target()))?;
+                serializer.serialize_entry("target", meta.target())?;
             }
 
             let mut visitor = SerdeMapVisitor::new(serializer, Ok(()));
