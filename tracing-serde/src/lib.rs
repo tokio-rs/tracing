@@ -31,7 +31,8 @@ impl<'a> WriteAdaptor<'a> {
 
 impl<'a> io::Write for WriteAdaptor<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let s = String::from_utf8_lossy(buf);
+        let s =
+            std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
         self.fmt_write
             .write_str(&s)
@@ -42,6 +43,12 @@ impl<'a> io::Write for WriteAdaptor<'a> {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+impl<'a> fmt::Debug for WriteAdaptor<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("WriteAdaptor { .. }")
     }
 }
 
@@ -186,12 +193,14 @@ impl<'a> Serialize for SerializeRecord<'a> {
         S: Serializer,
     {
         let serializer = serializer.serialize_map(None)?;
-        let mut visitor = SerdeMapVisitor::new(serializer, Ok(()));
+        let mut visitor = SerdeMapVisitor::new(serializer);
         self.0.record(&mut visitor);
         visitor.finish()
     }
 }
 
+/// A visitor to go through a map of values.
+#[derive(Debug)]
 pub struct SerdeMapVisitor<S: SerializeMap> {
     serializer: S,
     state: Result<(), S::Error>,
@@ -201,8 +210,8 @@ impl<S> SerdeMapVisitor<S>
 where
     S: SerializeMap,
 {
-    pub fn new(serializer: S, state: Result<(), S::Error>) -> Self {
-        Self { serializer, state }
+    pub fn new(serializer: S) -> Self {
+        Self { serializer, state: Ok(()) }
     }
 }
 
