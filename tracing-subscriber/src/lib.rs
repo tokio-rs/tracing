@@ -20,7 +20,7 @@
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by default.
-//! - `json`: Enables `fmt` support for JSON output. In JSON output the ANSI feature does nothing.
+//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
 //!
 //! ### Optional Dependencies
 //!
