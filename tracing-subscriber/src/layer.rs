@@ -7,6 +7,7 @@ use tracing_core::{
 };
 
 use std::{any::TypeId, marker::PhantomData};
+use crate::registry::LookupMetadata;
 
 /// A composable handler for `tracing` events.
 ///
@@ -605,6 +606,15 @@ where
     }
 }
 
+impl<L, S> LookupMetadata for Layered<L, S>
+where
+    S: Subscriber + LookupMetadata,
+{
+    fn metadata(&self, span: &span::Id) -> Option<&'static Metadata<'static>> {
+        self.inner.metadata(span)
+    }
+}
+
 impl<L, S> Layered<L, S>
 where
     S: Subscriber,
@@ -677,6 +687,37 @@ impl<'a, S: Subscriber> Context<'a, S> {
         if let Some(ref subscriber) = self.subscriber {
             subscriber.event(event);
         }
+    }
+
+    /// Returns metadata for tne span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupMetadata`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + LookupMetadata,
+    /// ```
+    /// or similar.
+    ///
+    /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
+    #[inline]
+    pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
+    where
+        S: LookupMetadata,
+    {
+        self.subscriber.as_ref()?.metadata(id)
+    }
+
+    /// Returns `true` if an active span exists for the given `Id`.
+    #[inline]
+    pub fn exists(&self, id: &span::Id) -> bool
+    where
+        S: LookupMetadata,
+    {
+        self.subscriber.as_ref().map(|s| s.exists(id)).unwrap_or(false)
     }
 }
 

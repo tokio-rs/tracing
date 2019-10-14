@@ -99,6 +99,7 @@ pub mod filter;
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
+pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
 pub(crate) mod thread;
