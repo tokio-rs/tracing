@@ -740,9 +740,7 @@ mod test {
         }
     }
 
-    fn assert_lookup_meta<T: registry::LookupMetadata>(_: T) {
-
-    }
+    fn assert_lookup_meta<T: registry::LookupMetadata>(_: T) {}
 
     #[test]
     fn impls() {

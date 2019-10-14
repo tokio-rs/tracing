@@ -33,4 +33,3 @@ pub trait LookupMetadata {
         self.metadata(id).is_some()
     }
 }
-

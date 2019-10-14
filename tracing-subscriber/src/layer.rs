@@ -6,8 +6,8 @@ use tracing_core::{
     Event,
 };
 
-use std::{any::TypeId, marker::PhantomData};
 use crate::registry::LookupMetadata;
+use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
 ///
@@ -717,7 +717,10 @@ impl<'a, S: Subscriber> Context<'a, S> {
     where
         S: LookupMetadata,
     {
-        self.subscriber.as_ref().map(|s| s.exists(id)).unwrap_or(false)
+        self.subscriber
+            .as_ref()
+            .map(|s| s.exists(id))
+            .unwrap_or(false)
     }
 }
 
