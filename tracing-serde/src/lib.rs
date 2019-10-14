@@ -10,7 +10,7 @@ use serde::{
 
 use tracing_core::{
     event::Event,
-    field::{Field, FieldSet, ValueSet, Visit},
+    field::{Field, FieldSet, Visit},
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
 };
@@ -157,22 +157,6 @@ impl<'a> Serialize for SerializeEvent<'a> {
             serializer,
             state: Ok(()),
         };
-        self.0.record(&mut visitor);
-        visitor.finish()
-    }
-}
-
-/// Implements `serde::Serialize` to write `ValueSet` data to a serializer.
-#[derive(Debug)]
-pub struct SerializeValueSet<'a>(&'a ValueSet<'a>);
-
-impl<'a> Serialize for SerializeValueSet<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let serializer = serializer.serialize_map(Some(self.0.len()))?;
-        let mut visitor = SerdeMapVisitor::new(serializer);
         self.0.record(&mut visitor);
         visitor.finish()
     }
@@ -357,14 +341,6 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     }
 }
 
-impl<'a> AsSerde<'a> for ValueSet<'a> {
-    type Serializable = SerializeValueSet<'a>;
-
-    fn as_serde(&'a self) -> Self::Serializable {
-        SerializeValueSet(self)
-    }
-}
-
 impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
     type Serializable = SerializeAttributes<'a>;
 
@@ -398,8 +374,6 @@ impl<'a> AsSerde<'a> for Level {
 }
 
 impl<'a> self::sealed::Sealed for Event<'a> {}
-
-impl<'a> self::sealed::Sealed for ValueSet<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 

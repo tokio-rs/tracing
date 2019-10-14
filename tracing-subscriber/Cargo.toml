@@ -30,7 +30,7 @@ json = ["tracing-serde", "serde", "serde_json"]
 filter = ["env-filter"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core" }
+tracing-core = "0.1.2"
 
 # only required by the filter feature
 matchers = { optional = true, version = "0.0.1" }
@@ -39,7 +39,7 @@ smallvec = { optional = true, version = "0.6.10"}
 lazy_static = { optional = true, version = "1" }
 
 # fmt
-tracing-log = { path = "../tracing-log", optional = true, default-features = false }
+tracing-log = { version = "0.1", optional = true, default-features = false }
 ansi_term = { version = "0.11", optional = true }
 owning_ref = { version = "0.4.0", optional = true }
 chrono = { version = "0.4", optional = true }
@@ -53,9 +53,9 @@ tracing-serde = { path = "../tracing-serde", optional = true }
 parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
 
 [dev-dependencies]
-tracing = { path = "../tracing" }
+tracing = "0.1"
 log = "0.4"
-tracing-log = { path = "../tracing-log" }
+tracing-log = "0.1"
 criterion = { version = "0.3", default_features = false }
 
 [badges]

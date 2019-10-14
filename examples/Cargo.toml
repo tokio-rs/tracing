@@ -7,8 +7,8 @@ edition = "2018"
 [dev-dependencies]
 
 # tracing crates
-tracing = { version = "0.1", path = "../tracing" }
-tracing-core = { version = "0.1", path = "../tracing-core" }
+tracing = "0.1"
+tracing-core = "0.1"
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tracing-subscriber = { version = "0.1", path = "../tracing-subscriber" }
 tracing-futures = { version = "0.1.0", path = "../tracing-futures" }

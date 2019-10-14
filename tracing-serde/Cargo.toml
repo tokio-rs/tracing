@@ -20,7 +20,7 @@ keywords = ["logging", "tracing", "serialization"]
 
 [dependencies]
 serde = "1"
-tracing-core = { path = "../tracing-core" }
+tracing-core = "0.1.2"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
