@@ -10,7 +10,7 @@ use serde::{
 
 use tracing_core::{
     event::Event,
-    field::{Field, FieldSet, Visit},
+    field::{Field, FieldSet, ValueSet, Visit},
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
 };
@@ -160,6 +160,22 @@ impl<'a> Serialize for SerializeEvent<'a> {
     }
 }
 
+/// Implements `serde::Serialize` to write `ValueSet` data to a serializer.
+#[derive(Debug)]
+pub struct SerializeValueSet<'a>(&'a ValueSet<'a>);
+
+impl<'a> Serialize for SerializeValueSet<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let serializer = serializer.serialize_map(Some(self.0.len()))?;
+        let mut visitor = SerdeMapVisitor::new(serializer);
+        self.0.record(&mut visitor);
+        visitor.finish()
+    }
+}
+
 /// Implements `serde::Serialize` to write `Attributes` data to a serializer.
 #[derive(Debug)]
 pub struct SerializeAttributes<'a>(&'a Attributes<'a>);
@@ -199,9 +215,7 @@ impl<'a> Serialize for SerializeRecord<'a> {
     }
 }
 
-/// A visitor to go through a map of values.
-#[derive(Debug)]
-pub struct SerdeMapVisitor<S: SerializeMap> {
+struct SerdeMapVisitor<S: SerializeMap> {
     serializer: S,
     state: Result<(), S::Error>,
 }
@@ -210,7 +224,7 @@ impl<S> SerdeMapVisitor<S>
 where
     S: SerializeMap,
 {
-    pub fn new(serializer: S) -> Self {
+    fn new(serializer: S) -> Self {
         Self { serializer, state: Ok(()) }
     }
 }
@@ -258,7 +272,7 @@ impl<S: SerializeMap> SerdeMapVisitor<S> {
     /// Completes serializing the visited object, returning `Ok(())` if all
     /// fields were serialized correctly, or `Error(S::Error)` if a field could
     /// not be serialized.
-    pub fn finish(self) -> Result<S::Ok, S::Error> {
+    fn finish(self) -> Result<S::Ok, S::Error> {
         self.state?;
         self.serializer.end()
     }
@@ -341,6 +355,14 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     }
 }
 
+impl<'a> AsSerde<'a> for ValueSet<'a> {
+    type Serializable = SerializeValueSet<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeValueSet(self)
+    }
+}
+
 impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
     type Serializable = SerializeAttributes<'a>;
 
@@ -374,6 +396,8 @@ impl<'a> AsSerde<'a> for Level {
 }
 
 impl<'a> self::sealed::Sealed for Event<'a> {}
+
+impl<'a> self::sealed::Sealed for ValueSet<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 
