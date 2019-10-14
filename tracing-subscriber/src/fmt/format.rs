@@ -321,6 +321,7 @@ where
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
+        use tracing_serde::fields::AsMap;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
 
@@ -346,7 +347,7 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            serializer.serialize_entry("fields", &event.values().as_serde())
+            serializer.serialize_entry("fields", &event.field_map())
         };
 
         visit().map_err(|_| fmt::Error)?;
