@@ -23,13 +23,13 @@ log-tracer = []
 trace-logger = []
 
 [dependencies]
-tracing-core = { path = "../tracing-core" }
+tracing-core = "0.1.2"
 log = { version = "0.4", features = ["std"] }
 lazy_static = "1.3.0"
 env_logger = { version = "0.6", optional = true }
 
 [dev-dependencies]
-tracing = { path = "../tracing" }
+tracing = "0.1"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }

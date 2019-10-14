@@ -599,7 +599,7 @@ impl<'a> ValueSet<'a> {
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
     /// [visitor]: ../trait.Visit.html
-    pub fn record(&self, visitor: &mut dyn Visit) {
+    pub(crate) fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
             if field.callsite() != my_callsite {
@@ -609,11 +609,6 @@ impl<'a> ValueSet<'a> {
                 value.record(field, visitor);
             }
         }
-    }
-
-    /// The number of elements in the `ValueSet`.
-    pub fn len(&self) -> usize {
-        self.fields.len()
     }
 
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
