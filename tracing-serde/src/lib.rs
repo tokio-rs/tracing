@@ -15,6 +15,8 @@ use tracing_core::{
     span::{Attributes, Id, Record},
 };
 
+pub mod fields;
+
 /// A bridge between `fmt::Write` and `io::Write`.
 ///
 /// This is needed because tracing-subscriber's FormatEvent expects a fmt::Write
