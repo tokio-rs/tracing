@@ -13,6 +13,6 @@ edition = "2018"
 
 [dependencies]
 tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
-tracing = "0.1"
-tracing-core = "0.1.2"
+tracing = { version = "0.1", path = "../../tracing" }
+tracing-core = { version = "0.1.2", path = "../../tracing-core" }
 tracing-futures = { path = "..", features = ["std-future"] }
