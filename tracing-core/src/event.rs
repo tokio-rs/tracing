@@ -94,6 +94,11 @@ impl<'a> Event<'a> {
         self.fields.field_set().iter()
     }
 
+    /// Returns the field values on this `Event`.
+    pub fn values(&self) -> &field::ValueSet {
+        &self.fields
+    }
+
     /// Returns [metadata] describing this `Event`.
     ///
     /// [metadata]: ../metadata/struct.Metadata.html

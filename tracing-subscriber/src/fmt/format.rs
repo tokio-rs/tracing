@@ -21,7 +21,7 @@ use serde::ser::{SerializeMap, Serializer as _};
 #[cfg(feature = "json")]
 use serde_json::Serializer;
 #[cfg(feature = "json")]
-use tracing_serde::{AsSerde, SerdeMapVisitor, WriteAdaptor};
+use tracing_serde::{AsSerde, WriteAdaptor};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -348,17 +348,15 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
-            ctx.with_current(|(_, span)| serializer.serialize_entry("span", span.name()))
-                .unwrap_or(Ok(()))?;
+            ctx.with_current(|(_, span)| {
+                serializer.serialize_entry("span", &span)
+            }).unwrap_or(Ok(()))?;
 
             if self.display_target {
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            let mut visitor = SerdeMapVisitor::new(serializer);
-            event.record(&mut visitor);
-
-            visitor.finish()
+            serializer.serialize_entry("fields", &event.values().as_serde())
         };
 
         visit().map_err(|_| fmt::Error)?;
@@ -826,7 +824,7 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::test\",\"message\":\"some json test\"}\n";
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"name\":\"json_span\",\"fields\":\"answer=42 number=3\"},\"target\":\"tracing_subscriber::fmt::format::test\",\"fields\":{\"message\":\"some json test\"}\n";
 
         test_json(make_writer, expected, &BUF);
     }
@@ -862,6 +860,8 @@ mod test {
             .finish();
 
         with_default(subscriber, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
             tracing::info!("some json test");
         });
 
