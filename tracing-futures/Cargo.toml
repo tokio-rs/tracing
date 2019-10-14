@@ -29,7 +29,7 @@ tokio-alpha = ["std-future", "tokio_02"]
 futures = { version = "0.1", optional = true }
 futures-core-preview = { version = "0.3.0-alpha.19", optional = true }
 pin-project = { version = "0.4", optional = true }
-tracing = "0.1"
+tracing = { version = "0.1", path = "../tracing" }
 tokio-executor = { version = "0.1", optional = true }
 tokio = { version = "0.1", optional = true }
 tokio_02 = { package = "tokio", version = "0.2.0-alpha.6", optional = true }

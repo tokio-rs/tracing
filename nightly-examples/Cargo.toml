@@ -12,7 +12,7 @@ publish = false
 edition = "2018"
 
 [dev-dependencies]
-tracing = "0.1"
+tracing = { version = "0.1", path = "../tracing" }
 tracing-subscriber = { version = "0.1", path = "../tracing-subscriber", features = ["json"] }
 tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
 tokio = { git = "https://github.com/tokio-rs/tokio.git" }

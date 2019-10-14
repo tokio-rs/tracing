@@ -21,7 +21,7 @@ license = "MIT"
 default = ["tower-layer", "tower-util", "http"]
 
 [dependencies]
-tracing = "0.1"
+tracing = { version = "0.1", path = "../tracing" }
 tracing-futures = { version = "0.1.0", path = "../tracing-futures" }
 futures = "0.1"
 tower-service = "0.2"
