@@ -6,6 +6,7 @@ use tracing_core::{
     Event,
 };
 
+#[cfg(feature = "registry_unstable")]
 use crate::registry::LookupMetadata;
 use std::{any::TypeId, marker::PhantomData};
 
@@ -606,6 +607,7 @@ where
     }
 }
 
+#[cfg(feature = "registry_unstable")]
 impl<L, S> LookupMetadata for Layered<L, S>
 where
     S: Subscriber + LookupMetadata,
@@ -704,6 +706,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///
     /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
     #[inline]
+    #[cfg(feature = "registry_unstable")]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
         S: LookupMetadata,
@@ -713,6 +716,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
 
     /// Returns `true` if an active span exists for the given `Id`.
     #[inline]
+    #[cfg(feature = "registry_unstable")]
     pub fn exists(&self, id: &span::Id) -> bool
     where
         S: LookupMetadata,

@@ -20,7 +20,6 @@ pub mod writer;
 
 use crate::filter::LevelFilter;
 use crate::layer::{self, Layer};
-use crate::registry;
 
 #[doc(inline)]
 pub use self::{
@@ -179,9 +178,10 @@ where
     }
 }
 
-impl<N, E, F, W> registry::LookupMetadata for Subscriber<N, E, F, W>
+#[cfg(feature = "registry_unstable")]
+impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
 where
-    layer::Layered<F, Formatter<N, E, W>>: registry::LookupMetadata,
+    layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
 {
     #[inline]
     fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
@@ -297,7 +297,8 @@ where
     }
 }
 
-impl<N, E, W> registry::LookupMetadata for Formatter<N, E, W> {
+#[cfg(feature = "registry_unstable")]
+impl<N, E, W> crate::registry::LookupMetadata for Formatter<N, E, W> {
     fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
         self.spans.get(&id).map(|span| span.metadata())
     }
@@ -740,8 +741,6 @@ mod test {
         }
     }
 
-    fn assert_lookup_meta<T: registry::LookupMetadata>(_: T) {}
-
     #[test]
     fn impls() {
         let f = format::Format::default().with_timer(time::Uptime::default());
@@ -774,7 +773,9 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "registry_unstable")]
     fn is_lookup_meta() {
+        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
         assert_lookup_meta(Subscriber::builder().finish())
     }
 }

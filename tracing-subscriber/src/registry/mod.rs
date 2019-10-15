@@ -1,4 +1,16 @@
-//! Storage for span data shared by multiple [`Layer`]s.
+//! **EXPERIMENTAL**: Storage for span data shared by multiple [`Layer`]s.
+//!
+//! This module is experimental. Although potential breaking changes will be
+//! avoided when possible, we reserve the right to make breaking changes to this
+//! module until it is no longer experimental.
+//!
+//! Add the `registry_unstable` feature to your `Cargo.toml` to enable
+//! this module:
+//!
+//! ```toml
+//! [dependencies.tracing-subscriber]
+//! features = ["registry_unstable"]
+//! ```
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
 use tracing_core::{span::Id, Metadata};
