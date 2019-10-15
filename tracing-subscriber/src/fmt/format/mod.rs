@@ -17,11 +17,10 @@ use tracing_log::NormalizeEvent;
 use ansi_term::{Colour, Style};
 
 #[cfg(feature = "json")]
-use serde::ser::{SerializeMap, Serializer as _};
+mod json;
+
 #[cfg(feature = "json")]
-use serde_json::Serializer;
-#[cfg(feature = "json")]
-use tracing_serde::{AsSerde, WriteAdaptor};
+pub use json::*;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -110,13 +109,6 @@ pub struct Compact;
 /// The full format includes fields from all entered spans.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
-
-/// Marker for `Format` that indicates that the verbose json log format should be used.
-///
-/// The full format includes fields from all entered spans.
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
-#[cfg(feature = "json")]
-pub struct Json;
 
 /// A pre-configured event formatter.
 ///
@@ -315,52 +307,6 @@ where
         ctx.format_fields(writer, event)?;
         ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
             .unwrap_or(Ok(()))?;
-        writeln!(writer)
-    }
-}
-
-#[cfg(feature = "json")]
-impl<N, T> FormatEvent<N> for Format<Json, T>
-where
-    N: for<'writer> FormatFields<'writer>,
-    T: FormatTime,
-{
-    fn format_event(
-        &self,
-        ctx: &span::Context<'_, N>,
-        writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
-    ) -> fmt::Result {
-        use tracing_serde::fields::AsMap;
-        let mut timestamp = String::new();
-        self.timer.format_time(&mut timestamp)?;
-
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
-        let meta = event.metadata();
-
-        let mut visit = || {
-            let mut serializer = Serializer::new(WriteAdaptor::new(writer));
-            let mut serializer = serializer.serialize_map(None)?;
-
-            serializer.serialize_entry("timestamp", &timestamp)?;
-            serializer.serialize_entry("level", &meta.level().as_serde())?;
-
-            ctx.with_current(|(_, span)| {
-                serializer.serialize_entry("span", &span)
-            }).unwrap_or(Ok(()))?;
-
-            if self.display_target {
-                serializer.serialize_entry("target", meta.target())?;
-            }
-
-            serializer.serialize_entry("fields", &event.field_map())
-        };
-
-        visit().map_err(|_| fmt::Error)?;
         writeln!(writer)
     }
 }
@@ -815,21 +761,6 @@ mod test {
         assert_eq!(expected, actual.as_str());
     }
 
-    #[cfg(feature = "json")]
-    #[test]
-    fn json() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
-
-        let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"name\":\"json_span\",\"fields\":\"answer=42 number=3\"},\"target\":\"tracing_subscriber::fmt::format::test\",\"fields\":{\"message\":\"some json test\"}\n";
-
-        test_json(make_writer, expected, &BUF);
-    }
-
     #[cfg(feature = "ansi")]
     fn test_ansi<T>(make_writer: T, expected: &str, is_ansi: bool, buf: &Mutex<Vec<u8>>)
     where
@@ -843,27 +774,6 @@ mod test {
 
         with_default(subscriber, || {
             tracing::info!("some ansi test");
-        });
-
-        let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(expected, actual.as_str());
-    }
-
-    #[cfg(feature = "json")]
-    fn test_json<T>(make_writer: T, expected: &str, buf: &Mutex<Vec<u8>>)
-    where
-        T: crate::fmt::MakeWriter + Send + Sync + 'static,
-    {
-        let subscriber = crate::fmt::Subscriber::builder()
-            .json()
-            .with_writer(make_writer)
-            .with_timer(MockTime)
-            .finish();
-
-        with_default(subscriber, || {
-            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
-            let _guard = span.enter();
-            tracing::info!("some json test");
         });
 
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();

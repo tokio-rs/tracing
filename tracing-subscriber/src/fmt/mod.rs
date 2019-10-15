@@ -748,14 +748,14 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///
     /// See [`format::Json`]
     #[cfg(feature = "json")]
-    pub fn json(self) -> Builder<N, format::Format<format::Json>, F, W>
+    pub fn json(self) -> Builder<format::JsonFields, format::Format<format::Json>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
         Builder {
             fmt_event: format::Format::default().json(),
             filter: self.filter,
-            fmt_fields: self.fmt_fields,
+            fmt_fields: format::JsonFields::default(),
             settings: self.settings,
             make_writer: self.make_writer,
         }
