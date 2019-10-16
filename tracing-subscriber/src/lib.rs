@@ -10,6 +10,12 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
+//! ## Included Subscribers
+//!
+//! The following `Subscriber`s are provided for application authors:
+//!
+//! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
+//!
 //! ## Feature Flags
 //!
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering

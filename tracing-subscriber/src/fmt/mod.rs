@@ -7,18 +7,111 @@
 //! implementation of the [`Subscriber`] trait that records `tracing`'s `Event`s
 //! and `Span`s by formatting them as text and logging them to stdout.
 //!
+//! ## Usage
 //!
+//! First, add this to your `Cargo.toml` file:
+//!
+//! ```toml
+//! [dependencies]
+//! tracing-subscriber = "0.2"
+//! ```
+//!
+//! Add the following to your executable to initialize the default subscriber:
+//! ```rust
+//! use tracing_subscriber;
+//!
+//! tracing_subscriber::fmt::init();
+//! ```
+//!
+//! ## Filtering Events with Environment Variables
+//!
+//! The default subscriber installed by `init` enables you to filter events
+//! at runtime using environment variables (using the [`EnvFilter`]).
+//!
+//! The filter syntax is a superset of the [`env_logger`] syntax.
+//!
+//! For example:
+//! - Setting `RUST_LOG=debug` enables all `Span`s and `Event`s
+//!     set to the log level `DEBUG` or higher
+//! - Setting `RUST_LOG=my_crate=trace` enables `Span`s and `Event`s
+//!     in `my_crate` at all log levels
+//!
+//! **Note**: This should **not** be called by libraries. Libraries should use
+//! [`tracing`] to publish `tracing` `Event`s.
+//!
+//! ## Configuration
+//!
+//! You can configure a subscriber instead of using the defaults with
+//! the following functions:
+//!
+//! ### Subscriber
+//!
+//! The [`FmtSubscriber`] formats and records `tracing` events as line-oriented logs.
+//! You can create one by calling:
+//!
+//! ```rust
+//! use tracing_subscriber::FmtSubscriber;
+//!
+//! let subscriber = FmtSubscriber::builder()
+//!     // ... add configuration
+//!     .finish();
+//! ```
+//!
+//! You can find the configuration methods for [`FmtSubscriber`] in [`fmt::Builder`].
+//!
+//! ### Filters
+//!
+//! If you want to filter the `tracing` `Events` based on environment
+//! variables, you can use the [`EnvFilter`] as follows:
+//!
+//! ```rust
+//! use tracing_subscriber::EnvFilter;
+//!
+//! let filter = EnvFilter::from_default_env();
+//! ```
+//!
+//! As mentioned above, the [`EnvFilter`] allows `Span`s and `Event`s to
+//! be filtered at runtime by setting the `RUST_LOG` environment variable.
+//!
+//! You can find the other available [`filter`]s in the documentation.
+//!
+//! ### Using Your Subscriber
+//!
+//! Finally, once you have configured your `Subscriber`, you need to
+//! configure your executable to use it.
+//!
+//! A subscriber can be installed globally using:
+//! ```rust
+//! use tracing;
+//! use tracing_subscriber::FmtSubscriber;
+//!
+//! let subscriber = FmtSubscriber::new();
+//!
+//! tracing::subscriber::set_global_default(subscriber)
+//!     .map_err(|_err| eprintln!("Unable to set global default subscriber"));
+//! // Note this will only fail if you try to set the global default
+//! // subscriber multiple times
+//! ```
+//! [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//! [`env_logger`]: https://docs.rs/env_logger/
+//! [`filter`]: ../filter/index.html
+//! [`fmt::Builder`]: ./struct.Builder.html
+//! [`FmtSubscriber`]: ./struct.Subscriber.html
+//! [`Subscriber`]:
+//!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-use std::{any::TypeId, cell::RefCell, io};
-use tracing_core::{subscriber::Interest, Event, Metadata};
+use std::{any::TypeId, cell::RefCell, error::Error, io};
+use tracing_core::{dispatcher, subscriber::Interest, Event, Metadata};
 
 pub mod format;
 mod span;
 pub mod time;
 pub mod writer;
 
-use crate::filter::LevelFilter;
+#[cfg(feature = "tracing_log")]
+use tracing_log::LogTracer;
+
+use crate::filter::{EnvFilter, LevelFilter};
 use crate::layer::{self, Layer};
 
 #[doc(inline)]
@@ -318,6 +411,45 @@ where
         Subscriber {
             inner: self.filter.with_subscriber(subscriber),
         }
+    }
+}
+
+impl<N, E, F, W> Builder<N, E, F, W>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<N> + 'static,
+    W: MakeWriter + 'static,
+    F: Layer<Formatter<N, E, W>> + 'static,
+    Subscriber<N, E, F, W>: Send + Sync,
+{
+    /// Install this Subscriber as the global default if one is
+    /// not already set.
+    ///
+    /// If the `tracing_log` feature is enabled, this will also install
+    /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+    ///
+    /// # Errors
+    /// Returns an Error if the initialization was unsuccessful, likely
+    /// because a global subscriber was already installed by another
+    /// call to `try_init`.
+    pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
+        #[cfg(feature = "tracing_log")]
+        tracing_log::LogTracer::init().map_err(Box::new)?;
+
+        dispatcher::set_global_default(dispatcher::Dispatch::new(self.finish())).map_err(Box::new)
+    }
+
+    /// Install this Subscriber as the global default.
+    ///
+    /// If the `tracing_log` feature is enabled, this will also install
+    /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+    ///
+    /// # Panics
+    /// Panics if the initialization was unsuccessful, likely because a
+    /// global subscriber was already installed by another call to `try_init`.
+    pub fn init(self) {
+        self.try_init()
+            .expect("Unable to install global subscriber")
     }
 }
 
@@ -662,6 +794,45 @@ impl Default for Settings {
             initial_span_capacity: 32,
         }
     }
+}
+
+/// Install a global tracing subscriber that listens for events and
+/// filters based on the value of the [`RUST_LOG` environment variable],
+/// if one is not already set.
+///
+/// If the `tracing_log` feature is enabled, this will also install
+/// the [`LogTracer`] to convert `log` records into `tracing` `Event`s.
+///
+///
+/// # Errors
+/// Returns an Error if the initialization was unsuccessful,
+/// likely because a global subscriber was already installed by another
+/// call to `try_init`.
+///
+/// [`LogTracer`]:
+///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
+/// [`RUST_LOG` environment variable]:
+///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
+pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
+    Subscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .try_init()
+}
+
+/// Install a global tracing subscriber that listens for events and
+/// filters based on the value of the [`RUST_LOG` environment variable].
+///
+/// If the `tracing_log` feature is enabled, this will also install
+/// the LogTracer to convert `Log` records into `tracing` `Event`s.
+///
+/// # Panics
+/// Panics if the initialization was unsuccessful, likely because a
+/// global subscriber was already installed by another call to `try_init`.
+///
+/// [`RUST_LOG` environment variable]:
+///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
+pub fn init() {
+    try_init().expect("Unable to install global subscriber")
 }
 
 #[cfg(test)]
