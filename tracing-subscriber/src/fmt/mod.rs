@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-subscriber = "0.1"
+//! tracing-subscriber = "0.2"
 //! ```
 //!
 //! Add the following to your executable to initialize the default subscriber:
@@ -25,23 +25,29 @@
 //!
 //! ## Filtering Events with Environment Variables
 //!
-//! The default subscriber installed by `init` enables you to filter events at runtime using environment variables (using the [`EnvFilter`]).
+//! The default subscriber installed by `init` enables you to filter events
+//! at runtime using environment variables (using the [`EnvFilter`]).
 //!
-//! The filter syntax is a superset of the [`env_logger`](https://docs.rs/env_logger/) syntax.
+//! The filter syntax is a superset of the [`env_logger`] syntax.
 //!
 //! For example:
-//! - Setting `RUST_LOG=debug` enables all `Span`s and `Event`s set to the log level `DEBUG` or higher
-//! - Setting `RUST_LOG=my_crate=trace` enables `Span`s and `Event`s in `my_crate` at all log levels
+//! - Setting `RUST_LOG=debug` enables all `Span`s and `Event`s
+//!     set to the log level `DEBUG` or higher
+//! - Setting `RUST_LOG=my_crate=trace` enables `Span`s and `Event`s
+//!     in `my_crate` at all log levels
 //!
-//! **Note**: This should **not** be called by libraries. Libraries should use [`tracing`] to publish `tracing` `Event`s.
+//! **Note**: This should **not** be called by libraries. Libraries should use
+//! [`tracing`] to publish `tracing` `Event`s.
 //!
 //! ## Configuration
 //!
-//! You can configure a subscriber instead of using the defaults with the following functions:
+//! You can configure a subscriber instead of using the defaults with
+//! the following functions:
 //!
 //! ### Subscriber
 //!
-//! The [`FmtSubscriber`] formats and records `tracing` events as line-oriented logs. You can create one by calling:
+//! The [`FmtSubscriber`] formats and records `tracing` events as line-oriented logs.
+//! You can create one by calling:
 //!
 //! ```rust
 //! use tracing_subscriber::FmtSubscriber;
@@ -51,7 +57,7 @@
 //!     .finish();
 //! ```
 //!
-//! You can find the configuration methods for [`FmtSubscriber`] in the docs.
+//! You can find the configuration methods for [`FmtSubscriber`] in [`fmt::Builder`].
 //!
 //! ### Filters
 //!
@@ -86,10 +92,14 @@
 //! // Note this will only fail if you try to set the global default
 //! // subscriber multiple times
 //! ```
-//!
-//! [`tracing`]: https://crates.io/crates/tracing
+//! [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//! [`env_logger`]: https://docs.rs/env_logger/
+//! [`filter`]: ../filter/index.html
+//! [`fmt::Builder`]: ./struct.Builder.html
+//! [`FmtSubscriber`]: ./struct.Subscriber.html
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, cell::RefCell, error::Error, io};
 use tracing_core::{dispatcher, subscriber::Interest, Event, Metadata};
 
@@ -791,7 +801,7 @@ impl Default for Settings {
 /// if one is not already set.
 ///
 /// If the `tracing_log` feature is enabled, this will also install
-/// the LogTracer to convert `Log` records into `tracing` `Event`s.
+/// the [`LogTracer`] to convert `log` records into `tracing` `Event`s.
 ///
 ///
 /// # Errors
@@ -799,6 +809,8 @@ impl Default for Settings {
 /// likely because a global subscriber was already installed by another
 /// call to `try_init`.
 ///
+/// [`LogTracer`]:
+///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
