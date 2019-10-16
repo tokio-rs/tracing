@@ -404,6 +404,45 @@ where
     }
 }
 
+impl<N, E, F, W> Builder<N, E, F, W>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<N> + 'static,
+    W: MakeWriter + 'static,
+    F: Layer<Formatter<N, E, W>> + 'static,
+    Subscriber<N, E, F, W>: Send + Sync,
+{
+    /// Install this Subscriber as the global default if one is
+    /// not already set.
+    ///
+    /// If the `tracing_log` feature is enabled, this will also install
+    /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+    ///
+    /// # Errors
+    /// Returns an Error if the initialization was unsuccessful, likely
+    /// because a global subscriber was already installed by another
+    /// call to `try_init`.
+    pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
+        #[cfg(feature = "tracing_log")]
+        tracing_log::LogTracer::init().map_err(Box::new)?;
+
+        dispatcher::set_global_default(dispatcher::Dispatch::new(self.finish())).map_err(Box::new)
+    }
+
+    /// Install this Subscriber as the global default.
+    ///
+    /// If the `tracing_log` feature is enabled, this will also install
+    /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+    ///
+    /// # Panics
+    /// Panics if the initialization was unsuccessful, likely because a
+    /// global subscriber was already installed by another call to `try_init`.
+    pub fn init(self) {
+        self.try_init()
+            .expect("Unable to install global subscriber")
+    }
+}
+
 impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -751,34 +790,35 @@ impl Default for Settings {
 /// filters based on the value of the [`RUST_LOG` environment variable],
 /// if one is not already set.
 ///
-/// Returns whether the initialization was successful.
-///
 /// If the `tracing_log` feature is enabled, this will also install
 /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+///
+///
+/// # Errors
+/// Returns an Error if the initialization was unsuccessful,
+/// likely because a global subscriber was already installed by another
+/// call to `try_init`.
 ///
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
-    #[cfg(feature = "tracing_log")]
-    tracing_log::LogTracer::init().map_err(Box::new)?;
-
-    dispatcher::set_global_default(dispatcher::Dispatch::new(
-        Subscriber::builder()
-            .with_env_filter(EnvFilter::from_default_env())
-            .finish(),
-    ))
-    .map_err(Box::new)
+    Subscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .try_init()
 }
 
-/// Install a global tracing subscriber that listens for
-/// events and filters based on environment variables.
+/// Install a global tracing subscriber that listens for events and
+/// filters based on the value of the [`RUST_LOG` environment variable].
 ///
-/// See [`try_init`] for more details
+/// If the `tracing_log` feature is enabled, this will also install
+/// the LogTracer to convert `Log` records into `tracing` `Event`s.
 ///
 /// # Panics
-/// Panics if there is already a global subscriber set.
+/// Panics if the initialization was unsuccessful, likely because a
+/// global subscriber was already installed by another call to `try_init`.
 ///
-/// [`try_init`]: ./fn.try_init.html
+/// [`RUST_LOG` environment variable]:
+///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn init() {
     try_init().expect("Unable to install global subscriber")
 }
