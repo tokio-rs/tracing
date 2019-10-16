@@ -2,7 +2,7 @@
 use super::*;
 
 #[derive(Debug)]
-pub struct SerializeFieldMap<'a, T:>(&'a T);
+pub struct SerializeFieldMap<'a, T>(&'a T);
 
 pub trait AsMap: Sized + sealed::Sealed {
     fn field_map(&self) -> SerializeFieldMap<Self> {

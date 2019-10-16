@@ -211,7 +211,10 @@ where
     S: SerializeMap,
 {
     fn new(serializer: S) -> Self {
-        Self { serializer, state: Ok(()) }
+        Self {
+            serializer,
+            state: Ok(()),
+        }
     }
 }
 

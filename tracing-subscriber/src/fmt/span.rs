@@ -14,7 +14,7 @@ use tracing_core::{dispatcher, Metadata};
 use super::format::FormatFields;
 
 #[cfg(feature = "json")]
-use serde::{Serialize, Serializer, ser::SerializeStruct};
+use serde::{ser::SerializeStruct, Serialize, Serializer};
 
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
