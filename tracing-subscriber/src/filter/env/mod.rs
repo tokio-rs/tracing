@@ -69,8 +69,8 @@ enum ErrorKind {
 }
 
 impl EnvFilter {
-    /// The default environment variable used by [`EnvFilter::from_default_env`]
-    /// and [`EnvFilter::try_from_default_env`].
+    /// `RUST_LOG` is the default environment variable used by
+    /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
     /// [`EnvFilter::from_default_env`]: #method.from_default_env
     /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
