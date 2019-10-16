@@ -277,6 +277,16 @@ impl<T> Instrumented<T> {
         &mut self.span
     }
 
+    /// Borrows the wrapped type.
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
+
+    /// Mutably borrows the wrapped type.
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
+
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
