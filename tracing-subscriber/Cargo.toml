@@ -24,6 +24,7 @@ default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
 env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["owning_ref"]
 ansi = ["fmt", "ansi_term"]
+registry_unstable = []
 
 # Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
 filter = ["env-filter"]
@@ -55,6 +56,9 @@ criterion = { version = "0.3", default_features = false }
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
+
+[package.metadata.docs.rs]
+all-features = true
 
 [[bench]]
 name = "filter"
