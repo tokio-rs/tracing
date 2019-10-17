@@ -1,5 +1,8 @@
 //! Collects and records trace data.
-pub use tracing_core::{dispatcher::DefaultGuard, subscriber::*};
+pub use tracing_core::subscriber::*;
+
+#[cfg(feature = "std")]
+pub use tracing_core::dispatcher::DefaultGuard;
 
 /// Sets this subscriber as the default for the duration of a closure.
 ///

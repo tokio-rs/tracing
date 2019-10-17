@@ -14,7 +14,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-core/0.1.6/tracing_core"
+documentation = "https://docs.rs/tracing-core/0.1.7/tracing_core"
 description = """
 Core primitives for application-level tracing.
 """
