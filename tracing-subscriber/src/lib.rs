@@ -25,7 +25,9 @@
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
-//! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by default.
+//! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
+//!   default.
+//! - `registry_unstable`: enables the experimental [`registry`] module.
 //!
 //! ### Optional Dependencies
 //!
@@ -47,6 +49,7 @@
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
+//! [`registry`]: registry/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.5")]
 #![warn(
     missing_debug_implementations,
@@ -105,6 +108,8 @@ pub mod filter;
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
+#[cfg(feature = "registry_unstable")]
+pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
 pub(crate) mod thread;

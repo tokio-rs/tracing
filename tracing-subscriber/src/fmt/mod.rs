@@ -271,7 +271,19 @@ where
     }
 }
 
+#[cfg(feature = "registry_unstable")]
+impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
+where
+    layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
+{
+    #[inline]
+    fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
+        self.inner.metadata(id)
+    }
+}
+
 // === impl Formatter ===
+
 impl<N, E, W> Formatter<N, E, W>
 where
     N: for<'writer> FormatFields<'writer>,
@@ -375,6 +387,13 @@ where
             _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
             _ => None,
         }
+    }
+}
+
+#[cfg(feature = "registry_unstable")]
+impl<N, E, W> crate::registry::LookupMetadata for Formatter<N, E, W> {
+    fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
+        self.spans.get(&id).map(|span| span.metadata())
     }
 }
 
@@ -932,5 +951,12 @@ mod test {
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
+    }
+
+    #[test]
+    #[cfg(feature = "registry_unstable")]
+    fn is_lookup_meta() {
+        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+        assert_lookup_meta(Subscriber::builder().finish())
     }
 }
