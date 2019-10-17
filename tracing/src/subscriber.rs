@@ -1,5 +1,5 @@
 //! Collects and records trace data.
-pub use tracing_core::subscriber::*;
+pub use tracing_core::{dispatcher::DefaultGuard, subscriber::*};
 
 /// Sets this subscriber as the default for the duration of a closure.
 ///
@@ -36,6 +36,26 @@ where
     S: Subscriber + Send + Sync + 'static,
 {
     crate::dispatcher::set_global_default(crate::Dispatch::new(subscriber))
+}
+
+/// Sets the subscriber as the default for the duration of the lifetime of the
+/// returned [`DefaultGuard`]
+///
+/// The default subscriber is used when creating a new [`Span`] or
+/// [`Event`], _if no span is currently executing_. If a span is currently
+/// executing, new spans or events are dispatched to the subscriber that
+/// tagged that span, instead.
+///
+/// [`Span`]: ../span/struct.Span.html
+/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+/// [`Event`]: :../event/struct.Event.html
+/// [`DefaultGuard`]: ../../tracing-core/src/dispatcher.DefaultGuard.html
+#[cfg(feature = "std")]
+pub fn set_default<S>(subscriber: S) -> DefaultGuard
+where
+    S: Subscriber + Send + Sync + 'static,
+{
+    crate::dispatcher::set_default(&crate::Dispatch::new(subscriber))
 }
 
 pub use tracing_core::dispatcher::SetGlobalDefaultError;

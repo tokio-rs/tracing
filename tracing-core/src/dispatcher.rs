@@ -201,7 +201,8 @@ struct State {
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
 #[cfg(feature = "std")]
-struct ResetGuard(Option<Dispatch>);
+#[derive(Debug)]
+pub struct DefaultGuard(Option<Dispatch>);
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -221,8 +222,24 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     // prior default. Using this (rather than simply resetting after calling
     // `f`) ensures that we always reset to the prior dispatcher even if `f`
     // panics.
-    let _guard = State::set_default(dispatcher.clone());
+    let _guard = set_default(dispatcher);
     f()
+}
+
+/// Sets the dispatch as the default dispatch for the duration of the lifetime
+/// of the returned DefaultGuard
+///
+/// TODO: Is this still valid?
+/// **Note**: This function required the Rust standard library. `no_std`  users
+/// should use [`set_global_default`] instead.
+///
+/// [`set_global_default`]: ../fn.set_global_default.html
+#[cfg(feature = "std")]
+pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
+    // When this guard is dropped, the default dispatcher will be reset to the
+    // prior default. Using this ensures that we always reset to the prior
+    // dispatcher even if the thread calling this function panics.
+    State::set_default(dispatcher.clone())
 }
 
 /// Sets this dispatch as the global default for the duration of the entire program.
@@ -633,7 +650,7 @@ impl State {
     /// Dropping the returned `ResetGuard` will reset the default dispatcher to
     /// the previous value.
     #[inline]
-    fn set_default(new_dispatch: Dispatch) -> ResetGuard {
+    fn set_default(new_dispatch: Dispatch) -> DefaultGuard {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
@@ -641,14 +658,14 @@ impl State {
             })
             .ok();
         EXISTS.store(true, Ordering::Release);
-        ResetGuard(prior)
+        DefaultGuard(prior)
     }
 }
 
-// ===== impl ResetGuard =====
+// ===== impl DefaultGuard =====
 
 #[cfg(feature = "std")]
-impl Drop for ResetGuard {
+impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
         if let Some(dispatch) = self.0.take() {
