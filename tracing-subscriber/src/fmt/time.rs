@@ -131,7 +131,7 @@ impl ChronoUtc {
     ///
     /// [`RFC 3339`]: https://tools.ietf.org/html/rfc3339
     /// [`ISO 8601`]: https://en.wikipedia.org/wiki/ISO_8601
-    pub fn new() -> Self {
+    pub fn rfc3339() -> Self {
         ChronoUtc {
             format: ChronoFmtType::Rfc3339,
         }
@@ -174,7 +174,7 @@ impl ChronoLocal {
     ///
     /// [`RFC 3339`]: https://tools.ietf.org/html/rfc3339
     /// [`ISO 8601`]: https://en.wikipedia.org/wiki/ISO_8601
-    pub fn new() -> Self {
+    pub fn rfc3339() -> Self {
         ChronoLocal {
             format: ChronoFmtType::Rfc3339,
         }
