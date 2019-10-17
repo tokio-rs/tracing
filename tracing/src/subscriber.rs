@@ -52,7 +52,7 @@ where
 /// [`Span`]: ../span/struct.Span.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: :../event/struct.Event.html
-/// [`DefaultGuard`]: ../../tracing-core/src/dispatcher.DefaultGuard.html
+/// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
 #[cfg(feature = "std")]
 pub fn set_default<S>(subscriber: S) -> DefaultGuard
 where

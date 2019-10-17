@@ -2,7 +2,7 @@
 
 ### Added
 
-- Added `dispatcher::set_default` API which returns a drop guard.
+- Added `dispatcher::set_default` API which returns a drop guard (#388)
 
 # 0.1.6 (September 12, 2019)
 
