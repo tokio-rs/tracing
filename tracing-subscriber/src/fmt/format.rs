@@ -95,7 +95,17 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Use the given `timer` for log message timestamps.
+    /// Use the given [`timer`] for log message timestamps.
+    ///
+    /// See [`time`] for the provided timer implementations.
+    ///
+    /// Note that using the `chrono` feature flag enables the
+    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    ///
+    /// [`time`]: ./time/index.html
+    /// [`timer`]: ./time/trait.FormatTime.html
+    /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
+    /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
