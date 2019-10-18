@@ -1,4 +1,4 @@
-# 0.1.7 (October 16, 2019)
+# 0.1.7 (October 18, 2019)
 
 ### Added
 
@@ -7,6 +7,7 @@
 ### Fixed
 
 - Added missing `Value` impl for `u8` (#392)
+- Broken links in docs.
 
 # 0.1.6 (September 12, 2019)
 
