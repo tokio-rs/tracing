@@ -93,4 +93,4 @@ resources:
       type: github
       name: crate-ci/azure-pipelines
       endpoint: tracing
-      ref: refs/heads/fix-empty-features
+      ref: refs/heads/v0.2
