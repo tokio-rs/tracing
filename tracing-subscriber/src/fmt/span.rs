@@ -13,6 +13,9 @@ use tracing_core::{dispatcher, Metadata};
 
 use super::format::FormatFields;
 
+#[cfg(feature = "json")]
+use serde::{ser::SerializeStruct, Serialize, Serializer};
+
 pub struct Span<'a> {
     lock: OwningHandle<RwLockReadGuard<'a, Slab>, RwLockReadGuard<'a, Slot>>,
 }
@@ -187,6 +190,20 @@ impl<'a> fmt::Debug for Span<'a> {
             .field("metadata", self.metadata())
             .field("fields", &self.fields())
             .finish()
+    }
+}
+
+#[cfg(feature = "json")]
+impl<'a> Serialize for Span<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut serializer = serializer.serialize_struct("Span", 2)?;
+
+        serializer.serialize_field("name", self.name())?;
+        serializer.serialize_field("fields", self.fields())?;
+        serializer.end()
     }
 }
 

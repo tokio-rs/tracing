@@ -25,6 +25,7 @@ env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["owning_ref"]
 ansi = ["fmt", "ansi_term"]
 registry_unstable = []
+json = ["tracing-serde", "serde", "serde_json"]
 
 # Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
 filter = ["env-filter"]
@@ -43,6 +44,11 @@ tracing-log = { version = "0.1", optional = true, default-features = false }
 ansi_term = { version = "0.11", optional = true }
 owning_ref = { version = "0.4.0", optional = true }
 chrono = { version = "0.4", optional = true }
+
+# only required by the json feature
+serde_json = { version = "1.0", optional = true }
+serde = { version = "1.0", optional = true }
+tracing-serde = { path = "../tracing-serde", optional = true }
 
 # opt-in deps
 parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }

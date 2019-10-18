@@ -15,6 +15,8 @@ use tracing_core::{
     span::{Attributes, Id, Record},
 };
 
+pub mod fields;
+
 #[derive(Debug)]
 pub struct SerializeField(Field);
 
@@ -156,10 +158,7 @@ impl<'a> Serialize for SerializeRecord<'a> {
         S: Serializer,
     {
         let serializer = serializer.serialize_map(None)?;
-        let mut visitor = SerdeMapVisitor {
-            serializer,
-            state: Ok(()),
-        };
+        let mut visitor = SerdeMapVisitor::new(serializer);
         self.0.record(&mut visitor);
         visitor.finish()
     }
@@ -168,6 +167,18 @@ impl<'a> Serialize for SerializeRecord<'a> {
 struct SerdeMapVisitor<S: SerializeMap> {
     serializer: S,
     state: Result<(), S::Error>,
+}
+
+impl<S> SerdeMapVisitor<S>
+where
+    S: SerializeMap,
+{
+    fn new(serializer: S) -> Self {
+        Self {
+            serializer,
+            state: Ok(()),
+        }
+    }
 }
 
 impl<S> Visit for SerdeMapVisitor<S>
@@ -320,11 +331,21 @@ impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     }
 }
 
+impl<'a> AsSerde<'a> for Level {
+    type Serializable = SerializeLevel<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeLevel(self)
+    }
+}
+
 impl<'a> self::sealed::Sealed for Event<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 
 impl self::sealed::Sealed for Id {}
+
+impl self::sealed::Sealed for Level {}
 
 impl<'a> self::sealed::Sealed for Record<'a> {}
 
