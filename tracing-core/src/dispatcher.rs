@@ -201,7 +201,8 @@ struct State {
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
 #[cfg(feature = "std")]
-struct ResetGuard(Option<Dispatch>);
+#[derive(Debug)]
+pub struct DefaultGuard(Option<Dispatch>);
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -221,8 +222,23 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     // prior default. Using this (rather than simply resetting after calling
     // `f`) ensures that we always reset to the prior dispatcher even if `f`
     // panics.
-    let _guard = State::set_default(dispatcher.clone());
+    let _guard = set_default(dispatcher);
     f()
+}
+
+/// Sets the dispatch as the default dispatch for the duration of the lifetime
+/// of the returned DefaultGuard
+///
+/// **Note**: This function required the Rust standard library. `no_std`  users
+/// should use [`set_global_default`] instead.
+///
+/// [`set_global_default`]: ../fn.set_global_default.html
+#[cfg(feature = "std")]
+pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
+    // When this guard is dropped, the default dispatcher will be reset to the
+    // prior default. Using this ensures that we always reset to the prior
+    // dispatcher even if the thread calling this function panics.
+    State::set_default(dispatcher.clone())
 }
 
 /// Sets this dispatch as the global default for the duration of the entire program.
@@ -633,7 +649,7 @@ impl State {
     /// Dropping the returned `ResetGuard` will reset the default dispatcher to
     /// the previous value.
     #[inline]
-    fn set_default(new_dispatch: Dispatch) -> ResetGuard {
+    fn set_default(new_dispatch: Dispatch) -> DefaultGuard {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
@@ -641,14 +657,14 @@ impl State {
             })
             .ok();
         EXISTS.store(true, Ordering::Release);
-        ResetGuard(prior)
+        DefaultGuard(prior)
     }
 }
 
-// ===== impl ResetGuard =====
+// ===== impl DefaultGuard =====
 
 #[cfg(feature = "std")]
-impl Drop for ResetGuard {
+impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
         if let Some(dispatch) = self.0.take() {
@@ -667,9 +683,7 @@ mod test {
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},
-        span,
-        subscriber::{Interest, Subscriber},
-        Event,
+        subscriber::Interest,
     };
 
     #[test]
@@ -785,70 +799,5 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestSubscriber), || mk_span())
-    }
-
-    #[test]
-    fn global_dispatch() {
-        struct TestSubscriberA;
-        impl Subscriber for TestSubscriberA {
-            fn enabled(&self, _: &Metadata<'_>) -> bool {
-                true
-            }
-            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-                span::Id::from_u64(1)
-            }
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
-            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-            fn event(&self, _: &Event<'_>) {}
-            fn enter(&self, _: &span::Id) {}
-            fn exit(&self, _: &span::Id) {}
-        }
-        #[cfg(feature = "std")]
-        struct TestSubscriberB;
-
-        #[cfg(feature = "std")]
-        impl Subscriber for TestSubscriberB {
-            fn enabled(&self, _: &Metadata<'_>) -> bool {
-                true
-            }
-            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-                span::Id::from_u64(1)
-            }
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
-            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-            fn event(&self, _: &Event<'_>) {}
-            fn enter(&self, _: &span::Id) {}
-            fn exit(&self, _: &span::Id) {}
-        }
-
-        // NOTE: if you want to have other tests that set the default dispatch you'll need to
-        // write them as integration tests in ../tests/
-        set_global_default(Dispatch::new(TestSubscriberA)).expect("global dispatch set failed");
-        get_default(|current| {
-            assert!(
-                current.is::<TestSubscriberA>(),
-                "global dispatch get failed"
-            )
-        });
-
-        #[cfg(feature = "std")]
-        with_default(&Dispatch::new(TestSubscriberB), || {
-            get_default(|current| {
-                assert!(
-                    current.is::<TestSubscriberB>(),
-                    "thread-local override of global dispatch failed"
-                )
-            });
-        });
-
-        get_default(|current| {
-            assert!(
-                current.is::<TestSubscriberA>(),
-                "reset to global override failed"
-            )
-        });
-
-        set_global_default(Dispatch::new(TestSubscriberA))
-            .expect_err("double global dispatch set succeeded");
     }
 }
