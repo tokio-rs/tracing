@@ -53,7 +53,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.6", default-features = false }
+//!   tracing-core = { version = "0.1.7", default-features = false }
 //!   ```
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!

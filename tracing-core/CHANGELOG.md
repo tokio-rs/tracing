@@ -4,6 +4,10 @@
 
 - Added `dispatcher::set_default` API which returns a drop guard (#388)
 
+### Fixed
+
+- Added missing `Value` impl for `u8` (#392)
+
 # 0.1.6 (September 12, 2019)
 
 ### Added
