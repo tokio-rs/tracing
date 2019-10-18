@@ -199,7 +199,6 @@ impl<'a> field::Visit for JsonVisitor<'a> {
     }
 }
 
-
 /// A bridge between `fmt::Write` and `io::Write`.
 ///
 /// This is needed because tracing-subscriber's FormatEvent expects a fmt::Write
