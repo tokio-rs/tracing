@@ -2,17 +2,25 @@
 use super::span;
 use super::time::{self, FormatTime, SystemTime};
 use crate::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
+
 use std::fmt::{self, Write};
 use std::marker::PhantomData;
 use tracing_core::{
     field::{self, Field, Visit},
     Event, Level,
 };
+
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
+
+#[cfg(feature = "json")]
+mod json;
+
+#[cfg(feature = "json")]
+pub use json::*;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -133,6 +141,19 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`Compact`].
     pub fn compact(self) -> Format<Compact, T> {
+        Format {
+            format: PhantomData,
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+        }
+    }
+
+    /// Use the full JSON format.
+    ///
+    /// See [`Json`].
+    #[cfg(feature = "json")]
+    pub fn json(self) -> Format<Json, T> {
         Format {
             format: PhantomData,
             timer: self.timer,
@@ -291,7 +312,6 @@ where
 }
 
 // === impl FormatFields ===
-
 impl<'writer, M> FormatFields<'writer> for M
 where
     M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,

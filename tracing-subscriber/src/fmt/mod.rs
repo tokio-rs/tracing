@@ -744,6 +744,23 @@ impl<N, E, F, W> Builder<N, E, F, W> {
         }
     }
 
+    /// Sets the subscriber being built to use a JSON formatter.
+    ///
+    /// See [`format::Json`]
+    #[cfg(feature = "json")]
+    pub fn json(self) -> Builder<format::JsonFields, format::Format<format::Json>, F, W>
+    where
+        N: for<'writer> FormatFields<'writer> + 'static,
+    {
+        Builder {
+            fmt_event: format::Format::default().json(),
+            filter: self.filter,
+            fmt_fields: format::JsonFields::default(),
+            settings: self.settings,
+            make_writer: self.make_writer,
+        }
+    }
+
     /// Sets the function that the subscriber being built should use to format
     /// events that occur.
     pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F, W>

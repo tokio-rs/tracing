@@ -28,6 +28,7 @@
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
 //! - `registry_unstable`: enables the experimental [`registry`] module.
+//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
 //!
 //! ### Optional Dependencies
 //!
