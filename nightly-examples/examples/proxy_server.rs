@@ -93,8 +93,6 @@ arg_enum! {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{EnvFilter, FmtSubscriber};
-
     let matches = App::new("Proxy Server Exemple")
         .version("1.0")
         .arg(
@@ -123,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
 
-    set_global_default(&matches);
+    set_global_default(&matches)?;
 
     let listen_addr = matches.value_of("listen_addr").unwrap_or("127.0.0.1:8081");
     let listen_addr = listen_addr.parse::<SocketAddr>()?;
@@ -160,7 +158,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn set_global_default(matches: &ArgMatches) {
+fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    use tracing_subscriber::{FmtSubscriber, filter::EnvFilter};
     match value_t!(matches, "log_format", LogFormat).unwrap_or(LogFormat::Plain) {
         LogFormat::Json => {
             let subscriber = FmtSubscriber::builder()
@@ -176,5 +175,6 @@ fn set_global_default(matches: &ArgMatches) {
             tracing::subscriber::set_global_default(subscriber)?;
         }
     }
+    Ok(())
 }
 
