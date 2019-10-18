@@ -5,12 +5,13 @@ use serde_json::Serializer;
 use std::{
     collections::BTreeMap,
     fmt::{self, Write},
+    io,
 };
 use tracing_core::{
     field::{self, Field},
     Event,
 };
-use tracing_serde::{AsSerde, WriteAdaptor};
+use tracing_serde::AsSerde;
 
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;

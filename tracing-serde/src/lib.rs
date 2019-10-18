@@ -1,7 +1,7 @@
 extern crate serde;
 extern crate tracing_core;
 
-use std::{fmt, io};
+use std::fmt;
 
 use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},
