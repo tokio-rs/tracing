@@ -683,9 +683,7 @@ mod test {
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},
-        span,
-        subscriber::{Interest, Subscriber},
-        Event,
+        subscriber::Interest,
     };
 
     #[test]
