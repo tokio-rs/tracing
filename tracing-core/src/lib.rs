@@ -10,18 +10,19 @@
 //!
 //! This crate provides:
 //!
-//! * [`Span`] identifies a span within the execution of a program.
+//! * [`span::Id`] identifies a span within the execution of a program.
 //!
 //! * [`Event`] represents a single event within a trace.
 //!
 //! * [`Subscriber`], the trait implemented to collect trace data.
 //!
-//! * [`Metadata`] and [`Callsite`] provide information describing `Span`s.
+//! * [`Metadata`] and [`Callsite`] provide information describing spans and
+//!   `Event`s.
 //!
 //! * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
-//!   structured data attached to a `Span`.
+//!   structured data attached to a span.
 //!
-//! * [`Dispatch`] allows span events to be dispatched to `Subscriber`s.
+//! * [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
 //!
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
@@ -56,7 +57,7 @@
 //!   ```
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!
-//! [`Span`]: span/struct.Span.html
+//! [`span::Id`]: span/struct.Id.html
 //! [`Event`]: event/struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
 //! [`Metadata`]: metadata/struct.Metadata.html

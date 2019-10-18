@@ -36,18 +36,19 @@ primitives of `tracing`.
 
 The crate provides:
 
-* [`Span`] identifies a span within the execution of a program.
+* [`span::Id`] identifies a span within the execution of a program.
 
 * [`Event`] represents a single event within a trace.
 
 * [`Subscriber`], the trait implemented to collect trace data.
 
-* [`Metadata`] and [`Callsite`] provide information describing `Span`s.
+* [`Metadata`] and [`Callsite`] provide information describing spans and
+  events.
 
 * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
-  structured data attached to a `Span`.
+  structured data attached to spans and events.
 
-* [`Dispatch`] allows span events to be dispatched to `Subscriber`s.
+* [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
 
 In addition, it defines the global callsite registry and per-thread current
 dispatcher which other components of the tracing system rely on.
@@ -80,7 +81,6 @@ The following crate feature flags are available:
   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 
 [`tracing`]: ../tracing
-[`Span`]: https://docs.rs/tracing-core/0.1.6/tracing_core/span/struct.Span.html
 [`Event`]: https://docs.rs/tracing-core/0.1.6/tracing_core/event/struct.Event.html
 [`Subscriber`]: https://docs.rs/tracing-core/0.1.6/tracing_core/subscriber/trait.Subscriber.html
 [`Metadata`]: https://docs.rs/tracing-core/0.1.6/tracing_core/metadata/struct.Metadata.html
@@ -90,6 +90,7 @@ The following crate feature flags are available:
 [`Value`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/trait.Value.html
 [`ValueSet`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/struct.ValueSet.html
 [`Dispatch`]: https://docs.rs/tracing-core/0.1.6/tracing_core/dispatcher/struct.Dispatch.html
+[`span::Id`]: https://docs.rs/tracing-core/0.1.7/tracing_core/span/struct.Id.html
 
 ## License
 
