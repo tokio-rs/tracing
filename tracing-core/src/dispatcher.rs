@@ -229,7 +229,6 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// Sets the dispatch as the default dispatch for the duration of the lifetime
 /// of the returned DefaultGuard
 ///
-/// TODO: Is this still valid?
 /// **Note**: This function required the Rust standard library. `no_std`  users
 /// should use [`set_global_default`] instead.
 ///
