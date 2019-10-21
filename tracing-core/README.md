@@ -7,14 +7,13 @@ Core primitives for application-level tracing.
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
-[![Gitter chat][gitter-badge]][gitter-url]
 [![Discord chat][discord-badge]][discord-url]
 
 [Documentation][docs-url] |
 [Chat (gitter)][gitter-url] | [Chat (discord)][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
-[crates-url]: https://crates.io/crates/tracing-core/0.1.6
+[crates-url]: https://crates.io/crates/tracing-core/0.1.7
 [docs-badge]: https://docs.rs/tracing-core/badge.svg
 [docs-url]: https://docs.rs/tracing-core/0.1.7
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
@@ -23,8 +22,6 @@ Core primitives for application-level tracing.
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
 [azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
-[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
-[gitter-url]: https://gitter.im/tokio-rs/tracing
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discordapp.com/invite/XdPzyTZ
 
@@ -36,18 +33,19 @@ primitives of `tracing`.
 
 The crate provides:
 
-* [`Span`] identifies a span within the execution of a program.
+* [`span::Id`] identifies a span within the execution of a program.
 
 * [`Event`] represents a single event within a trace.
 
 * [`Subscriber`], the trait implemented to collect trace data.
 
-* [`Metadata`] and [`Callsite`] provide information describing `Span`s.
+* [`Metadata`] and [`Callsite`] provide information describing spans and
+  events.
 
 * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
-  structured data attached to a `Span`.
+  structured data attached to spans and events.
 
-* [`Dispatch`] allows span events to be dispatched to `Subscriber`s.
+* [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
 
 In addition, it defines the global callsite registry and per-thread current
 dispatcher which other components of the tracing system rely on.
@@ -74,22 +72,22 @@ The following crate feature flags are available:
 
   ```toml
   [dependencies]
-  tracing-core = { version = "0.1.6", default-features = false }
+  tracing-core = { version = "0.1.7", default-features = false }
   ```
 
   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 
 [`tracing`]: ../tracing
-[`Span`]: https://docs.rs/tracing-core/0.1.6/tracing_core/span/struct.Span.html
-[`Event`]: https://docs.rs/tracing-core/0.1.6/tracing_core/event/struct.Event.html
-[`Subscriber`]: https://docs.rs/tracing-core/0.1.6/tracing_core/subscriber/trait.Subscriber.html
-[`Metadata`]: https://docs.rs/tracing-core/0.1.6/tracing_core/metadata/struct.Metadata.html
-[`Callsite`]: https://docs.rs/tracing-core/0.1.6/tracing_core/callsite/trait.Callsite.html
-[`Field`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/struct.Field.html
-[`FieldSet`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/struct.FieldSet.html
-[`Value`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/trait.Value.html
-[`ValueSet`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/struct.ValueSet.html
-[`Dispatch`]: https://docs.rs/tracing-core/0.1.6/tracing_core/dispatcher/struct.Dispatch.html
+[`span::Id`]: https://docs.rs/tracing-core/0.1.7/tracing_core/span/struct.Id.html
+[`Event`]: https://docs.rs/tracing-core/0.1.7/tracing_core/event/struct.Event.html
+[`Subscriber`]: https://docs.rs/tracing-core/0.1.7/tracing_core/subscriber/trait.Subscriber.html
+[`Metadata`]: https://docs.rs/tracing-core/0.1.7/tracing_core/metadata/struct.Metadata.html
+[`Callsite`]: https://docs.rs/tracing-core/0.1.7/tracing_core/callsite/trait.Callsite.html
+[`Field`]: https://docs.rs/tracing-core/0.1.7/tracing_core/field/struct.Field.html
+[`FieldSet`]: https://docs.rs/tracing-core/0.1.7/tracing_core/field/struct.FieldSet.html
+[`Value`]: https://docs.rs/tracing-core/0.1.7/tracing_core/field/trait.Value.html
+[`ValueSet`]: https://docs.rs/tracing-core/0.1.7/tracing_core/field/struct.ValueSet.html
+[`Dispatch`]: https://docs.rs/tracing-core/0.1.7/tracing_core/dispatcher/struct.Dispatch.html
 
 ## License
 
