@@ -40,12 +40,14 @@
 extern crate proc_macro;
 
 use std::collections::HashSet;
+use std::iter;
 
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    spanned::Spanned, AttributeArgs, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
-    MetaNameValue, NestedMeta, Pat, PatIdent, PatType, Signature,
+    spanned::Spanned, AttributeArgs, FieldPat, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
+    MetaNameValue, NestedMeta, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct,
+    PatType, Signature,
 };
 
 /// Instruments a function to create and enter a `tracing` [span] every time
@@ -154,12 +156,9 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let param_names: Vec<Ident> = params
         .clone()
         .into_iter()
-        .filter_map(|param| match param {
-            FnArg::Typed(PatType { pat, .. }) => match *pat {
-                Pat::Ident(PatIdent { ident, .. }) => Some(ident),
-                _ => None,
-            },
-            _ => None,
+        .flat_map(|param| match param {
+            FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
+            FnArg::Receiver(_) => Box::new(iter::once(Ident::new("self", param.span()))),
         })
         .filter(|ident| !skips.contains(ident))
         .collect();
@@ -210,6 +209,29 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         }
     )
     .into()
+}
+
+fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
+    match pat {
+        Pat::Ident(PatIdent { ident, .. }) => Box::new(iter::once(ident)),
+        Pat::Reference(PatReference { pat, .. }) => param_names(*pat),
+        Pat::Struct(PatStruct { fields, .. }) => Box::new(
+            fields
+                .into_iter()
+                .flat_map(|FieldPat { pat, .. }| param_names(*pat)),
+        ),
+        Pat::Tuple(PatTuple { elems, .. }) => Box::new(elems.into_iter().flat_map(param_names)),
+        Pat::TupleStruct(PatTupleStruct {
+            pat: PatTuple { elems, .. },
+            ..
+        }) => Box::new(elems.into_iter().flat_map(param_names)),
+
+        // The above *should* cover all cases of irrefutable patterns,
+        // but we purposefully don't do any funny business here
+        // (such as panicking) because that would obscure rustc's
+        // much more informative error message.
+        _ => Box::new(iter::empty()),
+    }
 }
 
 fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
