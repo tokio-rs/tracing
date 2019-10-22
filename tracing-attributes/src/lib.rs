@@ -40,6 +40,7 @@
 extern crate proc_macro;
 
 use std::collections::HashSet;
+use std::iter;
 
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
@@ -154,12 +155,9 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let param_names: Vec<Ident> = params
         .clone()
         .into_iter()
-        .filter_map(|param| match param {
-            FnArg::Typed(PatType { pat, .. }) => match *pat {
-                Pat::Ident(PatIdent { ident, .. }) => Some(ident),
-                _ => None,
-            },
-            _ => None,
+        .flat_map(|param| match param {
+            FnArg::Typed(PatType { pat, .. }) => param_names(pat),
+            _ => Box::new(iter::empty()),
         })
         .filter(|ident| !skips.contains(ident))
         .collect();
@@ -210,6 +208,13 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         }
     )
     .into()
+}
+
+fn param_names(pat: Box<Pat>) -> Box<dyn Iterator<Item=Ident>> {
+    match *pat {
+        Pat::Ident(PatIdent { ident, .. }) => Box::new(iter::once(ident)),
+        _ => Box::new(iter::empty()),
+    }
 }
 
 fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
