@@ -251,3 +251,33 @@ fn destructure_refs() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn destructure_tuple_structs() {
+    struct Foo(usize, usize);
+
+    #[instrument]
+    fn my_fn(Foo(arg1, arg2): Foo) {}
+
+    let span = span::mock().named("my_fn");
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span.clone().with_field(
+                field::mock("arg1").with_value(&format_args!("1"))
+                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .only()
+            ),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        my_fn(Foo(1, 2));
+    });
+
+    handle.assert_finished();
+}
