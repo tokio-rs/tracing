@@ -46,7 +46,7 @@ use proc_macro::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     spanned::Spanned, AttributeArgs, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
-    MetaNameValue, NestedMeta, Pat, PatIdent, PatType, Signature,
+    MetaNameValue, NestedMeta, Pat, PatIdent, PatType, PatTuple, Signature,
 };
 
 /// Instruments a function to create and enter a `tracing` [span] every time
@@ -156,7 +156,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         .clone()
         .into_iter()
         .flat_map(|param| match param {
-            FnArg::Typed(PatType { pat, .. }) => param_names(pat),
+            FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
             _ => Box::new(iter::empty()),
         })
         .filter(|ident| !skips.contains(ident))
@@ -210,9 +210,10 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-fn param_names(pat: Box<Pat>) -> Box<dyn Iterator<Item=Ident>> {
-    match *pat {
+fn param_names(pat: Pat) -> Box<dyn Iterator<Item=Ident>> {
+    match pat {
         Pat::Ident(PatIdent { ident, .. }) => Box::new(iter::once(ident)),
+        Pat::Tuple(PatTuple { elems, .. }) => Box::new(elems.into_iter().flat_map(param_names)),
         _ => Box::new(iter::empty()),
     }
 }

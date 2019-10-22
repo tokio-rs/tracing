@@ -166,3 +166,61 @@ fn generics() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn destructure_tuples() {
+    #[instrument]
+    fn my_fn((arg1, arg2): (usize, usize)) {}
+
+    let span = span::mock().named("my_fn");
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span.clone().with_field(
+                field::mock("arg1").with_value(&format_args!("1"))
+                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .only()
+            ),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        my_fn((1, 2));
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn destructure_nested_tuples() {
+    #[instrument]
+    fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {}
+
+    let span = span::mock().named("my_fn");
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span.clone().with_field(
+                field::mock("arg1").with_value(&format_args!("1"))
+                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .and(field::mock("arg3").with_value(&format_args!("3")))
+                    .and(field::mock("arg4").with_value(&format_args!("4")))
+                    .only()
+            ),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        my_fn(((1, 2), (3, 4)));
+    });
+
+    handle.assert_finished();
+}
