@@ -286,7 +286,7 @@ pub trait Subscriber: 'static {
 
     /// Records that a span has been exited.
     ///
-    /// When entering a span, this method is called to notify the subscriber
+    /// When exiting a span, this method is called to notify the subscriber
     /// that the span has been exited. The subscriber is provided with the
     /// [span ID] of the exited span, and should update any internal state
     /// tracking the current span accordingly.
