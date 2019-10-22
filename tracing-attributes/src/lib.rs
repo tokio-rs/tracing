@@ -225,6 +225,11 @@ fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
             pat: PatTuple { elems, .. },
             ..
         }) => Box::new(elems.into_iter().flat_map(param_names)),
+
+        // The above *should* cover all cases of irrefutable patterns,
+        // but we purposefully don't do any funny business here
+        // (such as panicking) because that would obscure rustc's
+        // much more informative error message.
         _ => Box::new(iter::empty()),
     }
 }
