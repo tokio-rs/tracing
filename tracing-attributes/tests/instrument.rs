@@ -224,3 +224,30 @@ fn destructure_nested_tuples() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn destructure_refs() {
+    #[instrument]
+    fn my_fn(&arg1: &usize) {}
+
+    let span = span::mock().named("my_fn");
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span.clone().with_field(
+                field::mock("arg1").with_value(&format_args!("1"))
+                    .only()
+            ),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        my_fn(&1);
+    });
+
+    handle.assert_finished();
+}
