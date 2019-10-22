@@ -158,7 +158,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         .into_iter()
         .flat_map(|param| match param {
             FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
-            _ => Box::new(iter::empty()),
+            FnArg::Receiver(_) => Box::new(iter::once(Ident::new("self", param.span()))),
         })
         .filter(|ident| !skips.contains(ident))
         .collect();

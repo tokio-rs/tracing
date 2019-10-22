@@ -166,3 +166,37 @@ fn generics() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn methods() {
+    #[derive(Debug)]
+    struct Foo;
+
+    impl Foo {
+        #[instrument]
+        fn my_fn(&self, arg1: usize) {}
+    }
+
+    let span = span::mock().named("my_fn");
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span.clone().with_field(
+                field::mock("self")
+                    .with_value(&format_args!("Foo"))
+                    .and(field::mock("arg1").with_value(&format_args!("42"))),
+            ),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        let foo = Foo;
+        foo.my_fn(42);
+    });
+
+    handle.assert_finished();
+}
