@@ -14,9 +14,10 @@ fn destructure_tuples() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1").with_value(&format_args!("1"))
+                field::mock("arg1")
+                    .with_value(&format_args!("1"))
                     .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .only()
+                    .only(),
             ),
         )
         .enter(span.clone())
@@ -42,11 +43,12 @@ fn destructure_nested_tuples() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1").with_value(&format_args!("1"))
+                field::mock("arg1")
+                    .with_value(&format_args!("1"))
                     .and(field::mock("arg2").with_value(&format_args!("2")))
                     .and(field::mock("arg3").with_value(&format_args!("3")))
                     .and(field::mock("arg4").with_value(&format_args!("4")))
-                    .only()
+                    .only(),
             ),
         )
         .enter(span.clone())
@@ -71,10 +73,8 @@ fn destructure_refs() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
-                field::mock("arg1").with_value(&format_args!("1"))
-                    .only()
-            ),
+            span.clone()
+                .with_field(field::mock("arg1").with_value(&format_args!("1")).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -101,9 +101,10 @@ fn destructure_tuple_structs() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1").with_value(&format_args!("1"))
+                field::mock("arg1")
+                    .with_value(&format_args!("1"))
                     .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .only()
+                    .only(),
             ),
         )
         .enter(span.clone())
@@ -127,16 +128,24 @@ fn destructure_structs() {
     }
 
     #[instrument]
-    fn my_fn(Foo { bar: arg1, baz: arg2 }: Foo) { let _ = (arg1, arg2); }
+    fn my_fn(
+        Foo {
+            bar: arg1,
+            baz: arg2,
+        }: Foo,
+    ) {
+        let _ = (arg1, arg2);
+    }
 
     let span = span::mock().named("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1").with_value(&format_args!("1"))
+                field::mock("arg1")
+                    .with_value(&format_args!("1"))
                     .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .only()
+                    .only(),
             ),
         )
         .enter(span.clone())
@@ -163,7 +172,13 @@ fn destructure_everything() {
     struct NoDebug;
 
     #[instrument]
-    fn my_fn(&Foo { bar: Bar((arg1, arg2)), baz: (arg3, arg4), .. }: &Foo) {
+    fn my_fn(
+        &Foo {
+            bar: Bar((arg1, arg2)),
+            baz: (arg3, arg4),
+            ..
+        }: &Foo,
+    ) {
         let _ = (arg1, arg2, arg3, arg4);
     }
 
@@ -172,11 +187,12 @@ fn destructure_everything() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1").with_value(&format_args!("1"))
+                field::mock("arg1")
+                    .with_value(&format_args!("1"))
                     .and(field::mock("arg2").with_value(&format_args!("2")))
                     .and(field::mock("arg3").with_value(&format_args!("3")))
                     .and(field::mock("arg4").with_value(&format_args!("4")))
-                    .only()
+                    .only(),
             ),
         )
         .enter(span.clone())
@@ -186,7 +202,11 @@ fn destructure_everything() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        let foo = Foo { bar: Bar((1, 2)), baz: (3, 4), qux: NoDebug };
+        let foo = Foo {
+            bar: Bar((1, 2)),
+            baz: (3, 4),
+            qux: NoDebug,
+        };
         let _ = foo.qux; // to eliminate unused field warning
         my_fn(&foo);
     });

@@ -45,9 +45,9 @@ use std::iter;
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    spanned::Spanned, AttributeArgs, FieldPat, FnArg, Ident, ItemFn, Lit, LitInt,
-    Meta, MetaList, MetaNameValue, NestedMeta, Pat, PatIdent, PatReference,
-    PatStruct, PatType, PatTuple, PatTupleStruct, Signature,
+    spanned::Spanned, AttributeArgs, FieldPat, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
+    MetaNameValue, NestedMeta, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct,
+    PatType, Signature,
 };
 
 /// Instruments a function to create and enter a `tracing` [span] every time
@@ -211,15 +211,20 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-fn param_names(pat: Pat) -> Box<dyn Iterator<Item=Ident>> {
+fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
     match pat {
         Pat::Ident(PatIdent { ident, .. }) => Box::new(iter::once(ident)),
         Pat::Reference(PatReference { pat, .. }) => param_names(*pat),
-        Pat::Struct(PatStruct { fields, .. }) =>
-            Box::new(fields.into_iter().flat_map(|FieldPat { pat, .. }| param_names(*pat))),
+        Pat::Struct(PatStruct { fields, .. }) => Box::new(
+            fields
+                .into_iter()
+                .flat_map(|FieldPat { pat, .. }| param_names(*pat)),
+        ),
         Pat::Tuple(PatTuple { elems, .. }) => Box::new(elems.into_iter().flat_map(param_names)),
-        Pat::TupleStruct(PatTupleStruct { pat: PatTuple { elems, .. }, .. }) =>
-            Box::new(elems.into_iter().flat_map(param_names)),
+        Pat::TupleStruct(PatTupleStruct {
+            pat: PatTuple { elems, .. },
+            ..
+        }) => Box::new(elems.into_iter().flat_map(param_names)),
         _ => Box::new(iter::empty()),
     }
 }
