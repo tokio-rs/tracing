@@ -257,7 +257,7 @@ impl FromStr for Directive {
         let level = caps
             .name("level")
             .and_then(|l| l.as_str().parse().ok())
-            // Setting the target without the level enables every level
+            // Setting the target without the level enables every level for that target
             .unwrap_or(LevelFilter::TRACE);
 
         Ok(Directive {
