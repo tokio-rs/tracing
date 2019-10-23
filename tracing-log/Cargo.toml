@@ -18,9 +18,10 @@ license = "MIT"
 readme = "README.md"
 
 [features]
-default = ["log-tracer", "trace-logger"]
+default = ["log-tracer", "trace-logger", "std"]
 log-tracer = []
 trace-logger = []
+std = ["log/std"]
 
 [dependencies]
 tracing-core = "0.1.2"
