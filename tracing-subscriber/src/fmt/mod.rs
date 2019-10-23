@@ -100,7 +100,7 @@
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
-use std::{any::TypeId, cell::RefCell, error::Error, io};
+use std::{any::TypeId, cell::RefCell, error::Error, fmt, io};
 use tracing_core::{subscriber::Interest, Event, Metadata};
 
 pub mod format;
@@ -430,6 +430,24 @@ where
     }
 }
 
+#[derive(Debug)]
+enum InitError {
+    #[cfg(feature = "tracing-log")]
+    Log(tracing_log::log_tracer::SetLoggerError),
+    Dispatcher(tracing_core::dispatcher::SetGlobalDefaultError),
+}
+
+impl fmt::Display for InitError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InitError::Log(err) => err.fmt(f),
+            InitError::Dispatcher(err) => err.fmt(f),
+        }
+    }
+}
+
+impl Error for InitError {}
+
 impl<N, E, F, W> Builder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -449,13 +467,13 @@ where
     /// because a global subscriber was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
-        #[cfg(feature = "tracing-log/std")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::init().map_err(InitError::Log)?;
 
         tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
             self.finish(),
         ))
-        .map_err(Box::new)
+        .map_err(InitError::Dispatcher)
     }
 
     /// Install this Subscriber as the global default.
