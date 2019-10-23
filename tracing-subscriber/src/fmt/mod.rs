@@ -101,17 +101,14 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, cell::RefCell, error::Error, io};
-use tracing_core::{dispatcher, subscriber::Interest, Event, Metadata};
+use tracing_core::{subscriber::Interest, Event, Metadata};
 
 pub mod format;
 mod span;
 pub mod time;
 pub mod writer;
 
-#[cfg(feature = "tracing_log")]
-use tracing_log::LogTracer;
-
-use crate::filter::{EnvFilter, LevelFilter};
+use crate::filter::LevelFilter;
 use crate::layer::{self, Layer};
 
 #[doc(inline)]
@@ -444,7 +441,7 @@ where
     /// Install this Subscriber as the global default if one is
     /// not already set.
     ///
-    /// If the `tracing_log` feature is enabled, this will also install
+    /// If the `tracing-log` feature is enabled, this will also install
     /// the LogTracer to convert `Log` records into `tracing` `Event`s.
     ///
     /// # Errors
@@ -452,15 +449,18 @@ where
     /// because a global subscriber was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
-        #[cfg(feature = "tracing_log")]
+        #[cfg(feature = "tracing-log/std")]
         tracing_log::LogTracer::init().map_err(Box::new)?;
 
-        dispatcher::set_global_default(dispatcher::Dispatch::new(self.finish())).map_err(Box::new)
+        tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
+            self.finish(),
+        ))
+        .map_err(Box::new)
     }
 
     /// Install this Subscriber as the global default.
     ///
-    /// If the `tracing_log` feature is enabled, this will also install
+    /// If the `tracing-log` feature is enabled, this will also install
     /// the LogTracer to convert `Log` records into `tracing` `Event`s.
     ///
     /// # Panics
@@ -846,7 +846,7 @@ impl Default for Settings {
 /// filters based on the value of the [`RUST_LOG` environment variable],
 /// if one is not already set.
 ///
-/// If the `tracing_log` feature is enabled, this will also install
+/// If the `tracing-log` feature is enabled, this will also install
 /// the [`LogTracer`] to convert `log` records into `tracing` `Event`s.
 ///
 ///
@@ -861,14 +861,14 @@ impl Default for Settings {
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
     Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(crate::EnvFilter::from_default_env())
         .try_init()
 }
 
 /// Install a global tracing subscriber that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable].
 ///
-/// If the `tracing_log` feature is enabled, this will also install
+/// If the `tracing-log` feature is enabled, this will also install
 /// the LogTracer to convert `Log` records into `tracing` `Event`s.
 ///
 /// # Panics
