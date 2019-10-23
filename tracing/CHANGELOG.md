@@ -1,3 +1,18 @@
+# 0.1.10 (October 23, 2019)
+
+### Added
+
+- Support for destructuring in arguments to `#[instrument]`ed functions (#397)
+- Generated field for `self` parameters when `#[instrument]`ing methods (#397)
+- Optional `skip` argument to `#[instrument]` for excluding function parameters
+  from generated spans (#359)
+- Added `dispatcher::set_default` and `subscriber::set_default` APIs, which
+  return a drop guard (#388)
+
+### Fixed
+
+- Some minor documentation errors (#356, #370)
+
 # 0.1.9 (September 13, 2019)
 
 ### Fixed

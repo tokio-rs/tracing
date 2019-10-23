@@ -14,9 +14,9 @@ Application-level tracing for Rust.
 [Chat (gitter)][gitter-url] | [Chat (discord)][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.9
+[crates-url]: https://crates.io/crates/tracing/0.1.10
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.9
+[docs-url]: https://docs.rs/tracing/0.1.10
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -54,7 +54,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing = "0.1.9"
+tracing = "0.1.10"
 ```
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
