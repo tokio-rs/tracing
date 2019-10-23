@@ -1,3 +1,10 @@
+# 0.1.5 (October 22, 2019)
+
+### Added
+
+- Support for destructuring in arguments to `#[instrument]`ed functions (#397)
+- Generated field for `self` parameters when `#[instrument]`ing methods (#397)
+
 # 0.1.4 (September 26, 2019)
 
 ### Added
