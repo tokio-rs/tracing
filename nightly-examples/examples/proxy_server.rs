@@ -93,7 +93,7 @@ arg_enum! {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matches = App::new("Proxy Server Exemple")
+    let matches = App::new("Proxy Server Example")
         .version("1.0")
         .arg(
             Arg::with_name("log_format")
@@ -101,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .case_insensitive(true)
                 .long("log_format")
                 .value_name("log_format")
-                .help("Formating of the logs")
+                .help("Formatting of the logs")
                 .required(false)
                 .takes_value(true),
         )
