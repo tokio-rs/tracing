@@ -15,7 +15,7 @@ pub struct Alt<V>(V);
 // === impl Alt ===
 //
 impl<V> Alt<V> {
-    /// Wraps the provided visitor so that any `fmt::Debug` fields are formated
+    /// Wraps the provided visitor so that any `fmt::Debug` fields are formatted
     /// using the alternative (`:#`) formatter.
     pub fn new(inner: V) -> Self {
         Alt(inner)

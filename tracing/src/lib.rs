@@ -362,7 +362,7 @@
 //! // - `question.answer` with the value 42,
 //! // - `question.tricky` with the value `true`,
 //! // - "message", with the value "the answer to the ultimate question of life, the
-//! //    universe, and everthing is 42."
+//! //    universe, and everything is 42."
 //! event!(
 //!     Level::DEBUG,
 //!     question.answer = answer,

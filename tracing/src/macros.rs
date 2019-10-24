@@ -496,7 +496,7 @@ macro_rules! error_span {
 /// use tracing::{event, Level};
 ///
 /// # fn main() {
-/// let data = (42, "fourty-two");
+/// let data = (42, "forty-two");
 /// let private_data = "private";
 /// let error = "a bad error";
 ///

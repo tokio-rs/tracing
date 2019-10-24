@@ -7,7 +7,7 @@
 //! This can be used in cases where a subset of `Subscriber` functionality
 //! should be dynamically reconfigured, such as when filtering directives may
 //! change at runtime. Note that this layer introduces a (relatively small)
-//! amount of overhead, and should thus obly be used as needed.
+//! amount of overhead, and should thus only be used as needed.
 //!
 //! [`Layer` type]: struct.Layer.html
 //! [`Layer` trait]: ../layer/trait.Layer.html
