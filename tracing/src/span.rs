@@ -472,7 +472,7 @@ impl Span {
     }
 
     /// Returns a handle to the span [considered by the `Subscriber`] to be the
-    /// currrent span.
+    /// current span.
     ///
     /// If the subscriber indicates that it does not track the current span, or
     /// that the thread from which this function is called is not currently

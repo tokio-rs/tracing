@@ -144,7 +144,7 @@ where
     /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
     /// [`Context`]: ../struct.Context.html
     /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
-    /// [`Layer::register_callsite`]: #method.reegister_callsite
+    /// [`Layer::register_callsite`]: #method.register_callsite
     /// [`on_event`]: #method.on_event
     /// [`on_enter`]: #method.on_enter
     /// [`on_exit`]: #method.on_exit

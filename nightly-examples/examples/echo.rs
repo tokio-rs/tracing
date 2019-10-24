@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
     let mut listener = TcpListener::bind(&addr).await?;
-    // Use `fmt::Debug` impl for `addr` using the `%` sybmol
+    // Use `fmt::Debug` impl for `addr` using the `%` symbol
     info!(message = "Listening on", %addr);
 
     loop {

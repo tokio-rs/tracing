@@ -11,7 +11,7 @@ This directory contains a collection of examples that demonstrate the use of the
 - **tracing-attributes**:
   + `attrs-basic`: A simple example of the `#[instrument]` attribute.
   + `attrs-args`: An example implementing a simple recursive calculation of
-    Fibbonacci numbers, to demonstrate how the `#[instrument]` attribute can
+    Fibonacci numbers, to demonstrate how the `#[instrument]` attribute can
     record function arguments.
 - **tracing-subscriber**:
   + `fmt`: Demonstrates the use of the `fmt` module in `tracing-subscriber`,

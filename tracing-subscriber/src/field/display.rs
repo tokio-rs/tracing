@@ -1,4 +1,4 @@
-//! `MakeVisitor` wrappers for working with `fmt::Displag` fields.
+//! `MakeVisitor` wrappers for working with `fmt::Display` fields.
 use super::{MakeVisitor, VisitFmt, VisitOutput, VisitWrite};
 use tracing_core::field::{Field, Visit};
 

@@ -384,7 +384,7 @@ pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// and `target`.
     /// Returns `None` is the `Event` is not issued from a `log`.
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
-    /// Returns wether this `Event` represents a log (from the `log` crate)
+    /// Returns whether this `Event` represents a log (from the `log` crate)
     fn is_log(&self) -> bool;
 }
 

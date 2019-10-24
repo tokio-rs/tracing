@@ -299,7 +299,7 @@ fn event() {
 
 #[test]
 fn locals_with_message() {
-    let data = (42, "fourty-two");
+    let data = (42, "forty-two");
     let private_data = "private";
     let error = "a bad error";
     event!(Level::ERROR, %error, "Received error");
@@ -315,7 +315,7 @@ fn locals_with_message() {
 
 #[test]
 fn locals_no_message() {
-    let data = (42, "fourty-two");
+    let data = (42, "forty-two");
     let private_data = "private";
     let error = "a bad error";
     event!(

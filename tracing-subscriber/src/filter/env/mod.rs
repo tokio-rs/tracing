@@ -1,7 +1,7 @@
 //! A `Layer` that enables or disables spans and events based on a set of
 //! filtering directives.
 
-// these are publically re-exported, but the compiler doesn't realize
+// these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
 pub use self::{
