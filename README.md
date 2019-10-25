@@ -36,26 +36,26 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ## Getting Started
 
-To get started, configure `Cargo.toml` to include `tracing` and `tracing-subscriber` as dependencies. `tracing` is the core library, while `tracing-subscriber` is the part that implements `Subscriber`, which will record the trace. Take a look at the [Project layout](#Project layout) section.
+To get started, add dependencies on `tracing` and `tracing-subscriber` as dependencies. `tracing` is the core library, while `tracing-subscriber` is the part that implements `Subscriber`, which will record the trace. Take a look at the [Project layout](#Project layout) section.
 
-```
+```toml
 [dependencies]
-tracing = "0.1.5"
+tracing = "0.1.10"
 tracing-subscriber = "0.1.5"
 ```
 
-Next, in our `main.rs` file, we will start by adding the libraries
+Next, we will import those crates in our `main.rs` file:
 
-```
+```rust
 use tracing::{debug, info, instrument};
 use tracing_subscriber::fmt;
 ```
 
-For this simple example, we will create a function that prints sequence of numbers and we will instrument that cod to enable tracing. Tracing is enabled by initiating a span and the `#[instrument]` attribute, implicitly create a span for that function.
+For this simple example, we will create a function that prints sequence of numbers and we will instrument that code to emit traces. Tracing is enabled by initiating a span and the `#[instrument]` attribute, implicitly create a span for that function.
 
-```
-// using instrument to setup a span and skip to exclude args
-#[instrument(skip(_too_long_string))]
+```rust
+// using instrument to setup a span
+#[instrument]
 fn count(nums: i32, _too_long_string: &str) -> Vec<i32> {
     let mut seq = vec![];
 
@@ -69,28 +69,36 @@ fn count(nums: i32, _too_long_string: &str) -> Vec<i32> {
 }
 ```
 
-Then, in our `main()` function, we can create a subscriber, that records the trace. The subscriber employs an environment filter that we can utilize to filter the level of tracing message.
+If you want to skip tracing certain argument of a function, you may employ argument to the `#[instrument]`'s argument. Thus, the previous code could be written as follows:
 
+```rust
+// using instrument to setup a span and skip to exclude args
+#[instrument(skip(_too_long_string))]
+fn count(nums: i32, _too_long_string: &str) -> Vec<i32> {
+  let mut seq = vec![];
+  //...
+}
 ```
+
+Once we have added instrumentation to our code, we will need to set up a `Subscriber` to record traces. We'll do this in our `main()` function. The subscriber employs an environment filter that we can utilize to filter the level of tracing message.
+
+```rust
 fn main() {
-  // this creates subscriber with an environment filter
-  const DEFAULT_FILTER: &str = concat!(module_path!(), "=", "info");
-  let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-      .unwrap_or_else(|_| DEFAULT_FILTER.into());
-  let subscriber = fmt::Subscriber::builder().with_env_filter(filter).finish();
-  ...
+  // this creates subscriber with default filter
+  let subscriber = fmt::Subscriber::default();
+  //...
 }
 ```
 
 Finally, we can run the function that prints out the tracing message while it's being run
 
-```
+```rust
 fn main() {
-  ...
+  //...
   // setup a scoped subscriber
   tracing::subscriber::with_default(subscriber, || {
     let n = 10;
-    let sequence = count(n, "I would really prefer this string wasn't in every log");
+    let sequence = count(n);
     // prints log message with the level info
     info!("The first {} numbers are {:?}", n, sequence);
   })
@@ -103,17 +111,30 @@ Then, the resulting code can be run with `cargo run` as usual. This will print o
 Oct 24 16:00:38.742  INFO getting_started: The first 10 numbers are [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 ```
 
-Mind that the log printed out is of the level info. The above code enables us to setup the log level with `RUST_LOG` environment variable. So, for example, to display the debug log, we can run the code with `RUST_LOG=debug cargo run` and we'll get the output similar to this:
+As a variation, we can also add filter to the subscriber. This enables us to filter the log message, according to the log level, instead of the default level, which is info. The code could be something like this:
+
+```rust
+fn main() {
+  // this creates subscriber with an environment filter
+  const DEFAULT_FILTER: &str = concat!(module_path!(), "=", "info");
+  let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+      .unwrap_or_else(|_| DEFAULT_FILTER.into());
+  let subscriber = fmt::Subscriber::builder().with_env_filter(filter).finish();
+  //...
+}
+```
+
+The above code enables us to setup the log level with `RUST_LOG` environment variable. So, for example, to display the debug log, we can run the code with `RUST_LOG=debug cargo run` and we'll get the output similar to this:
 
 ```
 Oct 24 16:08:23.239 DEBUG count{nums=10}: getting_started: Next Number n=0
 Oct 24 16:08:23.239 DEBUG count{nums=10}: getting_started: Next Number n=1
 ...
 Oct 24 16:08:23.240 DEBUG count{nums=10}: getting_started: Next Number n=10
-Oct 24 16:08:23.240  INFO getting_started: The first 10 numbers are [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+Oct 24 16:08:23.240 INFO getting_started: The first 10 numbers are [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 ```
 
-As we are skipping the `_too_long_string_` argument of `count()`, that argument isn't printed out in the debug message.
+More documentation regarding `Subscriber`'s trait can be found at [this link](https://docs.rs/tracing/0.1.10/tracing/trait.Subscriber.html). Also, detail on how to set a subscriber, can be accessed [here](https://docs.rs/tracing/0.1.10/tracing/dispatcher/index.html#using-the-trace-dispatcher)
 
 ## Getting Help
 
@@ -147,24 +168,24 @@ state, and are less stable than the `tracing` and `tracing-core` crates.
 
 The crates included as part of Tracing are:
 
-- [`tracing-futures`]: Utilities for instrumenting `futures`.
+* [`tracing-futures`]: Utilities for instrumenting `futures`.
   ([crates.io][fut-crates]|[docs][fut-docs])
 
-- [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
+* [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
 
-- [`tracing-attributes`]: Procedural macro attributes for automatically
+* [`tracing-attributes`]: Procedural macro attributes for automatically
   instrumenting functions. ([crates.io][attr-crates]|[docs][attr-docs])
 
-- [`tracing-log`]: Compatibility with the `log` crate (unstable).
+* [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-- [`tracing-serde`]: A compatibility layer for serializing trace data with
+* [`tracing-serde`]: A compatibility layer for serializing trace data with
   `serde` (unstable).
 
-- [`tracing-subscriber`]: Subscriber implementations, and utilities for
+* [`tracing-subscriber`]: Subscriber implementations, and utilities for
   implementing and composing `Subscriber`s.
   ([crates.io][sub-crates]|[docs][sub-docs])
 
-- [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
+* [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
 [`tracing`]: tracing
 [`tracing-core`]: tracing
@@ -189,14 +210,14 @@ Tracing.
 
 #### Blog Posts
 
-- [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
+* [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
 #### Talks
 
-- [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
-- [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
+* [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+* [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
