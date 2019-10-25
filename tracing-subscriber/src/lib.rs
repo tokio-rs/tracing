@@ -71,7 +71,6 @@
     private_in_public,
     safe_extern_statics,
     unconditional_recursion,
-
     unused,
     unused_allocation,
     unused_comparisons,
