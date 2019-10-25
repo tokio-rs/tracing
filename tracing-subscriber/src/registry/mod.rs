@@ -45,3 +45,31 @@ pub trait LookupMetadata {
         self.metadata(id).is_some()
     }
 }
+
+pub trait LookupSpan {
+    type Span: SpanData;
+    fn span(&self, id: &Id) -> Option<Self::Span>;
+}
+
+pub trait SpanData {
+    type Children: Iterator<Item=Id>;
+    type Follows: Iterator<Item=Id>;
+
+    fn id(&self) -> Option<Id>;
+    fn metadata(&self) -> &'static Metadata<'static>;
+    fn parent(&self) -> Option<Id>;
+    fn children(&self) -> Self::Children;
+    fn follows_from(&self) -> Self::Follows;
+}
+
+// XXX(eliza): should this have a SpanData bound? The expectation is that there
+// would be add'l impls for `T: LookupSpan where T::Span: Extensions`...
+//
+// XXX(eliza): also, consider having `.extensions`/`.extensions_mut` methods to
+// get the extensions, so we can control read locking vs write locking?
+pub trait Extensions {
+    fn get<T: Any>(&self) -> Option<&T>;
+    fn get_mut<T: Any>(&mut self) -> Option<&mut T>;
+    fn insert<T: Any>(&mut self, t: T) -> Option<T>;
+    fn remove<T: Any>(&mut self) -> Option<T>;
+}
