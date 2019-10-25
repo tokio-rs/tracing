@@ -1,7 +1,3 @@
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.10")]
-#![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
-#![cfg_attr(test, deny(warnings))]
-
 //! A scoped, structured logging and diagnostics system.
 //!
 //! # Overview
@@ -622,6 +618,32 @@
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 #![cfg_attr(not(feature = "std"), no_std)]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.10")]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;

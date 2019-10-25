@@ -5,7 +5,7 @@ use super::*;
 pub struct SerializeFieldMap<'a, T>(&'a T);
 
 pub trait AsMap: Sized + sealed::Sealed {
-    fn field_map(&self) -> SerializeFieldMap<Self> {
+    fn field_map(&self) -> SerializeFieldMap<'_, Self> {
         SerializeFieldMap(self)
     }
 }
