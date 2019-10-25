@@ -1,10 +1,10 @@
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use tracing::{debug, error, info, span, trace, warn};
+use tracing::debug;
 use tracing_core::{
     event::Event,
-    metadata::{Level, Metadata},
+    metadata::Metadata,
     span::{Attributes, Id, Record},
     subscriber::Subscriber,
 };

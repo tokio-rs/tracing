@@ -1,7 +1,3 @@
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.4")]
-#![deny(missing_debug_implementations, unreachable_pub)]
-#![cfg_attr(test, deny(warnings))]
-
 //! A procedural macro attribute for instrumenting functions with [`tracing`].
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
@@ -37,6 +33,32 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
 //! [instrument]: attr.instrument.html
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.5")]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 extern crate proc_macro;
 
 use std::collections::HashSet;
