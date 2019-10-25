@@ -7,7 +7,6 @@ Application-level tracing for Rust.
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
-[![Gitter chat][gitter-badge]][gitter-url]
 [![Discord chat][discord-badge]][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
@@ -20,13 +19,11 @@ Application-level tracing for Rust.
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
 [azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
-[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
-[gitter-url]: https://gitter.im/tokio-rs/tracing
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
-[discord-url]: https://discordapp.com/invite/XdPzyTZ
+[discord-url]: https://discord.gg/EeF3cQw
 
 [Website](https://tokio.rs) |
-[Chat](https://gitter.im/tracing-rs/tracing) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
+[Chat](https://discord.gg/EeF3cQw) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
 
 ## Overview
 
@@ -38,10 +35,10 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 First, see if the answer to your question can be found in the API documentation.
 If the answer is not there, there is an active community in
-the [Tracing Gitter channel][chat]. We would be happy to try to answer your
+the [Tracing Discord channel][chat]. We would be happy to try to answer your
 question.  Last, if that doesn't work, try opening an [issue] with the question.
 
-[chat]: https://gitter.im/tokio-rs/tracing
+[chat]: https://discord.gg/EeF3cQw
 [issue]: https://github.com/tokio-rs/tracing/issues/new
 
 ## Contributing
