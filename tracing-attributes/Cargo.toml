@@ -16,7 +16,6 @@ authors = [
 ]
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-attributes/0.1.0/tracing_attributes"
 description = """
 Procedural macro attributes for automatically instrumenting functions.
 """

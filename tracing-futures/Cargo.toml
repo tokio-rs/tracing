@@ -4,7 +4,6 @@ version = "0.0.1-alpha.2"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
-documentation = "https://docs.rs/tracing-futures/0.0.1-alpha.1/tracing_futures"
 readme = "README.md"
 homepage = "https://tokio.rs"
 description = """

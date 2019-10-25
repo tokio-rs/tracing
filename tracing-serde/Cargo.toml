@@ -6,7 +6,6 @@ license = "MIT"
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-serde/0.1.0/tracing_serde"
 description = """
 A compatibility layer for serializing trace data with `serde`
 """
