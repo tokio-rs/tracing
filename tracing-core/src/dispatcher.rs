@@ -584,6 +584,13 @@ impl Dispatch {
     }
 }
 
+impl Default for Dispatch {
+    // Creates default dispatcher
+    fn default() -> Self {
+        get_default(|default| default.clone())
+    }
+}
+
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Dispatch(...)")
@@ -799,5 +806,11 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestSubscriber), || mk_span())
+    }
+
+    #[test]
+    fn create_default_dispatcher() {
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<NoSubscriber>());
     }
 }
