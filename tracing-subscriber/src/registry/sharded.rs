@@ -192,3 +192,25 @@ impl BigSpan {
         Ok(())
     }
 }
+
+impl<'a> SpanData<'a> for Guard<'a, BigSpan> {
+    type Children = std::slice::Iter<'a, Id>; // not yet implemented...
+    type Follows = std::slice::Iter<'a, Id>;
+
+    fn id(&self) -> Id {
+        let id: u64 = self.idx().try_into().unwrap();
+        Id::from_u64(id)
+    }
+    fn metadata(&self) -> &'static Metadata<'static> {
+        (*self).metadata
+    }
+    fn parent(&self) -> Option<&Id> {
+        unimplemented!("david: add this to `BigSpan`")
+    }
+    fn children(&self) -> Self::Children {
+        unimplemented!("david: add this to `BigSpan`")
+    }
+    fn follows_from(&self) -> Self::Follows {
+        unimplemented!("david: add this to `BigSpan`")
+    }
+}
