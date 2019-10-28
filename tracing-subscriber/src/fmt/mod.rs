@@ -454,7 +454,8 @@ where
 
         tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
             self.finish(),
-        )).map_err(Into::into)
+        ))
+        .map_err(Into::into)
     }
 
     /// Install this Subscriber as the global default.
