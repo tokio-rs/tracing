@@ -23,7 +23,7 @@ default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
 env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["owning_ref"]
 ansi = ["fmt", "ansi_term"]
-registry_unstable = []
+registry_unstable = ["sharded-slab"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 # Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
@@ -51,6 +51,9 @@ tracing-serde = { path = "../tracing-serde", optional = true }
 
 # opt-in deps
 parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
+
+# registry
+sharded-slab = { git = "https://github.com/davidbarsky/sharded-slab", optional = true }
 
 [dev-dependencies]
 tracing = "0.1"

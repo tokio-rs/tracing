@@ -13,6 +13,7 @@
 //! ```
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
+use std::any::Any;
 use tracing_core::{span::Id, Metadata};
 
 pub mod sharded;
@@ -50,8 +51,16 @@ pub trait LookupMetadata {
 }
 
 pub trait LookupSpan<'a> {
-    type Span: SpanData<'a>;
-    fn span(&'a self, id: &Id) -> Option<Self::Span>;
+    type Data: SpanData<'a>;
+    fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
+
+    fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>> {
+        let data = self.span_data(id)?;
+        Some(SpanRef {
+            registry: self,
+            data,
+        })
+    }
 }
 
 pub trait SpanData<'a> {
@@ -75,4 +84,59 @@ pub trait Extensions {
     fn get_mut<T: Any>(&mut self) -> Option<&mut T>;
     fn insert<T: Any>(&mut self, t: T) -> Option<T>;
     fn remove<T: Any>(&mut self) -> Option<T>;
+}
+
+#[derive(Debug)]
+pub struct SpanRef<'a, R: LookupSpan<'a>> {
+    registry: &'a R,
+    data: R::Data,
+}
+
+#[derive(Debug)]
+pub struct Parents<'a, R> {
+    registry: &'a R,
+    next: Option<Id>,
+}
+
+impl<'a, R> SpanRef<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    pub fn id(&self) -> Id {
+        self.data.id()
+    }
+
+    pub fn parent_id(&self) -> Option<&Id> {
+        self.data.parent()
+    }
+
+    pub fn parent(&self) -> Option<Self> {
+        let id = self.data.parent()?;
+        let data = self.registry.span_data(id)?;
+        Some(Self {
+            registry: self.registry,
+            data,
+        })
+    }
+
+    pub fn parents(&self) -> Parents<'_, R> {
+        Parents {
+            registry: self.registry,
+            next: self.parent().cloned(),
+        }
+    }
+
+    pub fn child_ids(&self) -> <R::Data as SpanData<'a>>::Children<'_> {
+        self.data.children()
+    }
+}
+
+impl<'a, R> Iterator for Parents<'a, R> {
+    type Item = SpanRef<'a, R>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let id = self.next.take()?;
+        let span = self.registry.span(&id)?;
+        self.next = span.parent().cloned();
+        Some(span)
+    }
 }

@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry_unstable")]
-use crate::registry::LookupMetadata;
+use crate::registry::{self, LookupMetadata, LookupSpan};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -712,6 +712,15 @@ impl<'a, S: Subscriber> Context<'a, S> {
         S: LookupMetadata,
     {
         self.subscriber.as_ref()?.metadata(id)
+    }
+
+    #[inline]
+    #[cfg(feature = "registry_unstable")]
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
+    where
+        S: for<'span> LookupSpan<'span>,
+    {
+        self.subscriber.as_ref()?.span(id)
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
