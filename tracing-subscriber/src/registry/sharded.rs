@@ -1,7 +1,6 @@
 use sharded_slab::{Guard, Slab};
 
 use std::{
-    any::Any,
     cell::RefCell,
     collections::{HashMap, HashSet},
     convert::TryInto,
@@ -9,16 +8,24 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
+use tracing_core::{
+    field::FieldSet,
+    span::{self, Id},
+    Interest, Metadata, Subscriber,
+};
 
 #[derive(Debug)]
 pub struct Registry {
     spans: Arc<Slab<BigSpan>>,
+    // TODO(david): replace this with the span stack from `fmt` (this is wrong)
     local_spans: RwLock<SpanStack>,
 }
 
 #[derive(Debug)]
 pub struct BigSpan {
     metadata: &'static Metadata<'static>,
+    parent: Option<Id>,
+    // TODO(david): get rid of these
     values: Mutex<HashMap<&'static str, Value>>,
     events: Mutex<Vec<BigEvent>>,
 }
@@ -77,6 +84,7 @@ impl Subscriber for Registry {
         attrs.record(&mut visitor);
         let s = BigSpan {
             metadata: attrs.metadata(),
+            parent: unimplemented!("david!"),
             values: Mutex::new(values),
             events: Mutex::new(vec![]),
         };
@@ -145,13 +153,12 @@ impl Subscriber for Registry {
 }
 
 impl<'a> LookupSpan<'a> for Registry {
-    type Span = Guard<'a, BigSpan>;
+    type Data = Guard<'a, BigSpan>;
 
-    fn span(&'a self, id: &Id) -> Option<Self::Span> {
+    fn span_data(&'a self, id: &Id) -> Option<Self::Span> {
         self.get(id)
     }
 }
-
 
 // === impl BigSpan ===
 
