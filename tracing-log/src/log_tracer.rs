@@ -111,6 +111,7 @@ impl LogTracer {
     /// initializing it.
     ///
     /// [`builder`]: #method.builder
+    #[cfg(feature = "std")]
     pub fn init_with_filter(level: log::LevelFilter) -> Result<(), SetLoggerError> {
         Self::builder().with_max_level(level).init()
     }
@@ -144,6 +145,7 @@ impl LogTracer {
     ///
     /// [`init_with_filter`]: #method.init_with_filter
     /// [`builder`]: #method.builder
+    #[cfg(feature = "std")]
     pub fn init() -> Result<(), SetLoggerError> {
         Self::builder().init()
     }
@@ -238,6 +240,7 @@ impl Builder {
     /// as the default logger.
     ///
     /// Setting a global logger can only be done once.
+    #[cfg(feature = "std")]
     pub fn init(self) -> Result<(), SetLoggerError> {
         let ignore_crates = self.ignore_crates.into_boxed_slice();
         let logger = Box::new(LogTracer { ignore_crates });
