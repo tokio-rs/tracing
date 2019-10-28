@@ -104,7 +104,7 @@ use std::{any::TypeId, cell::RefCell, error::Error, io};
 use tracing_core::{subscriber::Interest, Event, Metadata};
 
 pub mod format;
-mod span;
+pub(crate) mod span;
 pub mod time;
 pub mod writer;
 

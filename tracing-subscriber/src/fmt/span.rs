@@ -73,20 +73,20 @@ struct ContextId {
     duplicate: bool,
 }
 
-struct SpanStack {
+pub(crate) struct SpanStack {
     stack: Vec<ContextId>,
     ids: HashSet<Id>,
 }
 
 impl SpanStack {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         SpanStack {
             stack: vec![],
             ids: HashSet::new(),
         }
     }
 
-    fn push(&mut self, id: Id) {
+    pub(crate) fn push(&mut self, id: Id) {
         let duplicate = self.ids.contains(&id);
         if !duplicate {
             self.ids.insert(id.clone());
@@ -94,7 +94,7 @@ impl SpanStack {
         self.stack.push(ContextId { id, duplicate })
     }
 
-    fn pop(&mut self, expected_id: &Id) -> Option<Id> {
+    pub(crate) fn pop(&mut self, expected_id: &Id) -> Option<Id> {
         if &self.stack.last()?.id == expected_id {
             let ContextId { id, duplicate } = self.stack.pop()?;
             if !duplicate {
@@ -107,7 +107,7 @@ impl SpanStack {
     }
 
     #[inline]
-    fn current(&self) -> Option<&Id> {
+    pub(crate) fn current(&self) -> Option<&Id> {
         self.stack
             .iter()
             .rev()

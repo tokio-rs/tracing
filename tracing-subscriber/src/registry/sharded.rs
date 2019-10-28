@@ -1,5 +1,11 @@
 use sharded_slab::{Guard, Slab};
 
+use crate::{
+    fmt::span::SpanStack,
+    registry::{LookupSpan, SpanData},
+    sync::RwLock,
+};
+use serde_json::{json, Value};
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -9,12 +15,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tracing_core::{
-    field::FieldSet,
+    field::{FieldSet, Visit},
     span::{self, Id},
-    Interest, Metadata, Subscriber,
+    Event, Field, Interest, Metadata, Subscriber,
 };
 
-#[derive(Debug)]
 pub struct Registry {
     spans: Arc<Slab<BigSpan>>,
     // TODO(david): replace this with the span stack from `fmt` (this is wrong)
@@ -27,7 +32,6 @@ pub struct BigSpan {
     parent: Option<Id>,
     // TODO(david): get rid of these
     values: Mutex<HashMap<&'static str, Value>>,
-    events: Mutex<Vec<BigEvent>>,
 }
 
 // === impl Registry ===
@@ -40,6 +44,17 @@ impl Default for Registry {
         }
     }
 }
+
+struct RegistryVisitor<'a>(&'a mut HashMap<&'static str, Value>);
+
+impl<'a> Visit for RegistryVisitor<'a> {
+    // TODO: special visitors for various formats that honeycomb.io supports
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        let s = format!("{:?}", value);
+        self.0.insert(field.name(), json!(s));
+    }
+}
+
 #[inline]
 fn idx_to_id(idx: usize) -> Id {
     Id::from_u64(idx as u64 + 1)
@@ -55,7 +70,7 @@ impl Registry {
         self.spans.insert(s)
     }
 
-    fn get(&self, id: &Id) -> Option<Guard<BigSpan>> {
+    fn get(&self, id: &Id) -> Option<Guard<'_, BigSpan>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -82,11 +97,11 @@ impl Subscriber for Registry {
         let mut values = HashMap::new();
         let mut visitor = RegistryVisitor(&mut values);
         attrs.record(&mut visitor);
+        let parent = attrs.parent().map(|id| id.clone());
         let s = BigSpan {
             metadata: attrs.metadata(),
-            parent: unimplemented!("david!"),
+            parent,
             values: Mutex::new(values),
-            events: Mutex::new(vec![]),
         };
         let id = (self.insert(s).expect("Unable to allocate another span") + 1) as u64;
         Id::from_u64(id.try_into().unwrap())
@@ -96,8 +111,6 @@ impl Subscriber for Registry {
     fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         dbg!(span);
         dbg!(values);
-        // self.spans.record(span, values, &self.fmt_fields)
-        // unimplemented!()
     }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
@@ -132,12 +145,6 @@ impl Subscriber for Registry {
             let mut visitor = RegistryVisitor(&mut values);
             event.record(&mut visitor);
             let span = self.get(&id).expect("Missing parent span for event");
-            let event = BigEvent {
-                parent: id,
-                metadata: event.metadata(),
-                values,
-            };
-            span.events.lock().expect("Mutex poisoned").push(event);
         }
     }
 
@@ -155,7 +162,7 @@ impl Subscriber for Registry {
 impl<'a> LookupSpan<'a> for Registry {
     type Data = Guard<'a, BigSpan>;
 
-    fn span_data(&'a self, id: &Id) -> Option<Self::Span> {
+    fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         self.get(id)
     }
 }

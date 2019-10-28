@@ -50,7 +50,10 @@ pub trait LookupMetadata {
     }
 }
 
-pub trait LookupSpan<'a> {
+pub trait LookupSpan<'a>
+where
+    Self: std::marker::Sized,
+{
     type Data: SpanData<'a>;
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
@@ -119,24 +122,31 @@ where
         })
     }
 
-    pub fn parents(&self) -> Parents<'_, R> {
+    pub fn parents(&'a self) -> Parents<'_, R> {
         Parents {
             registry: self.registry,
-            next: self.parent().cloned(),
+            next: self.parent().map(|parent| parent.id()),
         }
     }
 
-    pub fn child_ids(&self) -> <R::Data as SpanData<'a>>::Children<'_> {
+    pub fn child_ids(&'a self) -> <R::Data as SpanData<'a>>::Children {
         self.data.children()
     }
 }
 
-impl<'a, R> Iterator for Parents<'a, R> {
+impl<'a, R> Iterator for Parents<'a, R>
+where
+    R: LookupSpan<'a>,
+{
     type Item = SpanRef<'a, R>;
     fn next(&mut self) -> Option<Self::Item> {
         let id = self.next.take()?;
         let span = self.registry.span(&id)?;
-        self.next = span.parent().cloned();
-        Some(span)
+        if let Some(parent) = span.parent() {
+            self.next = Some(parent.id());
+            Some(span)
+        } else {
+            None
+        }
     }
 }
