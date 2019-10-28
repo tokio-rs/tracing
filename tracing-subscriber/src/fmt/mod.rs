@@ -446,14 +446,14 @@ where
     /// Returns an Error if the initialization was unsuccessful, likely
     /// because a global subscriber was already installed by another
     /// call to `try_init`.
-    pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
-        #[cfg(feature = "tracing-log/std")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+    pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::init()?;
 
         tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
             self.finish(),
         ))
-        .map_err(Box::new)
+        .map_err(Into::into)
     }
 
     /// Install this Subscriber as the global default.
@@ -822,7 +822,7 @@ impl Default for Settings {
 ///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
-pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
+pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     Subscriber::builder()
         .with_env_filter(crate::EnvFilter::from_default_env())
         .try_init()
