@@ -14,6 +14,9 @@
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
 use tracing_core::{span::Id, Metadata};
+
+pub mod sharded;
+
 /// Provides access to stored span metadata.
 ///
 /// Subscribers which store span metadata and associate it with span IDs should
@@ -46,20 +49,20 @@ pub trait LookupMetadata {
     }
 }
 
-pub trait LookupSpan {
-    type Span: SpanData;
-    fn span(&self, id: &Id) -> Option<Self::Span>;
+pub trait LookupSpan<'a> {
+    type Span: SpanData<'a>;
+    fn span(&'a self, id: &Id) -> Option<Self::Span>;
 }
 
-pub trait SpanData {
-    type Children: Iterator<Item=Id>;
-    type Follows: Iterator<Item=Id>;
+pub trait SpanData<'a> {
+    type Children: Iterator<Item = &'a Id>;
+    type Follows: Iterator<Item = &'a Id>;
 
-    fn id(&self) -> Option<Id>;
+    fn id(&self) -> Id;
     fn metadata(&self) -> &'static Metadata<'static>;
-    fn parent(&self) -> Option<Id>;
-    fn children(&self) -> Self::Children;
-    fn follows_from(&self) -> Self::Follows;
+    fn parent(&self) -> Option<&Id>;
+    fn children(&'a self) -> Self::Children;
+    fn follows_from(&'a self) -> Self::Follows;
 }
 
 // XXX(eliza): should this have a SpanData bound? The expectation is that there
