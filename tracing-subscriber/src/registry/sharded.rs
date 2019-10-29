@@ -3,7 +3,6 @@ use sharded_slab::{Guard, Slab};
 use crate::{
     fmt::span::SpanStack,
     registry::{LookupSpan, SpanData},
-    sync::RwLock,
 };
 use serde_json::{json, Value};
 use std::{
@@ -11,7 +10,10 @@ use std::{
     collections::HashMap,
     convert::TryInto,
     fmt,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{fence, AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
 };
 use tracing_core::{
     field::{FieldSet, Visit},
@@ -21,7 +23,7 @@ use tracing_core::{
 
 #[derive(Debug)]
 pub struct Registry {
-    spans: Arc<Slab<BigSpan>>,
+    spans: Arc<Slab<Data>>,
 }
 
 thread_local! {
@@ -29,12 +31,29 @@ thread_local! {
 }
 
 #[derive(Debug)]
-pub struct BigSpan {
+pub struct Data {
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     children: Vec<Id>,
+    ref_count: AtomicUsize,
     // TODO(david): get rid of these
     values: Mutex<HashMap<&'static str, Value>>,
+}
+
+impl Data {
+    fn drop_ref(&self, ordering: Ordering) -> bool {
+        let refs = self.ref_count.fetch_sub(1, ordering);
+        assert!(
+            if std::thread::panicking() {
+                // don't cause a double panic, even if the ref-count is wrong...
+                true
+            } else {
+                refs != std::usize::MAX
+            },
+            "reference count overflow!"
+        );
+        refs == 1
+    }
 }
 
 // === impl Registry ===
@@ -68,11 +87,11 @@ fn id_to_idx(id: &Id) -> usize {
 }
 
 impl Registry {
-    fn insert(&self, s: BigSpan) -> Option<usize> {
+    fn insert(&self, s: Data) -> Option<usize> {
         self.spans.insert(s)
     }
 
-    fn get(&self, id: &Id) -> Option<Guard<'_, BigSpan>> {
+    fn get(&self, id: &Id) -> Option<Guard<'_, Data>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -91,8 +110,27 @@ impl Registry {
         // parent_span.children.push(current.clone())
     }
 
-    fn take(&self, id: Id) -> Option<BigSpan> {
-        self.spans.take(id_to_idx(&id))
+    /// Decrements the reference count of the span with the given `id`, and
+    /// removes the span if it is zero.
+    ///
+    /// The allocated span slot will be reused when a new span is created.
+    fn drop_span(&self, id: Id) -> bool {
+        let idx = id_to_idx(&id);
+        if !self
+            .spans
+            .get(idx)
+            .and_then(|span| Some(span.drop_ref(Ordering::Relaxed)))
+            .unwrap_or_else(|| {
+                panic!("tried to drop {:?} but it no longer exists!", id);
+            })
+        {
+            return false;
+        }
+
+        // Synchronize only if we are actually removing the span (stolen
+        // from std::Arc);
+        fence(Ordering::Acquire);
+        self.spans.remove(idx)
     }
 }
 
@@ -115,14 +153,15 @@ impl Subscriber for Registry {
         let mut visitor = RegistryVisitor(&mut values);
         attrs.record(&mut visitor);
         let parent = attrs.parent().map(|id| id.clone());
-        let s = BigSpan {
+        let s = Data {
             metadata: attrs.metadata(),
             parent,
             children: vec![],
+            ref_count: AtomicUsize::new(1),
             values: Mutex::new(values),
         };
-        let id = (self.insert(s).expect("Unable to allocate another span") + 1) as u64;
-        Id::from_u64(id.try_into().unwrap())
+        let id = self.insert(s).expect("Unable to allocate another span");
+        idx_to_id(id)
     }
 
     #[inline]
@@ -142,9 +181,13 @@ impl Subscriber for Registry {
     }
 
     fn enter(&self, id: &span::Id) {
-        let id = id.into_u64();
         CURRENT_SPANS.with(|spans| {
-            spans.borrow_mut().push(span::Id::from_u64(id));
+            spans.borrow_mut().push(id.clone());
+            if let Some(data) = self.get(id) {
+                data.ref_count.fetch_add(1, Ordering::SeqCst);
+            } else {
+                panic!("Span with ID {:?} was not found. This is a bug.", id);
+            }
         })
     }
 
@@ -170,27 +213,43 @@ impl Subscriber for Registry {
     fn exit(&self, id: &span::Id) {
         CURRENT_SPANS.with(|spans| {
             spans.borrow_mut().pop(id);
+            if let Some(data) = self.get(id) {
+                data.ref_count.fetch_sub(1, Ordering::SeqCst);
+            } else {
+                panic!("Span with ID {:?} was not found", id);
+            }
         })
+    }
+
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        if let Some(data) = self.get(&id) {
+            let refs = data.ref_count.fetch_add(1, Ordering::Release);
+            if refs == 0 {
+                panic!("tried to clone a span that already closed");
+            }
+        } else {
+            panic!("tried to clone {:?}, but no span exists with that ID", id)
+        }
+        id.clone()
     }
 
     #[inline]
     fn try_close(&self, id: span::Id) -> bool {
-        let _ = self.take(id);
-        true
+        self.drop_span(id)
     }
 }
 
 impl<'a> LookupSpan<'a> for Registry {
-    type Data = Guard<'a, BigSpan>;
+    type Data = Guard<'a, Data>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         self.get(id)
     }
 }
 
-// === impl BigSpan ===
+// === impl Data ===
 
-impl BigSpan {
+impl Data {
     pub fn name(&self) -> &'static str {
         self.metadata.name()
     }
@@ -208,7 +267,7 @@ impl BigSpan {
         registry: &'registry Registry,
     ) -> Result<(), E>
     where
-        F: FnMut(&Id, Guard<'_, BigSpan>) -> Result<(), E>,
+        F: FnMut(&Id, Guard<'_, Data>) -> Result<(), E>,
     {
         if let Some(span) = registry.get(my_id) {
             if let Some(ref parent_id) = span.parent {
@@ -228,7 +287,7 @@ impl BigSpan {
     }
 }
 
-impl<'a> SpanData<'a> for Guard<'a, BigSpan> {
+impl<'a> SpanData<'a> for Guard<'a, Data> {
     type Children = std::slice::Iter<'a, Id>; // not yet implemented...
     type Follows = std::slice::Iter<'a, Id>;
 
