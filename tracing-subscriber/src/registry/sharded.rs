@@ -16,9 +16,10 @@ use std::{
     },
 };
 use tracing_core::{
+    dispatcher,
     field::{FieldSet, Visit},
     span::{self, Id},
-    Event, Field, Interest, Metadata, Subscriber,
+    Dispatch, Event, Field, Interest, Metadata, Subscriber,
 };
 
 #[derive(Debug)]
@@ -40,19 +41,19 @@ pub struct Data {
     values: Mutex<HashMap<&'static str, Value>>,
 }
 
-impl Data {
-    fn drop_ref(&self, ordering: Ordering) -> bool {
-        let refs = self.ref_count.fetch_sub(1, ordering);
-        assert!(
-            if std::thread::panicking() {
-                // don't cause a double panic, even if the ref-count is wrong...
-                true
-            } else {
-                refs != std::usize::MAX
-            },
-            "reference count overflow!"
-        );
-        refs == 1
+impl Drop for Data {
+    fn drop(&mut self) {
+        // We have to actually unpack the option inside the `get_default`
+        // closure, since it is a `FnMut`, but testing that there _is_ a value
+        // here lets us avoid the thread-local access if we don't need the
+        // dispatcher at all.
+        if self.parent.is_some() {
+            dispatcher::get_default(|subscriber| {
+                if let Some(parent) = self.parent.take() {
+                    let _ = subscriber.try_close(parent);
+                }
+            })
+        }
     }
 }
 
@@ -95,42 +96,36 @@ impl Registry {
         self.spans.get(id_to_idx(id))
     }
 
-    fn set_parent(&self, current: &Id, parent: &Id) {
-        // TODO(david): remove `.expect()`; return an error.
-        let current_span = self
-            .spans
-            .get(id_to_idx(current))
-            .expect(&format!("Missing current span with id: {:?}", current));
-        let parent_span = self
-            .spans
-            .get(id_to_idx(parent))
-            .expect(&format!("Missing parent span with id: {:?}", parent));
-
-        // current_span.parent = Some(parent.clone());
-        // parent_span.children.push(current.clone())
-    }
-
     /// Decrements the reference count of the span with the given `id`, and
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
     fn drop_span(&self, id: Id) -> bool {
-        let idx = id_to_idx(&id);
-        if !self
-            .spans
-            .get(idx)
-            .and_then(|span| Some(span.drop_ref(Ordering::Relaxed)))
-            .unwrap_or_else(|| {
-                panic!("tried to drop {:?} but it no longer exists!", id);
-            })
-        {
+        if !self.drop_ref(&id) {
             return false;
         }
 
         // Synchronize only if we are actually removing the span (stolen
         // from std::Arc);
         fence(Ordering::Acquire);
-        self.spans.remove(idx)
+        self.spans.remove(id_to_idx(&id))
+    }
+
+    fn drop_ref(&self, id: &Id) -> bool {
+        let idx = id_to_idx(id);
+        let span = self.spans.get(idx).expect("Span not found");
+
+        let refs = span.ref_count.fetch_sub(1, Ordering::Relaxed);
+        assert!(
+            if std::thread::panicking() {
+                // don't cause a double panic, even if the ref-count is wrong...
+                true
+            } else {
+                refs != std::usize::MAX
+            },
+            "reference count overflow!"
+        );
+        refs == 1
     }
 }
 
@@ -152,7 +147,7 @@ impl Subscriber for Registry {
         let mut values = HashMap::new();
         let mut visitor = RegistryVisitor(&mut values);
         attrs.record(&mut visitor);
-        let parent = attrs.parent().map(|id| id.clone());
+        let parent = attrs.parent().map(|id| self.clone_span(id));
         let s = Data {
             metadata: attrs.metadata(),
             parent,
@@ -180,17 +175,6 @@ impl Subscriber for Registry {
             .expect("Current span is missing; this is a bug");
     }
 
-    fn enter(&self, id: &span::Id) {
-        CURRENT_SPANS.with(|spans| {
-            spans.borrow_mut().push(id.clone());
-            if let Some(data) = self.get(id) {
-                data.ref_count.fetch_add(1, Ordering::SeqCst);
-            } else {
-                panic!("Span with ID {:?} was not found. This is a bug.", id);
-            }
-        })
-    }
-
     fn event(&self, event: &Event<'_>) {
         let id = match event.parent() {
             Some(id) => Some(id.clone()),
@@ -210,15 +194,16 @@ impl Subscriber for Registry {
         }
     }
 
-    fn exit(&self, id: &span::Id) {
+    fn enter(&self, id: &span::Id) {
         CURRENT_SPANS.with(|spans| {
-            spans.borrow_mut().pop(id);
-            if let Some(data) = self.get(id) {
-                data.ref_count.fetch_sub(1, Ordering::SeqCst);
-            } else {
-                panic!("Span with ID {:?} was not found", id);
-            }
+            spans.borrow_mut().push(id.clone());
+            self.clone_span(id);
         })
+    }
+
+    fn exit(&self, id: &span::Id) {
+        let _ = CURRENT_SPANS.with(|spans| spans.borrow_mut().pop(id));
+        dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
@@ -228,7 +213,9 @@ impl Subscriber for Registry {
                 panic!("tried to clone a span that already closed");
             }
         } else {
-            panic!("tried to clone {:?}, but no span exists with that ID", id)
+            if !std::thread::panicking() {
+                panic!("tried to clone {:?}, but no span exists with that ID", id)
+            }
         }
         id.clone()
     }
