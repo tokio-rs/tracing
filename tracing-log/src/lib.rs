@@ -136,6 +136,8 @@ pub mod trace_logger;
 pub use self::log_tracer::LogTracer;
 
 #[cfg(feature = "trace-logger")]
+#[deprecated(since = "0.1.1", note = "use the `tracing` crate's \"log\" feature flag instead")]
+#[allow(deprecated)]
 #[doc(inline)]
 pub use self::trace_logger::TraceLogger;
 
