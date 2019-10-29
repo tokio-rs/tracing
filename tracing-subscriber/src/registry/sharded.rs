@@ -4,7 +4,6 @@ use crate::{
     fmt::span::SpanStack,
     registry::{LookupSpan, SpanData},
 };
-use serde_json::{json, Value};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -37,8 +36,6 @@ pub struct Data {
     parent: Option<Id>,
     children: Vec<Id>,
     ref_count: AtomicUsize,
-    // TODO(david): get rid of these
-    values: Mutex<HashMap<&'static str, Value>>,
 }
 
 // === impl Registry ===
@@ -46,16 +43,6 @@ pub struct Data {
 impl Default for Registry {
     fn default() -> Self {
         Self { spans: Slab::new() }
-    }
-}
-
-struct RegistryVisitor<'a>(&'a mut HashMap<&'static str, Value>);
-
-impl<'a> Visit for RegistryVisitor<'a> {
-    // TODO: special visitors for various formats that honeycomb.io supports
-    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        let s = format!("{:?}", value);
-        self.0.insert(field.name(), json!(s));
     }
 }
 
@@ -94,16 +81,12 @@ impl Subscriber for Registry {
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        let mut values = HashMap::new();
-        let mut visitor = RegistryVisitor(&mut values);
-        attrs.record(&mut visitor);
         let parent = attrs.parent().map(|id| self.clone_span(id));
         let s = Data {
             metadata: attrs.metadata(),
             parent,
             children: vec![],
             ref_count: AtomicUsize::new(1),
-            values: Mutex::new(values),
         };
         let id = self.insert(s).expect("Unable to allocate another span");
         idx_to_id(id)
@@ -118,20 +101,8 @@ impl Subscriber for Registry {
         // TODO(david)—implement this.
     }
 
-    fn event(&self, event: &Event<'_>) {
-        let id = match event.parent() {
-            Some(id) => Some(id.clone()),
-            None if event.is_contextual() => {
-                CURRENT_SPANS.with(|spans| spans.borrow().current().map(|id| id.clone()))
-            }
-            None => None,
-        };
-        if let Some(id) = id {
-            let mut values = HashMap::new();
-            let mut visitor = RegistryVisitor(&mut values);
-            event.record(&mut visitor);
-            let _ = self.get(&id).expect("Missing parent span for event");
-        }
+    fn event(&self, _: &Event<'_>) {
+        // TODO(david)—implement this.
     }
 
     fn enter(&self, id: &span::Id) {
