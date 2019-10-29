@@ -12,7 +12,7 @@ use std::{
     fmt,
     sync::{
         atomic::{fence, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Mutex,
     },
 };
 use tracing_core::{
@@ -24,7 +24,7 @@ use tracing_core::{
 
 #[derive(Debug)]
 pub struct Registry {
-    spans: Arc<Slab<Data>>,
+    spans: Slab<Data>,
 }
 
 thread_local! {
@@ -41,29 +41,11 @@ pub struct Data {
     values: Mutex<HashMap<&'static str, Value>>,
 }
 
-impl Drop for Data {
-    fn drop(&mut self) {
-        // We have to actually unpack the option inside the `get_default`
-        // closure, since it is a `FnMut`, but testing that there _is_ a value
-        // here lets us avoid the thread-local access if we don't need the
-        // dispatcher at all.
-        if self.parent.is_some() {
-            dispatcher::get_default(|subscriber| {
-                if let Some(parent) = self.parent.take() {
-                    let _ = subscriber.try_close(parent);
-                }
-            })
-        }
-    }
-}
-
 // === impl Registry ===
 
 impl Default for Registry {
     fn default() -> Self {
-        Self {
-            spans: Arc::new(Slab::new()),
-        }
+        Self { spans: Slab::new() }
     }
 }
 
@@ -94,35 +76,6 @@ impl Registry {
 
     fn get(&self, id: &Id) -> Option<Guard<'_, Data>> {
         self.spans.get(id_to_idx(id))
-    }
-
-    /// Decrements the reference count of the span with the given `id`, and
-    /// removes the span if it is zero.
-    ///
-    /// The allocated span slot will be reused when a new span is created.
-    fn drop_span(&self, id: Id) -> bool {
-        if !self.drop_ref(&id) {
-            return false;
-        }
-
-        // Synchronize only if we are actually removing the span (stolen
-        // from std::Arc);
-        fence(Ordering::Acquire);
-        self.spans.remove(id_to_idx(&id))
-    }
-
-    fn drop_ref(&self, id: &Id) -> bool {
-        let span = self.get(id);
-        if !std::thread::panicking() {
-            assert!(span.is_some(), "Span was none");
-        }
-
-        let span = span.unwrap();
-        let refs = span.ref_count.fetch_sub(1, Ordering::Release);
-        if !std::thread::panicking() {
-            assert!(refs < std::usize::MAX, "reference count overflow!");
-        }
-        refs == 1
     }
 }
 
@@ -203,9 +156,31 @@ impl Subscriber for Registry {
         id.clone()
     }
 
+    /// Decrements the reference count of the span with the given `id`, and
+    /// removes the span if it is zero.
+    ///
+    /// The allocated span slot will be reused when a new span is created.
     #[inline]
     fn try_close(&self, id: span::Id) -> bool {
-        self.drop_span(id)
+        let span = match self.get(&id) {
+            Some(span) => span,
+            None if std::thread::panicking() => return false,
+            None => panic!("tried to drop a ref to {:?}, but no such span exists!", id),
+        };
+
+        let refs = span.ref_count.fetch_sub(1, Ordering::Release);
+        if !std::thread::panicking() {
+            assert!(refs < std::usize::MAX, "reference count overflow!");
+        }
+        if refs > 1 {
+            return false;
+        }
+
+        // Synchronize only if we are actually removing the span (stolen
+        // from std::Arc);
+        fence(Ordering::Acquire);
+        self.spans.remove(id_to_idx(&id));
+        true
     }
 }
 
@@ -254,6 +229,22 @@ impl Data {
             }
         }
         Ok(())
+    }
+}
+
+impl Drop for Data {
+    fn drop(&mut self) {
+        // We have to actually unpack the option inside the `get_default`
+        // closure, since it is a `FnMut`, but testing that there _is_ a value
+        // here lets us avoid the thread-local access if we don't need the
+        // dispatcher at all.
+        if self.parent.is_some() {
+            dispatcher::get_default(|subscriber| {
+                if let Some(parent) = self.parent.take() {
+                    let _ = subscriber.try_close(parent);
+                }
+            })
+        }
     }
 }
 
