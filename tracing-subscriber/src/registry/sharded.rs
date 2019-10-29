@@ -19,7 +19,7 @@ use tracing_core::{
     dispatcher,
     field::{FieldSet, Visit},
     span::{self, Id},
-    Dispatch, Event, Field, Interest, Metadata, Subscriber,
+    Event, Field, Interest, Metadata, Subscriber,
 };
 
 #[derive(Debug)]
