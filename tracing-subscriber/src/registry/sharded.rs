@@ -20,6 +20,7 @@ use tracing_core::{
     Event, Field, Interest, Metadata, Subscriber,
 };
 
+#[derive(Debug)]
 pub struct Registry {
     spans: Arc<Slab<BigSpan>>,
 }
@@ -32,6 +33,7 @@ thread_local! {
 pub struct BigSpan {
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
+    children: Vec<Id>,
     // TODO(david): get rid of these
     values: Mutex<HashMap<&'static str, Value>>,
 }
@@ -102,6 +104,7 @@ impl Subscriber for Registry {
         let s = BigSpan {
             metadata: attrs.metadata(),
             parent,
+            children: vec![],
             values: Mutex::new(values),
         };
         let id = (self.insert(s).expect("Unable to allocate another span") + 1) as u64;
@@ -114,8 +117,14 @@ impl Subscriber for Registry {
         dbg!(values);
     }
 
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
-        // TODO: implement this please
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        let current = self
+            .get(span)
+            .expect("Current span is missing; this is a bug");
+
+        let current = self
+            .span(span)
+            .expect("Current span is missing; this is a bug");
     }
 
     fn enter(&self, id: &span::Id) {
@@ -217,7 +226,7 @@ impl<'a> SpanData<'a> for Guard<'a, BigSpan> {
         (*self).metadata
     }
     fn parent(&self) -> Option<&Id> {
-        unimplemented!("david: add this to `BigSpan`")
+        self.parent()
     }
     fn children(&self) -> Self::Children {
         unimplemented!("david: add this to `BigSpan`")
