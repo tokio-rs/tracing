@@ -28,7 +28,29 @@ use tracing_core::{
 
 /// A `Layer` which filters spans and events based on a set of filter
 /// directives.
-// TODO(eliza): document filter directive syntax?
+///
+/// # Directives
+///
+/// Directives are a set of instructions on how to filter tracing events. The directive
+/// syntax is similar to the one presented in `env_logger`. The syntax consists mainly
+/// of four parts `target[span{field=value}]=level`.
+///
+/// - `target` matches on the target that the event comes from, generally this will be the
+/// crate name. Examples, `h2`, `tokio::net`, etc.
+/// - `span` matches on the span name that you want to filter on.
+/// - `field` matches the fields within spans.
+/// - `value` matches the _output_ of the span's value. This means for a `String` it will use
+/// the debug implementation. Examples, `1`, `\"some_string\"`, etc.
+/// - `level` will filter out logs that produce a level lower than the provided one.
+///
+/// ## Examples
+///
+/// - `tokio::net=info` will filter on events that are produced within the `tokio::net`module
+/// and with a `info` or greater log level.
+/// - `my_crate[span_a]=trace` will filter on events that are produced within the `my_crate` crate,
+/// within the `span_a` span and with any level `trace` and above.
+/// - `[span_b{name=\"bob\"}]` will filter on events that are produced within any crate under the
+/// `span_b` span with a field `name` that contains the value `\"bob\"`.
 #[cfg_attr(
     feature = "filter",
     deprecated(

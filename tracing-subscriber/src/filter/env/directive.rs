@@ -808,6 +808,15 @@ mod test {
         assert_eq!(expected, sorted);
     }
 
+    #[test]
+    fn directive_parses_field_and_value() {
+        let dirs = parse_directives("crate1[span1{key=\"value\"}]=info");
+
+        assert_eq!(dirs[0].in_span, Some("span1".into()));
+        assert_eq!(dirs[0].fields[0].name, "key");
+        assert!(dirs[0].fields[0].value.is_some());
+    }
+
     // TODO: this test requires the parser to support directives with multiple
     // fields, which it currently can't handle. We should enable this test when
     // that's implemented.
