@@ -160,19 +160,12 @@ impl Subscriber for Registry {
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        dbg!(span);
-        dbg!(values);
+    fn record(&self, _: &span::Id, _: &span::Record<'_>) {
+        // TODO(david)—implement this.
     }
 
-    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
-        let current = self
-            .get(span)
-            .expect("Current span is missing; this is a bug");
-
-        let current = self
-            .span(span)
-            .expect("Current span is missing; this is a bug");
+    fn record_follows_from(&self, _: &span::Id, _: &span::Id) {
+        // TODO(david)—implement this.
     }
 
     fn event(&self, event: &Event<'_>) {
