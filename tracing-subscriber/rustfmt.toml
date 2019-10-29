@@ -1,3 +1,0 @@
-edition = "2018"
-unstable_features = true
-merge_imports = true

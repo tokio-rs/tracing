@@ -50,14 +50,14 @@ pub trait LookupMetadata {
     }
 }
 
-pub trait LookupSpan<'a>
-where
-    Self: std::marker::Sized,
-{
+pub trait LookupSpan<'a> {
     type Data: SpanData<'a>;
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
-    fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>> {
+    fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
+    where
+        Self: Sized,
+    {
         let data = self.span_data(id)?;
         Some(SpanRef {
             registry: self,
@@ -142,11 +142,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let id = self.next.take()?;
         let span = self.registry.span(&id)?;
-        if let Some(parent) = span.parent() {
-            self.next = Some(parent.id());
-            Some(span)
-        } else {
-            None
-        }
+        self.next = span.parent().map(|parent| parent.id());
+        Some(span)
     }
 }
