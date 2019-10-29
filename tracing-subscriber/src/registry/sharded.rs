@@ -112,19 +112,16 @@ impl Registry {
     }
 
     fn drop_ref(&self, id: &Id) -> bool {
-        let idx = id_to_idx(id);
-        let span = self.spans.get(idx).expect("Span not found");
+        let span = self.get(id);
+        if !std::thread::panicking() {
+            assert!(span.is_some(), "Span was none");
+        }
 
+        let span = span.unwrap();
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
-        assert!(
-            if std::thread::panicking() {
-                // don't cause a double panic, even if the ref-count is wrong...
-                true
-            } else {
-                refs != std::usize::MAX
-            },
-            "reference count overflow!"
-        );
+        if !std::thread::panicking() {
+            assert!(refs < std::usize::MAX, "reference count overflow!");
+        }
         refs == 1
     }
 }
@@ -171,13 +168,10 @@ impl Subscriber for Registry {
     fn event(&self, event: &Event<'_>) {
         let id = match event.parent() {
             Some(id) => Some(id.clone()),
-            None => {
-                if event.is_contextual() {
-                    CURRENT_SPANS.with(|spans| spans.borrow().current().map(|id| id.clone()))
-                } else {
-                    None
-                }
+            None if event.is_contextual() => {
+                CURRENT_SPANS.with(|spans| spans.borrow().current().map(|id| id.clone()))
             }
+            None => None,
         };
         if let Some(id) = id {
             let mut values = HashMap::new();
@@ -189,28 +183,23 @@ impl Subscriber for Registry {
 
     fn enter(&self, id: &span::Id) {
         CURRENT_SPANS.with(|spans| {
-            spans.borrow_mut().push(id.clone());
-            self.clone_span(id);
+            spans.borrow_mut().push(self.clone_span(id));
         })
     }
 
     fn exit(&self, id: &span::Id) {
-        let _ = CURRENT_SPANS.with(|spans| spans.borrow_mut().pop(id));
-        dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
+        if let Some(id) = CURRENT_SPANS.with(|spans| spans.borrow_mut().pop(id)) {
+            dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
+        }
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
-        if let Some(data) = self.get(&id) {
-            let refs = data.ref_count.fetch_add(1, Ordering::Relaxed);
-            assert!(refs != 0, "tried to clone a span that already closed");
-        } else {
-            let panicking = std::thread::panicking();
-            assert!(
-                !panicking,
-                "tried to clone {:?}, but no span exists with that ID",
-                id
-            );
-        }
+        let refs = self
+            .get(&id)
+            .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id))
+            .ref_count
+            .fetch_add(1, Ordering::Relaxed);
+        assert!(refs != 0, "tried to clone a span that already closed");
         id.clone()
     }
 
