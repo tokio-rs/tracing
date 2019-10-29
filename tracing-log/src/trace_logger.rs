@@ -4,10 +4,16 @@
 //! When a [`TraceLogger`] is set as the current subscriber, it will record
 //! traces by emitting [`log::Record`]s that can be collected by a logger.
 //!
+//! **Note**: This API has been deprecated since version 0.1.1. In order to emit
+//! `tracing` events as `log` records, the ["log" and "log-always" feature
+//! flags][flags] on the `tracing` crate should be used instead.
+//!
 //! [`log`]: https://docs.rs/log/0.4.8/log/index.html
 //! [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 //! [`TraceLogger`]: struct.TraceLogger.html
 //! [`log::Record`]: https://docs.rs/log/0.4.8/log/struct.Record.html
+//! [flags]: https://docs.rs/tracing/0.1.10/tracing/#crate-feature-flags
+#![deprecated(since = "0.1.1", note = "use the `tracing` crate's \"log\" feature flag instead")]
 use crate::AsLog;
 use std::{
     cell::RefCell,
@@ -27,7 +33,11 @@ use tracing_core::{
 /// A `tracing` [`Subscriber`] implementation that logs all recorded
 /// trace events.
 ///
-//. [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
+/// **Note**: This API has been deprecated since version 0.1.1. In order to emit
+/// `tracing` events as `log` records, the ["log" and "log-always" feature
+/// flags][flags] on the `tracing` crate should be used instead.
+///
+/// [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 pub struct TraceLogger {
     settings: Builder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,
