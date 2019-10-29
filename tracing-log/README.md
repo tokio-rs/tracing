@@ -7,13 +7,11 @@
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][azure-badge]][azure-url]
-[![Gitter chat][gitter-badge]][gitter-url]
 [![Discord chat][discord-badge]][discord-url]
 ![maintenance status][maint-badge]
 
 
-[Documentation][docs-url] |
-[Chat (gitter)][gitter-url] | [Chat (discord)][discord-url]
+[Documentation][docs-url] | [Chat (discord)][discord-url]
 
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-log.svg
@@ -26,8 +24,6 @@
 [mit-url]: LICENSE
 [azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
 [azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
-[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
-[gitter-url]: https://gitter.im/tokio-rs/tracing
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discordapp.com/invite/XdPzyTZ
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg
@@ -41,16 +37,17 @@ by the [`log`] crate.
 
 This crate provides:
 
+- [`AsTrace`] and [`AsLog`] traits for converting between `tracing` and `log` types.
 - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
-  and outputs them as [`tracing::Event`].
-- [`TraceLogger`], a [`tracing::Subscriber`] implementation that consumes
-  [`tracing::Event`]s and outputs [`log::Record`], allowing an existing logger
-  implementation to be used to record trace events.
+  and outputs them as [`tracing::Event`]s.
+- An [`env_logger`] module, with helpers for using the [`env_logger` crate]
+  with `tracing` (optional, enabled by the `env-logger` feature).
 
 [`tracing`]: https://crates.io/crates/tracing
 [`log`]: https://crates.io/crates/log
+[`AsTrace`]: https://docs.rs/tracing-log/latest/tracing_log/trait.AsTrace.html
+[`AsLog`]: https://docs.rs/tracing-log/latest/tracing_log/trait.AsLog.html
 [`LogTracer`]: https://docs.rs/tracing-log/latest/tracing_log/struct.LogTracer.html
-[`TraceLogger`]: https://docs.rs/tracing-log/latest/tracing_log/struct.TraceLogger.html
 [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
 [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
 [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
