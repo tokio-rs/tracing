@@ -8,9 +8,9 @@ use crate::{
 use serde_json::{json, Value};
 use std::{
     cell::RefCell,
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     convert::TryInto,
-    fmt, io,
+    fmt,
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
@@ -22,8 +22,10 @@ use tracing_core::{
 
 pub struct Registry {
     spans: Arc<Slab<BigSpan>>,
-    // TODO(david): replace this with the span stack from `fmt` (this is wrong)
-    local_spans: RwLock<SpanStack>,
+}
+
+thread_local! {
+    static CONTEXT: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
 
 #[derive(Debug)]
@@ -40,7 +42,6 @@ impl Default for Registry {
     fn default() -> Self {
         Self {
             spans: Arc::new(Slab::new()),
-            local_spans: RwLock::new(SpanStack::new()),
         }
     }
 }
@@ -80,7 +81,7 @@ impl Registry {
 }
 
 thread_local! {
-    static CONTEXT: RefCell<SpanStack> = RefCell::new(SpanStack::new());
+    static CURRENT_SPANS: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
 
 impl Subscriber for Registry {
@@ -119,10 +120,9 @@ impl Subscriber for Registry {
 
     fn enter(&self, id: &span::Id) {
         let id = id.into_u64();
-        self.local_spans
-            .write()
-            .expect("Mutex poisoned")
-            .push(span::Id::from_u64(id));
+        CURRENT_SPANS.with(|spans| {
+            spans.borrow_mut().push(span::Id::from_u64(id));
+        })
     }
 
     fn event(&self, event: &Event<'_>) {
@@ -130,11 +130,7 @@ impl Subscriber for Registry {
             Some(id) => Some(id.clone()),
             None => {
                 if event.is_contextual() {
-                    self.local_spans
-                        .read()
-                        .expect("Mutex poisoned")
-                        .current()
-                        .map(|id| id.clone())
+                    CURRENT_SPANS.with(|spans| spans.borrow().current().map(|id| id.clone()))
                 } else {
                     None
                 }
@@ -144,12 +140,14 @@ impl Subscriber for Registry {
             let mut values = HashMap::new();
             let mut visitor = RegistryVisitor(&mut values);
             event.record(&mut visitor);
-            let span = self.get(&id).expect("Missing parent span for event");
+            let _ = self.get(&id).expect("Missing parent span for event");
         }
     }
 
     fn exit(&self, id: &span::Id) {
-        self.local_spans.write().expect("Mutex poisoned").pop(id);
+        CURRENT_SPANS.with(|spans| {
+            spans.borrow_mut().pop(id);
+        })
     }
 
     #[inline]
