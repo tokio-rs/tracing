@@ -168,7 +168,7 @@ impl Subscriber {
     ///
     /// This can be overridden with the [`Builder::with_max_level`] method.
     ///
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [verbosity level]: https://docs.rs/tracing-core/0.1.6/tracing_core/struct.Level.html
     /// [`Builder::with_max_level`]: struct.Builder.html#method.with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
@@ -694,7 +694,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///     .with_max_level(LevelFilter::OFF)
     ///     .finish();
     /// ```
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [verbosity level]: https://docs.rs/tracing-core/0.1.6/tracing_core/struct.Level.html
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_filter`]: #method.with_filter
     pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {

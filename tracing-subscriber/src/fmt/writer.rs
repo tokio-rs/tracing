@@ -14,7 +14,7 @@ use std::io;
 ///
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 /// [`FmtSubscriber`]: ../struct.Subscriber.html
-/// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
+/// [`Event`]: https://docs.rs/tracing-core/0.1.6/tracing_core/event/struct.Event.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
 pub trait MakeWriter {
