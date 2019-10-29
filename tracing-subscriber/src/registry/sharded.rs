@@ -115,7 +115,7 @@ impl Registry {
         let idx = id_to_idx(id);
         let span = self.spans.get(idx).expect("Span not found");
 
-        let refs = span.ref_count.fetch_sub(1, Ordering::Relaxed);
+        let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         assert!(
             if std::thread::panicking() {
                 // don't cause a double panic, even if the ref-count is wrong...
@@ -208,14 +208,15 @@ impl Subscriber for Registry {
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
         if let Some(data) = self.get(&id) {
-            let refs = data.ref_count.fetch_add(1, Ordering::Release);
-            if refs == 0 {
-                panic!("tried to clone a span that already closed");
-            }
+            let refs = data.ref_count.fetch_add(1, Ordering::Relaxed);
+            assert!(refs != 0, "tried to clone a span that already closed");
         } else {
-            if !std::thread::panicking() {
-                panic!("tried to clone {:?}, but no span exists with that ID", id)
-            }
+            let panicking = std::thread::panicking();
+            assert!(
+                !panicking,
+                "tried to clone {:?}, but no span exists with that ID",
+                id
+            );
         }
         id.clone()
     }
