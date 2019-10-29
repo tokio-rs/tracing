@@ -1,3 +1,18 @@
+# 0.1.6 (October 29, 2019)
+
+### Fixed
+
+- `EnvFilter` defaulting to `ERROR` rather than `TRACE` for directives with no
+  targets (inconsistent with `env_logger`) (#401)
+
+### Added
+
+- `init` and `try_init` methods to `FmtSubscriber` and `fmt::Builder` to
+  simplify configuration in common cases (#385)
+- New `ChronoUtc` and `ChronoLocal` `FormatTime` implementations for easily
+  configuring the timestamp locale when using the `chrono` crate (#385)
+- RFC 3339 timestamp formatting option for `ChronoUtc` and `ChronoLocal` (#385)
+
 # 0.1.5 (October 7, 2019)
 
 ### Fixed
