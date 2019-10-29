@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     convert::TryInto,
     fmt,
-    marker::PhantomData,
     sync::{Arc, Mutex},
 };
 use tracing_core::{
@@ -22,7 +21,7 @@ use tracing_core::{
 
 #[derive(Debug)]
 pub struct Registry {
-    spans: Arc<Slab<BigSpan>>,
+    spans: Arc<Slab<RwLock<BigSpan>>>,
 }
 
 thread_local! {
@@ -70,14 +69,31 @@ fn id_to_idx(id: &Id) -> usize {
 
 impl Registry {
     fn insert(&self, s: BigSpan) -> Option<usize> {
-        self.spans.insert(s)
+        self.spans.insert(RwLock::new(s))
     }
 
-    fn get(&self, id: &Id) -> Option<Guard<'_, BigSpan>> {
+    fn get(&self, id: &Id) -> Option<Guard<'_, RwLock<BigSpan>>> {
         self.spans.get(id_to_idx(id))
     }
 
-    fn take(&self, id: Id) -> Option<BigSpan> {
+    fn set_parent(&self, current: &Id, parent: &Id) {
+        // TODO(david): remove `.expect()`; return an error.
+        let current_span = self
+            .spans
+            .get(id_to_idx(current))
+            .expect(&format!("Missing current span with id: {:?}", current));
+        let mut current_span = current_span.write().expect("Mutex poisoned");
+        let parent_span = self
+            .spans
+            .get(id_to_idx(parent))
+            .expect(&format!("Missing parent span with id: {:?}", parent));
+        let mut parent_span = parent_span.write().expect("Mutex poisoned");
+
+        current_span.parent = Some(parent.clone());
+        parent_span.children.push(current.clone())
+    }
+
+    fn take(&self, id: Id) -> Option<RwLock<BigSpan>> {
         self.spans.take(id_to_idx(&id))
     }
 }
@@ -167,7 +183,7 @@ impl Subscriber for Registry {
 }
 
 impl<'a> LookupSpan<'a> for Registry {
-    type Data = Guard<'a, BigSpan>;
+    type Data = Guard<'a, RwLock<BigSpan>>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         self.get(id)
@@ -194,13 +210,14 @@ impl BigSpan {
         registry: &'registry Registry,
     ) -> Result<(), E>
     where
-        F: FnMut(&Id, Guard<'_, BigSpan>) -> Result<(), E>,
+        F: FnMut(&Id, Guard<'_, RwLock<BigSpan>>) -> Result<(), E>,
     {
         if let Some(span) = registry.get(my_id) {
-            if let Some(parent_id) = span.parent() {
+            if let Some(ref parent_id) = span.read().expect("Mutex poisoned").parent {
                 if Some(parent_id) != last_id {
-                    if let Some(parent) = registry.get(parent_id) {
-                        parent.with_parent(parent_id, Some(my_id), f, registry)?;
+                    if let Some(parent) = registry.get(&parent_id) {
+                        let parent = parent.read().expect("Mutex poisoned");
+                        parent.with_parent(&parent_id, Some(my_id), f, registry)?;
                     } else {
                         panic!("missing span for {:?}; this is a bug", parent_id);
                     }
@@ -214,7 +231,7 @@ impl BigSpan {
     }
 }
 
-impl<'a> SpanData<'a> for Guard<'a, BigSpan> {
+impl<'a> SpanData<'a> for Guard<'a, RwLock<BigSpan>> {
     type Children = std::slice::Iter<'a, Id>; // not yet implemented...
     type Follows = std::slice::Iter<'a, Id>;
 
@@ -223,7 +240,7 @@ impl<'a> SpanData<'a> for Guard<'a, BigSpan> {
         Id::from_u64(id)
     }
     fn metadata(&self) -> &'static Metadata<'static> {
-        (*self).metadata
+        (*self).read().expect("Poisoned mutex").metadata
     }
     fn parent(&self) -> Option<&Id> {
         self.parent()

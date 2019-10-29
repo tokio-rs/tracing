@@ -22,7 +22,7 @@ mod parking_lot_impl {
     use std::sync::{LockResult, TryLockError, TryLockResult};
 
     #[derive(Debug)]
-    pub(crate) struct RwLock<T> {
+    pub struct RwLock<T> {
         inner: parking_lot::RwLock<T>,
     }
 
