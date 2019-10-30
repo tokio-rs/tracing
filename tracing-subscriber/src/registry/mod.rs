@@ -16,6 +16,7 @@
 use std::any::Any;
 use tracing_core::{span::Id, Metadata};
 
+pub mod extensions;
 pub mod sharded;
 
 /// Provides access to stored span metadata.
@@ -83,10 +84,27 @@ pub trait SpanData<'a> {
 // XXX(eliza): also, consider having `.extensions`/`.extensions_mut` methods to
 // get the extensions, so we can control read locking vs write locking?
 pub trait Extensions {
-    fn get<T: Any>(&self) -> Option<&T>;
-    fn get_mut<T: Any>(&mut self) -> Option<&mut T>;
-    fn insert<T: Any>(&mut self, t: T) -> Option<T>;
-    fn remove<T: Any>(&mut self) -> Option<T>;
+    fn get<T: Any + Send + Sync>(&self) -> Option<&T>;
+    fn get_mut<T: Any + Send + Sync>(&mut self) -> Option<&mut T>;
+    fn insert<T: Any + Send + Sync>(&mut self, t: T) -> Option<T>;
+    fn remove<T: Any + Send + Sync>(&mut self) -> Option<T>;
+}
+
+// TODO(david): this might require implementing Extensions on
+// slab's guard.
+impl Extensions for extensions::Extensions {
+    fn get<T: Any + Send + Sync>(&self) -> Option<&T> {
+        self.get::<T>()
+    }
+    fn get_mut<T: Any + Send + Sync>(&mut self) -> Option<&mut T> {
+        self.get_mut::<T>()
+    }
+    fn insert<T: Any + Send + Sync>(&mut self, t: T) -> Option<T> {
+        self.insert::<T>(t)
+    }
+    fn remove<T: Any + Send + Sync>(&mut self) -> Option<T> {
+        self.remove::<T>()
+    }
 }
 
 #[derive(Debug)]
