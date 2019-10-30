@@ -1,7 +1,7 @@
 use crate::{
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupSpan, Registry, SpanData, SpanRef},
+    registry::{Extensions, LookupMetadata, LookupSpan, Registry, SpanData, SpanRef},
 };
 use ansi_term::{Color, Style};
 use humantime;
@@ -14,7 +14,7 @@ use std::{
 };
 use tracing_core::{
     field::{Field, Visit},
-    span::Id,
+    span::{Attributes, Id},
     Event, Level, Subscriber,
 };
 
@@ -52,7 +52,7 @@ impl FmtLayer {
 
 impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
-    S: Subscriber,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
@@ -87,7 +87,7 @@ impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
 
 impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
-    S: Subscriber,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
@@ -123,7 +123,7 @@ fn name_of<T>(t: T) -> &'static str {
 
 impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
