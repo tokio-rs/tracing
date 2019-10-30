@@ -809,14 +809,14 @@ mod test {
     }
 
     #[test]
-    fn create_default_dispatcher() {
+    fn default_no_subscriber {
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoSubscriber>());
     }
 
     #[cfg(feature = "std")]
     #[test]
-    fn returns_default_dispatcher() {
+    fn default_dispatch() {
         struct TestSubscriber;
         impl Subscriber for TestSubscriber {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
