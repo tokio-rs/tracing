@@ -108,8 +108,10 @@ pub(crate) mod span;
 pub mod time;
 pub mod writer;
 
-use crate::filter::LevelFilter;
-use crate::layer::{self, Layer};
+use crate::{
+    filter::LevelFilter,
+    layer::{self, Layer},
+};
 
 #[doc(inline)]
 pub use self::{
@@ -883,11 +885,12 @@ pub fn init() {
 
 #[cfg(test)]
 mod test {
-    use super::writer::MakeWriter;
-    use super::*;
+    use super::{writer::MakeWriter, *};
     use crate::fmt::Subscriber;
-    use std::io;
-    use std::sync::{Mutex, MutexGuard, TryLockError};
+    use std::{
+        io,
+        sync::{Mutex, MutexGuard, TryLockError},
+    };
     use tracing_core::dispatcher::Dispatch;
 
     pub(crate) struct MockWriter<'a> {

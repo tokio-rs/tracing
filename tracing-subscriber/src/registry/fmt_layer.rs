@@ -1,10 +1,22 @@
 use crate::{
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupSpan, Registry, SpanRef},
+    registry::{LookupSpan, Registry, SpanData, SpanRef},
 };
-use std::{io, marker::PhantomData};
-use tracing_core::{span::Id, Event, Subscriber};
+use ansi_term::{Color, Style};
+use humantime;
+use std::{
+    any::type_name,
+    fmt::{self, Write as _},
+    io::{self, Write},
+    marker::PhantomData,
+    time::SystemTime,
+};
+use tracing_core::{
+    field::{Field, Visit},
+    span::Id,
+    Event, Level, Subscriber,
+};
 
 pub struct FmtLayer<
     S = Registry,
@@ -103,6 +115,10 @@ impl Default for FmtLayerBuilder {
     }
 }
 
+fn name_of<T>(t: T) -> &'static str {
+    type_name::<T>()
+}
+
 // === impl Formatter ===
 
 impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
@@ -113,27 +129,69 @@ where
     W: MakeWriter + 'static,
 {
     fn on_close(&self, id: Id, _: Context<'_, S>) {
-        dbg!(id);
+        // dbg!(id);
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        if let Some(parent) = event.parent() {
-            let span = ctx.span(parent).unwrap();
-            let ctx = FmtContext {
-                ctx: &span,
-                fmt_fields: &self.fmt_fields,
-            };
-            // self.fmt_event.format_event(&ctx, &mut String::new(), event);
+        let mut writer = self.make_writer.make_writer();
+        write!(
+            &mut writer,
+            "{timestamp} {level} {target}",
+            timestamp = humantime::format_rfc3339_seconds(SystemTime::now()),
+            level = ColorLevel(event.metadata().level()),
+            target = &event.metadata().target(),
+        )
+        .unwrap();
+
+        let mut visitor = EventVisitor {
+            buf: String::new(),
+            comma: true,
+        };
+        event.record(&mut visitor);
+        write!(&mut writer, "{}\n", visitor.buf).unwrap();
+    }
+}
+
+struct EventVisitor {
+    comma: bool,
+    buf: String,
+}
+
+impl Visit for EventVisitor {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        write!(
+            &mut self.buf,
+            "{comma} ",
+            comma = if self.comma { "," } else { "" },
+        )
+        .unwrap();
+        let name = field.name();
+        if name == "message" {
+            write!(
+                &mut self.buf,
+                "{}",
+                Style::new().bold().paint(format!("{:?}", value))
+            )
+            .unwrap();
+            self.comma = true;
+        } else {
+            write!(self.buf, "{}: {:?}", Style::new().bold().paint(name), value).unwrap();
+            self.comma = true;
         }
     }
 }
 
-/// Represents the `Subscriber`'s view of the current span context to a
-/// formatter.
-pub struct FmtContext<'a, F, S>
-where
-    S: LookupSpan<'a>,
-{
-    ctx: &'a SpanRef<'a, S>,
-    fmt_fields: &'a F,
+struct ColorLevel<'a>(&'a Level);
+
+impl<'a> fmt::Display for ColorLevel<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            &Level::TRACE => Color::Purple.paint("TRACE"),
+            &Level::DEBUG => Color::Blue.paint("DEBUG"),
+            &Level::INFO => Color::Green.paint("INFO "),
+            &Level::WARN => Color::Yellow.paint("WARN "),
+            &Level::ERROR => Color::Red.paint("ERROR"),
+        }
+        .fmt(f)
+    }
 }
