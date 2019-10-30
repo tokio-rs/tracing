@@ -814,6 +814,7 @@ mod test {
         assert!(default_dispatcher.is::<NoSubscriber>());
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn returns_default_dispatcher() {
         struct TestSubscriber;
