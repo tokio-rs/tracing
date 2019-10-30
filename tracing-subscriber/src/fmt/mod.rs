@@ -170,32 +170,32 @@ struct Settings {
     initial_span_capacity: usize,
 }
 
-impl Subscriber {
-    /// The maximum [verbosity level] that is enabled by a `Subscriber` by
-    /// default.
-    ///
-    /// This can be overridden with the [`Builder::with_max_level`] method.
-    ///
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`Builder::with_max_level`]: struct.Builder.html#method.with_max_level
-    pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
+// impl Subscriber {
+//     /// The maximum [verbosity level] that is enabled by a `Subscriber` by
+//     /// default.
+//     ///
+//     /// This can be overridden with the [`Builder::with_max_level`] method.
+//     ///
+//     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+//     /// [`Builder::with_max_level`]: struct.Builder.html#method.with_max_level
+//     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
-    /// Returns a new `Builder` for configuring a format subscriber.
-    pub fn builder() -> Builder {
-        Builder::default()
-    }
+//     /// Returns a new `Builder` for configuring a format subscriber.
+//     pub fn builder() -> Builder {
+//         Builder::default()
+//     }
 
-    /// Returns a new format subscriber with the default configuration.
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
+//     /// Returns a new format subscriber with the default configuration.
+//     pub fn new() -> Self {
+//         Default::default()
+//     }
+// }
 
-impl Default for Subscriber {
-    fn default() -> Self {
-        Builder::default().finish()
-    }
-}
+// impl Default for Subscriber {
+//     fn default() -> Self {
+//         Builder::default().finish()
+//     }
+// }
 // === impl Subscriber ===
 
 // impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
@@ -400,17 +400,17 @@ impl<N, E, W> crate::registry::LookupMetadata for Formatter<N, E, W> {
 
 // ===== impl Builder =====
 
-impl Default for Builder {
-    fn default() -> Self {
-        Builder {
-            filter: Subscriber::DEFAULT_MAX_LEVEL,
-            fmt_fields: format::DefaultFields::default(),
-            fmt_event: format::Format::default(),
-            settings: Settings::default(),
-            make_writer: io::stdout,
-        }
-    }
-}
+// impl Default for Builder {
+//     fn default() -> Self {
+//         Builder {
+//             filter: Subscriber::DEFAULT_MAX_LEVEL,
+//             fmt_fields: format::DefaultFields::default(),
+//             fmt_event: format::Format::default(),
+//             settings: Settings::default(),
+//             make_writer: io::stdout,
+//         }
+//     }
+// }
 
 // impl<S, N, E, F, W> Builder<N, E, F, W>
 // where
@@ -863,10 +863,11 @@ where
 ///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
-pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
-    Subscriber::builder()
-        .with_env_filter(crate::EnvFilter::from_default_env())
-        .try_init()
+pub fn try_init() -> Result<(), String> {
+    unimplemented!()
+    // Subscriber::builder()
+    //     .with_env_filter(crate::EnvFilter::from_default_env())
+    //     .try_init()
 }
 
 /// Install a global tracing subscriber that listens for events and
@@ -882,103 +883,104 @@ pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn init() {
-    try_init().expect("Unable to install global subscriber")
+    unimplemented!()
+    // try_init().expect("Unable to install global subscriber")
 }
 
-#[cfg(test)]
-mod test {
-    use super::{writer::MakeWriter, *};
-    use crate::fmt::Subscriber;
-    use std::{
-        io,
-        sync::{Mutex, MutexGuard, TryLockError},
-    };
-    use tracing_core::dispatcher::Dispatch;
+// #[cfg(test)]
+// mod test {
+//     use super::{writer::MakeWriter, *};
+//     use crate::fmt::Subscriber;
+//     use std::{
+//         io,
+//         sync::{Mutex, MutexGuard, TryLockError},
+//     };
+//     use tracing_core::dispatcher::Dispatch;
 
-    pub(crate) struct MockWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
-    }
+//     pub(crate) struct MockWriter<'a> {
+//         buf: &'a Mutex<Vec<u8>>,
+//     }
 
-    impl<'a> MockWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
-            Self { buf }
-        }
+//     impl<'a> MockWriter<'a> {
+//         pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+//             Self { buf }
+//         }
 
-        pub(crate) fn map_error<Guard>(err: TryLockError<Guard>) -> io::Error {
-            match err {
-                TryLockError::WouldBlock => io::Error::from(io::ErrorKind::WouldBlock),
-                TryLockError::Poisoned(_) => io::Error::from(io::ErrorKind::Other),
-            }
-        }
+//         pub(crate) fn map_error<Guard>(err: TryLockError<Guard>) -> io::Error {
+//             match err {
+//                 TryLockError::WouldBlock => io::Error::from(io::ErrorKind::WouldBlock),
+//                 TryLockError::Poisoned(_) => io::Error::from(io::ErrorKind::Other),
+//             }
+//         }
 
-        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
-            self.buf.try_lock().map_err(Self::map_error)
-        }
-    }
+//         pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+//             self.buf.try_lock().map_err(Self::map_error)
+//         }
+//     }
 
-    impl<'a> io::Write for MockWriter<'a> {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            self.buf()?.write(buf)
-        }
+//     impl<'a> io::Write for MockWriter<'a> {
+//         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+//             self.buf()?.write(buf)
+//         }
 
-        fn flush(&mut self) -> io::Result<()> {
-            self.buf()?.flush()
-        }
-    }
+//         fn flush(&mut self) -> io::Result<()> {
+//             self.buf()?.flush()
+//         }
+//     }
 
-    pub(crate) struct MockMakeWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
-    }
+//     pub(crate) struct MockMakeWriter<'a> {
+//         buf: &'a Mutex<Vec<u8>>,
+//     }
 
-    impl<'a> MockMakeWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
-            Self { buf }
-        }
-    }
+//     impl<'a> MockMakeWriter<'a> {
+//         pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+//             Self { buf }
+//         }
+//     }
 
-    impl<'a> MakeWriter for MockMakeWriter<'a> {
-        type Writer = MockWriter<'a>;
+//     impl<'a> MakeWriter for MockMakeWriter<'a> {
+//         type Writer = MockWriter<'a>;
 
-        fn make_writer(&self) -> Self::Writer {
-            MockWriter::new(self.buf)
-        }
-    }
+//         fn make_writer(&self) -> Self::Writer {
+//             MockWriter::new(self.buf)
+//         }
+//     }
 
-    #[test]
-    fn impls() {
-        let f = format::Format::default().with_timer(time::Uptime::default());
-        let subscriber = Subscriber::builder().on_event(f).finish();
-        let _dispatch = Dispatch::new(subscriber);
+//     #[test]
+//     fn impls() {
+//         let f = format::Format::default().with_timer(time::Uptime::default());
+//         let subscriber = Subscriber::builder().on_event(f).finish();
+//         let _dispatch = Dispatch::new(subscriber);
 
-        let f = format::Format::default();
-        let subscriber = Subscriber::builder().on_event(f).finish();
-        let _dispatch = Dispatch::new(subscriber);
+//         let f = format::Format::default();
+//         let subscriber = Subscriber::builder().on_event(f).finish();
+//         let _dispatch = Dispatch::new(subscriber);
 
-        let f = format::Format::default().compact();
-        let subscriber = Subscriber::builder().on_event(f).finish();
-        let _dispatch = Dispatch::new(subscriber);
-    }
+//         let f = format::Format::default().compact();
+//         let subscriber = Subscriber::builder().on_event(f).finish();
+//         let _dispatch = Dispatch::new(subscriber);
+//     }
 
-    #[test]
-    fn subscriber_downcasts() {
-        let subscriber = Subscriber::new();
-        let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<Subscriber>().is_some());
-    }
+//     #[test]
+//     fn subscriber_downcasts() {
+//         let subscriber = Subscriber::new();
+//         let dispatch = Dispatch::new(subscriber);
+//         assert!(dispatch.downcast_ref::<Subscriber>().is_some());
+//     }
 
-    #[test]
-    fn subscriber_downcasts_to_parts() {
-        let subscriber = Subscriber::builder().finish();
-        let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
-        assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
-        assert!(dispatch.downcast_ref::<format::Format>().is_some())
-    }
+//     #[test]
+//     fn subscriber_downcasts_to_parts() {
+//         let subscriber = Subscriber::builder().finish();
+//         let dispatch = Dispatch::new(subscriber);
+//         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
+//         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
+//         assert!(dispatch.downcast_ref::<format::Format>().is_some())
+//     }
 
-    #[test]
-    #[cfg(feature = "registry_unstable")]
-    fn is_lookup_meta() {
-        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
-        assert_lookup_meta(Subscriber::builder().finish())
-    }
-}
+//     #[test]
+//     #[cfg(feature = "registry_unstable")]
+//     fn is_lookup_meta() {
+//         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+//         assert_lookup_meta(Subscriber::builder().finish())
+//     }
+// }

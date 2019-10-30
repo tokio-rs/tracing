@@ -1,20 +1,19 @@
 use crate::{
+    field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{Extensions, LookupMetadata, LookupSpan, Registry, SpanData, SpanRef},
+    registry::{LookupMetadata, LookupSpan, Registry, SpanData, SpanRef},
 };
 use ansi_term::{Color, Style};
-use humantime;
 use std::{
     any::type_name,
-    fmt::{self, Write as _},
-    io::{self, Write},
+    fmt::{self, Write},
+    io,
     marker::PhantomData,
-    time::SystemTime,
 };
 use tracing_core::{
     field::{Field, Visit},
-    span::{Attributes, Id},
+    span::Id,
     Event, Level, Subscriber,
 };
 
@@ -135,23 +134,51 @@ where
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         let mut buf = String::new();
         let ctx = FmtContext {
-            ctx: ctx,
-            fmt_fields: self.fmt_fields,
+            ctx,
+            fmt_fields: &self.fmt_fields,
         };
-        if self.fmt_event.format_event(ctx, &mut buf, event).is_ok() {
+        if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
             let mut writer = self.make_writer.make_writer();
             let _ = io::Write::write_all(&mut writer, buf.as_bytes());
         }
     }
 }
 
-pub(crate) struct FmtContext<'a, S, N>
+pub struct FmtContext<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    ctx: Context<'a, S>,
-    fmt_fields: &'a N,
+    pub ctx: Context<'a, S>,
+    pub fmt_fields: &'a N,
+}
+
+impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn format_fields<R: RecordFields>(
+        &self,
+        writer: &'a mut dyn fmt::Write,
+        fields: R,
+    ) -> fmt::Result {
+        self.fmt_fields.format_fields(writer, fields)
+    }
+}
+
+impl<'a, S, N> FmtContext<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    pub fn visit_spans<E, L, F>(&self, mut f: F) -> Result<(), E>
+    where
+        F: FnMut(&Id, L) -> Result<(), E>,
+        L: LookupSpan<'a>,
+    {
+        unimplemented!()
+    }
 }
 
 struct EventVisitor {
