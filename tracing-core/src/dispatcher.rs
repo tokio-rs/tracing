@@ -585,7 +585,7 @@ impl Dispatch {
 }
 
 impl Default for Dispatch {
-    // Creates default dispatcher
+    /// Returns the current default dispatcher
     fn default() -> Self {
         get_default(|default| default.clone())
     }
@@ -812,5 +812,32 @@ mod test {
     fn create_default_dispatcher() {
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoSubscriber>());
+    }
+
+    #[test]
+    fn returns_default_dispatcher() {
+        struct TestSubscriber;
+        impl Subscriber for TestSubscriber {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
+                true
+            }
+
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+                span::Id::from_u64(0xAAAA)
+            }
+
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+
+            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+
+            fn event(&self, _: &Event<'_>) {}
+
+            fn enter(&self, _: &span::Id) {}
+
+            fn exit(&self, _: &span::Id) {}
+        }
+        let _guard = set_default(&Dispatch::new(TestSubscriber));
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<TestSubscriber>());
     }
 }
