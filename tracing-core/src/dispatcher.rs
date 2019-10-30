@@ -809,7 +809,7 @@ mod test {
     }
 
     #[test]
-    fn default_no_subscriber {
+    fn default_no_subscriber() {
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoSubscriber>());
     }
