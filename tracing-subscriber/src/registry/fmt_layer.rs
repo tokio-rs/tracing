@@ -1,7 +1,7 @@
 use crate::{
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupSpan, Registry},
+    registry::{LookupSpan, Registry, SpanRef},
 };
 use std::{io, marker::PhantomData};
 use tracing_core::{span::Id, Event, Subscriber};
@@ -33,7 +33,7 @@ pub struct FmtLayerBuilder<
 }
 
 impl FmtLayer {
-    fn builder() -> FmtLayerBuilder {
+    pub fn builder() -> FmtLayerBuilder {
         FmtLayerBuilder::default()
     }
 }
@@ -45,7 +45,7 @@ where
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
 {
-    fn with_interest<F>(self, f: F) -> Self
+    pub fn with_interest<F>(self, f: F) -> Self
     where
         F: Fn(&Event<'_>) -> bool + Send + Sync + 'static,
     {
@@ -80,7 +80,7 @@ where
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
 {
-    fn build(self) -> FmtLayer<S, N, E, W> {
+    pub fn build(self) -> FmtLayer<S, N, E, W> {
         FmtLayer {
             is_interested: self.is_interested,
             inner: self.inner,
@@ -112,9 +112,28 @@ where
     E: FormatEvent<N> + 'static,
     W: MakeWriter + 'static,
 {
-    fn on_close(&self, id: Id, _: Context<S>) {
+    fn on_close(&self, id: Id, _: Context<'_, S>) {
         dbg!(id);
     }
 
-    fn on_event(&self, _: &Event, _: Context<S>) {}
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+        if let Some(parent) = event.parent() {
+            let span = ctx.span(parent).unwrap();
+            let ctx = FmtContext {
+                ctx: &span,
+                fmt_fields: &self.fmt_fields,
+            };
+            // self.fmt_event.format_event(&ctx, &mut String::new(), event);
+        }
+    }
+}
+
+/// Represents the `Subscriber`'s view of the current span context to a
+/// formatter.
+pub struct FmtContext<'a, F, S>
+where
+    S: LookupSpan<'a>,
+{
+    ctx: &'a SpanRef<'a, S>,
+    fmt_fields: &'a F,
 }
