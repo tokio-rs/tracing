@@ -2,7 +2,7 @@ use sharded_slab::{Guard, Slab};
 
 use crate::{
     fmt::span::SpanStack,
-    registry::{extensions::Extensions, LookupSpan, SpanData},
+    registry::{extensions::Extensions, LookupMetadata, LookupSpan, SpanData},
     sync::RwLock,
 };
 use std::{
@@ -13,7 +13,7 @@ use std::{
 use tracing_core::{
     dispatcher,
     field::FieldSet,
-    span::{self, Id},
+    span::{self, Current, Id},
     Event, Interest, Metadata, Subscriber,
 };
 
@@ -125,6 +125,21 @@ impl Subscriber for Registry {
         id.clone()
     }
 
+    fn current_span(&self) -> Current {
+        CURRENT_SPANS.with(|spans| {
+            let spans = spans.borrow();
+            let current = spans.current();
+            if let Some(id) = current {
+                match self.get(id) {
+                    Some(span) => Current::new(id.clone(), span.metadata),
+                    None => Current::none(),
+                }
+            } else {
+                Current::none()
+            }
+        })
+    }
+
     /// Decrements the reference count of the span with the given `id`, and
     /// removes the span if it is zero.
     ///
@@ -158,6 +173,16 @@ impl<'a> LookupSpan<'a> for Registry {
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         self.get(id)
+    }
+}
+
+impl LookupMetadata for Registry {
+    fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>> {
+        if let Some(span) = self.get(id) {
+            Some(span.metadata())
+        } else {
+            None
+        }
     }
 }
 
