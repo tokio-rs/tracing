@@ -28,7 +28,7 @@ pub struct Json;
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer>,
+    N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -55,8 +55,10 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
-            ctx.with_current(|(_, span)| serializer.serialize_entry("span", &span))
-                .unwrap_or(Ok(()))?;
+            // let span = ctx.ctx.current_span();
+            // serializer
+            //     .serialize_entry("span", &span)
+            //     .unwrap_or(Ok(()))?;
 
             if self.display_target {
                 serializer.serialize_entry("target", meta.target())?;
