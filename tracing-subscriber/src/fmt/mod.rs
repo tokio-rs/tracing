@@ -111,6 +111,7 @@ pub mod writer;
 use crate::{
     filter::LevelFilter,
     layer::{self, Layer},
+    registry::{LookupMetadata, LookupSpan},
 };
 
 #[doc(inline)]
@@ -197,78 +198,79 @@ impl Default for Subscriber {
 }
 // === impl Subscriber ===
 
-impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
-    W: MakeWriter + 'static,
-    layer::Layered<F, Formatter<N, E, W>>: tracing_core::Subscriber,
-{
-    #[inline]
-    fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
-        self.inner.register_callsite(meta)
-    }
+// impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
+// where
+//     S: tracing_core::Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+//     N: for<'writer> FormatFields<'writer> + 'static,
+//     E: FormatEvent<S, N> + 'static,
+//     F: Layer<Formatter<N, E, W>> + 'static,
+//     W: MakeWriter + 'static,
+//     layer::Layered<F, Formatter<N, E, W>>: tracing_core::Subscriber,
+// {
+//     #[inline]
+//     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
+//         self.inner.register_callsite(meta)
+//     }
 
-    #[inline]
-    fn enabled(&self, meta: &Metadata<'_>) -> bool {
-        self.inner.enabled(meta)
-    }
+//     #[inline]
+//     fn enabled(&self, meta: &Metadata<'_>) -> bool {
+//         self.inner.enabled(meta)
+//     }
 
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        self.inner.new_span(attrs)
-    }
+//     #[inline]
+//     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+//         self.inner.new_span(attrs)
+//     }
 
-    #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.inner.record(span, values)
-    }
+//     #[inline]
+//     fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+//         self.inner.record(span, values)
+//     }
 
-    #[inline]
-    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
-        self.inner.record_follows_from(span, follows)
-    }
+//     #[inline]
+//     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+//         self.inner.record_follows_from(span, follows)
+//     }
 
-    #[inline]
-    fn event(&self, event: &Event<'_>) {
-        self.inner.event(event);
-    }
+//     #[inline]
+//     fn event(&self, event: &Event<'_>) {
+//         self.inner.event(event);
+//     }
 
-    #[inline]
-    fn enter(&self, id: &span::Id) {
-        // TODO: add on_enter hook
-        self.inner.enter(id);
-    }
+//     #[inline]
+//     fn enter(&self, id: &span::Id) {
+//         // TODO: add on_enter hook
+//         self.inner.enter(id);
+//     }
 
-    #[inline]
-    fn exit(&self, id: &span::Id) {
-        self.inner.exit(id);
-    }
+//     #[inline]
+//     fn exit(&self, id: &span::Id) {
+//         self.inner.exit(id);
+//     }
 
-    #[inline]
-    fn current_span(&self) -> span::Current {
-        self.inner.current_span()
-    }
+//     #[inline]
+//     fn current_span(&self) -> span::Current {
+//         self.inner.current_span()
+//     }
 
-    #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.inner.clone_span(id)
-    }
+//     #[inline]
+//     fn clone_span(&self, id: &span::Id) -> span::Id {
+//         self.inner.clone_span(id)
+//     }
 
-    #[inline]
-    fn try_close(&self, id: span::Id) -> bool {
-        self.inner.try_close(id)
-    }
+//     #[inline]
+//     fn try_close(&self, id: span::Id) -> bool {
+//         self.inner.try_close(id)
+//     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        if id == TypeId::of::<Self>() {
-            Some(self as *const Self as *const ())
-        } else {
-            self.inner.downcast_raw(id)
-        }
-    }
-}
+//     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+//         if id == TypeId::of::<Self>() {
+//             Some(self as *const Self as *const ())
+//         } else {
+//             self.inner.downcast_raw(id)
+//         }
+//     }
+// }
 
 #[cfg(feature = "registry_unstable")]
 impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
@@ -293,101 +295,101 @@ where
     }
 }
 
-impl<N, E, W> tracing_core::Subscriber for Formatter<N, E, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    W: MakeWriter + 'static,
-{
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
-        Interest::always()
-    }
+// impl<S, N, E, W> tracing_core::Subscriber for Formatter<N, E, W>
+// where
+//     N: for<'writer> FormatFields<'writer> + 'static,
+//     E: FormatEvent<S, N> + 'static,
+//     W: MakeWriter + 'static,
+// {
+//     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+//         Interest::always()
+//     }
 
-    fn enabled(&self, _: &Metadata<'_>) -> bool {
-        true
-    }
+//     fn enabled(&self, _: &Metadata<'_>) -> bool {
+//         true
+//     }
 
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        self.spans.new_span(attrs, &self.fmt_fields)
-    }
+//     #[inline]
+//     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+//         self.spans.new_span(attrs, &self.fmt_fields)
+//     }
 
-    #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.spans.record(span, values, &self.fmt_fields)
-    }
+//     #[inline]
+//     fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+//         self.spans.record(span, values, &self.fmt_fields)
+//     }
 
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
-        // TODO: implement this please
-    }
+//     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
+//         // TODO: implement this please
+//     }
 
-    fn event(&self, event: &Event<'_>) {
-        thread_local! {
-            static BUF: RefCell<String> = RefCell::new(String::new());
-        }
+//     fn event(&self, event: &Event<'_>) {
+//         thread_local! {
+//             static BUF: RefCell<String> = RefCell::new(String::new());
+//         }
 
-        BUF.with(|buf| {
-            let borrow = buf.try_borrow_mut();
-            let mut a;
-            let mut b;
-            let buf = match borrow {
-                Ok(buf) => {
-                    a = buf;
-                    &mut *a
-                }
-                _ => {
-                    b = String::new();
-                    &mut b
-                }
-            };
+//         BUF.with(|buf| {
+//             let borrow = buf.try_borrow_mut();
+//             let mut a;
+//             let mut b;
+//             let buf = match borrow {
+//                 Ok(buf) => {
+//                     a = buf;
+//                     &mut *a
+//                 }
+//                 _ => {
+//                     b = String::new();
+//                     &mut b
+//                 }
+//             };
 
-            if self.fmt_event.format_event(&self.ctx(), buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
-                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
-            }
+//             if self.fmt_event.format_event(&self.ctx(), buf, event).is_ok() {
+//                 let mut writer = self.make_writer.make_writer();
+//                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+//             }
 
-            buf.clear();
-        });
-    }
+//             buf.clear();
+//         });
+//     }
 
-    fn enter(&self, id: &span::Id) {
-        // TODO: add on_enter hook
-        self.spans.push(id);
-    }
+//     fn enter(&self, id: &span::Id) {
+//         // TODO: add on_enter hook
+//         self.spans.push(id);
+//     }
 
-    fn exit(&self, id: &span::Id) {
-        self.spans.pop(id);
-    }
+//     fn exit(&self, id: &span::Id) {
+//         self.spans.pop(id);
+//     }
 
-    fn current_span(&self) -> span::Current {
-        if let Some(id) = self.spans.current() {
-            if let Some(meta) = self.spans.get(&id).map(|span| span.metadata()) {
-                return span::Current::new(id, meta);
-            }
-        }
-        span::Current::none()
-    }
+//     fn current_span(&self) -> span::Current {
+//         if let Some(id) = self.spans.current() {
+//             if let Some(meta) = self.spans.get(&id).map(|span| span.metadata()) {
+//                 return span::Current::new(id, meta);
+//             }
+//         }
+//         span::Current::none()
+//     }
 
-    #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.spans.clone_span(id)
-    }
+//     #[inline]
+//     fn clone_span(&self, id: &span::Id) -> span::Id {
+//         self.spans.clone_span(id)
+//     }
 
-    #[inline]
-    fn try_close(&self, id: span::Id) -> bool {
-        self.spans.drop_span(id)
-    }
+//     #[inline]
+//     fn try_close(&self, id: span::Id) -> bool {
+//         self.spans.drop_span(id)
+//     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        match () {
-            _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
-            // _ if id == TypeId::of::<F>() => Some(&self.filter as *const F as *const ()),
-            _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
-            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
-            _ => None,
-        }
-    }
-}
+//     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+//         match () {
+//             _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
+//             // _ if id == TypeId::of::<F>() => Some(&self.filter as *const F as *const ()),
+//             _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
+//             _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
+//             _ => None,
+//         }
+//     }
+// }
 
 #[cfg(feature = "registry_unstable")]
 impl<N, E, W> crate::registry::LookupMetadata for Formatter<N, E, W> {
@@ -410,69 +412,69 @@ impl Default for Builder {
     }
 }
 
-impl<N, E, F, W> Builder<N, E, F, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    W: MakeWriter + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
-{
-    /// Finish the builder, returning a new `FmtSubscriber`.
-    pub fn finish(self) -> Subscriber<N, E, F, W> {
-        let subscriber = Formatter {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            spans: span::Store::with_capacity(self.settings.initial_span_capacity),
-            settings: self.settings,
-            make_writer: self.make_writer,
-        };
-        Subscriber {
-            inner: self.filter.with_subscriber(subscriber),
-        }
-    }
-}
+// impl<S, N, E, F, W> Builder<N, E, F, W>
+// where
+//     N: for<'writer> FormatFields<'writer> + 'static,
+//     E: FormatEvent<S, N> + 'static,
+//     W: MakeWriter + 'static,
+//     F: Layer<Formatter<N, E, W>> + 'static,
+// {
+//     /// Finish the builder, returning a new `FmtSubscriber`.
+//     pub fn finish(self) -> Subscriber<N, E, F, W> {
+//         let subscriber = Formatter {
+//             fmt_fields: self.fmt_fields,
+//             fmt_event: self.fmt_event,
+//             spans: span::Store::with_capacity(self.settings.initial_span_capacity),
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         };
+//         Subscriber {
+//             inner: self.filter.with_subscriber(subscriber),
+//         }
+//     }
+// }
 
-impl<N, E, F, W> Builder<N, E, F, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    W: MakeWriter + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
-    Subscriber<N, E, F, W>: Send + Sync,
-{
-    /// Install this Subscriber as the global default if one is
-    /// not already set.
-    ///
-    /// If the `tracing-log` feature is enabled, this will also install
-    /// the LogTracer to convert `Log` records into `tracing` `Event`s.
-    ///
-    /// # Errors
-    /// Returns an Error if the initialization was unsuccessful, likely
-    /// because a global subscriber was already installed by another
-    /// call to `try_init`.
-    pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init()?;
+// impl<S, N, E, F, W> Builder<N, E, F, W>
+// where
+//     N: for<'writer> FormatFields<'writer> + 'static,
+//     E: FormatEvent<S, N> + 'static,
+//     W: MakeWriter + 'static,
+//     F: Layer<Formatter<N, E, W>> + 'static,
+//     Subscriber<N, E, F, W>: Send + Sync,
+// {
+//     /// Install this Subscriber as the global default if one is
+//     /// not already set.
+//     ///
+//     /// If the `tracing-log` feature is enabled, this will also install
+//     /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+//     ///
+//     /// # Errors
+//     /// Returns an Error if the initialization was unsuccessful, likely
+//     /// because a global subscriber was already installed by another
+//     /// call to `try_init`.
+//     pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
+//         #[cfg(feature = "tracing-log/std")]
+//         tracing_log::LogTracer::init().map_err(Box::new)?;
 
-        tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
-            self.finish(),
-        ))
-        .map_err(Into::into)
-    }
+//         tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
+//             self.finish(),
+//         ))
+//         .map_err(Box::new)
+//     }
 
-    /// Install this Subscriber as the global default.
-    ///
-    /// If the `tracing-log` feature is enabled, this will also install
-    /// the LogTracer to convert `Log` records into `tracing` `Event`s.
-    ///
-    /// # Panics
-    /// Panics if the initialization was unsuccessful, likely because a
-    /// global subscriber was already installed by another call to `try_init`.
-    pub fn init(self) {
-        self.try_init()
-            .expect("Unable to install global subscriber")
-    }
-}
+//     /// Install this Subscriber as the global default.
+//     ///
+//     /// If the `tracing-log` feature is enabled, this will also install
+//     /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+//     ///
+//     /// # Panics
+//     /// Panics if the initialization was unsuccessful, likely because a
+//     /// global subscriber was already installed by another call to `try_init`.
+//     pub fn init(self) {
+//         self.try_init()
+//             .expect("Unable to install global subscriber")
+//     }
+// }
 
 impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
 where
@@ -561,288 +563,288 @@ where
     }
 }
 
-impl<N, E, F, W> Builder<N, E, F, W> {
-    /// Sets the Visitor that the subscriber being built will use to record
-    /// fields.
-    ///
-    /// For example:
-    /// ```rust
-    /// use tracing_subscriber::fmt::{Subscriber, format};
-    /// use tracing_subscriber::prelude::*;
-    ///
-    /// let formatter =
-    ///     // Construct a custom formatter for `Debug` fields
-    ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
-    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
-    ///         // formatter so that a delimiter is added between fields.
-    ///         .delimited(", ");
-    ///
-    /// let subscriber = Subscriber::builder()
-    ///     .fmt_fields(formatter)
-    ///     .finish();
-    /// # drop(subscriber)
-    /// ```
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<N2, E, F, W>
-    where
-        N2: for<'writer> FormatFields<'writer> + 'static,
-    {
-        Builder {
-            fmt_fields: fmt_fields.into(),
-            fmt_event: self.fmt_event,
-            filter: self.filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
+// impl<N, E, F, W> Builder<N, E, F, W> {
+//     /// Sets the Visitor that the subscriber being built will use to record
+//     /// fields.
+//     ///
+//     /// For example:
+//     /// ```rust
+//     /// use tracing_subscriber::fmt::{Subscriber, format};
+//     /// use tracing_subscriber::prelude::*;
+//     ///
+//     /// let formatter =
+//     ///     // Construct a custom formatter for `Debug` fields
+//     ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
+//     ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+//     ///         // formatter so that a delimiter is added between fields.
+//     ///         .delimited(", ");
+//     ///
+//     /// let subscriber = Subscriber::builder()
+//     ///     .fmt_fields(formatter)
+//     ///     .finish();
+//     /// # drop(subscriber)
+//     /// ```
+//     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<N2, E, F, W>
+//     where
+//         N2: for<'writer> FormatFields<'writer> + 'static,
+//     {
+//         Builder {
+//             fmt_fields: fmt_fields.into(),
+//             fmt_event: self.fmt_event,
+//             filter: self.filter,
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         }
+//     }
 
-    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
-    /// a span or event is enabled.
-    ///
-    /// Note that this method requires the "env-filter" feature flag to be enabled.
-    ///
-    /// If a filter was previously set, or a maximum level was set by the
-    /// [`with_max_level`] method, that value is replaced by the new filter.
-    ///
-    /// # Examples
-    ///
-    /// Setting a filter based on the value of the `RUST_LOG` environment
-    /// variable:
-    /// ```rust
-    /// use tracing_subscriber::{FmtSubscriber, EnvFilter};
-    ///
-    /// let subscriber = FmtSubscriber::builder()
-    ///     .with_env_filter(EnvFilter::from_default_env())
-    ///     .finish();
-    /// ```
-    ///
-    /// Setting a filter based on a pre-set filter directive string:
-    /// ```rust
-    /// use tracing_subscriber::FmtSubscriber;
-    ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let subscriber = FmtSubscriber::builder()
-    ///     .with_env_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
-    ///     .finish();
-    /// # Ok(()) }
-    /// ```
-    ///
-    /// Adding additional directives to a filter constructed from an env var:
-    /// ```rust
-    /// use tracing_subscriber::{
-    ///     FmtSubscriber,
-    ///     filter::{EnvFilter, LevelFilter},
-    /// };
-    ///
-    /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
-    /// let filter = EnvFilter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
-    ///     // Set the base level when not matched by other directives to WARN.
-    ///     .add_directive(LevelFilter::WARN.into())
-    ///     // Set the max level for `my_crate::my_mod` to DEBUG, overriding
-    ///     // any directives parsed from the env variable.
-    ///     .add_directive("my_crate::my_mod=debug".parse()?);
-    ///
-    /// let subscriber = FmtSubscriber::builder()
-    ///     .with_env_filter(filter)
-    ///     .finish();
-    /// # Ok(())}
-    /// ```
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_max_level`]: #method.with_max_level
-    #[cfg(feature = "env-filter")]
-    pub fn with_env_filter(
-        self,
-        filter: impl Into<crate::EnvFilter>,
-    ) -> Builder<N, E, crate::EnvFilter, W>
-    where
-        Formatter<N, E, W>: tracing_core::Subscriber + 'static,
-    {
-        let filter = filter.into();
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
+//     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
+//     /// a span or event is enabled.
+//     ///
+//     /// Note that this method requires the "env-filter" feature flag to be enabled.
+//     ///
+//     /// If a filter was previously set, or a maximum level was set by the
+//     /// [`with_max_level`] method, that value is replaced by the new filter.
+//     ///
+//     /// # Examples
+//     ///
+//     /// Setting a filter based on the value of the `RUST_LOG` environment
+//     /// variable:
+//     /// ```rust
+//     /// use tracing_subscriber::{FmtSubscriber, EnvFilter};
+//     ///
+//     /// let subscriber = FmtSubscriber::builder()
+//     ///     .with_env_filter(EnvFilter::from_default_env())
+//     ///     .finish();
+//     /// ```
+//     ///
+//     /// Setting a filter based on a pre-set filter directive string:
+//     /// ```rust
+//     /// use tracing_subscriber::FmtSubscriber;
+//     ///
+//     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//     /// let subscriber = FmtSubscriber::builder()
+//     ///     .with_env_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
+//     ///     .finish();
+//     /// # Ok(()) }
+//     /// ```
+//     ///
+//     /// Adding additional directives to a filter constructed from an env var:
+//     /// ```rust
+//     /// use tracing_subscriber::{
+//     ///     FmtSubscriber,
+//     ///     filter::{EnvFilter, LevelFilter},
+//     /// };
+//     ///
+//     /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
+//     /// let filter = EnvFilter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
+//     ///     // Set the base level when not matched by other directives to WARN.
+//     ///     .add_directive(LevelFilter::WARN.into())
+//     ///     // Set the max level for `my_crate::my_mod` to DEBUG, overriding
+//     ///     // any directives parsed from the env variable.
+//     ///     .add_directive("my_crate::my_mod=debug".parse()?);
+//     ///
+//     /// let subscriber = FmtSubscriber::builder()
+//     ///     .with_env_filter(filter)
+//     ///     .finish();
+//     /// # Ok(())}
+//     /// ```
+//     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//     /// [`with_max_level`]: #method.with_max_level
+//     #[cfg(feature = "env-filter")]
+//     pub fn with_env_filter(
+//         self,
+//         filter: impl Into<crate::EnvFilter>,
+//     ) -> Builder<N, E, crate::EnvFilter, W>
+//     where
+//         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
+//     {
+//         let filter = filter.into();
+//         Builder {
+//             fmt_fields: self.fmt_fields,
+//             fmt_event: self.fmt_event,
+//             filter,
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         }
+//     }
 
-    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
-    /// a span or event is enabled.
-    ///
-    /// **Note**: this method was renamed to [`with_env_filter`] in version
-    /// 0.1.2. This method just wraps a call to `with_env_filter`, and will be
-    /// removed in version 0.2.
-    ///
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_env_filter`]: #method.with_env_filter
-    #[cfg(feature = "env-filter")]
-    #[deprecated(since = "0.1.2", note = "renamed to `with_env_filter`")]
-    pub fn with_filter(
-        self,
-        filter: impl Into<crate::EnvFilter>,
-    ) -> Builder<N, E, crate::EnvFilter, W>
-    where
-        Formatter<N, E, W>: tracing_core::Subscriber + 'static,
-    {
-        self.with_env_filter(filter)
-    }
+//     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
+//     /// a span or event is enabled.
+//     ///
+//     /// **Note**: this method was renamed to [`with_env_filter`] in version
+//     /// 0.1.2. This method just wraps a call to `with_env_filter`, and will be
+//     /// removed in version 0.2.
+//     ///
+//     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//     /// [`with_env_filter`]: #method.with_env_filter
+//     #[cfg(feature = "env-filter")]
+//     #[deprecated(since = "0.1.2", note = "renamed to `with_env_filter`")]
+//     pub fn with_filter(
+//         self,
+//         filter: impl Into<crate::EnvFilter>,
+//     ) -> Builder<N, E, crate::EnvFilter, W>
+//     where
+//         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
+//     {
+//         self.with_env_filter(filter)
+//     }
 
-    /// Sets the maximum [verbosity level] that will be enabled by the
-    /// subscriber.
-    ///
-    /// If the max level has already been set, or a [`EnvFilter`] was added by
-    /// [`with_filter`], this replaces that configuration with the new
-    /// maximum level.
-    ///
-    /// # Examples
-    ///
-    /// Enable up to the `DEBUG` verbosity level:
-    /// ```rust
-    /// use tracing_subscriber::FmtSubscriber;
-    /// use tracing::Level;
-    ///
-    /// let subscriber = FmtSubscriber::builder()
-    ///     .with_max_level(Level::DEBUG)
-    ///     .finish();
-    /// ```
-    /// This subscriber won't record any spans or events!
-    /// ```rust
-    /// use tracing_subscriber::{
-    ///     FmtSubscriber,
-    ///     filter::LevelFilter,
-    /// };
-    ///
-    /// let subscriber = FmtSubscriber::builder()
-    ///     .with_max_level(LevelFilter::OFF)
-    ///     .finish();
-    /// ```
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_filter`]: #method.with_filter
-    pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {
-        let filter = filter.into();
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
+//     /// Sets the maximum [verbosity level] that will be enabled by the
+//     /// subscriber.
+//     ///
+//     /// If the max level has already been set, or a [`EnvFilter`] was added by
+//     /// [`with_filter`], this replaces that configuration with the new
+//     /// maximum level.
+//     ///
+//     /// # Examples
+//     ///
+//     /// Enable up to the `DEBUG` verbosity level:
+//     /// ```rust
+//     /// use tracing_subscriber::FmtSubscriber;
+//     /// use tracing::Level;
+//     ///
+//     /// let subscriber = FmtSubscriber::builder()
+//     ///     .with_max_level(Level::DEBUG)
+//     ///     .finish();
+//     /// ```
+//     /// This subscriber won't record any spans or events!
+//     /// ```rust
+//     /// use tracing_subscriber::{
+//     ///     FmtSubscriber,
+//     ///     filter::LevelFilter,
+//     /// };
+//     ///
+//     /// let subscriber = FmtSubscriber::builder()
+//     ///     .with_max_level(LevelFilter::OFF)
+//     ///     .finish();
+//     /// ```
+//     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+//     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//     /// [`with_filter`]: #method.with_filter
+//     pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {
+//         let filter = filter.into();
+//         Builder {
+//             fmt_fields: self.fmt_fields,
+//             fmt_event: self.fmt_event,
+//             filter,
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         }
+//     }
 
-    /// Sets the subscriber being built to use a less verbose formatter.
-    ///
-    /// See [`format::Compact`].
-    pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F, W>
-    where
-        N: for<'writer> FormatFields<'writer> + 'static,
-    {
-        Builder {
-            fmt_event: format::Format::default().compact(),
-            filter: self.filter,
-            fmt_fields: self.fmt_fields,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
+//     /// Sets the subscriber being built to use a less verbose formatter.
+//     ///
+//     /// See [`format::Compact`].
+//     pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F, W>
+//     where
+//         N: for<'writer> FormatFields<'writer> + 'static,
+//     {
+//         Builder {
+//             fmt_event: format::Format::default().compact(),
+//             filter: self.filter,
+//             fmt_fields: self.fmt_fields,
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         }
+//     }
 
-    /// Sets the subscriber being built to use a JSON formatter.
-    ///
-    /// See [`format::Json`]
-    #[cfg(feature = "json")]
-    pub fn json(self) -> Builder<format::JsonFields, format::Format<format::Json>, F, W>
-    where
-        N: for<'writer> FormatFields<'writer> + 'static,
-    {
-        Builder {
-            fmt_event: format::Format::default().json(),
-            filter: self.filter,
-            fmt_fields: format::JsonFields::default(),
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
+//     /// Sets the subscriber being built to use a JSON formatter.
+//     ///
+//     /// See [`format::Json`]
+//     #[cfg(feature = "json")]
+//     pub fn json(self) -> Builder<format::JsonFields, format::Format<format::Json>, F, W>
+//     where
+//         N: for<'writer> FormatFields<'writer> + 'static,
+//     {
+//         Builder {
+//             fmt_event: format::Format::default().json(),
+//             filter: self.filter,
+//             fmt_fields: format::JsonFields::default(),
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         }
+//     }
 
-    /// Sets the function that the subscriber being built should use to format
-    /// events that occur.
-    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F, W>
-    where
-        E2: FormatEvent<N> + 'static,
-    {
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event,
-            filter: self.filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
+//     /// Sets the function that the subscriber being built should use to format
+//     /// events that occur.
+//     pub fn on_event<S, E2>(self, fmt_event: E2) -> Builder<N, E2, F, W>
+//     where
+//         E2: FormatEvent<S, N> + 'static,
+//     {
+//         Builder {
+//             fmt_fields: self.fmt_fields,
+//             fmt_event,
+//             filter: self.filter,
+//             settings: self.settings,
+//             make_writer: self.make_writer,
+//         }
+//     }
 
-    /// Sets whether or not spans inherit their parents' field values (disabled
-    /// by default).
-    pub fn inherit_fields(self, inherit_fields: bool) -> Self {
-        Builder {
-            settings: Settings {
-                inherit_fields,
-                ..self.settings
-            },
-            ..self
-        }
-    }
+//     /// Sets whether or not spans inherit their parents' field values (disabled
+//     /// by default).
+//     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
+//         Builder {
+//             settings: Settings {
+//                 inherit_fields,
+//                 ..self.settings
+//             },
+//             ..self
+//         }
+//     }
 
-    // TODO(eliza): should this be publicly exposed?
-    // /// Configures the initial capacity for the span slab used to store
-    // /// in-progress span data. This may be used for tuning the subscriber's
-    // /// allocation performance, but in general does not need to be manually configured..
-    // pub fn initial_span_capacity(self, initial_span_capacity: usize) -> Self {
-    //     Builder {
-    //         settings: Settings {
-    //             initial_span_capacity,
-    //             ..self.settings
-    //         },
-    //         ..self
-    //     }
-    // }
-}
+//     // TODO(eliza): should this be publicly exposed?
+//     // /// Configures the initial capacity for the span slab used to store
+//     // /// in-progress span data. This may be used for tuning the subscriber's
+//     // /// allocation performance, but in general does not need to be manually configured..
+//     // pub fn initial_span_capacity(self, initial_span_capacity: usize) -> Self {
+//     //     Builder {
+//     //         settings: Settings {
+//     //             initial_span_capacity,
+//     //             ..self.settings
+//     //         },
+//     //         ..self
+//     //     }
+//     // }
+// }
 
-impl<N, E, F, W> Builder<N, E, F, W> {
-    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
-    ///
-    /// # Examples
-    ///
-    /// Using `stderr` rather than `stdout`:
-    ///
-    /// ```rust
-    /// use std::io;
-    ///
-    /// let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-    ///     .with_writer(io::stderr)
-    ///     .finish();
-    /// ```
-    ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
-    where
-        W2: MakeWriter + 'static,
-    {
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            filter: self.filter,
-            settings: self.settings,
-            make_writer,
-        }
-    }
-}
+// impl<N, E, F, W> Builder<N, E, F, W> {
+//     /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+//     ///
+//     /// # Examples
+//     ///
+//     /// Using `stderr` rather than `stdout`:
+//     ///
+//     /// ```rust
+//     /// use std::io;
+//     ///
+//     /// let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+//     ///     .with_writer(io::stderr)
+//     ///     .finish();
+//     /// ```
+//     ///
+//     /// [`MakeWriter`]: trait.MakeWriter.html
+//     pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
+//     where
+//         W2: MakeWriter + 'static,
+//     {
+//         Builder {
+//             fmt_fields: self.fmt_fields,
+//             fmt_event: self.fmt_event,
+//             filter: self.filter,
+//             settings: self.settings,
+//             make_writer,
+//         }
+//     }
+// }
 
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            inherit_fields: false,
-            initial_span_capacity: 32,
-        }
-    }
-}
+// impl Default for Settings {
+//     fn default() -> Self {
+//         Self {
+//             inherit_fields: false,
+//             initial_span_capacity: 32,
+//         }
+//     }
+// }
 
 /// Install a global tracing subscriber that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable],

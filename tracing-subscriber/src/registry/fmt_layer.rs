@@ -54,7 +54,7 @@ impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
+    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
     pub fn with_interest<F>(self, f: F) -> Self
@@ -89,7 +89,7 @@ impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
+    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
     pub fn build(self) -> FmtLayer<S, N, E, W> {
@@ -125,7 +125,7 @@ impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
+    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
     fn on_close(&self, id: Id, _: Context<'_, S>) {
@@ -133,23 +133,25 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        let mut writer = self.make_writer.make_writer();
-        write!(
-            &mut writer,
-            "{timestamp} {level} {target}",
-            timestamp = humantime::format_rfc3339_seconds(SystemTime::now()),
-            level = ColorLevel(event.metadata().level()),
-            target = &event.metadata().target(),
-        )
-        .unwrap();
-
-        let mut visitor = EventVisitor {
-            buf: String::new(),
-            comma: true,
+        let mut buf = String::new();
+        let ctx = FmtContext {
+            ctx: ctx,
+            fmt_fields: self.fmt_fields,
         };
-        event.record(&mut visitor);
-        write!(&mut writer, "{}\n", visitor.buf).unwrap();
+        if self.fmt_event.format_event(ctx, &mut buf, event).is_ok() {
+            let mut writer = self.make_writer.make_writer();
+            let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+        }
     }
+}
+
+pub(crate) struct FmtContext<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    ctx: Context<'a, S>,
+    fmt_fields: &'a N,
 }
 
 struct EventVisitor {

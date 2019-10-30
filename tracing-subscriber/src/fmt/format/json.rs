@@ -1,5 +1,8 @@
 use super::{span, Format, FormatEvent, FormatFields, FormatTime};
-use crate::field::MakeVisitor;
+use crate::{
+    field::MakeVisitor,
+    registry::{fmt_layer::FmtContext, LookupMetadata, LookupSpan},
+};
 use serde::ser::{SerializeMap, Serializer as _};
 use serde_json::Serializer;
 use std::{
@@ -9,7 +12,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field},
-    Event,
+    Event, Subscriber,
 };
 use tracing_serde::AsSerde;
 
@@ -22,14 +25,15 @@ use tracing_log::NormalizeEvent;
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json;
 
-impl<N, T> FormatEvent<N> for Format<Json, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer>,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -241,13 +245,11 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 #[cfg(test)]
 mod test {
 
-    use crate::fmt::test::MockWriter;
-    use crate::fmt::time::FormatTime;
+    use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
-    use std::fmt;
-    use std::sync::Mutex;
+    use std::{fmt, sync::Mutex};
 
     struct MockTime;
     impl FormatTime for MockTime {

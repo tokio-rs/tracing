@@ -1,13 +1,20 @@
 //! Formatters for logging `tracing` events.
-use super::span;
-use super::time::{self, FormatTime, SystemTime};
-use crate::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
+use super::{
+    span,
+    time::{self, FormatTime, SystemTime},
+};
+use crate::{
+    field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
+    registry::{fmt_layer::FmtContext, LookupMetadata, LookupSpan},
+};
 
-use std::fmt::{self, Write};
-use std::marker::PhantomData;
+use std::{
+    fmt::{self, Write},
+    marker::PhantomData,
+};
 use tracing_core::{
     field::{self, Field, Visit},
-    Event, Level,
+    Event, Level, Subscriber,
 };
 
 #[cfg(feature = "tracing-log")]
@@ -32,22 +39,27 @@ pub use json::*;
 /// signature as `format_event`.
 ///
 /// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
-pub trait FormatEvent<N> {
+pub trait FormatEvent<S, N>
+where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+{
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<N> FormatEvent<N>
-    for fn(&span::Context<'_, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+impl<S, N> FormatEvent<S, N>
+    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -206,14 +218,15 @@ impl<F, T> Format<F, T> {
     }
 }
 
-impl<N, T> FormatEvent<N> for Format<Full, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer>,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -258,14 +271,15 @@ where
     }
 }
 
-impl<N, T> FormatEvent<N> for Format<Compact, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
 where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer>,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -699,13 +713,11 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 #[cfg(test)]
 mod test {
 
-    use crate::fmt::test::MockWriter;
-    use crate::fmt::time::FormatTime;
+    use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
-    use std::fmt;
-    use std::sync::Mutex;
+    use std::{fmt, sync::Mutex};
 
     struct MockTime;
     impl FormatTime for MockTime {
