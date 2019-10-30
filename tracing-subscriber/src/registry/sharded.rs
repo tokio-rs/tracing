@@ -2,23 +2,19 @@ use sharded_slab::{Guard, Slab};
 
 use crate::{
     fmt::span::SpanStack,
-    registry::{LookupSpan, SpanData},
+    registry::{extensions::Extensions, LookupSpan, SpanData},
+    sync::RwLock,
 };
 use std::{
     cell::RefCell,
-    collections::HashMap,
     convert::TryInto,
-    fmt,
-    sync::{
-        atomic::{fence, AtomicUsize, Ordering},
-        Mutex,
-    },
+    sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
     dispatcher,
-    field::{FieldSet, Visit},
+    field::FieldSet,
     span::{self, Id},
-    Event, Field, Interest, Metadata, Subscriber,
+    Event, Interest, Metadata, Subscriber,
 };
 
 #[derive(Debug)]
@@ -36,6 +32,7 @@ pub struct Data {
     parent: Option<Id>,
     children: Vec<Id>,
     ref_count: AtomicUsize,
+    extensions: RwLock<Extensions>,
 }
 
 // === impl Registry ===
@@ -87,6 +84,7 @@ impl Subscriber for Registry {
             parent,
             children: vec![],
             ref_count: AtomicUsize::new(1),
+            extensions: RwLock::new(Extensions::new()),
         };
         let id = self.insert(s).expect("Unable to allocate another span");
         idx_to_id(id)
