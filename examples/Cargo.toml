@@ -44,6 +44,9 @@ tower-hyper = "0.1"
 tower-http-util = "0.1"
 rand = "0.7"
 
+# TODO(david): remove, but this is handy for debugging crashes
+color-backtrace = { git = "https://github.com/athre0z/color-backtrace" }
+
 # sloggish example
 ansi_term = "0.11"
 humantime = "1.2"
