@@ -1,6 +1,29 @@
-extern crate serde;
-extern crate tracing_core;
+#![warn(
+    missing_debug_implementations,
+    // missing_docs, // TODO: add documentation
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    unconditional_recursion,
 
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 use std::fmt;
 
 use serde::{
@@ -14,6 +37,8 @@ use tracing_core::{
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
 };
+
+pub mod fields;
 
 #[derive(Debug)]
 pub struct SerializeField(Field);
@@ -156,10 +181,7 @@ impl<'a> Serialize for SerializeRecord<'a> {
         S: Serializer,
     {
         let serializer = serializer.serialize_map(None)?;
-        let mut visitor = SerdeMapVisitor {
-            serializer,
-            state: Ok(()),
-        };
+        let mut visitor = SerdeMapVisitor::new(serializer);
         self.0.record(&mut visitor);
         visitor.finish()
     }
@@ -168,6 +190,18 @@ impl<'a> Serialize for SerializeRecord<'a> {
 struct SerdeMapVisitor<S: SerializeMap> {
     serializer: S,
     state: Result<(), S::Error>,
+}
+
+impl<S> SerdeMapVisitor<S>
+where
+    S: SerializeMap,
+{
+    fn new(serializer: S) -> Self {
+        Self {
+            serializer,
+            state: Ok(()),
+        }
+    }
 }
 
 impl<S> Visit for SerdeMapVisitor<S>
@@ -320,11 +354,21 @@ impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     }
 }
 
+impl<'a> AsSerde<'a> for Level {
+    type Serializable = SerializeLevel<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeLevel(self)
+    }
+}
+
 impl<'a> self::sealed::Sealed for Event<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 
 impl self::sealed::Sealed for Id {}
+
+impl self::sealed::Sealed for Level {}
 
 impl<'a> self::sealed::Sealed for Record<'a> {}
 

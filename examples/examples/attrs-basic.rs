@@ -20,6 +20,6 @@ fn main() {
         let span = span!(Level::TRACE, "get_band_rec", ?num_recs);
         let _enter = span.enter();
         let band = suggest_band();
-        info!(message = "Got a recomendation!", %band);
+        info!(message = "Got a recommendation!", %band);
     });
 }

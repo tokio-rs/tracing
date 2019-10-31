@@ -1,7 +1,3 @@
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.6")]
-#![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
-#![cfg_attr(test, deny(warnings))]
-
 //! Core primitives for `tracing`.
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
@@ -10,18 +6,19 @@
 //!
 //! This crate provides:
 //!
-//! * [`Span`] identifies a span within the execution of a program.
+//! * [`span::Id`] identifies a span within the execution of a program.
 //!
 //! * [`Event`] represents a single event within a trace.
 //!
 //! * [`Subscriber`], the trait implemented to collect trace data.
 //!
-//! * [`Metadata`] and [`Callsite`] provide information describing `Span`s.
+//! * [`Metadata`] and [`Callsite`] provide information describing spans and
+//!   `Event`s.
 //!
 //! * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
-//!   structured data attached to a `Span`.
+//!   structured data attached to a span.
 //!
-//! * [`Dispatch`] allows span events to be dispatched to `Subscriber`s.
+//! * [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
 //!
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
@@ -52,11 +49,11 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.6", default-features = false }
+//!   tracing-core = { version = "0.1.7", default-features = false }
 //!   ```
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!
-//! [`Span`]: span/struct.Span.html
+//! [`span::Id`]: span/struct.Id.html
 //! [`Event`]: event/struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
 //! [`Metadata`]: metadata/struct.Metadata.html
@@ -68,8 +65,33 @@
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.7")]
 #![cfg_attr(not(feature = "std"), no_std)]
-
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 

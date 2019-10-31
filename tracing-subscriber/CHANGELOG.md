@@ -1,3 +1,10 @@
+# 0.1.5 (October 7, 2019)
+
+### Fixed
+
+- Spans not being closed properly when `FmtSubscriber::current_span` is used
+  (#371)
+
 # 0.1.4 (September 26, 2019)
 
 ### Fixed

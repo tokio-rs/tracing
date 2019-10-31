@@ -1,10 +1,9 @@
 [package]
 name = "tracing-futures"
-version = "0.0.1-alpha.2"
+version = "0.1.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
-documentation = "https://docs.rs/tracing-futures/0.0.1-alpha.1/tracing_futures"
 readme = "README.md"
 homepage = "https://tokio.rs"
 description = """
@@ -15,28 +14,28 @@ categories = [
     "development-tools::profiling",
     "asynchronous",
 ]
-keywords = ["logging", "tracing", "futures"]
+keywords = ["logging", "profiling", "tracing", "futures", "async"]
 license = "MIT"
 
 [features]
 default = ["futures-01", "tokio"]
 futures-01 = ["futures"]
-std-future = ["pin-utils"]
+std-future = ["pin-project"]
 futures-preview = ["std-future", "futures-core-preview"]
 tokio-alpha = ["std-future", "tokio_02"]
 
 [dependencies]
 futures = { version = "0.1", optional = true }
-futures-core-preview = { version = "0.3.0-alpha.18", optional = true }
-pin-utils = { version = "0.1.0-alpha.4", optional = true }
+futures-core-preview = { version = "0.3.0-alpha.19", optional = true }
+pin-project = { version = "0.4", optional = true }
 tracing = "0.1"
 tokio-executor = { version = "0.1", optional = true }
 tokio = { version = "0.1", optional = true }
-tokio_02 = { package = "tokio", version = "0.2.0-alpha.4", optional = true }
+tokio_02 = { package = "tokio", version = "0.2.0-alpha.6", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
-maintenance = { status = "experimental" }
+maintenance = { status = "actively-developed" }

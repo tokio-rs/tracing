@@ -10,6 +10,12 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
+//! ## Included Subscribers
+//!
+//! The following `Subscriber`s are provided for application authors:
+//!
+//! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
+//!
 //! ## Feature Flags
 //!
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
@@ -19,7 +25,10 @@
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
-//! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by default.
+//! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
+//!   default.
+//! - `registry_unstable`: enables the experimental [`registry`] module.
+//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
 //!
 //! ### Optional Dependencies
 //!
@@ -41,41 +50,32 @@
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.4")]
+//! [`registry`]: registry/index.html
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.5")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
     rust_2018_idioms,
-    unreachable_pub
-)]
-#![cfg_attr(
-    test,
-    deny(
-        missing_debug_implementations,
-        missing_docs,
-        rust_2018_idioms,
-        unreachable_pub,
-        bad_style,
-        const_err,
-        dead_code,
-        improper_ctypes,
-        legacy_directory_ownership,
-        non_shorthand_field_patterns,
-        no_mangle_generic_items,
-        overflowing_literals,
-        path_statements,
-        patterns_in_fns_without_body,
-        plugin_as_library,
-        private_in_public,
-        safe_extern_statics,
-        unconditional_recursion,
-        unions_with_drop_fields,
-        unused,
-        unused_allocation,
-        unused_comparisons,
-        unused_parens,
-        while_true
-    )
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
 )]
 use tracing_core::span::Id;
 
@@ -93,11 +93,14 @@ macro_rules! try_lock {
     };
 }
 
+pub mod field;
 pub mod filter;
 #[cfg(feature = "fmt")]
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
+#[cfg(feature = "registry_unstable")]
+pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
 pub(crate) mod thread;

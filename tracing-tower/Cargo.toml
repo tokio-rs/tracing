@@ -5,7 +5,6 @@ authors = ["Eliza Weisman <eliza@buoyant.io>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
-documentation = "https://docs.rs/tracing-tower/0.1.0/tracing_tower"
 description = """
 Compatibility with the `tower` ecosystem.
 """
@@ -22,7 +21,7 @@ default = ["tower-layer", "tower-util", "http"]
 
 [dependencies]
 tracing = "0.1"
-tracing-futures = { version = "0.0.1-alpha.1", path = "../tracing-futures" }
+tracing-futures = { version = "0.1.0", path = "../tracing-futures" }
 futures = "0.1"
 tower-service = "0.2"
 tower-layer = { version = "0.1", optional = true }

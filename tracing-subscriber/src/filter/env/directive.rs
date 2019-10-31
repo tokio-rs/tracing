@@ -263,7 +263,8 @@ impl FromStr for Directive {
         let level = caps
             .name("level")
             .and_then(|l| l.as_str().parse().ok())
-            .unwrap_or(LevelFilter::ERROR);
+            // Setting the target without the level enables every level for that target
+            .unwrap_or(LevelFilter::TRACE);
 
         Ok(Directive {
             level,
@@ -863,7 +864,7 @@ mod test {
         assert_eq!(dirs[0].in_span, None);
 
         assert_eq!(dirs[1].target, Some("crate1::mod2").into());
-        assert_eq!(dirs[1].level, LevelFilter::ERROR);
+        assert_eq!(dirs[1].level, LevelFilter::TRACE);
         assert_eq!(dirs[1].in_span, None);
 
         assert_eq!(dirs[2].target, Some("crate2").into());
@@ -1008,7 +1009,7 @@ mod test {
         let dirs = parse_directives("crate1::mod1=wrong,crate2=");
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2").into());
-        assert_eq!(dirs[0].level, LevelFilter::ERROR);
+        assert_eq!(dirs[0].level, LevelFilter::TRACE);
         assert_eq!(dirs[0].in_span, None);
     }
 
@@ -1035,7 +1036,7 @@ mod test {
         assert_eq!(dirs[0].in_span, Some("foo".to_string()));
 
         assert_eq!(dirs[1].target, Some("crate1::mod2").into());
-        assert_eq!(dirs[1].level, LevelFilter::ERROR);
+        assert_eq!(dirs[1].level, LevelFilter::TRACE);
         assert_eq!(dirs[1].in_span, Some("bar".to_string()));
 
         assert_eq!(dirs[2].target, Some("crate2").into());

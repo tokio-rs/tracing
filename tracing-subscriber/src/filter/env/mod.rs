@@ -1,7 +1,7 @@
 //! A `Layer` that enables or disables spans and events based on a set of
 //! filtering directives.
 
-// these are publically re-exported, but the compiler doesn't realize
+// these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
 pub use self::{
@@ -112,8 +112,8 @@ enum ErrorKind {
 }
 
 impl EnvFilter {
-    /// The default environment variable used by [`EnvFilter::from_default_env`]
-    /// and [`EnvFilter::try_from_default_env`].
+    /// `RUST_LOG` is the default environment variable used by
+    /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
     /// [`EnvFilter::from_default_env`]: #method.from_default_env
     /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env

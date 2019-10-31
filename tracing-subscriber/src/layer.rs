@@ -6,6 +6,8 @@ use tracing_core::{
     Event,
 };
 
+#[cfg(feature = "registry_unstable")]
+use crate::registry::LookupMetadata;
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -142,7 +144,7 @@ where
     /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
     /// [`Context`]: ../struct.Context.html
     /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
-    /// [`Layer::register_callsite`]: #method.reegister_callsite
+    /// [`Layer::register_callsite`]: #method.register_callsite
     /// [`on_event`]: #method.on_event
     /// [`on_enter`]: #method.on_enter
     /// [`on_exit`]: #method.on_exit
@@ -605,6 +607,16 @@ where
     }
 }
 
+#[cfg(feature = "registry_unstable")]
+impl<L, S> LookupMetadata for Layered<L, S>
+where
+    S: Subscriber + LookupMetadata,
+{
+    fn metadata(&self, span: &span::Id) -> Option<&'static Metadata<'static>> {
+        self.inner.metadata(span)
+    }
+}
+
 impl<L, S> Layered<L, S>
 where
     S: Subscriber,
@@ -677,6 +689,42 @@ impl<'a, S: Subscriber> Context<'a, S> {
         if let Some(ref subscriber) = self.subscriber {
             subscriber.event(event);
         }
+    }
+
+    /// Returns metadata for tne span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupMetadata`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + LookupMetadata,
+    /// ```
+    /// or similar.
+    ///
+    /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
+    #[inline]
+    #[cfg(feature = "registry_unstable")]
+    pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
+    where
+        S: LookupMetadata,
+    {
+        self.subscriber.as_ref()?.metadata(id)
+    }
+
+    /// Returns `true` if an active span exists for the given `Id`.
+    #[inline]
+    #[cfg(feature = "registry_unstable")]
+    pub fn exists(&self, id: &span::Id) -> bool
+    where
+        S: LookupMetadata,
+    {
+        self.subscriber
+            .as_ref()
+            .map(|s| s.exists(id))
+            .unwrap_or(false)
     }
 }
 

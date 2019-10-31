@@ -13,9 +13,6 @@
 //! - [`AsTrace`] and [`AsLog`] traits for converting between `tracing` and `log` types.
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
-//! - [`TraceLogger`], a [`tracing::Subscriber`] implementation that consumes
-//!   [`tracing::Event`]s and outputs [`log::Record`], allowing an existing logger
-//!   implementation to be used to record trace events.
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
@@ -50,8 +47,9 @@
 //!
 //! ## Convert tracing `Event`s to logs
 //!
-//! This conversion can be done with [`TraceLogger`], a [`Subscriber`] which
-//! records `tracing` spans and events and outputs log records.
+//! Enabling the ["log" and "log-always" feature flags][flags] on the `tracing`
+//! crate will cause all `tracing` spans and events to emit `log::Record`s as
+//! they occur.
 //!
 //! ## Caution: Mixing both conversions
 //!
@@ -67,8 +65,8 @@
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
 //! # Feature Flags
-//!
-//! * `trace-logger`: enables the `TraceLogger` type (on by default)
+//! * `trace-logger`: enables an experimental `log` subscriber, deprecated since
+//!   version 0.1.1.
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
@@ -93,36 +91,26 @@
     missing_debug_implementations,
     missing_docs,
     rust_2018_idioms,
-    unreachable_pub
-)]
-#![cfg_attr(
-    test,
-    deny(
-        missing_debug_implementations,
-        missing_docs,
-        rust_2018_idioms,
-        unreachable_pub,
-        bad_style,
-        const_err,
-        dead_code,
-        improper_ctypes,
-        legacy_directory_ownership,
-        non_shorthand_field_patterns,
-        no_mangle_generic_items,
-        overflowing_literals,
-        path_statements,
-        patterns_in_fns_without_body,
-        plugin_as_library,
-        private_in_public,
-        safe_extern_statics,
-        unconditional_recursion,
-        unions_with_drop_fields,
-        unused,
-        unused_allocation,
-        unused_comparisons,
-        unused_parens,
-        while_true
-    )
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
 )]
 use lazy_static::lazy_static;
 
@@ -148,6 +136,11 @@ pub mod trace_logger;
 pub use self::log_tracer::LogTracer;
 
 #[cfg(feature = "trace-logger")]
+#[deprecated(
+    since = "0.1.1",
+    note = "use the `tracing` crate's \"log\" feature flag instead"
+)]
+#[allow(deprecated)]
 #[doc(inline)]
 pub use self::trace_logger::TraceLogger;
 
@@ -384,7 +377,7 @@ pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// and `target`.
     /// Returns `None` is the `Event` is not issued from a `log`.
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
-    /// Returns wether this `Event` represents a log (from the `log` crate)
+    /// Returns whether this `Event` represents a log (from the `log` crate)
     fn is_log(&self) -> bool;
 }
 

@@ -314,7 +314,7 @@ macro_rules! impl_value {
 
 impl_values! {
     record_u64(u64),
-    record_u64(usize, u32, u16 as u64),
+    record_u64(usize, u32, u16, u8 as u64),
     record_i64(i64),
     record_i64(isize, i32, i16, i8 as i64),
     record_bool(bool)
