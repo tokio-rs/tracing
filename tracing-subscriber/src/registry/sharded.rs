@@ -30,18 +30,6 @@ pub struct Data {
     pub(crate) extensions: RwLock<Extensions>,
 }
 
-impl<'a> WithExtensions<'a> for Guard<'a, Data> {
-    type Ref = RwLockReadGuard<'a, Extensions>;
-    type RefMut = RwLockWriteGuard<'a, Extensions>;
-
-    fn extensions(&'a self) -> Self::Ref {
-        self.extensions.read().expect("Mutex poisoned")
-    }
-    fn extensions_mut(&'a self) -> Self::RefMut {
-        self.extensions.write().expect("Mutex poisoned")
-    }
-}
-
 // === impl Registry ===
 
 impl Default for Registry {
@@ -259,5 +247,17 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
     }
     fn follows_from(&self) -> Self::Follows {
         unimplemented!("david: add this to `BigSpan`")
+    }
+}
+
+impl<'a> WithExtensions<'a> for Guard<'a, Data> {
+    type Ref = RwLockReadGuard<'a, Extensions>;
+    type RefMut = RwLockWriteGuard<'a, Extensions>;
+
+    fn extensions(&'a self) -> Self::Ref {
+        self.extensions.read().expect("Mutex poisoned")
+    }
+    fn extensions_mut(&'a self) -> Self::RefMut {
+        self.extensions.write().expect("Mutex poisoned")
     }
 }
