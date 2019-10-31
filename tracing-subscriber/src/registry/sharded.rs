@@ -178,16 +178,17 @@ impl<'a> LookupSpan<'a> for Registry {
     {
         CURRENT_SPANS.with(|spans| {
             let spans = spans.borrow();
-            let id: Id = spans.current().unwrap().clone();
-            // TODO(david): make this a less unpleasant loop.
-            let mut span = self.span(&id);
-            loop {
-                if let Some(s) = span {
-                    let id = s.id();
-                    f(&id);
-                    span = s.parent()
-                } else {
-                    break;
+            if let Some(id) = spans.current().clone() {
+                // TODO(david): make this a less unpleasant loop.
+                let mut span = self.span(&id);
+                loop {
+                    if let Some(s) = span {
+                        let id = s.id();
+                        f(&id);
+                        span = s.parent()
+                    } else {
+                        break;
+                    }
                 }
             }
         });
@@ -238,8 +239,7 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
     type Follows = std::slice::Iter<'a, Id>;
 
     fn id(&self) -> Id {
-        let id: u64 = self.idx().try_into().unwrap();
-        Id::from_u64(id)
+        idx_to_id(self.idx())
     }
     fn metadata(&self) -> &'static Metadata<'static> {
         (*self).metadata
