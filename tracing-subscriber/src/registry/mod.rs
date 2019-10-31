@@ -68,7 +68,7 @@ pub trait WithExtensions<'a> {
 }
 
 pub trait LookupSpan<'a> {
-    type Data: SpanData<'a>;
+    type Data: SpanData<'a> + WithExtensions<'a>;
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
@@ -83,7 +83,7 @@ pub trait LookupSpan<'a> {
     }
 
     // TODO(david): move this somewhere more appropriate; rewrite in terms of `SpanData`.
-    fn visit_parents<E, F>(&self, f: F) -> Result<(), E>
+    fn visit_parents<E, F>(&'a self, f: F) -> Result<(), E>
     where
         F: FnMut(&Id) -> Result<(), E>;
 }
