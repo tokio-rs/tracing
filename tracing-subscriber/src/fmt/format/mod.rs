@@ -134,9 +134,9 @@ pub struct Full;
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
-    timer: T,
-    ansi: bool,
-    display_target: bool,
+    pub(crate) timer: T,
+    pub(crate) ansi: bool,
+    pub(crate) display_target: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -561,7 +561,7 @@ where
     }
 }
 
-struct FullCtx<'a, S, N>
+pub struct FullCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -647,7 +647,7 @@ where
     }
 }
 
-struct FmtLevel<'a> {
+pub struct FmtLevel<'a> {
     level: &'a Level,
     #[cfg(feature = "ansi")]
     ansi: bool,
