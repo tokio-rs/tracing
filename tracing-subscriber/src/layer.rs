@@ -743,6 +743,21 @@ impl<'a, S> Context<'a, S> {
     }
 }
 
+impl<'a, S> Context<'a, S>
+where
+    S: Subscriber + LookupSpan<'a>,
+{
+    // TODO(david): move this somewhere more appropriate; rewrite in terms of `SpanData`.
+    pub(crate) fn visit_parents<E, F>(&self, f: F) -> Result<(), E>
+    where
+        F: FnMut(&span::Id) -> Result<(), E>,
+    {
+        Ok(if let Some(subscriber) = self.subscriber {
+            subscriber.visit_parents(f);
+        })
+    }
+}
+
 impl<'a, S> Clone for Context<'a, S> {
     #[inline]
     fn clone(&self) -> Self {

@@ -197,50 +197,6 @@ where
     where
         F: FnMut(&Id) -> Result<(), E>,
     {
-        Ok(())
-    }
-}
-
-struct EventVisitor {
-    comma: bool,
-    buf: String,
-}
-
-impl Visit for EventVisitor {
-    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        write!(
-            &mut self.buf,
-            "{comma} ",
-            comma = if self.comma { "," } else { "" },
-        )
-        .unwrap();
-        let name = field.name();
-        if name == "message" {
-            write!(
-                &mut self.buf,
-                "{}",
-                Style::new().bold().paint(format!("{:?}", value))
-            )
-            .unwrap();
-            self.comma = true;
-        } else {
-            write!(self.buf, "{}: {:?}", Style::new().bold().paint(name), value).unwrap();
-            self.comma = true;
-        }
-    }
-}
-
-struct ColorLevel<'a>(&'a Level);
-
-impl<'a> fmt::Display for ColorLevel<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            &Level::TRACE => Color::Purple.paint("TRACE"),
-            &Level::DEBUG => Color::Blue.paint("DEBUG"),
-            &Level::INFO => Color::Green.paint("INFO "),
-            &Level::WARN => Color::Yellow.paint("WARN "),
-            &Level::ERROR => Color::Red.paint("ERROR"),
-        }
-        .fmt(f)
+        self.ctx.visit_parents(f)
     }
 }
