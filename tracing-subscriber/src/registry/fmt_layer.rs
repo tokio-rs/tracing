@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry, SpanData, SpanRef},
+    registry::{LookupMetadata, LookupSpan, Registry, SpanRef},
 };
 use ansi_term::{Color, Style};
 use std::{
@@ -69,7 +69,13 @@ where
 
 // this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
 // type paramater from the default.
-impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
+impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
+where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<S, N> + 'static,
+    W: MakeWriter + 'static,
+{
     pub fn with_writer<W2>(self, make_writer: W2) -> FmtLayerBuilder<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
@@ -112,10 +118,6 @@ impl Default for FmtLayerBuilder {
             make_writer: io::stdout,
         }
     }
-}
-
-fn name_of<T>(t: T) -> &'static str {
-    type_name::<T>()
 }
 
 // === impl Formatter ===
@@ -172,12 +174,11 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    pub fn visit_spans<E, L, F>(&self, mut f: F) -> Result<(), E>
+    pub fn visit_spans<E, F>(&self, f: F) -> Result<(), E>
     where
-        F: FnMut(&Id, L) -> Result<(), E>,
-        L: LookupSpan<'a>,
+        F: FnMut(&Id) -> Result<(), E>,
     {
-        unimplemented!()
+        Ok(())
     }
 }
 

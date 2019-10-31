@@ -14,7 +14,7 @@
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
 use std::any::Any;
-use tracing_core::{span::Id, Metadata};
+use tracing_core::{span::Id, Metadata, Subscriber};
 
 pub mod extensions;
 pub mod fmt_layer;
@@ -69,6 +69,11 @@ pub trait LookupSpan<'a> {
             data,
         })
     }
+
+    // TODO(david): move this somewhere more appropriate; rewrite in terms of `SpanData`.
+    fn visit_parents<E, F>(&self, f: F) -> Result<(), E>
+    where
+        F: FnMut(&Id) -> Result<(), E>;
 }
 
 pub trait SpanData<'a> {
@@ -144,7 +149,7 @@ where
         })
     }
 
-    pub fn parents(&'a self) -> Parents<'_, R> {
+    pub fn parents(&'a self) -> Parents<'a, R> {
         Parents {
             registry: self.registry,
             next: self.parent().map(|parent| parent.id()),
