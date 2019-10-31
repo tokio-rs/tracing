@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry, WithExtensions},
+    registry::{LookupMetadata, LookupSpan, Registry, SpanData},
 };
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
@@ -30,7 +30,7 @@ pub struct FmtLayer<
 
 impl<S, N, E, W> fmt::Debug for FmtLayer<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -56,7 +56,7 @@ pub struct FmtLayerBuilder<
 
 impl<S, N, E, W> fmt::Debug for FmtLayerBuilder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -75,7 +75,7 @@ impl FmtLayer {
 
 impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -100,7 +100,7 @@ where
 // overriding the `E` type parameter with `E2`.
 impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -137,7 +137,7 @@ impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
 
 impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -168,7 +168,7 @@ impl Default for FmtLayerBuilder {
 
 impl<S, N, E, W> FmtLayer<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -186,7 +186,7 @@ where
 
 impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata + for<'a> WithExtensions<'a>,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -197,7 +197,8 @@ where
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
         if let Some(span) = ctx.span(id) {
-            span.data.extensions_mut();
+            let data = span.data;
+            let extensions = data.extensions_mut();
         }
     }
 
