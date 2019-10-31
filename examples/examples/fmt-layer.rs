@@ -1,7 +1,9 @@
 #![deny(rust_2018_idioms)]
 use std::io;
-use tracing::{debug, Level};
+use tracing::{debug, Event, Level};
 use tracing_subscriber::{
+    fmt::format::Format,
+    fmt::time::ChronoUtc,
     layer::Layer,
     registry::{FmtLayer, Registry},
 };
@@ -13,16 +15,23 @@ fn main() {
     color_backtrace::install();
 
     let stderr = FmtLayer::builder()
-        .with_interest(|event| event.metadata().level() >= &Level::WARN)
+        .with_interest(|event| event.metadata().level() <= &Level::WARN)
         .with_writer(io::stderr)
+        .with_event_formatter(
+            Format::default()
+                .with_timer(ChronoUtc::rfc3339())
+                .with_ansi(false)
+                .with_target(false)
+                .json(),
+        )
         .build();
 
     let stdout = FmtLayer::builder()
-        .with_interest(|event| event.metadata().level() == &Level::INFO)
+        .with_interest(|event| event.metadata().level() >= &Level::INFO)
         .with_writer(io::stdout)
         .build();
 
-    let subscriber = stderr.and_then(stdout).with_subscriber(Registry::default());
+    let subscriber = stdout.and_then(stderr).with_subscriber(Registry::default());
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
     let number_of_yaks = 3;

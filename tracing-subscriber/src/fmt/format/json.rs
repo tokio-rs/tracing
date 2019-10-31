@@ -1,7 +1,7 @@
 use super::{span, Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::MakeVisitor,
-    registry::{fmt_layer::FmtContext, LookupMetadata, LookupSpan},
+    registry::{fmt::FmtContext, LookupMetadata, LookupSpan},
 };
 use serde::ser::{SerializeMap, Serializer as _};
 use serde_json::Serializer;

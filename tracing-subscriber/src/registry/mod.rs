@@ -17,10 +17,10 @@ use std::any::Any;
 use tracing_core::{span::Id, Metadata, Subscriber};
 
 pub mod extensions;
-pub mod fmt_layer;
+pub mod fmt;
 pub mod sharded;
 
-pub use fmt_layer::{FmtLayer, FmtLayerBuilder};
+pub use fmt::{FmtLayer, FmtLayerBuilder};
 pub use sharded::{Data, Registry};
 
 /// Provides access to stored span metadata.

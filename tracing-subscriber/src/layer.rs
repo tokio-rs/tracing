@@ -752,9 +752,11 @@ where
     where
         F: FnMut(&span::Id) -> Result<(), E>,
     {
-        Ok(if let Some(subscriber) = self.subscriber {
-            subscriber.visit_parents(f);
-        })
+        if let Some(subscriber) = self.subscriber {
+            subscriber.visit_parents(f)
+        } else {
+            Ok(())
+        }
     }
 }
 
