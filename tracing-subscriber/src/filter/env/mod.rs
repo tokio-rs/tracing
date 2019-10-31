@@ -32,7 +32,7 @@ use tracing_core::{
 /// # Directives
 ///
 /// Directives are a set of instructions on how to filter tracing events. The directive
-/// syntax is similar to the one presented in `env_logger`. The syntax consists mainly
+/// syntax is similar to the one presented in `env_logger`. The syntax consists
 /// of four parts `target[span{field=value}]=level`.
 ///
 /// - `target` matches on the target that the event comes from, generally this will be the
@@ -41,16 +41,16 @@ use tracing_core::{
 /// - `field` matches the fields within spans.
 /// - `value` matches the _output_ of the span's value. This means for a `String` it will use
 /// the debug implementation. Examples, `1`, `\"some_string\"`, etc.
-/// - `level` will filter out logs that produce a level lower than the provided one.
+/// - `level` sets a maximum verbosity level accepted by this directive
 ///
 /// ## Examples
 ///
-/// - `tokio::net=info` will filter on events that are produced within the `tokio::net`module
-/// and with a `info` or greater log level.
-/// - `my_crate[span_a]=trace` will filter on events that are produced within the `my_crate` crate,
+/// - `tokio::net=info` will enable all spans or events that occur within the `tokio::net`module
+/// with the `info` verbosity level or below
+/// - `my_crate[span_a]=trace` will enable all spans and events that are occur within the `my_crate` crate,
 /// within the `span_a` span and with any level `trace` and above.
-/// - `[span_b{name=\"bob\"}]` will filter on events that are produced within any crate under the
-/// `span_b` span with a field `name` that contains the value `\"bob\"`.
+/// - `[span_b{name=\"bob\"}]` will enable all spans and events with any target that occur within a
+/// span with the name `span_b` and a field `name` with the value `\"bob\"`.
 #[cfg_attr(
     feature = "filter",
     deprecated(
