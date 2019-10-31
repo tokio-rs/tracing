@@ -2,8 +2,8 @@ use sharded_slab::{Guard, Slab};
 
 use crate::{
     fmt::span::SpanStack,
-    registry::{extensions::Extensions, LookupMetadata, LookupSpan, SpanData},
-    sync::RwLock,
+    registry::{extensions::Extensions, LookupMetadata, LookupSpan, SpanData, WithExtensions},
+    sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 use std::{
     cell::RefCell,
@@ -27,7 +27,19 @@ pub struct Data {
     parent: Option<Id>,
     children: Vec<Id>,
     ref_count: AtomicUsize,
-    extensions: RwLock<Extensions>,
+    pub(crate) extensions: RwLock<Extensions>,
+}
+
+impl<'a> WithExtensions<'a> for Data {
+    type Ref = RwLockReadGuard<'a, Extensions>;
+    type RefMut = RwLockWriteGuard<'a, Extensions>;
+
+    fn extensions(&'a self) -> Self::Ref {
+        self.extensions.read().expect("Mutex poisoned")
+    }
+    fn extensions_mut(&'a self) -> Self::RefMut {
+        self.extensions.write().expect("Mutex poisoned")
+    }
 }
 
 // === impl Registry ===
@@ -230,7 +242,7 @@ impl Drop for Data {
 }
 
 impl<'a> SpanData<'a> for Guard<'a, Data> {
-    type Children = std::slice::Iter<'a, Id>; // not yet implemented...
+    type Children = std::slice::Iter<'a, Id>;
     type Follows = std::slice::Iter<'a, Id>;
 
     fn id(&self) -> Id {

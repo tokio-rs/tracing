@@ -1,9 +1,11 @@
 // taken from https://github.com/hyperium/http/blob/master/src/extensions.rs.
 
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
-use std::fmt;
-use std::hash::{BuildHasherDefault, Hasher};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+    fmt,
+    hash::{BuildHasherDefault, Hasher},
+};
 
 #[allow(warnings)]
 type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdHasher>>;
