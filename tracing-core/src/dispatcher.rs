@@ -837,8 +837,12 @@ mod test {
 
             fn exit(&self, _: &span::Id) {}
         }
-        let _guard = set_default(&Dispatch::new(TestSubscriber));
+        let guard = set_default(&Dispatch::new(TestSubscriber));
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<TestSubscriber>());
+
+        drop(guard);
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<NoSubscriber>());
     }
 }
