@@ -274,64 +274,63 @@ where
     }
 }
 
-// impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
-// where
-//     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-//     N: for<'writer> FormatFields<'writer> + 'static,
-//     for<'lookup> <S as LookupSpan<'lookup>>::Data: LookupSpan<'lookup>,
-//     T: FormatTime,
-// {
-//     fn format_event(
-//         &self,
-//         ctx: &FmtContext<'_, S, N>,
-//         writer: &mut dyn fmt::Write,
-//         event: &Event<'_>,
-//     ) -> fmt::Result {
-//         #[cfg(feature = "tracing-log")]
-//         let normalized_meta = event.normalized_metadata();
-//         #[cfg(feature = "tracing-log")]
-//         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-//         #[cfg(not(feature = "tracing-log"))]
-//         let meta = event.metadata();
-//         #[cfg(feature = "ansi")]
-//         time::write(&self.timer, writer, self.ansi)?;
-//         #[cfg(not(feature = "ansi"))]
-//         time::write(&self.timer, writer)?;
+impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
+where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
+    T: FormatTime,
+{
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        #[cfg(feature = "tracing-log")]
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+        #[cfg(not(feature = "tracing-log"))]
+        let meta = event.metadata();
+        #[cfg(feature = "ansi")]
+        time::write(&self.timer, writer, self.ansi)?;
+        #[cfg(not(feature = "ansi"))]
+        time::write(&self.timer, writer)?;
 
-//         let (fmt_level, fmt_ctx) = {
-//             #[cfg(feature = "ansi")]
-//             {
-//                 (
-//                     FmtLevel::new(meta.level(), self.ansi),
-//                     FmtCtx::new(&ctx, self.ansi),
-//                 )
-//             }
-//             #[cfg(not(feature = "ansi"))]
-//             {
-//                 (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
-//             }
-//         };
-//         write!(
-//             writer,
-//             "{} {}{}: ",
-//             fmt_level,
-//             fmt_ctx,
-//             if self.display_target {
-//                 meta.target()
-//             } else {
-//                 ""
-//             }
-//         )?;
-//         ctx.format_fields(writer, event)?;
-//         let span = ctx.ctx.current_span();
-//         if let Some(id) = span.id() {
-//             if let Some(span) = ctx.ctx.metadata(id) {
-//                 write!(writer, "{}", span.fields()).unwrap_or(());
-//             }
-//         }
-//         writeln!(writer)
-//     }
-// }
+        let (fmt_level, fmt_ctx) = {
+            #[cfg(feature = "ansi")]
+            {
+                (
+                    FmtLevel::new(meta.level(), self.ansi),
+                    FmtCtx::new(&ctx, self.ansi),
+                )
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
+            }
+        };
+        write!(
+            writer,
+            "{} {}{}: ",
+            fmt_level,
+            fmt_ctx,
+            if self.display_target {
+                meta.target()
+            } else {
+                ""
+            }
+        )?;
+        ctx.format_fields(writer, event)?;
+        let span = ctx.ctx.current_span();
+        if let Some(id) = span.id() {
+            if let Some(span) = ctx.ctx.metadata(id) {
+                write!(writer, "{}", span.fields()).unwrap_or(());
+            }
+        }
+        writeln!(writer)
+    }
+}
 
 // === impl FormatFields ===
 impl<'writer, M> FormatFields<'writer> for M
@@ -510,27 +509,28 @@ where
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, S, N: 'a> FmtCtx<'a, S, N>
+impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    for<'lookup> <S as LookupSpan<'a>>::Data: LookupSpan<'lookup>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
-        self.ctx
-            .visit_spans(|_, span: <S as LookupSpan<'_>>::Data| {
-                if seen {
-                    f.pad(":")?;
-                }
-                seen = true;
+        self.ctx.visit_spans(|id| {
+            if seen {
+                f.pad(":")?;
+            }
+            seen = true;
 
+            if let Some(metadata) = self.ctx.ctx.metadata(id) {
                 if self.ansi {
-                    write!(f, "{}", Style::new().bold().paint(span.metadata().name()))
+                    write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
                 } else {
-                    write!(f, "{}", span.metadata().name())
+                    write!(f, "{}", metadata.name())?;
                 }
-            })?;
+            }
+            Ok(())
+        })?;
         if seen {
             f.pad(" ")?;
         }
@@ -592,7 +592,6 @@ impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    <S as LookupSpan<'a>>::Data: LookupSpan<'a>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
@@ -601,18 +600,21 @@ where
         } else {
             Style::new()
         };
-        self.ctx
-            .visit_spans(|_, span: <S as LookupSpan<'a>>::Data| {
-                write!(f, "{}", style.paint(span.metadata().name()))?;
+        self.ctx.visit_spans(|id| {
+            if seen {
+                f.pad(":")?;
+            }
+            seen = true;
 
-                seen = true;
-
-                let fields = span.metadata().fields();
-                if !fields.is_empty() {
-                    write!(f, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
+            if let Some(metadata) = self.ctx.ctx.metadata(id) {
+                if self.ansi {
+                    write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
+                } else {
+                    write!(f, "{}", metadata.name())?;
                 }
-                ":".fmt(f)
-            })?;
+            }
+            Ok(())
+        })?;
         if seen {
             f.pad(" ")?;
         }
@@ -625,11 +627,10 @@ impl<'a, N> fmt::Display for FullCtx<'a, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    for<'lookup> <S as LookupSpan<'a>>::Data: LookupSpan<'lookup>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
-        self.ctx.visit_spans(|_, span| {
+        self.ctx.visit_spans(|span| {
             write!(f, "{}", span.name())?;
             seen = true;
 
