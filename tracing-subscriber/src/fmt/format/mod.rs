@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    registry::{fmt_layer::FmtContext, LookupMetadata, LookupSpan, SpanData},
+    registry::{fmt::FmtContext, LookupMetadata, LookupSpan, SpanData},
 };
 
 use std::{

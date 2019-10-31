@@ -100,7 +100,7 @@
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
-use std::{any::TypeId, cell::RefCell, error::Error, io};
+use std::{cell::RefCell, error::Error, io};
 use tracing_core::{subscriber::Interest, Event, Metadata};
 
 pub mod format;

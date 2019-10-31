@@ -7,7 +7,6 @@ use crate::{
 };
 use std::{
     cell::RefCell,
-    convert::TryInto,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -122,18 +121,14 @@ impl Subscriber for Registry {
     }
 
     fn current_span(&self) -> Current {
-        CURRENT_SPANS.with(|spans| {
-            let spans = spans.borrow();
-            let current = spans.current();
-            if let Some(id) = current {
-                match self.get(id) {
-                    Some(span) => Current::new(id.clone(), span.metadata),
-                    None => Current::none(),
-                }
-            } else {
-                Current::none()
-            }
-        })
+        CURRENT_SPANS
+            .with(|spans| {
+                let spans = spans.borrow();
+                let id = spans.current()?;
+                let span = self.get(id)?;
+                Some(Current::new(id.clone(), span.metadata))
+            })
+            .unwrap_or_else(Current::none)
     }
 
     /// Decrements the reference count of the span with the given `id`, and
