@@ -224,7 +224,6 @@ impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    for<'lookup> <S as LookupSpan<'lookup>>::Data: LookupSpan<'lookup>,
     T: FormatTime,
 {
     fn format_event(
