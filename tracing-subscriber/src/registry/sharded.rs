@@ -179,6 +179,7 @@ impl<'a> LookupSpan<'a> for Registry {
         CURRENT_SPANS.with(|spans| {
             let spans = spans.borrow();
             let id: Id = spans.current().unwrap().clone();
+            // TODO(david): make this a less unpleasant loop.
             let mut span = self.span(&id);
             loop {
                 if let Some(s) = span {
@@ -214,34 +215,6 @@ impl Data {
     pub fn fields(&self) -> &FieldSet {
         self.metadata.fields()
     }
-
-    // #[inline(always)]
-    // fn with_parent<'registry, F, E>(
-    //     &self,
-    //     my_id: &Id,
-    //     last_id: Option<&Id>,
-    //     f: &mut F,
-    //     registry: &'registry Registry,
-    // ) -> Result<(), E>
-    // where
-    //     F: FnMut(&Id, Guard<'_, Data>) -> Result<(), E>,
-    // {
-    //     if let Some(span) = registry.get(my_id) {
-    //         if let Some(ref parent_id) = span.parent {
-    //             if Some(parent_id) != last_id {
-    //                 if let Some(parent) = registry.get(&parent_id) {
-    //                     parent.with_parent(&parent_id, Some(my_id), f, registry)?;
-    //                 } else {
-    //                     panic!("missing span for {:?}; this is a bug", parent_id);
-    //                 }
-    //             }
-    //         }
-    //         if let Some(span) = registry.get(my_id) {
-    //             f(my_id, span);
-    //         }
-    //     }
-    //     Ok(())
-    // }
 }
 
 impl Drop for Data {
