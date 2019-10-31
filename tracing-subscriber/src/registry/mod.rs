@@ -13,12 +13,8 @@
 //! ```
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
-use crate::fmt::format::FormatFields;
 use std::ops::{Deref, DerefMut};
-use tracing_core::{
-    span::{Id, Record},
-    Metadata,
-};
+use tracing_core::{span::Id, Metadata};
 
 pub mod extensions;
 pub mod fmt;
@@ -60,15 +56,8 @@ pub trait LookupMetadata {
     }
 }
 
-pub trait WithExtensions<'a> {
-    type Ref: Deref<Target = Extensions>;
-    type RefMut: Deref<Target = Extensions> + DerefMut;
-    fn extensions(&'a self) -> Self::Ref;
-    fn extensions_mut(&'a self) -> Self::RefMut;
-}
-
 pub trait LookupSpan<'a> {
-    type Data: SpanData<'a> + WithExtensions<'a>;
+    type Data: SpanData<'a>;
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
@@ -91,12 +80,16 @@ pub trait LookupSpan<'a> {
 pub trait SpanData<'a> {
     type Children: Iterator<Item = &'a Id>;
     type Follows: Iterator<Item = &'a Id>;
+    type Ref: Deref<Target = Extensions>;
+    type RefMut: Deref<Target = Extensions> + DerefMut;
 
     fn id(&self) -> Id;
     fn metadata(&self) -> &'static Metadata<'static>;
     fn parent(&self) -> Option<&Id>;
     fn children(&'a self) -> Self::Children;
     fn follows_from(&'a self) -> Self::Follows;
+    fn extensions(&'a self) -> Self::Ref;
+    fn extensions_mut(&'a self) -> Self::RefMut;
 }
 
 #[derive(Debug)]
