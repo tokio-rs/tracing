@@ -5,7 +5,10 @@ use crate::{
     registry::{LookupMetadata, LookupSpan, Registry},
 };
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
-use tracing_core::{span::Id, Event, Subscriber};
+use tracing_core::{
+    span::{Id, Record},
+    Event, Subscriber,
+};
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 pub struct FmtLayer<
@@ -190,6 +193,11 @@ where
 {
     fn on_close(&self, id: Id, _: Context<'_, S>) {
         // dbg!(id);
+    }
+
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        let ctx = self.make_ctx(ctx);
+        // ctx.format_fields(values);
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
