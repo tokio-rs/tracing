@@ -1,12 +1,8 @@
 use crate::{
     field::RecordFields,
-    fmt::{
-        format::{self, FmtLevel, FullCtx},
-        time::{self, FormatTime, SystemTime},
-        FormatEvent, FormatFields, MakeWriter,
-    },
+    fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry, SpanRef},
+    registry::{LookupMetadata, LookupSpan, Registry},
 };
 use ansi_term::{Color, Style};
 use std::{
@@ -19,18 +15,30 @@ use tracing_core::{
     span::Id,
     Event, Level, Subscriber,
 };
-use tracing_log::NormalizeEvent;
 
-pub struct FmtLayer<S = Registry, N = format::DefaultFields, W = fn() -> io::Stdout> {
+/// A `Subscriber` that logs formatted representations of `tracing` events.
+pub struct FmtLayer<
+    S = Registry,
+    N = format::DefaultFields,
+    E = format::Format<format::Full>,
+    W = fn() -> io::Stdout,
+> {
     is_interested: Box<dyn Fn(&Event<'_>) -> bool + Send + Sync + 'static>,
     inner: PhantomData<S>,
     make_writer: W,
     fmt_fields: N,
-    fmt_event: format::Format<format::Full>,
+    fmt_event: E,
 }
 
-pub struct FmtLayerBuilder<S = Registry, N = format::DefaultFields, W = fn() -> io::Stdout> {
+/// A builder for `FmtLayer` that logs formatted representations of `tracing` events.
+pub struct FmtLayerBuilder<
+    S = Registry,
+    N = format::DefaultFields,
+    E = format::Format<format::Full>,
+    W = fn() -> io::Stdout,
+> {
     fmt_fields: N,
+    fmt_event: E,
     make_writer: W,
     is_interested: Box<dyn Fn(&Event<'_>) -> bool + Send + Sync + 'static>,
     inner: PhantomData<S>,
@@ -42,10 +50,11 @@ impl FmtLayer {
     }
 }
 
-impl<S, N, W> FmtLayerBuilder<S, N, W>
+impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
     pub fn with_interest<F>(self, f: F) -> Self
@@ -61,18 +70,14 @@ where
 
 // this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
 // type paramater from the default.
-impl<S, N, W> FmtLayerBuilder<S, N, W>
-where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    W: MakeWriter + 'static,
-{
-    pub fn with_writer<W2>(self, make_writer: W2) -> FmtLayerBuilder<S, N, W2>
+impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
+    pub fn with_writer<W2>(self, make_writer: W2) -> FmtLayerBuilder<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
     {
         FmtLayerBuilder {
             fmt_fields: self.fmt_fields,
+            fmt_event: self.fmt_event,
             is_interested: self.is_interested,
             inner: self.inner,
             make_writer,
@@ -80,20 +85,20 @@ where
     }
 }
 
-impl<S, N, W> FmtLayerBuilder<S, N, W>
+impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
-    pub fn build(self) -> FmtLayer<S, N, W> {
-        let fmt = format::Format::default();
+    pub fn build(self) -> FmtLayer<S, N, E, W> {
         FmtLayer {
             is_interested: self.is_interested,
             inner: self.inner,
             make_writer: self.make_writer,
             fmt_fields: self.fmt_fields,
-            fmt_event: fmt,
+            fmt_event: self.fmt_event,
         }
     }
 }
@@ -104,69 +109,35 @@ impl Default for FmtLayerBuilder {
             is_interested: Box::new(|_| true),
             inner: PhantomData,
             fmt_fields: format::DefaultFields::default(),
+            fmt_event: format::Format::default(),
             make_writer: io::stdout,
         }
     }
 }
 
-impl<S, N> FormatEvent<S, N> for format::Format<format::Full>
+impl<S, N, E, W> FmtLayer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<S, N> + 'static,
+    W: MakeWriter + 'static,
 {
-    fn format_event(
-        &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
-    ) -> fmt::Result {
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
-        let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
-
-        let (fmt_level, full_ctx) = {
-            #[cfg(feature = "ansi")]
-            {
-                (
-                    FmtLevel::new(meta.level(), self.ansi),
-                    FullCtx::new(ctx, self.ansi),
-                )
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
-            }
-        };
-
-        write!(
-            writer,
-            "{} {}{}: ",
-            fmt_level,
-            full_ctx,
-            if self.display_target {
-                meta.target()
-            } else {
-                ""
-            }
-        )?;
-        ctx.format_fields(writer, event)?;
-        writeln!(writer)
+    #[inline]
+    fn make_ctx<'a>(&'a self, ctx: Context<'a, S>) -> FmtContext<'a, S, N> {
+        FmtContext {
+            ctx,
+            fmt_fields: &self.fmt_fields,
+        }
     }
 }
 
 // === impl Formatter ===
 
-impl<S, N, W> Layer<S> for FmtLayer<S, N, W>
+impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
     fn on_close(&self, id: Id, _: Context<'_, S>) {
@@ -175,10 +146,7 @@ where
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         let mut buf = String::new();
-        let ctx = FmtContext {
-            ctx,
-            fmt_fields: &self.fmt_fields,
-        };
+        let ctx = self.make_ctx(ctx);
         if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
             let mut writer = self.make_writer.make_writer();
             let _ = io::Write::write_all(&mut writer, buf.as_bytes());
@@ -186,13 +154,24 @@ where
     }
 }
 
+/// `FmtContext` is used to propogate subscriber context to tracing_subscriber::fmt.
 pub struct FmtContext<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    pub ctx: Context<'a, S>,
-    pub fmt_fields: &'a N,
+    pub(crate) ctx: Context<'a, S>,
+    pub(crate) fmt_fields: &'a N,
+}
+
+impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FmtContext").finish()
+    }
 }
 
 impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
