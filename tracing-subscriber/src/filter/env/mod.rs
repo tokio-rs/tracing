@@ -31,17 +31,27 @@ use tracing_core::{
 ///
 /// # Directives
 ///
-/// Directives are a set of instructions on how to filter tracing events. The directive
+/// A filter consists of one or more directives. Directives match [`Span`]s and [`Event`]s
+/// and specify a maximum verbosity [`level`] to enable for those that match. The directive
 /// syntax is similar to the one presented in `env_logger`. The syntax consists
 /// of four parts `target[span{field=value}]=level`.
 ///
 /// - `target` matches on the target that the event comes from, generally this will be the
-/// crate name. Examples, `h2`, `tokio::net`, etc.
-/// - `span` matches on the span name that you want to filter on.
-/// - `field` matches the fields within spans.
-/// - `value` matches the _output_ of the span's value. This means for a `String` it will use
-/// the debug implementation. Examples, `1`, `\"some_string\"`, etc.
+/// module path. Examples, `h2`, `tokio::net`, etc. For more info checkout the [`Metadata`] docs.
+/// - `span` matches on the span name that you want to filter on. If this is supplied with a `target`
+/// it will match on all filter spans within that `target.
+/// - `field` matches the fields within spans. Field names can also be supplied without a `value`
+/// and will match on any `Span` that contains that field name.
+/// Example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
+/// - `value` matches the _output_ of the span's value. If a value is a numeric literal or a bool,
+// it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
+/// from the value. Examples, `1`, `\"some_string\"`, etc.
 /// - `level` sets a maximum verbosity level accepted by this directive
+///
+/// The portion of the synatx that is included within the square brackets is `tracing` specific.
+/// All portions of the syntax are omissable. If a `value` is provided a `field`
+/// must be specified. If just a `level` is provided it will enable all `Span`s and `Event`s.
+/// A directive without a level will enable anything that matches.
 ///
 /// ## Examples
 ///
@@ -51,6 +61,11 @@ use tracing_core::{
 /// within the `span_a` span and with any level `trace` and above.
 /// - `[span_b{name=\"bob\"}]` will enable all spans and events with any target that occur within a
 /// span with the name `span_b` and a field `name` with the value `\"bob\"`.
+///
+/// [`Span`]: ../../tracing_core/span/index.html
+/// [`Event`]: ../../tracing_core/struct.Event.html
+/// [`level`]: ../../tracing_core/struct.Level.html
+/// [`Metadata`]: ../../tracing_core/struct.Metadata.html
 #[cfg_attr(
     feature = "filter",
     deprecated(
