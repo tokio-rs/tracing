@@ -30,7 +30,7 @@ pub struct Data {
     pub(crate) extensions: RwLock<Extensions>,
 }
 
-impl<'a> WithExtensions<'a> for Data {
+impl<'a> WithExtensions<'a> for Guard<'a, Data> {
     type Ref = RwLockReadGuard<'a, Extensions>;
     type RefMut = RwLockWriteGuard<'a, Extensions>;
 

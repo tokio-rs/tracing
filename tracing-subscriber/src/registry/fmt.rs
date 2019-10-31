@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry},
+    registry::{LookupMetadata, LookupSpan, Registry, WithExtensions},
 };
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
@@ -196,8 +196,9 @@ where
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
-        let ctx = self.make_ctx(ctx);
-        // ctx.format_fields(values);
+        if let Some(span) = ctx.span(id) {
+            span.data.extensions_mut();
+        }
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
