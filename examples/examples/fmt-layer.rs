@@ -10,6 +10,8 @@ use tracing_subscriber::{
 mod yak_shave;
 
 fn main() {
+    color_backtrace::install();
+
     let stderr = FmtLayer::builder()
         .with_interest(|event| event.metadata().level() >= &Level::WARN)
         .with_writer(io::stderr)
