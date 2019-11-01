@@ -14,7 +14,7 @@ type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdH
 // themselves, coming from the compiler. The IdHasher just holds the u64 of
 // the TypeId, and then returns it, instead of doing any bit fiddling.
 #[derive(Default)]
-struct IdHasher(u64);
+pub struct IdHasher(u64);
 
 impl Hasher for IdHasher {
     fn write(&mut self, _: &[u8]) {
@@ -40,7 +40,7 @@ impl Hasher for IdHasher {
 pub struct Extensions {
     // If extensions are never used, no need to carry around an empty HashMap.
     // That's 3 words. Instead, this is only 1 word.
-    map: Option<Box<AnyMap>>,
+    pub map: Option<Box<AnyMap>>,
 }
 
 impl Extensions {

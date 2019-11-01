@@ -13,13 +13,13 @@
 //! ```
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
-use std::ops::{Deref, DerefMut};
 use tracing_core::{span::Id, Metadata};
 
 pub mod extensions;
 pub mod fmt;
 pub mod sharded;
 
+use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
 pub use extensions::Extensions;
 pub use fmt::{FmtLayer, FmtLayerBuilder};
 pub use sharded::{Data, Registry};
@@ -80,22 +80,20 @@ pub trait LookupSpan<'a> {
 pub trait SpanData<'a> {
     type Children: Iterator<Item = &'a Id>;
     type Follows: Iterator<Item = &'a Id>;
-    type Ref: Deref<Target = Extensions>;
-    type RefMut: Deref<Target = Extensions> + DerefMut;
 
     fn id(&self) -> Id;
     fn metadata(&self) -> &'static Metadata<'static>;
     fn parent(&self) -> Option<&Id>;
     fn children(&'a self) -> Self::Children;
     fn follows_from(&'a self) -> Self::Follows;
-    fn extensions(&'a self) -> Self::Ref;
-    fn extensions_mut(&'a self) -> Self::RefMut;
+    fn extensions(&self) -> RwLockReadGuard<'_, Extensions>;
+    fn extensions_mut(&self) -> RwLockWriteGuard<'_, Extensions>;
 }
 
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
-    data: R::Data,
+    pub(crate) data: R::Data,
 }
 
 #[derive(Debug)]
@@ -134,6 +132,14 @@ where
 
     pub fn child_ids(&'a self) -> <R::Data as SpanData<'a>>::Children {
         self.data.children()
+    }
+
+    pub fn extensions(&'a self) -> RwLockReadGuard<'_, Extensions> {
+        self.data.extensions()
+    }
+
+    pub fn extensions_mut(&'a self) -> RwLockWriteGuard<'_, Extensions> {
+        self.data.extensions_mut()
     }
 }
 

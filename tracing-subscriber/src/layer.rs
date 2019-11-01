@@ -716,9 +716,9 @@ impl<'a, S: Subscriber> Context<'a, S> {
 
     #[inline]
     #[cfg(feature = "registry_unstable")]
-    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
+    pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
     where
-        S: for<'span> LookupSpan<'span>,
+        S: LookupSpan<'a>,
     {
         self.subscriber.as_ref()?.span(id)
     }
