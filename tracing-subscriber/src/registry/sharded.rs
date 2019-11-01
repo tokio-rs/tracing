@@ -6,6 +6,7 @@ use crate::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 use std::{
+    borrow::Borrow,
     cell::RefCell,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
@@ -171,7 +172,7 @@ impl<'a> LookupSpan<'a> for Registry {
     where
         F: FnMut(&Id) -> Result<(), E>,
     {
-        CURRENT_SPANS.with(|spans| {
+        let res = CURRENT_SPANS.with(|spans| {
             let spans = spans.borrow();
             if let Some(id) = spans.current().clone() {
                 // TODO(david): make this a less unpleasant loop.
@@ -187,7 +188,8 @@ impl<'a> LookupSpan<'a> for Registry {
                 }
             }
         });
-        Ok(())
+        Ok(res)
+        // Ok(())
     }
 }
 
@@ -232,8 +234,6 @@ impl Drop for Data {
 impl<'a> SpanData<'a> for Guard<'a, Data> {
     type Children = std::slice::Iter<'a, Id>;
     type Follows = std::slice::Iter<'a, Id>;
-    type Ref = RwLockReadGuard<'a, Extensions>;
-    type RefMut = RwLockWriteGuard<'a, Extensions>;
 
     fn id(&self) -> Id {
         idx_to_id(self.idx())
@@ -251,10 +251,10 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
         unimplemented!("david: add this to `BigSpan`")
     }
 
-    fn extensions(&'a self) -> Self::Ref {
+    fn extensions(&self) -> RwLockReadGuard<'_, Extensions> {
         self.extensions.read().expect("Mutex poisoned")
     }
-    fn extensions_mut(&'a self) -> Self::RefMut {
+    fn extensions_mut(&self) -> RwLockWriteGuard<'_, Extensions> {
         self.extensions.write().expect("Mutex poisoned")
     }
 }

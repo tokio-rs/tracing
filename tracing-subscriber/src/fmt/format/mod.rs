@@ -605,6 +605,13 @@ where
             }
             seen = true;
 
+            let span = self.ctx.ctx.span(id);
+            if let Some(span) = span {
+                let ext = span.data.extensions_mut();
+                let data = ext.get::<String>().unwrap();
+                write!(f, "{} ", data);
+            }
+
             if let Some(metadata) = self.ctx.ctx.metadata(id) {
                 if self.ansi {
                     write!(f, "{}", Style::new().bold().paint(metadata.name()))?;

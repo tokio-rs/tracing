@@ -6,7 +6,7 @@ use crate::{
 };
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
-    span::{Id, Record},
+    span::{Attributes, Id, Record},
     Event, Subscriber,
 };
 
@@ -191,14 +191,22 @@ where
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
-    fn on_close(&self, id: Id, _: Context<'_, S>) {
-        // dbg!(id);
+    fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let span = span.data;
+        let mut fields = String::new();
+        if self.fmt_fields.format_fields(&mut fields, attrs).is_ok() {
+            span.extensions_mut().insert(fields);
+        }
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
         if let Some(span) = ctx.span(id) {
-            let data = span.data;
-            let extensions = data.extensions_mut();
+            let mut buf = String::new();
+            if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
+                let mut writer = self.make_writer.make_writer();
+                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+            }
         }
     }
 
