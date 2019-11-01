@@ -6,8 +6,8 @@ use crate::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 use std::{
-    borrow::Borrow,
     cell::RefCell,
+    rc::Rc,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -173,31 +173,6 @@ impl<'a> LookupSpan<'a> for Registry {
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         self.get(id)
     }
-
-    // TODO(david): move this somewhere more appropriate; rewrite in terms of `SpanData`.
-    fn visit_parents<E, F>(&self, mut f: F) -> Result<(), E>
-    where
-        F: FnMut(&Id) -> Result<(), E>,
-    {
-        let res = CURRENT_SPANS.with(|spans| {
-            let spans = spans.borrow();
-            if let Some(id) = spans.current().clone() {
-                // TODO(david): make this a less unpleasant loop.
-                let mut span = self.span(&id);
-                loop {
-                    if let Some(s) = span {
-                        let id = s.id();
-                        f(&id);
-                        span = s.parent()
-                    } else {
-                        break;
-                    }
-                }
-            }
-        });
-        Ok(res)
-        // Ok(())
-    }
 }
 
 impl LookupMetadata for Registry {
@@ -257,7 +232,6 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
     fn follows_from(&self) -> Self::Follows {
         unimplemented!("david: add this to `BigSpan`")
     }
-
     fn extensions(&self) -> RwLockReadGuard<'_, Extensions> {
         self.extensions.read().expect("Mutex poisoned")
     }
