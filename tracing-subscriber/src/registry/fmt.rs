@@ -289,6 +289,27 @@ where
     where
         F: FnMut(&Id) -> Result<(), E>,
     {
-        self.ctx.visit_parents(f)
+        let current_span = self.ctx.current_span();
+        let id = match current_span.id() {
+            Some(id) => id,
+            None => return Ok(()),
+        };
+        let span = match self.ctx.span(id) {
+            Some(span) => span,
+            None => return Ok(()),
+        };
+
+        // this isn't _great_, because we allocate for each iteration. a
+        // better way to handle this would be to the recursive approach that
+        // `fmt` pursues that _does not_ entail any allocation in this fmt'ing
+        // spans path. however, that requires passing the store to `visit_spans`
+        // with a different lifetime, and i'm too lazy to sort that out now. this
+        // workaround shouldn't remaining in the final shipping version _unless_
+        // benchmarks show that allocating two vecs is preferable to not-very-deep
+        // recursion. I'd be suprised if that's the case.
+        let mut parents = span.parents().map(|span| span.id()).collect::<Vec<Id>>();
+        let mut current = vec![id.clone()];
+        current.append(&mut parents);
+        current.iter().rev().try_for_each(f)
     }
 }

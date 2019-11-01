@@ -60,7 +60,7 @@ pub trait LookupSpan<'a> {
     type Data: SpanData<'a>;
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
-    fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
+    fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
     where
         Self: Sized,
     {
@@ -70,11 +70,6 @@ pub trait LookupSpan<'a> {
             data,
         })
     }
-
-    // TODO(david): move this somewhere more appropriate; rewrite in terms of `SpanData`.
-    fn visit_parents<E, F>(&'a self, f: F) -> Result<(), E>
-    where
-        F: FnMut(&Id) -> Result<(), E>;
 }
 
 pub trait SpanData<'a> {
@@ -123,7 +118,7 @@ where
         })
     }
 
-    pub fn parents(&'a self) -> Parents<'a, R> {
+    pub fn parents(&self) -> Parents<'_, R> {
         Parents {
             registry: self.registry,
             next: self.parent().map(|parent| parent.id()),
