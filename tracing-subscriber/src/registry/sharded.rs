@@ -74,7 +74,14 @@ impl Subscriber for Registry {
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        let parent = attrs.parent().map(|id| self.clone_span(id));
+        let parent = if attrs.is_root() {
+            None
+        } else if attrs.is_contextual() {
+            self.current_span().id().map(|id| self.clone_span(id))
+        } else {
+            attrs.parent().map(|id| self.clone_span(id))
+        };
+
         let s = Data {
             metadata: attrs.metadata(),
             parent,
