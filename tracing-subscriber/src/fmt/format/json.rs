@@ -58,7 +58,8 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            serializer.serialize_entry("fields", &event.field_map())
+            serializer.serialize_entry("fields", &event.field_map())?;
+            serializer.end()
         };
 
         visit().map_err(|_| fmt::Error)?;
@@ -264,7 +265,7 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"name\":\"json_span\",\"fields\":\"{\\\"answer\\\":42,\\\"number\\\":3}\"},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}\n";
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"name\":\"json_span\",\"fields\":\"{\\\"answer\\\":42,\\\"number\\\":3}\"},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
         test_json(make_writer, expected, &BUF);
     }
