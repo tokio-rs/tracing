@@ -6,7 +6,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tokio_test::task::MockTask;
+use tokio_test::task;
 
 pub struct PollN<T, E> {
     and_return: Option<Result<T, E>>,
@@ -53,14 +53,13 @@ impl PollN<(), ()> {
     }
 }
 
-pub fn block_on_future<F>(task: &mut MockTask, future: F) -> F::Output
+pub fn block_on_future<F>(future: F) -> F::Output
 where
     F: Future,
 {
-    let mut future = Box::pin(future);
-
+    let mut task = task::spawn(future);
     loop {
-        match task.poll(&mut future) {
+        match task.poll() {
             Poll::Ready(v) => break v,
             _ => {}
         }
