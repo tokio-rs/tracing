@@ -4,6 +4,7 @@ use crate::{
     layer::{Context, Layer},
     registry::{LookupMetadata, LookupSpan, Registry, SpanData},
 };
+use smallvec::{smallvec, SmallVec};
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
     span::{Attributes, Id, Record},
@@ -307,9 +308,8 @@ where
         // workaround shouldn't remaining in the final shipping version _unless_
         // benchmarks show that allocating two vecs is preferable to not-very-deep
         // recursion. I'd be suprised if that's the case.
-        let mut parents = span.parents().map(|span| span.id()).collect::<Vec<Id>>();
-        let mut current = vec![id.clone()];
-        current.append(&mut parents);
+        let mut current: SmallVec<[Id; 16]> = smallvec![id.clone()];
+        current.extend(span.parent().map(|span| span.id()));
         current.iter().rev().try_for_each(f)
     }
 }
