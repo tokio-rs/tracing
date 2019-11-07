@@ -595,31 +595,23 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         let style = if self.ansi {
-            Style::new().bold()
+            Style::new().bold().blink()
         } else {
-            Style::new()
+            Style::new().bold().blink()
         };
         self.ctx.visit_spans(|id| {
-            if seen {
-                f.pad(":")?;
+            let span = self.ctx.ctx.span(id);
+            if let Some(metadata) = self.ctx.ctx.metadata(id) {
+                write!(f, "{}", style.paint(metadata.name()))?;
             }
             seen = true;
 
-            let span = self.ctx.ctx.span(id);
             if let Some(span) = span {
                 let ext = span.data.extensions_mut();
                 let data = ext.get::<String>().unwrap();
-                write!(f, "{} ", data);
+                write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
             }
-
-            if let Some(metadata) = self.ctx.ctx.metadata(id) {
-                if self.ansi {
-                    write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
-                } else {
-                    write!(f, "{}", metadata.name())?;
-                }
-            }
-            Ok(())
+            ":".fmt(f)
         })?;
         if seen {
             f.pad(" ")?;
