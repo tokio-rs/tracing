@@ -153,6 +153,21 @@ where
             _inner: self._inner,
         }
     }
+
+    /// Builds a [FmtLayer] with `log` integration.
+    pub fn build_with_logger(
+        self,
+    ) -> Result<FmtLayer<S, N, E, W>, Box<dyn std::error::Error + Send + Sync + 'static>> {
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::init()?;
+        Ok(FmtLayer {
+            is_interested: self.is_interested,
+            make_writer: self.make_writer,
+            fmt_fields: self.fmt_fields,
+            fmt_event: self.fmt_event,
+            _inner: self._inner,
+        })
+    }
 }
 
 impl Default for FmtLayerBuilder {
