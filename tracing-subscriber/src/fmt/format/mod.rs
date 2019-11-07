@@ -5,7 +5,10 @@ use super::{
 };
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    registry::{fmt::FmtContext, LookupMetadata, LookupSpan, SpanData},
+    registry::{
+        fmt::{FmtContext, FormattedFields},
+        LookupMetadata, LookupSpan, SpanData,
+    },
 };
 
 use std::{
@@ -595,9 +598,9 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         let style = if self.ansi {
-            Style::new().bold().blink()
+            Style::new().bold()
         } else {
-            Style::new().bold().blink()
+            Style::new()
         };
         self.ctx.visit_spans(|id| {
             let span = self.ctx.ctx.span(id);
@@ -607,8 +610,11 @@ where
             seen = true;
 
             if let Some(span) = span {
-                let ext = span.data.extensions_mut();
-                let data = ext.get::<String>().unwrap();
+                let ext = span.extensions_mut();
+                let data = &ext
+                    .get::<FormattedFields<N>>()
+                    .expect("Unable to find FormattedFields in extensions; this is a bug")
+                    .fmt_fields;
                 write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
             }
             ":".fmt(f)
