@@ -114,18 +114,17 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
-    let format = Format::default().json();
-    let stdout = FmtLayer::builder().build();
+    let format = Format::default().compact();
+    let stdout = FmtLayer::builder().with_event_formatter(format).build();
     let subscriber = stdout.with_subscriber(Registry::default());
-    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
-    // let mut builder = env_logger::Builder::new();
-    // builder
-    //     .filter(Some("hyper_echo"), log::LevelFilter::Off)
-    //     .filter(Some("hyper"), log::LevelFilter::Trace)
-    //     .emit_traces() // from `tracing_log::env_logger::BuilderExt`
-    //     .try_init()?;
-    // tracing::subscriber::set_global_default(subscriber)?;
+    let mut builder = env_logger::Builder::new();
+    builder
+        .filter(Some("hyper_echo"), log::LevelFilter::Off)
+        .filter(Some("hyper"), log::LevelFilter::Trace)
+        .emit_traces() // from `tracing_log::env_logger::BuilderExt`
+        .try_init()?;
+    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
     let local_addr: std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
     let server_span = span!(Level::TRACE, "server", %local_addr);

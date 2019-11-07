@@ -129,11 +129,11 @@ where
         self.data.children()
     }
 
-    pub fn extensions(&'a self) -> RwLockReadGuard<'_, Extensions> {
+    pub fn extensions(&self) -> RwLockReadGuard<'_, Extensions> {
         self.data.extensions()
     }
 
-    pub fn extensions_mut(&'a self) -> RwLockWriteGuard<'_, Extensions> {
+    pub fn extensions_mut(&self) -> RwLockWriteGuard<'_, Extensions> {
         self.data.extensions_mut()
     }
 }

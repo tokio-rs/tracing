@@ -153,21 +153,6 @@ where
             _inner: self._inner,
         }
     }
-
-    /// Builds a [FmtLayer] with `log` integration.
-    pub fn build_with_logger(
-        self,
-    ) -> Result<FmtLayer<S, N, E, W>, Box<dyn std::error::Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init()?;
-        Ok(FmtLayer {
-            is_interested: self.is_interested,
-            make_writer: self.make_writer,
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            _inner: self._inner,
-        })
-    }
 }
 
 impl Default for FmtLayerBuilder {
@@ -200,6 +185,26 @@ where
 
 // === impl Formatter ===
 
+/// A newtype for storing formatted fields in a span's extensions.
+///
+/// By storing [FormattedFields] instead of a [String] directly,
+/// [FmtLayer] is able to be more defensive about other layers
+/// accidentally a span's extensions.
+#[derive(Default)]
+pub struct FormattedFields<E> {
+    _format_event: PhantomData<fn(E)>,
+    /// The formatted fields of a span.
+    pub fmt_fields: String,
+}
+
+impl<E> fmt::Debug for FormattedFields<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FormattedFields")
+            .field("fmt_fields", &self.fmt_fields)
+            .finish()
+    }
+}
+
 impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
@@ -209,20 +214,29 @@ where
 {
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
-        let span = span.data;
-        let mut fields = String::new();
-        if self.fmt_fields.format_fields(&mut fields, attrs).is_ok() {
-            span.extensions_mut().insert(fields);
+        let mut extensions = span.extensions_mut();
+
+        let mut buf = String::new();
+        if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
+            let fmt_fields = FormattedFields {
+                fmt_fields: buf,
+                _format_event: PhantomData::<fn(N)>,
+            };
+            extensions.insert(fmt_fields);
         }
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
-        if let Some(span) = ctx.span(id) {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
-                let mut writer = self.make_writer.make_writer();
-                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
-            }
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut extensions = span.extensions_mut();
+
+        let mut buf = String::new();
+        if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
+            let fmt_fields = FormattedFields {
+                fmt_fields: buf,
+                _format_event: PhantomData::<fn(N)>,
+            };
+            extensions.insert(fmt_fields);
         }
     }
 
@@ -315,16 +329,16 @@ where
             None => return Ok(()),
         };
 
-        // this isn't _great_, because we allocate for each iteration. a
-        // better way to handle this would be to the recursive approach that
-        // `fmt` pursues that _does not_ entail any allocation in this fmt'ing
+        // an alternative way to handle this would be to the recursive approach that
+        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path. however, that requires passing the store to `visit_spans`
         // with a different lifetime, and i'm too lazy to sort that out now. this
         // workaround shouldn't remaining in the final shipping version _unless_
-        // benchmarks show that allocating two vecs is preferable to not-very-deep
-        // recursion. I'd be suprised if that's the case.
+        // benchmarks show that small-vector optimization is preferable to not-very-deep
+        // recursion.
         let mut current: SmallVec<[Id; 16]> = smallvec![id.clone()];
-        current.extend(span.parent().map(|span| span.id()));
+        current.extend(span.parents().map(|span| span.id()));
+
         current.iter().rev().try_for_each(f)
     }
 }

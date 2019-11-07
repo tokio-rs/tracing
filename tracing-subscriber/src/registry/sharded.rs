@@ -7,7 +7,6 @@ use crate::{
 };
 use std::{
     cell::RefCell,
-    rc::Rc,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
