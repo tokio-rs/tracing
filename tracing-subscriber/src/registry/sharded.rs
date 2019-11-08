@@ -226,7 +226,7 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
     type Follows = std::slice::Iter<'a, Id>;
 
     fn id(&self) -> Id {
-        idx_to_id(self.idx())
+        idx_to_id(self.key())
     }
 
     fn metadata(&self) -> &'static Metadata<'static> {
