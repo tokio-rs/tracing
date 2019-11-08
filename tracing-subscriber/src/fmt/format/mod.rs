@@ -757,6 +757,8 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 mod test {
 
     use crate::fmt::{test::MockWriter, time::FormatTime};
+    use crate::Layer;
+    use crate::{fmt::format::Format, FmtLayer, Registry};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
@@ -821,11 +823,18 @@ mod test {
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
-        let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
-            .with_ansi(is_ansi)
-            .with_timer(MockTime)
-            .finish();
+        let format = Format::default().with_ansi(is_ansi).with_timer(MockTime);
+        let fmt = FmtLayer::builder()
+            .with_interest(|_| true)
+            .with_event_formatter(format)
+            .build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+
+        // let subscriber = crate::fmt::Subscriber::builder()
+        //     .with_writer(make_writer)
+        //     .with_ansi(is_ansi)
+        //     .with_timer(MockTime)
+        //     .finish();
 
         with_default(subscriber, || {
             tracing::info!("some ansi test");

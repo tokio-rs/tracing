@@ -4,7 +4,6 @@ use crate::{
     layer::{Context, Layer},
     registry::{LookupMetadata, LookupSpan, Registry, SpanRef},
 };
-use smallvec::SmallVec;
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
     span::{Attributes, Id, Record},
@@ -152,6 +151,12 @@ where
             fmt_event: self.fmt_event,
             _inner: self._inner,
         }
+    }
+}
+
+impl Default for FmtLayer {
+    fn default() -> Self {
+        FmtLayerBuilder::default().build()
     }
 }
 
