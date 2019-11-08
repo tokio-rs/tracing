@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry, SpanData},
+    registry::{LookupMetadata, LookupSpan, Registry, SpanData, SpanRef},
 };
 use smallvec::{smallvec, SmallVec};
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
@@ -232,6 +232,10 @@ where
 
         let mut buf = String::new();
         if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
+            let buf = match extensions.get_mut::<FormattedFields<Self>>() {
+                Some(fields) => format!("{}{}", fields.fmt_fields, buf),
+                None => buf,
+            };
             let fmt_fields = FormattedFields {
                 fmt_fields: buf,
                 _format_event: PhantomData::<fn(N)>,
@@ -274,20 +278,12 @@ where
 }
 
 /// `FmtContext` is used to propogate subscriber context to tracing_subscriber::fmt.
-pub struct FmtContext<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
+pub struct FmtContext<'a, S, N> {
     pub(crate) ctx: Context<'a, S>,
     pub(crate) fmt_fields: &'a N,
 }
 
-impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
+impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FmtContext").finish()
     }
@@ -315,9 +311,9 @@ where
     // TODO(david): consider an alternative location for this.
     /// Visits parent spans. Used to visit parent spans when formatting spans
     /// and events
-    pub fn visit_spans<E, F>(&self, f: F) -> Result<(), E>
+    pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
     where
-        F: FnMut(&Id) -> Result<(), E>,
+        F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
         let current_span = self.ctx.current_span();
         let id = match current_span.id() {
@@ -336,9 +332,14 @@ where
         // workaround shouldn't remaining in the final shipping version _unless_
         // benchmarks show that small-vector optimization is preferable to not-very-deep
         // recursion.
-        let mut current: SmallVec<[Id; 16]> = smallvec![id.clone()];
-        current.extend(span.parents().map(|span| span.id()));
-
-        current.iter().rev().try_for_each(f)
+        let parents = span.parents().collect::<SmallVec<[_; 16]>>();
+        let mut iter = parents.iter().rev();
+        // visit all the parent spans...
+        while let Some(parent) = iter.next() {
+            f(parent)?;
+        }
+        // and finally, print out the current span.
+        f(&span)?;
+        Ok(())
     }
 }

@@ -518,19 +518,19 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
-        self.ctx.visit_spans(|id| {
+        self.ctx.visit_spans(|span| {
             if seen {
                 f.pad(":")?;
             }
             seen = true;
 
-            if let Some(metadata) = self.ctx.ctx.metadata(id) {
-                if self.ansi {
-                    write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
-                } else {
-                    write!(f, "{}", metadata.name())?;
-                }
+            let metadata = span.metadata();
+            if self.ansi {
+                write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
+            } else {
+                write!(f, "{}", metadata.name())?;
             }
+
             Ok(())
         })?;
         if seen {
@@ -602,21 +602,17 @@ where
         } else {
             Style::new()
         };
-        self.ctx.visit_spans(|id| {
-            let span = self.ctx.ctx.span(id);
-            if let Some(metadata) = self.ctx.ctx.metadata(id) {
-                write!(f, "{}", style.paint(metadata.name()))?;
-            }
+        self.ctx.visit_spans(|span| {
+            let metadata = span.metadata();
+            write!(f, "{}", style.paint(metadata.name()))?;
             seen = true;
 
-            if let Some(span) = span {
-                let ext = span.extensions_mut();
-                let data = &ext
-                    .get::<FormattedFields<N>>()
-                    .expect("Unable to find FormattedFields in extensions; this is a bug")
-                    .fmt_fields;
-                write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
-            }
+            let ext = span.extensions();
+            let data = &ext
+                .get::<FormattedFields<N>>()
+                .expect("Unable to find FormattedFields in extensions; this is a bug")
+                .fmt_fields;
+            write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
             ":".fmt(f)
         })?;
         if seen {

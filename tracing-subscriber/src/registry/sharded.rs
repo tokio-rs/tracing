@@ -2,8 +2,11 @@ use sharded_slab::{Guard, Slab};
 
 use crate::{
     fmt::span::SpanStack,
-    registry::{extensions::Extensions, LookupMetadata, LookupSpan, SpanData},
-    sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
+    registry::{
+        extensions::{Extensions, ExtensionsInner, ExtensionsMut},
+        LookupMetadata, LookupSpan, SpanData,
+    },
+    sync::RwLock,
 };
 use std::{
     cell::RefCell,
@@ -25,9 +28,8 @@ pub struct Registry {
 pub struct Data {
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
-    children: Vec<Id>,
     ref_count: AtomicUsize,
-    pub(crate) extensions: RwLock<Extensions>,
+    pub(crate) extensions: RwLock<ExtensionsInner>,
 }
 
 // === impl Registry ===
@@ -84,26 +86,23 @@ impl Subscriber for Registry {
         let s = Data {
             metadata: attrs.metadata(),
             parent,
-            children: vec![],
             ref_count: AtomicUsize::new(1),
-            extensions: RwLock::new(Extensions::new()),
+            extensions: RwLock::new(ExtensionsInner::new()),
         };
         let id = self.insert(s).expect("Unable to allocate another span");
         idx_to_id(id)
     }
 
+    /// This is intentionally not implemented, as recording fields
+    /// on a span is the responsibility of layers atop of this registry.
     #[inline]
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {
-        // TODO(david)—implement this.
-    }
+    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
 
-    fn record_follows_from(&self, _: &span::Id, _: &span::Id) {
-        // TODO(david)—implement this.
-    }
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {}
 
-    fn event(&self, _: &Event<'_>) {
-        // TODO(david)—implement this.
-    }
+    /// This is intentionally not implemented, as recording events
+    /// is the responsibility of layers atop of this registry.
+    fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
         CURRENT_SPANS.with(|spans| {
@@ -142,7 +141,6 @@ impl Subscriber for Registry {
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    #[inline]
     fn try_close(&self, id: span::Id) -> bool {
         let span = match self.get(&id) {
             Some(span) => span,
@@ -176,11 +174,7 @@ impl<'a> LookupSpan<'a> for Registry {
 
 impl LookupMetadata for Registry {
     fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>> {
-        if let Some(span) = self.get(id) {
-            Some(span.metadata())
-        } else {
-            None
-        }
+        self.get(id).map(|data| data.metadata())
     }
 }
 
@@ -213,28 +207,33 @@ impl Drop for Data {
 }
 
 impl<'a> SpanData<'a> for Guard<'a, Data> {
-    type Children = std::slice::Iter<'a, Id>;
     type Follows = std::slice::Iter<'a, Id>;
 
     fn id(&self) -> Id {
         idx_to_id(self.idx())
     }
+
     fn metadata(&self) -> &'static Metadata<'static> {
         (*self).metadata
     }
+
     fn parent(&self) -> Option<&Id> {
         self.parent.as_ref()
     }
-    fn children(&'a self) -> Self::Children {
-        self.children.iter()
-    }
+
     fn follows_from(&self) -> Self::Follows {
         unimplemented!("david: add this to `BigSpan`")
     }
-    fn extensions(&self) -> RwLockReadGuard<'_, Extensions> {
-        self.extensions.read().expect("Mutex poisoned")
+
+    fn extensions(&self) -> Extensions<'_> {
+        Extensions {
+            inner: self.extensions.read().expect("Mutex poisoned"),
+        }
     }
-    fn extensions_mut(&self) -> RwLockWriteGuard<'_, Extensions> {
-        self.extensions.write().expect("Mutex poisoned")
+
+    fn extensions_mut(&self) -> ExtensionsMut<'_> {
+        ExtensionsMut {
+            inner: self.extensions.write().expect("Mutex poisoned"),
+        }
     }
 }
