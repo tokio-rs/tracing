@@ -113,7 +113,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
-    let stdout = FmtLayer::builder().with_interest(|_| true).build();
+    let stdout = FmtLayer::builder().build();
     let subscriber = stdout.with_subscriber(Registry::default());
 
     let mut builder = env_logger::Builder::new();

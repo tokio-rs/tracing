@@ -287,7 +287,6 @@ mod test {
 
         let format = Format::default().json().with_timer(MockTime);
         let fmt = FmtLayer::builder()
-            .with_interest(|_| true)
             .with_writer(make_writer)
             .with_event_formatter(format)
             .build();
