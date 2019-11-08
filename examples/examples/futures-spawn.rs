@@ -32,7 +32,7 @@ fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
 }
 
 fn main() {
-    use tracing_subscriber::{EnvFilter, fmt};
+    use tracing_subscriber::{fmt, EnvFilter};
 
     fmt::Subscriber::builder()
         .with_env_filter(EnvFilter::try_new("futures-spawn=trace").unwrap())

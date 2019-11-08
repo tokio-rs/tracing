@@ -8,7 +8,7 @@ use tokio::net::TcpListener;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
 use tracing_futures::Instrument;
-use tracing_subscriber::{FmtLayer, Layer, Registry};
+use tracing_subscriber::FmtSubscriber;
 use tracing_tower::InstrumentMake;
 
 type Response = http::Response<RspBody>;
@@ -100,9 +100,7 @@ fn main() {
     let filter = EnvFilter::from_default_env()
         .add_directive("tower_h2_server=trace".parse().unwrap())
         .add_directive("tracing_tower=trace".parse().unwrap());
-    let subscriber = FmtLayer::default()
-        .and_then(filter)
-        .with_subscriber(Registry::default());
+    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 
     let addr = "[::1]:8888".parse().unwrap();
