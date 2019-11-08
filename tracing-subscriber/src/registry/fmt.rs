@@ -2,16 +2,16 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry, SpanData, SpanRef},
+    registry::{LookupMetadata, LookupSpan, Registry, SpanRef},
 };
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
 };
 
-/// A `Subscriber` that logs formatted representations of `tracing` events.
+/// A [Layer] that logs formatted representations of `tracing` events.
 pub struct FmtLayer<
     S = Registry,
     N = format::DefaultFields,

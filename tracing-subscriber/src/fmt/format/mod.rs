@@ -45,7 +45,7 @@ pub use json::*;
 pub trait FormatEvent<S, N>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
@@ -60,7 +60,7 @@ impl<S, N> FormatEvent<S, N>
     for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
         &self,
@@ -225,8 +225,8 @@ impl<F, T> Format<F, T> {
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -279,7 +279,7 @@ where
 impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -484,11 +484,7 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
     }
 }
 
-struct FmtCtx<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
+struct FmtCtx<'a, S, N> {
     ctx: &'a FmtContext<'a, S, N>,
     #[cfg(feature = "ansi")]
     ansi: bool,
