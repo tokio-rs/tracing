@@ -55,6 +55,7 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
+            // TODO(david): fix this
             // let span = ctx.ctx.current_span();
             // serializer
             //     .serialize_entry("span", &span)

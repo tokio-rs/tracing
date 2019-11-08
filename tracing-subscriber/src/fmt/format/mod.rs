@@ -643,7 +643,7 @@ where
     }
 }
 
-pub struct FmtLevel<'a> {
+struct FmtLevel<'a> {
     level: &'a Level,
     #[cfg(feature = "ansi")]
     ansi: bool,
