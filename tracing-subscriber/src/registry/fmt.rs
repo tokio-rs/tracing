@@ -10,7 +10,9 @@ use tracing_core::{
     Event, Subscriber,
 };
 
-/// A [Layer] that logs formatted representations of `tracing` events.
+/// A [`Layer`] that logs formatted representations of `tracing` events.
+///
+/// [`Layer`]: ../trait.Layer.html
 pub struct FmtLayer<
     S = Registry,
     N = format::DefaultFields,

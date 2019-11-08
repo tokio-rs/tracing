@@ -714,10 +714,21 @@ impl<'a, S: Subscriber> Context<'a, S> {
         self.subscriber.as_ref()?.metadata(id)
     }
 
-    /// Returns a span with the given `id`, if it exists.
+    /// Returns [stored data] for the span with the given `id`, if it exists.
     ///
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + for<'span> LookupSpan<'span>,
+    /// ```
+    /// or similar.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry_unstable")]
     pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
@@ -728,6 +739,16 @@ impl<'a, S: Subscriber> Context<'a, S> {
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupMetadata`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + LookupMetadata,
+    /// ```
+    /// or similar.
+    ///
+    /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
     #[inline]
     #[cfg(feature = "registry_unstable")]
     pub fn exists(&self, id: &span::Id) -> bool

@@ -19,18 +19,25 @@ use tracing_core::{
     Event, Interest, Metadata, Subscriber,
 };
 
-/// `Registry` is a shared, reusable store for spans.
+/// A shared, reusable store for spans.
+///
+/// This registry is implemented using a [lock-free sharded slab][1], and is
+/// highly optimized for concurrent access.
+///
+/// [1]: https://docs.rs/crate/sharded-slab/0.0.5
 #[derive(Debug)]
 pub struct Registry {
     spans: Slab<Data>,
 }
 
-/// The [Registry]'s view of a span. This definition
-/// is intentionally kept small—only data pertaining
-/// to span relationships, span metadata, and active
-/// references are stored. Additional data, such as
-/// formatted fields, are stored within the extensions
-/// typemap.
+/// Span data stored in a [`Registry`].
+///
+/// This definition  is intentionally kept small—only data pertaining to span
+/// relationships, span metadata, and active references are stored. Additional
+/// data, such as formatted fields, may be stored in the [extensions] typemap.
+///
+/// [`Registry`]: ../struct.Registry.html
+/// [extensions]: ../extensions/index.html
 #[derive(Debug)]
 pub struct Data {
     metadata: &'static Metadata<'static>,
