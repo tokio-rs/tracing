@@ -15,7 +15,6 @@ fn main() {
     color_backtrace::install();
 
     let stderr = FmtLayer::builder()
-        .with_interest(|event| event.metadata().level() <= &Level::WARN)
         .with_writer(io::stderr)
         .with_event_formatter(
             Format::default()
@@ -27,7 +26,6 @@ fn main() {
         .build();
 
     let stdout = FmtLayer::builder()
-        .with_interest(|event| event.metadata().level() >= &Level::INFO)
         .with_writer(io::stdout)
         .build();
 

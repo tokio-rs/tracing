@@ -825,7 +825,6 @@ mod test {
     {
         let format = Format::default().with_ansi(is_ansi).with_timer(MockTime);
         let fmt = FmtLayer::builder()
-            .with_interest(|_| true)
             .with_event_formatter(format)
             .build();
         let subscriber = fmt.with_subscriber(Registry::default());

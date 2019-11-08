@@ -19,11 +19,6 @@ pub struct FmtLayer<
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
 > {
-    // TODO(david): don't force boxing here. consider:
-    // - starting on https://github.com/tokio-rs/tracing/issues/302
-    // - making it a generic param; defaulting to a boxed impl.
-    // - rename this, because this isn't per-subscriber filtering.
-    is_interested: Box<dyn Fn(&Event<'_>) -> bool + Send + Sync + 'static>,
     make_writer: W,
     fmt_fields: N,
     fmt_event: E,
@@ -52,7 +47,6 @@ pub struct FmtLayerBuilder<
     fmt_fields: N,
     fmt_event: E,
     make_writer: W,
-    is_interested: Box<dyn Fn(&Event<'_>) -> bool + Send + Sync + 'static>,
     _inner: PhantomData<S>,
 }
 
@@ -75,29 +69,6 @@ impl FmtLayer {
     }
 }
 
-impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
-where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
-{
-    /// Sets a filter for events. This filter applies to this, and
-    /// subsequent, layers.
-    pub fn with_interest<F>(self, f: F) -> Self
-    where
-        F: Fn(&Event<'_>) -> bool + Send + Sync + 'static,
-    {
-        FmtLayerBuilder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            make_writer: self.make_writer,
-            is_interested: Box::new(f),
-            _inner: self._inner,
-        }
-    }
-}
-
 // This, like the MakeWriter block, needs to be a seperate impl block because we're
 // overriding the `E` type parameter with `E2`.
 impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
@@ -113,7 +84,6 @@ where
             fmt_fields: self.fmt_fields,
             fmt_event: e,
             make_writer: self.make_writer,
-            is_interested: self.is_interested,
             _inner: self._inner,
         }
     }
@@ -130,7 +100,6 @@ impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
         FmtLayerBuilder {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
-            is_interested: self.is_interested,
             make_writer,
             _inner: self._inner,
         }
@@ -147,7 +116,6 @@ where
     /// Builds a [FmtLayer] infalliably.
     pub fn build(self) -> FmtLayer<S, N, E, W> {
         FmtLayer {
-            is_interested: self.is_interested,
             make_writer: self.make_writer,
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
@@ -165,7 +133,6 @@ impl Default for FmtLayer {
 impl Default for FmtLayerBuilder {
     fn default() -> Self {
         Self {
-            is_interested: Box::new(|_| true),
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             make_writer: io::stdout,
@@ -271,12 +238,10 @@ where
                 }
             };
 
-            if (self.is_interested)(event) {
-                let ctx = self.make_ctx(ctx);
-                if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
-                    let mut writer = self.make_writer.make_writer();
-                    let _ = io::Write::write_all(&mut writer, buf.as_bytes());
-                }
+            let ctx = self.make_ctx(ctx);
+            if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
+                let mut writer = self.make_writer.make_writer();
+                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
             buf.clear();
