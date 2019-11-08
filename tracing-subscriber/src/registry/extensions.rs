@@ -44,7 +44,7 @@ impl<'a> Extensions<'a> {
         Self { inner }
     }
 
-    /// Get a mutable reference to a type previously inserted on this `Extensions`.
+    /// Immutably borrows a type previously inserted into this `Extensions`.
     pub fn get<T: 'static>(&self) -> Option<&T> {
         self.inner.get::<T>()
     }
