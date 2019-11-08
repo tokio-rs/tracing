@@ -2,7 +2,6 @@
 
 use tracing::{debug, info, span, Level};
 use tracing_attributes::instrument;
-use tracing_subscriber::{EnvFilter, FmtLayer, Layer, Registry};
 
 #[instrument]
 #[inline]
@@ -12,9 +11,10 @@ fn suggest_band() -> String {
 }
 
 fn main() {
-    let subscriber = FmtLayer::default()
-        .and_then(EnvFilter::try_new("attrs_basic=trace").unwrap())
-        .with_subscriber(Registry::default());
+    use tracing_subscriber::{EnvFilter, fmt};
+    let subscriber = fmt::Subscriber::builder()
+        .with_env_filter(EnvFilter::try_new("attrs_basic=trace").unwrap())
+        .finish();
 
     tracing::subscriber::with_default(subscriber, || {
         let num_recs = 1;

@@ -13,8 +13,9 @@ use tracing_core::{
 /// A [`Layer`] that logs formatted representations of `tracing` events.
 ///
 /// [`Layer`]: ../trait.Layer.html
+#[derive(Debug)]
 pub struct FmtLayer<
-    S = Registry,
+    S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
@@ -25,21 +26,11 @@ pub struct FmtLayer<
     _inner: PhantomData<S>,
 }
 
-impl<S, N, E, W> fmt::Debug for FmtLayer<S, N, E, W>
-where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FmtLayer").finish()
-    }
-}
-
-/// A builder for `FmtLayer` that logs formatted representations of `tracing` events.
-pub struct FmtLayerBuilder<
-    S = Registry,
+/// A builder for `FmtLayer` that logs formatted representations of `tracing`
+/// events.
+#[derive(Debug)]
+pub struct Builder<
+    S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
@@ -50,37 +41,27 @@ pub struct FmtLayerBuilder<
     _inner: PhantomData<S>,
 }
 
-impl<S, N, E, W> fmt::Debug for FmtLayerBuilder<S, N, E, W>
-where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FmtLayerBuilder").finish()
-    }
-}
-
-impl FmtLayer {
-    /// Creates a [FmtLayerBuilder].
-    pub fn builder() -> FmtLayerBuilder {
-        FmtLayerBuilder::default()
+impl<S> FmtLayer<S> {
+    /// Creates a [Builder].
+    pub fn builder() -> Builder<S> {
+        Builder::default()
     }
 }
 
 // This, like the MakeWriter block, needs to be a seperate impl block because we're
 // overriding the `E` type parameter with `E2`.
-impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
+impl<S, N, E, W> Builder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
     /// Sets a [FormatEvent<S, N>].
-    pub fn with_event_formatter<E2>(self, e: E2) -> FmtLayerBuilder<S, N, E2, W> {
-        FmtLayerBuilder {
+    pub fn with_event_formatter<E2>(self, e: E2) -> Builder<S, N, E2, W>
+    where
+        E2: FormatEvent<S, N> + 'static,
+    {
+        Builder {
             fmt_fields: self.fmt_fields,
             fmt_event: e,
             make_writer: self.make_writer,
@@ -91,13 +72,13 @@ where
 
 // this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
 // type paramater from the default.
-impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
+impl<S, N, E, W> Builder<S, N, E, W> {
     /// Sets a [MakeWriter] for spans and events.
-    pub fn with_writer<W2>(self, make_writer: W2) -> FmtLayerBuilder<S, N, E, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
     {
-        FmtLayerBuilder {
+        Builder {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             make_writer,
@@ -106,7 +87,7 @@ impl<S, N, E, W> FmtLayerBuilder<S, N, E, W> {
     }
 }
 
-impl<S, N, E, W> FmtLayerBuilder<S, N, E, W>
+impl<S, N, E, W> Builder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -124,13 +105,16 @@ where
     }
 }
 
-impl Default for FmtLayer {
+impl<S> Default for FmtLayer<S>
+where
+    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+{
     fn default() -> Self {
-        FmtLayerBuilder::default().build()
+        Builder::default().build()
     }
 }
 
-impl Default for FmtLayerBuilder {
+impl<S> Default for Builder<S> {
     fn default() -> Self {
         Self {
             fmt_fields: format::DefaultFields::default(),

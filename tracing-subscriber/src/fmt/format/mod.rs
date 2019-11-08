@@ -2,11 +2,12 @@
 use super::{
     span,
     time::{self, FormatTime, SystemTime},
+    FmtContext,
+    FormattedFields,
 };
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     registry::{
-        fmt::{FmtContext, FormattedFields},
         LookupMetadata, LookupSpan, SpanData,
     },
 };
@@ -559,7 +560,7 @@ where
     }
 }
 
-pub struct FullCtx<'a, S, N>
+struct FullCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -758,7 +759,7 @@ mod test {
 
     use crate::fmt::{test::MockWriter, time::FormatTime};
     use crate::Layer;
-    use crate::{fmt::format::Format, FmtLayer, Registry};
+    use crate::{fmt::{format::Format, FmtLayer}, Registry};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 

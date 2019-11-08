@@ -1,7 +1,8 @@
 use super::{span, Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::MakeVisitor,
-    registry::{fmt::FmtContext, LookupMetadata, LookupSpan},
+    fmt::FmtContext,
+    registry::{LookupMetadata, LookupSpan},
 };
 use serde::ser::{SerializeMap, Serializer as _};
 use serde_json::Serializer;
@@ -27,7 +28,7 @@ pub struct Json;
 
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
@@ -36,7 +37,10 @@ where
         ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
-    ) -> fmt::Result {
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    {
         use tracing_serde::fields::AsMap;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -246,8 +250,8 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::fmt::{format::Format, test::MockWriter, time::FormatTime};
-    use crate::{FmtLayer, Layer, Registry};
+    use crate::fmt::{format::Format, FmtLayer, test::MockWriter, time::FormatTime};
+    use crate::{Layer, Registry};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 

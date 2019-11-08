@@ -2,10 +2,6 @@
 
 use tracing::{debug, info};
 use tracing_attributes::instrument;
-use tracing_subscriber::{
-    registry::{FmtLayer, Registry},
-    EnvFilter, Layer,
-};
 
 #[instrument]
 fn nth_fibonacci(n: u64) -> u64 {
@@ -31,10 +27,10 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 }
 
 fn main() {
-    use tracing_subscriber::fmt;
-    let subscriber = FmtLayer::default()
-        .and_then(EnvFilter::try_new("attrs_basic=trace").unwrap())
-        .with_subscriber(Registry::default());
+    use tracing_subscriber::{fmt, EnvFilter};
+    let subscriber = fmt::Subscriber::builder()
+        .with_env_filter(EnvFilter::try_new("attrs_basic=trace").unwrap())
+        .finish();
 
     tracing::subscriber::with_default(subscriber, || {
         let n = 5;
