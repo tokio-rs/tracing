@@ -192,7 +192,7 @@ where
 
 // === impl Formatter ===
 
-/// A newtype for storing formatted fields in a span's extensions.
+/// A formatted representation of a span's fields stored in its extensions.
 ///
 /// By storing [FormattedFields] instead of a [String] directly,
 /// [FmtLayer] is able to be more defensive about other layers
