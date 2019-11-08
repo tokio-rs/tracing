@@ -10,10 +10,7 @@ use std::str;
 
 use tracing::{debug, error, info, span, Level};
 use tracing_futures::{Instrument, Instrumented};
-use tracing_subscriber::{
-    layer::Layer,
-    registry::{FmtLayer, Registry},
-};
+use tracing_subscriber::fmt::Subscriber;
 
 type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
@@ -113,9 +110,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
-    let stdout = FmtLayer::builder().build();
-    let subscriber = stdout.with_subscriber(Registry::default());
-
+    let subscriber = Subscriber::builder().with_writer(std::io::stdout).finish();
     let mut builder = env_logger::Builder::new();
     builder
         .filter(Some("hyper_echo"), log::LevelFilter::Off)

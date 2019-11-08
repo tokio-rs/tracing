@@ -1,35 +1,21 @@
 #![deny(rust_2018_idioms)]
 use std::io;
-use tracing::{debug, Level};
-use tracing_subscriber::{
-    fmt::format::Format,
-    fmt::time::ChronoUtc,
-    layer::Layer,
-    registry::{FmtLayer, Registry},
-};
+use tracing::debug;
+use tracing_subscriber::{fmt::format::Format, fmt::time::ChronoUtc, fmt::Subscriber};
 
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 
 fn main() {
-    color_backtrace::install();
-
-    let stderr = FmtLayer::builder()
-        .with_writer(io::stderr)
-        .with_event_formatter(
-            Format::default()
-                .with_timer(ChronoUtc::rfc3339())
-                .with_ansi(false)
-                .with_target(false)
-                .json(),
-        )
-        .build();
-
-    let stdout = FmtLayer::builder()
+    let format = Format::default()
+        .with_timer(ChronoUtc::rfc3339())
+        .with_ansi(false)
+        .with_target(false)
+        .json();
+    let subscriber = Subscriber::builder()
         .with_writer(io::stdout)
-        .build();
-
-    let subscriber = stdout.and_then(stderr).with_subscriber(Registry::default());
+        .on_event(format)
+        .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
     let number_of_yaks = 3;
