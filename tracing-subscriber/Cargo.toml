@@ -56,7 +56,7 @@ humantime = "1.2"
 parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
 
 # registry
-sharded-slab = { git = "https://github.com/davidbarsky/sharded-slab", optional = true }
+sharded-slab = { version = "0.0.6", optional = true }
 
 [dev-dependencies]
 tracing = "0.1"
