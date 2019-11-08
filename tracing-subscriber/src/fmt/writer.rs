@@ -57,7 +57,7 @@ mod test {
     use super::MakeWriter;
     use crate::fmt::test::{MockMakeWriter, MockWriter};
     use crate::fmt::Subscriber;
-    use crate::{fmt::format::Format, FmtLayer, Layer, Registry};
+    use crate::{fmt::{format::Format, FmtLayer}, Layer, Registry};
     use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tracing::error;

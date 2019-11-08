@@ -4,11 +4,9 @@
 use tracing_core::{span::Id, Metadata};
 
 pub mod extensions;
-pub mod fmt;
-pub mod sharded;
+mod sharded;
 
 pub use extensions::{Extensions, ExtensionsMut};
-pub use fmt::{FmtLayer, FmtLayerBuilder};
 pub use sharded::{Data, Registry};
 
 /// Provides access to stored span metadata.

@@ -1,6 +1,6 @@
 mod support;
 use tracing::{self, subscriber::with_default, Span};
-use tracing_subscriber::{filter::EnvFilter, FmtLayer, Layer, Registry};
+use tracing_subscriber::{filter::EnvFilter, fmt::FmtLayer, Layer, Registry};
 
 #[test]
 fn duplicate_spans() {
