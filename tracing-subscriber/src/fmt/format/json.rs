@@ -246,8 +246,8 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 
 #[cfg(test)]
 mod test {
-
-    use crate::fmt::{test::MockWriter, time::FormatTime};
+    use crate::fmt::{format::Format, test::MockWriter, time::FormatTime};
+    use crate::{FmtLayer, Layer, Registry};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
@@ -279,11 +279,19 @@ mod test {
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
-        let subscriber = crate::fmt::Subscriber::builder()
-            .json()
+        // let subscriber = crate::fmt::Subscriber::builder()
+        //     .json()
+        //     .with_writer(make_writer)
+        //     .with_timer(MockTime)
+        //     .finish();
+
+        let format = Format::default().json().with_timer(MockTime);
+        let fmt = FmtLayer::builder()
+            .with_interest(|_| true)
             .with_writer(make_writer)
-            .with_timer(MockTime)
-            .finish();
+            .with_event_formatter(format)
+            .build();
+        let subscriber = fmt.with_subscriber(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);

@@ -600,77 +600,6 @@ where
 //     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
 //     /// a span or event is enabled.
 //     ///
-//     /// Note that this method requires the "env-filter" feature flag to be enabled.
-//     ///
-//     /// If a filter was previously set, or a maximum level was set by the
-//     /// [`with_max_level`] method, that value is replaced by the new filter.
-//     ///
-//     /// # Examples
-//     ///
-//     /// Setting a filter based on the value of the `RUST_LOG` environment
-//     /// variable:
-//     /// ```rust
-//     /// use tracing_subscriber::{FmtSubscriber, EnvFilter};
-//     ///
-//     /// let subscriber = FmtSubscriber::builder()
-//     ///     .with_env_filter(EnvFilter::from_default_env())
-//     ///     .finish();
-//     /// ```
-//     ///
-//     /// Setting a filter based on a pre-set filter directive string:
-//     /// ```rust
-//     /// use tracing_subscriber::FmtSubscriber;
-//     ///
-//     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     /// let subscriber = FmtSubscriber::builder()
-//     ///     .with_env_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
-//     ///     .finish();
-//     /// # Ok(()) }
-//     /// ```
-//     ///
-//     /// Adding additional directives to a filter constructed from an env var:
-//     /// ```rust
-//     /// use tracing_subscriber::{
-//     ///     FmtSubscriber,
-//     ///     filter::{EnvFilter, LevelFilter},
-//     /// };
-//     ///
-//     /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
-//     /// let filter = EnvFilter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
-//     ///     // Set the base level when not matched by other directives to WARN.
-//     ///     .add_directive(LevelFilter::WARN.into())
-//     ///     // Set the max level for `my_crate::my_mod` to DEBUG, overriding
-//     ///     // any directives parsed from the env variable.
-//     ///     .add_directive("my_crate::my_mod=debug".parse()?);
-//     ///
-//     /// let subscriber = FmtSubscriber::builder()
-//     ///     .with_env_filter(filter)
-//     ///     .finish();
-//     /// # Ok(())}
-//     /// ```
-//     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-//     /// [`with_max_level`]: #method.with_max_level
-//     #[cfg(feature = "env-filter")]
-//     pub fn with_env_filter(
-//         self,
-//         filter: impl Into<crate::EnvFilter>,
-//     ) -> Builder<N, E, crate::EnvFilter, W>
-//     where
-//         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
-//     {
-//         let filter = filter.into();
-//         Builder {
-//             fmt_fields: self.fmt_fields,
-//             fmt_event: self.fmt_event,
-//             filter,
-//             settings: self.settings,
-//             make_writer: self.make_writer,
-//         }
-//     }
-
-//     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
-//     /// a span or event is enabled.
-//     ///
 //     /// **Note**: this method was renamed to [`with_env_filter`] in version
 //     /// 0.1.2. This method just wraps a call to `with_env_filter`, and will be
 //     /// removed in version 0.2.
@@ -887,100 +816,110 @@ pub fn init() {
     // try_init().expect("Unable to install global subscriber")
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::{writer::MakeWriter, *};
-//     use crate::fmt::Subscriber;
-//     use std::{
-//         io,
-//         sync::{Mutex, MutexGuard, TryLockError},
-//     };
-//     use tracing_core::dispatcher::Dispatch;
+#[cfg(test)]
+mod test {
+    use super::{writer::MakeWriter, *};
+    use crate::fmt::Subscriber;
+    use crate::fmt::format::Format;
+    use crate::{FmtLayer, Layer, Registry};
+    use std::{
+        io,
+        sync::{Mutex, MutexGuard, TryLockError},
+    };
+    use tracing_core::dispatcher::Dispatch;
 
-//     pub(crate) struct MockWriter<'a> {
-//         buf: &'a Mutex<Vec<u8>>,
-//     }
+    pub(crate) struct MockWriter<'a> {
+        buf: &'a Mutex<Vec<u8>>,
+    }
 
-//     impl<'a> MockWriter<'a> {
-//         pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
-//             Self { buf }
-//         }
+    impl<'a> MockWriter<'a> {
+        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+            Self { buf }
+        }
 
-//         pub(crate) fn map_error<Guard>(err: TryLockError<Guard>) -> io::Error {
-//             match err {
-//                 TryLockError::WouldBlock => io::Error::from(io::ErrorKind::WouldBlock),
-//                 TryLockError::Poisoned(_) => io::Error::from(io::ErrorKind::Other),
-//             }
-//         }
+        pub(crate) fn map_error<Guard>(err: TryLockError<Guard>) -> io::Error {
+            match err {
+                TryLockError::WouldBlock => io::Error::from(io::ErrorKind::WouldBlock),
+                TryLockError::Poisoned(_) => io::Error::from(io::ErrorKind::Other),
+            }
+        }
 
-//         pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
-//             self.buf.try_lock().map_err(Self::map_error)
-//         }
-//     }
+        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+            self.buf.try_lock().map_err(Self::map_error)
+        }
+    }
 
-//     impl<'a> io::Write for MockWriter<'a> {
-//         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-//             self.buf()?.write(buf)
-//         }
+    impl<'a> io::Write for MockWriter<'a> {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buf()?.write(buf)
+        }
 
-//         fn flush(&mut self) -> io::Result<()> {
-//             self.buf()?.flush()
-//         }
-//     }
+        fn flush(&mut self) -> io::Result<()> {
+            self.buf()?.flush()
+        }
+    }
 
-//     pub(crate) struct MockMakeWriter<'a> {
-//         buf: &'a Mutex<Vec<u8>>,
-//     }
+    pub(crate) struct MockMakeWriter<'a> {
+        buf: &'a Mutex<Vec<u8>>,
+    }
 
-//     impl<'a> MockMakeWriter<'a> {
-//         pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
-//             Self { buf }
-//         }
-//     }
+    impl<'a> MockMakeWriter<'a> {
+        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+            Self { buf }
+        }
+    }
 
-//     impl<'a> MakeWriter for MockMakeWriter<'a> {
-//         type Writer = MockWriter<'a>;
+    impl<'a> MakeWriter for MockMakeWriter<'a> {
+        type Writer = MockWriter<'a>;
 
-//         fn make_writer(&self) -> Self::Writer {
-//             MockWriter::new(self.buf)
-//         }
-//     }
+        fn make_writer(&self) -> Self::Writer {
+            MockWriter::new(self.buf)
+        }
+    }
 
-//     #[test]
-//     fn impls() {
-//         let f = format::Format::default().with_timer(time::Uptime::default());
-//         let subscriber = Subscriber::builder().on_event(f).finish();
-//         let _dispatch = Dispatch::new(subscriber);
+    #[test]
+    fn impls() {
+        // let f = format::Format::default().with_timer(time::Uptime::default());
+        let f = Format::default().with_timer(time::Uptime::default());
+        let fmt = FmtLayer::builder().with_event_formatter(f).build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let _dispatch = Dispatch::new(subscriber);
 
-//         let f = format::Format::default();
-//         let subscriber = Subscriber::builder().on_event(f).finish();
-//         let _dispatch = Dispatch::new(subscriber);
+        let f = format::Format::default();
+        let fmt = FmtLayer::builder().with_event_formatter(f).build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let _dispatch = Dispatch::new(subscriber);
 
-//         let f = format::Format::default().compact();
-//         let subscriber = Subscriber::builder().on_event(f).finish();
-//         let _dispatch = Dispatch::new(subscriber);
-//     }
+        let f = format::Format::default().compact();
+        let fmt = FmtLayer::builder().with_event_formatter(f).build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let _dispatch = Dispatch::new(subscriber);
+    }
 
-//     #[test]
-//     fn subscriber_downcasts() {
-//         let subscriber = Subscriber::new();
-//         let dispatch = Dispatch::new(subscriber);
-//         assert!(dispatch.downcast_ref::<Subscriber>().is_some());
-//     }
+    #[test]
+    fn subscriber_downcasts() {
+        let fmt = FmtLayer::builder().build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let dispatch = Dispatch::new(subscriber);
+        assert!(dispatch.downcast_ref::<Subscriber>().is_some());
+    }
 
-//     #[test]
-//     fn subscriber_downcasts_to_parts() {
-//         let subscriber = Subscriber::builder().finish();
-//         let dispatch = Dispatch::new(subscriber);
-//         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
-//         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
-//         assert!(dispatch.downcast_ref::<format::Format>().is_some())
-//     }
+    #[test]
+    fn subscriber_downcasts_to_parts() {
+        let fmt = FmtLayer::builder().build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let dispatch = Dispatch::new(subscriber);
+        assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
+        assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
+        assert!(dispatch.downcast_ref::<format::Format>().is_some())
+    }
 
-//     #[test]
-//     #[cfg(feature = "registry_unstable")]
-//     fn is_lookup_meta() {
-//         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
-//         assert_lookup_meta(Subscriber::builder().finish())
-//     }
-// }
+    #[test]
+    #[cfg(feature = "registry_unstable")]
+    fn is_lookup_meta() {
+        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+        let fmt = FmtLayer::builder().build();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        assert_lookup_meta(subscriber)
+    }
+}

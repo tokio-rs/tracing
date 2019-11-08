@@ -13,6 +13,7 @@ use tower_h2::{Body, RecvBody};
 use tower_service::Service;
 use tower_util::MakeService;
 use tracing_futures::Instrument;
+use tracing_subscriber::{FmtLayer, Layer, Registry};
 use tracing_tower::InstrumentableService;
 
 pub struct Conn(SocketAddr);
@@ -24,9 +25,10 @@ fn main() {
     let filter = EnvFilter::from_default_env()
         .add_directive("tower_h2_client=trace".parse().unwrap())
         .add_directive("tracing_tower=trace".parse().unwrap());
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(filter)
-        .finish();
+
+    let subscriber = FmtLayer::default()
+        .and_then(filter)
+        .with_subscriber(Registry::default());
     let _ = tracing::subscriber::set_global_default(subscriber);
 
     let mut rt = Runtime::new().unwrap();

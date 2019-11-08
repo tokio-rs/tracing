@@ -32,15 +32,15 @@ use tower_hyper::server::Server;
 use std::{error::Error, fmt, net::SocketAddr};
 use tracing;
 use tracing_futures::Instrument;
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::{reload, EnvFilter, FmtLayer, Layer, Registry};
 
 fn main() {
-    let builder = FmtSubscriber::builder()
-        .with_env_filter("info,tower_load=debug")
-        .with_filter_reloading();
-    let handle = builder.reload_handle();
+    let filter = EnvFilter::try_new("info,tower_load=debug").unwrap();
+    let layer = FmtLayer::default().and_then(filter);
+    let (layer, handle) = reload::Layer::new(layer);
+    let layer = layer.with_subscriber(Registry::default());
 
-    let _ = tracing::subscriber::set_global_default(builder.finish());
+    let _ = tracing::subscriber::set_global_default(layer);
 
     let addr = "[::1]:3000".parse().unwrap();
     let admin_addr = "[::1]:3001".parse().unwrap();
@@ -224,7 +224,8 @@ impl Service<()> for MakeSvc {
 }
 
 struct AdminSvc<S> {
-    handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::EnvFilter, S>,
+    handle: reload::Handle<tracing_subscriber::layer::Layered<EnvFilter, FmtLayer, S>, S>,
+    // handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::EnvFilter, S>,
 }
 
 impl<S> Clone for AdminSvc<S> {

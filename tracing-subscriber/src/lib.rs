@@ -111,6 +111,8 @@ pub use filter::{EnvFilter, Filter};
 
 pub use layer::Layer;
 
+pub use registry::{FmtLayer, FmtLayerBuilder, Registry};
+
 #[cfg(feature = "fmt")]
 pub use fmt::Subscriber as FmtSubscriber;
 

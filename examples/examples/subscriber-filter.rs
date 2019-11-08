@@ -3,11 +3,14 @@
 mod yak_shave;
 
 fn main() {
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{
+        registry::{FmtLayer, Registry},
+        EnvFilter, Layer,
+    };
 
-    let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
+    let subscriber = FmtLayer::default()
+        .and_then(EnvFilter::from_default_env())
+        .with_subscriber(Registry::default());
 
     tracing::subscriber::with_default(subscriber, || {
         let number_of_yaks = 3;
