@@ -11,10 +11,10 @@ use std::{
 #[allow(warnings)]
 type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdHasher>>;
 
-// With TypeIds as keys, there's no need to hash them. They are already hashes
-// themselves, coming from the compiler. The IdHasher just holds the u64 of
-// the TypeId, and then returns it, instead of doing any bit fiddling.
-#[derive(Default)]
+/// With TypeIds as keys, there's no need to hash them. They are already hashes
+/// themselves, coming from the compiler. The IdHasher holds the u64 of
+/// the TypeId, and then returns it, instead of doing any bit fiddling.
+#[derive(Default, Debug)]
 pub struct IdHasher(u64);
 
 impl Hasher for IdHasher {
@@ -72,6 +72,13 @@ impl<'a> ExtensionsMut<'a> {
     /// Get a mutable reference to a type previously inserted on this `ExtensionsMut`.
     pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.inner.get_mut::<T>()
+    }
+
+    /// Remove a type from this `Extensions`.
+    ///
+    /// If a extension of this type existed, it will be returned.
+    pub fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
+        self.inner.remove::<T>()
     }
 }
 
@@ -187,25 +194,6 @@ impl ExtensionsInner {
                         .map(|boxed| *boxed)
                 }
             })
-    }
-
-    /// Clear the `Extensions` of all inserted extensions.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use tracing_subscriber::registry::::Extensions;
-    /// let mut ext = Extensions::new();
-    /// ext.insert(5i32);
-    /// ext.clear();
-    ///
-    /// assert!(ext.get::<i32>().is_none());
-    /// ```
-    #[inline]
-    pub(crate) fn clear(&mut self) {
-        if let Some(ref mut map) = self.map {
-            map.clear();
-        }
     }
 }
 

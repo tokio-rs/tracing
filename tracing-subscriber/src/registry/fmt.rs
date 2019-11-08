@@ -308,7 +308,6 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    // TODO(david): consider an alternative location for this.
     /// Visits parent spans. Used to visit parent spans when formatting spans
     /// and events
     pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
@@ -325,6 +324,11 @@ where
             None => return Ok(()),
         };
 
+        #[cfg(feature = "smallvec")]
+        type SpanRefVec<'span, S> = smallvec::SmallVec<[SpanRef<'span, S>; 16]>;
+        #[cfg(not(feature = "smallvec"))]
+        type SpanRefVec<'span, S> = Vec<[SpanRef<'span, S>; 16]>;
+
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path. however, that requires passing the store to `visit_spans`
@@ -332,7 +336,7 @@ where
         // workaround shouldn't remaining in the final shipping version _unless_
         // benchmarks show that small-vector optimization is preferable to not-very-deep
         // recursion.
-        let parents = span.parents().collect::<SmallVec<[_; 16]>>();
+        let parents = span.parents().collect::<SpanRefVec<'_, _>>();
         let mut iter = parents.iter().rev();
         // visit all the parent spans...
         while let Some(parent) = iter.next() {

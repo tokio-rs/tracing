@@ -691,7 +691,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
         }
     }
 
-    /// Returns metadata for tne span with the given `id`, if it exists.
+    /// Returns metadata for the span with the given `id`, if it exists.
     ///
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
@@ -714,6 +714,10 @@ impl<'a, S: Subscriber> Context<'a, S> {
         self.subscriber.as_ref()?.metadata(id)
     }
 
+    /// Returns a span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
     #[inline]
     #[cfg(feature = "registry_unstable")]
     pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
