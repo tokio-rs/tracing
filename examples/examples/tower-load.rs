@@ -36,11 +36,11 @@ use tracing_subscriber::{reload, EnvFilter, FmtLayer, Layer, Registry};
 
 fn main() {
     let filter = EnvFilter::try_new("info,tower_load=debug").unwrap();
-    let layer = FmtLayer::default().and_then(filter);
-    let (layer, handle) = reload::Layer::new(layer);
-    let layer = layer.with_subscriber(Registry::default());
+    let (filter, handle) = reload::Layer::new(filter);
+    let layer = filter.and_then(FmtLayer::default());
+    let subscriber = layer.with_subscriber(Registry::default());
 
-    let _ = tracing::subscriber::set_global_default(layer);
+    let _ = tracing::subscriber::set_global_default(subscriber);
 
     let addr = "[::1]:3000".parse().unwrap();
     let admin_addr = "[::1]:3001".parse().unwrap();
@@ -224,8 +224,7 @@ impl Service<()> for MakeSvc {
 }
 
 struct AdminSvc<S> {
-    handle: reload::Handle<tracing_subscriber::layer::Layered<EnvFilter, FmtLayer, S>, S>,
-    // handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::EnvFilter, S>,
+    handle: tracing_subscriber::reload::Handle<tracing_subscriber::filter::EnvFilter, S>,
 }
 
 impl<S> Clone for AdminSvc<S> {

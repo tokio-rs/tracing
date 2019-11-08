@@ -1,6 +1,6 @@
 #![deny(rust_2018_idioms)]
 use std::io;
-use tracing::{debug, Event, Level};
+use tracing::{debug, Level};
 use tracing_subscriber::{
     fmt::format::Format,
     fmt::time::ChronoUtc,
