@@ -11,7 +11,6 @@ use std::str;
 use tracing::{debug, error, info, span, Level};
 use tracing_futures::{Instrument, Instrumented};
 use tracing_subscriber::{
-    fmt::format::Format,
     layer::Layer,
     registry::{FmtLayer, Registry},
 };
@@ -114,8 +113,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
-    let format = Format::default().compact();
-    let stdout = FmtLayer::builder().with_event_formatter(format).build();
+    let stdout = FmtLayer::builder().with_interest(|_| true).build();
     let subscriber = stdout.with_subscriber(Registry::default());
 
     let mut builder = env_logger::Builder::new();

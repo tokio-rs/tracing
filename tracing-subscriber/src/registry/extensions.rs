@@ -1,5 +1,6 @@
 // taken from https://github.com/hyperium/http/blob/master/src/extensions.rs.
 
+use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
@@ -32,22 +33,47 @@ impl Hasher for IdHasher {
     }
 }
 
-/// A type map of span extensions.
-///
-/// `Extensions` can be used by `Data` to store
-/// extra data, to be consumed by Layers
-#[derive(Default)]
-pub struct Extensions {
-    // If extensions are never used, no need to carry around an empty HashMap.
-    // That's 3 words. Instead, this is only 1 word.
-    pub map: Option<Box<AnyMap>>,
+pub struct Extensions<'a> {
+    // where `ExtensionsInner` is the type that used to be called `Extensions`, which can be made private
+    pub(crate) inner: RwLockReadGuard<'a, ExtensionsInner>,
 }
 
-impl Extensions {
+impl<'a> Extensions<'a> {
+    pub fn get<T: 'static>(&self) -> Option<&T> {
+        self.inner.get::<T>()
+    }
+}
+
+pub struct ExtensionsMut<'a> {
+    pub(crate) inner: RwLockWriteGuard<'a, ExtensionsInner>,
+}
+
+impl<'a> ExtensionsMut<'a> {
+    pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+        self.inner.insert(val)
+    }
+
+    pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.inner.get_mut::<T>()
+    }
+}
+
+/// A type map of span extensions.
+///
+/// `ExtensionsInner` can be used by `Data` to store
+/// extra data, to be consumed by Layers
+#[derive(Default)]
+pub(crate) struct ExtensionsInner {
+    // If extensions are never used, no need to carry around an empty HashMap.
+    // That's 3 words. Instead, this is only 1 word.
+    map: Option<Box<AnyMap>>,
+}
+
+impl ExtensionsInner {
     /// Create an empty `Extensions`.
     #[inline]
-    pub fn new() -> Extensions {
-        Extensions { map: None }
+    pub(crate) fn new() -> ExtensionsInner {
+        ExtensionsInner { map: None }
     }
 
     /// Insert a type into this `Extensions`.
@@ -58,13 +84,13 @@ impl Extensions {
     /// # Example
     ///
     /// ```
-    /// # use tracing_subscriber::registry::::Extensions;
-    /// let mut ext = Extensions::new();
+    /// # use tracing_subscriber::registry::::ExtensionsInner;
+    /// let mut ext = ExtensionsInner::new();
     /// assert!(ext.insert(5i32).is_none());
     /// assert!(ext.insert(4u8).is_none());
     /// assert_eq!(ext.insert(9i32), Some(5i32));
     /// ```
-    pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+    pub(crate) fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.map
             .get_or_insert_with(|| Box::new(HashMap::default()))
             .insert(TypeId::of::<T>(), Box::new(val))
@@ -91,7 +117,7 @@ impl Extensions {
     ///
     /// assert_eq!(ext.get::<i32>(), Some(&5i32));
     /// ```
-    pub fn get<T: 'static>(&self) -> Option<&T> {
+    pub(crate) fn get<T: 'static>(&self) -> Option<&T> {
         self.map
             .as_ref()
             .and_then(|map| map.get(&TypeId::of::<T>()))
@@ -110,7 +136,7 @@ impl Extensions {
     ///
     /// assert_eq!(ext.get::<String>().unwrap(), "Hello World");
     /// ```
-    pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
+    pub(crate) fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
             .as_mut()
             .and_then(|map| map.get_mut(&TypeId::of::<T>()))
@@ -130,7 +156,7 @@ impl Extensions {
     /// assert_eq!(ext.remove::<i32>(), Some(5i32));
     /// assert!(ext.get::<i32>().is_none());
     /// ```
-    pub fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
+    pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
         self.map
             .as_mut()
             .and_then(|map| map.remove(&TypeId::of::<T>()))
@@ -158,14 +184,14 @@ impl Extensions {
     /// assert!(ext.get::<i32>().is_none());
     /// ```
     #[inline]
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         if let Some(ref mut map) = self.map {
             map.clear();
         }
     }
 }
 
-impl fmt::Debug for Extensions {
+impl fmt::Debug for ExtensionsInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Extensions").finish()
     }
@@ -176,7 +202,7 @@ fn test_extensions() {
     #[derive(Debug, PartialEq)]
     struct MyType(i32);
 
-    let mut extensions = Extensions::new();
+    let mut extensions = ExtensionsInner::new();
 
     extensions.insert(5i32);
     extensions.insert(MyType(10));
