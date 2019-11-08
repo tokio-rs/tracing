@@ -284,7 +284,7 @@ where
     }
 }
 
-/// `FmtContext` is used to propogate subscriber context to tracing_subscriber::fmt.
+/// Provides the current span context to a formatter.
 pub struct FmtContext<'a, S, N> {
     pub(crate) ctx: Context<'a, S>,
     pub(crate) fmt_fields: &'a N,
@@ -334,7 +334,7 @@ where
         #[cfg(feature = "smallvec")]
         type SpanRefVec<'span, S> = smallvec::SmallVec<[SpanRef<'span, S>; 16]>;
         #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, S> = Vec<[SpanRef<'span, S>; 16]>;
+        type SpanRefVec<'span, S> = Vec<SpanRef<'span, S>>;
 
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
