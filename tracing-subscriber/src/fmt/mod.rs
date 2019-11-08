@@ -272,7 +272,7 @@ struct Settings {
 //     }
 // }
 
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
 impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
 where
     layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
@@ -391,7 +391,7 @@ where
 //     }
 // }
 
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
 impl<N, E, W> crate::registry::LookupMetadata for Formatter<N, E, W> {
     fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
         self.spans.get(&id).map(|span| span.metadata())
@@ -915,7 +915,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "registry_unstable")]
+    #[cfg(feature = "registry")]
     fn is_lookup_meta() {
         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
         let fmt = FmtLayer::builder().build();

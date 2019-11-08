@@ -6,7 +6,7 @@ use tracing_core::{
     Event,
 };
 
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
 use crate::registry::{self, LookupMetadata, LookupSpan};
 use std::{any::TypeId, marker::PhantomData};
 
@@ -607,7 +607,7 @@ where
     }
 }
 
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
 impl<L, S> LookupMetadata for Layered<L, S>
 where
     S: Subscriber + LookupMetadata,
@@ -706,7 +706,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///
     /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
     #[inline]
-    #[cfg(feature = "registry_unstable")]
+    #[cfg(feature = "registry")]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
         S: LookupMetadata,
@@ -730,7 +730,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [stored data]: ../registry/struct.SpanRef.html
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
-    #[cfg(feature = "registry_unstable")]
+    #[cfg(feature = "registry")]
     pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
     where
         S: LookupSpan<'a>,
@@ -750,7 +750,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///
     /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
     #[inline]
-    #[cfg(feature = "registry_unstable")]
+    #[cfg(feature = "registry")]
     pub fn exists(&self, id: &span::Id) -> bool
     where
         S: LookupMetadata,
