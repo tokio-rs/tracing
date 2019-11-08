@@ -19,11 +19,18 @@ use tracing_core::{
     Event, Interest, Metadata, Subscriber,
 };
 
+/// `Registry` is a shared, reusable store for spans.
 #[derive(Debug)]
 pub struct Registry {
     spans: Slab<Data>,
 }
 
+/// The [Registry]'s view of a span. This definition
+/// is intentionally kept small—only data pertaining
+/// to span relationships, span metadata, and active
+/// references are stored. Additional data, such as
+/// formatted fields, are stored within the extensions
+/// typemap.
 #[derive(Debug)]
 pub struct Data {
     metadata: &'static Metadata<'static>,
@@ -181,10 +188,12 @@ impl LookupMetadata for Registry {
 // === impl Data ===
 
 impl Data {
+    /// Gets the name of a span.
     pub fn name(&self) -> &'static str {
         self.metadata.name()
     }
 
+    /// Gets the fields of a span.
     pub fn fields(&self) -> &FieldSet {
         self.metadata.fields()
     }
@@ -226,14 +235,10 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
     }
 
     fn extensions(&self) -> Extensions<'_> {
-        Extensions {
-            inner: self.extensions.read().expect("Mutex poisoned"),
-        }
+        Extensions::new(self.extensions.read().expect("Mutex poisoned"))
     }
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
-        ExtensionsMut {
-            inner: self.extensions.write().expect("Mutex poisoned"),
-        }
+        ExtensionsMut::new(self.extensions.write().expect("Mutex poisoned"))
     }
 }

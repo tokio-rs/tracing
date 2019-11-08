@@ -33,26 +33,43 @@ impl Hasher for IdHasher {
     }
 }
 
+/// An immutable, read-only reference to a Span's extensions.
+#[derive(Debug)]
 pub struct Extensions<'a> {
-    // where `ExtensionsInner` is the type that used to be called `Extensions`, which can be made private
-    pub(crate) inner: RwLockReadGuard<'a, ExtensionsInner>,
+    inner: RwLockReadGuard<'a, ExtensionsInner>,
 }
 
 impl<'a> Extensions<'a> {
+    pub(crate) fn new(inner: RwLockReadGuard<'a, ExtensionsInner>) -> Self {
+        Self { inner }
+    }
+
+    /// Get a mutable reference to a type previously inserted on this `Extensions`.
     pub fn get<T: 'static>(&self) -> Option<&T> {
         self.inner.get::<T>()
     }
 }
 
+/// An mutable reference to a Span's extensions.
+#[derive(Debug)]
 pub struct ExtensionsMut<'a> {
-    pub(crate) inner: RwLockWriteGuard<'a, ExtensionsInner>,
+    inner: RwLockWriteGuard<'a, ExtensionsInner>,
 }
 
 impl<'a> ExtensionsMut<'a> {
+    pub(crate) fn new(inner: RwLockWriteGuard<'a, ExtensionsInner>) -> Self {
+        Self { inner }
+    }
+
+    /// Insert a type into this `Extensions`.
+    ///
+    /// If a extension of this type already existed, it will
+    /// be returned.
     pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.inner.insert(val)
     }
 
+    /// Get a mutable reference to a type previously inserted on this `ExtensionsMut`.
     pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.inner.get_mut::<T>()
     }
@@ -60,8 +77,9 @@ impl<'a> ExtensionsMut<'a> {
 
 /// A type map of span extensions.
 ///
-/// `ExtensionsInner` can be used by `Data` to store
-/// extra data, to be consumed by Layers
+/// [ExtensionsInner] is used by [Data] to store and
+/// span-specific data. A given [Layer] can read and write
+/// data that it is interested in recording and emitting.
 #[derive(Default)]
 pub(crate) struct ExtensionsInner {
     // If extensions are never used, no need to carry around an empty HashMap.
