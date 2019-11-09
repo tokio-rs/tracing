@@ -186,12 +186,6 @@ impl<'a> LookupSpan<'a> for Registry {
     }
 }
 
-impl LookupMetadata for Registry {
-    fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>> {
-        self.get(id).map(|data| data.metadata())
-    }
-}
-
 // === impl Data ===
 
 impl Data {
