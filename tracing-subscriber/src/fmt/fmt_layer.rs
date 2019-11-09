@@ -107,6 +107,9 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     /// let layer = tracing_subscriber::fmt::FmtLayer::builder()
     ///     .with_writer(io::stderr)
     ///     .finish();
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
     /// [`MakeWriter`]: ../trait.MakeWriter.html
