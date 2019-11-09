@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    registry::{LookupMetadata, LookupSpan},
+    registry::{LookupSpan},
 };
 
 use std::{
@@ -41,7 +41,7 @@ pub use json::*;
 /// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
 pub trait FormatEvent<S, N>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
@@ -56,7 +56,7 @@ where
 impl<S, N> FormatEvent<S, N>
     for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
@@ -222,7 +222,7 @@ impl<F, T> Format<F, T> {
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
@@ -275,7 +275,7 @@ where
 
 impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
@@ -489,7 +489,7 @@ struct FmtCtx<'a, S, N> {
 
 impl<'a, S, N: 'a> FmtCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
@@ -506,7 +506,7 @@ where
 #[cfg(feature = "ansi")]
 impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -536,7 +536,7 @@ where
 #[cfg(not(feature = "ansi"))]
 impl<'a, S, N> fmt::Display for FmtCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     for<'lookup> <S as LookupSpan<'a>>::Data: LookupSpan<'lookup>,
 {
@@ -558,7 +558,7 @@ where
 
 struct FullCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     ctx: &'a FmtContext<'a, S, N>,
@@ -568,7 +568,7 @@ where
 
 impl<'a, S, N: 'a> FullCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
@@ -585,7 +585,7 @@ where
 #[cfg(feature = "ansi")]
 impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -618,7 +618,7 @@ where
 #[cfg(not(feature = "ansi"))]
 impl<'a, N> fmt::Display for FullCtx<'a, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
