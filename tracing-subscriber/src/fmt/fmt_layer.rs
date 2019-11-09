@@ -26,7 +26,7 @@ pub struct FmtLayer<
     _inner: PhantomData<S>,
 }
 
-/// A builder for `FmtLayer` that logs formatted representations of `tracing`
+/// A builder for [`FmtLayer`](struct.FmtLayer.html) that logs formatted representations of `tracing`
 /// events.
 #[derive(Debug)]
 pub struct Builder<
@@ -42,7 +42,7 @@ pub struct Builder<
 }
 
 impl<S> FmtLayer<S> {
-    /// Creates a [Builder].
+    /// Returns a new [`Builder`](struct.Builder.html) for configuring a `FmtLayer`.
     pub fn builder() -> Builder<S> {
         Builder::default()
     }
