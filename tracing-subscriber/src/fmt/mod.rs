@@ -106,7 +106,6 @@ use tracing_core::{span, subscriber::Interest, Event, Metadata};
 mod fmt_layer;
 pub mod format;
 // pub(crate) mod span;
-pub(crate) mod stack;
 pub mod time;
 pub mod writer;
 
