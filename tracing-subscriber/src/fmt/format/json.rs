@@ -293,7 +293,7 @@ mod test {
         let format = Format::default().json().with_timer(MockTime);
         let fmt = FmtLayer::builder()
             .with_writer(make_writer)
-            .with_event_formatter(format)
+            .event_format(format)
             .finish();
         let subscriber = fmt.with_subscriber(Registry::default());
 

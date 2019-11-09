@@ -56,8 +56,30 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     W: MakeWriter + 'static,
 {
-    /// Sets a [FormatEvent<S, N>].
-    pub fn with_event_formatter<E2>(self, e: E2) -> Builder<S, N, E2, W>
+    /// Sets the [event formatter][`FormatEvent`] that the layer will use to
+    /// format events.
+    ///
+    /// The event formatter may be any type implementing the [`FormatEvent`]
+    /// trait, which is implemented for all functions taking a [`FmtContext`], a
+    /// `&mut dyn Write`, and an [`Event`].
+    ///
+    /// # Examples
+    ///
+    /// Setting a type implementing [`FormatEvent`] as the formatter:
+    /// ```rust
+    /// use tracing_subscriber::fmt::{FmtLayer, format};
+    ///
+    /// let layer = FmtLayer::builder()
+    ///     .event_format(format::Format::default().compact())
+    ///     .finish();
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// ```
+    /// [event formatter]: ../format/trait.FormatEvent.html
+    /// [`FmtContext`]: ../struct.FmtContext.html
+    /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+    pub fn event_format<E2>(self, e: E2) -> Builder<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
     {

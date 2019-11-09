@@ -615,7 +615,19 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 
     /// Sets the function that the subscriber being built should use to format
     /// events that occur.
+    #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
     pub fn on_event<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
+    where
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: MakeWriter + 'static,
+    {
+        self.event_format(fmt_event)
+    }
+
+    /// Sets the function that the subscriber being built should use to format
+    /// events that occur.
+    pub fn event_format<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -623,7 +635,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     {
         SubscriberBuilder {
             filter: self.filter,
-            inner: self.inner.with_event_formatter(fmt_event),
+            inner: self.inner.event_format(fmt_event),
         }
     }
 
@@ -765,17 +777,17 @@ mod test {
     fn impls() {
         // let f = format::Format::default().with_timer(time::Uptime::default());
         let f = Format::default().with_timer(time::Uptime::default());
-        let fmt = FmtLayer::builder().with_event_formatter(f).finish();
+        let fmt = FmtLayer::builder().event_format(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let fmt = FmtLayer::builder().with_event_formatter(f).finish();
+        let fmt = FmtLayer::builder().event_format(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let fmt = FmtLayer::builder().with_event_formatter(f).finish();
+        let fmt = FmtLayer::builder().event_format(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
     }
