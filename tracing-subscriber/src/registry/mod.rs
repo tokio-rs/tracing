@@ -3,6 +3,7 @@
 //! [`Layer`]: ../layer/struct.Layer.html
 use tracing_core::{span::Id, Metadata};
 
+/// A module containing a type map of span extensions.
 pub mod extensions;
 mod sharded;
 
