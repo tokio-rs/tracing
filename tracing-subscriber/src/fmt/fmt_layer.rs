@@ -4,7 +4,7 @@ use crate::{
     layer::{Context, Layer},
     registry::{LookupSpan, SpanRef},
 };
-use std::{cell::RefCell, fmt, io, marker::PhantomData};
+use std::{cell::RefCell, fmt, io, marker::PhantomData, any::TypeId};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
@@ -373,6 +373,15 @@ where
 
             buf.clear();
         });
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        match () {
+            _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
+            _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
+            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
+            _ => None,
+        }
     }
 }
 
