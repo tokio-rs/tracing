@@ -69,7 +69,10 @@ where
 
     #[inline]
     fn enabled(&self, metadata: &Metadata<'_>, ctx: layer::Context<'_, S>) -> bool {
-        try_lock!(self.inner.read(), else return false).enabled(metadata, ctx)
+        println!("try lock");
+        let layer = try_lock!(self.inner.read(), else return false);
+        println!("locked");
+        layer.enabled(metadata, ctx)
     }
 
     #[inline]
@@ -238,61 +241,5 @@ impl error::Error for Error {
             ErrorKind::SubscriberGone => "subscriber no longer exists",
             ErrorKind::Poisoned => "lock poisoned",
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::prelude::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    #[test]
-    fn reload_handle() {
-        static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
-        static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
-
-        enum EnvFilter {
-            One,
-            Two,
-        }
-        impl<S: Subscriber> crate::Layer<S> for EnvFilter {
-            fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
-                Interest::sometimes()
-            }
-
-            fn enabled(&self, _: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
-                match self {
-                    EnvFilter::One => FILTER1_CALLS.fetch_add(1, Ordering::Relaxed),
-                    EnvFilter::Two => FILTER2_CALLS.fetch_add(1, Ordering::Relaxed),
-                };
-                true
-            }
-        }
-        fn event() {
-            tracing::trace!("my event");
-        }
-
-        let (layer, handle) = Layer::new(EnvFilter::One);
-
-        let subscriber =
-            tracing_core::dispatcher::Dispatch::new(crate::layer::tests::NopSubscriber.with(layer));
-
-        tracing_core::dispatcher::with_default(&subscriber, || {
-            assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 0);
-            assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
-
-            event();
-
-            assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 1);
-            assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 0);
-
-            handle.reload(EnvFilter::Two).expect("should reload");
-
-            event();
-
-            assert_eq!(FILTER1_CALLS.load(Ordering::Relaxed), 1);
-            assert_eq!(FILTER2_CALLS.load(Ordering::Relaxed), 1);
-        })
     }
 }
