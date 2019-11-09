@@ -72,7 +72,7 @@ mod test {
             {
                 let f = Format::default().without_time().with_ansi(false);
                 Subscriber::builder()
-                    .on_event(f)
+                    .event_format(f)
                     .with_writer(make_writer)
                     .finish()
             }
@@ -80,7 +80,7 @@ mod test {
             {
                 let f = Format::default().without_time();
                 Subscriber::builder()
-                    .on_event(f)
+                    .event_format(f)
                     .with_writer(make_writer)
                     .finish()
             }
