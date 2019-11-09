@@ -73,7 +73,21 @@ where
 // this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
 // type paramater from the default.
 impl<S, N, E, W> Builder<S, N, E, W> {
-    /// Sets a [MakeWriter] for spans and events.
+    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    ///
+    /// # Examples
+    ///
+    /// Using `stderr` rather than `stdout`:
+    ///
+    /// ```rust
+    /// use std::io;
+    ///
+    /// let subscriber = tracing_subscriber::fmt::FmtLayer::builder()
+    ///     .with_writer(io::stderr)
+    ///     .finish();
+    /// ```
+    ///
+    /// [`MakeWriter`]: ../trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> Builder<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
