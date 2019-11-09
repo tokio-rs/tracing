@@ -300,7 +300,7 @@ where
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Subscriber<N, E, F, W> {
-        let subscriber = self.inner.build().with_subscriber(Registry::default());
+        let subscriber = self.inner.finish().with_subscriber(Registry::default());
         Subscriber {
             inner: self.filter.with_subscriber(subscriber),
         }
@@ -765,24 +765,24 @@ mod test {
     fn impls() {
         // let f = format::Format::default().with_timer(time::Uptime::default());
         let f = Format::default().with_timer(time::Uptime::default());
-        let fmt = FmtLayer::builder().with_event_formatter(f).build();
+        let fmt = FmtLayer::builder().with_event_formatter(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let fmt = FmtLayer::builder().with_event_formatter(f).build();
+        let fmt = FmtLayer::builder().with_event_formatter(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let fmt = FmtLayer::builder().with_event_formatter(f).build();
+        let fmt = FmtLayer::builder().with_event_formatter(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
     }
 
     #[test]
     fn subscriber_downcasts() {
-        let fmt = FmtLayer::builder().build();
+        let fmt = FmtLayer::builder().finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<Subscriber>().is_some());
@@ -790,7 +790,7 @@ mod test {
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        let fmt = FmtLayer::builder().build();
+        let fmt = FmtLayer::builder().finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
@@ -802,7 +802,7 @@ mod test {
     #[cfg(feature = "registry")]
     fn is_lookup_meta() {
         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
-        let fmt = FmtLayer::builder().build();
+        let fmt = FmtLayer::builder().finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         assert_lookup_meta(subscriber)
     }

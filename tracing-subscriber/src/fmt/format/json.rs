@@ -294,7 +294,7 @@ mod test {
         let fmt = FmtLayer::builder()
             .with_writer(make_writer)
             .with_event_formatter(format)
-            .build();
+            .finish();
         let subscriber = fmt.with_subscriber(Registry::default());
 
         with_default(subscriber, || {

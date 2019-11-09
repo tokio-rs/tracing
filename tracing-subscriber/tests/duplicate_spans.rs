@@ -4,7 +4,7 @@ use tracing_subscriber::{filter::EnvFilter, fmt::FmtLayer, Layer, Registry};
 
 #[test]
 fn duplicate_spans() {
-    let fmt = FmtLayer::builder().build();
+    let fmt = FmtLayer::builder().finish();
     let subscriber = fmt
         .and_then(EnvFilter::from_default_env())
         .with_subscriber(Registry::default());
