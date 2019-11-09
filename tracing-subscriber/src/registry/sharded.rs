@@ -1,7 +1,7 @@
 use sharded_slab::{Guard, Slab};
 
 use crate::{
-    fmt::span::SpanStack,
+    fmt::stack::SpanStack,
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
         LookupMetadata, LookupSpan, SpanData,

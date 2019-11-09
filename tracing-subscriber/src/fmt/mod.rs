@@ -101,11 +101,12 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, error::Error, io};
-use tracing_core::{subscriber::Interest, Event, Metadata};
+use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
 mod fmt_layer;
 pub mod format;
-pub(crate) mod span;
+// pub(crate) mod span;
+pub(crate) mod stack;
 pub mod time;
 pub mod writer;
 
@@ -119,7 +120,6 @@ use crate::{
 pub use self::{
     fmt_layer::{Builder as LayerBuilder, FmtContext, FmtLayer, FormattedFields},
     format::{FormatEvent, FormatFields},
-    span::Context,
     writer::MakeWriter,
 };
 
