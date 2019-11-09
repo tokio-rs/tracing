@@ -356,30 +356,27 @@ where
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
     pub fn with_timer<T2>(self, timer: T2) -> SubscriberBuilder<N, format::Format<L, T2>, F, W> {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.with_timer(timer),
-        // }
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_timer(timer),
+        }
     }
 
     /// Do not emit timestamps with log messages.
     pub fn without_time(self) -> SubscriberBuilder<N, format::Format<L, ()>, F, W> {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.without_time(),
-        // }
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.without_time(),
+        }
     }
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
     pub fn with_ansi(self, ansi: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.with_ansi(ansi),
-        // }
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_ansi(ansi),
+        }
     }
 
     /// Sets whether or not an event's target is displayed.
@@ -387,11 +384,39 @@ where
         self,
         display_target: bool,
     ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.with_target(display_target),
-        // }
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_target(display_target),
+        }
+    }
+
+    /// Sets the subscriber being built to use a less verbose formatter.
+    ///
+    /// See [`format::Compact`].
+    pub fn compact(self) -> SubscriberBuilder<N, format::Format<format::Compact, T>, F, W>
+    where
+        N: for<'writer> FormatFields<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.compact(),
+        }
+    }
+
+    /// Sets the subscriber being built to use a JSON formatter.
+    ///
+    /// See [`format::Json`]
+    #[cfg(feature = "json")]
+    pub fn json(
+        self,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
+    where
+        N: for<'writer> FormatFields<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.json(),
+        }
     }
 }
 
@@ -451,11 +476,10 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.fmt_fields(fmt_fields),
-        // }
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.fmt_fields(fmt_fields),
+        }
     }
 
     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
@@ -587,35 +611,6 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
             filter,
             inner: self.inner,
         }
-    }
-
-    /// Sets the subscriber being built to use a less verbose formatter.
-    ///
-    /// See [`format::Compact`].
-    pub fn compact(self) -> SubscriberBuilder<N, format::Format<format::Compact>, F, W>
-    where
-        N: for<'writer> FormatFields<'writer> + 'static,
-    {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.compact(),
-        // }
-    }
-
-    /// Sets the subscriber being built to use a JSON formatter.
-    ///
-    /// See [`format::Json`]
-    #[cfg(feature = "json")]
-    pub fn json(self) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json>, F, W>
-    where
-        N: for<'writer> FormatFields<'writer> + 'static,
-    {
-        unimplemented!("david: add a similar method to the layer's builder!")
-        // SubscriberBuilder {
-        //     filter: self.filter,
-        //     inner: self.inner.json(),
-        // }
     }
 
     /// Sets the function that the subscriber being built should use to format

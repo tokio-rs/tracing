@@ -87,6 +87,106 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     }
 }
 
+impl<S, N, L, T, W> Builder<S, N, format::Format<L, T>, W>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    /// Use the given [`timer`] for log message timestamps.
+    ///
+    /// See [`time`] for the provided timer implementations.
+    ///
+    /// Note that using the `chrono` feature flag enables the
+    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    ///
+    /// [`time`]: ./time/index.html
+    /// [`timer`]: ./time/trait.FormatTime.html
+    /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
+    /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
+    pub fn with_timer<T2>(self, timer: T2) -> Builder<S, N, format::Format<L, T2>, W> {
+        Builder {
+            fmt_event: self.fmt_event.with_timer(timer),
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Do not emit timestamps with log messages.
+    pub fn without_time(self) -> Builder<S, N, format::Format<L, ()>, W> {
+        Builder {
+            fmt_event: self.fmt_event.without_time(),
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Enable ANSI encoding for formatted events.
+    #[cfg(feature = "ansi")]
+    pub fn with_ansi(self, ansi: bool) -> Builder<S, N, format::Format<L, T>, W> {
+        Builder {
+            fmt_event: self.fmt_event.with_ansi(ansi),
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets whether or not an event's target is displayed.
+    pub fn with_target(self, display_target: bool) -> Builder<S, N, format::Format<L, T>, W> {
+        Builder {
+            fmt_event: self.fmt_event.with_target(display_target),
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets the subscriber being built to use a less verbose formatter.
+    ///
+    /// See [`format::Compact`].
+    pub fn compact(self) -> Builder<S, N, format::Format<format::Compact, T>, W>
+    where
+        N: for<'writer> FormatFields<'writer> + 'static,
+    {
+        Builder {
+            fmt_event: self.fmt_event.compact(),
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets the subscriber being built to use a JSON formatter.
+    ///
+    /// See [`format::Json`]
+    #[cfg(feature = "json")]
+    pub fn json(self) -> Builder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Builder {
+            fmt_event: self.fmt_event.json(),
+            fmt_fields: format::JsonFields::new(),
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+}
+
+impl<S, N, E, W> Builder<S, N, E, W> {
+    /// Sets the Visitor that the subscriber being built will use to record
+    /// fields.
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<S, N2, E, W>
+    where
+        N2: for<'writer> FormatFields<'writer> + 'static,
+    {
+        Builder {
+            fmt_event: self.fmt_event,
+            fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+}
+
 impl<S, N, E, W> Builder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
