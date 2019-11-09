@@ -105,16 +105,6 @@ impl ExtensionsInner {
     ///
     /// If a extension of this type already existed, it will
     /// be returned.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use tracing_subscriber::registry::::ExtensionsInner;
-    /// let mut ext = ExtensionsInner::new();
-    /// assert!(ext.insert(5i32).is_none());
-    /// assert!(ext.insert(4u8).is_none());
-    /// assert_eq!(ext.insert(9i32), Some(5i32));
-    /// ```
     pub(crate) fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.map
             .get_or_insert_with(|| Box::new(HashMap::default()))
@@ -131,17 +121,6 @@ impl ExtensionsInner {
     }
 
     /// Get a reference to a type previously inserted on this `Extensions`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use tracing_subscriber::registry::::Extensions;
-    /// let mut ext = Extensions::new();
-    /// assert!(ext.get::<i32>().is_none());
-    /// ext.insert(5i32);
-    ///
-    /// assert_eq!(ext.get::<i32>(), Some(&5i32));
-    /// ```
     pub(crate) fn get<T: 'static>(&self) -> Option<&T> {
         self.map
             .as_ref()
@@ -150,17 +129,6 @@ impl ExtensionsInner {
     }
 
     /// Get a mutable reference to a type previously inserted on this `Extensions`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use tracing_subscriber::registry::::Extensions;
-    /// let mut ext = Extensions::new();
-    /// ext.insert(String::from("Hello"));
-    /// ext.get_mut::<String>().unwrap().push_str(" World");
-    ///
-    /// assert_eq!(ext.get::<String>().unwrap(), "Hello World");
-    /// ```
     pub(crate) fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
             .as_mut()
@@ -171,16 +139,6 @@ impl ExtensionsInner {
     /// Remove a type from this `Extensions`.
     ///
     /// If a extension of this type existed, it will be returned.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use http::Extensions;
-    /// let mut ext = Extensions::new();
-    /// ext.insert(5i32);
-    /// assert_eq!(ext.remove::<i32>(), Some(5i32));
-    /// assert!(ext.get::<i32>().is_none());
-    /// ```
     pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
         self.map
             .as_mut()
