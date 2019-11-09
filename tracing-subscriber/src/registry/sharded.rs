@@ -1,13 +1,13 @@
 use sharded_slab::{Guard, Slab};
 
 use crate::{
-    fmt::stack::SpanStack,
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
         LookupMetadata, LookupSpan, SpanData,
     },
     sync::RwLock,
 };
+use super::stack::SpanStack;
 use std::{
     cell::RefCell,
     sync::atomic::{fence, AtomicUsize, Ordering},
