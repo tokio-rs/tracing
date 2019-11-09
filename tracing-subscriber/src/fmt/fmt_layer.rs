@@ -280,13 +280,15 @@ where
     }
 }
 
-// === impl Formatter ===
-
-/// A formatted representation of a span's fields stored in its extensions.
+/// A formatted representation of a span's fields stored in its [extensions].
 ///
-/// By storing [FormattedFields] instead of a [String] directly,
-/// [FmtLayer] is able to be more defensive about other layers
-/// accidentally a span's extensions.
+/// Because `FormattedFields` is generic over the type of the formatter
+/// that produced it, multiple versions of a span's formatted fields can be
+/// stored in the [`Extensions`][extensions] type-map. This means that when
+/// multiple formatters are in use, each can store its own formatted
+/// representation without conflicting.
+///
+/// [extensions]: ../registry/extensions/index.html
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
@@ -301,6 +303,8 @@ impl<E> fmt::Debug for FormattedFields<E> {
             .finish()
     }
 }
+
+// === impl FmtLayer ===
 
 impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
@@ -389,10 +393,10 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    fn format_fields<R: RecordFields>(
+    fn format_fields(
         &self,
         writer: &'a mut dyn fmt::Write,
-        fields: R,
+        fields: &dyn RecordFields,
     ) -> fmt::Result {
         self.fmt_fields.format_fields(writer, fields)
     }
