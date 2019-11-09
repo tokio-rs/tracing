@@ -82,6 +82,29 @@ fn count(nums: i32, _too_long_string: &str) -> Vec<i32> {
 
 Once we have added instrumentation to our code, we will need to set up a `Subscriber` to record traces. We'll do this in our `main()` function. The subscriber employs an environment filter that we can utilize to filter the level of tracing message.
 
+The easiest way to creates a subscriber is by using the `init` function that will install a global tracing subscriber that you can use throughout your code. For example, to enable tracing for the aforementioned function, you can simply add this in `main()`
+
+```rust
+fn main() {
+    fmt::init();
+    let n = 10;
+    let sequence = count(n, "I would really prefer this string wasn't in every log");
+    // standard string interpolation log message
+    info!("The first {} numbers are {:?}", n, sequence);
+}
+```
+
+Finally, run that code with `RUST_LOG=debug cargo run` and you'll have output such as
+
+```
+Oct 24 16:00:38.741 DEBUG count{nums=10}: getting_started: Next Number n=0
+...
+Oct 24 16:00:38.742 DEBUG count{nums=10}: getting_started: Next Number n=10
+Oct 24 16:00:38.742  INFO getting_started: The first 10 numbers are [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+```
+
+As a basic usage, the aforementioned method works. But, of course, if you need to build custom subscriber, you can do so too. We can start by creating `default` Subscriber without using `init`.
+
 ```rust
 fn main() {
   // this creates subscriber with default filter
@@ -90,7 +113,7 @@ fn main() {
 }
 ```
 
-Finally, we can run the function that prints out the tracing message while it's being run
+Afterward, we just need to use this subscriber by attaching it to the tracer. We can run the function that prints out the tracing message while it's being run
 
 ```rust
 fn main() {
@@ -120,7 +143,13 @@ fn main() {
   let filter = tracing_subscriber::EnvFilter::try_from_default_env()
       .unwrap_or_else(|_| DEFAULT_FILTER.into());
   let subscriber = fmt::Subscriber::builder().with_env_filter(filter).finish();
-  //...
+
+  tracing::subscriber::with_default(subscriber, || {
+    let n = 10;
+    let sequence = count(n);
+    // prints log message with the level info
+    info!("The first {} numbers are {:?}", n, sequence);
+  })
 }
 ```
 
@@ -168,24 +197,24 @@ state, and are less stable than the `tracing` and `tracing-core` crates.
 
 The crates included as part of Tracing are:
 
-* [`tracing-futures`]: Utilities for instrumenting `futures`.
+- [`tracing-futures`]: Utilities for instrumenting `futures`.
   ([crates.io][fut-crates]|[docs][fut-docs])
 
-* [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
+- [`tracing-macros`]: Experimental macros for emitting trace events (unstable).
 
-* [`tracing-attributes`]: Procedural macro attributes for automatically
+- [`tracing-attributes`]: Procedural macro attributes for automatically
   instrumenting functions. ([crates.io][attr-crates]|[docs][attr-docs])
 
-* [`tracing-log`]: Compatibility with the `log` crate (unstable).
+- [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-* [`tracing-serde`]: A compatibility layer for serializing trace data with
+- [`tracing-serde`]: A compatibility layer for serializing trace data with
   `serde` (unstable).
 
-* [`tracing-subscriber`]: Subscriber implementations, and utilities for
+- [`tracing-subscriber`]: Subscriber implementations, and utilities for
   implementing and composing `Subscriber`s.
   ([crates.io][sub-crates]|[docs][sub-docs])
 
-* [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
+- [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
 [`tracing`]: tracing
 [`tracing-core`]: tracing
@@ -210,14 +239,14 @@ Tracing.
 
 #### Blog Posts
 
-* [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
+- [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
 #### Talks
 
-* [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
-* [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
+- [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+- [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
