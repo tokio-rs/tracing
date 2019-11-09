@@ -48,10 +48,5 @@ mod parking_lot_impl {
         pub(crate) fn write<'a>(&'a self) -> LockResult<RwLockWriteGuard<'a, T>> {
             Ok(self.inner.write())
         }
-
-        #[inline]
-        pub(crate) fn try_write<'a>(&'a self) -> TryLockResult<RwLockWriteGuard<'a, T>> {
-            self.inner.try_write().ok_or(TryLockError::WouldBlock)
-        }
     }
 }
