@@ -2,6 +2,7 @@ use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::MakeVisitor,
     fmt::FmtContext,
+    fmt::FormattedFields,
     registry::{LookupMetadata, LookupSpan},
 };
 use serde::ser::{SerializeMap, Serializer as _};
@@ -41,6 +42,7 @@ where
     where
         S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     {
+        use serde_json::{json, Value};
         use tracing_serde::fields::AsMap;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -59,11 +61,20 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
-            // TODO(david): actually enable this; get this to work.
-            // let span = ctx.ctx.current_span();
-            // serializer
-            //     .serialize_entry("span", &span)
-            //     .unwrap_or(Ok(()))?;
+            let id = ctx.ctx.current_span();
+            let id = id.id();
+            if let Some(id) = id {
+                if let Some(span) = ctx.ctx.span(id) {
+                    let ext = span.extensions();
+                    let data = ext
+                        .get::<FormattedFields<N>>()
+                        .expect("Unable to find FormattedFields in extensions; this is a bug");
+                    let data = &data.fmt_fields;
+                    let mut fields: Value = serde_json::from_str(&data)?;
+                    fields["name"] = json!(span.metadata().name());
+                    serializer.serialize_entry("span", &fields).unwrap_or(());
+                }
+            }
 
             if self.display_target {
                 serializer.serialize_entry("target", meta.target())?;
@@ -251,8 +262,7 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::fmt::{format::Format, test::MockWriter, time::FormatTime, FmtLayer};
-    use crate::{Layer, Registry};
+    use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
@@ -284,18 +294,11 @@ mod test {
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
-        // let subscriber = crate::fmt::Subscriber::builder()
-        //     .json()
-        //     .with_writer(make_writer)
-        //     .with_timer(MockTime)
-        //     .finish();
-
-        let format = Format::default().json().with_timer(MockTime);
-        let fmt = FmtLayer::builder()
+        let subscriber = crate::fmt::Subscriber::builder()
+            .json()
             .with_writer(make_writer)
-            .event_format(format)
+            .with_timer(MockTime)
             .finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
