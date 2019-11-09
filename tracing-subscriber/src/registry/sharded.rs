@@ -27,7 +27,7 @@ use tracing_core::{
 /// [1]: https://docs.rs/crate/sharded-slab/0.0.5
 #[derive(Debug)]
 pub struct Registry {
-    spans: Slab<Data>,
+    spans: Slab<DataInner>,
 }
 
 /// Span data stored in a [`Registry`].
@@ -39,7 +39,12 @@ pub struct Registry {
 /// [`Registry`]: ../struct.Registry.html
 /// [extensions]: ../extensions/index.html
 #[derive(Debug)]
-pub struct Data {
+pub struct Data<'a> {
+    inner: Guard<'a, DataInner>,
+}
+
+#[derive(Debug)]
+struct DataInner {
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
@@ -65,11 +70,11 @@ fn id_to_idx(id: &Id) -> usize {
 }
 
 impl Registry {
-    fn insert(&self, s: Data) -> Option<usize> {
+    fn insert(&self, s: DataInner) -> Option<usize> {
         self.spans.insert(s)
     }
 
-    fn get(&self, id: &Id) -> Option<Guard<'_, Data>> {
+    fn get(&self, id: &Id) -> Option<Guard<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
 }
@@ -97,7 +102,7 @@ impl Subscriber for Registry {
             attrs.parent().map(|id| self.clone_span(id))
         };
 
-        let s = Data {
+        let s = DataInner {
             metadata: attrs.metadata(),
             parent,
             ref_count: AtomicUsize::new(1),
@@ -179,28 +184,17 @@ impl Subscriber for Registry {
 }
 
 impl<'a> LookupSpan<'a> for Registry {
-    type Data = Guard<'a, Data>;
+    type Data = Data<'a>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
-        self.get(id)
+        let inner = self.get(id)?;
+        Some(Data { inner })
     }
 }
 
-// === impl Data ===
+// === impl DataInner ===
 
-impl Data {
-    /// Gets the name of a span.
-    pub fn name(&self) -> &'static str {
-        self.metadata.name()
-    }
-
-    /// Gets the fields of a span.
-    pub fn fields(&self) -> &FieldSet {
-        self.metadata.fields()
-    }
-}
-
-impl Drop for Data {
+impl Drop for DataInner {
     fn drop(&mut self) {
         // We have to actually unpack the option inside the `get_default`
         // closure, since it is a `FnMut`, but testing that there _is_ a value
@@ -216,19 +210,33 @@ impl Drop for Data {
     }
 }
 
-impl<'a> SpanData<'a> for Guard<'a, Data> {
+// === impl Data ===
+
+impl<'a> Data<'a> {
+    /// Gets the name of a span.
+    pub fn name(&self) -> &'static str {
+        self.inner.metadata.name()
+    }
+
+    /// Gets the fields of a span.
+    pub fn fields(&self) -> &FieldSet {
+        self.inner.metadata.fields()
+    }
+}
+
+impl<'a> SpanData<'a> for Data<'a> {
     type Follows = std::slice::Iter<'a, Id>;
 
     fn id(&self) -> Id {
-        idx_to_id(self.key())
+        idx_to_id(self.inner.key())
     }
 
     fn metadata(&self) -> &'static Metadata<'static> {
-        (*self).metadata
+        (*self).inner.metadata
     }
 
     fn parent(&self) -> Option<&Id> {
-        self.parent.as_ref()
+        self.inner.parent.as_ref()
     }
 
     fn follows_from(&self) -> Self::Follows {
@@ -236,10 +244,10 @@ impl<'a> SpanData<'a> for Guard<'a, Data> {
     }
 
     fn extensions(&self) -> Extensions<'_> {
-        Extensions::new(self.extensions.read().expect("Mutex poisoned"))
+        Extensions::new(self.inner.extensions.read().expect("Mutex poisoned"))
     }
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
-        ExtensionsMut::new(self.extensions.write().expect("Mutex poisoned"))
+        ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
     }
 }
