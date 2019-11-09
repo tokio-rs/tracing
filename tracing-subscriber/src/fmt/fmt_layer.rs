@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, SpanRef},
+    registry::{LookupSpan, SpanRef},
 };
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
@@ -52,7 +52,7 @@ impl<S> FmtLayer<S> {
 // overriding the `E` type parameter with `E2`.
 impl<S, N, E, W> Builder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     W: MakeWriter + 'static,
 {
@@ -228,7 +228,7 @@ impl<S, N, E, W> Builder<S, N, E, W> {
 
 impl<S, N, E, W> Builder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -246,7 +246,7 @@ where
 
 impl<S> Default for FmtLayer<S>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>
 {
     fn default() -> Self {
         Builder::default().finish()
@@ -266,7 +266,7 @@ impl<S> Default for Builder<S> {
 
 impl<S, N, E, W> FmtLayer<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -304,7 +304,7 @@ impl<E> fmt::Debug for FormattedFields<E> {
 
 impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -386,7 +386,7 @@ impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
 
 impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
@@ -400,7 +400,7 @@ where
 
 impl<'a, S, N> FmtContext<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Visits parent spans. Used to visit parent spans when formatting spans
