@@ -93,7 +93,7 @@ pub trait LookupSpan<'a> {
 pub trait SpanData<'a> {
     type Follows: Iterator<Item = &'a Id>;
 
-    /// Returns this span's ID..
+    /// Returns this span's ID.
     fn id(&self) -> Id;
 
     /// Returns a reference to the span's `Metadata`.

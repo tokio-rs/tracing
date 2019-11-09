@@ -636,6 +636,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// by default).
     #[deprecated(since = "0.2.0", note = "this no longer does anything")]
     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
+        let _ = inherit_fields;
         self
     }
 
