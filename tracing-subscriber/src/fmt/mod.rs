@@ -794,16 +794,14 @@ mod test {
 
     #[test]
     fn subscriber_downcasts() {
-        let fmt = FmtLayer::builder().finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = Subscriber::builder().finish();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<Subscriber>().is_some());
     }
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        let fmt = FmtLayer::builder().finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = Subscriber::builder().finish();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
