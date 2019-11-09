@@ -91,6 +91,7 @@ pub trait LookupSpan<'a> {
 
 /// A stored representation of data associated with a span.
 pub trait SpanData<'a> {
+    /// An iterator of all the spans this span succeeds.
     type Follows: Iterator<Item = &'a Id>;
 
     /// Returns this span's ID.
@@ -102,6 +103,7 @@ pub trait SpanData<'a> {
     /// Returns a reference to the ID
     fn parent(&self) -> Option<&Id>;
 
+    /// Returns the an iterator of the spans this span succeeds.
     fn follows_from(&'a self) -> Self::Follows;
 
     /// Returns a reference to this span's `Extensions`.
