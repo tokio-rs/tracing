@@ -393,10 +393,10 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    fn format_fields(
+    fn format_fields<R: RecordFields>(
         &self,
         writer: &'a mut dyn fmt::Write,
-        fields: &dyn RecordFields,
+        fields: R,
     ) -> fmt::Result {
         self.fmt_fields.format_fields(writer, fields)
     }
