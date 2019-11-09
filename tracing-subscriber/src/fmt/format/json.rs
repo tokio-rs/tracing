@@ -1,4 +1,4 @@
-use super::{span, Format, FormatEvent, FormatFields, FormatTime};
+use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::MakeVisitor,
     fmt::FmtContext,
@@ -59,7 +59,7 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
-            // TODO(david): fix this
+            // TODO(david): actually enable this; get this to work.
             // let span = ctx.ctx.current_span();
             // serializer
             //     .serialize_entry("span", &span)
@@ -251,7 +251,7 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::fmt::{format::Format, FmtLayer, test::MockWriter, time::FormatTime};
+    use crate::fmt::{format::Format, test::MockWriter, time::FormatTime, FmtLayer};
     use crate::{Layer, Registry};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};

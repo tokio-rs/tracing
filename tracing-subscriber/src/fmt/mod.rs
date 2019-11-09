@@ -100,7 +100,7 @@
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
-use std::{cell::RefCell, error::Error, io, any::TypeId};
+use std::{any::TypeId, error::Error, io};
 use tracing_core::{subscriber::Interest, Event, Metadata};
 
 mod fmt_layer;
@@ -112,15 +112,15 @@ pub mod writer;
 use crate::{
     filter::LevelFilter,
     layer::{self, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry},
+    registry::Registry,
 };
 
 #[doc(inline)]
 pub use self::{
+    fmt_layer::{Builder as LayerBuilder, FmtContext, FmtLayer, FormattedFields},
     format::{FormatEvent, FormatFields},
     span::Context,
     writer::MakeWriter,
-    fmt_layer::{FmtLayer, Builder as LayerBuilder, FmtContext, FormattedFields},
 };
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
@@ -142,7 +142,7 @@ pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
->  = layer::Layered<FmtLayer<Registry, N, E, W>, Registry>;
+> = layer::Layered<FmtLayer<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Subscriber`s.
 #[derive(Debug)]
@@ -157,10 +157,7 @@ pub struct SubscriberBuilder<
 }
 
 /// Configures and constructs `Subscriber`s.
-#[deprecated(
-    since = "0.2.0",
-    note = "renamed to `SubscriberBuilder`"
-)]
+#[deprecated(since = "0.2.0", note = "renamed to `SubscriberBuilder`")]
 pub type Builder<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
@@ -386,7 +383,10 @@ where
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+    pub fn with_target(
+        self,
+        display_target: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
         unimplemented!("david: add a similar method to the layer's builder!")
         // SubscriberBuilder {
         //     filter: self.filter,
@@ -404,7 +404,8 @@ where
     /// runtime.
     pub fn with_filter_reloading(
         self,
-    ) -> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W> {
+    ) -> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
+    {
         let (filter, _) = crate::reload::Layer::new(self.filter);
         SubscriberBuilder {
             filter,
@@ -577,7 +578,10 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_filter`]: #method.with_filter
-    pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> SubscriberBuilder<N, E, LevelFilter, W> {
+    pub fn with_max_level(
+        self,
+        filter: impl Into<LevelFilter>,
+    ) -> SubscriberBuilder<N, E, LevelFilter, W> {
         let filter = filter.into();
         SubscriberBuilder {
             filter,
@@ -703,8 +707,8 @@ pub fn init() {
 #[cfg(test)]
 mod test {
     use super::{writer::MakeWriter, *};
-    use crate::fmt::{Subscriber, FmtLayer};
     use crate::fmt::format::Format;
+    use crate::fmt::{FmtLayer, Subscriber};
     use crate::{Layer, Registry};
     use std::{
         io,
