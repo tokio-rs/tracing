@@ -55,9 +55,9 @@ where
 #[cfg(test)]
 mod test {
     use super::MakeWriter;
+    use crate::fmt::format::Format;
     use crate::fmt::test::{MockMakeWriter, MockWriter};
     use crate::fmt::Subscriber;
-    use crate::{fmt::{format::Format, FmtLayer}, Layer, Registry};
     use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tracing::error;
@@ -71,20 +71,18 @@ mod test {
             #[cfg(feature = "ansi")]
             {
                 let f = Format::default().without_time().with_ansi(false);
-                let fmt = FmtLayer::builder()
-                    .with_event_formatter(f)
+                Subscriber::builder()
+                    .on_event(f)
                     .with_writer(make_writer)
-                    .build();
-                fmt.with_subscriber(Registry::default())
+                    .finish()
             }
             #[cfg(not(feature = "ansi"))]
             {
                 let f = Format::default().without_time();
-                let fmt = FmtLayer::builder()
-                    .with_event_formatter(f)
+                Subscriber::builder()
+                    .on_event(f)
                     .with_writer(make_writer)
-                    .build();
-                fmt.with_subscriber(Registry::default())
+                    .finish()
             }
         };
         let dispatch = Dispatch::from(subscriber);

@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
     layer::{Context, Layer},
-    registry::{LookupMetadata, LookupSpan, Registry, SpanRef},
+    registry::{LookupMetadata, LookupSpan, SpanRef},
 };
 use std::{cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
