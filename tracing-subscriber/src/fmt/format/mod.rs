@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    registry::{LookupSpan},
+    registry::LookupSpan,
 };
 
 use std::{
