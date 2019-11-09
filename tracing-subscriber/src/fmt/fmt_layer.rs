@@ -82,7 +82,7 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     /// ```rust
     /// use std::io;
     ///
-    /// let subscriber = tracing_subscriber::fmt::FmtLayer::builder()
+    /// let layer = tracing_subscriber::fmt::FmtLayer::builder()
     ///     .with_writer(io::stderr)
     ///     .finish();
     /// ```
@@ -209,7 +209,7 @@ where
     W: MakeWriter + 'static,
 {
     /// Builds a [FmtLayer] infalliably.
-    pub fn build(self) -> FmtLayer<S, N, E, W> {
+    pub fn finish(self) -> FmtLayer<S, N, E, W> {
         FmtLayer {
             make_writer: self.make_writer,
             fmt_fields: self.fmt_fields,
@@ -224,7 +224,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
 {
     fn default() -> Self {
-        Builder::default().build()
+        Builder::default().finish()
     }
 }
 
