@@ -49,9 +49,6 @@ serde_json = { version = "1.0", optional = true }
 serde = { version = "1.0", optional = true }
 tracing-serde = { path = "../tracing-serde", optional = true }
 
-# a hack, trying out a formatter
-humantime = "1.2"
-
 # opt-in deps
 parking_lot = { version = ">= 0.7, < 0.10", features = ["owning_ref"], optional = true }
 

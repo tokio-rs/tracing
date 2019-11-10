@@ -11,9 +11,8 @@ fn suggest_band() -> String {
 }
 
 fn main() {
-    use tracing_subscriber::{EnvFilter, fmt};
-    let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::try_new("attrs_basic=trace").unwrap())
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_env_filter("attrs_basic=trace")
         .finish();
 
     tracing::subscriber::with_default(subscriber, || {
