@@ -3,7 +3,7 @@ use sharded_slab::{Guard, Slab};
 use crate::{
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
-        LookupMetadata, LookupSpan, SpanData,
+        LookupSpan, SpanData,
     },
     sync::RwLock,
 };
