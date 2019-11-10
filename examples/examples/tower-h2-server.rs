@@ -100,7 +100,9 @@ fn main() {
     let filter = EnvFilter::from_default_env()
         .add_directive("tower_h2_server=trace".parse().unwrap())
         .add_directive("tracing_tower=trace".parse().unwrap());
-    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(filter)
+        .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 
     let addr = "[::1]:8888".parse().unwrap();

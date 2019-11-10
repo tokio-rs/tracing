@@ -18,16 +18,18 @@ use tracing_tower::InstrumentableService;
 pub struct Conn(SocketAddr);
 
 fn main() {
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::filter::EnvFilter;
     // Set the default subscriber to record all traces emitted by this example
     // and by the `tracing_tower` library's helpers.
     let filter = EnvFilter::from_default_env()
         .add_directive("tower_h2_client=trace".parse().unwrap())
         .add_directive("tracing_tower=trace".parse().unwrap());
 
-    fmt::Subscriber::builder()
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(filter)
-        .init();
+        .finish();
+
+    let _ = tracing::subscriber::set_global_default(subscriber);
 
     let mut rt = Runtime::new().unwrap();
     let executor = rt.executor();

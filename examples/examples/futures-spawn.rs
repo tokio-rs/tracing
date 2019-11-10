@@ -32,11 +32,11 @@ fn subtask(number: usize) -> impl Future<Item = usize, Error = ()> {
 }
 
 fn main() {
-    use tracing_subscriber::{fmt, EnvFilter};
-
-    fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::try_new("futures-spawn=trace").unwrap())
-        .init();
+    use tracing_subscriber::fmt;
+    let subscriber = fmt::Subscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
+    let _ = tracing::subscriber::set_global_default(subscriber);
 
     tokio::run(parent_task(10));
 }

@@ -27,9 +27,9 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 }
 
 fn main() {
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::fmt;
     let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::try_new("attrs_basic=trace").unwrap())
+        .with_env_filter("attrs_args=trace")
         .finish();
 
     tracing::subscriber::with_default(subscriber, || {

@@ -17,11 +17,12 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{EnvFilter, fmt};
+    use tracing_subscriber::{fmt, EnvFilter};
 
-    fmt::Subscriber::builder()
+    let subscriber = fmt::Subscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
-        .try_init()?;
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)?;
 
     let listen_addr = env::args()
         .nth(1)
