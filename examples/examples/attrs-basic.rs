@@ -14,7 +14,6 @@ fn main() {
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter("attrs_basic=trace")
         .finish();
-
     tracing::subscriber::with_default(subscriber, || {
         let num_recs = 1;
 
