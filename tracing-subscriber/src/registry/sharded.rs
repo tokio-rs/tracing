@@ -1,5 +1,6 @@
 use sharded_slab::{Guard, Slab};
 
+use super::stack::SpanStack;
 use crate::{
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
@@ -7,7 +8,6 @@ use crate::{
     },
     sync::RwLock,
 };
-use super::stack::SpanStack;
 use std::{
     cell::RefCell,
     sync::atomic::{fence, AtomicUsize, Ordering},
@@ -117,7 +117,7 @@ impl Subscriber for Registry {
     #[inline]
     fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
 
-    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {}
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
     /// This is intentionally not implemented, as recording events
     /// is the responsibility of layers atop of this registry.
@@ -240,7 +240,7 @@ impl<'a> SpanData<'a> for Data<'a> {
     }
 
     fn follows_from(&self) -> Self::Follows {
-        unimplemented!("david: add this to `BigSpan`")
+        unimplemented!("David: add this to `DataInner`")
     }
 
     fn extensions(&self) -> Extensions<'_> {

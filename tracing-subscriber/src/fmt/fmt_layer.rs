@@ -4,7 +4,7 @@ use crate::{
     layer::{Context, Layer},
     registry::{LookupSpan, SpanRef},
 };
-use std::{cell::RefCell, fmt, io, marker::PhantomData, any::TypeId};
+use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
@@ -246,7 +246,7 @@ where
 
 impl<S> Default for FmtLayer<S>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>
+    S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn default() -> Self {
         Builder::default().finish()

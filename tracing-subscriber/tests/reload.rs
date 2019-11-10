@@ -1,7 +1,10 @@
-
-use tracing_subscriber::{reload::*, prelude::*, layer};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tracing_core::{subscriber::Interest, Subscriber, span::{Attributes, Id, Record}, Event, Metadata};
+use tracing_core::{
+    span::{Attributes, Id, Record},
+    subscriber::Interest,
+    Event, Metadata, Subscriber,
+};
+use tracing_subscriber::{layer, prelude::*, reload::*};
 
 pub struct NopSubscriber;
 
@@ -24,7 +27,6 @@ impl Subscriber for NopSubscriber {
     fn enter(&self, _: &Id) {}
     fn exit(&self, _: &Id) {}
 }
-
 
 #[test]
 fn reload_handle() {
@@ -57,8 +59,7 @@ fn reload_handle() {
 
     let (layer, handle) = Layer::new(Filter::One);
 
-    let subscriber =
-        tracing_core::dispatcher::Dispatch::new(layer.with_subscriber(NopSubscriber));
+    let subscriber = tracing_core::dispatcher::Dispatch::new(layer.with_subscriber(NopSubscriber));
 
     tracing_core::dispatcher::with_default(&subscriber, || {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);
