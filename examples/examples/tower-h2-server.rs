@@ -8,7 +8,6 @@ use tokio::net::TcpListener;
 use tower_h2::{Body, RecvBody, Server};
 use tower_service::Service;
 use tracing_futures::Instrument;
-use tracing_subscriber::FmtSubscriber;
 use tracing_tower::InstrumentMake;
 
 type Response = http::Response<RspBody>;

@@ -39,6 +39,8 @@ fn main() {
         .with_env_filter("info,tower_load=debug")
         .with_filter_reloading();
     let handle = builder.reload_handle();
+    
+    let _ = tracing::subscriber::set_global_default(builder.finish());
 
     let addr = "[::1]:3000".parse().unwrap();
     let admin_addr = "[::1]:3001".parse().unwrap();
