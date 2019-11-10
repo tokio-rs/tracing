@@ -219,7 +219,10 @@ where
     }
 }
 
-impl<L> LookupMetadata for L where L: for<'a> LookupSpan<'a> {
+impl<L> LookupMetadata for L
+where
+    L: for<'a> LookupSpan<'a>,
+{
     fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>> {
         self.span_data(id).map(|data| data.metadata())
     }

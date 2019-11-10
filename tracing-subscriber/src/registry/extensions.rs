@@ -15,7 +15,7 @@ type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdH
 /// themselves, coming from the compiler. The IdHasher holds the u64 of
 /// the TypeId, and then returns it, instead of doing any bit fiddling.
 #[derive(Default, Debug)]
-pub struct IdHasher(u64);
+struct IdHasher(u64);
 
 impl Hasher for IdHasher {
     fn write(&mut self, _: &[u8]) {
