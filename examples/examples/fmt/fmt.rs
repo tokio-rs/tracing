@@ -16,5 +16,5 @@ fn main() {
             message = "yak shaving completed.",
             all_yaks_shaved = number_shaved == number_of_yaks,
         );
-    )};
+    });
 }

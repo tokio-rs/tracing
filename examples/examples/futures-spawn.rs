@@ -37,6 +37,5 @@ fn main() {
         .with_max_level(Level::TRACE)
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
-
     tokio::run(parent_task(10));
 }
