@@ -584,6 +584,13 @@ impl Dispatch {
     }
 }
 
+impl Default for Dispatch {
+    /// Returns the current default dispatcher
+    fn default() -> Self {
+        get_default(|default| default.clone())
+    }
+}
+
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Dispatch(...)")
@@ -799,5 +806,43 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestSubscriber), || mk_span())
+    }
+
+    #[test]
+    fn default_no_subscriber() {
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<NoSubscriber>());
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn default_dispatch() {
+        struct TestSubscriber;
+        impl Subscriber for TestSubscriber {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
+                true
+            }
+
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+                span::Id::from_u64(0xAAAA)
+            }
+
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+
+            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+
+            fn event(&self, _: &Event<'_>) {}
+
+            fn enter(&self, _: &span::Id) {}
+
+            fn exit(&self, _: &span::Id) {}
+        }
+        let guard = set_default(&Dispatch::new(TestSubscriber));
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<TestSubscriber>());
+
+        drop(guard);
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<NoSubscriber>());
     }
 }

@@ -13,9 +13,6 @@
 //! - [`AsTrace`] and [`AsLog`] traits for converting between `tracing` and `log` types.
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
-//! - [`TraceLogger`], a [`tracing::Subscriber`] implementation that consumes
-//!   [`tracing::Event`]s and outputs [`log::Record`], allowing an existing logger
-//!   implementation to be used to record trace events.
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
@@ -50,8 +47,9 @@
 //!
 //! ## Convert tracing `Event`s to logs
 //!
-//! This conversion can be done with [`TraceLogger`], a [`Subscriber`] which
-//! records `tracing` spans and events and outputs log records.
+//! Enabling the ["log" and "log-always" feature flags][flags] on the `tracing`
+//! crate will cause all `tracing` spans and events to emit `log::Record`s as
+//! they occur.
 //!
 //! ## Caution: Mixing both conversions
 //!
@@ -67,8 +65,8 @@
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
 //! # Feature Flags
-//!
-//! * `trace-logger`: enables the `TraceLogger` type (on by default)
+//! * `trace-logger`: enables an experimental `log` subscriber, deprecated since
+//!   version 0.1.1.
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
@@ -138,6 +136,11 @@ pub mod trace_logger;
 pub use self::log_tracer::LogTracer;
 
 #[cfg(feature = "trace-logger")]
+#[deprecated(
+    since = "0.1.1",
+    note = "use the `tracing` crate's \"log\" feature flag instead"
+)]
+#[allow(deprecated)]
 #[doc(inline)]
 pub use self::trace_logger::TraceLogger;
 

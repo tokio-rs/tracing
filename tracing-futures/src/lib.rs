@@ -46,7 +46,7 @@
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
-#![doc(html_root_url = "https://docs.rs/tracing-futures/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-futures/0.1.1")]
 #![warn(
     missing_debug_implementations,
     missing_docs,

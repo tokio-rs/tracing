@@ -1,6 +1,6 @@
 [package]
 name = "tracing-futures"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
@@ -20,6 +20,7 @@ license = "MIT"
 [features]
 default = ["futures-01", "tokio"]
 futures-01 = ["futures"]
+futures-03 = ["std-future", "futures-task"]
 std-future = ["pin-project"]
 futures-preview = ["std-future", "futures-core-preview"]
 tokio-alpha = ["std-future", "tokio_02"]
@@ -27,6 +28,7 @@ tokio-alpha = ["std-future", "tokio_02"]
 [dependencies]
 futures = { version = "0.1", optional = true }
 futures-core-preview = { version = "0.3.0-alpha.19", optional = true }
+futures-task = { version = "0.3", optional = true }
 pin-project = { version = "0.4", optional = true }
 tracing = "0.1"
 tokio-executor = { version = "0.1", optional = true }
