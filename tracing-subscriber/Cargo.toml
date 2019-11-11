@@ -68,3 +68,7 @@ all-features = true
 [[bench]]
 name = "filter"
 harness = false
+
+[[bench]]
+name = "fmt"
+harness = false
