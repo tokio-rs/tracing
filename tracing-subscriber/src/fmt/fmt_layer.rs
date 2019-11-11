@@ -375,6 +375,11 @@ where
         });
     }
 
+    fn will_close(&self, id: &Id, ctx: Context<'_, S>) {
+        let span = ctx.span(id).expect("Span not found; This is a bug");
+        dbg!(span.metadata());
+    }
+
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         match () {
             _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),

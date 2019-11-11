@@ -186,6 +186,9 @@ where
     /// Notifies this layer that the span with the given ID has been closed.
     fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
 
+    /// Notifies this layer that the span with the given ID _is about to_ close.
+    fn will_close(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+
     /// Notifies this layer that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
     fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, S>) {}
@@ -494,6 +497,7 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
+        self.layer.will_close(&id, self.ctx());
         let id2 = id.clone();
         if self.inner.try_close(id) {
             self.layer.on_close(id2, self.ctx());
@@ -591,6 +595,12 @@ where
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         self.inner.on_close(id.clone(), ctx.clone());
         self.layer.on_close(id, ctx);
+    }
+
+    #[inline]
+    fn will_close(&self, id: &span::Id, ctx: Context<'_, S>) {
+        self.inner.will_close(id, ctx.clone());
+        self.layer.will_close(id, ctx);
     }
 
     #[inline]
