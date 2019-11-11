@@ -7,3 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tracing-subscriber = { path = "../tracing-subscriber", features = ["registry", "fmt"]}
+tracing-core = "0.1"
