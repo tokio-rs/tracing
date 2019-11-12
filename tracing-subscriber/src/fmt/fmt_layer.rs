@@ -95,7 +95,7 @@ where
 // this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
 // type paramater from the default.
 impl<S, N, E, W> Builder<S, N, E, W> {
-    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    /// Sets the [`MakeWriter`] that the layer being built will use to write events.
     ///
     /// # Examples
     ///
