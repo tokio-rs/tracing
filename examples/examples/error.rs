@@ -15,11 +15,13 @@ fn do_another_thing(answer: usize, will_succeed: bool) -> Result<&'static str, i
 }
 
 #[tracing::instrument]
-fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
+fn main() {
     let subscriber = ErrorLayer::default()
         .and_then(FmtLayer::default())
         .with_subscriber(Registry::default());
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
-    do_something("hello world")?;
-    Ok(())
+    match do_something("hello world") {
+        Ok(result) => println!("did something successfully: {}", result),
+        Err(e) => eprintln!("ERROR: {}", e),
+    };
 }

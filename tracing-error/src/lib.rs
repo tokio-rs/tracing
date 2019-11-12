@@ -83,12 +83,13 @@ impl<F> fmt::Display for ContextError<F> {
         if let Some(ctx) = self.context.as_ref() {
             writeln!(f, "");
             for Span { ref metadata, ref fields } in ctx.context.iter() {
-                write!(f, "\tin {}::{}", metadata.target(), metadata.name())?;
-                if let Some((file, line)) = metadata.file().and_then(|f| metadata.line().map(|l| (f, l))) {
-                    writeln!(f, "({}:{})", file, line)?;
-                }
+                write!(f, "   in {}::{}", metadata.target(), metadata.name())?;
                 if fields.len() > 0 {
-                    writeln!(f, "\t   {}", fields)?
+                    write!(f, ", {}", fields)?
+                }
+                writeln!(f, "");
+                if let Some((file, line)) = metadata.file().and_then(|f| metadata.line().map(|l| (f, l))) {
+                    writeln!(f, "\tat {}:{}", file, line)?;
                 }
             }
         }
