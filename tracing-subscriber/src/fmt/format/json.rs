@@ -1,8 +1,8 @@
 use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::MakeVisitor,
-    fmt::FmtContext,
-    fmt::FormattedFields,
+    fmt::fmt_layer::FmtContext,
+    fmt::fmt_layer::FormattedFields,
     registry::{LookupMetadata, LookupSpan},
 };
 use serde::ser::{SerializeMap, Serializer as _};

@@ -105,19 +105,15 @@ use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
 mod fmt_layer;
 pub mod format;
-// pub(crate) mod span;
 pub mod time;
 pub mod writer;
+pub use fmt_layer::{Layer, LayerBuilder};
 
-use crate::{
-    filter::LevelFilter,
-    layer::{self, Layer},
-    registry::Registry,
-};
+use crate::layer::Layer as _;
+use crate::{filter::LevelFilter, layer, registry::Registry};
 
 #[doc(inline)]
 pub use self::{
-    fmt_layer::{Builder as LayerBuilder, FmtContext, FmtLayer, FormattedFields},
     format::{FormatEvent, FormatFields},
     writer::MakeWriter,
 };
@@ -141,7 +137,7 @@ pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> = layer::Layered<FmtLayer<Registry, N, E, W>, Registry>;
+> = layer::Layered<fmt_layer::Layer<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Subscriber`s.
 #[derive(Debug)]
@@ -197,10 +193,10 @@ impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
+    F: layer::Layer<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
     layer::Layered<F, Formatter<N, E, W>>: tracing_core::Subscriber,
-    FmtLayer<Registry, N, E, W>: Layer<Registry>,
+    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -294,8 +290,8 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: Layer<Formatter<N, E, W>> + Send + Sync + 'static,
-    FmtLayer<Registry, N, E, W>: Layer<Registry> + Send + Sync + 'static,
+    F: layer::Layer<Formatter<N, E, W>> + Send + Sync + 'static,
+    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Subscriber<N, E, F, W> {
@@ -715,7 +711,7 @@ pub fn init() {
 mod test {
     use super::{writer::MakeWriter, *};
     use crate::fmt::format::Format;
-    use crate::fmt::{FmtLayer, Subscriber};
+    use crate::fmt::{self, Subscriber};
     use crate::{Layer, Registry};
     use std::{
         io,
@@ -774,19 +770,18 @@ mod test {
 
     #[test]
     fn impls() {
-        // let f = format::Format::default().with_timer(time::Uptime::default());
         let f = Format::default().with_timer(time::Uptime::default());
-        let fmt = FmtLayer::builder().event_format(f).finish();
+        let fmt = fmt_layer::Layer::builder().event_format(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let fmt = FmtLayer::builder().event_format(f).finish();
+        let fmt = fmt_layer::Layer::builder().event_format(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let fmt = FmtLayer::builder().event_format(f).finish();
+        let fmt = fmt_layer::Layer::builder().event_format(f).finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
     }
@@ -811,7 +806,7 @@ mod test {
     #[cfg(feature = "registry")]
     fn is_lookup_meta() {
         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
-        let fmt = FmtLayer::builder().finish();
+        let fmt = fmt_layer::Layer::builder().finish();
         let subscriber = fmt.with_subscriber(Registry::default());
         assert_lookup_meta(subscriber)
     }

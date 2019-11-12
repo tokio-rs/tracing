@@ -1,10 +1,9 @@
 //! Formatters for logging `tracing` events.
-use super::{
-    time::{self, FormatTime, SystemTime},
-    FmtContext, FormattedFields,
-};
+use super::time::{self, FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
+    fmt::fmt_layer::FmtContext,
+    fmt::fmt_layer::FormattedFields,
     registry::LookupSpan,
 };
 

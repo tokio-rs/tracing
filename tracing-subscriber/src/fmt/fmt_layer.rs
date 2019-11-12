@@ -1,7 +1,7 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
-    layer::{Context, Layer},
+    layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
 use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData};
@@ -12,9 +12,9 @@ use tracing_core::{
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
 ///
-/// [`Layer`]: ../trait.Layer.html
+/// [`Layer`]: ../layer/trait.Layer.html
 #[derive(Debug)]
-pub struct FmtLayer<
+pub struct Layer<
     S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
@@ -26,10 +26,10 @@ pub struct FmtLayer<
     _inner: PhantomData<S>,
 }
 
-/// A builder for [`FmtLayer`](struct.FmtLayer.html) that logs formatted representations of `tracing`
-/// events.
+/// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
+/// events and spans.
 #[derive(Debug)]
-pub struct Builder<
+pub struct LayerBuilder<
     S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
@@ -41,16 +41,16 @@ pub struct Builder<
     _inner: PhantomData<S>,
 }
 
-impl<S> FmtLayer<S> {
-    /// Returns a new [`Builder`](struct.Builder.html) for configuring a `FmtLayer`.
-    pub fn builder() -> Builder<S> {
-        Builder::default()
+impl<S> Layer<S> {
+    /// Returns a new [`LayerBuilder`](struct.LayerBuilder.html) for configuring a `Layer`.
+    pub fn builder() -> LayerBuilder<S> {
+        LayerBuilder::default()
     }
 }
 
 // This, like the MakeWriter block, needs to be a seperate impl block because we're
 // overriding the `E` type parameter with `E2`.
-impl<S, N, E, W> Builder<S, N, E, W>
+impl<S, N, E, W> LayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -79,11 +79,11 @@ where
     /// [event formatter]: ../format/trait.FormatEvent.html
     /// [`FmtContext`]: ../struct.FmtContext.html
     /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-    pub fn event_format<E2>(self, e: E2) -> Builder<S, N, E2, W>
+    pub fn event_format<E2>(self, e: E2) -> LayerBuilder<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
     {
-        Builder {
+        LayerBuilder {
             fmt_fields: self.fmt_fields,
             fmt_event: e,
             make_writer: self.make_writer,
@@ -94,8 +94,8 @@ where
 
 // this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
 // type paramater from the default.
-impl<S, N, E, W> Builder<S, N, E, W> {
-    /// Sets the [`MakeWriter`] that the layer being built will use to write events.
+impl<S, N, E, W> LayerBuilder<S, N, E, W> {
+    /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
     ///
     /// # Examples
     ///
@@ -103,8 +103,9 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     ///
     /// ```rust
     /// use std::io;
+    /// use tracing_subscriber::fmt;
     ///
-    /// let layer = tracing_subscriber::fmt::FmtLayer::builder()
+    /// let layer = fmt::Layer::builder()
     ///     .with_writer(io::stderr)
     ///     .finish();
     /// # // this is necessary for type inference.
@@ -112,12 +113,13 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
-    /// [`MakeWriter`]: ../trait.MakeWriter.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<S, N, E, W2>
+    /// [`MakeWriter`]: ../fmt/trait.MakeWriter.html
+    /// [`Layer`]: ../layer/trait.Layer.html
+    pub fn with_writer<W2>(self, make_writer: W2) -> LayerBuilder<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
     {
-        Builder {
+        LayerBuilder {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             make_writer,
@@ -126,11 +128,11 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     }
 }
 
-impl<S, N, L, T, W> Builder<S, N, format::Format<L, T>, W>
+impl<S, N, L, T, W> LayerBuilder<S, N, format::Format<L, T>, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    /// Use the given [`timer`] for log message timestamps.
+    /// Use the given [`timer`] for span and event timestamps.
     ///
     /// See [`time`] for the provided timer implementations.
     ///
@@ -141,8 +143,8 @@ where
     /// [`timer`]: ./time/trait.FormatTime.html
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<S, N, format::Format<L, T2>, W> {
-        Builder {
+    pub fn with_timer<T2>(self, timer: T2) -> LayerBuilder<S, N, format::Format<L, T2>, W> {
+        LayerBuilder {
             fmt_event: self.fmt_event.with_timer(timer),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -150,9 +152,9 @@ where
         }
     }
 
-    /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Builder<S, N, format::Format<L, ()>, W> {
-        Builder {
+    /// Do not emit timestamps with spans and event.
+    pub fn without_time(self) -> LayerBuilder<S, N, format::Format<L, ()>, W> {
+        LayerBuilder {
             fmt_event: self.fmt_event.without_time(),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -162,8 +164,8 @@ where
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
-    pub fn with_ansi(self, ansi: bool) -> Builder<S, N, format::Format<L, T>, W> {
-        Builder {
+    pub fn with_ansi(self, ansi: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
+        LayerBuilder {
             fmt_event: self.fmt_event.with_ansi(ansi),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -172,8 +174,8 @@ where
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Builder<S, N, format::Format<L, T>, W> {
-        Builder {
+    pub fn with_target(self, display_target: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
+        LayerBuilder {
             fmt_event: self.fmt_event.with_target(display_target),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -184,11 +186,13 @@ where
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`].
-    pub fn compact(self) -> Builder<S, N, format::Format<format::Compact, T>, W>
+    ///
+    /// [`format::Compact`]: ../fmt/format/struct.Compact.html
+    pub fn compact(self) -> LayerBuilder<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
-        Builder {
+        LayerBuilder {
             fmt_event: self.fmt_event.compact(),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -200,8 +204,8 @@ where
     ///
     /// See [`format::Json`]
     #[cfg(feature = "json")]
-    pub fn json(self) -> Builder<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        Builder {
+    pub fn json(self) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        LayerBuilder {
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
             make_writer: self.make_writer,
@@ -210,14 +214,14 @@ where
     }
 }
 
-impl<S, N, E, W> Builder<S, N, E, W> {
+impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<S, N2, E, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> LayerBuilder<S, N2, E, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
-        Builder {
+        LayerBuilder {
             fmt_event: self.fmt_event,
             fmt_fields,
             make_writer: self.make_writer,
@@ -226,16 +230,18 @@ impl<S, N, E, W> Builder<S, N, E, W> {
     }
 }
 
-impl<S, N, E, W> Builder<S, N, E, W>
+impl<S, N, E, W> LayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
-    /// Builds a [FmtLayer] infalliably.
-    pub fn finish(self) -> FmtLayer<S, N, E, W> {
-        FmtLayer {
+    /// Builds a [`Layer`].
+    ///
+    /// [`Layer`]: struct.Layer.html
+    pub fn finish(self) -> Layer<S, N, E, W> {
+        Layer {
             make_writer: self.make_writer,
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
@@ -244,18 +250,18 @@ where
     }
 }
 
-impl<S> Default for FmtLayer<S>
+impl<S> Default for Layer<S>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn default() -> Self {
-        Builder::default().finish()
+        LayerBuilder::default().finish()
     }
 }
 
-impl<S> Default for Builder<S> {
+impl<S> Default for LayerBuilder<S> {
     fn default() -> Self {
-        Self {
+        LayerBuilder {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             make_writer: io::stdout,
@@ -264,7 +270,7 @@ impl<S> Default for Builder<S> {
     }
 }
 
-impl<S, N, E, W> FmtLayer<S, N, E, W>
+impl<S, N, E, W> Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -306,7 +312,7 @@ impl<E> fmt::Debug for FormattedFields<E> {
 
 // === impl FmtLayer ===
 
-impl<S, N, E, W> Layer<S> for FmtLayer<S, N, E, W>
+impl<S, N, E, W> layer::Layer<S> for Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,

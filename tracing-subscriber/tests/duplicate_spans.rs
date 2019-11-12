@@ -1,10 +1,10 @@
 mod support;
 use tracing::{self, subscriber::with_default, Span};
-use tracing_subscriber::{filter::EnvFilter, fmt::FmtLayer, Layer, Registry};
+use tracing_subscriber::{filter::EnvFilter, fmt, layer::Layer, Registry};
 
 #[test]
 fn duplicate_spans() {
-    let fmt = FmtLayer::builder().finish();
+    let fmt = fmt::Layer::builder().finish();
     let subscriber = fmt
         .and_then(EnvFilter::new("[root]=debug"))
         .with_subscriber(Registry::default());
