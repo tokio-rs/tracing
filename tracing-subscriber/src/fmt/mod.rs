@@ -711,7 +711,7 @@ pub fn init() {
 mod test {
     use super::{writer::MakeWriter, *};
     use crate::fmt::format::Format;
-    use crate::fmt::{self, Subscriber};
+    use crate::fmt::Subscriber;
     use crate::{Layer, Registry};
     use std::{
         io,
@@ -795,7 +795,7 @@ mod test {
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        let subscriber = Subscriber::builder().finish();
+        let subscriber = Subscriber::new();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
@@ -803,7 +803,6 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "registry")]
     fn is_lookup_meta() {
         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
         let fmt = fmt_layer::Layer::builder().finish();

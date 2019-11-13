@@ -4,7 +4,14 @@ use crate::{
     layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
-use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData};
+use std::{
+    any::TypeId,
+    cell::RefCell,
+    convert::AsMut,
+    fmt, io,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
@@ -183,11 +190,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a less verbose formatter.
-    ///
-    /// See [`format::Compact`].
-    ///
-    /// [`format::Compact`]: ../fmt/format/struct.Compact.html
+    /// Sets the layer being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
     pub fn compact(self) -> LayerBuilder<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -200,9 +203,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a JSON formatter.
-    ///
-    /// See [`format::Json`]
+    /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
     #[cfg(feature = "json")]
     pub fn json(self) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
         LayerBuilder {
@@ -215,7 +216,7 @@ where
 }
 
 impl<S, N, E, W> LayerBuilder<S, N, E, W> {
-    /// Sets the Visitor that the subscriber being built will use to record
+    /// Sets the field formatter that the layer being built will use to record
     /// fields.
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> LayerBuilder<S, N2, E, W>
     where
@@ -299,14 +300,27 @@ where
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
     /// The formatted fields of a span.
-    pub fmt_fields: String,
+    fields: String,
 }
 
 impl<E> fmt::Debug for FormattedFields<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormattedFields")
-            .field("fmt_fields", &self.fmt_fields)
+            .field("fields", &self.fields)
             .finish()
+    }
+}
+
+impl<E> fmt::Display for FormattedFields<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.fields)
+    }
+}
+
+impl<E> Deref for FormattedFields<E> {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.fields
     }
 }
 
@@ -326,7 +340,7 @@ where
         let mut buf = String::new();
         if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
             let fmt_fields = FormattedFields {
-                fmt_fields: buf,
+                fields: buf,
                 _format_event: PhantomData::<fn(N)>,
             };
             extensions.insert(fmt_fields);
@@ -340,11 +354,11 @@ where
         let mut buf = String::new();
         if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
             let buf = match extensions.get_mut::<FormattedFields<Self>>() {
-                Some(fields) => format!("{}{}", fields.fmt_fields, buf),
+                Some(fields) => format!("{}{}", fields.fields, buf),
                 None => buf,
             };
             let fmt_fields = FormattedFields {
-                fmt_fields: buf,
+                fields: buf,
                 _format_event: PhantomData::<fn(N)>,
             };
             extensions.insert(fmt_fields);
@@ -427,8 +441,11 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    /// Visits parent spans. Used to visit parent spans when formatting spans
-    /// and events
+    /// Visits every span in the current context with a closure.
+
+    /// The provided closure will be called first with the current span,
+    /// and then with that span's parent, and then that span's parent,
+    /// and so on until a root span is reached.
     pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
     where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
@@ -450,11 +467,7 @@ where
 
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
-        // spans path. however, that requires passing the store to `visit_spans`
-        // with a different lifetime, and i'm too lazy to sort that out now. this
-        // workaround shouldn't remaining in the final shipping version _unless_
-        // benchmarks show that small-vector optimization is preferable to not-very-deep
-        // recursion.
+        // spans path.
         let parents = span.parents().collect::<SpanRefVec<'_, _>>();
         let mut iter = parents.iter().rev();
         // visit all the parent spans...

@@ -69,7 +69,6 @@ where
                     let data = ext
                         .get::<FormattedFields<N>>()
                         .expect("Unable to find FormattedFields in extensions; this is a bug");
-                    let data = &data.fmt_fields;
                     // TODO: let's _not_ do this, but this resolves
                     // https://github.com/tokio-rs/tracing/issues/391.
                     // We should probably rework this to use a `serde_json::Value` or something

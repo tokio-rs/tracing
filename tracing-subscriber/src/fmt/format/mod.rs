@@ -602,8 +602,7 @@ where
             let ext = span.extensions();
             let data = &ext
                 .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug")
-                .fmt_fields;
+                .expect("Unable to find FormattedFields in extensions; this is a bug");
             write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
             ":".fmt(f)
         })?;
