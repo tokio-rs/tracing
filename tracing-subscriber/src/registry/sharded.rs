@@ -14,7 +14,6 @@ use std::{
 };
 use tracing_core::{
     dispatcher,
-    field::FieldSet,
     span::{self, Current, Id},
     Event, Interest, Metadata, Subscriber,
 };
@@ -51,11 +50,14 @@ pub struct Registry {
 
 /// Span data stored in a [`Registry`].
 ///
-/// This definition  is intentionally kept small—only data pertaining to span
-/// relationships, span metadata, and active references are stored. Additional
-/// data, such as formatted fields, may be stored in the [extensions] typemap.
+/// The registry stores well-known data defined by tracing:
+/// span relationships, metadata and reference counts.
+/// Additional user-defined data provided by [Layers],
+/// such as formatted fields, metrics, or distributed traces
+/// should be stored in the [extensions] typemap.
 ///
 /// [`Registry`]: struct.Registry.html
+/// [`Layers`]: ../trait.Layer.html
 /// [extensions]: extensions/index.html
 #[derive(Debug)]
 pub struct Data<'a> {
