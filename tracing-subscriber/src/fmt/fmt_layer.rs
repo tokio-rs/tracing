@@ -67,9 +67,9 @@ where
     ///
     /// Setting a type implementing [`FormatEvent`] as the formatter:
     /// ```rust
-    /// use tracing_subscriber::fmt::{FmtLayer, format};
+    /// use tracing_subscriber::fmt::{self, format};
     ///
-    /// let layer = FmtLayer::builder()
+    /// let layer = fmt::Layer::builder()
     ///     .event_format(format::Format::default().compact())
     ///     .finish();
     /// # // this is necessary for type inference.
