@@ -5,8 +5,12 @@
 //! This module provides the [`Registry`] type, a [`Subscriber`] implementation
 //! which tracks per-span data and exposes it to [`Layer`]s. When a `Registry`
 //! is used as the base `Subscriber` of a `Layer` stack, the
-//! [`layer::Context`][ctx`] type will  provide methods allowing `Layer`s to
-//! [look up span data][lookup] stored in the registry.
+//! [`layer::Context`][ctx] type will  provide methods allowing `Layer`s to
+//! [look up span data][lookup] stored in the registry. While [`Registry`] is
+//! a reasonable default for storing spans and events, other stores
+//! that implement [`LookupSpan`], [`LookupMetadata`], and [`Subscriber`] on themselves
+//! (with [`SpanData`] implemented on the data _inside_ the store)
+//! can be used as a drop-in replacement.
 //!
 //! For example, we might create a `Registry` and add multiple `Layer`s like so:
 //! ```rust
@@ -57,11 +61,13 @@
 //!
 //! [`Layer`]: ../struct.Layer.html
 //! [`Subscriber`]:
-//!     https://docs.rs/crate/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [`Registry`]: struct.Registry.html
 //! [ctx]: ../layer/struct.Context.html
 //! [lookup]: ../layer/struct.Context.html#method.span
 //! [`LookupSpan`]: trait.LookupSpan.html
+//! [`LookupMetadata`]: trait.LookupMetadata.html
+//! [`SpanData`]: trait.SpanData.html
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
