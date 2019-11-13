@@ -709,10 +709,15 @@ pub fn init() {
 
 #[cfg(test)]
 mod test {
-    use super::{writer::MakeWriter, *};
-    use crate::fmt::format::Format;
-    use crate::fmt::Subscriber;
-    use crate::{Layer, Registry};
+    use crate::{
+        filter::LevelFilter,
+        fmt::{
+            format::{self, Format},
+            time,
+            writer::MakeWriter,
+            Subscriber,
+        },
+    };
     use std::{
         io,
         sync::{Mutex, MutexGuard, TryLockError},
@@ -771,18 +776,15 @@ mod test {
     #[test]
     fn impls() {
         let f = Format::default().with_timer(time::Uptime::default());
-        let fmt = fmt_layer::Layer::builder().event_format(f).finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = Subscriber::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let fmt = fmt_layer::Layer::builder().event_format(f).finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = Subscriber::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let fmt = fmt_layer::Layer::builder().event_format(f).finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = Subscriber::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
     }
 
@@ -805,8 +807,7 @@ mod test {
     #[test]
     fn is_lookup_meta() {
         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
-        let fmt = fmt_layer::Layer::builder().finish();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = Subscriber::new();
         assert_lookup_meta(subscriber)
     }
 }

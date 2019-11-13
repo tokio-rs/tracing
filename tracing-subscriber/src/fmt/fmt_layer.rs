@@ -231,7 +231,7 @@ where
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
-    /// Builds a [`Layer`].
+    /// Builds a [`Layer`] with the provided configuration.
     ///
     /// [`Layer`]: struct.Layer.html
     pub fn finish(self) -> Layer<S, N, E, W> {
@@ -470,5 +470,63 @@ where
         // and finally, print out the current span.
         f(&span)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::fmt::{
+        self,
+        format::{self, Format},
+        layer::Layer as _,
+        time,
+    };
+    use crate::Registry;
+    use tracing_core::dispatcher::Dispatch;
+
+    #[test]
+    fn impls() {
+        let f = Format::default().with_timer(time::Uptime::default());
+        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let _dispatch = Dispatch::new(subscriber);
+
+        let f = format::Format::default();
+        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let _dispatch = Dispatch::new(subscriber);
+
+        let f = format::Format::default().compact();
+        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let _dispatch = Dispatch::new(subscriber);
+    }
+
+    #[test]
+    fn fmt_layer_downcasts() {
+        let f = format::Format::default();
+        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let subscriber = fmt.with_subscriber(Registry::default());
+
+        let dispatch = Dispatch::new(subscriber);
+        assert!(dispatch.downcast_ref::<fmt::Layer<Registry>>().is_some());
+    }
+
+    #[test]
+    fn fmt_layer_downcasts_to_parts() {
+        let f = format::Format::default();
+        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        let dispatch = Dispatch::new(subscriber);
+        assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
+        assert!(dispatch.downcast_ref::<format::Format>().is_some())
+    }
+
+    #[test]
+    fn is_lookup_meta() {
+        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+        let fmt = fmt::Layer::builder().finish();
+        let subscriber = fmt.with_subscriber(Registry::default());
+        assert_lookup_meta(subscriber)
     }
 }

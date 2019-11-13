@@ -10,7 +10,8 @@ struct ContextId {
 
 /// `SpanStack` tracks what spans are currently executing on a thread-local basis.
 ///
-/// `SpanStack` is used as a performance optimization to reduce cross-thread traffic.
+/// A "separate current span" for each thread is a semantic choice, as each span
+/// can be executing in a different thread.
 pub(crate) struct SpanStack {
     stack: Vec<ContextId>,
     ids: HashSet<Id>,
