@@ -280,18 +280,18 @@ where
 
 /// A formatted representation of a span's fields stored in its [extensions].
 ///
-/// Because `FormattedFields` is generic over the type of the formatter
-/// that produced it, multiple versions of a span's formatted fields can be
-/// stored in the [`Extensions`][extensions] type-map. This means that when
-/// multiple formatters are in use, each can store its own formatted
-/// representation without conflicting.
+/// Because `FormattedFields` is generic over the type of the formatter that
+/// produced it, multiple versions of a span's formatted fields can be stored in
+/// the [`Extensions`][extensions] type-map. This means that when multiple
+/// formatters are in use, each can store its own formatted representation
+/// without conflicting.
 ///
 /// [extensions]: ../registry/extensions/index.html
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
     /// The formatted fields of a span.
-    fields: String,
+    pub fields: String,
 }
 
 impl<E> fmt::Debug for FormattedFields<E> {
@@ -341,18 +341,19 @@ where
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
-
-        let mut buf = String::new();
-        if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
-            let buf = match extensions.get_mut::<FormattedFields<N>>() {
-                Some(fields) => format!("{}{}", fields.fields, buf),
-                None => buf,
-            };
-            let fmt_fields = FormattedFields {
-                fields: buf,
-                _format_event: PhantomData::<fn(N)>,
-            };
-            extensions.insert(fmt_fields);
+        if let Some(FormattedFields { ref mut fields, .. }) =
+            extensions.get_mut::<FormattedFields<Self>>()
+        {
+            let _ = self.fmt_fields.format_fields(fields, values);
+        } else {
+            let mut buf = String::new();
+            if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
+                let fmt_fields = FormattedFields {
+                    fields: buf,
+                    _format_event: PhantomData::<fn(N)>,
+                };
+                extensions.insert(fmt_fields);
+            }
         }
     }
 

@@ -68,14 +68,14 @@ impl<'a> ExtensionsMut<'a> {
     /// `Layer`-specific—they are _span_-specific. This means that
     /// other layers can access and mutate extensions that
     /// a different Layer recorded. For example, an application might
-    /// have a layer that records execution timings alongside a layer
+    /// have a layer that records execution timings, alongside a layer
     /// that reports spans and events to a distributed
     /// tracing system that requires timestamps for spans.
     /// Ideally, if one layer records a timestamp _x_, the other layer
     /// should be able to reuse timestamp _x_.
     ///
     /// Therefore, extensions should generally be newtypes, rather than common
-    /// types like [`String`](std::string::String), to avoid accidnental
+    /// types like [`String`](https://doc.rust-lang.org/std/string/struct.String.html), to avoid accidental
     /// cross-`Layer` clobbering.
     pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.inner.insert(val)

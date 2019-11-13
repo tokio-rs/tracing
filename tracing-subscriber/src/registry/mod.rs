@@ -6,11 +6,11 @@
 //! which tracks per-span data and exposes it to [`Layer`]s. When a `Registry`
 //! is used as the base `Subscriber` of a `Layer` stack, the
 //! [`layer::Context`][ctx] type will  provide methods allowing `Layer`s to
-//! [look up span data][lookup] stored in the registry. While [`Registry`] is
-//! a reasonable default for storing spans and events, other stores
-//! that implement [`LookupSpan`], [`LookupMetadata`], and [`Subscriber`] on themselves
-//! (with [`SpanData`] implemented on the data _inside_ the store)
-//! can be used as a drop-in replacement.
+//! [look up span data][lookup] stored in the registry. While [`Registry`] is a
+//! reasonable default for storing spans and events, other stores that implement
+//! [`LookupSpan`], [`LookupMetadata`], and [`Subscriber`] on themselves (with
+//! [`SpanData`] implemented on the data _inside_ the store) can be used as a
+//! drop-in replacement.
 //!
 //! For example, we might create a `Registry` and add multiple `Layer`s like so:
 //! ```rust

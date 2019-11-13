@@ -50,14 +50,13 @@ pub struct Registry {
 
 /// Span data stored in a [`Registry`].
 ///
-/// The registry stores well-known data defined by tracing:
-/// span relationships, metadata and reference counts.
-/// Additional user-defined data provided by [Layers],
-/// such as formatted fields, metrics, or distributed traces
-/// should be stored in the [extensions] typemap.
+/// The registry stores well-known data defined by tracing: span relationships,
+/// metadata and reference counts. Additional user-defined data provided by
+/// [`Layer`s], such as formatted fields, metrics, or distributed traces should
+/// be stored in the [extensions] typemap.
 ///
 /// [`Registry`]: struct.Registry.html
-/// [`Layers`]: ../trait.Layer.html
+/// [`Layer`s]: ../trait.Layer.html
 /// [extensions]: extensions/index.html
 #[derive(Debug)]
 pub struct Data<'a> {
