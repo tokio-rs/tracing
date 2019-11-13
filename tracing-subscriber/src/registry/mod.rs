@@ -1,6 +1,67 @@
 //! Storage for span data shared by multiple [`Layer`]s.
 //!
-//! [`Layer`]: ../layer/struct.Layer.html
+//! ## Using the Span Registry
+//!
+//! This module provides the [`Registry`] type, a [`Subscriber`] implementation
+//! which tracks per-span data and exposes it to [`Layer`]s. When a `Registry`
+//! is used as the base `Subscriber` of a `Layer` stack, the
+//! [`layer::Context`][ctx`] type will  provide methods allowing `Layer`s to
+//! [look up span data][lookup] stored in the registry.
+//!
+//! For example, we might create a `Registry` and add multiple `Layer`s like so:
+//! ```rust
+//! use tracing_subscriber::{registry::Registry, Layer};
+//! # use tracing_core::Subscriber;
+//! # fn main() {
+//! # pub struct FooLayer {}
+//! # pub struct BarLayer {}
+//! # impl<S: Subscriber> Layer<S> for FooLayer {}
+//! # impl<S: Subscriber> Layer<S> for BarLayer {}
+//! # impl FooLayer {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl BarLayer {
+//! # fn new() -> Self { Self { }}
+//! # }
+//!
+//! let subscriber = FooLayer::new()
+//!     .and_then(BarLayer::new())
+//!     .with_subscriber(Registry::default());
+//! # }
+//! ```
+//!
+//! If a type implementing `Layer` depends on the functionality of a `Registry`
+//! implementation, it should bound its `Subscriber` type parameter with the
+//! [`LookupSpan`] trait, like so:
+//!
+//! ```rust
+//! use tracing_subscriber::{registry, Layer};
+//! use tracing_core::Subscriber;
+//!
+//! # fn main() {
+//! pub struct MyLayer {
+//!     // ...
+//! }
+//!
+//! impl<S> Layer<S> for MyLayer
+//! where
+//!     S: Subscriber + for<'a> registry::LookupSpan<'a>,
+//! {
+//!     // ...
+//! }
+//! # }
+//! ```
+//! When this bound is added, the `Layer` implementation will be guaranteed
+//! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
+//! require the root subscriber to be a registry.
+//!
+//! [`Layer`]: ../struct.Layer.html
+//! [`Subscriber`]:
+//!     https://docs.rs/crate/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Registry`]: struct.Registry.html
+//! [ctx]: ../layer/struct.Context.html
+//! [lookup]: ../layer/struct.Context.html#method.span
+//! [`LookupSpan`]: trait.LookupSpan.html
 use tracing_core::{span::Id, Metadata, field::FieldSet};
 
 /// A module containing a type map of span extensions.
