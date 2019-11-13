@@ -48,8 +48,7 @@ impl<S> Layer<S> {
     }
 }
 
-// This, like the MakeWriter block, needs to be a seperate impl block because we're
-// overriding the `E` type parameter with `E2`.
+// This needs to be a seperate impl block because they place different bounds on the type paramaters.
 impl<S, N, E, W> LayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -92,8 +91,7 @@ where
     }
 }
 
-// this needs to be a seperate impl block because we're re-assigning the the W2 (make_writer)
-// type paramater from the default.
+// This needs to be a seperate impl block because they place different bounds on the type paramaters.
 impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
     ///
@@ -346,7 +344,7 @@ where
 
         let mut buf = String::new();
         if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
-            let buf = match extensions.get_mut::<FormattedFields<Self>>() {
+            let buf = match extensions.get_mut::<FormattedFields<N>>() {
                 Some(fields) => format!("{}{}", fields.fields, buf),
                 None => buf,
             };
@@ -435,7 +433,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
-
+    ///
     /// The provided closure will be called first with the current span,
     /// and then with that span's parent, and then that span's parent,
     /// and so on until a root span is reached.
