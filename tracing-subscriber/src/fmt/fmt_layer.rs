@@ -4,14 +4,7 @@ use crate::{
     layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
-use std::{
-    any::TypeId,
-    cell::RefCell,
-    convert::AsMut,
-    fmt, io,
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-};
+use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
