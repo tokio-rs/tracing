@@ -136,11 +136,15 @@ impl Subscriber for Registry {
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
-        let refs = self
+        let span = self
             .get(&id)
-            .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id))
-            .ref_count
-            .fetch_add(1, Ordering::Relaxed);
+            .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
+        // Like `std::sync::Arc`, adds to the ref count (on clone) don't require
+        // a strong ordering; if we call` clone_span`, the reference count must
+        // always at least 1. The only synchronization necessary is between
+        // calls to `try_close`:  we have to ensure that all threads have
+        // dropped their refs to the span before the span is closed.
+        let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
         assert!(refs != 0, "tried to clone a span that already closed");
         id.clone()
     }
@@ -175,8 +179,9 @@ impl Subscriber for Registry {
             return false;
         }
 
-        // Synchronize only if we are actually removing the span (stolen
-        // from std::Arc);
+        // Synchronize if we are actually removing the span (stolen
+        // from std::Arc); this ensures that all other `try_close` calls on
+        // other threads happen-before we actually remove the span.
         fence(Ordering::Acquire);
         self.spans.remove(id_to_idx(&id));
         true
@@ -195,12 +200,24 @@ impl<'a> LookupSpan<'a> for Registry {
 // === impl DataInner ===
 
 impl Drop for DataInner {
+    // A span is not considered closed until all of its children have closed.
+    // Therefore, each span's `DataInner` holds a "reference" to the parent
+    // span, keeping the parent span open until all its children have closed.
+    // When we close a span, we must then decrement the parent's ref count
+    // (potentially, allowing it to close, if this child is the last reference
+    // to that span).
     fn drop(&mut self) {
         // We have to actually unpack the option inside the `get_default`
         // closure, since it is a `FnMut`, but testing that there _is_ a value
         // here lets us avoid the thread-local access if we don't need the
         // dispatcher at all.
         if self.parent.is_some() {
+            // Note that --- because `Layered::try_close` works by calling
+            // `try_close` on the inner subscriber and using the return value to
+            // determine whether to call the `Layer`'s `on_close` callback ---
+            // we must call `try_close` on the entire subscriber stack, rather
+            // than just on the registry. If the registry called `try_close` on
+            // itself directly, the layers wouldn't see the close notification.
             dispatcher::get_default(|subscriber| {
                 if let Some(parent) = self.parent.take() {
                     let _ = subscriber.try_close(parent);
