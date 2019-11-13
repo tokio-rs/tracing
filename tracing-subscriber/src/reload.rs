@@ -69,10 +69,7 @@ where
 
     #[inline]
     fn enabled(&self, metadata: &Metadata<'_>, ctx: layer::Context<'_, S>) -> bool {
-        println!("try lock");
-        let layer = try_lock!(self.inner.read(), else return false);
-        println!("locked");
-        layer.enabled(metadata, ctx)
+        try_lock!(self.inner.read(), else return false).enabled(metadata, ctx)
     }
 
     #[inline]
