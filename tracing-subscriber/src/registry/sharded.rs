@@ -248,18 +248,6 @@ impl Drop for DataInner {
 
 // === impl Data ===
 
-impl<'a> Data<'a> {
-    /// Gets the name of a span.
-    pub fn name(&self) -> &'static str {
-        self.inner.metadata.name()
-    }
-
-    /// Gets the fields of a span.
-    pub fn fields(&self) -> &FieldSet {
-        self.inner.metadata.fields()
-    }
-}
-
 impl<'a> SpanData<'a> for Data<'a> {
     type Follows = std::slice::Iter<'a, Id>;
 
