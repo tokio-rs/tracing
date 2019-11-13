@@ -63,8 +63,20 @@ impl<'a> ExtensionsMut<'a> {
 
     /// Insert a type into this `Extensions`.
     ///
-    /// If a extension of this type already existed, it will
-    /// be returned.
+    /// If a extension of this type already exists, it will
+    /// be returned. Note that extensions are _not_
+    /// `Layer`-specific—they are _span_-specific. This means that
+    /// other layers can access and mutate extensions that
+    /// a different Layer recorded. For example, an application might
+    /// have a layer that records execution timings alongside a layer
+    /// that reports spans and events to a distributed
+    /// tracing system that requires timestamps for spans.
+    /// Ideally, if one layer records a timestamp _x_, the other layer
+    /// should be able to reuse timestamp _x_.
+    ///
+    /// Therefore, extensions should generally be newtypes, rather than common
+    /// types like [`String`](std::string::String), to avoid accidnental
+    /// cross-`Layer` clobbering.
     pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.inner.insert(val)
     }
