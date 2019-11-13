@@ -70,6 +70,11 @@ where
                         .get::<FormattedFields<N>>()
                         .expect("Unable to find FormattedFields in extensions; this is a bug");
                     let data = &data.fmt_fields;
+                    // TODO: let's _not_ do this, but this resolves
+                    // https://github.com/tokio-rs/tracing/issues/391.
+                    // We should probably rework this to use a `serde_json::Value` or something
+                    // similar in a JSON-specific layer, but I'd (david)
+                    // rather have a uglier fix now rather than shipping broken JSON.
                     let mut fields: Value = serde_json::from_str(&data)?;
                     fields["name"] = json!(span.metadata().name());
                     serializer.serialize_entry("span", &fields).unwrap_or(());

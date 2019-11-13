@@ -8,6 +8,7 @@ struct ContextId {
     duplicate: bool,
 }
 
+/// `SpanStack` tracks what spans are currently executing on a per-thread basis.
 pub(crate) struct SpanStack {
     stack: Vec<ContextId>,
     ids: HashSet<Id>,
