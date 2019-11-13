@@ -21,7 +21,7 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 
 default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
 env-filter = ["matchers", "regex", "lazy_static"]
-fmt = ["owning_ref", "registry"]
+fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab"]
 json = ["tracing-serde", "serde", "serde_json"]
