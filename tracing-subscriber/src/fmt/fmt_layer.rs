@@ -382,10 +382,15 @@ where
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        // This `downcast_raw` impl allows downcasting a `fmt` layer to any of
+        // its components (event formatter, field formatter, and `MakeWriter`)
+        // as well as to the layer's type itself. The potential use-cases for
+        // this *may* be somewhat niche, though...
         match () {
             _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
             _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
             _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
+            _ if id == TypeId::of::<W>() => Some(&self.make_writer as *const W as *const ()),
             _ => None,
         }
     }
