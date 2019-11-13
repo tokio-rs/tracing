@@ -251,8 +251,6 @@ impl Drop for DataInner {
 // === impl Data ===
 
 impl<'a> SpanData<'a> for Data<'a> {
-    type Follows = std::slice::Iter<'a, Id>;
-
     fn id(&self) -> Id {
         idx_to_id(self.inner.key())
     }
@@ -263,10 +261,6 @@ impl<'a> SpanData<'a> for Data<'a> {
 
     fn parent(&self) -> Option<&Id> {
         self.inner.parent.as_ref()
-    }
-
-    fn follows_from(&self) -> Self::Follows {
-        unimplemented!("David: add this to `DataInner`")
     }
 
     fn extensions(&self) -> Extensions<'_> {
