@@ -1,7 +1,7 @@
 //! Storage for span data shared by multiple [`Layer`]s.
 //!
 //! [`Layer`]: ../layer/struct.Layer.html
-use tracing_core::{span::Id, Metadata};
+use tracing_core::{span::Id, Metadata, field::FieldSet};
 
 /// A module containing a type map of span extensions.
 pub mod extensions;
@@ -158,6 +158,18 @@ where
     /// Returns a static reference to the span's metadata.
     pub fn metadata(&self) -> &'static Metadata<'static> {
         self.data.metadata()
+    }
+
+    /// Returns the span's name,
+    pub fn name(&self) -> &'static str {
+        self.data.metadata().name()
+    }
+
+    /// Returns a list of [fields] defined by the span.
+    ///
+    /// [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
+    pub fn fields(&self) -> &FieldSet {
+        self.data.metadata().fields()
     }
 
     /// Returns the ID of this span's parent, or `None` if this span is the root
