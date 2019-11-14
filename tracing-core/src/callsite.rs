@@ -12,6 +12,7 @@ use crate::{
     subscriber::Interest,
     Metadata,
 };
+use crate::lazy_static;
 
 lazy_static! {
     static ref REGISTRY: Mutex<Registry> = Mutex::new(Registry {

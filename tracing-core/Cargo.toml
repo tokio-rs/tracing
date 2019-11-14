@@ -32,11 +32,3 @@ std = []
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "actively-developed" }
-
-[dependencies]
-lazy_static = "1"
-
-[target.'cfg(not(feature = "std"))'.dependencies]
-spin = "0.5"
-lazy_static = { version = "1", features = ["spin_no_std"] }
-

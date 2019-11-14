@@ -95,9 +95,6 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[macro_use]
-extern crate lazy_static;
-
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
 /// This may be used in contexts, such as static initializers, where the
@@ -218,6 +215,14 @@ mod parent;
 pub mod span;
 pub(crate) mod stdlib;
 pub mod subscriber;
+
+// Vendored version of spin 0.5.2 (0387621)
+// `mutex` and `once` modules only
+#[cfg(not(feature = "std"))]
+pub mod spin;
+
+// Vendored version of lazy_static 1.4.0 (4216696)
+pub mod lazy_static;
 
 #[doc(inline)]
 pub use self::{
