@@ -107,7 +107,7 @@ mod fmt_layer;
 pub mod format;
 pub mod time;
 pub mod writer;
-pub use fmt_layer::{FormattedFields, Layer, LayerBuilder};
+pub use fmt_layer::{FmtContext, FormattedFields, Layer, LayerBuilder};
 
 use crate::layer::Layer as _;
 use crate::{filter::LevelFilter, layer, registry::Registry};
