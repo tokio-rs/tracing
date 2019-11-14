@@ -55,6 +55,7 @@ where
 #[cfg(test)]
 mod test {
     use super::MakeWriter;
+    use crate::fmt::format::Format;
     use crate::fmt::test::{MockMakeWriter, MockWriter};
     use crate::fmt::Subscriber;
     use lazy_static::lazy_static;
@@ -69,17 +70,18 @@ mod test {
         let subscriber = {
             #[cfg(feature = "ansi")]
             {
+                let f = Format::default().without_time().with_ansi(false);
                 Subscriber::builder()
+                    .event_format(f)
                     .with_writer(make_writer)
-                    .without_time()
-                    .with_ansi(false)
                     .finish()
             }
             #[cfg(not(feature = "ansi"))]
             {
+                let f = Format::default().without_time();
                 Subscriber::builder()
+                    .event_format(f)
                     .with_writer(make_writer)
-                    .without_time()
                     .finish()
             }
         };

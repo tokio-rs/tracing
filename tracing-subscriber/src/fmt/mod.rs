@@ -57,7 +57,7 @@
 //!     .finish();
 //! ```
 //!
-//! You can find the configuration methods for [`FmtSubscriber`] in [`fmt::Builder`].
+//! You can find the configuration methods for [`FmtSubscriber`] in [`fmt::SubscriberBuilder`].
 //!
 //! ### Filters
 //!
@@ -95,26 +95,26 @@
 //! [`EnvFilter`]: ../filter/struct.EnvFilter.html
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: ../filter/index.html
-//! [`fmt::Builder`]: ./struct.Builder.html
+//! [`fmt::SubscriberBuilder`]: ./struct.SubscriberBuilder.html
 //! [`FmtSubscriber`]: ./struct.Subscriber.html
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
-use std::{any::TypeId, cell::RefCell, error::Error, io};
-use tracing_core::{subscriber::Interest, Event, Metadata};
+use std::{any::TypeId, error::Error, io};
+use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
+mod fmt_layer;
 pub mod format;
-mod span;
 pub mod time;
 pub mod writer;
+pub use fmt_layer::{FormattedFields, Layer, LayerBuilder};
 
-use crate::filter::LevelFilter;
-use crate::layer::{self, Layer};
+use crate::layer::Layer as _;
+use crate::{filter::LevelFilter, layer, registry::Registry};
 
 #[doc(inline)]
 pub use self::{
     format::{FormatEvent, FormatFields},
-    span::Context,
     writer::MakeWriter,
 };
 
@@ -133,53 +133,46 @@ pub struct Subscriber<
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
-#[derive(Debug)]
-pub struct Formatter<
+pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> {
-    fmt_fields: N,
-    fmt_event: E,
-    spans: span::Store,
-    settings: Settings,
-    make_writer: W,
-}
+> = layer::Layered<fmt_layer::Layer<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Subscriber`s.
 #[derive(Debug)]
-pub struct Builder<
+pub struct SubscriberBuilder<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
     filter: F,
-    fmt_fields: N,
-    fmt_event: E,
-    settings: Settings,
-    make_writer: W,
+    inner: LayerBuilder<Registry, N, E, W>,
 }
 
-#[derive(Debug)]
-struct Settings {
-    inherit_fields: bool,
-    initial_span_capacity: usize,
-}
+/// Configures and constructs `Subscriber`s.
+#[deprecated(since = "0.2.0", note = "renamed to `SubscriberBuilder`")]
+pub type Builder<
+    N = format::DefaultFields,
+    E = format::Format<format::Full>,
+    F = LevelFilter,
+    W = fn() -> io::Stdout,
+> = SubscriberBuilder<N, E, F, W>;
 
 impl Subscriber {
     /// The maximum [verbosity level] that is enabled by a `Subscriber` by
     /// default.
     ///
-    /// This can be overridden with the [`Builder::with_max_level`] method.
+    /// This can be overridden with the [`SubscriberBuilder::with_max_level`] method.
     ///
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`Builder::with_max_level`]: struct.Builder.html#method.with_max_level
+    /// [`SubscriberBuilder::with_max_level`]: struct.SubscriberBuilder.html#method.with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
-    /// Returns a new `Builder` for configuring a format subscriber.
-    pub fn builder() -> Builder {
-        Builder::default()
+    /// Returns a new `SubscriberBuilder` for configuring a format subscriber.
+    pub fn builder() -> SubscriberBuilder {
+        SubscriberBuilder::default()
     }
 
     /// Returns a new format subscriber with the default configuration.
@@ -190,18 +183,20 @@ impl Subscriber {
 
 impl Default for Subscriber {
     fn default() -> Self {
-        Builder::default().finish()
+        SubscriberBuilder::default().finish()
     }
 }
+
 // === impl Subscriber ===
 
 impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
+    E: FormatEvent<Registry, N> + 'static,
+    F: layer::Layer<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
     layer::Layered<F, Formatter<N, E, W>>: tracing_core::Subscriber,
+    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -268,7 +263,7 @@ where
     }
 }
 
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
 impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
 where
     layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
@@ -279,165 +274,33 @@ where
     }
 }
 
-// === impl Formatter ===
+// ===== impl SubscriberBuilder =====
 
-impl<N, E, W> Formatter<N, E, W>
-where
-    N: for<'writer> FormatFields<'writer>,
-{
-    #[inline]
-    fn ctx(&self) -> span::Context<'_, N> {
-        span::Context::new(&self.spans, &self.fmt_fields)
-    }
-}
-
-impl<N, E, W> tracing_core::Subscriber for Formatter<N, E, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    W: MakeWriter + 'static,
-{
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
-        Interest::always()
-    }
-
-    fn enabled(&self, _: &Metadata<'_>) -> bool {
-        true
-    }
-
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        self.spans.new_span(attrs, &self.fmt_fields)
-    }
-
-    #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.spans.record(span, values, &self.fmt_fields)
-    }
-
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
-        // TODO: implement this please
-    }
-
-    fn event(&self, event: &Event<'_>) {
-        thread_local! {
-            static BUF: RefCell<String> = RefCell::new(String::new());
-        }
-
-        BUF.with(|buf| {
-            let borrow = buf.try_borrow_mut();
-            let mut a;
-            let mut b;
-            let buf = match borrow {
-                Ok(buf) => {
-                    a = buf;
-                    &mut *a
-                }
-                _ => {
-                    b = String::new();
-                    &mut b
-                }
-            };
-
-            if self.fmt_event.format_event(&self.ctx(), buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
-                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
-            }
-
-            buf.clear();
-        });
-    }
-
-    fn enter(&self, id: &span::Id) {
-        // TODO: add on_enter hook
-        self.spans.push(id);
-    }
-
-    fn exit(&self, id: &span::Id) {
-        self.spans.pop(id);
-    }
-
-    fn current_span(&self) -> span::Current {
-        if let Some(id) = self.spans.current() {
-            if let Some(meta) = self.spans.get(&id).map(|span| span.metadata()) {
-                return span::Current::new(id, meta);
-            }
-        }
-        span::Current::none()
-    }
-
-    #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.spans.clone_span(id)
-    }
-
-    #[inline]
-    fn try_close(&self, id: span::Id) -> bool {
-        self.spans.drop_span(id)
-    }
-
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        match () {
-            _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
-            // _ if id == TypeId::of::<F>() => Some(&self.filter as *const F as *const ()),
-            _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
-            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
-            _ => None,
-        }
-    }
-}
-
-#[cfg(feature = "registry_unstable")]
-impl<N, E, W> crate::registry::LookupMetadata for Formatter<N, E, W> {
-    fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
-        self.spans.get(&id).map(|span| span.metadata())
-    }
-}
-
-// ===== impl Builder =====
-
-impl Default for Builder {
+impl Default for SubscriberBuilder {
     fn default() -> Self {
-        Builder {
+        SubscriberBuilder {
             filter: Subscriber::DEFAULT_MAX_LEVEL,
-            fmt_fields: format::DefaultFields::default(),
-            fmt_event: format::Format::default(),
-            settings: Settings::default(),
-            make_writer: io::stdout,
+            inner: Default::default(),
         }
     }
 }
 
-impl<N, E, F, W> Builder<N, E, F, W>
+impl<N, E, F, W> SubscriberBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
+    E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
+    F: layer::Layer<Formatter<N, E, W>> + Send + Sync + 'static,
+    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Subscriber<N, E, F, W> {
-        let subscriber = Formatter {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            spans: span::Store::with_capacity(self.settings.initial_span_capacity),
-            settings: self.settings,
-            make_writer: self.make_writer,
-        };
+        let subscriber = self.inner.finish().with_subscriber(Registry::default());
         Subscriber {
             inner: self.filter.with_subscriber(subscriber),
         }
     }
-}
 
-impl<N, E, F, W> Builder<N, E, F, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<N> + 'static,
-    W: MakeWriter + 'static,
-    F: Layer<Formatter<N, E, W>> + 'static,
-    Subscriber<N, E, F, W>: Send + Sync,
-{
     /// Install this Subscriber as the global default if one is
     /// not already set.
     ///
@@ -448,14 +311,14 @@ where
     /// Returns an Error if the initialization was unsuccessful, likely
     /// because a global subscriber was already installed by another
     /// call to `try_init`.
-    pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init()?;
+    pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
+        #[cfg(feature = "tracing-log/std")]
+        tracing_log::LogTracer::init().map_err(Box::new)?;
 
         tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
             self.finish(),
         ))
-        .map_err(Into::into)
+        .map_err(Box::new)
     }
 
     /// Install this Subscriber as the global default.
@@ -472,7 +335,7 @@ where
     }
 }
 
-impl<N, L, T, F, W> Builder<N, format::Format<L, T>, F, W>
+impl<N, L, T, F, W> SubscriberBuilder<N, format::Format<L, T>, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
@@ -487,47 +350,73 @@ where
     /// [`timer`]: ./time/trait.FormatTime.html
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
-    pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F, W> {
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event.with_timer(timer),
+    pub fn with_timer<T2>(self, timer: T2) -> SubscriberBuilder<N, format::Format<L, T2>, F, W> {
+        SubscriberBuilder {
             filter: self.filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner.with_timer(timer),
         }
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F, W> {
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event.without_time(),
+    pub fn without_time(self) -> SubscriberBuilder<N, format::Format<L, ()>, F, W> {
+        SubscriberBuilder {
             filter: self.filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner.without_time(),
         }
     }
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
-    pub fn with_ansi(self, ansi: bool) -> Builder<N, format::Format<L, T>, F, W> {
-        Builder {
-            fmt_event: self.fmt_event.with_ansi(ansi),
-            ..self
+    pub fn with_ansi(self, ansi: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_ansi(ansi),
         }
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Builder<N, format::Format<L, T>, F, W> {
-        Builder {
-            fmt_event: self.fmt_event.with_target(display_target),
-            ..self
+    pub fn with_target(
+        self,
+        display_target: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_target(display_target),
+        }
+    }
+
+    /// Sets the subscriber being built to use a less verbose formatter.
+    ///
+    /// See [`format::Compact`].
+    pub fn compact(self) -> SubscriberBuilder<N, format::Format<format::Compact, T>, F, W>
+    where
+        N: for<'writer> FormatFields<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.compact(),
+        }
+    }
+
+    /// Sets the subscriber being built to use a JSON formatter.
+    ///
+    /// See [`format::Json`]
+    #[cfg(feature = "json")]
+    pub fn json(
+        self,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
+    where
+        N: for<'writer> FormatFields<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.json(),
         }
     }
 }
 
 #[cfg(feature = "env-filter")]
-impl<N, E, W> Builder<N, E, crate::EnvFilter, W>
+impl<N, E, W> SubscriberBuilder<N, E, crate::EnvFilter, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
@@ -535,20 +424,18 @@ where
     /// runtime.
     pub fn with_filter_reloading(
         self,
-    ) -> Builder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W> {
+    ) -> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
+    {
         let (filter, _) = crate::reload::Layer::new(self.filter);
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
+        SubscriberBuilder {
             filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner,
         }
     }
 }
 
 #[cfg(feature = "env-filter")]
-impl<N, E, W> Builder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
+impl<N, E, W> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
@@ -559,7 +446,7 @@ where
     }
 }
 
-impl<N, E, F, W> Builder<N, E, F, W> {
+impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
     ///
@@ -580,16 +467,13 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     ///     .finish();
     /// # drop(subscriber)
     /// ```
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<N2, E, F, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> SubscriberBuilder<N2, E, F, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
-        Builder {
-            fmt_fields: fmt_fields.into(),
-            fmt_event: self.fmt_event,
+        SubscriberBuilder {
             filter: self.filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner.fmt_fields(fmt_fields),
         }
     }
 
@@ -650,20 +534,16 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     pub fn with_env_filter(
         self,
         filter: impl Into<crate::EnvFilter>,
-    ) -> Builder<N, E, crate::EnvFilter, W>
+    ) -> SubscriberBuilder<N, E, crate::EnvFilter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
         let filter = filter.into();
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
+        SubscriberBuilder {
             filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner,
         }
     }
-
     /// Sets the [`EnvFilter`] that the subscriber will use to determine if
     /// a span or event is enabled.
     ///
@@ -678,7 +558,7 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     pub fn with_filter(
         self,
         filter: impl Into<crate::EnvFilter>,
-    ) -> Builder<N, E, crate::EnvFilter, W>
+    ) -> SubscriberBuilder<N, E, crate::EnvFilter, W>
     where
         Formatter<N, E, W>: tracing_core::Subscriber + 'static,
     {
@@ -717,93 +597,51 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_filter`]: #method.with_filter
-    pub fn with_max_level(self, filter: impl Into<LevelFilter>) -> Builder<N, E, LevelFilter, W> {
+    pub fn with_max_level(
+        self,
+        filter: impl Into<LevelFilter>,
+    ) -> SubscriberBuilder<N, E, LevelFilter, W> {
         let filter = filter.into();
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
+        SubscriberBuilder {
             filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
-
-    /// Sets the subscriber being built to use a less verbose formatter.
-    ///
-    /// See [`format::Compact`].
-    pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F, W>
-    where
-        N: for<'writer> FormatFields<'writer> + 'static,
-    {
-        Builder {
-            fmt_event: format::Format::default().compact(),
-            filter: self.filter,
-            fmt_fields: self.fmt_fields,
-            settings: self.settings,
-            make_writer: self.make_writer,
-        }
-    }
-
-    /// Sets the subscriber being built to use a JSON formatter.
-    ///
-    /// See [`format::Json`]
-    #[cfg(feature = "json")]
-    pub fn json(self) -> Builder<format::JsonFields, format::Format<format::Json>, F, W>
-    where
-        N: for<'writer> FormatFields<'writer> + 'static,
-    {
-        Builder {
-            fmt_event: format::Format::default().json(),
-            filter: self.filter,
-            fmt_fields: format::JsonFields::default(),
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner,
         }
     }
 
     /// Sets the function that the subscriber being built should use to format
     /// events that occur.
-    pub fn on_event<E2>(self, fmt_event: E2) -> Builder<N, E2, F, W>
+    #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
+    pub fn on_event<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
     where
-        E2: FormatEvent<N> + 'static,
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: MakeWriter + 'static,
     {
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event,
+        self.event_format(fmt_event)
+    }
+
+    /// Sets the function that the subscriber being built should use to format
+    /// events that occur.
+    pub fn event_format<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
+    where
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: MakeWriter + 'static,
+    {
+        SubscriberBuilder {
             filter: self.filter,
-            settings: self.settings,
-            make_writer: self.make_writer,
+            inner: self.inner.event_format(fmt_event),
         }
     }
 
     /// Sets whether or not spans inherit their parents' field values (disabled
     /// by default).
+    #[deprecated(since = "0.2.0", note = "this no longer does anything")]
     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
-        Builder {
-            settings: Settings {
-                inherit_fields,
-                ..self.settings
-            },
-            ..self
-        }
+        let _ = inherit_fields;
+        self
     }
 
-    // TODO(eliza): should this be publicly exposed?
-    // /// Configures the initial capacity for the span slab used to store
-    // /// in-progress span data. This may be used for tuning the subscriber's
-    // /// allocation performance, but in general does not need to be manually configured..
-    // pub fn initial_span_capacity(self, initial_span_capacity: usize) -> Self {
-    //     Builder {
-    //         settings: Settings {
-    //             initial_span_capacity,
-    //             ..self.settings
-    //         },
-    //         ..self
-    //     }
-    // }
-}
-
-impl<N, E, F, W> Builder<N, E, F, W> {
     /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
     ///
     /// # Examples
@@ -819,25 +657,13 @@ impl<N, E, F, W> Builder<N, E, F, W> {
     /// ```
     ///
     /// [`MakeWriter`]: trait.MakeWriter.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> Builder<N, E, F, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> SubscriberBuilder<N, E, F, W2>
     where
         W2: MakeWriter + 'static,
     {
-        Builder {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
+        SubscriberBuilder {
             filter: self.filter,
-            settings: self.settings,
-            make_writer,
-        }
-    }
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            inherit_fields: false,
-            initial_span_capacity: 32,
+            inner: self.inner.with_writer(make_writer),
         }
     }
 }
@@ -859,7 +685,7 @@ impl Default for Settings {
 ///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
-pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
     Subscriber::builder()
         .with_env_filter(crate::EnvFilter::from_default_env())
         .try_init()
@@ -883,11 +709,19 @@ pub fn init() {
 
 #[cfg(test)]
 mod test {
-    use super::writer::MakeWriter;
-    use super::*;
-    use crate::fmt::Subscriber;
-    use std::io;
-    use std::sync::{Mutex, MutexGuard, TryLockError};
+    use crate::{
+        filter::LevelFilter,
+        fmt::{
+            format::{self, Format},
+            time,
+            writer::MakeWriter,
+            Subscriber,
+        },
+    };
+    use std::{
+        io,
+        sync::{Mutex, MutexGuard, TryLockError},
+    };
     use tracing_core::dispatcher::Dispatch;
 
     pub(crate) struct MockWriter<'a> {
@@ -941,29 +775,29 @@ mod test {
 
     #[test]
     fn impls() {
-        let f = format::Format::default().with_timer(time::Uptime::default());
-        let subscriber = Subscriber::builder().on_event(f).finish();
+        let f = Format::default().with_timer(time::Uptime::default());
+        let subscriber = Subscriber::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let subscriber = Subscriber::builder().on_event(f).finish();
+        let subscriber = Subscriber::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let subscriber = Subscriber::builder().on_event(f).finish();
+        let subscriber = Subscriber::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
     }
 
     #[test]
     fn subscriber_downcasts() {
-        let subscriber = Subscriber::new();
+        let subscriber = Subscriber::builder().finish();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<Subscriber>().is_some());
     }
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        let subscriber = Subscriber::builder().finish();
+        let subscriber = Subscriber::new();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
@@ -971,9 +805,9 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "registry_unstable")]
     fn is_lookup_meta() {
         fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
-        assert_lookup_meta(Subscriber::builder().finish())
+        let subscriber = Subscriber::new();
+        assert_lookup_meta(subscriber)
     }
 }
