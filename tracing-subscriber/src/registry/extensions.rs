@@ -63,8 +63,7 @@ impl<'a> ExtensionsMut<'a> {
 
     /// Insert a type into this `Extensions`.
     ///
-    /// If a extension of this type already exists, it will
-    /// be returned. Note that extensions are _not_
+    /// Note that extensions are _not_
     /// `Layer`-specific—they are _span_-specific. This means that
     /// other layers can access and mutate extensions that
     /// a different Layer recorded. For example, an application might
@@ -77,7 +76,18 @@ impl<'a> ExtensionsMut<'a> {
     /// Therefore, extensions should generally be newtypes, rather than common
     /// types like [`String`](https://doc.rust-lang.org/std/string/struct.String.html), to avoid accidental
     /// cross-`Layer` clobbering.
-    pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+    ///
+    /// ## Panics
+    ///
+    /// If `T` is already present in `Extensions`, then this method will panic.
+    pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) {
+        assert!(self.replace(val).is_none())
+    }
+
+    /// Replaces an existing `T` into this extensions.
+    ///
+    /// If `T` is not present, `Option::None` will be returned.
+    pub fn replace<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.inner.insert(val)
     }
 
