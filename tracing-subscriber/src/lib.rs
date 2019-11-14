@@ -27,7 +27,7 @@
 //!   Enabled by default.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
-//! - `registry_unstable`: enables the experimental [`registry`] module.
+//! - `registry`: enables the experimental [`registry`] module.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
 //!
 //! ### Optional Dependencies
@@ -99,7 +99,7 @@ pub mod filter;
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
 pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
@@ -110,6 +110,9 @@ pub(crate) mod thread;
 pub use filter::{EnvFilter, Filter};
 
 pub use layer::Layer;
+
+#[cfg(feature = "registry")]
+pub use registry::Registry;
 
 #[cfg(feature = "fmt")]
 pub use fmt::Subscriber as FmtSubscriber;

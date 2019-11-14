@@ -1,13 +1,19 @@
 //! Formatters for logging `tracing` events.
-use super::span;
 use super::time::{self, FormatTime, SystemTime};
-use crate::field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput};
+use crate::{
+    field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
+    fmt::fmt_layer::FmtContext,
+    fmt::fmt_layer::FormattedFields,
+    registry::LookupSpan,
+};
 
-use std::fmt::{self, Write};
-use std::marker::PhantomData;
+use std::{
+    fmt::{self, Write},
+    marker::PhantomData,
+};
 use tracing_core::{
     field::{self, Field, Visit},
-    Event, Level,
+    Event, Level, Subscriber,
 };
 
 #[cfg(feature = "tracing-log")]
@@ -32,22 +38,29 @@ pub use json::*;
 /// signature as `format_event`.
 ///
 /// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
-pub trait FormatEvent<N> {
+pub trait FormatEvent<S, N>
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<N> FormatEvent<N>
-    for fn(&span::Context<'_, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+impl<S, N> FormatEvent<S, N>
+    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -120,9 +133,9 @@ pub struct Full;
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: PhantomData<F>,
-    timer: T,
-    ansi: bool,
-    display_target: bool,
+    pub(crate) timer: T,
+    pub(crate) ansi: bool,
+    pub(crate) display_target: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -206,14 +219,15 @@ impl<F, T> Format<F, T> {
     }
 }
 
-impl<N, T> FormatEvent<N> for Format<Full, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
-    N: for<'writer> FormatFields<'writer>,
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -233,7 +247,7 @@ where
             {
                 (
                     FmtLevel::new(meta.level(), self.ansi),
-                    FullCtx::new(&ctx, self.ansi),
+                    FullCtx::new(ctx, self.ansi),
                 )
             }
             #[cfg(not(feature = "ansi"))]
@@ -258,14 +272,15 @@ where
     }
 }
 
-impl<N, T> FormatEvent<N> for Format<Compact, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
 where
-    N: for<'writer> FormatFields<'writer>,
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -305,8 +320,12 @@ where
             }
         )?;
         ctx.format_fields(writer, event)?;
-        ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
-            .unwrap_or(Ok(()))?;
+        let span = ctx.ctx.current_span();
+        if let Some(id) = span.id() {
+            if let Some(span) = ctx.ctx.metadata(id) {
+                write!(writer, "{}", span.fields()).unwrap_or(());
+            }
+        }
         writeln!(writer)
     }
 }
@@ -461,39 +480,50 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
     }
 }
 
-struct FmtCtx<'a, N> {
-    ctx: &'a span::Context<'a, N>,
+struct FmtCtx<'a, S, N> {
+    ctx: &'a FmtContext<'a, S, N>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
-impl<'a, N: 'a> FmtCtx<'a, N> {
+impl<'a, S, N: 'a> FmtCtx<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
+    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>) -> Self {
         Self { ctx }
     }
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, N> fmt::Display for FmtCtx<'a, N> {
+impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
-        self.ctx.visit_spans(|_, span| {
+        self.ctx.visit_spans(|span| {
             if seen {
                 f.pad(":")?;
             }
             seen = true;
 
+            let metadata = span.metadata();
             if self.ansi {
-                write!(f, "{}", Style::new().bold().paint(span.name()))
+                write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
             } else {
-                write!(f, "{}", span.name())
+                write!(f, "{}", metadata.name())?;
             }
+
+            Ok(())
         })?;
         if seen {
             f.pad(" ")?;
@@ -503,7 +533,12 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a, N> fmt::Display for FmtCtx<'a, N> {
+impl<'a, S, N> fmt::Display for FmtCtx<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+    for<'lookup> <S as LookupSpan<'a>>::Data: LookupSpan<'lookup>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
@@ -520,26 +555,38 @@ impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     }
 }
 
-struct FullCtx<'a, N> {
-    ctx: &'a span::Context<'a, N>,
+struct FullCtx<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    ctx: &'a FmtContext<'a, S, N>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
-impl<'a, N: 'a> FullCtx<'a, N> {
+impl<'a, S, N: 'a> FullCtx<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(ctx: &'a span::Context<'a, N>, ansi: bool) -> Self {
+    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, ansi: bool) -> Self {
         Self { ctx, ansi }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a span::Context<'a, N>) -> Self {
+    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>) -> Self {
         Self { ctx }
     }
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, N> fmt::Display for FullCtx<'a, N> {
+impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         let style = if self.ansi {
@@ -547,15 +594,16 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
         } else {
             Style::new()
         };
-        self.ctx.visit_spans(|_, span| {
-            write!(f, "{}", style.paint(span.name()))?;
-
+        self.ctx.visit_spans(|span| {
+            let metadata = span.metadata();
+            write!(f, "{}", style.paint(metadata.name()))?;
             seen = true;
 
-            let fields = span.fields();
-            if !fields.is_empty() {
-                write!(f, "{}{}{}", style.paint("{"), fields, style.paint("}"))?;
-            }
+            let ext = span.extensions();
+            let data = &ext
+                .get::<FormattedFields<N>>()
+                .expect("Unable to find FormattedFields in extensions; this is a bug");
+            write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
             ":".fmt(f)
         })?;
         if seen {
@@ -566,10 +614,14 @@ impl<'a, N> fmt::Display for FullCtx<'a, N> {
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a, N> fmt::Display for FullCtx<'a, N> {
+impl<'a, N> fmt::Display for FullCtx<'a, N>
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
-        self.ctx.visit_spans(|_, span| {
+        self.ctx.visit_spans(|span| {
             write!(f, "{}", span.name())?;
             seen = true;
 
@@ -699,13 +751,11 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 #[cfg(test)]
 mod test {
 
-    use crate::fmt::test::MockWriter;
-    use crate::fmt::time::FormatTime;
+    use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
-    use std::fmt;
-    use std::sync::Mutex;
+    use std::{fmt, sync::Mutex};
 
     struct MockTime;
     impl FormatTime for MockTime {
