@@ -1,5 +1,3 @@
-
-
 // Copyright 2016 lazy-static.rs Developers
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
@@ -16,12 +14,12 @@ as well as anything that requires function calls to be computed.
 */
 
 #[cfg(feature = "std")]
-#[path="inline_lazy.rs"]
+#[path = "inline_lazy.rs"]
 #[doc(hidden)]
 pub mod lazy;
 
 #[cfg(not(feature = "std"))]
-#[path="core_lazy.rs"]
+#[path = "core_lazy.rs"]
 #[doc(hidden)]
 pub mod lazy;
 

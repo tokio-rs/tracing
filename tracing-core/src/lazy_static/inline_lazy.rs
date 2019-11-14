@@ -5,9 +5,9 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::prelude::v1::*;
 use std::cell::Cell;
 use std::hint::unreachable_unchecked;
+use std::prelude::v1::*;
 use std::sync::Once;
 #[allow(deprecated)]
 pub use std::sync::ONCE_INIT;
@@ -35,10 +35,13 @@ impl<T: Sync> Lazy<T> {
             match *self.0.as_ptr() {
                 Some(ref x) => x,
                 None => {
-                    debug_assert!(false, "attempted to derefence an uninitialized lazy static. This is a bug");
+                    debug_assert!(
+                        false,
+                        "attempted to derefence an uninitialized lazy static. This is a bug"
+                    );
 
                     unreachable_unchecked()
-                },
+                }
             }
         }
     }

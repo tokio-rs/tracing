@@ -1,5 +1,6 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
+use crate::lazy_static;
 use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
@@ -12,7 +13,6 @@ use crate::{
     subscriber::Interest,
     Metadata,
 };
-use crate::lazy_static;
 
 lazy_static! {
     static ref REGISTRY: Mutex<Registry> = Mutex::new(Registry {

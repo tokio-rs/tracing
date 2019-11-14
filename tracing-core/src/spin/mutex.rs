@@ -1,10 +1,10 @@
-use core::sync::atomic::{AtomicBool, Ordering, spin_loop_hint as cpu_relax};
 use core::cell::UnsafeCell;
-use core::marker::Sync;
-use core::ops::{Drop, Deref, DerefMut};
-use core::fmt;
-use core::option::Option::{self, None, Some};
 use core::default::Default;
+use core::fmt;
+use core::marker::Sync;
+use core::ops::{Deref, DerefMut, Drop};
+use core::option::Option::{self, None, Some};
+use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicBool, Ordering};
 
 /// This type provides MUTual EXclusion based on spinning.
 ///
@@ -69,8 +69,7 @@ use core::default::Default;
 /// let answer = { *spin_mutex.lock() };
 /// assert_eq!(answer, numthreads);
 /// ```
-pub struct Mutex<T: ?Sized>
-{
+pub struct Mutex<T: ?Sized> {
     lock: AtomicBool,
     data: UnsafeCell<T>,
 }
@@ -79,8 +78,7 @@ pub struct Mutex<T: ?Sized>
 ///
 /// When the guard falls out of scope it will release the lock.
 #[derive(Debug)]
-pub struct MutexGuard<'a, T: ?Sized + 'a>
-{
+pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a AtomicBool,
     data: &'a mut T,
 }
@@ -89,8 +87,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a>
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
 
-impl<T> Mutex<T>
-{
+impl<T> Mutex<T> {
     /// Creates a new spinlock wrapping the supplied data.
     ///
     /// May be used statically:
@@ -106,10 +103,8 @@ impl<T> Mutex<T>
     ///     drop(lock);
     /// }
     /// ```
-    pub const fn new(user_data: T) -> Mutex<T>
-    {
-        Mutex
-        {
+    pub const fn new(user_data: T) -> Mutex<T> {
+        Mutex {
             lock: AtomicBool::new(false),
             data: UnsafeCell::new(user_data),
         }
@@ -124,15 +119,11 @@ impl<T> Mutex<T>
     }
 }
 
-impl<T: ?Sized> Mutex<T>
-{
-    fn obtain_lock(&self)
-    {
-        while self.lock.compare_and_swap(false, true, Ordering::Acquire) != false
-        {
+impl<T: ?Sized> Mutex<T> {
+    fn obtain_lock(&self) {
+        while self.lock.compare_and_swap(false, true, Ordering::Acquire) != false {
             // Wait until the lock looks unlocked before retrying
-            while self.lock.load(Ordering::Relaxed)
-            {
+            while self.lock.load(Ordering::Relaxed) {
                 cpu_relax();
             }
         }
@@ -153,11 +144,9 @@ impl<T: ?Sized> Mutex<T>
     /// }
     ///
     /// ```
-    pub fn lock(&self) -> MutexGuard<T>
-    {
+    pub fn lock(&self) -> MutexGuard<T> {
         self.obtain_lock();
-        MutexGuard
-        {
+        MutexGuard {
             lock: &self.lock,
             data: unsafe { &mut *self.data.get() },
         }
@@ -176,19 +165,13 @@ impl<T: ?Sized> Mutex<T>
 
     /// Tries to lock the mutex. If it is already locked, it will return None. Otherwise it returns
     /// a guard within Some.
-    pub fn try_lock(&self) -> Option<MutexGuard<T>>
-    {
-        if self.lock.compare_and_swap(false, true, Ordering::Acquire) == false
-        {
-            Some(
-                MutexGuard {
-                    lock: &self.lock,
-                    data: unsafe { &mut *self.data.get() },
-                }
-            )
-        }
-        else
-        {
+    pub fn try_lock(&self) -> Option<MutexGuard<T>> {
+        if self.lock.compare_and_swap(false, true, Ordering::Acquire) == false {
+            Some(MutexGuard {
+                lock: &self.lock,
+                data: unsafe { &mut *self.data.get() },
+            })
+        } else {
             None
         }
     }
@@ -212,15 +195,12 @@ impl<T: ?Sized> Mutex<T>
     }
 }
 
-impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T>
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
-        match self.try_lock()
-        {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.try_lock() {
             Some(guard) => write!(f, "Mutex {{ data: ")
-				.and_then(|()| (&*guard).fmt(f))
-				.and_then(|()| write!(f, "}}")),
+                .and_then(|()| (&*guard).fmt(f))
+                .and_then(|()| write!(f, "}}")),
             None => write!(f, "Mutex {{ <locked> }}"),
         }
     }
@@ -232,22 +212,22 @@ impl<T: ?Sized + Default> Default for Mutex<T> {
     }
 }
 
-impl<'a, T: ?Sized> Deref for MutexGuard<'a, T>
-{
+impl<'a, T: ?Sized> Deref for MutexGuard<'a, T> {
     type Target = T;
-    fn deref<'b>(&'b self) -> &'b T { &*self.data }
+    fn deref<'b>(&'b self) -> &'b T {
+        &*self.data
+    }
 }
 
-impl<'a, T: ?Sized> DerefMut for MutexGuard<'a, T>
-{
-    fn deref_mut<'b>(&'b mut self) -> &'b mut T { &mut *self.data }
+impl<'a, T: ?Sized> DerefMut for MutexGuard<'a, T> {
+    fn deref_mut<'b>(&'b mut self) -> &'b mut T {
+        &mut *self.data
+    }
 }
 
-impl<'a, T: ?Sized> Drop for MutexGuard<'a, T>
-{
+impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     /// The dropping of the MutexGuard will release the lock it was created from.
-    fn drop(&mut self)
-    {
+    fn drop(&mut self) {
         self.lock.store(false, Ordering::Release);
     }
 }
@@ -256,9 +236,9 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T>
 mod tests {
     use std::prelude::v1::*;
 
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc::channel;
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
 
     use super::*;
@@ -275,7 +255,7 @@ mod tests {
 
     #[test]
     fn lots_and_lots() {
-        static M: Mutex<()>  = Mutex::new(());
+        static M: Mutex<()> = Mutex::new(());
         static mut CNT: u32 = 0;
         const J: u32 = 1000;
         const K: u32 = 3;
@@ -292,16 +272,22 @@ mod tests {
         let (tx, rx) = channel();
         for _ in 0..K {
             let tx2 = tx.clone();
-            thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
+            thread::spawn(move || {
+                inc();
+                tx2.send(()).unwrap();
+            });
             let tx2 = tx.clone();
-            thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
+            thread::spawn(move || {
+                inc();
+                tx2.send(()).unwrap();
+            });
         }
 
         drop(tx);
         for _ in 0..2 * K {
             rx.recv().unwrap();
         }
-        assert_eq!(unsafe {CNT}, J * K * 2);
+        assert_eq!(unsafe { CNT }, J * K * 2);
     }
 
     #[test]
@@ -353,7 +339,7 @@ mod tests {
         let arc = Arc::new(Mutex::new(1));
         let arc2 = Arc::new(Mutex::new(arc));
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| {
+        let _t = thread::spawn(move || {
             let lock = arc2.lock();
             let lock2 = lock.lock();
             assert_eq!(*lock2, 1);
@@ -366,7 +352,7 @@ mod tests {
     fn test_mutex_arc_access_in_unwind() {
         let arc = Arc::new(Mutex::new(1));
         let arc2 = arc.clone();
-        let _ = thread::spawn(move|| -> () {
+        let _ = thread::spawn(move || -> () {
             struct Unwinder {
                 i: Arc<Mutex<i32>>,
             }
@@ -377,7 +363,8 @@ mod tests {
             }
             let _u = Unwinder { i: arc2 };
             panic!();
-        }).join();
+        })
+        .join();
         let lock = arc.lock();
         assert_eq!(*lock, 2);
     }
@@ -400,7 +387,7 @@ mod tests {
         ::std::mem::forget(lock.lock());
         unsafe {
             lock.force_unlock();
-        } 
+        }
         assert!(lock.try_lock().is_some());
     }
 }

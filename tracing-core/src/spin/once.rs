@@ -1,6 +1,6 @@
 use core::cell::UnsafeCell;
-use core::sync::atomic::{AtomicUsize, Ordering, spin_loop_hint as cpu_relax};
 use core::fmt;
+use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicUsize, Ordering};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Unlike its std equivalent, this is generalized so that the
@@ -25,11 +25,11 @@ pub struct Once<T> {
 
 impl<T: fmt::Debug> fmt::Debug for Once<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.try() {
+        match self.r#try() {
             Some(s) => write!(f, "Once {{ data: ")
-				.and_then(|()| s.fmt(f))
-				.and_then(|()| write!(f, "}}")),
-            None => write!(f, "Once {{ <uninitialized> }}")
+                .and_then(|()| s.fmt(f))
+                .and_then(|()| write!(f, "}}")),
+            None => write!(f, "Once {{ <uninitialized> }}"),
         }
     }
 }
@@ -62,7 +62,7 @@ impl<T> Once<T> {
 
     fn force_get<'a>(&'a self) -> &'a T {
         match unsafe { &*self.data.get() }.as_ref() {
-            None    => unsafe { unreachable() },
+            None => unsafe { unreachable() },
             Some(p) => p,
         }
     }
@@ -96,17 +96,22 @@ impl<T> Once<T> {
     /// }
     /// ```
     pub fn call_once<'a, F>(&'a self, builder: F) -> &'a T
-        where F: FnOnce() -> T
+    where
+        F: FnOnce() -> T,
     {
         let mut status = self.state.load(Ordering::SeqCst);
 
         if status == INCOMPLETE {
-            status = self.state.compare_and_swap(INCOMPLETE,
-                                                 RUNNING,
-                                                 Ordering::SeqCst);
-            if status == INCOMPLETE { // We init
+            status = self
+                .state
+                .compare_and_swap(INCOMPLETE, RUNNING, Ordering::SeqCst);
+            if status == INCOMPLETE {
+                // We init
                 // We use a guard (Finish) to catch panics caused by builder
-                let mut finish = Finish { state: &self.state, panicked: true };
+                let mut finish = Finish {
+                    state: &self.state,
+                    panicked: true,
+                };
                 unsafe { *self.data.get() = Some(builder()) };
                 finish.panicked = false;
 
@@ -121,10 +126,11 @@ impl<T> Once<T> {
         loop {
             match status {
                 INCOMPLETE => unreachable!(),
-                RUNNING => { // We spin
+                RUNNING => {
+                    // We spin
                     cpu_relax();
                     status = self.state.load(Ordering::SeqCst)
-                },
+                }
                 PANICKED => panic!("Once has panicked"),
                 COMPLETE => return self.force_get(),
                 _ => unsafe { unreachable() },
@@ -133,10 +139,10 @@ impl<T> Once<T> {
     }
 
     /// Returns a pointer iff the `Once` was previously initialized
-    pub fn try<'a>(&'a self) -> Option<&'a T> {
+    pub fn r#try<'a>(&'a self) -> Option<&'a T> {
         match self.state.load(Ordering::SeqCst) {
             COMPLETE => Some(self.force_get()),
-            _        => None,
+            _ => None,
         }
     }
 
@@ -146,9 +152,9 @@ impl<T> Once<T> {
         loop {
             match self.state.load(Ordering::SeqCst) {
                 INCOMPLETE => return None,
-                RUNNING    => cpu_relax(), // We spin
-                COMPLETE   => return Some(self.force_get()),
-                PANICKED   => panic!("Once has panicked"),
+                RUNNING => cpu_relax(), // We spin
+                COMPLETE => return Some(self.force_get()),
+                PANICKED => panic!("Once has panicked"),
                 _ => unsafe { unreachable() },
             }
         }
@@ -172,9 +178,9 @@ impl<'a> Drop for Finish<'a> {
 mod tests {
     use std::prelude::v1::*;
 
+    use super::Once;
     use std::sync::mpsc::channel;
     use std::thread;
-    use super::Once;
 
     #[test]
     fn smoke_once() {
@@ -203,8 +209,10 @@ mod tests {
         let (tx, rx) = channel();
         for _ in 0..10 {
             let tx = tx.clone();
-            thread::spawn(move|| {
-                for _ in 0..4 { thread::yield_now() }
+            thread::spawn(move || {
+                for _ in 0..4 {
+                    thread::yield_now()
+                }
                 unsafe {
                     O.call_once(|| {
                         assert!(!RUN);
@@ -230,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn try() {
+    fn r#try() {
         static INIT: Once<usize> = Once::new();
 
         assert!(INIT.try().is_none());
@@ -243,12 +251,11 @@ mod tests {
         static INIT: Once<usize> = Once::new();
 
         assert!(INIT.try().is_none());
-        thread::spawn(move|| {
-            INIT.call_once(|| loop { });
+        thread::spawn(move || {
+            INIT.call_once(|| loop {});
         });
         assert!(INIT.try().is_none());
     }
-
 
     #[test]
     fn wait() {
