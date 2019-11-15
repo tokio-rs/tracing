@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan};
+use crate::registry::{self, LookupMetadata, LookupSpan, Registry};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -494,16 +494,11 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        let registry: Option<registry::Registry> = unsafe {
-            if let Some(registry) = self.downcast_raw(TypeId::of::<registry::Registry>()) {
-                let registry = registry as *const registry::Registry;
-                Some(std::ptr::read(registry))
-            } else {
-                None
-            }
+        let subscriber = &self.inner as &dyn Subscriber;
+        let _guard = match subscriber.downcast_ref::<Registry>() {
+            Some(registry) => Some(registry.ref_guard()),
+            None => None,
         };
-        let registry = registry.unwrap();
-        dbg!(registry.span(&id).unwrap().metadata());
 
         let id2 = id.clone();
         if self.inner.try_close(id) {
@@ -521,13 +516,9 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        if id == TypeId::of::<S>() && TypeId::of::<S>() == TypeId::of::<registry::Registry>() {
-            return Some(&self.inner as *const S as *const ());
-        } else {
-            self.layer
-                .downcast_raw(id)
-                .or_else(|| self.inner.downcast_raw(id))
-        }
+        self.layer
+            .downcast_raw(id)
+            .or_else(|| self.inner.downcast_raw(id))
     }
 }
 

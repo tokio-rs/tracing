@@ -89,6 +89,20 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
+thread_local! {
+    static CLOSE_COUNT: RefCell<usize> = RefCell::new(0);
+}
+
+pub(crate) struct LayerGuard;
+
+impl Drop for LayerGuard {
+    fn drop(&mut self) {
+        CLOSE_COUNT.with(|count| {
+            *count.borrow_mut() -= 1;
+        })
+    }
+}
+
 impl Registry {
     fn insert(&self, s: DataInner) -> Option<usize> {
         self.spans.insert(s)
@@ -96,6 +110,13 @@ impl Registry {
 
     fn get(&self, id: &Id) -> Option<Guard<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
+    }
+
+    pub(crate) fn ref_guard(&self) -> LayerGuard {
+        CLOSE_COUNT.with(|count| {
+            *count.borrow_mut() += 1;
+        });
+        LayerGuard
     }
 }
 
@@ -190,7 +211,6 @@ impl Subscriber for Registry {
             None if std::thread::panicking() => return false,
             None => panic!("tried to drop a ref to {:?}, but no such span exists!", id),
         };
-
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
             assert!(refs < std::usize::MAX, "reference count overflow!");
@@ -198,11 +218,22 @@ impl Subscriber for Registry {
         if refs > 1 {
             return false;
         }
-
         // Synchronize if we are actually removing the span (stolen
         // from std::Arc); this ensures that all other `try_close` calls on
         // other threads happen-before we actually remove the span.
         fence(Ordering::Acquire);
+        let has_active_refs = CLOSE_COUNT.with(|c| {
+            let c = *c.borrow();
+            if c > 0 {
+                true
+            } else {
+                false
+            }
+        });
+        if has_active_refs {
+            return true;
+        }
+
         self.spans.remove(id_to_idx(&id));
         true
     }
