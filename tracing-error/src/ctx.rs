@@ -1,4 +1,4 @@
-use crate::{fmt, ErrorLayer};
+use crate::{fmt, layer::GetContext};
 use std::marker::PhantomData;
 use tracing_core::{dispatcher, Metadata};
 
@@ -23,7 +23,7 @@ impl<F> Context<F> {
     where
         F: for<'writer> fmt::FormatFields<'writer> + 'static,
     {
-        dispatcher::get_default(|curr| curr.downcast_ref::<ErrorLayer<F>>()?.current_context(&curr))
+        dispatcher::get_default(|curr| curr.downcast_ref::<GetContext<F>>()?.get_context(&curr))
     }
 
     pub(crate) fn new() -> Self {
