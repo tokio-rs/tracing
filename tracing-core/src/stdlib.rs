@@ -49,9 +49,9 @@ mod no_std {
     }
 
     pub(crate) mod sync {
+        pub(crate) use crate::spin::MutexGuard;
         pub(crate) use alloc::sync::*;
         pub(crate) use core::sync::*;
-        pub(crate) use crate::spin::MutexGuard;
 
         /// This wraps `spin::Mutex` to return a `Result`, so that it can be
         /// used with code written against `std::sync::Mutex`.
