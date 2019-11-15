@@ -1,11 +1,7 @@
 //! Synchronization primitives based on spinning
 
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-
-pub use mutex::*;
-pub use once::*;
+pub(crate) use mutex::*;
+pub use once::Once;
 
 mod mutex;
 mod once;

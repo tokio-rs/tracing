@@ -206,6 +206,16 @@ macro_rules! metadata {
     };
 }
 
+// Trimmed-down vendored version of spin 0.5.2 (0387621)
+// Dependency of no_std lazy_static, not required in a std build
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub(crate) mod spin;
+
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub use self::spin::Once;
+
 pub mod callsite;
 pub mod dispatcher;
 pub mod event;
@@ -215,11 +225,6 @@ mod parent;
 pub mod span;
 pub(crate) mod stdlib;
 pub mod subscriber;
-
-// Vendored version of spin 0.5.2 (0387621)
-// `mutex` and `once` modules only
-#[cfg(not(feature = "std"))]
-pub mod spin;
 
 // Vendored version of lazy_static 1.4.0 (4216696)
 pub mod lazy_static;

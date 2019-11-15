@@ -6,25 +6,13 @@ use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicUsize, Ordering};
 /// initialization. Unlike its std equivalent, this is generalized so that the
 /// closure returns a value and it is stored. Once therefore acts something like
 /// a future, too.
-///
-/// # Examples
-///
-/// ```
-/// use spin;
-///
-/// static START: spin::Once<()> = spin::Once::new();
-///
-/// START.call_once(|| {
-///     // run initialization here
-/// });
-/// ```
 pub struct Once<T> {
     state: AtomicUsize,
     data: UnsafeCell<Option<T>>, // TODO remove option and use mem::uninitialized
 }
 
 impl<T: fmt::Debug> fmt::Debug for Once<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.r#try() {
             Some(s) => write!(f, "Once {{ data: ")
                 .and_then(|()| s.fmt(f))
@@ -78,23 +66,6 @@ impl<T> Once<T> {
     /// has run and completed (it may not be the closure specified). The
     /// returned pointer will point to the result from the closure that was
     /// run.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use spin;
-    ///
-    /// static INIT: spin::Once<usize> = spin::Once::new();
-    ///
-    /// fn get_cached_val() -> usize {
-    ///     *INIT.call_once(expensive_computation)
-    /// }
-    ///
-    /// fn expensive_computation() -> usize {
-    ///     // ...
-    /// # 2
-    /// }
-    /// ```
     pub fn call_once<'a, F>(&'a self, builder: F) -> &'a T
     where
         F: FnOnce() -> T,
@@ -171,127 +142,5 @@ impl<'a> Drop for Finish<'a> {
         if self.panicked {
             self.state.store(PANICKED, Ordering::SeqCst);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::prelude::v1::*;
-
-    use super::Once;
-    use std::sync::mpsc::channel;
-    use std::thread;
-
-    #[test]
-    fn smoke_once() {
-        static O: Once<()> = Once::new();
-        let mut a = 0;
-        O.call_once(|| a += 1);
-        assert_eq!(a, 1);
-        O.call_once(|| a += 1);
-        assert_eq!(a, 1);
-    }
-
-    #[test]
-    fn smoke_once_value() {
-        static O: Once<usize> = Once::new();
-        let a = O.call_once(|| 1);
-        assert_eq!(*a, 1);
-        let b = O.call_once(|| 2);
-        assert_eq!(*b, 1);
-    }
-
-    #[test]
-    fn stampede_once() {
-        static O: Once<()> = Once::new();
-        static mut RUN: bool = false;
-
-        let (tx, rx) = channel();
-        for _ in 0..10 {
-            let tx = tx.clone();
-            thread::spawn(move || {
-                for _ in 0..4 {
-                    thread::yield_now()
-                }
-                unsafe {
-                    O.call_once(|| {
-                        assert!(!RUN);
-                        RUN = true;
-                    });
-                    assert!(RUN);
-                }
-                tx.send(()).unwrap();
-            });
-        }
-
-        unsafe {
-            O.call_once(|| {
-                assert!(!RUN);
-                RUN = true;
-            });
-            assert!(RUN);
-        }
-
-        for _ in 0..10 {
-            rx.recv().unwrap();
-        }
-    }
-
-    #[test]
-    fn r#try() {
-        static INIT: Once<usize> = Once::new();
-
-        assert!(INIT.try().is_none());
-        INIT.call_once(|| 2);
-        assert_eq!(INIT.try().map(|r| *r), Some(2));
-    }
-
-    #[test]
-    fn try_no_wait() {
-        static INIT: Once<usize> = Once::new();
-
-        assert!(INIT.try().is_none());
-        thread::spawn(move || {
-            INIT.call_once(|| loop {});
-        });
-        assert!(INIT.try().is_none());
-    }
-
-    #[test]
-    fn wait() {
-        static INIT: Once<usize> = Once::new();
-
-        assert!(INIT.wait().is_none());
-        INIT.call_once(|| 3);
-        assert_eq!(INIT.wait().map(|r| *r), Some(3));
-    }
-
-    #[test]
-    fn panic() {
-        use ::std::panic;
-
-        static INIT: Once<()> = Once::new();
-
-        // poison the once
-        let t = panic::catch_unwind(|| {
-            INIT.call_once(|| panic!());
-        });
-        assert!(t.is_err());
-
-        // poisoning propagates
-        let t = panic::catch_unwind(|| {
-            INIT.call_once(|| {});
-        });
-        assert!(t.is_err());
-    }
-
-    #[test]
-    fn init_constant() {
-        static O: Once<()> = Once::INIT;
-        let mut a = 0;
-        O.call_once(|| a += 1);
-        assert_eq!(a, 1);
-        O.call_once(|| a += 1);
-        assert_eq!(a, 1);
     }
 }
