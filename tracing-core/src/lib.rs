@@ -215,14 +215,12 @@ extern crate lazy_static;
 // This can conflict when included in a project already using std lazy_static
 // Remove this module when cargo enables specifying dependencies for no_std
 #[cfg(not(feature = "std"))]
-#[doc(hidden)]
 #[macro_use]
 mod lazy_static;
 
 // Trimmed-down vendored version of spin 0.5.2 (0387621)
 // Dependency of no_std lazy_static, not required in a std build
 #[cfg(not(feature = "std"))]
-#[doc(hidden)]
 pub(crate) mod spin;
 
 #[cfg(not(feature = "std"))]
