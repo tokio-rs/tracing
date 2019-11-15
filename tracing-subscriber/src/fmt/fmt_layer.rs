@@ -387,10 +387,6 @@ where
         });
     }
 
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-        dbg!(ctx.span(&id).unwrap().metadata());
-    }
-
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         // This `downcast_raw` impl allows downcasting a `fmt` layer to any of
         // its components (event formatter, field formatter, and `MakeWriter`)
