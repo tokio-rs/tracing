@@ -1,5 +1,5 @@
-use super::format::{DefaultFields, FormatFields};
-use super::{Context, Span};
+use super::fmt::{DefaultFields, FormatFields};
+use super::{Context, ContextSpan};
 use std::marker::PhantomData;
 use std::ptr;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -77,20 +77,14 @@ where
             .get::<FormattedFields<F>>()
             .map(|f| f.fmt_fields.clone())
             .unwrap_or_default();
-        ctx.context.push(Span {
-            metadata: span.metadata(),
-            fields,
-        });
+        ctx.push(span.metadata(), fields);
         for span in span.parents() {
             let fields = span
                 .extensions()
                 .get::<FormattedFields<F>>()
                 .map(|f| f.fmt_fields.clone())
                 .unwrap_or_default();
-            ctx.context.push(Span {
-                metadata: span.metadata(),
-                fields,
-            });
+            ctx.push(span.metadata(), fields);
         }
         Some(ctx)
     }
