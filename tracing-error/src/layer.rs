@@ -1,8 +1,7 @@
 use super::fmt::{DefaultFields, FormatFields};
 use super::{Context, ContextSpan};
+use std::any::TypeId;
 use std::marker::PhantomData;
-use std::ptr;
-use std::sync::atomic::{AtomicPtr, Ordering};
 use tracing_core::{span, Subscriber};
 use tracing_subscriber::{
     fmt::FormattedFields,
@@ -10,30 +9,19 @@ use tracing_subscriber::{
     registry::LookupSpan,
 };
 
-pub struct ErrorLayer<F = DefaultFields> {
+pub struct ErrorLayer<S, F = DefaultFields> {
     format: F,
-    get_context: AtomicPtr<()>,
+    get_context: GetContext<F>,
+    _subscriber: PhantomData<fn(S)>,
 }
 
-impl<S, F> Layer<S> for ErrorLayer<F>
+pub(crate) struct GetContext<F>(fn(&tracing_core::Dispatch) -> Option<Context<F>>);
+
+impl<S, F> Layer<S> for ErrorLayer<S, F>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
 {
-    fn register_callsite(
-        &self,
-        _: &'static tracing_core::Metadata<'static>,
-    ) -> tracing_core::subscriber::Interest {
-        self.get_context.compare_exchange(
-            ptr::null_mut(),
-            (Self::get_context::<S>) as fn(&tracing_core::Dispatch) -> Option<Context<F>>
-                as *const () as *mut _,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        );
-        tracing_core::subscriber::Interest::always()
-    }
-
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
@@ -46,23 +34,32 @@ where
         span.extensions_mut()
             .insert(FormattedFields::<F>::new(fields));
     }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        match id {
+            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<GetContext<F>>() => {
+                Some(&self.get_context as *const _ as *const ())
+            }
+            _ => None,
+        }
+    }
 }
 
-impl<F> ErrorLayer<F>
+impl<S, F> ErrorLayer<S, F>
 where
     F: for<'writer> FormatFields<'writer> + 'static,
+    S: Subscriber + for<'span> LookupSpan<'span>,
 {
     pub fn new(format: F) -> Self {
         Self {
             format,
-            get_context: AtomicPtr::new(ptr::null_mut()),
+            get_context: GetContext(Self::get_context),
+            _subscriber: PhantomData,
         }
     }
 
-    fn get_context<S>(dispatch: &tracing_core::Dispatch) -> Option<Context<F>>
-    where
-        S: Subscriber + for<'span> LookupSpan<'span>,
-    {
+    fn get_context(dispatch: &tracing_core::Dispatch) -> Option<Context<F>> {
         let subscriber = dispatch
             .downcast_ref::<S>()
             .expect("subscriber should downcast to expected type; this is a bug!");
@@ -88,20 +85,21 @@ where
         }
         Some(ctx)
     }
+}
 
-    pub(crate) fn current_context(&self, dispatch: &tracing_core::Dispatch) -> Option<Context<F>> {
-        let get_context = unsafe {
-            self.get_context
-                .load(Ordering::Acquire)
-                .cast::<fn(&tracing_core::Dispatch) -> Option<Context<F>>>()
-                .as_ref()
-                .expect("should have been set!")
-        };
-        (get_context)(dispatch)
+impl<F> GetContext<F>
+where
+    F: for<'writer> FormatFields<'writer> + 'static,
+{
+    pub(crate) fn get_context(&self, dispatch: &tracing_core::Dispatch) -> Option<Context<F>> {
+        (self.0)(dispatch)
     }
 }
 
-impl Default for ErrorLayer {
+impl<S> Default for ErrorLayer<S>
+where
+    S: Subscriber + for<'span> LookupSpan<'span>,
+{
     fn default() -> Self {
         Self::new(DefaultFields::default())
     }
