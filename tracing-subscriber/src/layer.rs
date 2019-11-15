@@ -496,7 +496,7 @@ where
     fn try_close(&self, id: span::Id) -> bool {
         let subscriber = &self.inner as &dyn Subscriber;
         let _guard = match subscriber.downcast_ref::<Registry>() {
-            Some(registry) => Some(registry.ref_guard()),
+            Some(registry) => Some(registry.ref_guard(id.clone())),
             None => None,
         };
 

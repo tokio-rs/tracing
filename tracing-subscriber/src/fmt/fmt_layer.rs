@@ -342,7 +342,7 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(FormattedFields { ref mut fields, .. }) =
-            extensions.get_mut::<FormattedFields<Self>>()
+            extensions.get_mut::<FormattedFields<N>>()
         {
             let _ = self.fmt_fields.format_fields(fields, values);
         } else {
@@ -385,10 +385,6 @@ where
 
             buf.clear();
         });
-    }
-
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-        dbg!(ctx.span(&id).unwrap().metadata());
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
