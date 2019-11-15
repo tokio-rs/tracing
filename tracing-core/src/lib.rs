@@ -206,6 +206,19 @@ macro_rules! metadata {
     };
 }
 
+// std uses lazy_static from crates.io
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate lazy_static;
+
+// no_std uses vendored version of lazy_static 1.4.0 (4216696) with spin
+// This can conflict when included in a project already using std lazy_static
+// Remove this module when cargo enables specifying dependencies for no_std
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+#[macro_use]
+mod lazy_static;
+
 // Trimmed-down vendored version of spin 0.5.2 (0387621)
 // Dependency of no_std lazy_static, not required in a std build
 #[cfg(not(feature = "std"))]
@@ -225,9 +238,6 @@ mod parent;
 pub mod span;
 pub(crate) mod stdlib;
 pub mod subscriber;
-
-// Vendored version of lazy_static 1.4.0 (4216696)
-pub mod lazy_static;
 
 #[doc(inline)]
 pub use self::{

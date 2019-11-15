@@ -13,18 +13,11 @@ This includes anything requiring heap allocations, like vectors or hash maps,
 as well as anything that requires function calls to be computed.
 */
 
-#[cfg(feature = "std")]
-#[path = "inline_lazy.rs"]
-#[doc(hidden)]
-pub mod lazy;
-
-#[cfg(not(feature = "std"))]
 #[path = "core_lazy.rs"]
-#[doc(hidden)]
-pub mod lazy;
+pub(crate) mod lazy;
 
 #[doc(hidden)]
-pub use core::ops::Deref as __Deref;
+pub(crate) use core::ops::Deref as __Deref;
 
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
@@ -90,15 +83,7 @@ macro_rules! lazy_static {
 ///
 /// This is implemented by each defined lazy static, and
 /// used by the free functions in this crate.
-pub trait LazyStatic {
+pub(crate) trait LazyStatic {
     #[doc(hidden)]
     fn initialize(lazy: &Self);
-}
-
-/// Takes a shared reference to a lazy static and initializes
-/// it if it has not been already.
-///
-/// This can be used to control the initialization point of a lazy static.
-pub fn initialize<T: LazyStatic>(lazy: &T) {
-    LazyStatic::initialize(lazy);
 }

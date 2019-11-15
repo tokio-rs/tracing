@@ -5,15 +5,15 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use crate::spin::Once;
+use crate::Once;
 
-pub struct Lazy<T: Sync>(Once<T>);
+pub(crate) struct Lazy<T: Sync>(Once<T>);
 
 impl<T: Sync> Lazy<T> {
-    pub const INIT: Self = Lazy(Once::INIT);
+    pub(crate) const INIT: Self = Lazy(Once::INIT);
 
     #[inline(always)]
-    pub fn get<F>(&'static self, builder: F) -> &T
+    pub(crate) fn get<F>(&'static self, builder: F) -> &T
     where
         F: FnOnce() -> T,
     {
@@ -25,6 +25,6 @@ impl<T: Sync> Lazy<T> {
 #[doc(hidden)]
 macro_rules! __lazy_static_create {
     ($NAME:ident, $T:ty) => {
-        static $NAME: $crate::lazy::Lazy<$T> = $crate::lazy::Lazy::INIT;
+        static $NAME: $crate::lazy_static::lazy::Lazy<$T> = $crate::lazy_static::lazy::Lazy::INIT;
     };
 }
