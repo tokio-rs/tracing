@@ -51,7 +51,7 @@ mod no_std {
     pub(crate) mod sync {
         pub(crate) use alloc::sync::*;
         pub(crate) use core::sync::*;
-        pub(crate) use spin::MutexGuard;
+        pub(crate) use crate::spin::MutexGuard;
 
         /// This wraps `spin::Mutex` to return a `Result`, so that it can be
         /// used with code written against `std::sync::Mutex`.
@@ -60,17 +60,17 @@ mod no_std {
         /// by `lock` will always be `Ok`.
         #[derive(Debug, Default)]
         pub(crate) struct Mutex<T> {
-            inner: spin::Mutex<T>,
+            inner: crate::spin::Mutex<T>,
         }
 
         impl<T> Mutex<T> {
             pub(crate) fn new(data: T) -> Self {
                 Self {
-                    inner: spin::Mutex::new(data),
+                    inner: crate::spin::Mutex::new(data),
                 }
             }
 
-            pub(crate) fn lock(&self) -> Result<MutexGuard<T>, ()> {
+            pub(crate) fn lock(&self) -> Result<MutexGuard<'_, T>, ()> {
                 Ok(self.inner.lock())
             }
         }

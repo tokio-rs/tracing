@@ -1,6 +1,5 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
-use crate::lazy_static;
 use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
