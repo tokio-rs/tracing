@@ -89,11 +89,6 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-// We use thi
-thread_local! {
-    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
-}
-
 pub(crate) struct LayerGuard<'a> {
     id: Id,
     registry: &'a Registry,
@@ -134,6 +129,15 @@ impl Registry {
 }
 
 thread_local! {
+    // `CLOSE_COUNT` is used to track how many layers have processed a
+    // close event. Once the `CLOSE_COUNT` is 0, the registry knows that
+    // is is safe to remove a span. It does so via the drop on
+    // `LayerGuard`.
+    //
+    // This behavior is needed to enable a Registry-backed Layer to
+    // access span data after the Layer has recieved the `on_close`
+    // callback.
+    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
     static CURRENT_SPANS: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
 
