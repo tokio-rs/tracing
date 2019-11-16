@@ -95,9 +95,6 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[macro_use]
-extern crate lazy_static;
-
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
 /// This may be used in contexts, such as static initializers, where the
@@ -208,6 +205,27 @@ macro_rules! metadata {
         )
     };
 }
+
+// std uses lazy_static from crates.io
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate lazy_static;
+
+// no_std uses vendored version of lazy_static 1.4.0 (4216696) with spin
+// This can conflict when included in a project already using std lazy_static
+// Remove this module when cargo enables specifying dependencies for no_std
+#[cfg(not(feature = "std"))]
+#[macro_use]
+mod lazy_static;
+
+// Trimmed-down vendored version of spin 0.5.2 (0387621)
+// Dependency of no_std lazy_static, not required in a std build
+#[cfg(not(feature = "std"))]
+pub(crate) mod spin;
+
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub use self::spin::Once;
 
 pub mod callsite;
 pub mod dispatcher;

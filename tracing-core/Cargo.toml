@@ -8,7 +8,7 @@ name = "tracing-core"
 #   - README.md
 # - Update CHANGELOG.md.
 # - Create "v0.1.x" git tag.
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
 readme = "README.md"
@@ -27,16 +27,11 @@ edition = "2018"
 
 [features]
 default = ["std"]
-std = []
+std = ["lazy_static"]
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-lazy_static = "1"
-
-[target.'cfg(not(feature = "std"))'.dependencies]
-spin = "0.5"
-lazy_static = { version = "1", features = ["spin_no_std"] }
-
+lazy_static = { version = "1", optional = true }
