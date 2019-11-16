@@ -9,7 +9,7 @@ use crate::{
     sync::RwLock,
 };
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -89,6 +89,33 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
+/// A guard that tracks how many [`Registry`]-backed `Layer`s have
+/// processed an `on_close` event.
+///
+/// This is needed to enable a [`Registry`]-backed Layer to access span
+/// data after the `Layer` has recieved the `on_close` callback.
+///
+/// Once all `Layer`s have processed this event, the [`Registry`] knows
+/// that is able to safely remove the span tracked by `id`. `CloseGuard`
+/// accomplishes this through a two-step process:
+/// 1. Whenever a [`Registry`]-backed `Layer::on_close` method is
+///    called, `Registry::start_close` is closed.
+///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
+///    by 1 and returns a `CloseGuard`.
+/// 2. The `CloseGuard` is dropped at the end of `Layer::on_close`. On
+///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
+///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
+///    `id` from the registry, as all `Layers` that might have seen the
+///    `on_close` notification have processed it. If `CLOSE_COUNT` is
+///    greater than 0, `CloseGuard` decrements the counter by one and
+///    _does not_ remove the span from the [`Registry`].
+///
+/// [`Registry`]: ./struct.Registry.html
+pub(crate) struct CloseGuard<'a> {
+    id: Id,
+    registry: &'a Registry,
+}
+
 impl Registry {
     fn insert(&self, s: DataInner) -> Option<usize> {
         self.spans.insert(s)
@@ -97,9 +124,31 @@ impl Registry {
     fn get(&self, id: &Id) -> Option<Guard<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
+
+    /// Returns a guard which tracks how many `Layer`s have
+    /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
+    /// For additional details, see [`CloseGuard`].
+    ///
+    /// [`CloseGuard`]: ./struct.CloseGuard.html
+    pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
+        CLOSE_COUNT.with(|count| {
+            let c = count.get();
+            count.set(c + 1);
+        });
+        CloseGuard {
+            id,
+            registry: &self,
+        }
+    }
 }
 
 thread_local! {
+    /// `CLOSE_COUNT` is the thread-local counter used by `CloseGuard` to
+    /// track how many layers have processed the close.
+    /// For additional details, see [`CloseGuard`].
+    ///
+    /// [`CloseGuard`]: ./struct.CloseGuard.html
+    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
     static CURRENT_SPANS: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
 
@@ -203,7 +252,6 @@ impl Subscriber for Registry {
         // from std::Arc); this ensures that all other `try_close` calls on
         // other threads happen-before we actually remove the span.
         fence(Ordering::Acquire);
-        self.spans.remove(id_to_idx(&id));
         true
     }
 }
@@ -247,6 +295,22 @@ impl Drop for DataInner {
     }
 }
 
+impl<'a> Drop for CloseGuard<'a> {
+    fn drop(&mut self) {
+        // If this returns with an error, we are already panicking. At
+        // this point, there's nothing we can really do to recover
+        // except by avoiding a double-panic.
+        let _ = CLOSE_COUNT.try_with(|count| {
+            let c = count.get();
+            if c > 0 {
+                count.set(c - 1);
+            } else {
+                self.registry.spans.remove(id_to_idx(&self.id));
+            }
+        });
+    }
+}
+
 // === impl Data ===
 
 impl<'a> SpanData<'a> for Data<'a> {
@@ -268,5 +332,91 @@ impl<'a> SpanData<'a> for Data<'a> {
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
         ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::Registry;
+    use crate::{layer::Context, registry::LookupSpan, Layer};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use tracing::{self, subscriber::with_default};
+    use tracing_core::{
+        span::{Attributes, Id},
+        Subscriber,
+    };
+
+    struct AssertionLayer;
+    impl<S> Layer<S> for AssertionLayer
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+            assert!(&ctx.span(&id).is_some());
+        }
+    }
+
+    #[test]
+    fn single_layer_can_access_closed_span() {
+        let subscriber = AssertionLayer.with_subscriber(Registry::default());
+
+        with_default(subscriber, || {
+            let span = tracing::debug_span!("span");
+            drop(span);
+        });
+    }
+
+    #[test]
+    fn multiple_layers_can_access_closed_span() {
+        let subscriber = AssertionLayer
+            .and_then(AssertionLayer)
+            .with_subscriber(Registry::default());
+
+        with_default(subscriber, || {
+            let span = tracing::debug_span!("span");
+            drop(span);
+        });
+    }
+
+    #[test]
+    fn span_is_removed_from_registry() {
+        static IS_REMOVED: AtomicBool = AtomicBool::new(false);
+
+        struct ClosingLayer;
+        impl<S> Layer<S> for ClosingLayer
+        where
+            S: Subscriber + for<'a> LookupSpan<'a>,
+        {
+            fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+                let span = ctx.span(id).expect("Missing span; this is a bug");
+                let mut extensions = span.extensions_mut();
+                extensions.insert(ClosingSpan);
+            }
+
+            fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+                assert!(&ctx.span(&id).is_some());
+                let span = &ctx.span(&id).unwrap();
+                let extensions = span.extensions();
+                assert!(extensions.get::<ClosingSpan>().is_some());
+            }
+        }
+
+        struct ClosingSpan;
+        impl Drop for ClosingSpan {
+            fn drop(&mut self) {
+                IS_REMOVED.store(true, Ordering::Release)
+            }
+        }
+
+        let subscriber = AssertionLayer
+            .and_then(ClosingLayer)
+            .with_subscriber(Registry::default());
+
+        with_default(subscriber, || {
+            let span = tracing::debug_span!("span");
+            drop(span);
+        });
+
+        assert!(IS_REMOVED.load(Ordering::Acquire) == true);
     }
 }
