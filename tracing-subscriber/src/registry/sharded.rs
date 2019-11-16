@@ -89,7 +89,7 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-// CloseGuard is used to track how many Registry-backed Layers have
+// A guard that tracks how many Registry-backed Layers have
 // processed an `on_close` event. Once all Layers have processed this
 // event, the registry knows that is able to safely remove the span
 // tracked by `id`.
@@ -109,7 +109,7 @@ impl Registry {
         self.spans.get(id_to_idx(id))
     }
 
-    // `start_close` creates a guard which tracks how many layers have
+    // Returns a guard which tracks how many layers have
     // processed a close event via the `CLOSE_COUNT` thread-local. Once
     // the `CLOSE_COUNT` is 0, the registry knows that is is safe to
     // remove a span. It does so via the Drop implementation on
