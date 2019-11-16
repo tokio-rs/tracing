@@ -701,7 +701,7 @@ pub mod __macro_support {
     pub use crate::stdlib::sync::Once;
 
     #[cfg(not(feature = "std"))]
-    pub type Once = spin::Once<()>;
+    pub type Once = tracing_core::Once<()>;
 }
 
 mod sealed {
