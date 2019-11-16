@@ -89,12 +89,28 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-// A guard that tracks how many Registry-backed Layers have
-// processed an `on_close` event. Once all Layers have processed this
-// event, the registry knows that is able to safely remove the span
-// tracked by `id`.
-//
-// For additional details, see the comment on `Registry::start_close`.
+/// A guard that tracks how many [`Registry`]-backed `Layer`s have
+/// processed an `on_close` event.
+///
+/// This is needed to enable a [`Registry`]-backed Layer to access span
+/// data after the `Layer` has recieved the `on_close` callback.
+///
+/// Once all `Layer`s have processed this event, the [`Registry`] knows
+/// that is able to safely remove the span tracked by `id`. `CloseGuard`
+/// accomplishes this through a two-step process:
+/// 1. Whenever a [`Registry`]-backed `Layer::on_close` method is
+///    called, `Registry::start_close` is closed.
+///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
+///    by 1 and returns a `CloseGuard`.
+/// 2. The `CloseGuard` is dropped at the end of `Layer::on_close`. On
+///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
+///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
+///    `id` from the registry, as all `Layers` that might have seen the
+///    `on_close` notification have processed it. If `CLOSE_COUNT` is
+///    greater than 0, `CloseGuard` decrements the counter by one and
+///    _does not_ remove the span from the [`Registry`].
+///
+/// [`Registry`]: ./struct.Registry.html
 pub(crate) struct CloseGuard<'a> {
     id: Id,
     registry: &'a Registry,
@@ -109,14 +125,11 @@ impl Registry {
         self.spans.get(id_to_idx(id))
     }
 
-    // Returns a guard which tracks how many layers have
-    // processed a close event via the `CLOSE_COUNT` thread-local. Once
-    // the `CLOSE_COUNT` is 0, the registry knows that is is safe to
-    // remove a span. It does so via the Drop implementation on
-    // `CloseGuard`.
-    //
-    // This is needed to enable a Registry-backed Layer to access span
-    // data after the Layer has recieved the `on_close` callback.
+    /// Returns a guard which tracks how many `Layer`s have
+    /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
+    /// For additional details, see [`CloseGuard`].
+    ///
+    /// [`CloseGuard`]: ./struct.CloseGuard.html
     pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
         CLOSE_COUNT.with(|count| {
             let c = count.get();
@@ -130,10 +143,11 @@ impl Registry {
 }
 
 thread_local! {
-    // `CLOSE_COUNT` is the thread-local counter used by `CloseGuard` to
-    // track how many layers have processed the close.
-    //
-    // For additional details, see the comment on Registry::start_close.
+    /// `CLOSE_COUNT` is the thread-local counter used by `CloseGuard` to
+    /// track how many layers have processed the close.
+    /// For additional details, see [`CloseGuard`].
+    ///
+    /// [`CloseGuard`]: ./struct.CloseGuard.html
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
     static CURRENT_SPANS: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
@@ -332,18 +346,8 @@ pub(crate) mod tests {
         Subscriber,
     };
 
-    struct NopLayer;
-    impl<S> Layer<S> for NopLayer
-    where
-        S: Subscriber + for<'a> LookupSpan<'a>,
-    {
-        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-            assert!(&ctx.span(&id).is_some());
-        }
-    }
-
-    struct NopLayer2;
-    impl<S> Layer<S> for NopLayer2
+    struct AssertionLayer;
+    impl<S> Layer<S> for AssertionLayer
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
@@ -354,9 +358,7 @@ pub(crate) mod tests {
 
     #[test]
     fn single_layer_can_access_closed_span() {
-        let subscriber = NopLayer
-            .and_then(NopLayer)
-            .with_subscriber(Registry::default());
+        let subscriber = AssertionLayer.with_subscriber(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -366,9 +368,8 @@ pub(crate) mod tests {
 
     #[test]
     fn multiple_layers_can_access_closed_span() {
-        let subscriber = NopLayer
-            .and_then(NopLayer)
-            .and_then(NopLayer2)
+        let subscriber = AssertionLayer
+            .and_then(AssertionLayer)
             .with_subscriber(Registry::default());
 
         with_default(subscriber, || {
@@ -394,18 +395,20 @@ pub(crate) mod tests {
 
             fn on_close(&self, id: Id, ctx: Context<'_, S>) {
                 assert!(&ctx.span(&id).is_some());
+                let span = &ctx.span(&id).unwrap();
+                let extensions = span.extensions();
+                assert!(extensions.get::<ClosingSpan>().is_some());
             }
         }
 
         struct ClosingSpan;
-
         impl Drop for ClosingSpan {
             fn drop(&mut self) {
                 IS_REMOVED.store(true, Ordering::Release)
             }
         }
 
-        let subscriber = NopLayer
+        let subscriber = AssertionLayer
             .and_then(ClosingLayer)
             .with_subscriber(Registry::default());
 
