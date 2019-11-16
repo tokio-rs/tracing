@@ -494,11 +494,12 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
+        #[cfg(feature = "registry")]
         let subscriber = &self.inner as &dyn Subscriber;
-        let _guard = match subscriber.downcast_ref::<Registry>() {
-            Some(registry) => Some(registry.ref_guard(id.clone())),
-            None => None,
-        };
+        #[cfg(feature = "registry")]
+        let _guard = subscriber
+            .downcast_ref::<Registry>()
+            .and_then(|registry| Some(registry.start_close(id.clone())));
 
         let id2 = id.clone();
         if self.inner.try_close(id) {
