@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan};
+use crate::registry::{self, LookupMetadata, LookupSpan, Registry};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -494,6 +494,13 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
+        #[cfg(feature = "registry")]
+        let subscriber = &self.inner as &dyn Subscriber;
+        #[cfg(feature = "registry")]
+        let _guard = subscriber
+            .downcast_ref::<Registry>()
+            .and_then(|registry| Some(registry.start_close(id.clone())));
+
         let id2 = id.clone();
         if self.inner.try_close(id) {
             self.layer.on_close(id2, self.ctx());
