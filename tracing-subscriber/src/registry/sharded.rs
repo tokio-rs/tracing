@@ -225,6 +225,7 @@ impl Subscriber for Registry {
             None if std::thread::panicking() => return false,
             None => panic!("tried to drop a ref to {:?}, but no such span exists!", id),
         };
+
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
             assert!(refs < std::usize::MAX, "reference count overflow!");
