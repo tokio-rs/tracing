@@ -1,9 +1,7 @@
-#[macro_use]
-extern crate tracing;
-#[macro_use]
 extern crate criterion;
+extern crate tracing;
 
-use criterion::{black_box, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
 use std::{
