@@ -15,7 +15,7 @@ edition = "2018"
 tracing = "0.1"
 tracing-subscriber = { version = "0.1", path = "../tracing-subscriber", features = ["json"] }
 tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
-tokio = { git = "https://github.com/tokio-rs/tokio.git" }
+futures-preview = { version = "0.3.0-alpha.19", features = ["async-await"] }
+tokio = "0.2.0-alpha.6"
 tracing-attributes = { path = "../tracing-attributes" }
-futures-preview = "0.3.0-alpha.18"
 clap = "2.33"
