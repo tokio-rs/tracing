@@ -497,13 +497,16 @@ where
         #[cfg(feature = "registry")]
         let subscriber = &self.inner as &dyn Subscriber;
         #[cfg(feature = "registry")]
-        let _guard = subscriber
+        let mut guard = subscriber
             .downcast_ref::<Registry>()
             .and_then(|registry| Some(registry.start_close(id.clone())));
+        if self.inner.try_close(id.clone()) {
+            // If we have a registry's close guard, indicate that the span is
+            // closing.
+            #[cfg(feature = "registry")]
+            guard.as_mut().map(|g| g.is_closing());
 
-        let id2 = id.clone();
-        if self.inner.try_close(id) {
-            self.layer.on_close(id2, self.ctx());
+            self.layer.on_close(id, self.ctx());
             true
         } else {
             false

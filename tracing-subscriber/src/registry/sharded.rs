@@ -114,6 +114,7 @@ fn id_to_idx(id: &Id) -> usize {
 pub(crate) struct CloseGuard<'a> {
     id: Id,
     registry: &'a Registry,
+    is_closing: bool,
 }
 
 impl Registry {
@@ -138,6 +139,7 @@ impl Registry {
         CloseGuard {
             id,
             registry: &self,
+            is_closing: false,
         }
     }
 }
@@ -295,6 +297,12 @@ impl Drop for DataInner {
     }
 }
 
+impl<'a> CloseGuard<'a> {
+    pub(crate) fn is_closing(&mut self) {
+        self.is_closing = true;
+    }
+}
+
 impl<'a> Drop for CloseGuard<'a> {
     fn drop(&mut self) {
         // If this returns with an error, we are already panicking. At
@@ -302,11 +310,16 @@ impl<'a> Drop for CloseGuard<'a> {
         // except by avoiding a double-panic.
         let _ = CLOSE_COUNT.try_with(|count| {
             let c = count.get();
-            if c > 0 {
-                count.set(c - 1);
-            } else {
+            // If the current close count is 1, this stack frame is the last
+            // `on_close` call. If the span is closing, it's okay to remove the
+            // span.
+            if c == 1 && self.is_closing {
                 self.registry.spans.remove(id_to_idx(&self.id));
             }
+
+            // Decrement the count to indicate that _this_ guard's
+            // `on_close` callback has completed.
+            count.set(c - 1);
         });
     }
 }
@@ -339,9 +352,13 @@ impl<'a> SpanData<'a> for Data<'a> {
 pub(crate) mod tests {
     use super::Registry;
     use crate::{layer::Context, registry::LookupSpan, Layer};
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
     use tracing::{self, subscriber::with_default};
     use tracing_core::{
+        dispatcher,
         span::{Attributes, Id},
         Subscriber,
     };
@@ -352,6 +369,7 @@ pub(crate) mod tests {
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
         fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+            dbg!(format_args!("closing {:?}", id));
             assert!(&ctx.span(&id).is_some());
         }
     }
@@ -378,45 +396,123 @@ pub(crate) mod tests {
         });
     }
 
+    struct ClosingLayer {
+        span1_removed: Arc<AtomicBool>,
+        span2_removed: Arc<AtomicBool>,
+    }
+
+    impl<S> Layer<S> for ClosingLayer
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+            let span = ctx.span(id).expect("Missing span; this is a bug");
+            let is_removed = match dbg!(span.name()) {
+                "span1" => self.span1_removed.clone(),
+                "span2" => self.span2_removed.clone(),
+                _ => return,
+            };
+            let mut extensions = span.extensions_mut();
+            extensions.insert(ClosingSpan { is_removed });
+        }
+
+        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+            dbg!(&id);
+            assert!(&ctx.span(&id).is_some());
+            let span = &ctx.span(&id).unwrap();
+            match dbg!(span.name()) {
+                "span1" | "span2" => {}
+                _ => return,
+            };
+            let extensions = span.extensions();
+            assert!(extensions.get::<ClosingSpan>().is_some());
+        }
+    }
+
+    struct ClosingSpan {
+        is_removed: Arc<AtomicBool>,
+    }
+
+    impl Drop for ClosingSpan {
+        fn drop(&mut self) {
+            self.is_removed.store(true, Ordering::Release)
+        }
+    }
+
     #[test]
-    fn span_is_removed_from_registry() {
-        static IS_REMOVED: AtomicBool = AtomicBool::new(false);
+    fn spans_are_removed_from_registry() {
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
 
-        struct ClosingLayer;
-        impl<S> Layer<S> for ClosingLayer
-        where
-            S: Subscriber + for<'a> LookupSpan<'a>,
-        {
-            fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
-                let span = ctx.span(id).expect("Missing span; this is a bug");
-                let mut extensions = span.extensions_mut();
-                extensions.insert(ClosingSpan);
-            }
-
-            fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-                assert!(&ctx.span(&id).is_some());
-                let span = &ctx.span(&id).unwrap();
-                let extensions = span.extensions();
-                assert!(extensions.get::<ClosingSpan>().is_some());
-            }
-        }
-
-        struct ClosingSpan;
-        impl Drop for ClosingSpan {
-            fn drop(&mut self) {
-                IS_REMOVED.store(true, Ordering::Release)
-            }
-        }
+        let span1_removed2 = span1_removed.clone();
+        let span2_removed2 = span2_removed.clone();
 
         let subscriber = AssertionLayer
-            .and_then(ClosingLayer)
+            .and_then(ClosingLayer {
+                span1_removed,
+                span2_removed,
+            })
             .with_subscriber(Registry::default());
 
-        with_default(subscriber, || {
-            let span = tracing::debug_span!("span");
+        // Create a `Dispatch` (which is internally reference counted) so that
+        // the subscriber lives to the end of the test. Otherwise, if we just
+        // passed the subscriber itself to `with_default`, we could see the span
+        // be dropped when the subscriber itself is dropped, destroying the
+        // registry.
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
+            let span = tracing::debug_span!("span1");
+            drop(span);
+            let span = tracing::info_span!("span2");
             drop(span);
         });
 
-        assert!(IS_REMOVED.load(Ordering::Acquire) == true);
+        assert!(span1_removed2.load(Ordering::Acquire) == true);
+        assert!(span2_removed2.load(Ordering::Acquire) == true);
+
+        // Ensure the registry itself outlives the span.
+        drop(dispatch);
+    }
+
+    #[test]
+    fn spans_are_only_closed_when_the_last_ref_drops() {
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
+
+        let span1_removed2 = span1_removed.clone();
+        let span2_removed2 = span2_removed.clone();
+
+        let subscriber = AssertionLayer
+            .and_then(ClosingLayer {
+                span1_removed,
+                span2_removed,
+            })
+            .with_subscriber(Registry::default());
+
+        // Create a `Dispatch` (which is internally reference counted) so that
+        // the subscriber lives to the end of the test. Otherwise, if we just
+        // passed the subscriber itself to `with_default`, we could see the span
+        // be dropped when the subscriber itself is dropped, destroying the
+        // registry.
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        let span2 = dispatcher::with_default(&dispatch, || {
+            let span = tracing::debug_span!("span1");
+            drop(span);
+            let span2 = tracing::info_span!("span2");
+            let span2_clone = span2.clone();
+            drop(span2);
+            span2_clone
+        });
+
+        assert!(span1_removed2.load(Ordering::Acquire) == true);
+        assert!(span2_removed2.load(Ordering::Acquire) == false);
+
+        drop(span2);
+        assert!(span2_removed2.load(Ordering::Acquire) == true);
+
+        // Ensure the registry itself outlives the span.
+        drop(dispatch);
     }
 }
