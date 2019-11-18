@@ -342,6 +342,7 @@ pub(crate) mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use tracing::{self, subscriber::with_default};
     use tracing_core::{
+        dispatcher,
         span::{Attributes, Id},
         Subscriber,
     };
@@ -412,11 +413,21 @@ pub(crate) mod tests {
             .and_then(ClosingLayer)
             .with_subscriber(Registry::default());
 
-        with_default(subscriber, || {
+        // Create a `Dispatch` (which is internally reference counted) so that
+        // the subscriber lives to the end of the test. Otherwise, if we just
+        // passed the subscriber itself to `with_default`, we could see the span
+        // be dropped when the subscriber itself is dropped, destroying the
+        // registry.
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
             let span = tracing::debug_span!("span");
             drop(span);
         });
 
         assert!(IS_REMOVED.load(Ordering::Acquire) == true);
+
+        // Ensure the registry itself outlives the span.
+        drop(dispatch);
     }
 }
