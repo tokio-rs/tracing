@@ -396,8 +396,6 @@ pub(crate) mod tests {
         });
     }
 
-
-
     struct ClosingLayer {
         span1_removed: Arc<AtomicBool>,
         span2_removed: Arc<AtomicBool>,
