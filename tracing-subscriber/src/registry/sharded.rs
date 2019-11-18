@@ -114,6 +114,7 @@ fn id_to_idx(id: &Id) -> usize {
 pub(crate) struct CloseGuard<'a> {
     id: Id,
     registry: &'a Registry,
+    is_closing: bool,
 }
 
 impl Registry {
@@ -138,6 +139,7 @@ impl Registry {
         CloseGuard {
             id,
             registry: &self,
+            is_closing: false,
         }
     }
 }
@@ -295,6 +297,12 @@ impl Drop for DataInner {
     }
 }
 
+impl<'a> CloseGuard<'a> {
+    pub(crate) fn is_closing(&mut self) {
+        self.is_closing = true;
+    }
+}
+
 impl<'a> Drop for CloseGuard<'a> {
     fn drop(&mut self) {
         // If this returns with an error, we are already panicking. At
@@ -302,11 +310,13 @@ impl<'a> Drop for CloseGuard<'a> {
         // except by avoiding a double-panic.
         let _ = CLOSE_COUNT.try_with(|count| {
             let c = count.get();
-            if c == 1 {
-                // If the current close count is 1, this stack frame is the last
-                // `on_close` call, so it's okay to remove the span.
+            // If the current close count is 1, this stack frame is the last
+            // `on_close` call. If the span is closing, it's okay to remove the
+            // span.
+            if c == 1 && self.is_closing {
                 self.registry.spans.remove(id_to_idx(&self.id));
             }
+
             // Decrement the count to indicate that _this_ guard's
             // `on_close` callback has completed.
             count.set(c - 1);
