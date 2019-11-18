@@ -29,13 +29,7 @@ use tracing_core::{
 /// A `Layer` which filters spans and events based on a set of filter
 /// directives.
 // TODO(eliza): document filter directive syntax?
-#[cfg_attr(
-    feature = "filter",
-    deprecated(
-        since = "0.1.2",
-        note = "the `filter` feature flag was renamed to `env-filter` and will be removed in 0.2",
-    )
-)]
+#[cfg(feature = "env-filter")]
 #[derive(Debug)]
 pub struct EnvFilter {
     // TODO: eventually, this should be exposed by the registry.

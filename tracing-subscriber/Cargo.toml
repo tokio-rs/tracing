@@ -26,9 +26,6 @@ ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab"]
 json = ["tracing-serde", "serde", "serde_json"]
 
-# Alias for `env-filter`; renamed in version 0.1.2, and will be removed in 0.2.
-filter = ["env-filter"]
-
 [dependencies]
 tracing-core = "0.1.2"
 

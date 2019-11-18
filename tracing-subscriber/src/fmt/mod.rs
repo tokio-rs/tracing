@@ -151,15 +151,6 @@ pub struct SubscriberBuilder<
     inner: LayerBuilder<Registry, N, E, W>,
 }
 
-/// Configures and constructs `Subscriber`s.
-#[deprecated(since = "0.2.0", note = "renamed to `SubscriberBuilder`")]
-pub type Builder<
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    F = LevelFilter,
-    W = fn() -> io::Stdout,
-> = SubscriberBuilder<N, E, F, W>;
-
 impl Subscriber {
     /// The maximum [verbosity level] that is enabled by a `Subscriber` by
     /// default.
@@ -544,26 +535,6 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
             inner: self.inner,
         }
     }
-    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
-    /// a span or event is enabled.
-    ///
-    /// **Note**: this method was renamed to [`with_env_filter`] in version
-    /// 0.1.2. This method just wraps a call to `with_env_filter`, and will be
-    /// removed in version 0.2.
-    ///
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_env_filter`]: #method.with_env_filter
-    #[cfg(feature = "env-filter")]
-    #[deprecated(since = "0.1.2", note = "renamed to `with_env_filter`")]
-    pub fn with_filter(
-        self,
-        filter: impl Into<crate::EnvFilter>,
-    ) -> SubscriberBuilder<N, E, crate::EnvFilter, W>
-    where
-        Formatter<N, E, W>: tracing_core::Subscriber + 'static,
-    {
-        self.with_env_filter(filter)
-    }
 
     /// Sets the maximum [verbosity level] that will be enabled by the
     /// subscriber.
@@ -610,18 +581,6 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 
     /// Sets the function that the subscriber being built should use to format
     /// events that occur.
-    #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
-    pub fn on_event<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
-    where
-        E2: FormatEvent<Registry, N> + 'static,
-        N: for<'writer> FormatFields<'writer> + 'static,
-        W: MakeWriter + 'static,
-    {
-        self.event_format(fmt_event)
-    }
-
-    /// Sets the function that the subscriber being built should use to format
-    /// events that occur.
     pub fn event_format<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
@@ -640,6 +599,18 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     pub fn inherit_fields(self, inherit_fields: bool) -> Self {
         let _ = inherit_fields;
         self
+    }
+
+    /// Sets the function that the subscriber being built should use to format
+    /// events that occur.
+    #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
+    pub fn on_event<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
+    where
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: MakeWriter + 'static,
+    {
+        self.event_format(fmt_event)
     }
 
     /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
