@@ -302,7 +302,7 @@ impl<'a> Drop for CloseGuard<'a> {
         // except by avoiding a double-panic.
         let _ = CLOSE_COUNT.try_with(|count| {
             let c = count.get();
-            if c > 0 {
+            if c > 1 {
                 count.set(c - 1);
             } else {
                 self.registry.spans.remove(id_to_idx(&self.id));
