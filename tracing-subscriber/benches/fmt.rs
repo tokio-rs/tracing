@@ -57,7 +57,7 @@ fn bench_new_span(c: &mut Criterion) {
                         })
                         .thread(move || {
                             for n in 0..i {
-                                let _span = tracing::info_span!("span", i);
+                                let _span = tracing::info_span!("span", n);
                             }
                         })
                         .thread(move || {

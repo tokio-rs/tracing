@@ -601,6 +601,18 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         self
     }
 
+    /// Sets the function that the subscriber being built should use to format
+    /// events that occur.
+    #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
+    pub fn on_event<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
+    where
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: MakeWriter + 'static,
+    {
+        self.event_format(fmt_event)
+    }
+
     /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
     ///
     /// # Examples

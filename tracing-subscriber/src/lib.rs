@@ -106,7 +106,6 @@ pub(crate) mod sync;
 pub(crate) mod thread;
 
 #[cfg(feature = "env-filter")]
-#[allow(deprecated)]
 pub use filter::EnvFilter;
 
 pub use layer::Layer;
