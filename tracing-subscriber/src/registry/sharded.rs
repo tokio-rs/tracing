@@ -306,11 +306,10 @@ impl<'a> Drop for CloseGuard<'a> {
                 // If the current close count is 1, this stack frame is the last
                 // `on_close` call, so it's okay to remove the span.
                 self.registry.spans.remove(id_to_idx(&self.id));
-            } else {
-                // Otherwise, decrement the count to indicate that _this_ guard's
-                // `on_close` callback has completed.
-                count.set(c - 1);
             }
+            // Decrement the count to indicate that _this_ guard's
+            // `on_close` callback has completed.
+            count.set(c - 1);
         });
     }
 }
