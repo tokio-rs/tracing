@@ -302,10 +302,14 @@ impl<'a> Drop for CloseGuard<'a> {
         // except by avoiding a double-panic.
         let _ = CLOSE_COUNT.try_with(|count| {
             let c = count.get();
-            if c > 1 {
-                count.set(c - 1);
-            } else {
+            if c == 1 {
+                // If the current close count is 1, this stack frame is the last
+                // `on_close` call, so it's okay to remove the span.
                 self.registry.spans.remove(id_to_idx(&self.id));
+            } else {
+                // Otherwise, decrement the count to indicate that _this_ guard's
+                // `on_close` callback has completed.
+                count.set(c - 1);
             }
         });
     }
