@@ -1,3 +1,57 @@
+# 0.2.0-alpha.1 (November 18, 2019)
+
+### Added
+
+- `Registry`, a reusable span store that `Layer`s can use a
+  high-performance, in-memory store. (#420, #425, #432, #433, #435)
+- Reimplemented `fmt::Subscriber` in terms of the `Registry`
+  and `Layer`s (#420)
+- Add benchmarks for fmt subscriber (#421)
+- Add support for JSON field and event formatting (#377, #415)
+
+### Changed
+
+- **BREAKING**: Change `fmt::format::FormatFields` and
+  `fmt::format::FormatEvent` to accept a mandatory `FmtContext`. These
+  `FormatFields` and `FormatEvent` will likely see additional breaking
+  changes in subsequent alpha. (#420, #425)
+- **BREAKING**: Removed `Filter`. Use `EnvFilter` instead (#434)
+
+### Contributers
+
+Thanks to all the contributers to this release!
+
+- @pimeys for #377 and #415
+
+# 0.1.6 (October 29, 2019)
+
+### Added
+
+- Add `init` and `try_init` functions to `FmtSubscriber` (#385)
+- Add `ChronoUtc` and `ChronoLocal` timers, RFC 3339 support (#387)
+- Add `tracing::subscriber::set_default` which sets the default
+  subscriber and returns a drop guard. This drop guard will reset the
+  dispatch on drop (#388).
+
+### Fixed
+
+- Fix default level for `EnvFilter`. Setting `RUST_LOG=target`
+  previously only the `ERROR` level, while it should enable everything.
+  `tracing-subscriber` now defaults to `TRACE` if no level is specified
+  (#401)
+- Fix `tracing-log` feature flag for init + try_init. The feature flag
+  `tracing_log` was used instead of the correct `tracing-log`. As a
+  result, both `tracing-log` and `tracing_log` needed to be specified in
+  order to initialize the global logger. Only `tracing-log` needs to be
+  specified now (#400).
+
+### Contributers
+
+Thanks to all the contributers to this release!
+
+- @emschwartz for #385, #387, #400 and #401
+- @bIgBV for #388
+
 # 0.1.5 (October 7, 2019)
 
 ### Fixed
