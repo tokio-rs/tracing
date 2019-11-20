@@ -16,7 +16,7 @@ stages:
    jobs:
      - template: azure/cargo-check.yml@templates
        parameters:
-         rust: 1.34.0
+         rust: 1.36.0
          all_features: false
  - stage: custom
    displayName: "Special tests"

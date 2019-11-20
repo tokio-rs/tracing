@@ -13,9 +13,9 @@ Utilities for instrumenting futures-based code with [`tracing`].
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-futures.svg
-[crates-url]: https://crates.io/crates/tracing-futures/0.1.1
+[crates-url]: https://crates.io/crates/tracing-futures/0.2.0
 [docs-badge]: https://docs.rs/tracing-futures/badge.svg
-[docs-url]: https://docs.rs/tracing-futures/0.1.1/tracing_futures
+[docs-url]: https://docs.rs/tracing-futures/0.2.0/tracing_futures
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_futures
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -41,8 +41,8 @@ The crate provides the following traits:
 * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
   future, sink, stream, or executor.
 
-[`Instrument`]: https://docs.rs/tracing-futures/0.1.1/tracing_futures/trait.Instrument.html
-[`WithSubscriber`]: https://docs.rs/tracing-futures/0.1.1/tracing_futures/trait.WithSubscriber.html
+[`Instrument`]: https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html
+[`WithSubscriber`]: https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.WithSubscriber.html
 [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
 [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/index.html
 [`tracing`]: https://crates.io/tracing

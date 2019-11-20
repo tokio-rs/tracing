@@ -33,12 +33,12 @@
 //! - `std-future`: Enables compatibility with `std::future::Future`.
 //! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
 //!   crate.
-//! - `futures-preview`: Enables compatibility with the `futures-preview`
+//! - `futures-03`: Enables compatibility with version 0.3.x of the `futures`
 //!   crate's `Spawn` and `LocalSpawn` traits.
 //! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
 //!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
 //!
-//! The `tokio` and `futures-01` features are enabled by default.
+//! The `tokio` and `std-future` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
@@ -46,7 +46,7 @@
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
-#![doc(html_root_url = "https://docs.rs/tracing-futures/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.0")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -78,7 +78,7 @@ use pin_project::pin_project;
 use std::{pin::Pin, task::Context};
 
 #[cfg(feature = "futures-01")]
-use futures::{Sink, StartSend, Stream};
+use futures_01::{Sink, StartSend, Stream};
 use tracing::dispatcher;
 use tracing::{Dispatch, Span};
 
@@ -247,11 +247,11 @@ impl<T: std::future::Future> std::future::Future for Instrumented<T> {
 }
 
 #[cfg(feature = "futures-01")]
-impl<T: futures::Future> futures::Future for Instrumented<T> {
+impl<T: futures_01::Future> futures_01::Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
         let _enter = self.span.enter();
         self.inner.poll()
     }
@@ -262,7 +262,7 @@ impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> futures::Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> futures_01::Poll<Option<Self::Item>, Self::Error> {
         let _enter = self.span.enter();
         self.inner.poll()
     }
@@ -278,7 +278,7 @@ impl<T: Sink> Sink for Instrumented<T> {
         self.inner.start_send(item)
     }
 
-    fn poll_complete(&mut self) -> futures::Poll<(), Self::SinkError> {
+    fn poll_complete(&mut self) -> futures_01::Poll<(), Self::SinkError> {
         let _enter = self.span.enter();
         self.inner.poll_complete()
     }
@@ -316,11 +316,11 @@ impl<T> Instrumented<T> {
 impl<T: Sized> WithSubscriber for T {}
 
 #[cfg(feature = "futures-01")]
-impl<T: futures::Future> futures::Future for WithDispatch<T> {
+impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
 
-    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
         dispatcher::with_default(&self.dispatch, || inner.poll())
     }
@@ -339,11 +339,7 @@ impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
 }
 
 impl<T> WithDispatch<T> {
-    #[cfg(any(
-        feature = "tokio",
-        feature = "tokio-alpha",
-        feature = "futures-preview"
-    ))]
+    #[cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03"))]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
@@ -400,15 +396,15 @@ mod tests {
 
     #[cfg(feature = "futures-01")]
     mod futures_tests {
-        use futures::{future, stream, task, Async, Future};
+        use futures_01::{future, stream, task, Async, Future};
         use tracing::subscriber::with_default;
 
         use super::*;
 
-        impl<T, E> futures::Future for PollN<T, E> {
+        impl<T, E> futures_01::Future for PollN<T, E> {
             type Item = T;
             type Error = E;
-            fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
+            fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
                 self.polls += 1;
                 if self.polls == self.finish_at {
                     self.and_return

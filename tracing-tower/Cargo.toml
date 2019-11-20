@@ -21,7 +21,7 @@ default = ["tower-layer", "tower-util", "http"]
 
 [dependencies]
 tracing = "0.1"
-tracing-futures = { version = "0.1.0", path = "../tracing-futures" }
+tracing-futures = { version = "0.2.0", path = "../tracing-futures", features = ["futures-01"] }
 futures = "0.1"
 tower-service = "0.2"
 tower-layer = { version = "0.1", optional = true }

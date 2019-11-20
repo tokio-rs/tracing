@@ -1,5 +1,5 @@
 use crate::{Instrument, Instrumented, WithDispatch};
-use futures::{
+use futures_01::{
     future::{ExecuteError, Executor},
     Future,
 };
@@ -43,7 +43,7 @@ pub use self::tokio::*;
 #[cfg(feature = "tokio")]
 mod tokio {
     use crate::{Instrument, Instrumented, WithDispatch};
-    use futures::Future;
+    use futures_01::Future;
     use tokio::{
         executor::{Executor, SpawnError, TypedExecutor},
         runtime::{current_thread, Runtime, TaskExecutor},
