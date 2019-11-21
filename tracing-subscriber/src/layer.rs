@@ -770,6 +770,44 @@ impl<'a, S: Subscriber> Context<'a, S> {
             .map(|s| s.exists(id))
             .unwrap_or(false)
     }
+
+    /// Visits every span in the current context with a closure.
+    ///
+    /// The provided closure will be called first with the current span,
+    /// and then with that span's parent, and then that span's parent,
+    /// and so on until a root span is reached.
+    pub fn scope<E, F>(&self, mut f: F) -> Result<(), E>
+    where
+        S: for<'lookup> registry::LookupSpan<'lookup>,
+        F: FnMut(&registry::SpanRef<'_, S>) -> Result<(), E>,
+    {
+        let current_span = self.current_span();
+        let id = match current_span.id() {
+            Some(id) => id,
+            None => return Ok(()),
+        };
+        let span = match self.span(id) {
+            Some(span) => span,
+            None => return Ok(()),
+        };
+        #[cfg(feature = "smallvec")]
+        type SpanRefVec<'span, L> = smallvec::SmallVec<[registry::SpanRef<'span, L>; 16]>;
+        #[cfg(not(feature = "smallvec"))]
+        type SpanRefVec<'span, L> = Vec<registry::SpanRef<'span, L>>;
+
+        // an alternative way to handle this would be to the recursive approach that
+        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
+        // spans path.
+        let parents = span.parents().collect::<SpanRefVec<'_, _>>();
+        let mut iter = parents.iter().rev();
+        // visit all the parent spans...
+        while let Some(parent) = iter.next() {
+            f(parent)?;
+        }
+        // and finally, print out the current span.
+        f(&span)?;
+        Ok(())
+    }
 }
 
 impl<'a, S> Context<'a, S> {
