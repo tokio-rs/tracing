@@ -618,12 +618,14 @@ where
 }
 
 #[cfg(feature = "registry")]
-impl<L, S> LookupMetadata for Layered<L, S>
+impl<'a, L, S> LookupSpan<'a> for Layered<L, S>
 where
-    S: Subscriber + LookupMetadata,
+    S: Subscriber + LookupSpan<'a>,
 {
-    fn metadata(&self, span: &span::Id) -> Option<&'static Metadata<'static>> {
-        self.inner.metadata(span)
+    type Data = S::Data;
+
+    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
+        self.inner.span_data(id)
     }
 }
 
