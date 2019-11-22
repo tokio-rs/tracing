@@ -438,11 +438,27 @@ where
     /// The provided closure will be called first with the current span,
     /// and then with that span's parent, and then that span's parent,
     /// and so on until a root span is reached.
-    pub fn visit_spans<E, F>(&self, f: F) -> Result<(), E>
+    pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
     where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
-        self.ctx.scope(f)
+        let current_span = self.ctx.current_span();
+        let id = match current_span.id() {
+            Some(id) => id,
+            None => return Ok(()),
+        };
+        let span = match self.ctx.span(id) {
+            Some(span) => span,
+            None => return Ok(()),
+        };
+
+        // visit all the parent spans...
+        // while let Some(parent) = self.ctx.parents_of().next() {
+        // f(parent)?;
+        // }
+        // and finally, print out the current span.
+        f(&span)?;
+        Ok(())
     }
 }
 

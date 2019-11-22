@@ -7,8 +7,8 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan, Registry};
-use std::{any::TypeId, marker::PhantomData};
+use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
+use std::{any::TypeId, iter::Rev, marker::PhantomData, slice::Iter};
 
 /// A composable handler for `tracing` events.
 ///
@@ -778,37 +778,62 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// The provided closure will be called first with the current span,
     /// and then with that span's parent, and then that span's parent,
     /// and so on until a root span is reached.
-    pub fn scope<E, F>(&self, mut f: F) -> Result<(), E>
+    pub fn parents_of(&self, span: SpanRef<'a, S>) -> Parents<'a, S>
     where
-        S: for<'lookup> registry::LookupSpan<'lookup>,
-        F: FnMut(&registry::SpanRef<'_, S>) -> Result<(), E>,
+        S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     {
-        let current_span = self.current_span();
-        let id = match current_span.id() {
-            Some(id) => id,
-            None => return Ok(()),
-        };
-        let span = match self.span(id) {
-            Some(span) => span,
-            None => return Ok(()),
-        };
+        // let current_span = self.current_span();
+        // let id = match current_span.id() {
+        //     Some(id) => id,
+        //     None => return Parents { inner: None },
+        // };
+        // let span = match self.span(id) {
+        //     Some(span) => span,
+        //     None => return Parents { inner: None },
+        // };
         #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<[registry::SpanRef<'span, L>; 16]>;
+        type SpanRefVec<'span, L> = smallvec::SmallVec<[SpanRef<'span, L>; 16]>;
         #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, L> = Vec<registry::SpanRef<'span, L>>;
+        type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
 
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path.
-        let parents = span.parents().collect::<SpanRefVec<'_, _>>();
-        let mut iter = parents.iter().rev();
-        // visit all the parent spans...
-        while let Some(parent) = iter.next() {
-            f(parent)?;
+        let parents = span.parents().collect::<SpanRefVec<'_, _>>().iter().rev();
+        Parents {
+            inner: Some(parents),
         }
-        // and finally, print out the current span.
-        f(&span)?;
-        Ok(())
+    }
+}
+
+/// An interator over a span's parents, if any.
+///
+/// For additonal details, see [`Context::scope`].
+pub struct Parents<'span, L>
+where
+    L: for<'lookup> LookupSpan<'lookup>,
+{
+    inner: Option<Rev<Iter<'span, SpanRef<'span, L>>>>,
+}
+
+impl<'span, L> Iterator for Parents<'span, L>
+where
+    L: for<'lookup> LookupSpan<'lookup>,
+{
+    type Item = &'span SpanRef<'span, L>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.inner {
+            Some(inner) => inner.next(),
+            None => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match &self.inner {
+            Some(inner) => inner.size_hint(),
+            None => (0, None),
+        }
     }
 }
 
