@@ -18,7 +18,7 @@ keywords = ["logging", "profiling", "tracing", "futures", "async"]
 license = "MIT"
 
 [features]
-default = ["std-future", "tokio"]
+default = ["std-future"]
 futures-01 = ["futures_01"]
 futures-03 = ["std-future", "futures", "futures-task"]
 std-future = ["pin-project"]

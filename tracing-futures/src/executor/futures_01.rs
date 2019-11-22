@@ -1,4 +1,4 @@
-use crate::{Instrument, Instrumented, WithDispatch};
+use crate::{Instrument, Instrumented};
 use futures_01::{
     future::{ExecuteError, Executor},
     Future,
@@ -25,17 +25,6 @@ where
     }
 }
 
-impl<T, F> Executor<F> for WithDispatch<T>
-where
-    T: Executor<WithDispatch<F>>,
-    F: Future<Item = (), Error = ()>,
-{
-    fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
-        let future = self.with_dispatch(future);
-        deinstrument_err!(self.inner.execute(future))
-    }
-}
-
 #[cfg(feature = "tokio")]
 #[allow(unreachable_pub)] // https://github.com/rust-lang/rust/issues/57411
 pub use self::tokio::*;
@@ -48,6 +37,17 @@ mod tokio {
         executor::{Executor, SpawnError, TypedExecutor},
         runtime::{current_thread, Runtime, TaskExecutor},
     };
+
+    impl<T, F> Executor<F> for WithDispatch<T>
+    where
+        T: Executor<WithDispatch<F>>,
+        F: Future<Item = (), Error = ()>,
+    {
+        fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
+            let future = self.with_dispatch(future);
+            deinstrument_err!(self.inner.execute(future))
+        }
+    }
 
     impl<T> Executor for Instrumented<T>
     where
