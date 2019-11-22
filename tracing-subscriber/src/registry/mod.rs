@@ -59,7 +59,7 @@
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
 //! require the root subscriber to be a registry.
 //!
-//! [`Layer`]: ../struct.Layer.html
+//! [`Layer`]: ../layer/trait.Layer.html
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [`Registry`]: struct.Registry.html
@@ -84,7 +84,7 @@ pub use sharded::{Data, Registry};
 /// implement this trait; if they do, any [`Layer`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`metadata()`] method.
 ///
-/// [`Layer`]: ../layer/struct.Layer.html
+/// [`Layer`]: ../layer/trait.Layer.html
 /// [`Context`]: ../layer/struct.Context.html
 /// [`metadata()`]: ../layer/struct.Context.html#method.metadata
 pub trait LookupMetadata {
@@ -116,7 +116,7 @@ pub trait LookupMetadata {
 /// implement this trait; if they do, any [`Layer`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`span()`] method.
 ///
-/// [`Layer`]: ../layer/struct.Layer.html
+/// [`Layer`]: ../layer/trait.Layer.html
 /// [`Context`]: ../layer/struct.Context.html
 /// [`span()`]: ../layer/struct.Context.html#method.metadata
 pub trait LookupSpan<'a> {

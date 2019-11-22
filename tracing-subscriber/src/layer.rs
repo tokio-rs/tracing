@@ -388,7 +388,7 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
 /// Represents information about the current context provided to [`Layer`]s by the
 /// wrapped [`Subscriber`].
 ///
-/// [`Layer`]: ../struct.Layer.html
+/// [`Layer`]: ../layer/trait.Layer.html
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Debug)]
 pub struct Context<'a, S> {
@@ -398,7 +398,7 @@ pub struct Context<'a, S> {
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
 /// [`Layer`]s.
 ///
-/// [`Layer`]: ../struct.Layer.html
+/// [`Layer`]: ../layer/trait.Layer.html
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Clone, Debug)]
 pub struct Layered<L, I, S = I> {
