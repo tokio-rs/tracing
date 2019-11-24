@@ -13,7 +13,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field, Visit},
-    Event, Level, Subscriber,
+    span, Event, Level, Subscriber,
 };
 
 #[cfg(feature = "tracing-log")]
@@ -50,6 +50,70 @@ where
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
+
+    /// Write a log message for [creating a new span][new_span] with the given
+    /// `Attributes` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [new_span]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.new_span
+    fn format_new_span(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _attrs: &span::Attributes<'_>,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    /// Write a log message for [closing a span][close] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [close]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#method.try_close
+    fn format_close(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    /// Write a log message for [entering a span][enter] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [enter]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.enter
+    fn format_enter(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    /// Write a log message for [exiting a span][close] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [close]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.exit
+    fn format_exit(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+    ) -> fmt::Result {
+        Ok(())
+    }
 }
 
 impl<S, N> FormatEvent<S, N>
@@ -67,6 +131,89 @@ where
         (*self)(ctx, writer, event)
     }
 }
+
+/// A type that can format span lifecycle events to a `fmt::Write`.
+pub trait SpanLifeCycle {
+    /// Write a log message for [creating a new span][new_span] with the given
+    /// `Attributes` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [new_span]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.new_span
+    fn format_new_span<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        attrs: &span::Attributes<'_>,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime;
+
+    /// Write a log message for [closing a span][close] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [close]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#method.try_close
+    fn format_close<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime;
+}
+
+/// A type that formats log lines for enter/exit events.
+pub trait SpanEntry {
+    /// Write a log message for [entering a span][enter] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [enter]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.enter
+    fn format_enter<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime;
+
+    /// Write a log message for [exiting a span][close] with the given
+    /// `Id` in the given `Context` to the provided `Write`.
+    ///
+    /// This method is optional; the default impl is a no-op. Implementations
+    /// which wish to log calls to `new_span` can override this.
+    ///
+    /// [close]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html#tymethod.exit
+    fn format_exit<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime;
+}
+
 /// A type that can format a [set of fields] to a `fmt::Write`.
 ///
 /// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
@@ -131,12 +278,17 @@ pub struct Full;
 /// spans. The [`Compact`] logging format includes only the fields from the most-recently-entered
 /// span.
 #[derive(Debug, Clone)]
-pub struct Format<F = Full, T = SystemTime> {
-    format: PhantomData<F>,
+pub struct Format<F = Full, T = SystemTime, L = (), E = ()> {
+    format: PhantomData<(F, L, E)>,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
     pub(crate) display_target: bool,
 }
+
+/// Marker for `Format` that indicates that span enters and exits or span
+/// opens and closes should be logged.
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct WithSpans;
 
 impl Default for Format<Full, SystemTime> {
     fn default() -> Self {
@@ -149,11 +301,24 @@ impl Default for Format<Full, SystemTime> {
     }
 }
 
-impl<F, T> Format<F, T> {
+impl Format {
+    fn format_time<T>(timer: &T, writer: &mut dyn fmt::Write, ansi: bool) -> fmt::Result
+    where
+        T: FormatTime,
+    {
+        #[cfg(feature = "ansi")]
+        time::write(timer, writer, ansi)?;
+        #[cfg(not(feature = "ansi"))]
+        time::write(timer, writer)?;
+        Ok(())
+    }
+}
+
+impl<F, T, L, E> Format<F, T, L, E> {
     /// Use a less verbose output format.
     ///
     /// See [`Compact`].
-    pub fn compact(self) -> Format<Compact, T> {
+    pub fn compact(self) -> Format<Compact, T, L, E> {
         Format {
             format: PhantomData,
             timer: self.timer,
@@ -166,7 +331,7 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`Json`].
     #[cfg(feature = "json")]
-    pub fn json(self) -> Format<Json, T> {
+    pub fn json(self) -> Format<Json, T, L, E> {
         Format {
             format: PhantomData,
             timer: self.timer,
@@ -186,7 +351,7 @@ impl<F, T> Format<F, T> {
     /// [`timer`]: ./time/trait.FormatTime.html
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
-    pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
+    pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2, L, E> {
         Format {
             format: self.format,
             timer,
@@ -196,7 +361,7 @@ impl<F, T> Format<F, T> {
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Format<F, ()> {
+    pub fn without_time(self) -> Format<F, (), L, E> {
         Format {
             format: self.format,
             timer: (),
@@ -205,13 +370,33 @@ impl<F, T> Format<F, T> {
         }
     }
 
+    /// Configures the formatter to log when spans are created and closed.
+    pub fn with_spans(self) -> Format<F, T, WithSpans, E> {
+        Format {
+            format: PhantomData,
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+        }
+    }
+
+    /// Configures the formatter to log when spans are entered and exited.
+    pub fn with_entry(self) -> Format<F, T, L, WithSpans> {
+        Format {
+            format: PhantomData,
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+        }
+    }
+
     /// Enable ANSI terminal colors for formatted output.
-    pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
+    pub fn with_ansi(self, ansi: bool) -> Format<F, T, L, E> {
         Format { ansi, ..self }
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Format<F, T> {
+    pub fn with_target(self, display_target: bool) -> Format<F, T, L, E> {
         Format {
             display_target,
             ..self
@@ -219,11 +404,13 @@ impl<F, T> Format<F, T> {
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
+impl<S, N, T, L, E> FormatEvent<S, N> for Format<Full, T, L, E>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
+    L: SpanLifeCycle,
+    E: SpanEntry,
 {
     fn format_event(
         &self,
@@ -270,13 +457,51 @@ where
         ctx.format_fields(writer, event)?;
         writeln!(writer)
     }
+
+    fn format_new_span(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        attrs: &span::Attributes<'_>,
+    ) -> fmt::Result {
+        L::format_new_span(&self.timer, ctx, writer, attrs, self.ansi)
+    }
+
+    fn format_close(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result {
+        L::format_close(&self.timer, ctx, writer, id, self.ansi)
+    }
+
+    fn format_enter(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result {
+        E::format_enter(&self.timer, ctx, writer, id, self.ansi)
+    }
+
+    fn format_exit(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result {
+        E::format_exit(&self.timer, ctx, writer, id, self.ansi)
+    }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
+impl<S, N, T, L, E> FormatEvent<S, N> for Format<Compact, T, L, E>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
+    L: SpanLifeCycle,
+    E: SpanEntry,
 {
     fn format_event(
         &self,
@@ -327,6 +552,275 @@ where
             }
         }
         writeln!(writer)
+    }
+
+    fn format_new_span(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        attrs: &span::Attributes<'_>,
+    ) -> fmt::Result {
+        L::format_new_span(&self.timer, ctx, writer, attrs, self.ansi)
+    }
+
+    fn format_close(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result {
+        L::format_close(&self.timer, ctx, writer, id, self.ansi)
+    }
+
+    fn format_enter(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result {
+        E::format_enter(&self.timer, ctx, writer, id, self.ansi)
+    }
+
+    fn format_exit(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+    ) -> fmt::Result {
+        E::format_exit(&self.timer, ctx, writer, id, self.ansi)
+    }
+}
+
+// === impl SpanLifeCycle ===
+impl SpanLifeCycle for () {
+    fn format_new_span<S, N, T>(
+        _timer: &T,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _attrs: &span::Attributes<'_>,
+        _ansi: bool,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    fn format_close<S, N, T>(
+        _timer: &T,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+        _ansi: bool,
+    ) -> fmt::Result {
+        Ok(())
+    }
+}
+
+impl SpanLifeCycle for WithSpans {
+    fn format_new_span<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        attrs: &span::Attributes<'_>,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime,
+    {
+        Format::format_time(timer, writer, ansi)?;
+
+        let meta = attrs.metadata();
+        let (fmt_level, full_ctx) = {
+            #[cfg(feature = "ansi")]
+            {
+                (FmtLevel::new(meta.level(), ansi), FullCtx::new(ctx, ansi))
+            }
+            #[cfg(not(feature = "ansi"))]
+            {
+                (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+            }
+        };
+
+        write!(
+            writer,
+            " {} {}{}: open {}",
+            fmt_level,
+            full_ctx,
+            meta.target(),
+            meta.name(),
+        )?;
+
+        if !attrs.is_empty() {
+            writer.write_char('{')?;
+            ctx.format_fields(writer, attrs)?;
+            writer.write_char('}')?;
+        }
+
+        writeln!(writer)?;
+        Ok(())
+    }
+
+    fn format_close<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime,
+    {
+        if let Some(span) = ctx.ctx.span(&id) {
+            Format::format_time(timer, writer, ansi)?;
+
+            let meta = span.metadata();
+            let (fmt_level, full_ctx) = {
+                #[cfg(feature = "ansi")]
+                {
+                    (FmtLevel::new(meta.level(), ansi), FullCtx::new(ctx, ansi))
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+                }
+            };
+
+            write!(
+                writer,
+                " {} {}{}: close {}",
+                fmt_level,
+                full_ctx,
+                meta.target(),
+                meta.name(),
+            )?;
+
+            writeln!(writer)?;
+        } else {
+            writeln!(writer, "close {:?}", id)?;
+        }
+        Ok(())
+    }
+}
+
+// === impl SpanEntry ===
+impl SpanEntry for () {
+    fn format_enter<S, N, T>(
+        _timer: &T,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+        _ansi: bool,
+    ) -> fmt::Result {
+        Ok(())
+    }
+
+    fn format_exit<S, N, T>(
+        _timer: &T,
+        _ctx: &FmtContext<'_, S, N>,
+        _writer: &mut dyn fmt::Write,
+        _id: &span::Id,
+        _ansi: bool,
+    ) -> fmt::Result {
+        Ok(())
+    }
+}
+
+impl SpanEntry for WithSpans {
+    fn format_enter<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime,
+    {
+        if let Some(span) = ctx.ctx.span(&id) {
+            Format::format_time(timer, writer, ansi)?;
+
+            let meta = span.metadata();
+            let (fmt_level, full_ctx) = {
+                #[cfg(feature = "ansi")]
+                {
+                    (FmtLevel::new(meta.level(), ansi), FullCtx::new(ctx, ansi))
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+                }
+            };
+
+            write!(
+                writer,
+                " {} {}{}: enter {}",
+                fmt_level,
+                full_ctx,
+                meta.target(),
+                meta.name(),
+            )?;
+
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(writer, "{}", fields)?;
+            }
+
+            writeln!(writer)?;
+        } else {
+            writeln!(writer, "enter {:?}", id)?;
+        }
+        Ok(())
+    }
+
+    fn format_exit<S, N, T>(
+        timer: &T,
+        ctx: &FmtContext<'_, S, N>,
+        writer: &mut dyn fmt::Write,
+        id: &span::Id,
+        ansi: bool,
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        T: FormatTime,
+    {
+        if let Some(span) = ctx.ctx.span(&id) {
+            Format::format_time(timer, writer, ansi)?;
+
+            let meta = span.metadata();
+            let (fmt_level, full_ctx) = {
+                #[cfg(feature = "ansi")]
+                {
+                    (FmtLevel::new(meta.level(), ansi), FullCtx::new(ctx, ansi))
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+                }
+            };
+            write!(
+                writer,
+                " {} {}{}: exit {}",
+                fmt_level,
+                full_ctx,
+                meta.target(),
+                meta.name(),
+            )?;
+
+            let fields = span.fields();
+            if !fields.is_empty() {
+                write!(writer, "{{{}}}", fields)?;
+            }
+
+            writeln!(writer)?;
+        } else {
+            writeln!(writer, "exit {:?}", id)?;
+        }
+        Ok(())
     }
 }
 

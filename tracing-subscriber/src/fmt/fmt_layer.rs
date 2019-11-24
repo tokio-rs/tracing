@@ -325,16 +325,29 @@ where
     W: MakeWriter + 'static,
 {
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+
+            let mut buf = String::new();
+            if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
+                let fmt_fields = FormattedFields {
+                    fields: buf,
+                    _format_event: PhantomData::<fn(N)>,
+                };
+                extensions.insert(fmt_fields);
+            }
+        }
 
         let mut buf = String::new();
-        if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
-            let fmt_fields = FormattedFields {
-                fields: buf,
-                _format_event: PhantomData::<fn(N)>,
-            };
-            extensions.insert(fmt_fields);
+        let ctx = self.make_ctx(ctx);
+        if self
+            .fmt_event
+            .format_new_span(&ctx, &mut buf, attrs)
+            .is_ok()
+        {
+            let mut writer = self.make_writer.make_writer();
+            let _ = io::Write::write_all(&mut writer, buf.as_bytes());
         }
     }
 
@@ -385,6 +398,33 @@ where
 
             buf.clear();
         });
+    }
+
+    fn on_close(&self, id: Id, _ctx: Context<'_, S>) {
+        let mut buf = String::new();
+        let ctx = self.make_ctx(_ctx);
+        if self.fmt_event.format_close(&ctx, &mut buf, &id).is_ok() {
+            let mut writer = self.make_writer.make_writer();
+            let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+        }
+    }
+
+    fn on_enter(&self, id: &Id, _ctx: Context<'_, S>) {
+        let mut buf = String::new();
+        let ctx = self.make_ctx(_ctx);
+        if self.fmt_event.format_enter(&ctx, &mut buf, &id).is_ok() {
+            let mut writer = self.make_writer.make_writer();
+            let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+        }
+    }
+
+    fn on_exit(&self, id: &Id, _ctx: Context<'_, S>) {
+        let mut buf = String::new();
+        let ctx = self.make_ctx(_ctx);
+        if self.fmt_event.format_exit(&ctx, &mut buf, &id).is_ok() {
+            let mut writer = self.make_writer.make_writer();
+            let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+        }
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
