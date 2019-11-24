@@ -169,7 +169,7 @@ impl Yak { fn shave(&mut self, _: u32) {} }
 fn find_a_razor() -> Result<u32, u32> { Ok(1) }
 ```
 
-You can find further examples showing how to use this crate in the examples
+You can find further examples showing how to use this crate in the [`examples`]
 directory.
 
 ### In libraries
@@ -291,6 +291,7 @@ undergoing active development. They may be less stable than `tracing` and
 [`tracing-timing`]: https://crates.io/crates/tracing-timing
 [`env_logger`]: https://crates.io/crates/env_logger
 [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
+[`examples`]: https://github.com/tokio-rs/tracing/tree/master/examples
 
 ## License
 
