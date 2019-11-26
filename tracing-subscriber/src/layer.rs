@@ -873,6 +873,39 @@ pub(crate) mod tests {
     struct NopLayer2;
     impl<S: Subscriber> Layer<S> for NopLayer2 {}
 
+    /// A layer that holds a string.
+    ///
+    /// Used to test that pointers returned by downcasting are actually valid.
+    struct StringLayer(String);
+    impl<S: Subscriber> Layer<S> for StringLayer {}
+    struct StringLayer2(String);
+    impl<S: Subscriber> Layer<S> for StringLayer2 {}
+
+    struct StringLayer3(String);
+    impl<S: Subscriber> Layer<S> for StringLayer3 {}
+
+    pub(crate) struct StringSubscriber(String);
+
+    impl Subscriber for StringSubscriber {
+        fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+            Interest::never()
+        }
+
+        fn enabled(&self, _: &Metadata<'_>) -> bool {
+            false
+        }
+
+        fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+            span::Id::from_u64(1)
+        }
+
+        fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+        fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+        fn event(&self, _: &Event<'_>) {}
+        fn enter(&self, _: &span::Id) {}
+        fn exit(&self, _: &span::Id) {}
+    }
+
     fn assert_subscriber(_s: impl Subscriber) {}
 
     #[test]
@@ -901,17 +934,23 @@ pub(crate) mod tests {
         let s = NopLayer
             .and_then(NopLayer)
             .and_then(NopLayer)
-            .with_subscriber(NopSubscriber);
-        assert!(Subscriber::downcast_ref::<NopSubscriber>(&s).is_some());
+            .with_subscriber(StringSubscriber("subscriber".into()));
+        let subscriber =
+            Subscriber::downcast_ref::<StringSubscriber>(&s).expect("subscriber should downcast");
+        assert_eq!(&subscriber.0, "subscriber");
     }
 
     #[test]
     fn downcasts_to_layer() {
-        let s = NopLayer
-            .and_then(NopLayer)
-            .and_then(NopLayer2)
+        let s = StringLayer("layer_1".into())
+            .and_then(StringLayer2("layer_2".into()))
+            .and_then(StringLayer3("layer_3".into()))
             .with_subscriber(NopSubscriber);
-        assert!(Subscriber::downcast_ref::<NopLayer>(&s).is_some());
-        assert!(Subscriber::downcast_ref::<NopLayer2>(&s).is_some());
+        let layer = Subscriber::downcast_ref::<StringLayer>(&s).expect("layer 1 should downcast");
+        assert_eq!(&layer.0, "layer_1");
+        let layer = Subscriber::downcast_ref::<StringLayer2>(&s).expect("layer 2 should downcast");
+        assert_eq!(&layer.0, "layer_2");
+        let layer = Subscriber::downcast_ref::<StringLayer3>(&s).expect("layer 13 should downcast");
+        assert_eq!(&layer.0, "layer_3");
     }
 }
