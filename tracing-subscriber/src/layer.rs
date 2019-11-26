@@ -362,7 +362,7 @@ where
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
-            Some(&self as *const _ as *const ())
+            Some(self as *const _ as *const ())
         } else {
             None
         }
