@@ -15,4 +15,4 @@ edition = "2018"
 tokio-test = { git = "https://github.com/tokio-rs/tokio.git" }
 tracing = "0.1"
 tracing-core = "0.1.2"
-tracing-futures = { path = "..", features = ["std-future"] }
+tracing-futures = { path = ".." }
