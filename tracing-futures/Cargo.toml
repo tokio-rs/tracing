@@ -22,7 +22,7 @@ default = ["std-future"]
 futures-01 = ["futures_01"]
 futures-03 = ["std-future", "futures", "futures-task"]
 std-future = ["pin-project"]
-tokio-alpha = ["std-future", "tokio_02"]
+tokio_02 = ["std-future", "tokio"]
 
 [dependencies]
 futures_01 = { package = "futures", version = "0.1", optional = true }
@@ -31,8 +31,8 @@ futures-task = { version = "0.3", optional = true }
 pin-project = { version = "0.4", optional = true }
 tracing = "0.1"
 tokio-executor = { version = "0.1", optional = true }
-tokio = { version = "0.1", optional = true }
-tokio_02 = { package = "tokio", version = "0.2.0-alpha.6", optional = true }
+tokio_01 = { package = "tokio", version = "0.1", optional = true }
+tokio = { version = "0.2.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
