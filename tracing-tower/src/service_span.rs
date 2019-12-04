@@ -1,10 +1,10 @@
 //! Middleware which instruments a service with a span entered when that service
 //! is called.
 use crate::GetSpan;
-use std::task::{Context, Poll};
 use std::future::Future;
-use std::pin::Pin;
 use std::marker::PhantomData;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 #[derive(Debug)]
 pub struct Service<S> {
@@ -75,6 +75,7 @@ mod layer {
 #[cfg(feature = "tower-layer")]
 pub mod make {
     use super::*;
+    use pin_project::pin_project;
 
     #[derive(Debug)]
     pub struct MakeService<M, T, R, G = fn(&T) -> tracing::Span>
@@ -86,8 +87,10 @@ pub mod make {
         _p: PhantomData<fn(T, R)>,
     }
 
+    #[pin_project]
     #[derive(Debug)]
     pub struct MakeFuture<F> {
+        #[pin]
         inner: F,
         span: Option<tracing::Span>,
     }
@@ -165,20 +168,21 @@ pub mod make {
         }
     }
 
-    impl<F> Future for MakeFuture<F>
+    impl<F, T, E> Future for MakeFuture<F>
     where
-        F: Future,
+        F: Future<Output = Result<T, E>>,
     {
-        type Output = Service<F::Output>;
+        type Output = Result<Service<T>, E>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             let inner = {
-                let _guard = self.span.as_ref().map(tracing::Span::enter);
-                futures::ready!(self.inner.poll(cx))
+                let this = self.project();
+                let _guard = this.span.as_ref().map(tracing::Span::enter);
+                futures::ready!(this.inner.poll(cx))
             };
 
             let span = self.span.take().expect("polled after ready");
-            Ok(Poll::Ready(Service::new(inner, span)))
+            Poll::Ready(inner.map(|svc| Service::new(svc, span)))
         }
     }
 
