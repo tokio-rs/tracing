@@ -175,13 +175,13 @@ pub mod make {
         type Output = Result<Service<T>, E>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            let this = self.project();
             let inner = {
-                let this = self.project();
                 let _guard = this.span.as_ref().map(tracing::Span::enter);
                 futures::ready!(this.inner.poll(cx))
             };
 
-            let span = self.span.take().expect("polled after ready");
+            let span = this.span.take().expect("polled after ready");
             Poll::Ready(inner.map(|svc| Service::new(svc, span)))
         }
     }

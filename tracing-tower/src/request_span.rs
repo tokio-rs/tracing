@@ -1,9 +1,9 @@
 //! Middleware which instruments each request passing through a service with a new span.
 use super::GetSpan;
 use futures::future::Future;
-use std::task::{Context, Poll};
-use std::pin::Pin;
 use std::marker::PhantomData;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use tracing_futures::Instrument;
 
 #[derive(Debug)]
@@ -75,8 +75,7 @@ pub use self::make::MakeService;
 #[cfg(feature = "tower-make")]
 pub mod make {
     use super::*;
-
-    pub type MakeFuture<S, R, G> = MakeService<S, R, Option<G>>;
+    use pin_project::pin_project;
 
     #[derive(Debug)]
     pub struct MakeService<S, R, G = fn(&R) -> tracing::Span> {
@@ -93,6 +92,15 @@ pub mod make {
     {
         get_span: G,
         _p: PhantomData<fn(T, R)>,
+    }
+
+    #[pin_project]
+    #[derive(Debug)]
+    pub struct MakeFuture<F, R, G = fn(&R) -> tracing::Span> {
+        get_span: Option<G>,
+        #[pin]
+        inner: F,
+        _p: PhantomData<fn(R)>,
     }
 
     #[cfg(feature = "tower-layer")]
@@ -141,9 +149,9 @@ pub mod make {
         S: tower_make::MakeService<T, R>,
         G: GetSpan<R> + Clone,
     {
-        type Response = S::Service;
+        type Response = Service<S::Service, R, G>;
         type Error = S::MakeError;
-        type Future = S::Future;
+        type Future = MakeFuture<S::Future, R, G>;
 
         fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             self.inner.poll_ready(cx)
@@ -152,7 +160,7 @@ pub mod make {
         fn call(&mut self, target: T) -> Self::Future {
             let inner = self.inner.make_service(target);
             let get_span = Some(self.get_span.clone());
-            MakeService {
+            MakeFuture {
                 get_span,
                 inner,
                 _p: PhantomData,
@@ -190,18 +198,19 @@ pub mod make {
         }
     }
 
-    impl<S, R, G> Future for MakeService<S, R, Option<G>>
+    impl<F, R, G, S, E> Future for MakeFuture<F, R, G>
     where
-        S: Future,
-        S::Output: tower_service::Service<R>,
+        F: Future<Output = Result<S, E>>,
+        S: tower_service::Service<R>,
         G: GetSpan<R> + Clone,
     {
-        type Output = Service<S::Output, R, G>;
+        type Output = Result<Service<S, R, G>, E>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            let inner = futures::ready!(self.inner.poll(cx));
-            let get_span = self.get_span.take().expect("polled after ready");
-            Ok(Poll::Ready(Service {
+            let this = self.project();
+            let inner = futures::ready!(this.inner.poll(cx));
+            let get_span = this.get_span.take().expect("polled after ready");
+            Poll::Ready(inner.map(|inner| Service {
                 inner,
                 get_span,
                 _p: PhantomData,
