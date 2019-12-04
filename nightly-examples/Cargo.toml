@@ -15,7 +15,13 @@ edition = "2018"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2.0-alpha.1", path = "../tracing-subscriber", features = ["json"] }
 tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
-futures = "0.3.0"
-tokio = { version = "0.2.0", features = ["full"] }
+futures = "0.3"
+tokio = { version = "0.2", features = ["full"] }
+hyper = { git = "https://github.com/hyperium/hyper" }
+http = "0.2"
 tracing-attributes = { path = "../tracing-attributes" }
+tracing-tower = { version = "0.1", path = "../tracing-tower" }
+tower-layer = "0.3"
+tower-service = "0.3"
+tower-make = "0.3"
 clap = "2.33"
