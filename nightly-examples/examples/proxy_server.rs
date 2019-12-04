@@ -22,7 +22,7 @@
 //! This final terminal will connect to our proxy, which will in turn connect to
 //! the echo server, and you'll be able to see data flowing between them.
 
-use futures::{future::try_join, TryFutureExt};
+use futures::{future::try_join, stream::Stream, TryFutureExt};
 use tokio::{
     self,
     io::AsyncReadExt,
