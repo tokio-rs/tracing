@@ -794,10 +794,11 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// Returns an iterator over each parent of the given span, starting from
     /// the root of that span's trace tree.
     #[cfg(feature = "registry")]
-    pub fn scope(&self, span: &'a SpanRef<'a, S>) -> Scope<'a, S>
+    pub fn scope(&'a self, span: impl AsRef<span::Id>) -> Scope<'a, S>
     where
         S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     {
+
         #[cfg(feature = "smallvec")]
         type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
         #[cfg(not(feature = "smallvec"))]
@@ -805,7 +806,10 @@ impl<'a, S: Subscriber> Context<'a, S> {
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path.
-        let parents = span.parents().collect::<SpanRefVec<'a, _>>();
+        let parents = self.span(span.as_ref())
+            .iter()
+            .flat_map(SpanRef::parents)
+            .collect::<SpanRefVec<'a, _>>();
         let inner = parents.into_iter().rev();
         Scope { inner }
     }
