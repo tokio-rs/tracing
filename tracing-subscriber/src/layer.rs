@@ -8,7 +8,7 @@ use tracing_core::{
 
 #[cfg(feature = "registry")]
 use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, iter::Rev, marker::PhantomData, slice::Iter};
+use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
 ///
@@ -413,6 +413,24 @@ pub struct Identity {
     _p: (),
 }
 
+/// An iterator over a span's parents, starting with the root of the trace
+/// tree.
+///
+/// For additonal details, see [`Context::scope`].
+#[cfg(feature = "registry")]
+pub struct Scope<'span, L>
+where
+    L: for<'lookup> LookupSpan<'lookup>,
+{
+    #[cfg(feature = "smallvec")]
+    inner: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'span, L>>>,
+    #[cfg(not(feature = "smallvec"))]
+    inner: std::iter::Rev<std::vec::IntoIter<SpanRef<'span, L>>>,
+}
+
+#[cfg(all(feature = "registry", feature = "smallvec"))]
+type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
 // === impl Layered ===
 
 impl<L, S> Subscriber for Layered<L, S>
@@ -773,67 +791,23 @@ impl<'a, S: Subscriber> Context<'a, S> {
             .unwrap_or(false)
     }
 
-    /// Visits every span in the current context with a closure.
-    ///
-    /// The provided closure will be called first with the current span,
-    /// and then with that span's parent, and then that span's parent,
-    /// and so on until a root span is reached.
-    pub fn parents_of(&self, span: SpanRef<'a, S>) -> Parents<'a, S>
+    /// Returns an iterator over each parent of the given span, starting from
+    /// the root of that span's trace tree.
+    #[cfg(feature = "registry")]
+    pub fn scope(&self, span: &'a SpanRef<'a, S>) -> Scope<'a, S>
     where
         S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     {
-        // let current_span = self.current_span();
-        // let id = match current_span.id() {
-        //     Some(id) => id,
-        //     None => return Parents { inner: None },
-        // };
-        // let span = match self.span(id) {
-        //     Some(span) => span,
-        //     None => return Parents { inner: None },
-        // };
         #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<[SpanRef<'span, L>; 16]>;
+        type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
         #[cfg(not(feature = "smallvec"))]
         type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
-
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path.
-        let parents = span.parents().collect::<SpanRefVec<'_, _>>().iter().rev();
-        Parents {
-            inner: Some(parents),
-        }
-    }
-}
-
-/// An interator over a span's parents, if any.
-///
-/// For additonal details, see [`Context::scope`].
-pub struct Parents<'span, L>
-where
-    L: for<'lookup> LookupSpan<'lookup>,
-{
-    inner: Option<Rev<Iter<'span, SpanRef<'span, L>>>>,
-}
-
-impl<'span, L> Iterator for Parents<'span, L>
-where
-    L: for<'lookup> LookupSpan<'lookup>,
-{
-    type Item = &'span SpanRef<'span, L>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.inner {
-            Some(inner) => inner.next(),
-            None => None,
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match &self.inner {
-            Some(inner) => inner.size_hint(),
-            None => (0, None),
-        }
+        let parents = span.parents().collect::<SpanRefVec<'a, _>>();
+        let inner = parents.into_iter().rev();
+        Scope { inner }
     }
 }
 
@@ -863,6 +837,36 @@ impl Identity {
     /// Returns a new `Identity` layer.
     pub fn new() -> Self {
         Self { _p: () }
+    }
+}
+
+// === impl Scope ===
+
+#[cfg(feature = "registry")]
+impl<'span, L> Iterator for Scope<'span, L>
+where
+    L: for<'lookup> LookupSpan<'lookup>,
+{
+    type Item = SpanRef<'span, L>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[cfg(feature = "registry")]
+impl<'span, L> std::fmt::Debug for Scope<'span, L>
+where
+    L: for<'lookup> LookupSpan<'lookup>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.pad("Scope { .. }")
     }
 }
 
