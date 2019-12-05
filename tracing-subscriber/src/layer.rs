@@ -761,9 +761,9 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
-    pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
-        S: LookupSpan<'a>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         self.subscriber.as_ref()?.span(id)
     }
@@ -794,7 +794,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// Returns an iterator over each parent of the given span, starting from
     /// the root of that span's trace tree.
     #[cfg(feature = "registry")]
-    pub fn scope(&'a self, span: impl AsRef<span::Id>) -> Scope<'a, S>
+    pub fn scope(&self, span: &span::Id) -> Scope<'_, S>
     where
         S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     {
@@ -806,10 +806,10 @@ impl<'a, S: Subscriber> Context<'a, S> {
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path.
-        let parents = self.span(span.as_ref())
+        let parents = self.span(span)
             .iter()
             .flat_map(SpanRef::parents)
-            .collect::<SpanRefVec<'a, _>>();
+            .collect::<SpanRefVec<'_, _>>();
         let inner = parents.into_iter().rev();
         Scope { inner }
     }

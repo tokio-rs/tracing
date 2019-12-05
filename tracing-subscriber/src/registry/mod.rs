@@ -255,7 +255,7 @@ where
     /// The iterator will first return the span's immediate parent, followed by
     /// that span's parent, followed by _that_ span's parent, and so on, until a
     /// it reaches a root span.
-    pub fn parents(&self) -> Parents<'_, R> {
+    pub fn parents(&self) -> Parents<'a, R> {
         Parents {
             registry: self.registry,
             next: self.parent().map(|parent| parent.id()),

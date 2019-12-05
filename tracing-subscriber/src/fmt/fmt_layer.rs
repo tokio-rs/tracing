@@ -451,11 +451,11 @@ where
             Some(span) => span,
             None => return Ok(()),
         };
-
+        let parents = self.ctx.scope(id);
         // visit all the parent spans...
-        // while let Some(parent) = self.ctx.parents_of().next() {
-        // f(parent)?;
-        // }
+        for parent in parents {
+            f(&parent)?;
+        }
         // and finally, print out the current span.
         f(&span)?;
         Ok(())
