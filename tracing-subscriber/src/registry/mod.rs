@@ -69,7 +69,6 @@
 //! [`LookupMetadata`]: trait.LookupMetadata.html
 //! [`SpanData`]: trait.SpanData.html
 use tracing_core::{field::FieldSet, span::Id, Metadata};
-use std::borrow::Borrow;
 
 /// A module containing a type map of span extensions.
 mod extensions;
@@ -151,10 +150,8 @@ pub trait LookupSpan<'a> {
     where
         Self: Sized,
     {
-        let id = id.clone();
         let data = self.span_data(&id)?;
         Some(SpanRef {
-            id,
             registry: self,
             data,
         })
@@ -195,7 +192,6 @@ pub trait SpanData<'a> {
 /// [registry]: trait.LookupSpan.html
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
-    id: Id,
     registry: &'a R,
     data: R::Data,
 }
@@ -260,11 +256,10 @@ where
     /// Returns a `SpanRef` describing this span's parent, or `None` if this
     /// span is the root of its trace tree.
     pub fn parent(&self) -> Option<Self> {
-        let id = self.data.parent()?.clone();
-        let data = self.registry.span_data(&id)?;
+        let id = self.data.parent()?;
+        let data = self.registry.span_data(id)?;
         Some(Self {
             registry: self.registry,
-            id,
             data,
         })
     }
@@ -319,24 +314,6 @@ where
     /// describing the span.
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
-    }
-}
-
-impl<'a, R> Borrow<Id> for SpanRef<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    fn borrow(&self) -> &Id {
-        &self.id
-    }
-}
-
-impl<'a, 'b, R> Borrow<Id> for &'b SpanRef<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    fn borrow(&self) -> &Id {
-        &self.id
     }
 }
 
