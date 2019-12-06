@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan, Registry};
+use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -413,6 +413,20 @@ pub struct Identity {
     _p: (),
 }
 
+/// An iterator over the [stored data] for all the spans in the
+/// current context, starting  the root of the trace tree and ending with
+/// the current span.
+///
+/// This is returned by [`Context::scope`].
+///
+/// [stored data]: ../registry/struct.SpanRef.html
+/// [`Context::scope`]: struct.Context.html#method.scope
+#[cfg(feature = "registry")]
+pub struct Scope<'a, L: LookupSpan<'a>>(Option<std::iter::Chain<
+    registry::FromRoot<'a, L>,
+    std::iter::Once<SpanRef<'a, L>>
+>>);
+
 // === impl Layered ===
 
 impl<L, S> Subscriber for Layered<L, S>
@@ -804,6 +818,33 @@ impl<'a, S: Subscriber> Context<'a, S> {
         );
         span
     }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting  the root of the trace tree and ending with
+    /// the current span.
+    ///
+    /// If this iterator is empty, then there are no spans in the current context
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + for<'span> LookupSpan<'span>,
+    /// ```
+    /// or similar.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
+    pub fn scope(&self) -> Scope<'_, S>
+    where
+        S: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        let scope = self.lookup_current().map(|span| {
+            let parents = span.from_root();
+            parents.chain(std::iter::once(span))
+        });
+        Scope(scope)
+    }
 }
 
 impl<'a, S> Context<'a, S> {
@@ -832,6 +873,25 @@ impl Identity {
     /// Returns a new `Identity` layer.
     pub fn new() -> Self {
         Self { _p: () }
+    }
+}
+
+// === impl Scope ===
+
+#[cfg(feature = "registry")]
+impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
+    type Item = SpanRef<'a, L>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.as_mut()?.next()
+    }
+}
+
+#[cfg(feature = "registry")]
+impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.pad("Scope { .. }")
     }
 }
 

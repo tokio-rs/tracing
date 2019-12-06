@@ -442,22 +442,10 @@ where
     where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
-        let current_span = self.ctx.current_span();
-        let id = match current_span.id() {
-            Some(id) => id,
-            None => return Ok(()),
-        };
-        let span = match self.ctx.span(id) {
-            Some(span) => span,
-            None => return Ok(()),
-        };
-
-        // visit all the parent spans...
-        for parent in span.from_root() {
-            f(&parent)?;
+        // visit all the current spans
+        for span in self.ctx.scope() {
+            f(&span)?;
         }
-        // and finally, print out the current span.
-        f(&span)?;
         Ok(())
     }
 }
