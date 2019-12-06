@@ -523,7 +523,7 @@ where
                 write!(f, "{}", metadata.name())?;
             }
 
-            Ok(())
+            Ok(()) as fmt::Result
         })?;
         if seen {
             f.pad(" ")?;
