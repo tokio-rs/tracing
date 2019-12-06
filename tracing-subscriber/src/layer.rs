@@ -773,42 +773,36 @@ impl<'a, S: Subscriber> Context<'a, S> {
             .unwrap_or(false)
     }
 
-    /// Visits every span in the current context with a closure.
+    /// Returns [stored data] for the span that the wrapped subscriber considers
+    /// to be the current.
     ///
-    /// The provided closure will be called first with the current span,
-    /// and then with that span's parent, and then that span's parent,
-    /// and so on until a root span is reached.
-    pub fn scope<E, F>(&self, mut f: F) -> Result<(), E>
+    /// If this returns `None`, then we are not currently within a span.
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + for<'span> LookupSpan<'span>,
+    /// ```
+    /// or similar.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
+    #[inline]
+    #[cfg(feature = "registry")]
+    pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
     where
-        S: for<'lookup> registry::LookupSpan<'lookup>,
-        F: FnMut(&registry::SpanRef<'_, S>) -> Result<(), E>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
-        let current_span = self.current_span();
-        let id = match current_span.id() {
-            Some(id) => id,
-            None => return Ok(()),
-        };
-        let span = match self.span(id) {
-            Some(span) => span,
-            None => return Ok(()),
-        };
-        #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<[registry::SpanRef<'span, L>; 16]>;
-        #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, L> = Vec<registry::SpanRef<'span, L>>;
-
-        // an alternative way to handle this would be to the recursive approach that
-        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
-        // spans path.
-        let parents = span.parents().collect::<SpanRefVec<'_, _>>();
-        let mut iter = parents.iter().rev();
-        // visit all the parent spans...
-        while let Some(parent) = iter.next() {
-            f(parent)?;
-        }
-        // and finally, print out the current span.
-        f(&span)?;
-        Ok(())
+        let subscriber = self.subscriber.as_ref()?;
+        let current = subscriber.current_span();
+        let id = current.id()?;
+        let span = subscriber.span(&id);
+        debug_assert!(
+            span.is_some(),
+            "the subscriber should have data for the current span ({:?})!", id,
+        );
+        span
     }
 }
 
