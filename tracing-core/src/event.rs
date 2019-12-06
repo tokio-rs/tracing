@@ -96,7 +96,7 @@ impl<'a> Event<'a> {
 
     /// Returns [metadata] describing this `Event`.
     ///
-    /// [metadata]: ../metadata/struct.Metadata.html
+    /// [metadata]: ../struct.Metadata.html
     pub fn metadata(&self) -> &'static Metadata<'static> {
         self.metadata
     }
