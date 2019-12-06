@@ -757,9 +757,9 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
-    pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
-        S: LookupSpan<'a>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         self.subscriber.as_ref()?.span(id)
     }
