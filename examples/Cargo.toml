@@ -4,6 +4,14 @@ version = "0.0.0"
 publish = false
 edition = "2018"
 
+[features]
+default = []
+broken = ["tower-h2"]
+
+[dependencies]
+# optional dependencies cannot be dev-dependencies.
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", optional = true }
+
 [dev-dependencies]
 
 # tracing crates
@@ -29,7 +37,6 @@ env_logger = "0.6"
 # tower examples
 bytes = "0.4"
 h2 = "0.1.11"
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git" }
 string = { git = "https://github.com/carllerche/string" }
 http = "0.1"
 tokio-current-thread = "0.1.1"
