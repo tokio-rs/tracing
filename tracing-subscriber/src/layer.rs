@@ -422,10 +422,9 @@ pub struct Identity {
 /// [stored data]: ../registry/struct.SpanRef.html
 /// [`Context::scope`]: struct.Context.html#method.scope
 #[cfg(feature = "registry")]
-pub struct Scope<'a, L: LookupSpan<'a>>(Option<std::iter::Chain<
-    registry::FromRoot<'a, L>,
-    std::iter::Once<SpanRef<'a, L>>
->>);
+pub struct Scope<'a, L: LookupSpan<'a>>(
+    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
+);
 
 // === impl Layered ===
 
@@ -814,7 +813,8 @@ impl<'a, S: Subscriber> Context<'a, S> {
         let span = subscriber.span(&id);
         debug_assert!(
             span.is_some(),
-            "the subscriber should have data for the current span ({:?})!", id,
+            "the subscriber should have data for the current span ({:?})!",
+            id,
         );
         span
     }
