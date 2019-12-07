@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, 1.34.0]
+        rust: [stable, 1.39.0]
     steps:
     - uses: hecrj/setup-rust-action@v1
       with:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.34.0]
+        rust: [stable, beta, nightly, 1.39.0]
     steps:
     - uses: hecrj/setup-rust-action@v1
       with:
