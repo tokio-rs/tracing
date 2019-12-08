@@ -1,3 +1,23 @@
+# 0.2.0-alpha.2 (December 8, 2019)
+
+### Added
+
+- `LookupSpans` implementation for `Layered` (#448)
+- `SpanRef::from_root` to iterate over a span's parents from the root (#460)
+- `Context::scope`, to iterate over the current context from the root (#460)
+- `Context::lookup_current`, which returns a `SpanRef` to the current
+  span's data (#460)
+
+### Changed
+
+- Lifetimes on some new `Context` methods to be less restrictive (#460)
+
+### Fixed
+
+- `Layer::downcast_ref` returning invalid references (#454)
+- Compilation failure on 32-bit platforms (#462)
+- Compilation failure with ANSI formatters (#438)
+
 # 0.2.0-alpha.1 (November 18, 2019)
 
 ### Added
