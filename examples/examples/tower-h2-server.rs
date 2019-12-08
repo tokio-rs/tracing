@@ -14,7 +14,6 @@
 
 // struct RspBody(Option<Bytes>);
 
-
 // impl RspBody {
 //     fn new(body: Bytes) -> Self {
 //         RspBody(Some(body))
@@ -154,6 +153,4 @@
 //     tokio::run(server);
 // }
 
-fn main() {
-    
-}
+fn main() {}
