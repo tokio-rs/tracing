@@ -22,12 +22,11 @@
 //! This final terminal will connect to our proxy, which will in turn connect to
 //! the echo server, and you'll be able to see data flowing between them.
 
-use futures::{future::try_join, TryFutureExt};
+use futures::{future::try_join, prelude::*};
 use tokio::{
     self,
-    io::AsyncReadExt,
+    io,
     net::{TcpListener, TcpStream},
-    prelude::*,
 };
 use tracing::{debug, debug_span, info, warn};
 use tracing_attributes::instrument;
@@ -45,28 +44,20 @@ async fn transfer(
     let (mut ri, mut wi) = inbound.split();
     let (mut ro, mut wo) = outbound.split();
 
-    let client_to_server = ri
-        .copy(&mut wo)
-        .map(|bytes| {
-            if let Ok(n) = bytes {
-                debug!(bytes_copied = n);
-            }
-
-            bytes
+    let client_to_server = io::copy(&mut ri, &mut wo)
+        .map_ok(|bytes_copied| {
+            info!(bytes_copied);
+            bytes_copied
         })
         .map_err(|error| {
             warn!(%error);
             error
         })
         .instrument(debug_span!("client_to_server"));
-    let server_to_client = ro
-        .copy(&mut wi)
-        .map(|bytes| {
-            if let Ok(n) = bytes {
-                debug!(bytes_copied = n);
-            }
-
-            bytes
+    let server_to_client = io::copy(&mut ro, &mut wi)
+        .map_ok(|bytes_copied| {
+            info!(bytes_copied);
+            bytes_copied
         })
         .map_err(|error| {
             warn!(%error);
@@ -76,8 +67,8 @@ async fn transfer(
 
     let (client_to_server, server_to_client) = try_join(client_to_server, server_to_client).await?;
     info!(
-        message = "transfer completed",
-        client_to_server, server_to_client
+        client_to_server, server_to_client,
+        "transfer completed",
     );
 
     Ok(())
@@ -129,21 +120,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_addr = matches.value_of("server_addr").unwrap_or("127.0.0.1:3000");
     let server_addr = server_addr.parse::<SocketAddr>()?;
 
-    let mut listener = TcpListener::bind(&listen_addr).await?.incoming();
+    let mut listener = TcpListener::bind(&listen_addr).await?;
 
     info!("Listening on: {}", listen_addr);
     info!("Proxying to: {}", server_addr);
 
-    while let Some(Ok(inbound)) = listener.next().await {
-        match inbound.peer_addr() {
-            Ok(addr) => {
-                info!(message = "client connected", client_addr = %addr);
-            }
-            Err(error) => warn!(
-                message = "Could not get client information",
-                %error
-            ),
-        }
+    while let Ok((inbound, client_addr)) = listener.accept().await {
+        info!(client.addr = %client_addr, "client connected");
 
         let transfer = transfer(inbound, server_addr).map(|r| {
             if let Err(err) = r {
