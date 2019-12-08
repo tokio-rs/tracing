@@ -1,6 +1,6 @@
 use crate::{Instrument, Instrumented, WithDispatch};
 use std::{future::Future, pin::Pin};
-use tokio_02::executor::{Executor, SpawnError, TypedExecutor};
+use tokio_02_alpha::executor::{Executor, SpawnError, TypedExecutor};
 
 impl<T> Executor for Instrumented<T>
 where
