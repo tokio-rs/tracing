@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan, Registry};
+use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -413,6 +413,19 @@ pub struct Identity {
     _p: (),
 }
 
+/// An iterator over the [stored data] for all the spans in the
+/// current context, starting  the root of the trace tree and ending with
+/// the current span.
+///
+/// This is returned by [`Context::scope`].
+///
+/// [stored data]: ../registry/struct.SpanRef.html
+/// [`Context::scope`]: struct.Context.html#method.scope
+#[cfg(feature = "registry")]
+pub struct Scope<'a, L: LookupSpan<'a>>(
+    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
+);
+
 // === impl Layered ===
 
 impl<L, S> Subscriber for Layered<L, S>
@@ -743,9 +756,9 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
-    pub fn span(&'a self, id: &span::Id) -> Option<registry::SpanRef<'a, S>>
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
-        S: LookupSpan<'a>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         self.subscriber.as_ref()?.span(id)
     }
@@ -773,42 +786,64 @@ impl<'a, S: Subscriber> Context<'a, S> {
             .unwrap_or(false)
     }
 
-    /// Visits every span in the current context with a closure.
+    /// Returns [stored data] for the span that the wrapped subscriber considers
+    /// to be the current.
     ///
-    /// The provided closure will be called first with the current span,
-    /// and then with that span's parent, and then that span's parent,
-    /// and so on until a root span is reached.
-    pub fn scope<E, F>(&self, mut f: F) -> Result<(), E>
+    /// If this returns `None`, then we are not currently within a span.
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + for<'span> LookupSpan<'span>,
+    /// ```
+    /// or similar.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
+    #[inline]
+    #[cfg(feature = "registry")]
+    pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        let subscriber = self.subscriber.as_ref()?;
+        let current = subscriber.current_span();
+        let id = current.id()?;
+        let span = subscriber.span(&id);
+        debug_assert!(
+            span.is_some(),
+            "the subscriber should have data for the current span ({:?})!",
+            id,
+        );
+        span
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting  the root of the trace tree and ending with
+    /// the current span.
+    ///
+    /// If this iterator is empty, then there are no spans in the current context
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
+    /// function can bound their `Subscriber` type parameter with
+    /// ```rust,ignore
+    /// where S: Subscriber + for<'span> LookupSpan<'span>,
+    /// ```
+    /// or similar.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
+    pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
-        F: FnMut(&registry::SpanRef<'_, S>) -> Result<(), E>,
     {
-        let current_span = self.current_span();
-        let id = match current_span.id() {
-            Some(id) => id,
-            None => return Ok(()),
-        };
-        let span = match self.span(id) {
-            Some(span) => span,
-            None => return Ok(()),
-        };
-        #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<[registry::SpanRef<'span, L>; 16]>;
-        #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, L> = Vec<registry::SpanRef<'span, L>>;
-
-        // an alternative way to handle this would be to the recursive approach that
-        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
-        // spans path.
-        let parents = span.parents().collect::<SpanRefVec<'_, _>>();
-        let mut iter = parents.iter().rev();
-        // visit all the parent spans...
-        while let Some(parent) = iter.next() {
-            f(parent)?;
-        }
-        // and finally, print out the current span.
-        f(&span)?;
-        Ok(())
+        let scope = self.lookup_current().map(|span| {
+            let parents = span.from_root();
+            parents.chain(std::iter::once(span))
+        });
+        Scope(scope)
     }
 }
 
@@ -838,6 +873,25 @@ impl Identity {
     /// Returns a new `Identity` layer.
     pub fn new() -> Self {
         Self { _p: () }
+    }
+}
+
+// === impl Scope ===
+
+#[cfg(feature = "registry")]
+impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
+    type Item = SpanRef<'a, L>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.as_mut()?.next()
+    }
+}
+
+#[cfg(feature = "registry")]
+impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.pad("Scope { .. }")
     }
 }
 

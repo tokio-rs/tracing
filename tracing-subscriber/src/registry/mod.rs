@@ -150,7 +150,7 @@ pub trait LookupSpan<'a> {
     where
         Self: Sized,
     {
-        let data = self.span_data(id)?;
+        let data = self.span_data(&id)?;
         Some(SpanRef {
             registry: self,
             data,
@@ -207,6 +207,20 @@ pub struct Parents<'a, R> {
     next: Option<Id>,
 }
 
+/// An iterator over a span's parents, starting with the root of the trace
+/// tree.
+///
+/// For additonal details, see [`Context::scope`].
+pub struct FromRoot<'a, R: LookupSpan<'a>> {
+    #[cfg(feature = "smallvec")]
+    inner: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
+    #[cfg(not(feature = "smallvec"))]
+    inner: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
+}
+
+#[cfg(feature = "smallvec")]
+type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
 impl<'a, R> SpanRef<'a, R>
 where
     R: LookupSpan<'a>,
@@ -250,16 +264,40 @@ where
         })
     }
 
-    /// Returns an iterator over all parents of this span.
+    /// Returns an iterator over all parents of this span, starting with the
+    /// immediate parent.
     ///
     /// The iterator will first return the span's immediate parent, followed by
     /// that span's parent, followed by _that_ span's parent, and so on, until a
     /// it reaches a root span.
-    pub fn parents(&self) -> Parents<'_, R> {
+    pub fn parents(&self) -> Parents<'a, R> {
         Parents {
             registry: self.registry,
             next: self.parent().map(|parent| parent.id()),
         }
+    }
+
+    /// Returns an iterator over all parents of this span, starting with the
+    /// root of the trace tree.
+    ///
+    /// The iterator will return the root of the trace tree, followed by the
+    /// next span, and then the next, until this span's immediate parent is
+    /// returned.
+    ///
+    /// **Note**: if the "smallvec" feature flag is not enabled, this may
+    /// allocate.
+    pub fn from_root(&self) -> FromRoot<'a, R> {
+        #[cfg(feature = "smallvec")]
+        type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
+        #[cfg(not(feature = "smallvec"))]
+        type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
+
+        // an alternative way to handle this would be to the recursive approach that
+        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
+        // spans path.
+        let parents = self.parents().collect::<SpanRefVec<'a, _>>();
+        let inner = parents.into_iter().rev();
+        FromRoot { inner }
     }
 
     /// Returns a reference to this span's `Extensions`.
@@ -298,5 +336,33 @@ where
 {
     fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>> {
         self.span_data(id).map(|data| data.metadata())
+    }
+}
+
+// === impl FromRoot ===
+
+impl<'span, R> Iterator for FromRoot<'span, R>
+where
+    R: LookupSpan<'span>,
+{
+    type Item = SpanRef<'span, R>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'span, R> std::fmt::Debug for FromRoot<'span, R>
+where
+    R: LookupSpan<'span>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.pad("FromRoot { .. }")
     }
 }
