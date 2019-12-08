@@ -12,8 +12,3 @@ pub use self::futures_preview::*;
 mod futures_03;
 #[cfg(feature = "futures_03")]
 pub use self::futures_03::*;
-
-#[cfg(feature = "tokio-alpha")]
-mod tokio_alpha;
-#[cfg(feature = "tokio-alpha")]
-pub use self::tokio_alpha::*;
