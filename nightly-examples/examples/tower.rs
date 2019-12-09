@@ -33,6 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let svc = Client::new();
     let mut svc = svc.trace_requests(req_span);
+    let uri = Uri::from_static("http://httpbin.org");
 
     let body = Body::empty();
     let req = Request::builder()
