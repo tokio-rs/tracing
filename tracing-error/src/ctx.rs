@@ -19,7 +19,7 @@ pub struct ContextSpan {
 // === impl Context ===
 
 impl<F> Context<F> {
-    pub(crate) fn current() -> Option<Self>
+    pub fn current() -> Option<Self>
     where
         F: for<'writer> fmt::FormatFields<'writer> + 'static,
     {
