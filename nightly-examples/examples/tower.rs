@@ -1,11 +1,11 @@
-use hyper::client::service::Connect;
-use hyper::client::conn::Builder;
-use hyper::client::connect::HttpConnector;
-use hyper::service::Service;
-use tracing_tower::InstrumentableService;
+use http::{Method, Request, Uri};
+use hyper::{
+    client::{conn::Builder, connect::HttpConnector, service::Connect, Client},
+    service::Service,
+    Body,
+};
 use tracing::info;
-use hyper::Body;
-use http::{Request, Method};
+use tracing_tower::InstrumentableService;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,17 +31,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         span
     };
 
-    let mut mk_svc = Connect::new(HttpConnector::new(), Builder::new());
-    
-    let uri = "http://httpbin.org".parse::<http::Uri>()?;
-    let svc = mk_svc.call(uri.clone()).await?;
+    let svc = Client::new();
     let mut svc = svc.trace_requests(req_span);
 
     let body = Body::empty();
     let req = Request::builder()
         .method(Method::GET)
         .uri(uri)
-        .body(body)?;
+        .body(body)
+        .expect("Unable to build request; this is a bug.");
 
     let res = svc.call(req).await?;
     info!(message = "got a response", res = ?res.headers());
