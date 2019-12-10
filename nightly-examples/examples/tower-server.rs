@@ -1,12 +1,11 @@
-use http::{Request, Response};
-use hyper::{
-    Body, Server
-};
-use tower::{Service, ServiceBuilder};
-use std::time::Duration;
-use tracing::info;
-use std::task::{Poll, Context};
 use futures::future;
+use http::{Request, Response};
+use hyper::{Body, Server};
+use std::task::{Context, Poll};
+use std::time::Duration;
+use tower::{Service, ServiceBuilder};
+use tracing::info;
+use tracing_tower::request_span::make;
 
 type Err = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -82,10 +81,10 @@ async fn main() -> Result<(), Err> {
 
     let svc = ServiceBuilder::new()
         .timeout(Duration::from_millis(250))
-        .layer(tracing_tower::request_span::make::layer::<_, Svc, _>(req_span))
+        .layer(make::layer::<_, Svc, _>(req_span))
         .service(MakeSvc);
 
-    let addr = "127.0.0.1:3000".parse()?;    
+    let addr = "127.0.0.1:3000".parse()?;
     let server = Server::bind(&addr).serve(svc);
     info!(message = "listening", addr = ?addr);
     server.await?;

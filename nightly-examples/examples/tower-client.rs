@@ -1,11 +1,9 @@
-use http::{Method, Response, Request, Uri};
-use hyper::{
-    client::Client,
-    Body,
-};
-use tower::{Service, ServiceBuilder};
+use http::{Method, Request, Response, Uri};
+use hyper::{client::Client, Body};
 use std::time::Duration;
+use tower::{Service, ServiceBuilder};
 use tracing::info;
+use tracing_tower::request_span;
 
 type Err = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -35,10 +33,9 @@ async fn main() -> Result<(), Err> {
 
     let mut svc = ServiceBuilder::new()
         .timeout(Duration::from_millis(250))
-        .layer(tracing_tower::request_span::layer(req_span))
+        .layer(request_span::layer(req_span))
         .service(Client::new());
 
-    // let mut svc = svc.trace_requests(req_span);
     let uri = Uri::from_static("http://httpbin.org");
 
     let req = Request::builder()
