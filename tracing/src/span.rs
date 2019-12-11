@@ -723,12 +723,32 @@ impl Span {
     ///
     /// # Example
     ///
+    /// Setting a `follows_from` relationship through an `Option<Id>`:
     /// ```
     /// # use tracing::{span, Id, Level, Span};
     /// # fn main() {
     /// let span = span!(Level::INFO, "hello!");
     /// let curr = Span::current();
     /// span.follows_from(curr.id());
+    /// # }
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship through a `Span`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// span.follows_from(Span::current());
+    /// # }
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship through a `&Span`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// let curr = Span::current();
+    /// span.follows_from(&curr);
     /// # }
     /// ```
     pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
