@@ -720,10 +720,21 @@ impl Span {
     ///
     /// If this span is disabled, or the resulting follows-from relationship
     /// would be invalid, this function will do nothing.
-    pub fn follows_from(&self, from: impl for<'a> Into<Option<&'a Id>>) -> &Self {
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// let curr = Span::current();
+    /// span.follows_from(curr.id());
+    /// # }
+    /// ```
+    pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
         if let Some(ref inner) = self.inner {
             if let Some(from) = from.into() {
-                inner.follows_from(from);
+                inner.follows_from(&from);
             }
         }
         self
