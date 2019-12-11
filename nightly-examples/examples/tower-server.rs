@@ -4,6 +4,7 @@ use hyper::{Body, Server};
 use std::task::{Context, Poll};
 use std::time::Duration;
 use tower::{Service, ServiceBuilder};
+use tracing::dispatcher;
 use tracing::info;
 use tracing_tower::request_span::make;
 
@@ -11,17 +12,16 @@ type Err = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 fn req_span<A>(req: &Request<A>) -> tracing::Span {
     let span = tracing::info_span!(
-        "service",
+        "request",
         req.method = ?req.method(),
         req.uri = ?req.uri(),
         req.version = ?req.version(),
-        headers = ?req.headers()
+        req.headers = ?req.headers()
     );
     {
         // TODO: this is a workaround because tracing_subscriber::fmt::Layer doesn't honor
         // overridden span parents.
         let _enter = span.enter();
-        tracing::info!(parent: &span, "accepted request");
     }
     span
 }
@@ -44,14 +44,28 @@ impl Service<Request<Body>> for Svc {
         let rsp = Response::builder();
 
         let uri = req.uri();
-        if uri.path() != ROOT {
+        let rsp = if uri.path() != ROOT {
             let body = Body::from(Vec::new());
-            let rsp = rsp.status(404).body(body).unwrap();
-            return future::ok(rsp);
-        }
+            rsp.status(404).body(body).unwrap()
+        } else {
+            let body = Body::from(Vec::from(&b"heyo!"[..]));
+            rsp.status(200).body(body).unwrap()
+        };
+        let span = tracing::info_span!(
+            "response",
+            rsp.status = ?rsp.status(),
+            rsp.version = ?rsp.version(),
+            rsp.headers = ?rsp.headers()
+        );
 
-        let body = Body::from(Vec::from(&b"heyo!"[..]));
-        let rsp = rsp.status(200).body(body).unwrap();
+        dispatcher::get_default(|dispatch| {
+            let id = span.id().expect("Missing ID; this is a bug");
+            if let Some(current) = dispatch.current_span().id() {
+                dispatch.record_follows_from(&id, current)
+            }
+        });
+        let _guard = span.enter();
+        info!("sending response");
         future::ok(rsp)
     }
 }
