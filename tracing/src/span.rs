@@ -721,7 +721,7 @@ impl Span {
     /// If this span is disabled, or the resulting follows-from relationship
     /// would be invalid, this function will do nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Setting a `follows_from` relationship through an `Option<Id>`:
     /// ```
