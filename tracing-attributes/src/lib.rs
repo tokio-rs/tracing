@@ -75,8 +75,11 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
-/// The generated span's name will be the name of the function, and any
-/// arguments to that function will be recorded as fields using `fmt::Debug`.
+/// The generated span's name will be the name of the function. Any arguments
+/// to that function will be recorded as fields using `fmt::Debug`. To skip
+/// recording a function's or method's argument, pass the argument's name
+/// to the `skip` argument on the `#[instrument]` macro. Note that
+/// mulitple argument names can be passed to `skip`.
 ///
 /// # Examples
 /// Instrumenting a function:
@@ -110,14 +113,24 @@ use syn::{
 /// # fn main() {}
 /// ```
 ///
-/// When the `async-await` feature flag is enabled, `async fn`s may also be
-/// instrumented:
+/// To skip recording an argument, pass the argument's name to the `skip`:
 ///
-/// ```compile_fail
-/// // this currently only compiles on nightly.
-/// #![feature(async-await)]
+/// ```
 /// # use tracing_attributes::instrument;
+/// struct NonDebug;
 ///
+/// #[instrument, skip(non_debug)]
+/// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+/// # fn main {}
+/// ```
+///
+/// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
+/// `async fn`s may also be instrumented:
+///
+/// ```
+/// # use tracing_attributes::instrument;
 /// #[instrument]
 /// pub async fn my_function() -> Result<(), ()> {
 ///     // ...
@@ -125,11 +138,6 @@ use syn::{
 /// }
 /// # fn main() {}
 /// ```
-///
-/// # Notes
-/// - All argument types must implement `fmt::Debug`
-/// - When using `#[instrument]` on an `async fn`, the `tracing_futures` must
-///   also be specified as a dependency in `Cargo.toml`.
 ///
 /// [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
