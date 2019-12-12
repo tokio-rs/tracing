@@ -771,16 +771,6 @@ impl Span {
     /// span.follows_from(&id);
     /// # }
     /// ```
-    ///
-    /// Note that cloning an `Id` is cheap, so the following will compile:
-    /// ```
-    /// # use tracing::{span, Id, Level, Span};
-    /// # fn main() {
-    /// # let span = span!(Level::INFO, "hello!");
-    /// # let id = span.id();
-    /// span.follows_from(&id.clone());
-    /// # }
-    /// ```
     pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
         if let Some(ref inner) = self.inner {
             if let Some(from) = from.into() {
