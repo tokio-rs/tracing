@@ -733,7 +733,7 @@ impl Span {
     /// # }
     /// ```
     ///
-    /// Setting a `follows_from` relationship through a `Span`:
+    /// Setting a `follows_from` relationship with a `Span`:
     /// ```
     /// # use tracing::{span, Id, Level, Span};
     /// # fn main() {
