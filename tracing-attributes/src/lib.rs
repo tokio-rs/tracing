@@ -78,8 +78,9 @@ use syn::{
 /// The generated span's name will be the name of the function. Any arguments
 /// to that function will be recorded as fields using `fmt::Debug`. To skip
 /// recording a function's or method's argument, pass the argument's name
-/// to the `skip` argument on the `#[instrument]` macro. Note that
-/// mulitple argument names can be passed to `skip`.
+/// to the `skip` argument on the `#[instrument]` macro. Note that:
+/// - multiple argument names can be passed to `skip`.
+/// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
 /// # Examples
 /// Instrumenting a function:
