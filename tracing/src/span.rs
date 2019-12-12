@@ -723,17 +723,17 @@ impl Span {
     ///
     /// # Examples
     ///
-    /// Setting a `follows_from` relationship through an `Option<Id>`:
+    /// Setting a `follows_from` relationship with a `Span`:
     /// ```
     /// # use tracing::{span, Id, Level, Span};
     /// # fn main() {
-    /// let span = span!(Level::INFO, "hello!");
-    /// let curr = Span::current();
-    /// span.follows_from(curr.id());
+    /// let span1 = span!(Level::INFO, "span_1");
+    /// let span2 = span!(Level::DEBUG, "span_2");
+    /// span2.follows_from(span1);
     /// # }
     /// ```
     ///
-    /// Setting a `follows_from` relationship with a `Span`:
+    /// Setting a `follows_from` relationship with a `Span::current()`:
     /// ```
     /// # use tracing::{span, Id, Level, Span};
     /// # fn main() {
@@ -749,6 +749,36 @@ impl Span {
     /// let span = span!(Level::INFO, "hello!");
     /// let curr = Span::current();
     /// span.follows_from(&curr);
+    /// # }
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with an `Id`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// let id = span.id();
+    /// span.follows_from(id);
+    /// # }
+    /// ```
+    ///
+    /// `&Id` will not compile.
+    /// ```compile_fail
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// let id = span.id();
+    /// span.follows_from(&id);
+    /// # }
+    /// ```
+    ///
+    /// Note that cloning an `Id` is cheap, so the following will compile:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// # let span = span!(Level::INFO, "hello!");
+    /// # let id = span.id();
+    /// span.follows_from(&id.clone());
     /// # }
     /// ```
     pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
