@@ -119,11 +119,11 @@ use syn::{
 /// # use tracing_attributes::instrument;
 /// struct NonDebug;
 ///
-/// #[instrument, skip(non_debug)]
+/// #[instrument(skip(non_debug))]
 /// fn my_function(arg: usize, non_debug: NonDebug) {
 ///     // ...
 /// }
-/// # fn main {}
+/// # fn main() {}
 /// ```
 ///
 /// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
