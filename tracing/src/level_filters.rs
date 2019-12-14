@@ -58,23 +58,28 @@ impl LevelFilter {
     /// The "error" level.
     ///
     /// Designates very serious errors.
-    pub const ERROR: LevelFilter = LevelFilter(Some(Level::ERROR));
+    pub const ERROR: LevelFilter = LevelFilter::from_level(Level::ERROR);
     /// The "warn" level.
     ///
     /// Designates hazardous situations.
-    pub const WARN: LevelFilter = LevelFilter(Some(Level::WARN));
+    pub const WARN: LevelFilter = LevelFilter::from_level(Level::WARN);
     /// The "info" level.
     ///
     /// Designates useful information.
-    pub const INFO: LevelFilter = LevelFilter(Some(Level::INFO));
+    pub const INFO: LevelFilter = LevelFilter::from_level(Level::INFO);
     /// The "debug" level.
     ///
     /// Designates lower priority information.
-    pub const DEBUG: LevelFilter = LevelFilter(Some(Level::DEBUG));
+    pub const DEBUG: LevelFilter = LevelFilter::from_level(Level::DEBUG);
     /// The "trace" level.
     ///
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: LevelFilter = LevelFilter(Some(Level::TRACE));
+
+    /// Creates a filter for `level`.
+    pub const fn from_level(level: Level) -> Self {
+        Self(Some(level))
+    }
 
     /// Returns the most verbose [`Level`] that this filter accepts, or `None`
     /// if it is [`OFF`].
