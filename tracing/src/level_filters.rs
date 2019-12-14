@@ -50,6 +50,13 @@ use tracing_core::Level;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LevelFilter(Option<Level>);
 
+impl From<Level> for LevelFilter {
+    #[inline]
+    fn from(level: Level) -> Self {
+        Self::from_level(level)
+    }
+}
+
 impl LevelFilter {
     /// The "off" level.
     ///
