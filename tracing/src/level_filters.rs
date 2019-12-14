@@ -95,6 +95,15 @@ impl PartialOrd<LevelFilter> for Level {
     }
 }
 
+impl LevelFilter {
+    /// Attempts to take a shared reference to `self` as a
+    /// [`Level`](../struct.Level.html) unless `self` is
+    /// [`OFF`](#associatedconstant.OFF).
+    pub fn as_level(&self) -> Option<&Level> {
+        self.0.as_ref()
+    }
+}
+
 /// The statically configured maximum trace level.
 ///
 /// See the [module-level documentation] for information on how to configure
