@@ -95,6 +95,14 @@ impl PartialOrd<LevelFilter> for Level {
     }
 }
 
+impl LevelFilter {
+    /// Attempts to convert `self` into a [`Level`](../struct.Level.html) unless
+    /// `self` is [`OFF`](#associatedconstant.OFF).
+    pub const fn to_level(self) -> Option<Level> {
+        self.0
+    }
+}
+
 /// The statically configured maximum trace level.
 ///
 /// See the [module-level documentation] for information on how to configure
