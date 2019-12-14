@@ -143,3 +143,23 @@ cfg_if! {
         const MAX_LEVEL: LevelFilter = LevelFilter::TRACE;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filter_to_level() {
+        let mapping = [
+            (LevelFilter::OFF, None),
+            (LevelFilter::ERROR, Some(Level::ERROR)),
+            (LevelFilter::WARN, Some(Level::WARN)),
+            (LevelFilter::INFO, Some(Level::INFO)),
+            (LevelFilter::DEBUG, Some(Level::DEBUG)),
+            (LevelFilter::TRACE, Some(Level::TRACE)),
+        ];
+        for (filter, level) in mapping.iter() {
+            assert_eq!(filter.clone().to_level(), level.clone());
+        }
+    }
+}
