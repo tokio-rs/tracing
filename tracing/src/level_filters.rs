@@ -75,6 +75,15 @@ impl LevelFilter {
     ///
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: LevelFilter = LevelFilter(Some(Level::TRACE));
+
+    /// Returns the most verbose [`Level`] that this filter accepts, or `None`
+    /// if it is [`OFF`].
+    ///
+    /// [`Level`]: ../struct.Level.html
+    /// [`OFF`]: #associatedconstant.OFF
+    pub const fn into_level(self) -> Option<Level> {
+        self.0
+    }
 }
 
 impl PartialEq<LevelFilter> for Level {
@@ -133,5 +142,25 @@ cfg_if! {
         const MAX_LEVEL: LevelFilter = LevelFilter::DEBUG;
     } else {
         const MAX_LEVEL: LevelFilter = LevelFilter::TRACE;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filter_into_level() {
+        let mapping = [
+            (LevelFilter::OFF, None),
+            (LevelFilter::ERROR, Some(Level::ERROR)),
+            (LevelFilter::WARN, Some(Level::WARN)),
+            (LevelFilter::INFO, Some(Level::INFO)),
+            (LevelFilter::DEBUG, Some(Level::DEBUG)),
+            (LevelFilter::TRACE, Some(Level::TRACE)),
+        ];
+        for (filter, level) in mapping.iter() {
+            assert_eq!(filter.clone().into_level(), level.clone());
+        }
     }
 }
