@@ -96,16 +96,20 @@ impl PartialOrd<LevelFilter> for Level {
 }
 
 impl LevelFilter {
-    /// Attempts to take a shared reference to `self` as a
-    /// [`Level`](../struct.Level.html) unless `self` is
-    /// [`OFF`](#associatedconstant.OFF).
+    /// Returns a shared reference to the most verbose [`Level`] that this
+    /// filter accepts, or `None` if it is [`OFF`].
+    ///
+    /// [`Level`]: ../struct.Level.html
+    /// [`OFF`]: #associatedconstant.OFF
     pub fn as_level(&self) -> Option<&Level> {
         self.0.as_ref()
     }
 
-    /// Attempts to take a mutable reference to `self` as a
-    /// [`Level`](../struct.Level.html) unless `self` is
-    /// [`OFF`](#associatedconstant.OFF).
+    /// Returns a mutable reference to the most verbose [`Level`] that this
+    /// filter accepts, or `None` if it is [`OFF`].
+    ///
+    /// [`Level`]: ../struct.Level.html
+    /// [`OFF`]: #associatedconstant.OFF
     pub fn as_level_mut(&mut self) -> Option<&mut Level> {
         self.0.as_mut()
     }
