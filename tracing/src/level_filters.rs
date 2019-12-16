@@ -162,7 +162,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_into_level() {
+    fn filter_level_conversion() {
         let mapping = [
             (LevelFilter::OFF, None),
             (LevelFilter::ERROR, Some(Level::ERROR)),
@@ -172,7 +172,10 @@ mod tests {
             (LevelFilter::TRACE, Some(Level::TRACE)),
         ];
         for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), level.clone());
+            assert_eq!(filter.clone().into_level(), *level);
+            if let Some(level) = level {
+                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
+            }
         }
     }
 }
