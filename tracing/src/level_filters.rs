@@ -83,7 +83,8 @@ impl LevelFilter {
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: LevelFilter = LevelFilter(Some(Level::TRACE));
 
-    /// Creates a filter for `level`.
+    /// Returns a `LevelFilter` that enables spans and events with verbosity up
+    /// to and including `level`.
     pub const fn from_level(level: Level) -> Self {
         Self(Some(level))
     }
