@@ -44,6 +44,7 @@ quote = "1"
 
 [dev-dependencies]
 tracing = "0.1"
+tracing-futures = "0.2"
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
