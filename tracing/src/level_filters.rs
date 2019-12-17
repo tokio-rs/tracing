@@ -50,6 +50,13 @@ use tracing_core::Level;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LevelFilter(Option<Level>);
 
+impl From<Level> for LevelFilter {
+    #[inline]
+    fn from(level: Level) -> Self {
+        Self::from_level(level)
+    }
+}
+
 impl LevelFilter {
     /// The "off" level.
     ///
@@ -58,23 +65,29 @@ impl LevelFilter {
     /// The "error" level.
     ///
     /// Designates very serious errors.
-    pub const ERROR: LevelFilter = LevelFilter(Some(Level::ERROR));
+    pub const ERROR: LevelFilter = LevelFilter::from_level(Level::ERROR);
     /// The "warn" level.
     ///
     /// Designates hazardous situations.
-    pub const WARN: LevelFilter = LevelFilter(Some(Level::WARN));
+    pub const WARN: LevelFilter = LevelFilter::from_level(Level::WARN);
     /// The "info" level.
     ///
     /// Designates useful information.
-    pub const INFO: LevelFilter = LevelFilter(Some(Level::INFO));
+    pub const INFO: LevelFilter = LevelFilter::from_level(Level::INFO);
     /// The "debug" level.
     ///
     /// Designates lower priority information.
-    pub const DEBUG: LevelFilter = LevelFilter(Some(Level::DEBUG));
+    pub const DEBUG: LevelFilter = LevelFilter::from_level(Level::DEBUG);
     /// The "trace" level.
     ///
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: LevelFilter = LevelFilter(Some(Level::TRACE));
+
+    /// Returns a `LevelFilter` that enables spans and events with verbosity up
+    /// to and including `level`.
+    pub const fn from_level(level: Level) -> Self {
+        Self(Some(level))
+    }
 
     /// Returns the most verbose [`Level`] that this filter accepts, or `None`
     /// if it is [`OFF`].
@@ -150,7 +163,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_into_level() {
+    fn filter_level_conversion() {
         let mapping = [
             (LevelFilter::OFF, None),
             (LevelFilter::ERROR, Some(Level::ERROR)),
@@ -160,7 +173,10 @@ mod tests {
             (LevelFilter::TRACE, Some(Level::TRACE)),
         ];
         for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), level.clone());
+            assert_eq!(filter.clone().into_level(), *level);
+            if let Some(level) = level {
+                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
+            }
         }
     }
 }
