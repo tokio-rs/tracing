@@ -76,9 +76,12 @@ use syn::{
 /// the function is called.
 ///
 /// The generated span's name will be the name of the function. Any arguments
-/// to that function will be recorded as fields using `fmt::Debug`. To skip
+/// to that function will be recorded as fields using [`fmt::Debug`]. To skip
 /// recording a function's or method's argument, pass the argument's name
-/// to the `skip` argument on the `#[instrument]` macro. Note that:
+/// to the `skip` argument on the `#[instrument]` macro. For example,
+/// `skip` can be used when an argument to an instrumented function does
+/// not implement [`fmt::Debug`], or to exclude an argument with a verbose
+/// or costly Debug implementation. Note that:
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
@@ -142,6 +145,7 @@ use syn::{
 ///
 /// [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
+/// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
 pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
