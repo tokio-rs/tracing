@@ -701,9 +701,28 @@ impl Span {
 
     /// Returns `true` if this span was disabled by the subscriber and does not
     /// exist.
+    ///
+    /// See also [`is_none`].
+    ///
+    /// [`is_none`]: #method.is_none
     #[inline]
     pub fn is_disabled(&self) -> bool {
         self.inner.is_none()
+    }
+
+    /// Returns `true` if this span was constructed by [`Span::none`] and is
+    /// empty.
+    ///
+    /// If `is_none` returns `true` for a given span, then [`is_disabled`] will
+    /// also return `true`.  However, when a span is disabled by the subscriber
+    /// rather than constructed by `Span::none`, this method will return
+    /// `false`, while `is_disabled` will return `true`.
+    ///
+    /// [`Span::none`]: #method.none
+    /// [`is_disabled`]: #method.is_disabled
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        self.is_disabled() && self.meta.is_none()
     }
 
     /// Indicates that the span with the given ID has an indirect causal
