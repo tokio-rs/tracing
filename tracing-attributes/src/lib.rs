@@ -269,7 +269,7 @@ fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
     }
 }
 
-fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
+fn skips(args: &[NestedMeta]) -> Result<HashSet<Ident>, impl ToTokens> {
     let mut skips = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::List(MetaList {
             ref path,
@@ -299,7 +299,7 @@ fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
         .collect())
 }
 
-fn level(args: &AttributeArgs) -> impl ToTokens {
+fn level(args: &[NestedMeta]) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -353,7 +353,7 @@ fn level(args: &AttributeArgs) -> impl ToTokens {
     }
 }
 
-fn target(args: &AttributeArgs) -> impl ToTokens {
+fn target(args: &[NestedMeta]) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -380,7 +380,7 @@ fn target(args: &AttributeArgs) -> impl ToTokens {
     }
 }
 
-fn name(args: &AttributeArgs, default_name: String) -> impl ToTokens {
+fn name(args: &[NestedMeta], default_name: String) -> impl ToTokens {
     let mut names = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..

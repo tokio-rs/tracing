@@ -275,7 +275,7 @@ where
                     .map(move |chunk| match handle.set_from(chunk) {
                         Err(error) => {
                             tracing::warn!(message = "setting filter failed!", %error);
-                            rsp(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", error))
+                            rsp(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
                         }
                         Ok(()) => rsp(StatusCode::NO_CONTENT, Body::empty()),
                     });
@@ -345,7 +345,7 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
     use tower_http_util::body::BodyExt;
     use tower_hyper::client::Client;
 
-    static ALPHABET: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static ALPHABET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let authority = format!("{}", addr);
     let f = future::lazy(move || {
         let hyper = Client::new();
@@ -363,7 +363,7 @@ fn load_gen(addr: &SocketAddr) -> Box<dyn Future<Item = (), Error = ()> + Send +
                 let mut rng = rand::thread_rng();
                 let idx = rng.gen_range(0, ALPHABET.len()+1);
                 let len = rng.gen_range(0, 26);
-                let letter = ALPHABET.get(idx..idx+1).unwrap_or("");
+                let letter = ALPHABET.get(idx..=idx).unwrap_or("");
                 let uri = format!("http://{}/{}", authority, letter);
                 let req = Request::get(&uri[..])
                     .header("Content-Length", len)

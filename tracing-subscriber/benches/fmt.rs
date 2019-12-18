@@ -76,7 +76,7 @@ fn bench_new_span(c: &mut Criterion) {
 
 type Group<'a> = criterion::BenchmarkGroup<'a, criterion::measurement::WallTime>;
 fn bench_thrpt(c: &mut Criterion, name: &'static str, mut f: impl FnMut(&mut Group<'_>, &usize)) {
-    const N_SPANS: &'static [usize] = &[1, 10, 50];
+    const N_SPANS: &[usize] = &[1, 10, 50];
 
     let mut group = c.benchmark_group(name);
     for spans in N_SPANS {

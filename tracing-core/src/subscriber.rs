@@ -369,7 +369,7 @@ pub trait Subscriber: 'static {
     /// [`drop_span`]: trait.Subscriber.html#method.drop_span
     fn try_close(&self, id: span::Id) -> bool {
         #[allow(deprecated)]
-        let _ = self.drop_span(id);
+        self.drop_span(id);
         false
     }
 

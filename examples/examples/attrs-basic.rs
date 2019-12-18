@@ -7,7 +7,7 @@ use tracing_attributes::instrument;
 #[inline]
 fn suggest_band() -> String {
     debug!("Suggesting a band.");
-    format!("Wild Pink")
+    String::from("Wild Pink")
 }
 
 fn main() {
