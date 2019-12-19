@@ -5,8 +5,11 @@ use crate::{
     fmt::fmt_layer::FormattedFields,
     registry::{LookupMetadata, LookupSpan},
 };
-use serde::ser::{SerializeMap, Serializer as _};
-use serde_json::Serializer;
+use serde::{
+    ser::{SerializeMap, Serializer as _},
+    Serialize,
+};
+use serde_json::{Serializer, Value};
 use std::{
     collections::BTreeMap,
     fmt::{self, Write},
@@ -16,7 +19,7 @@ use tracing_core::{
     field::{self, Field},
     Event, Subscriber,
 };
-use tracing_serde::AsSerde;
+use tracing_serde::fields::SerializeFieldMap;
 
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
@@ -26,6 +29,15 @@ use tracing_log::NormalizeEvent;
 /// The full format includes fields from all entered spans.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json;
+
+#[derive(Serialize, Default)]
+struct SerializedEvent<'a> {
+    timestamp: Option<&'a str>,
+    level: Option<String>,
+    target: Option<&'a str>,
+    fields: Option<&'a SerializeFieldMap<'a, Event<'a>>>,
+    parent_spans: Vec<Value>,
+}
 
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
@@ -42,7 +54,7 @@ where
     where
         S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
     {
-        use serde_json::{json, Value};
+        use serde_json::json;
         use tracing_serde::fields::AsMap;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -55,40 +67,45 @@ where
         let meta = event.metadata();
 
         let mut visit = || {
-            let mut serializer = Serializer::new(WriteAdaptor::new(writer));
-            let mut serializer = serializer.serialize_map(None)?;
+            let ctx = &ctx.ctx;
 
-            serializer.serialize_entry("timestamp", &timestamp)?;
-            serializer.serialize_entry("level", &meta.level().as_serde())?;
+            let mut serialized_event = SerializedEvent::default();
 
-            let id = ctx.ctx.current_span();
-            let id = id.id();
-            if let Some(id) = id {
-                if let Some(span) = ctx.ctx.span(id) {
-                    let ext = span.extensions();
-                    let data = ext
-                        .get::<FormattedFields<N>>()
-                        .expect("Unable to find FormattedFields in extensions; this is a bug");
-                    // TODO: let's _not_ do this, but this resolves
-                    // https://github.com/tokio-rs/tracing/issues/391.
-                    // We should probably rework this to use a `serde_json::Value` or something
-                    // similar in a JSON-specific layer, but I'd (david)
-                    // rather have a uglier fix now rather than shipping broken JSON.
-                    let mut fields: Value = serde_json::from_str(&data)?;
-                    fields["name"] = json!(span.metadata().name());
-                    serializer.serialize_entry("span", &fields).unwrap_or(());
-                }
+            for span in ctx.scope() {
+                let id = span.id();
+                let span = ctx
+                    .span(&id)
+                    .expect(&format!("Missing span for id: {:?}", id));
+
+                let ext = span.extensions();
+                let data = ext
+                    .get::<FormattedFields<N>>()
+                    .expect("Unable to find FormattedFields in extensions; this is a bug");
+                // TODO: let's _not_ do this, but this resolves
+                // https://github.com/tokio-rs/tracing/issues/391.
+                // We should probably rework this to use a `serde_json::Value` or something
+                // similar in a JSON-specific layer, but I'd (david)
+                // rather have a uglier fix now rather than shipping broken JSON.
+                let mut fields: Value = match serde_json::from_str(&data) {
+                    Ok(fields) => fields,
+                    Err(_) => return,
+                };
+                fields["name"] = json!(span.metadata().name());
+                serialized_event.parent_spans.push(fields);
             }
+            serialized_event.timestamp = Some(&timestamp);
+            serialized_event.level = Some(meta.level().to_string());
 
             if self.display_target {
-                serializer.serialize_entry("target", meta.target())?;
+                serialized_event.target = Some(meta.target());
             }
 
-            serializer.serialize_entry("fields", &event.field_map())?;
-            serializer.end()
+            let map = &event.field_map();
+            serialized_event.fields = Some(map);
+            serde_json::to_writer(WriteAdaptor::new(writer), &serialized_event).unwrap();
         };
 
-        visit().map_err(|_| fmt::Error)?;
+        visit();
         writeln!(writer)
     }
 }
@@ -174,7 +191,7 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
                 ser_map.serialize_entry(k, &v)?;
             }
 
-            ser_map.end()
+            SerializeMap::end(ser_map)
         };
 
         if inner().is_err() {

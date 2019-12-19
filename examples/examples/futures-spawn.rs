@@ -35,6 +35,7 @@ fn main() {
     use tracing_subscriber::fmt;
     let subscriber = fmt::Subscriber::builder()
         .with_max_level(Level::TRACE)
+        .json()
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
     tokio::run(parent_task(10));
