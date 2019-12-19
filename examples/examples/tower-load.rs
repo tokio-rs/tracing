@@ -407,6 +407,4 @@
 //     Box::new(f)
 // }
 
-fn main() {
-    
-}
+fn main() {}
