@@ -407,6 +407,45 @@ pub struct Layered<L, I, S = I> {
     _s: PhantomData<fn(S)>,
 }
 
+#[derive(Clone, Debug)]
+pub struct Filtered<L, S, F> {
+    layer: L,
+    filter: F,
+    _s: PhantomData<fn(S)>,
+}
+
+pub trait Filter<L, S>
+where
+    S: Subscriber + 'static
+{
+    fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool;
+}
+
+impl<L, S, F> Filter<L, S> for F
+where
+    L: Layer<S>,
+    S: Subscriber + 'static,
+    F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool
+{
+    fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool { 
+        (self)(metadata, ctx)
+    }
+}
+
+impl<L, S, F> Layer<S> for Filtered<L, S, F>
+where
+    L: Layer<S>,
+    S: Subscriber + 'static,
+    F: Filter<L, S> + 'static
+{
+    #[inline]
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+        if self.filter.filter(event.metadata(), &ctx) {
+            self.layer.on_event(event, ctx);
+        }
+    }
+}
+
 /// A layer that does nothing.
 #[derive(Clone, Debug)]
 pub struct Identity {
@@ -923,9 +962,6 @@ pub(crate) mod tests {
 
     struct NopLayer;
     impl<S: Subscriber> Layer<S> for NopLayer {}
-
-    struct NopLayer2;
-    impl<S: Subscriber> Layer<S> for NopLayer2 {}
 
     /// A layer that holds a string.
     ///
