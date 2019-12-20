@@ -33,9 +33,9 @@
 //! ```
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
+//! [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
 //! [instrument]: attr.instrument.html
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.5")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.6")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -145,7 +145,7 @@ use syn::{
 /// # fn main() {}
 /// ```
 ///
-/// [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
+/// [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
