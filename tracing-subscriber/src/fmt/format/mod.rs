@@ -301,7 +301,7 @@ where
                 (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
             }
         };
-        write!(writer, "{} {}", fmt_level, fmt_ctx,)?;
+        write!(writer, "{} {}", fmt_level, fmt_ctx)?;
         if self.display_target {
             write!(writer, "{}:", meta.target())?;
         }
