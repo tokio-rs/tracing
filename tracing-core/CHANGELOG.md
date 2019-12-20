@@ -1,3 +1,27 @@
+# 0.1.8 (December 20, 2019)
+
+### Added
+
+- `Default` impl for `Dispatch` (#411)
+
+### Fixed
+
+- Removed duplicate `lazy_static` dependencies (#424)
+- Fixed no-std dependencies being enabled even when `std` feature flag is set
+  (#424)
+- Broken link to `Metadata` in `Event` docs (#461)
+
+# 0.1.7 (October 18, 2019)
+
+### Added
+
+- Added `dispatcher::set_default` API which returns a drop guard (#388)
+
+### Fixed
+
+- Added missing `Value` impl for `u8` (#392)
+- Broken links in docs.
+
 # 0.1.7 (October 18, 2019)
 
 ### Added
