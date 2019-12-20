@@ -2217,7 +2217,7 @@ macro_rules! __mk_format_string {
 
     // === rest is unparseable --- must be fmt args ===
     (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
-        tracing::__mk_format_string!(@ { "{}", $($out),* }, )
+        tracing::__mk_format_string!(@ { "{} ", $($out),* }, )
     };
 
     // === entry ===
