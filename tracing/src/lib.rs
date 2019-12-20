@@ -591,7 +591,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.10", default-features = false }
+//!   tracing = { version = "0.1.11", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -623,7 +623,7 @@
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 #![cfg_attr(not(feature = "std"), no_std)]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.10")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.11")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
