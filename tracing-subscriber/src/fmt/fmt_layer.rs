@@ -294,6 +294,16 @@ pub struct FormattedFields<E> {
     pub fields: String,
 }
 
+impl<E> FormattedFields<E> {
+    /// Returns a new `FormattedFields`.
+    pub fn new(fields: String) -> Self {
+        Self {
+            fields,
+            _format_event: PhantomData,
+        }
+    }
+}
+
 impl<E> fmt::Debug for FormattedFields<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormattedFields")
