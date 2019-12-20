@@ -107,6 +107,8 @@
 //! tracing = "0.1"
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! ## Recording Spans and Events
 //!
 //! Spans and events are recorded using macros.
