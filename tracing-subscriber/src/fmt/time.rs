@@ -219,8 +219,8 @@ where
         write!(writer, "{}", style.suffix())?;
     } else {
         timer.format_time(writer)?;
-        write!(writer, " ")?;
     }
+    write!(writer, " ")?;
     Ok(())
 }
 
