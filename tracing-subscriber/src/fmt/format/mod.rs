@@ -758,7 +758,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let expected = "\u{1b}[2mfake time\u{1b}[0m\u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: some ansi test\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: some ansi test\n";
         test_ansi(make_writer, expected, true, &BUF);
     }
 
