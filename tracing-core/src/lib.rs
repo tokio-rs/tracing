@@ -51,6 +51,9 @@
 //!   [dependencies]
 //!   tracing-core = { version = "0.1.7", default-features = false }
 //!   ```
+//!
+//!   *Compiler support: requires rustc 1.39+*
+//!
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!
 //! [`span::Id`]: span/struct.Id.html

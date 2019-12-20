@@ -15,6 +15,8 @@
 //! tracing-attributes = "0.1.0"
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
 //! to automatically create and enter `tracing` [span] when that function is
 //! called. For example:

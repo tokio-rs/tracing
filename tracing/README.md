@@ -57,6 +57,8 @@ First, add this to your `Cargo.toml`:
 tracing = "0.1.10"
 ```
 
+*Compiler support: requires rustc 1.39+*
+
 This crate provides macros for creating `Span`s and `Event`s, which represent
 periods of time and momentary events within the execution of a program,
 respectively.
