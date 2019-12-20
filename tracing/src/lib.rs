@@ -593,6 +593,9 @@
 //!   [dependencies]
 //!   tracing = { version = "0.1.10", default-features = false }
 //!   ```
+//!
+//!   *Compiler support: requires rustc 1.39+*
+//!
 //!   **Note**:`tracing`'s `no_std` support requires `liballoc`.
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/

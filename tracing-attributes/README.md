@@ -46,6 +46,8 @@ First, add this to your `Cargo.toml`:
 tracing-attributes = "0.1.5"
 ```
 
+*Compiler support: requires rustc 1.39+*
+
 This crate provides the `#[instrument]` attribute for instrumenting a function
 with a `tracing` [span]. For example:
 

@@ -16,6 +16,8 @@
 //! tracing-subscriber = "0.2"
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! Add the following to your executable to initialize the default subscriber:
 //! ```rust
 //! use tracing_subscriber;
