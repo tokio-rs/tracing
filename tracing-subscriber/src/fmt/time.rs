@@ -220,7 +220,7 @@ where
     } else {
         timer.format_time(writer)?;
     }
-    write!(writer, " ")?;
+    writer.write_char(' ')?;
     Ok(())
 }
 
