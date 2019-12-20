@@ -701,9 +701,28 @@ impl Span {
 
     /// Returns `true` if this span was disabled by the subscriber and does not
     /// exist.
+    ///
+    /// See also [`is_none`].
+    ///
+    /// [`is_none`]: #method.is_none
     #[inline]
     pub fn is_disabled(&self) -> bool {
         self.inner.is_none()
+    }
+
+    /// Returns `true` if this span was constructed by [`Span::none`] and is
+    /// empty.
+    ///
+    /// If `is_none` returns `true` for a given span, then [`is_disabled`] will
+    /// also return `true`.  However, when a span is disabled by the subscriber
+    /// rather than constructed by `Span::none`, this method will return
+    /// `false`, while `is_disabled` will return `true`.
+    ///
+    /// [`Span::none`]: #method.none
+    /// [`is_disabled`]: #method.is_disabled
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        self.is_disabled() && self.meta.is_none()
     }
 
     /// Indicates that the span with the given ID has an indirect causal
@@ -720,10 +739,51 @@ impl Span {
     ///
     /// If this span is disabled, or the resulting follows-from relationship
     /// would be invalid, this function will do nothing.
-    pub fn follows_from(&self, from: impl for<'a> Into<Option<&'a Id>>) -> &Self {
+    ///
+    /// # Examples
+    ///
+    /// Setting a `follows_from` relationship with a `Span`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span1 = span!(Level::INFO, "span_1");
+    /// let span2 = span!(Level::DEBUG, "span_2");
+    /// span2.follows_from(span1);
+    /// # }
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with the current span:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// span.follows_from(Span::current());
+    /// # }
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with a `Span` reference:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// let curr = Span::current();
+    /// span.follows_from(&curr);
+    /// # }
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with an `Id`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// # fn main() {
+    /// let span = span!(Level::INFO, "hello!");
+    /// let id = span.id();
+    /// span.follows_from(id);
+    /// # }
+    /// ```
+    pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
         if let Some(ref inner) = self.inner {
             if let Some(from) = from.into() {
-                inner.follows_from(from);
+                inner.follows_from(&from);
             }
         }
         self
