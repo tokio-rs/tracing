@@ -256,7 +256,7 @@ where
             }
         };
 
-        write!(writer, "{} {}", fmt_level, full_ctx,)?;
+        write!(writer, "{} {}", fmt_level, full_ctx)?;
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
