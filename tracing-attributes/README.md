@@ -6,12 +6,10 @@ Macro attributes for application-level tracing.
 [![Documentation][docs-badge]][docs-url]
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
-[![Build Status][azure-badge]][azure-url]
-[![Gitter chat][gitter-badge]][gitter-url]
+[![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
 
-[Documentation][docs-url] |
-[Chat (gitter)][gitter-url] | [Chat (discord)][discord-url]
+[Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-attributes.svg
 [crates-url]: https://crates.io/crates/tracing-attributes
@@ -21,12 +19,10 @@ Macro attributes for application-level tracing.
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_attributes
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
-[azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
-[azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
-[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
-[gitter-url]: https://gitter.im/tokio-rs/tracing
+[actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
+[actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
-[discord-url]: https://discordapp.com/invite/XdPzyTZ
+[discord-url]: https://discord.gg/EeF3cQw
 
 ## Overview
 
