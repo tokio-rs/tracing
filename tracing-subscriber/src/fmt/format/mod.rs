@@ -256,17 +256,10 @@ where
             }
         };
 
-        write!(
-            writer,
-            "{} {}{}: ",
-            fmt_level,
-            full_ctx,
-            if self.display_target {
-                meta.target()
-            } else {
-                ""
-            }
-        )?;
+        write!(writer, "{} {}", fmt_level, full_ctx,)?;
+        if self.display_target {
+            write!(writer, "{}: ", meta.target())?;
+        }
         ctx.format_fields(writer, event)?;
         writeln!(writer)
     }
@@ -308,17 +301,10 @@ where
                 (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
             }
         };
-        write!(
-            writer,
-            "{} {}{}: ",
-            fmt_level,
-            fmt_ctx,
-            if self.display_target {
-                meta.target()
-            } else {
-                ""
-            }
-        )?;
+        write!(writer, "{} {}", fmt_level, fmt_ctx,)?;
+        if self.display_target {
+            write!(writer, "{}:", meta.target())?;
+        }
         ctx.format_fields(writer, event)?;
         let span = ctx.ctx.current_span();
         if let Some(id) = span.id() {
