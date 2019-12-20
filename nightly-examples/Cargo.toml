@@ -21,8 +21,5 @@ hyper = { git = "https://github.com/hyperium/hyper" }
 http = "0.2"
 tracing-attributes = { path = "../tracing-attributes" }
 tracing-tower = { version = "0.1", path = "../tracing-tower" }
-tower-layer = "0.3"
-tower-service = "0.3"
-tower = { git = "https://github.com/tower-rs/tower" }
-tower-make = "0.3"
+tower = "0.3"
 clap = "2.33"
