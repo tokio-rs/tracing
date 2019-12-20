@@ -12,9 +12,9 @@ Application-level tracing for Rust.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.10
+[crates-url]: https://crates.io/crates/tracing/0.1.11
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.10
+[docs-url]: https://docs.rs/tracing/0.1.11
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -50,7 +50,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing = "0.1.10"
+tracing = "0.1.11"
 ```
 
 *Compiler support: requires rustc 1.39+*
