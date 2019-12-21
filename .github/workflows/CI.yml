@@ -14,6 +14,7 @@ jobs:
       with:
         toolchain: ${{ matrix.rust }}
         components: clippy
+        profile: minimal
     - uses: actions/checkout@master
     - name: Check
       run: cargo check --all --bins --examples --tests --benches
@@ -104,6 +105,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
+        profile: minimal
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
@@ -121,6 +123,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
@@ -135,6 +138,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
@@ -155,6 +159,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
+        profile: minimal
     - uses: actions/checkout@master
     - name: "Test tracing-futures std::future support"
       run: (cd tracing-futures/test_std_future && cargo test)
@@ -174,6 +179,7 @@ jobs:
       with:
         toolchain: stable
         components: rustfmt
+        profile: minimal
     - uses: actions/checkout@master
     - name: rustfmt
       run: cargo fmt --all -- --check
@@ -186,6 +192,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: warnings
       run: RUSTFLAGS="-Dwarnings" cargo check --all
