@@ -95,7 +95,6 @@ use syn::{
 ///     tracing::info!("inside my_function!");
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 /// Setting the level for the generated span:
 /// ```
@@ -104,7 +103,6 @@ use syn::{
 /// pub fn my_function() {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 /// Overriding the generated span's target:
 /// ```
@@ -113,7 +111,6 @@ use syn::{
 /// pub fn my_function() {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
@@ -126,7 +123,6 @@ use syn::{
 /// fn my_function(arg: usize, non_debug: NonDebug) {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
@@ -139,7 +135,6 @@ use syn::{
 ///     // ...
 ///     # Ok(())
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
