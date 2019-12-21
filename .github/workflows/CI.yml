@@ -13,7 +13,6 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
-        components: clippy
         profile: minimal
     - uses: actions/checkout@master
     - name: Check
@@ -186,13 +185,16 @@ jobs:
 
   warnings:
     # Check for any warnings. This is informational and thus is allowed to fail.
-    needs: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        components: clippy
         profile: minimal
     - uses: actions/checkout@master
-    - name: warnings
-      run: RUSTFLAGS="-Dwarnings" cargo check --all
+    - name: Clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all --bins --examples --tests --benches -- -D warnings
