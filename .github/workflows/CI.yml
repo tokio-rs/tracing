@@ -10,9 +10,10 @@ jobs:
       matrix:
         rust: [stable, 1.39.0]
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: ${{ matrix.rust }}
+        toolchain: ${{ matrix.rust }}
+        components: clippy
     - uses: actions/checkout@master
     - name: Check
       run: cargo check --all --bins --examples --tests --benches
@@ -100,9 +101,9 @@ jobs:
       matrix:
         rust: [stable, beta, nightly, 1.39.0]
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: ${{ matrix.rust }}
+        toolchain: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
@@ -117,9 +118,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
@@ -131,9 +132,9 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
     - uses: actions/checkout@master
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
@@ -151,9 +152,9 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: nightly
+        toolchain: nightly
     - uses: actions/checkout@master
     - name: "Test tracing-futures std::future support"
       run: (cd tracing-futures/test_std_future && cargo test)
@@ -169,9 +170,10 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        components: rustfmt
     - uses: actions/checkout@master
     - name: rustfmt
       run: cargo fmt --all -- --check
@@ -181,9 +183,9 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
     - uses: actions/checkout@master
     - name: warnings
       run: RUSTFLAGS="-Dwarnings" cargo check --all
