@@ -28,7 +28,7 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     let (rsp_span, fut): (_, BoxFut) = match (req.method(), req.uri().path()) {
         // Serve some instructions at /
         (&Method::GET, "/") => {
-            const BODY: &'static str = "Try POSTing data to /echo";
+            const BODY: &str = "Try POSTing data to /echo";
             *response.body_mut() = Body::from(BODY);
             (
                 span!(Level::INFO, "response", body = %(&BODY)),

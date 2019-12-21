@@ -125,7 +125,7 @@ fn one_with_everything() {
                     field::mock("message")
                         .with_value(&tracing::field::debug(format_args!(
                             "{:#x} make me one with{what:.>20}",
-                            4277009102u64,
+                            4_277_009_102u64,
                             what = "everything"
                         )))
                         .and(field::mock("foo").with_value(&666))
@@ -143,7 +143,7 @@ fn one_with_everything() {
             target: "whatever",
             Level::ERROR,
             { foo = 666, bar = false },
-             "{:#x} make me one with{what:.>20}", 4277009102u64, what = "everything"
+             "{:#x} make me one with{what:.>20}", 4_277_009_102u64, what = "everything"
         );
     });
 

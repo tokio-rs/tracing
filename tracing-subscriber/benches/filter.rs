@@ -13,7 +13,7 @@ struct EnabledSubscriber;
 impl tracing::Subscriber for EnabledSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
-        Id::from_u64(0xDEADFACE)
+        Id::from_u64(0xDEAD_FACE)
     }
 
     fn event(&self, event: &Event<'_>) {

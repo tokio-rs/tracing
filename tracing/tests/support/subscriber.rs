@@ -260,7 +260,7 @@ where
                     .span
                     .metadata
                     .check(meta, format_args!("span `{}`", name));
-                let mut checker = expected.fields.checker(format!("{}", name));
+                let mut checker = expected.fields.checker(name.to_string());
                 span.record(&mut checker);
                 checker.finish();
                 match expected.parent {

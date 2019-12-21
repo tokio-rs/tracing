@@ -34,7 +34,6 @@ impl MockSpan {
                 name: Some(name.into()),
                 ..self.metadata
             },
-            ..self
         }
     }
 
@@ -44,7 +43,6 @@ impl MockSpan {
                 level: Some(level),
                 ..self.metadata
             },
-            ..self
         }
     }
 
@@ -57,7 +55,6 @@ impl MockSpan {
                 target: Some(target.into()),
                 ..self.metadata
             },
-            ..self
         }
     }
 

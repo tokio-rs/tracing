@@ -34,7 +34,7 @@ impl<'a> Visit for Count<'a> {
             if value > 0 {
                 counter.fetch_add(value as usize, Ordering::Release);
             } else {
-                counter.fetch_sub((value * -1) as usize, Ordering::Release);
+                counter.fetch_sub(-value as usize, Ordering::Release);
             }
         };
     }
