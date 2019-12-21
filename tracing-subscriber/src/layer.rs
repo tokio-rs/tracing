@@ -408,7 +408,7 @@ pub struct Layered<L, I, S = I> {
 }
 
 /// A layer that does nothing.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Identity {
     _p: (),
 }
@@ -512,12 +512,16 @@ where
         #[cfg(feature = "registry")]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
-            .and_then(|registry| Some(registry.start_close(id.clone())));
+            .map(|registry| registry.start_close(id.clone()));
         if self.inner.try_close(id.clone()) {
             // If we have a registry's close guard, indicate that the span is
             // closing.
             #[cfg(feature = "registry")]
-            guard.as_mut().map(|g| g.is_closing());
+            {
+                if let Some(g) = guard.as_mut() {
+                    g.is_closing()
+                };
+            }
 
             self.layer.on_close(id, self.ctx());
             true
@@ -924,6 +928,7 @@ pub(crate) mod tests {
     struct NopLayer;
     impl<S: Subscriber> Layer<S> for NopLayer {}
 
+    #[allow(dead_code)]
     struct NopLayer2;
     impl<S: Subscriber> Layer<S> for NopLayer2 {}
 

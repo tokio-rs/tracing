@@ -584,7 +584,7 @@ impl Span {
     /// [`Subscriber::enter`]: ../subscriber/trait.Subscriber.html#method.enter
     /// [`Subscriber::exit`]: ../subscriber/trait.Subscriber.html#method.exit
     /// [`Id`]: ../struct.Id.html
-    pub fn enter<'a>(&'a self) -> Entered<'a> {
+    pub fn enter(&self) -> Entered<'_> {
         if let Some(ref inner) = self.inner.as_ref() {
             inner.subscriber.enter(&inner.id);
         }
@@ -796,7 +796,7 @@ impl Span {
 
     /// Returns this span's `Metadata`, if it is enabled.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
-        self.meta.clone()
+        self.meta
     }
 
     #[cfg(feature = "log")]

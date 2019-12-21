@@ -68,6 +68,8 @@ impl Id {
         Id(NonZeroU64::new(u).expect("span IDs must be > 0"))
     }
 
+    // Allow `into` by-ref since we don't want to impl Copy for Id
+    #[allow(clippy::wrong_self_convention)]
     /// Returns the span's ID as a  `u64`.
     pub fn into_u64(&self) -> u64 {
         self.0.get()

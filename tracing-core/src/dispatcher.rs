@@ -805,7 +805,7 @@ mod test {
             fn exit(&self, _: &span::Id) {}
         }
 
-        with_default(&Dispatch::new(TestSubscriber), || mk_span())
+        with_default(&Dispatch::new(TestSubscriber), mk_span)
     }
 
     #[test]

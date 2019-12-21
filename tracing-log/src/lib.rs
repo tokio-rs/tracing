@@ -216,7 +216,7 @@ struct Fields {
     line: field::Field,
 }
 
-static FIELD_NAMES: &'static [&'static str] = &[
+static FIELD_NAMES: &[&str] = &[
     "message",
     "log.target",
     "log.module_path",

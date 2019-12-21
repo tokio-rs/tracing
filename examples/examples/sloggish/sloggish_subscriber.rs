@@ -91,12 +91,12 @@ struct ColorLevel<'a>(&'a Level);
 
 impl<'a> fmt::Display for ColorLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            &Level::TRACE => Color::Purple.paint("TRACE"),
-            &Level::DEBUG => Color::Blue.paint("DEBUG"),
-            &Level::INFO => Color::Green.paint("INFO "),
-            &Level::WARN => Color::Yellow.paint("WARN "),
-            &Level::ERROR => Color::Red.paint("ERROR"),
+        match *self.0 {
+            Level::TRACE => Color::Purple.paint("TRACE"),
+            Level::DEBUG => Color::Blue.paint("DEBUG"),
+            Level::INFO => Color::Green.paint("INFO "),
+            Level::WARN => Color::Yellow.paint("WARN "),
+            Level::ERROR => Color::Red.paint("ERROR"),
         }
         .fmt(f)
     }
@@ -228,10 +228,7 @@ impl Subscriber for SloggishSubscriber {
         let spans = self.spans.lock().unwrap();
         let data = spans.get(span_id);
         let parent = data.and_then(|span| span.parent.as_ref());
-        if stack.iter().any(|id| id == span_id) {
-            // We are already in this span, do nothing.
-            return;
-        } else {
+        if !stack.iter().any(|id| id == span_id) {
             let indent = if let Some(idx) = stack
                 .iter()
                 .position(|id| parent.map(|p| id == p).unwrap_or(false))
@@ -249,7 +246,7 @@ impl Subscriber for SloggishSubscriber {
                 self.print_kvs(&mut stderr, data.kvs.iter().map(|(k, v)| (k, v)), "")
                     .unwrap();
             }
-            write!(&mut stderr, "\n").unwrap();
+            writeln!(&mut stderr).unwrap();
         }
     }
 
@@ -270,7 +267,7 @@ impl Subscriber for SloggishSubscriber {
             comma: false,
         };
         event.record(&mut visitor);
-        write!(&mut visitor.stderr, "\n").unwrap();
+        writeln!(&mut visitor.stderr).unwrap();
     }
 
     #[inline]

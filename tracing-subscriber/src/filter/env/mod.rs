@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn callsite_enabled_no_span_directive() {
         let filter = EnvFilter::new("app=debug").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,
@@ -424,7 +424,7 @@ mod tests {
     #[test]
     fn callsite_off() {
         let filter = EnvFilter::new("app=off").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::ERROR,
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive() {
         let filter = EnvFilter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,
@@ -461,7 +461,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive_field() {
         let filter =
             EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,
@@ -480,7 +480,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive_multiple_fields() {
         let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
             .with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,

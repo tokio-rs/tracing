@@ -87,8 +87,8 @@ macro_rules! try_lock {
     ($lock:expr, else $els:expr) => {
         match $lock {
             Ok(l) => l,
-            Err(_) if std::thread::panicking() => $els,
-            Err(_) => panic!("lock poisoned"),
+            Err(_err) if std::thread::panicking() => $els,
+            Err(_err) => panic!("lock poisoned"),
         }
     };
 }
