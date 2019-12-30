@@ -98,6 +98,12 @@ In order to produce output, applications need a concrete subscriber implementati
 By default, `tracing-subscriber` is able to consume messages emitted by
 `log`-instrumented libraries and modules.
 
+```toml
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = "0.2.0-alpha.2"
+```
+
 ```rust
 use tracing::debug;
 use tracing_subscriber;
