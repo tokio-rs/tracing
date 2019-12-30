@@ -72,10 +72,14 @@
     unused_parens,
     while_true
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
+
+pub(crate) mod stdlib;
+
 #[cfg(feature = "std-future")]
-use std::{pin::Pin, task::Context};
+use crate::stdlib::{pin::Pin, task::Context};
 
 #[cfg(feature = "futures-01")]
 use futures_01::{Sink, StartSend, Stream};
@@ -236,10 +240,10 @@ pub struct WithDispatch<T> {
 impl<T: Sized> Instrument for T {}
 
 #[cfg(feature = "std-future")]
-impl<T: std::future::Future> std::future::Future for Instrumented<T> {
+impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
         this.inner.poll(cx)
@@ -327,10 +331,10 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
 }
 
 #[cfg(feature = "std-future")]
-impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
+impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
