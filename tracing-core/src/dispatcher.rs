@@ -152,11 +152,10 @@ use crate::stdlib::{
     },
 };
 
-#[cfg(feature = "std")]
-use crate::stdlib::{
-    cell::{Cell, RefCell},
-    error,
-};
+#[cfg(any(feature = "std", feature = "unsafe_global"))]
+use crate::stdlib::cell::{Cell, RefCell};
+#[cfg(any(feature = "std"))]
+use crate::stdlib::error;
 
 /// `Dispatch` trace data to a [`Subscriber`].
 ///
@@ -173,6 +172,9 @@ thread_local! {
         can_enter: Cell::new(true),
     };
 }
+
+#[cfg(not(feature = "std"))]
+static CURRENT_STATE: Option<State> = None;
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
@@ -198,9 +200,43 @@ struct State {
     can_enter: Cell<bool>,
 }
 
+#[cfg(feature = "std")]
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            default: RefCell::new(Dispatch::none()),
+            can_enter: Cell::new(true),
+        }
+    }
+}
+
+/// The dispatch state of a thread.
+#[cfg(not(feature = "std"))]
+struct State {
+    /// This thread's current default dispatcher.
+    default: Dispatch,
+    /// Whether or not we can currently begin dispatching a trace event.
+    ///
+    /// This is set to `false` when functions such as `enter`, `exit`, `event`,
+    /// and `new_span` are called on this thread's default dispatcher, to
+    /// prevent further trace events triggered inside those functions from
+    /// creating an infinite recursion. When we finish handling a dispatch, this
+    /// is set back to `true`.
+    can_enter: bool,
+}
+
+#[cfg(not(feature = "std"))]
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            default: Dispatch::none(),
+            can_enter: true,
+        }
+    }
+}
+
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
-#[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct DefaultGuard(Option<Dispatch>);
 
@@ -216,7 +252,6 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: ../event/struct.Event.html
 /// [`set_global_default`]: ../fn.set_global_default.html
-#[cfg(feature = "std")]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this (rather than simply resetting after calling
@@ -233,7 +268,6 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// should use [`set_global_default`] instead.
 ///
 /// [`set_global_default`]: ../fn.set_global_default.html
-#[cfg(feature = "std")]
 pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
@@ -668,6 +702,31 @@ impl State {
     }
 }
 
+#[cfg(not(feature = "std"))]
+impl State {
+    /// Replaces the current default dispatcher on this thread with the provided
+    /// dispatcher.Any
+    ///
+    /// Dropping the returned `ResetGuard` will reset the default dispatcher to
+    /// the previous value.
+    #[inline]
+    fn set_default(new_dispatch: Dispatch) -> DefaultGuard {
+        if let Some(lock) = LOCK_IMPL {
+            let _guard = lock.lock();
+            let prior = unsafe {
+                CURRENT_STATE.replace(State {
+                    can_enter: true,
+                    default: new_dispatch,
+                })
+            };
+            EXISTS.store(true, Ordering::Release);
+            DefaultGuard(prior.map(|x| x.default))
+        } else {
+            panic!("platform is expected to provide a lock implementation before setting a default dispatcher, see provide_lock_impl");
+        }
+    }
+}
+
 // ===== impl DefaultGuard =====
 
 #[cfg(feature = "std")]
@@ -678,6 +737,54 @@ impl Drop for DefaultGuard {
             let _ = CURRENT_STATE.try_with(|state| {
                 *state.default.borrow_mut() = dispatch;
             });
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl Drop for DefaultGuard {
+    #[inline]
+    fn drop(&mut self) {
+        if let Some(dispatch) = self.0.take() {
+            if let Some(lock) = LOCK_IMPL {
+                let _guard = lock.lock();
+                let _ = unsafe {
+                    CURRENT_STATE.replace(State {
+                        default: dispatch,
+                        can_enter: true, // TODO(baloo): not too sure
+                    })
+                };
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+static mut LOCK_IMPL: Option<&'static dyn lock_api::RawMutex<GuardMarker = lock_api::GuardSend>> =
+    None;
+
+#[cfg(not(feature = "std"))]
+// LOCK_IMPL_SET guards the LOCK_IMPL set
+static mut LOCK_IMPL_SET: AtomicBool = AtomicBool::new(false);
+
+#[cfg(not(feature = "std"))]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct LockAlreadySet;
+
+/// On `no-std` a lock implementation to guard the dispatcher is to be provided
+/// by the platform. For example on cortex, one should provide an interrupt-free
+/// lock implementation.
+#[cfg(not(feature = "std"))]
+pub fn provide_lock_impl<L>(lock_impl: &'static L) -> Result<(), LockAlreadySet>
+where
+    L: lock_api::RawMutex<GuardMarker = lock_api::GuardSend>,
+{
+    unsafe {
+        if !LOCK_IMPL_SET.compare_and_swap(false, true, Ordering::Acquire) {
+            LOCK_IMPL = Some(lock_impl);
+            Ok(())
+        } else {
+            Err(LockAlreadySet)
         }
     }
 }
