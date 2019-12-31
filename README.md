@@ -44,50 +44,62 @@ tracing = "0.1"
 ```
 
 ```rust
-use tracing::{debug, error, info, span, trace, warn, Level};
-
 use std::{error::Error, fmt};
+use tracing::{debug, error, info, span, warn, Level};
 
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
-    debug!(
-        message = "hello! I'm gonna shave a yak.",
-        excitement = "yay!"
-    );
+    debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
     if yak == 3 {
-        warn!(target: "yak_events", "could not locate yak!");
-        return Err(ShaveError::new(yak, YakError::new("could not locate yak")).into());
+        warn!("could not locate yak!");
+        return Err(ShaveError::new(yak).into());
     } else {
-        trace!(target: "yak_events", "yak shaved successfully");
+        debug!("yak shaved successfully");
     }
     Ok(())
 }
 
 pub fn shave_all(yaks: usize) -> usize {
-    let span = span!(Level::TRACE, "shaving_yaks", yaks_to_shave = yaks);
+    let span = span!(Level::TRACE, "shaving_yaks", yaks);
     let _enter = span.enter();
 
     info!("shaving yaks");
 
-    let mut num_shaved = 0;
+    let mut yaks_shaved = 0;
     for yak in 1..=yaks {
         let res = shave(yak);
-        trace!(target: "yak_events", yak, shaved = res.is_ok());
+        debug!(yak, shaved = res.is_ok());
 
         if let Err(ref error) = res {
-            error!(
-                message = "failed to shave yak!",
-                yak,
-                error = error.as_ref()
-            );
+            error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
-            num_shaved += 1;
+            yaks_shaved += 1;
         }
-
-        trace!(target: "yak_events", yaks_shaved = num_shaved);
+        debug!(yaks_shaved);
     }
 
-    num_shaved
+    yaks_shaved
+}
+
+#[derive(Debug)]
+enum ShaveError {
+    MissingYak { yak: usize },
+}
+
+impl fmt::Display for ShaveError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ShaveError::MissingYak { yak } => write!(f, "shaving yak #{} failed!", yak),
+        }
+    }
+}
+
+impl Error for ShaveError {}
+
+impl ShaveError {
+    fn new(yak: usize) -> Self {
+        ShaveError::MissingYak { yak }
+    }
 }
 ```
 
@@ -105,23 +117,28 @@ tracing-subscriber = "0.2.0-alpha.2"
 ```
 
 ```rust
-use tracing::debug;
+use tracing::{info, Level};
 use tracing_subscriber;
-use yak_shave;
+mod yak_shave;
 
 fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::Subscriber::builder()
+        // all spans/events with a level higher than `DEBUG` (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::DEBUG)
+        // sets this to be the default, global subscriber for this application.
+        .init();
 
     let number_of_yaks = 3;
-    debug!("preparing to shave {} yaks", number_of_yaks);
+    info!(number_of_yaks, "preparing to shave yaks");
 
     let number_shaved = yak_shave::shave_all(number_of_yaks);
-
-    debug!(
-        message = "yak shaving completed.",
+    info!(
         all_yaks_shaved = number_shaved == number_of_yaks,
+        "yak shaving completed."
     );
 }
+
 ```
 
 Note that if you are instrumenting libraries or applications that make use of [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html) or async/await, be sure to use the [`tracing-futures`](https://docs.rs/tracing-futures) crate.
