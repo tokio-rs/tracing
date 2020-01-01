@@ -839,6 +839,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
+    #[cfg(feature = "registry")]
     pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
