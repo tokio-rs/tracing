@@ -19,15 +19,32 @@ jobs:
 
   cargo-hack:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # cargo hack --feature-powerset will have a significant permutation
+        # number, we can't just use --all as it increases the runtime
+        # further than what we would like to
+        subcrate:
+        - tracing
+        - tracing-attributes
+        - tracing-core
+        - tracing-fmt
+        - tracing-futures
+        - tracing-log
+        - tracing-macros
+        - tracing-serde
+        - tracing-subscriber
+        - tracing-tower
     steps:
     - uses: hecrj/setup-rust-action@v1
       with:
-        rust-version: stable 
+        rust-version: stable
     - uses: actions/checkout@master
     - name: install cargo-hack
       run: cargo install cargo-hack
-    - name: cargo hack check --all
-      run: cargo hack check --feature-powerset --no-dev-deps --all
+    - name: cargo hack check
+      working-directory: ${{ matrix.subcrate }}
+      run: cargo hack check --feature-powerset --no-dev-deps
 
   test-versions:
     # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
