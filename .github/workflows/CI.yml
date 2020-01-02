@@ -17,6 +17,18 @@ jobs:
     - name: Check
       run: cargo check --all --bins --examples --tests --benches
 
+  cargo-hack:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable 
+    - uses: actions/checkout@master
+    - name: install cargo-hack
+      run: cargo install cargo-hack
+    - name: cargo hack check --all
+      run: cargo hack check --feature-powerset --no-dev-deps --all
+
   test-versions:
     # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
     needs: check
