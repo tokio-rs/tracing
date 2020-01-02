@@ -168,6 +168,7 @@ pub trait Instrument: Sized {
 /// a `tracing` [`Subscriber`].
 ///
 /// [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html
+#[cfg(feature = "std")]
 pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a
     /// `WithDispatch` wrapper.
@@ -225,6 +226,7 @@ pub struct Instrumented<T> {
 
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
+#[cfg(feature = "std")]
 #[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
@@ -317,9 +319,10 @@ impl<T> Instrumented<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<T: Sized> WithSubscriber for T {}
 
-#[cfg(feature = "futures-01")]
+#[cfg(all(feature = "futures-01", feature = "std"))]
 impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -330,7 +333,7 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
     }
 }
 
-#[cfg(feature = "std-future")]
+#[cfg(all(feature = "std-future", feature = "std"))]
 impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
@@ -342,6 +345,7 @@ impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDis
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> WithDispatch<T> {
     #[cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03"))]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
