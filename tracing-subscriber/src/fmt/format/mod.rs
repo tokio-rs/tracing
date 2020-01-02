@@ -600,7 +600,7 @@ where
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a, N> fmt::Display for FullCtx<'a, N>
+impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
