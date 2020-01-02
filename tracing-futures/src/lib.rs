@@ -37,8 +37,16 @@
 //!   crate's `Spawn` and `LocalSpawn` traits.
 //! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
 //!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
+//! - `std`: Depend on the Rust standard library.
 //!
-//! The `tokio` and `std-future` features are enabled by default.
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing-futures = { version = "0.2", default-features = false }
+//!   ```
+//!
+//! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
