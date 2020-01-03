@@ -12,7 +12,7 @@
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 use self::ansi_term::{Color, Style};
 use ansi_term;
-use humantime;
+use chrono::prelude::*;
 use tracing::{
     self,
     field::{Field, Visit},
@@ -29,7 +29,6 @@ use std::{
         Mutex,
     },
     thread,
-    time::SystemTime,
 };
 
 /// Tracks the currently executing span on a per-thread basis.
@@ -71,7 +70,7 @@ pub struct SloggishSubscriber {
     // printing?
     current: CurrentSpanPerThread,
     indent_amount: usize,
-    stderr: io::Stderr,
+    stdout: io::Stdout,
     stack: Mutex<Vec<Id>>,
     spans: Mutex<HashMap<Id, Span>>,
     ids: AtomicUsize,
@@ -79,11 +78,12 @@ pub struct SloggishSubscriber {
 
 struct Span {
     parent: Option<Id>,
+    name: &'static str,
     kvs: Vec<(&'static str, String)>,
 }
 
 struct Event<'a> {
-    stderr: io::StderrLock<'a>,
+    stdout: io::StdoutLock<'a>,
     comma: bool,
 }
 
@@ -92,11 +92,11 @@ struct ColorLevel<'a>(&'a Level);
 impl<'a> fmt::Display for ColorLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
-            Level::TRACE => Color::Purple.paint("TRACE"),
-            Level::DEBUG => Color::Blue.paint("DEBUG"),
-            Level::INFO => Color::Green.paint("INFO "),
-            Level::WARN => Color::Yellow.paint("WARN "),
-            Level::ERROR => Color::Red.paint("ERROR"),
+            Level::TRACE => Color::Purple.bold().paint("TRACE"),
+            Level::DEBUG => Color::Blue.bold().paint("DEBUG"),
+            Level::INFO => Color::Green.bold().paint(" INFO"),
+            Level::WARN => Color::RGB(252, 234, 160).bold().paint(" WARN"), // orange
+            Level::ERROR => Color::Red.bold().paint("ERROR"),
         }
         .fmt(f)
     }
@@ -106,6 +106,7 @@ impl Span {
     fn new(parent: Option<Id>, attrs: &tracing::span::Attributes<'_>) -> Self {
         let mut span = Self {
             parent,
+            name: attrs.metadata().name(),
             kvs: Vec::new(),
         };
         attrs.record(&mut span);
@@ -122,7 +123,7 @@ impl Visit for Span {
 impl<'a> Visit for Event<'a> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         write!(
-            &mut self.stderr,
+            &mut self.stdout,
             "{comma} ",
             comma = if self.comma { "," } else { "" },
         )
@@ -130,18 +131,19 @@ impl<'a> Visit for Event<'a> {
         let name = field.name();
         if name == "message" {
             write!(
-                &mut self.stderr,
+                &mut self.stdout,
                 "{}",
                 // Have to alloc here due to `ansi_term`'s API...
-                Style::new().bold().paint(format!("{:?}", value))
+                Style::new().paint(format!("{:?}", value))
             )
             .unwrap();
             self.comma = true;
         } else {
             write!(
-                &mut self.stderr,
-                "{}: {:?}",
-                Style::new().bold().paint(name),
+                &mut self.stdout,
+                "{}={:?}",
+                name,
+                // Style::new().bold().fg(Color::Purple).paint(name),
                 value
             )
             .unwrap();
@@ -155,7 +157,7 @@ impl SloggishSubscriber {
         Self {
             current: CurrentSpanPerThread::new(),
             indent_amount,
-            stderr: io::stderr(),
+            stdout: io::stdout(),
             stack: Mutex::new(vec![]),
             spans: Mutex::new(HashMap::new()),
             ids: AtomicUsize::new(1),
@@ -177,14 +179,21 @@ impl SloggishSubscriber {
         if let Some((k, v)) = kvs.next() {
             write!(
                 writer,
-                "{}{}: {}",
+                "{}{}={}",
                 leading,
-                Style::new().bold().paint(k.as_ref()),
+                // Style::new().fg(Color::Purple).bold().paint(k.as_ref()),
+                k.as_ref(),
                 v
             )?;
         }
         for (k, v) in kvs {
-            write!(writer, ", {}: {}", Style::new().bold().paint(k.as_ref()), v)?;
+            write!(
+                writer,
+                ", {}={}",
+                // Style::new().fg(Color::Purple).bold().paint(k.as_ref()),
+                k.as_ref(),
+                v
+            )?;
         }
         Ok(())
     }
@@ -223,7 +232,7 @@ impl Subscriber for SloggishSubscriber {
 
     fn enter(&self, span_id: &tracing::Id) {
         self.current.enter(span_id.clone());
-        let mut stderr = self.stderr.lock();
+        let mut stdout = self.stdout.lock();
         let mut stack = self.stack.lock().unwrap();
         let spans = self.spans.lock().unwrap();
         let data = spans.get(span_id);
@@ -240,34 +249,54 @@ impl Subscriber for SloggishSubscriber {
                 stack.clear();
                 0
             };
-            self.print_indent(&mut stderr, indent).unwrap();
+            self.print_indent(&mut stdout, indent).unwrap();
             stack.push(span_id.clone());
             if let Some(data) = data {
-                self.print_kvs(&mut stderr, data.kvs.iter().map(|(k, v)| (k, v)), "")
+                write!(
+                    &mut stdout,
+                    "{name}",
+                    name = Style::new().fg(Color::Green).bold().paint(data.name)
+                )
+                .unwrap();
+                write!(
+                    &mut stdout,
+                    "{}",
+                    Style::new().fg(Color::Green).paint("{") // Style::new().fg(Color::Green).dimmed().paint("{")
+                )
+                .unwrap();
+                self.print_kvs(&mut stdout, data.kvs.iter().map(|(k, v)| (k, v)), "")
                     .unwrap();
+                write!(
+                    &mut stdout,
+                    "{}",
+                    Style::new().fg(Color::Green).bold().paint("}") // Style::new().dimmed().paint("}")
+                )
+                .unwrap();
             }
-            writeln!(&mut stderr).unwrap();
+            writeln!(&mut stdout).unwrap();
         }
     }
 
     fn event(&self, event: &tracing::Event<'_>) {
-        let mut stderr = self.stderr.lock();
+        let mut stdout = self.stdout.lock();
         let indent = self.stack.lock().unwrap().len();
-        self.print_indent(&mut stderr, indent).unwrap();
+        self.print_indent(&mut stdout, indent).unwrap();
+        let now = Local::now();
         write!(
-            &mut stderr,
-            "{timestamp} {level} {target}",
-            timestamp = humantime::format_rfc3339_seconds(SystemTime::now()),
-            level = ColorLevel(event.metadata().level()),
-            target = &event.metadata().target(),
+            &mut stdout,
+            "{timestamp} {level}",
+            timestamp = Style::new()
+                .dimmed()
+                .paint(now.format("%b %-d, %-I:%M:%S").to_string()),
+            level = ColorLevel(event.metadata().level())
         )
         .unwrap();
         let mut visitor = Event {
-            stderr,
+            stdout,
             comma: false,
         };
         event.record(&mut visitor);
-        writeln!(&mut visitor.stderr).unwrap();
+        writeln!(&mut visitor.stdout).unwrap();
     }
 
     #[inline]

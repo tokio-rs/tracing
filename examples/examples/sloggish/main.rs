@@ -21,7 +21,7 @@ fn main() {
     let subscriber = SloggishSubscriber::new(2);
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    let app_span = span!(Level::TRACE, "", version = %5.0);
+    let app_span = span!(Level::TRACE, "sloggish-example", version = %0.1);
     let _e = app_span.enter();
 
     let server_span = span!(Level::TRACE, "server", host = "localhost", port = 8080);
