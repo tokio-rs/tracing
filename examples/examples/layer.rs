@@ -1,3 +1,4 @@
+use std::io;
 use std::marker::PhantomData;
 use tracing::{debug, info, instrument, warn, Level, Metadata, Subscriber};
 use tracing_subscriber::{
@@ -33,26 +34,34 @@ where
 }
 
 fn main() {
-    let warn = FilterFn::new(|metadata, _| metadata.level() <= &Level::WARN);
-    let debug = FilterFn::new(|metadata, _| metadata.level() >= &Level::DEBUG);
+    let err = FilterFn::new(|metadata, _| {
+        metadata.level() == &Level::WARN || metadata.level() == &Level::ERROR
+    });
+    let info = FilterFn::new(|metadata, _| metadata.level() <= &Level::INFO);
 
-    let warn = fmt::Layer::default().with_filter(warn);
-    let debug = fmt::Layer::default().with_filter(debug);
+    let err = fmt::Layer::builder()
+        .with_writer(io::stderr)
+        .finish()
+        .with_filter(err);
+    let info = fmt::Layer::builder()
+        .with_writer(io::stdout)
+        .finish()
+        .with_filter(info);
 
-    let subscriber = warn.and_then(debug).with_subscriber(Registry::default());
+    let subscriber = info.and_then(err).with_subscriber(Registry::default());
     tracing::subscriber::set_global_default(subscriber).expect("Unable to set global subscriber");
     call_one();
 }
 
-#[instrument(level = "TRACE")]
+#[instrument]
 fn call_one() {
-    warn!("This is the warning level");
-    info!("This should be ignored");
+    debug!("This is ignored!");
+    info!("logged at info");
     call_two();
 }
 
-#[instrument(level = "TRACE")]
+#[instrument]
 fn call_two() {
-    debug!("This is the debug level!");
-    info!("This should be ignored");
+    warn!("This is the warning level");
+    info!("logged at info");
 }
