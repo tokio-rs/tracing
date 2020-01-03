@@ -821,6 +821,12 @@ impl Span {
             }
         }
     }
+
+
+    /// Run the provided function with this span's id and dispatcher, if this span is active.
+    pub fn with_subscriber<T>(&self, f: impl FnOnce((&Id, &Dispatch)) -> T) -> Option<T> {
+        self.inner.as_ref().map( |inner| f((&inner.id, &inner.subscriber)) )
+    }
 }
 
 impl cmp::PartialEq for Span {
