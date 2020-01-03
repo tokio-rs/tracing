@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::marker::PhantomData;
 use tracing::{debug, info, instrument, warn, Level, Metadata, Subscriber};
 use tracing_subscriber::{
     fmt,
@@ -6,35 +6,35 @@ use tracing_subscriber::{
     registry::Registry,
 };
 
-struct LevelFilter {
-    level: Level,
-    ordering: Ordering,
+struct FilterFn<F, S> {
+    f: F,
+    _s: PhantomData<S>,
 }
 
-impl<L, S> Filter<L, S> for LevelFilter
+impl<L, S, F> Filter<L, S> for FilterFn<F, S>
 where
     L: Layer<S>,
     S: Subscriber,
+    F: Fn(&Metadata, &Context<'_, S>) -> bool,
 {
-    fn filter(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
-        if metadata.level().cmp(&self.level) == self.ordering {
-            true
-        } else {
-            false
-        }
+    fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
+        (self.f)(metadata, ctx)
     }
 }
 
-impl LevelFilter {
-    fn new(level: Level, ordering: Ordering) -> Self {
-        Self { level, ordering }
+impl<F, S> FilterFn<F, S>
+where
+    S: Subscriber + 'static,
+    F: Fn(&Metadata, &Context<'_, S>) -> bool,
+{
+    fn new(f: F) -> Self {
+        Self { f, _s: PhantomData }
     }
 }
 
 fn main() {
-    // not inclusive, so this behaves as `>` or `<`, not `>=` or `<=`
-    let warn = LevelFilter::new(Level::INFO, Ordering::Greater);
-    let debug = LevelFilter::new(Level::INFO, Ordering::Less);
+    let warn = FilterFn::new(|metadata, _| metadata.level() <= &Level::WARN);
+    let debug = FilterFn::new(|metadata, _| metadata.level() >= &Level::DEBUG);
 
     let warn = fmt::Layer::default().with_filter(warn);
     let debug = fmt::Layer::default().with_filter(debug);
