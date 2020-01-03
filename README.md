@@ -101,7 +101,6 @@ The crates included as part of Tracing are:
 [sub-crates]: https://crates.io/crates/tracing-subscriber
 [sub-docs]: https://docs.rs/tracing-subscriber
 
-
 ## Related Crates
 
 In addition to this repository, here are also several third-party crates which
@@ -127,7 +126,7 @@ please let us know!)
 [`tracing-timing`]: https://crates.io/crates/tracing-timing
 [`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
 [OpenTelemetry]: https://opentelemetry.io/
-[`tracing-opentelemetry`]: https://crates.io/crates/honeycomb-tracing
+[`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix]: https://crates.io/crates/tracing-actix
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
