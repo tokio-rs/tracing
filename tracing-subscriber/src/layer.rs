@@ -424,6 +424,19 @@ where
         }
     }
 
+    /// TODO: docs
+    fn with_filter<F>(self, filter: F) -> Filtered<Self, S, F>
+    where
+        F: Filter<Self, S>,
+        Self: Sized,
+    {
+        Filtered {
+            layer: self,
+            filter,
+            _s: PhantomData,
+        }
+    }
+
     /// Composes this `Layer` with the given [`Subscriber`], returning a
     /// `Layered` struct that implements [`Subscriber`].
     ///
@@ -522,6 +535,12 @@ pub struct Layered<L, I, S = I> {
     _s: PhantomData<fn(S)>,
 }
 
+/// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
+/// [`Layer`]s and [`Filter`]s.
+///
+/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
+/// [`Filter`]: ../layer/trait.Layer.html
 #[derive(Clone, Debug)]
 pub struct Filtered<L, S, F> {
     layer: L,
@@ -529,10 +548,15 @@ pub struct Filtered<L, S, F> {
     _s: PhantomData<fn(S)>,
 }
 
+/// `Filter` enables the filtering of composed [`Layers`].
+///
+/// [`Layer`]: ../layer/trait.Layer.html
 pub trait Filter<L, S>
 where
+    L: Layer<S>,
     S: Subscriber + 'static,
 {
+    /// Filter on a specific span or event's metadata.
     fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool;
 }
 
@@ -553,6 +577,13 @@ where
     S: Subscriber + 'static,
     F: Filter<L, S> + 'static,
 {
+    #[inline]
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        if self.filter.filter(attrs.metadata(), &ctx) {
+            self.layer.new_span(attrs, id, ctx);
+        }
+    }
+
     #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         if self.filter.filter(event.metadata(), &ctx) {
@@ -1070,6 +1101,7 @@ impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use tracing::Level;
 
     pub(crate) struct NopSubscriber;
 
@@ -1107,6 +1139,21 @@ pub(crate) mod tests {
     struct StringLayer3(String);
     impl<S: Subscriber> Layer<S> for StringLayer3 {}
 
+    struct LevelFilter;
+    impl<L, S> Filter<L, S> for LevelFilter
+    where
+        L: Layer<S>,
+        S: Subscriber,
+    {
+        fn filter(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+            if metadata.level() == &Level::INFO {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
     pub(crate) struct StringSubscriber(String);
 
     impl Subscriber for StringSubscriber {
@@ -1135,6 +1182,13 @@ pub(crate) mod tests {
     fn layer_is_subscriber() {
         let s = NopLayer.with_subscriber(NopSubscriber);
         assert_subscriber(s)
+    }
+
+    #[test]
+    fn layers_can_be_filtered() {
+        NopLayer
+            .with_filter(LevelFilter)
+            .with_subscriber(NopSubscriber);
     }
 
     #[test]
