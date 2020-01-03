@@ -37,8 +37,16 @@
 //!   crate's `Spawn` and `LocalSpawn` traits.
 //! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
 //!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
+//! - `std`: Depend on the Rust standard library.
 //!
-//! The `tokio` and `std-future` features are enabled by default.
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing-futures = { version = "0.2", default-features = false }
+//!   ```
+//!
+//! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
@@ -69,10 +77,14 @@
     unused_parens,
     while_true
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
+
+pub(crate) mod stdlib;
+
 #[cfg(feature = "std-future")]
-use std::{pin::Pin, task::Context};
+use crate::stdlib::{pin::Pin, task::Context};
 
 #[cfg(feature = "futures-01")]
 use futures_01::{Sink, StartSend, Stream};
@@ -161,6 +173,7 @@ pub trait Instrument: Sized {
 /// a `tracing` [`Subscriber`].
 ///
 /// [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html
+#[cfg(feature = "std")]
 pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a
     /// `WithDispatch` wrapper.
@@ -218,6 +231,7 @@ pub struct Instrumented<T> {
 
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
+#[cfg(feature = "std")]
 #[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
@@ -233,10 +247,10 @@ pub struct WithDispatch<T> {
 impl<T: Sized> Instrument for T {}
 
 #[cfg(feature = "std-future")]
-impl<T: std::future::Future> std::future::Future for Instrumented<T> {
+impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
         this.inner.poll(cx)
@@ -310,9 +324,10 @@ impl<T> Instrumented<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<T: Sized> WithSubscriber for T {}
 
-#[cfg(feature = "futures-01")]
+#[cfg(all(feature = "futures-01", feature = "std"))]
 impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -323,11 +338,11 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
     }
 }
 
-#[cfg(feature = "std-future")]
-impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
+#[cfg(all(feature = "std-future", feature = "std"))]
+impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
@@ -335,6 +350,7 @@ impl<T: std::future::Future> std::future::Future for WithDispatch<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> WithDispatch<T> {
     #[cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03"))]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {

@@ -18,17 +18,18 @@ keywords = ["logging", "profiling", "tracing", "futures", "async"]
 license = "MIT"
 
 [features]
-default = ["std-future"]
+default = ["std-future", "std"]
 futures-01 = ["futures_01"]
 futures-03 = ["std-future", "futures", "futures-task"]
 std-future = ["pin-project"]
+std = ["tracing/std"]
 
 [dependencies]
 futures_01 = { package = "futures", version = "0.1", optional = true }
 futures = { version = "0.3.0", optional = true }
 futures-task = { version = "0.3", optional = true }
 pin-project = { version = "0.4", optional = true }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }
 tokio-executor = { version = "0.1", optional = true }
 tokio = { version = "0.1", optional = true }
 
