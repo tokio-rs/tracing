@@ -6,27 +6,23 @@ Application-level tracing for Rust.
 [![Documentation][docs-badge]][docs-url]
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
-[![Build Status][azure-badge]][azure-url]
-[![Gitter chat][gitter-badge]][gitter-url]
+[![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
 
-[Documentation][docs-url] |
-[Chat (gitter)][gitter-url] | [Chat (discord)][discord-url]
+[Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.10
+[crates-url]: https://crates.io/crates/tracing/0.1.11
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.10
+[docs-url]: https://docs.rs/tracing/0.1.11
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
-[azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
-[azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
-[gitter-badge]: https://img.shields.io/gitter/room/tokio-rs/tracing.svg
-[gitter-url]: https://gitter.im/tokio-rs/tracing
+[actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
+[actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
-[discord-url]: https://discordapp.com/invite/XdPzyTZ
+[discord-url]: https://discord.gg/EeF3cQw
 
 
 ## Overview
@@ -54,8 +50,10 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing = "0.1.10"
+tracing = "0.1.11"
 ```
+
+*Compiler support: requires rustc 1.39+*
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
 periods of time and momentary events within the execution of a program,

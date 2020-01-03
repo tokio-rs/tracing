@@ -15,6 +15,8 @@
 //! tracing-attributes = "0.1.0"
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
 //! to automatically create and enter `tracing` [span] when that function is
 //! called. For example:
@@ -31,9 +33,9 @@
 //! ```
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
+//! [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
 //! [instrument]: attr.instrument.html
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.5")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.6")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -143,7 +145,7 @@ use syn::{
 /// # fn main() {}
 /// ```
 ///
-/// [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
+/// [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
@@ -269,7 +271,7 @@ fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
     }
 }
 
-fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
+fn skips(args: &[NestedMeta]) -> Result<HashSet<Ident>, impl ToTokens> {
     let mut skips = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::List(MetaList {
             ref path,
@@ -299,7 +301,7 @@ fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
         .collect())
 }
 
-fn level(args: &AttributeArgs) -> impl ToTokens {
+fn level(args: &[NestedMeta]) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -353,7 +355,7 @@ fn level(args: &AttributeArgs) -> impl ToTokens {
     }
 }
 
-fn target(args: &AttributeArgs) -> impl ToTokens {
+fn target(args: &[NestedMeta]) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -380,7 +382,7 @@ fn target(args: &AttributeArgs) -> impl ToTokens {
     }
 }
 
-fn name(args: &AttributeArgs, default_name: String) -> impl ToTokens {
+fn name(args: &[NestedMeta], default_name: String) -> impl ToTokens {
     let mut names = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..

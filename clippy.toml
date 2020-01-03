@@ -1,0 +1,4 @@
+blacklisted-names = []
+cognitive-complexity-threshold = 100
+too-many-arguments-threshold = 8
+type-complexity-threshold = 375

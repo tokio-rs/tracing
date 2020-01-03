@@ -468,8 +468,8 @@ pub(crate) mod tests {
             drop(span);
         });
 
-        assert!(span1_removed2.load(Ordering::Acquire) == true);
-        assert!(span2_removed2.load(Ordering::Acquire) == true);
+        assert!(span1_removed2.load(Ordering::Acquire));
+        assert!(span2_removed2.load(Ordering::Acquire));
 
         // Ensure the registry itself outlives the span.
         drop(dispatch);
@@ -506,11 +506,11 @@ pub(crate) mod tests {
             span2_clone
         });
 
-        assert!(span1_removed2.load(Ordering::Acquire) == true);
-        assert!(span2_removed2.load(Ordering::Acquire) == false);
+        assert!(span1_removed2.load(Ordering::Acquire));
+        assert!(!span2_removed2.load(Ordering::Acquire));
 
         drop(span2);
-        assert!(span2_removed2.load(Ordering::Acquire) == true);
+        assert!(span2_removed2.load(Ordering::Acquire));
 
         // Ensure the registry itself outlives the span.
         drop(dispatch);

@@ -19,7 +19,9 @@ impl tracing::Subscriber for NopSubscriber {
     fn event(&self, _: &tracing::Event) {}
     fn enter(&self, _: &tracing::span::Id) {}
     fn exit(&self, _: &tracing::span::Id) {}
-    fn try_close(&self, _: tracing::span::Id) -> bool { true }
+    fn try_close(&self, _: tracing::span::Id) -> bool {
+        true
+    }
 }
 
 #[test]
@@ -51,12 +53,14 @@ fn test_always_log() {
     drop(foo);
     test.assert_logged("-- foo");
 
-
     let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
     test.assert_logged("++ foo; bar=3 baz=false");
 
     drop(foo);
     test.assert_logged("-- foo");
+
+    trace!(foo = 1, bar = 2, "hello world");
+    test.assert_logged("hello world foo=1 bar=2");
 
     // TODO(#1138): determine a new syntax for uninitialized span fields, and
     // re-enable these.

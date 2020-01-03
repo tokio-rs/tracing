@@ -1,3 +1,20 @@
+# 0.1.11 (December 20, 2019)
+
+### Added
+
+- `Span::is_none` method (#475)
+- `LevelFilter::into_level` method (#470)
+- `LevelFilter::from_level` function and `From<Level>` impl (#471)
+- Documented minimum supported Rust version (#482)
+
+### Fixed
+
+- Incorrect parameter type to `Span::follows_from` that made it impossible to
+  call (#467)
+- Missing whitespace in `log` records generated when enabling the `log` feature
+  flag (#484)
+- Typos and missing links in documentation (#405, #423, #439)
+
 # 0.1.10 (October 23, 2019)
 
 ### Added

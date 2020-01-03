@@ -16,6 +16,8 @@
 //! tracing-subscriber = "0.2"
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! Add the following to your executable to initialize the default subscriber:
 //! ```rust
 //! use tracing_subscriber;
@@ -302,14 +304,14 @@ where
     /// Returns an Error if the initialization was unsuccessful, likely
     /// because a global subscriber was already installed by another
     /// call to `try_init`.
-    pub fn try_init(self) -> Result<(), impl Error + Send + Sync + 'static> {
-        #[cfg(feature = "tracing-log/std")]
+    pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+        #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(Box::new)?;
 
         tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
             self.finish(),
-        ))
-        .map_err(Box::new)
+        ))?;
+        Ok(())
     }
 
     /// Install this Subscriber as the global default.
@@ -656,10 +658,13 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 ///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
-pub fn try_init() -> Result<(), impl Error + Send + Sync + 'static> {
-    Subscriber::builder()
-        .with_env_filter(crate::EnvFilter::from_default_env())
-        .try_init()
+pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    let builder = Subscriber::builder();
+
+    #[cfg(feature = "env-filter")]
+    let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
+
+    builder.try_init()
 }
 
 /// Install a global tracing subscriber that listens for events and

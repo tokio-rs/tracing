@@ -256,17 +256,10 @@ where
             }
         };
 
-        write!(
-            writer,
-            "{} {}{}: ",
-            fmt_level,
-            full_ctx,
-            if self.display_target {
-                meta.target()
-            } else {
-                ""
-            }
-        )?;
+        write!(writer, "{} {}", fmt_level, full_ctx)?;
+        if self.display_target {
+            write!(writer, "{}: ", meta.target())?;
+        }
         ctx.format_fields(writer, event)?;
         writeln!(writer)
     }
@@ -308,17 +301,10 @@ where
                 (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
             }
         };
-        write!(
-            writer,
-            "{} {}{}: ",
-            fmt_level,
-            fmt_ctx,
-            if self.display_target {
-                meta.target()
-            } else {
-                ""
-            }
-        )?;
+        write!(writer, "{} {}", fmt_level, fmt_ctx)?;
+        if self.display_target {
+            write!(writer, "{}:", meta.target())?;
+        }
         ctx.format_fields(writer, event)?;
         let span = ctx.ctx.current_span();
         if let Some(id) = span.id() {
@@ -537,11 +523,10 @@ impl<'a, S, N> fmt::Display for FmtCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
-    for<'lookup> <S as LookupSpan<'a>>::Data: LookupSpan<'lookup>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
-        self.ctx.visit_spans(|_, span| {
+        self.ctx.visit_spans(|span| {
             if seen {
                 f.pad(":")?;
             }
@@ -614,7 +599,7 @@ where
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a, N> fmt::Display for FullCtx<'a, N>
+impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -772,7 +757,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let expected = "\u{1b}[2mfake time\u{1b}[0m\u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: some ansi test\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: some ansi test\n";
         test_ansi(make_writer, expected, true, &BUF);
     }
 

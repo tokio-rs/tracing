@@ -34,6 +34,8 @@
 //! tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_warn"] }
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters
 use crate::stdlib::cmp::Ordering;
 use tracing_core::Level;

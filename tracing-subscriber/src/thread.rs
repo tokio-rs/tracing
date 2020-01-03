@@ -59,7 +59,7 @@ impl<T> Local<T> {
     }
 
     #[cold]
-    fn new_thread<'a>(&'a self, i: usize, new: impl FnOnce() -> T) {
+    fn new_thread(&self, i: usize, new: impl FnOnce() -> T) {
         let mut lock = try_lock!(self.inner.write());
         let this = &mut *lock;
         this.resize_with(i + 1, || None);
@@ -107,7 +107,7 @@ impl Id {
             .unwrap_or_else(|_| Self::poisoned())
     }
 
-    pub(crate) fn as_usize(&self) -> usize {
+    pub(crate) fn as_usize(self) -> usize {
         self.id
     }
 
@@ -132,7 +132,7 @@ impl Id {
     }
 
     /// Returns true if the local thread ID was accessed while unwinding.
-    pub(crate) fn is_poisoned(&self) -> bool {
+    pub(crate) fn is_poisoned(self) -> bool {
         self.id == std::usize::MAX
     }
 }

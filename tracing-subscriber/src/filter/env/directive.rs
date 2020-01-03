@@ -391,7 +391,7 @@ impl<T> DirectiveSet<T> {
         self.directives.is_empty()
     }
 
-    pub(crate) fn iter<'a>(&'a self) -> btree_set::Iter<'a, T> {
+    pub(crate) fn iter(&self) -> btree_set::Iter<'_, T> {
         self.directives.iter()
     }
 }
@@ -417,7 +417,7 @@ impl<T: Match + Ord> DirectiveSet<T> {
 
     pub(crate) fn add(&mut self, directive: T) {
         let level = directive.level();
-        if level > &self.max_level {
+        if *level > self.max_level {
             self.max_level = level.clone();
         }
         let _ = self.directives.replace(directive);
@@ -437,7 +437,7 @@ impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
         let max_level = &mut self.max_level;
         let ds = iter.into_iter().inspect(|d| {
             let level = d.level();
-            if level > &*max_level {
+            if *level > *max_level {
                 *max_level = level.clone();
             }
         });
@@ -457,7 +457,7 @@ impl Dynamics {
                     return Some(f);
                 }
                 match base_level {
-                    Some(ref b) if &d.level > b => base_level = Some(d.level.clone()),
+                    Some(ref b) if d.level > *b => base_level = Some(d.level.clone()),
                     None => base_level = Some(d.level.clone()),
                     _ => {}
                 }
@@ -556,7 +556,7 @@ impl Match for StaticDirective {
         if meta.is_event() && !self.field_names.is_empty() {
             let fields = meta.fields();
             for name in &self.field_names {
-                if !fields.field(name).is_some() {
+                if fields.field(name).is_none() {
                     return false;
                 }
             }

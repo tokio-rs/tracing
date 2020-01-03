@@ -1,3 +1,9 @@
+# 0.1.6 (December 20, 2019)
+
+### Added
+
+-  Updated documentation (#468)
+
 # 0.1.5 (October 22, 2019)
 
 ### Added

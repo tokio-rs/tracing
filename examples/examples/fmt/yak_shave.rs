@@ -11,7 +11,7 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     );
     if yak == 3 {
         warn!(target: "yak_events", "could not locate yak!");
-        Err(ShaveError::new(yak, YakError::new("could not locate yak")))?;
+        return Err(ShaveError::new(yak, YakError::new("could not locate yak")).into());
     } else {
         trace!(target: "yak_events", "yak shaved successfully");
     }
