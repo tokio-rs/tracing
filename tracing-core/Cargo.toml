@@ -35,3 +35,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 lazy_static = { version = "1", optional = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

@@ -201,6 +201,7 @@ struct State {
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
 pub struct DefaultGuard(Option<Dispatch>);
 
@@ -217,6 +218,7 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// [`Event`]: ../event/struct.Event.html
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this (rather than simply resetting after calling
@@ -234,6 +236,7 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 ///
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
@@ -291,6 +294,7 @@ impl fmt::Display for SetGlobalDefaultError {
 }
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl error::Error for SetGlobalDefaultError {}
 
 /// Executes a closure with a reference to this thread's current [dispatcher].

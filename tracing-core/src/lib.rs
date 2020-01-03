@@ -70,6 +70,7 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.8")]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
