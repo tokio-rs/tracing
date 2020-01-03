@@ -823,7 +823,11 @@ impl Span {
     }
 
 
-    /// Run the provided function with this span's id and dispatcher, if this span is active.
+    /// Invokes a function with a reference to this span's ID and subscriber.
+    ///
+    /// if this span is enabled, the provided function is called, and the result is returned. 
+    /// If the span is disabled, the function is not called, and this method returns `None` 
+    /// instead. 
     pub fn with_subscriber<T>(&self, f: impl FnOnce((&Id, &Dispatch)) -> T) -> Option<T> {
         self.inner.as_ref().map( |inner| f((&inner.id, &inner.subscriber)) )
     }
