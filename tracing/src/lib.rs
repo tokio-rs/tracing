@@ -560,7 +560,9 @@
 //!  - [`tracing-log`] provides a compatibility layer with the [`log`] crate,
 //!    allowing log messages to be recorded as `tracing` `Event`s within the
 //!    trace tree. This is useful when a project using `tracing` have
-//!    dependencies which use `log`.
+//!    dependencies which use `log`. Note that if you're using
+//!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
+//!    `tracing-log` directly.
 //!
 //! Additionally, there are also several third-party crates which are not
 //! maintained by the `tokio` project. These include:
@@ -579,8 +581,8 @@
 //!  - [`tracing-coz`] provides integration with the [coz] causal profiler
 //!    (Linux-only).
 //!
-//! (if you're the maintainer of a `tracing` ecosystem crate not in this list,
-//! please let us know!)
+//! If you're the maintainer of a `tracing` ecosystem crate not listed above,
+//! please let us know! We'd love to add your project to the list!
 //!
 //! [`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
 //! [OpenTelemetry]: https://opentelemetry.io/
