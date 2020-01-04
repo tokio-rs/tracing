@@ -659,9 +659,12 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    Subscriber::builder()
-        .with_env_filter(crate::EnvFilter::from_default_env())
-        .try_init()
+    let builder = Subscriber::builder();
+
+    #[cfg(feature = "env-filter")]
+    let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
+
+    builder.try_init()
 }
 
 /// Install a global tracing subscriber that listens for events and
