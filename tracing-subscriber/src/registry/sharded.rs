@@ -350,7 +350,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::Registry;
+    use super::{Registry, CURRENT_SPANS};
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::sync::{
         atomic::{AtomicBool, Ordering},
@@ -514,5 +514,29 @@ pub(crate) mod tests {
 
         // Ensure the registry itself outlives the span.
         drop(dispatch);
+    }
+
+    #[test]
+    fn span_enter_guards_are_dropped_out_of_order() {
+        let subscriber = AssertionLayer.with_subscriber(Registry::default());
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::debug_span!("span1");
+            let span2 = tracing::debug_span!("span2");
+
+            let _enter1 = span1.enter();
+            let _enter2 = span2.enter();
+
+            drop(_enter1);
+            CURRENT_SPANS.with(|spans| {
+                assert_eq!(Some(&span2.id().unwrap()), spans.borrow().current());
+            });
+
+            drop(_enter2);
+            CURRENT_SPANS.with(|spans| {
+                assert_eq!(None, spans.borrow().current());
+            });
+        });
     }
 }
