@@ -12,6 +12,20 @@ use tracing_core::{
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
 ///
+/// ```rust
+/// use tracing_subscriber::{fmt, layer::Layer as _, registry::Registry, EnvFilter};
+///
+/// let default_filter = concat!(module_path!(), "=info");
+///
+/// let subscriber = EnvFilter::try_from_default_env()
+///     .or_else(|_| EnvFilter::try_new(default_filter))
+///     .unwrap()
+///     .and_then(fmt::Layer::default())
+///     .with_subscriber(Registry::default());
+///
+/// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
 /// [`Layer`]: ../layer/trait.Layer.html
 #[derive(Debug)]
 pub struct Layer<
@@ -28,6 +42,34 @@ pub struct Layer<
 
 /// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
 /// events and spans.
+///
+/// ```rust
+/// use tracing_subscriber::{
+///     fmt::{self, format::Format, time},
+///     layer::Layer as _,
+///     registry::Registry,
+///     EnvFilter,
+/// };
+///
+/// let default_filter = concat!(module_path!(), "=info");
+///
+/// let fmt = Format::default().with_timer(time::Uptime::default());
+///
+/// let fmt_layer = fmt::Layer::builder()
+///     .event_format(fmt)
+///     .with_target(false)
+///     .finish();
+///
+/// let filter_layer = EnvFilter::try_from_default_env()
+///     .or_else(|_| EnvFilter::try_new(default_filter))
+///     .unwrap();
+///
+/// let subscriber = filter_layer
+///     .and_then(fmt_layer)
+///     .with_subscriber(Registry::default());
+///
+/// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
 #[derive(Debug)]
 pub struct LayerBuilder<
     S,
