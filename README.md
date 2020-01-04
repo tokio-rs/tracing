@@ -89,7 +89,7 @@ use tracing::{debug, error, info, span, warn, Level};
 // and a field (a key/value pair) whose key is "yak" and the value is the value of `yak`.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
-    // this creates an event at the DEBUG log level with two fields:
+    // this creates an event at the DEBUG level with two fields:
     // - `excitement`, with the key "excitement" and the value "yay!"
     // - `message`, with the key "message" and the value "hello! I'm gonna shave a yak."
     //
