@@ -141,7 +141,7 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-The second is through the [`.instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+The second is through the [`Future::instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
 
 ```rust
 use tracing_futures::Instrument;
