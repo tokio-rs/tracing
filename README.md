@@ -88,7 +88,7 @@ pub fn shave_all(yaks: usize) -> usize {
 ### In applications
 
 In order to produce output, applications need a concrete subscriber implementation. 
-[`tracing_subscriber`](https://docs.rs/tracing-subscriber/) is a reasonable default.
+[`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s [`fmt` module](https://docs.rs/tracing-subscriber/0.2.0-alpha.2/tracing_subscriber/fmt/index.html) provides reasonable defaults.
 By default, `tracing-subscriber` is able to consume messages emitted by
 `log`-instrumented libraries and modules.
 
