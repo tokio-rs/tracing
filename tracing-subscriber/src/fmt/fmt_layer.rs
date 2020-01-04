@@ -12,18 +12,17 @@ use tracing_core::{
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
 ///
+/// ## Examples
+///
 /// ```rust
-/// use tracing_subscriber::{fmt, layer::Layer as _, registry::Registry, EnvFilter};
+/// # use tracing_subscriber::Layer as _;
+/// use tracing_subscriber::{fmt, registry::Registry};
+/// use tracing_subscriber::prelude::*;
 ///
-/// let default_filter = concat!(module_path!(), "=info");
-///
-/// let subscriber = EnvFilter::try_from_default_env()
-///     .or_else(|_| EnvFilter::try_new(default_filter))
-///     .unwrap()
-///     .and_then(fmt::Layer::default())
+/// let subscriber = fmt::Layer::default()
 ///     .with_subscriber(Registry::default());
 ///
-/// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
@@ -43,32 +42,46 @@ pub struct Layer<
 /// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
 /// events and spans.
 ///
-/// ```rust
-/// use tracing_subscriber::{
-///     fmt::{self, format::Format, time},
-///     layer::Layer as _,
-///     registry::Registry,
-///     EnvFilter,
-/// };
+/// ## Examples
 ///
-/// let default_filter = concat!(module_path!(), "=info");
+/// Constructing a layer with the default configuration:
+///
+/// ```rust
+/// # use tracing_subscriber::Layer as _;
+/// use tracing_subscriber::fmt;
+///
+/// let fmt_layer = fmt::Layer::builder().finish();
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
+/// Overriding the layer's behavior:
+///
+/// ```rust
+/// # use tracing_subscriber::Layer as _;
+/// use tracing_subscriber::fmt;
+///
+/// let fmt_layer = fmt::Layer::builder()
+///    .with_target(false) // don't include event targets when logging
+///    .finish();
+///
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
+/// Setting a custom  event formatter:
+///
+/// ```rust
+/// # use tracing_subscriber::Layer as _;
+/// use tracing_subscriber::fmt::{self, format::Format, time};
 ///
 /// let fmt = Format::default().with_timer(time::Uptime::default());
-///
 /// let fmt_layer = fmt::Layer::builder()
 ///     .event_format(fmt)
 ///     .with_target(false)
 ///     .finish();
-///
-/// let filter_layer = EnvFilter::try_from_default_env()
-///     .or_else(|_| EnvFilter::try_new(default_filter))
-///     .unwrap();
-///
-/// let subscriber = filter_layer
-///     .and_then(fmt_layer)
-///     .with_subscriber(Registry::default());
-///
-/// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 #[derive(Debug)]
 pub struct LayerBuilder<
