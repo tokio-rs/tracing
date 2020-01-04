@@ -235,7 +235,7 @@ use tracing_subscruber::FmtSubscriber;
 use tracing::info;
 
 fn main() {
-    let subscriber = tracing_subscruber::FmtSubscriber::builder()
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
         // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
         // will be written to stdout.
         .with_max_level(Level::TRACE)
