@@ -46,14 +46,100 @@ and applications to emit trace data.
 
 ## Usage
 
-First, add this to your `Cargo.toml`:
+*Compiler support: requires `rustc` 1.39+*
+
+### In libraries
+
+Libraries should only rely on the `tracing` crate and use the provided macros
+and types to collect whatever information might be useful to downstream consumers.
+Let's consider the `log` crate's yak-shaving [example](https://docs.rs/log/0.4.10/log/index.html#examples),
+modified to use `tracing`:
 
 ```toml
 [dependencies]
-tracing = "0.1.11"
+tracing = "0.1"
 ```
 
-*Compiler support: requires rustc 1.39+*
+```rust
+use std::{error::Error, io};
+use tracing::{debug, error, info, span, warn, Level, instrument};
+
+#[instrument]
+pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
+    debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
+    if yak == 3 {
+        warn!("could not locate yak!");
+        // note that this is intended to demonstrate `tracing`'s features, not idiomatic
+        // error handling! in a library or application, you should consider returning
+        // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
+        return Err(io::Error::new(io::ErrorKind::Other, "shaving yak failed!").into());
+    } else {
+        debug!("yak shaved successfully");
+    }
+    Ok(())
+}
+
+pub fn shave_all(yaks: usize) -> usize {
+    let span = span!(Level::TRACE, "shaving_yaks", yaks);
+    let _enter = span.enter();
+
+    info!("shaving yaks");
+
+    let mut yaks_shaved = 0;
+    for yak in 1..=yaks {
+        let res = shave(yak);
+        debug!(yak, shaved = res.is_ok());
+
+        if let Err(ref error) = res {
+            error!(yak, error = error.as_ref(), "failed to shave yak!");
+        } else {
+            yaks_shaved += 1;
+        }
+        debug!(yaks_shaved);
+    }
+
+    yaks_shaved
+}
+```
+
+### In applications
+
+In order to produce output, applications need a concrete subscriber implementation. 
+[`tracing_subscriber`](https://docs.rs/tracing-subscriber/) is a reasonable default.
+By default, `tracing-subscriber` is able to consume messages emitted by
+`log`-instrumented libraries and modules.
+
+```toml
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = "0.2.0-alpha.2"
+```
+
+```rust
+use tracing::{info, Level};
+use tracing_subscriber;
+mod yak_shave;
+
+fn main() {
+    tracing_subscriber::fmt::Subscriber::builder()
+        // all spans/events with a level higher than `DEBUG` (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::DEBUG)
+        // sets this to be the default, global subscriber for this application.
+        .init();
+
+    let number_of_yaks = 3;
+    info!(number_of_yaks, "preparing to shave yaks");
+
+    let number_shaved = yak_shave::shave_all(number_of_yaks);
+    info!(
+        all_yaks_shaved = number_shaved == number_of_yaks,
+        "yak shaving completed."
+    );
+}
+```
+
+### Concepts
 
 This crate provides macros for creating `Span`s and `Event`s, which represent
 periods of time and momentary events within the execution of a program,
@@ -81,6 +167,21 @@ span.in_scope(|| {
 // Dropping the span will close it, indicating that it has ended.
 ```
 
+The [`#[instrument]`](https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html) attribute macro
+can reduce some of this boilerplate:
+
+```rust
+use tracing::{instrument};
+
+#[instrument]
+pub fn my_function(my_arg: usize) {
+    // This event will be recorded inside a span named `my_function` with the
+    // field `my_arg`.
+    tracing::info!("inside my_function!");
+    // ...
+}
+```
+
 The `Event` type represent an event that occurs instantaneously, and is
 essentially a `Span` that cannot be entered. They are created using the `event!`
 macro:
@@ -97,120 +198,28 @@ be invoked with the same syntax as the similarly-named macros from the `log`
 crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
-Let's consider the `log` crate's yak-shaving
-[example](https://docs.rs/log/0.4.6/log/index.html#examples), modified to use
-`tracing`:
-
-```rust
-// Import `tracing`'s macros rather than `log`'s
-use tracing::{span, info, warn, Level};
-
-// unchanged from here forward
-pub fn shave_the_yak(yak: &mut Yak) {
-    info!(target: "yak_events", "Commencing yak shaving for {:?}", yak);
-
-    loop {
-        match find_a_razor() {
-            Ok(razor) => {
-                info!("Razor located: {}", razor);
-                yak.shave(razor);
-                break;
-            }
-            Err(err) => {
-                warn!("Unable to locate a razor: {}, retrying", err);
-            }
-        }
-    }
-}
-
-// Dummy impls to make the example compile
-#[derive(Debug)] pub struct Yak(String);
-impl Yak { fn shave(&mut self, _: u32) {} }
-fn find_a_razor() -> Result<u32, u32> { Ok(1) }
-```
-
-We can change it even further to better utilize features in tracing.
-
-```rust
-use tracing::{span, info, warn, Level};
-
-pub fn shave_the_yak(yak: &mut Yak) {
-    // create and enter a span to represent the scope
-    let span = span!(Level::TRACE, "shave_the_yak", ?yak);
-    let _enter = span.enter();
-
-    // Since the span is annotated with the yak, it is part of the context
-    // for everything happening inside the span. Therefore, we don't need
-    // to add it to the message for this event, as the `log` crate does.
-    info!(target: "yak_events", "Commencing yak shaving");
-    loop {
-        match find_a_razor() {
-            Ok(razor) => {
-                // We can add the razor as a field rather than formatting it
-                // as part of the message, allowing subscribers to consume it
-                // in a more structured manner:
-                info!(%razor, "Razor located");
-                yak.shave(razor);
-                break;
-            }
-            Err(err) => {
-                // However, we can also create events with formatted messages,
-                // just as we would for log records.
-                warn!("Unable to locate a razor: {}, retrying", err);
-            }
-        }
-    }
-}
-
-#[derive(Debug)] pub struct Yak(String);
-impl Yak { fn shave(&mut self, _: u32) {} }
-fn find_a_razor() -> Result<u32, u32> { Ok(1) }
-```
-
-You can find further examples showing how to use this crate in the [`examples`]
-directory.
-
-### In libraries
-
-Libraries should link only to the `tracing` crate, and use the provided
-macros to record whatever information will be useful to downstream consumers.
-
 ### In executables
 
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
 
-There currently aren't too many subscribers to choose from. The best one to use right now
-is probably [`tracing-fmt`], which logs to the terminal. It is not currently
-published to crates.io so you will need to add [`tracing-fmt`] as a git
-dependency to use it.
-
 The simplest way to use a subscriber is to call the `set_global_default` function:
 
 ```rust
-use tracing::{span::{Id, Attributes, Record}, Metadata};
+use tracing_subscruber::FmtSubscriber;
 
-pub struct FooSubscriber;
+fn main() {
+    let subscriber = tracing_subscruber::FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // builds the subscriber.
+        .finish();   
 
-impl tracing::Subscriber for FooSubscriber {
-  fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-  fn record(&self, _: &Id, _: &Record) {}
-  fn event(&self, _: &tracing::Event) {}
-  fn record_follows_from(&self, _: &Id, _: &Id) {}
-  fn enabled(&self, _: &Metadata) -> bool { false }
-  fn enter(&self, _: &Id) {}
-  fn exit(&self, _: &Id) {}
+    tracing::subscriber::set_global_default(subscriber)
+      .expect("setting tracing default failed");
 }
-
-impl FooSubscriber {
-  fn new() -> Self { FooSubscriber }
-}
-
-let my_subscriber = FooSubscriber::new();
-
-tracing::subscriber::set_global_default(my_subscriber)
-    .expect("setting tracing default failed");
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -219,34 +228,25 @@ of the program, similar to how loggers work in the `log` crate.
 Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
 executables try to set the default later.
 
-In addition, you can locally override the default subscriber, using the `tokio` pattern
-of executing code in a context. For example:
+In addition, you can locally override the default subscriber. For example:
 
 ```rust
-use tracing::{span::{Id, Attributes, Record}, Metadata};
+use tracing_subscruber::FmtSubscriber;
+use tracing::info;
 
-pub struct FooSubscriber;
+fn main() {
+    let subscriber = tracing_subscruber::FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // builds the subscriber.
+        .finish();   
 
-impl tracing::Subscriber for FooSubscriber {
-  fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-  fn record(&self, _: &Id, _: &Record) {}
-  fn event(&self, _: &tracing::Event) {}
-  fn record_follows_from(&self, _: &Id, _: &Id) {}
-  fn enabled(&self, _: &Metadata) -> bool { false }
-  fn enter(&self, _: &Id) {}
-  fn exit(&self, _: &Id) {}
+    tracing::subscriber::with_default(subscriber, || {
+        info!("This will be logged to stdout");
+    });
+    info!("This will _not_ be logged to stdout");
 }
-
-impl FooSubscriber {
-  fn new() -> Self { FooSubscriber }
-}
-
-let my_subscriber = FooSubscriber::new();
-
-tracing::subscriber::with_default(my_subscriber, || {
-    // Any trace events generated in this closure or by functions it calls
-    // will be collected by `my_subscriber`.
-})
 ```
 
 Any trace events generated outside the context of a subscriber will not be collected.

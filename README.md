@@ -44,15 +44,18 @@ tracing = "0.1"
 ```
 
 ```rust
-use std::{error::Error, fmt};
-use tracing::{debug, error, info, span, warn, Level};
+use std::{error::Error, io};
+use tracing::{debug, error, info, span, warn, Level, instrument};
 
-#[tracing::instrument]
+#[instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
     if yak == 3 {
         warn!("could not locate yak!");
-        return Err(ShaveError::new(yak).into());
+        // note that this is intended to demonstrate `tracing`'s features, not idiomatic
+        // error handling! in a library or application, you should consider returning
+        // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
+        return Err(io::Error::new(io::ErrorKind::Other, "shaving yak failed!").into());
     } else {
         debug!("yak shaved successfully");
     }
@@ -79,27 +82,6 @@ pub fn shave_all(yaks: usize) -> usize {
     }
 
     yaks_shaved
-}
-
-#[derive(Debug)]
-enum ShaveError {
-    MissingYak { yak: usize },
-}
-
-impl fmt::Display for ShaveError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ShaveError::MissingYak { yak } => write!(f, "shaving yak #{} failed!", yak),
-        }
-    }
-}
-
-impl Error for ShaveError {}
-
-impl ShaveError {
-    fn new(yak: usize) -> Self {
-        ShaveError::MissingYak { yak }
-    }
 }
 ```
 
@@ -138,10 +120,40 @@ fn main() {
         "yak shaving completed."
     );
 }
-
 ```
 
-Note that if you are instrumenting libraries or applications that make use of [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html) or async/await, be sure to use the [`tracing-futures`](https://docs.rs/tracing-futures) crate.
+### Additional Notes
+
+#### Usage in Asynchronous Code
+
+If you are instrumenting libraries or applications that make use of [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html) or async/await, be sure to use the [`tracing-futures`](https://docs.rs/tracing-futures) crate. There are two ways to instrument asynchronous code. The first is through the [`#[instrument]`](https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html) attribute:
+
+```rust
+use tracing::{info, instrument};
+use tokio::{io::AsyncWriteExt, net::TcpStream};
+use std::io;
+
+#[instrument]
+async fn write(stream: &mut TcpStream) -> io::Result<usize> {
+    let result = stream.write(b"hello world\n").await;
+    info!("wrote to stream; success={:?}", result.is_ok());
+    result
+}
+```
+
+The second is through the [`.instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+
+```rust
+use tracing_futures::Instrument;
+
+let my_future = async {
+    // ...
+};
+
+my_future
+    .instrument(tracing::info_span!("my_future"))
+    .await
+```
 
 ## Getting Help
 

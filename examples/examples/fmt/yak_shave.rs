@@ -1,4 +1,4 @@
-use std::{error::Error, fmt};
+use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
 #[tracing::instrument]
@@ -6,7 +6,10 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
     if yak == 3 {
         warn!("could not locate yak!");
-        return Err(ShaveError::new(yak).into());
+        // note that this is intended to demonstrate `tracing`'s features, not idiomatic
+        // error handling! in a library or application, you should consider returning
+        // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
+        return Err(io::Error::new(io::ErrorKind::Other, "shaving yak failed!").into());
     } else {
         debug!("yak shaved successfully");
     }
@@ -33,25 +36,4 @@ pub fn shave_all(yaks: usize) -> usize {
     }
 
     yaks_shaved
-}
-
-#[derive(Debug)]
-enum ShaveError {
-    MissingYak { yak: usize },
-}
-
-impl fmt::Display for ShaveError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ShaveError::MissingYak { yak } => write!(f, "shaving yak #{} failed!", yak),
-        }
-    }
-}
-
-impl Error for ShaveError {}
-
-impl ShaveError {
-    fn new(yak: usize) -> Self {
-        ShaveError::MissingYak { yak }
-    }
 }
