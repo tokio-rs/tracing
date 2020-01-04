@@ -67,7 +67,7 @@ thread_local! {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Id, SpanStack};
 
     #[test]
     fn pop_last_span() {
