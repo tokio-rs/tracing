@@ -108,7 +108,7 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
 }
 
 pub fn shave_all(yaks: usize) -> usize {
-    // Constructs a new span named "my shaving_yaks" with trace log level,
+    // Constructs a new span named "shaving_yaks" with trace log level,
     // and a field whose key is "yaks". This is equivalent to writing:
     //
     // let span = span!(Level::TRACE, "shaving_yaks", yaks = yaks);
