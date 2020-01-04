@@ -44,28 +44,71 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-## Usage
-
 *Compiler support: requires `rustc` 1.39+*
 
-### In libraries
+## Usage
 
-Libraries should only rely on the `tracing` crate and use the provided macros
-and types to collect whatever information might be useful to downstream consumers.
-Let's consider the `log` crate's yak-shaving [example](https://docs.rs/log/0.4.10/log/index.html#examples),
-modified to use `tracing`:
+(The below example is borrowed from the `log` crate's yak-shaving
+[example](https://docs.rs/log/0.4.10/log/index.html#examples), modified to
+idiomatic `tracing`)
+
+In `Cargo.toml`:
 
 ```toml
 [dependencies]
 tracing = "0.1"
+tracing-subscriber = "0.2.0-alpha.2"
 ```
+
+In `src/main.rs`:
+
+```rust
+mod yak_shave;
+
+use std::{error::Error, io};
+use tracing::{debug, error, info, span, warn, Level};
+use tracing_subscriber::FmtSubscriber;
+use yak_shave;
+
+fn main() {
+    // a builder for `FmtSubscriber`.
+    let subscriber = FmtSubscriber::builder()
+        // all spans/events with a level higher than DEBUG (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::DEBUG)
+        // completes the builder.
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting defualt subscriber failed");
+
+    let number_of_yaks = 3;
+    // this creates a new event, outside of any spans.
+    info!(number_of_yaks, "preparing to shave yaks");
+
+    let number_shaved = yak_shave::shave_all(number_of_yaks);
+    info!(
+        all_yaks_shaved = number_shaved == number_of_yaks,
+        "yak shaving completed."
+    );
+}
+```
+
+In `src/yak_shave.rs`:
 
 ```rust
 use std::{error::Error, io};
-use tracing::{debug, error, info, span, warn, Level, instrument};
+use tracing::{debug, error, info, span, warn, Level};
 
-#[instrument]
+// the `#[tracing::instrument]` attribute creates a span with the name "shave"
+// and a field (a key/value pair) whose key is "yak" and the value is the value of `yak`.
+#[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
+    // this creates an event at the DEBUG log level with two fields:
+    // - `excitement`, with the key "excitement" and the value "yay!"
+    // - `message`, with the key "message" and the value "hello! I'm gonna shave a yak."
+    //
+    // unlike other fields, `message`'s shorthand initialization is just the string itself.
     debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
     if yak == 3 {
         warn!("could not locate yak!");
@@ -80,6 +123,13 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
 }
 
 pub fn shave_all(yaks: usize) -> usize {
+    // Constructs a new span named "my shaving_yaks" with trace log level,
+    // and a field whose key is "yaks". This is equivalent to writing:
+    //
+    // let span = span!(Level::TRACE, "shaving_yaks", yaks = yaks);
+    //
+    // local variables (`yaks`) can be used as field values
+    // without an assignment, similar to struct initializers.
     let span = span!(Level::TRACE, "shaving_yaks", yaks);
     let _enter = span.enter();
 
@@ -91,6 +141,8 @@ pub fn shave_all(yaks: usize) -> usize {
         debug!(yak, shaved = res.is_ok());
 
         if let Err(ref error) = res {
+            // Like spans, events can also use the field initialization shorthand.
+            // In this instance, `yak` is the field being initalized.
             error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
             yaks_shaved += 1;
@@ -102,42 +154,127 @@ pub fn shave_all(yaks: usize) -> usize {
 }
 ```
 
-### In applications
+### In Applications
 
-In order to produce output, applications need a concrete subscriber implementation. 
-[`tracing_subscriber`](https://docs.rs/tracing-subscriber/) is a reasonable default.
-By default, `tracing-subscriber` is able to consume messages emitted by
-`log`-instrumented libraries and modules.
+In order to record trace events, executables have to use a `Subscriber`
+implementation compatible with `tracing`. A `Subscriber` implements a way of
+collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
+[`fmt` module](https://docs.rs/tracing-subscriber/0.2.0-alpha.2/tracing_subscriber/fmt/index.html) provides reasonable defaults.
+Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
 
-```toml
-[dependencies]
-tracing = "0.1"
-tracing-subscriber = "0.2.0-alpha.2"
-```
+The simplest way to use a subscriber is to call the `set_global_default` function:
 
 ```rust
-use tracing::{info, Level};
-use tracing_subscriber;
-mod yak_shave;
+use tracing_subscruber::FmtSubscriber;
 
 fn main() {
-    tracing_subscriber::fmt::Subscriber::builder()
-        // all spans/events with a level higher than `DEBUG` (e.g, info, warn, etc.)
+    let subscriber = tracing_subscruber::FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
         // will be written to stdout.
-        .with_max_level(Level::DEBUG)
-        // sets this to be the default, global subscriber for this application.
-        .init();
+        .with_max_level(Level::TRACE)
+        // builds the subscriber.
+        .finish();   
 
-    let number_of_yaks = 3;
-    info!(number_of_yaks, "preparing to shave yaks");
-
-    let number_shaved = yak_shave::shave_all(number_of_yaks);
-    info!(
-        all_yaks_shaved = number_shaved == number_of_yaks,
-        "yak shaving completed."
-    );
+    tracing::subscriber::set_global_default(subscriber)
+      .expect("setting tracing default failed");
 }
 ```
+
+This subscriber will be used as the default in all threads for the remainder of the duration
+of the program, similar to how loggers work in the `log` crate.
+
+In addition, you can locally override the default subscriber. For example:
+
+```rust
+use tracing_subscruber::FmtSubscriber;
+use tracing::info;
+
+fn main() {
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // builds the subscriber.
+        .finish();   
+
+    tracing::subscriber::with_default(subscriber, || {
+        info!("This will be logged to stdout");
+    });
+    info!("This will _not_ be logged to stdout");
+}
+```
+
+Any trace events generated outside the context of a subscriber will not be collected.
+
+Once a subscriber has been set, instrumentation points may be added to the
+executable using the `tracing` crate's macros.
+
+### In Libraries
+
+Libraries should only rely on the `tracing` crate and use the provided macros
+and types to collect whatever information might be useful to downstream consumers.
+The `shave` and `shave_all` functions above is a good example of library-like usage.
+
+Note: Libraries should *NOT* call `set_global_default()`, as this will cause conflicts when
+executables try to set the default later.
+
+### In Asynchronous Code
+
+If you are instrumenting code that make use of
+[`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html)
+or async/await, be sure to use the
+[`tracing-futures`](https://docs.rs/tracing-futures) crate. This is needed
+because the following example _will not_ work:
+
+```rust
+async {
+    let _s = span.enter();
+    // ...
+}
+```
+
+The span `_s` will be dropped at the end of the `async` block, _not_ when the
+future created by the async block is complete. In practice, this means that
+the span does not live long enough to instrument the future for its entire
+lifetime.
+
+There are two ways to instrument asynchronous code. The first is through the
+[`Future::instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+
+```rust
+use tracing_futures::Instrument;
+
+let my_future = async {
+    // ...
+};
+
+my_future
+    .instrument(tracing::info_span!("my_future"))
+    .await
+```
+
+`Future::instrument` attaches a span to the future, ensuring that the span's lifetime 
+is as long as the future's.
+
+The second, and preferred, option is through the
+[`#[instrument]`](https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html)
+attribute:
+
+```rust
+use tracing::{info, instrument};
+use tokio::{io::AsyncWriteExt, net::TcpStream};
+use std::io;
+
+#[instrument]
+async fn write(stream: &mut TcpStream) -> io::Result<usize> {
+    let result = stream.write(b"hello world\n").await;
+    info!("wrote to stream; success={:?}", result.is_ok());
+    result
+}
+```
+
+Under the hood, the `#[instrument]` macro performs same the explicit span
+attachment that `Future::instrument` does.
 
 ### Concepts
 
@@ -198,61 +335,7 @@ be invoked with the same syntax as the similarly-named macros from the `log`
 crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
-### In executables
-
-In order to record trace events, executables have to use a `Subscriber`
-implementation compatible with `tracing`. A `Subscriber` implements a way of
-collecting trace data, such as by logging it to standard output.
-
-The simplest way to use a subscriber is to call the `set_global_default` function:
-
-```rust
-use tracing_subscruber::FmtSubscriber;
-
-fn main() {
-    let subscriber = tracing_subscruber::FmtSubscriber::builder()
-        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-        // builds the subscriber.
-        .finish();   
-
-    tracing::subscriber::set_global_default(subscriber)
-      .expect("setting tracing default failed");
-}
-```
-
-This subscriber will be used as the default in all threads for the remainder of the duration
-of the program, similar to how loggers work in the `log` crate.
-
-Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
-executables try to set the default later.
-
-In addition, you can locally override the default subscriber. For example:
-
-```rust
-use tracing_subscruber::FmtSubscriber;
-use tracing::info;
-
-fn main() {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-        // builds the subscriber.
-        .finish();   
-
-    tracing::subscriber::with_default(subscriber, || {
-        info!("This will be logged to stdout");
-    });
-    info!("This will _not_ be logged to stdout");
-}
-```
-
-Any trace events generated outside the context of a subscriber will not be collected.
-
-Once a subscriber has been set, instrumentation points may be added to the
-executable using the `tracing` crate's macros.
+### Ecosystem
 
 In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 contains several additional crates designed to be used with the `tracing` ecosystem.

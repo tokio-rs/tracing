@@ -1,8 +1,15 @@
 use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
+// the `#[tracing::instrument]` attribute creates a span with the name "shave"
+// and a field (a key/value pair) whose key is "yak" and the value is the value of `yak`.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
+    // this creates an event at the DEBUG log level with two fields:
+    // - `excitement`, with the key "excitement" and the value "yay!"
+    // - `message`, with the key "message" and the value "hello! I'm gonna shave a yak."
+    //
+    // unlike other fields, `message`'s shorthand initialization is just the string itself.
     debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
     if yak == 3 {
         warn!("could not locate yak!");
@@ -17,6 +24,13 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
 }
 
 pub fn shave_all(yaks: usize) -> usize {
+    // Constructs a new span named "my shaving_yaks" with trace log level,
+    // and a field whose key is "yaks". This is equivalent to writing:
+    //
+    // let span = span!(Level::TRACE, "shaving_yaks", yaks = yaks);
+    //
+    // local variables (`yaks`) can be used as field values
+    // without an assignment, similar to struct initializers.
     let span = span!(Level::TRACE, "shaving_yaks", yaks);
     let _enter = span.enter();
 
@@ -28,6 +42,8 @@ pub fn shave_all(yaks: usize) -> usize {
         debug!(yak, shaved = res.is_ok());
 
         if let Err(ref error) = res {
+            // Like spans, events can also use the field initialization shorthand.
+            // In this instance, `yak` is the field being initalized.
             error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
             yaks_shaved += 1;

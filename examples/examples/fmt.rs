@@ -14,6 +14,7 @@ fn main() {
         .init();
 
     let number_of_yaks = 3;
+    // this creates a new event, outside of any spans.
     info!(number_of_yaks, "preparing to shave yaks");
 
     let number_shaved = yak_shave::shave_all(number_of_yaks);
