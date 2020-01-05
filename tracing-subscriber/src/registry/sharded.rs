@@ -518,25 +518,39 @@ pub(crate) mod tests {
 
     #[test]
     fn span_enter_guards_are_dropped_out_of_order() {
-        let subscriber = AssertionLayer.with_subscriber(Registry::default());
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
+
+        let subscriber = AssertionLayer
+            .and_then(ClosingLayer {
+                span1_removed: span1_removed.clone(),
+                span2_removed: span2_removed.clone(),
+            })
+            .with_subscriber(Registry::default());
+
+        // Create a `Dispatch` (which is internally reference counted) so that
+        // the subscriber lives to the end of the test. Otherwise, if we just
+        // passed the subscriber itself to `with_default`, we could see the span
+        // be dropped when the subscriber itself is dropped, destroying the
+        // registry.
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
         dispatcher::with_default(&dispatch, || {
             let span1 = tracing::debug_span!("span1");
-            let span2 = tracing::debug_span!("span2");
+            let span2 = tracing::info_span!("span2");
 
-            let _enter1 = span1.enter();
-            let _enter2 = span2.enter();
+            let enter1 = span1.enter();
+            let enter2 = span2.enter();
 
-            drop(_enter1);
-            CURRENT_SPANS.with(|spans| {
-                assert_eq!(Some(&span2.id().unwrap()), spans.borrow().current());
-            });
+            drop(enter1);
+            drop(span1);
 
-            drop(_enter2);
-            CURRENT_SPANS.with(|spans| {
-                assert_eq!(None, spans.borrow().current());
-            });
+            assert!(span1_removed.load(Ordering::Acquire));
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(enter2);
+            drop(span2);
+            assert!(span2_removed.load(Ordering::Acquire));
         });
     }
 }
