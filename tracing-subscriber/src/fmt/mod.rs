@@ -97,10 +97,10 @@
 //!
 //! ### Composing Layers
 //!
-//! Composing an EnvFilter Layer and a format Layer:
+//! Composing an [`EnvFilter`] `Layer` and a [format `Layer`](../fmt/struct.Layer.html):
 //!
 //! ```rust
-//! use tracing_subscriber::{fmt, layer::Layer as _, registry::Registry, EnvFilter};
+//! use tracing_subscriber::{fmt, Layer, registry::Registry, EnvFilter};
 //!
 //! let default_filter = concat!(module_path!(), "=info");
 //!
