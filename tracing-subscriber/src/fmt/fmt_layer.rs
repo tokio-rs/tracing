@@ -15,14 +15,13 @@ use tracing_core::{
 /// ## Examples
 ///
 /// ```rust
-/// # use tracing_subscriber::Layer as _;
 /// use tracing_subscriber::{fmt, registry::Registry};
 /// use tracing_subscriber::prelude::*;
 ///
 /// let subscriber = fmt::Layer::default()
 ///     .with_subscriber(Registry::default());
 ///
-/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
@@ -47,8 +46,8 @@ pub struct Layer<
 /// Constructing a layer with the default configuration:
 ///
 /// ```rust
-/// # use tracing_subscriber::Layer as _;
 /// use tracing_subscriber::fmt;
+/// use tracing_subscriber::prelude::*;
 ///
 /// let fmt_layer = fmt::Layer::builder().finish();
 /// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
@@ -58,8 +57,8 @@ pub struct Layer<
 /// Overriding the layer's behavior:
 ///
 /// ```rust
-/// # use tracing_subscriber::Layer as _;
 /// use tracing_subscriber::fmt;
+/// use tracing_subscriber::prelude::*;
 ///
 /// let fmt_layer = fmt::Layer::builder()
 ///    .with_target(false) // don't include event targets when logging
@@ -72,8 +71,8 @@ pub struct Layer<
 /// Setting a custom  event formatter:
 ///
 /// ```rust
-/// # use tracing_subscriber::Layer as _;
 /// use tracing_subscriber::fmt::{self, format::Format, time};
+/// use tracing_subscriber::prelude::*;
 ///
 /// let fmt = Format::default().with_timer(time::Uptime::default());
 /// let fmt_layer = fmt::Layer::builder()
