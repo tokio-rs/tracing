@@ -349,7 +349,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
     use super::{Registry, CURRENT_SPANS};
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::sync::{
