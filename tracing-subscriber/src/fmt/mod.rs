@@ -102,14 +102,12 @@
 //! ```rust
 //! use tracing_subscriber::{fmt, Layer, registry::Registry, EnvFilter};
 //!
-//! let default_filter = concat!(module_path!(), "=info");
-//!
 //! let fmt_layer = fmt::Layer::builder()
 //!     .with_target(false)
 //!     .finish();
 //!
 //! let subscriber = EnvFilter::try_from_default_env()
-//!     .or_else(|_| EnvFilter::try_new(default_filter))
+//!     .or_else(|_| EnvFilter::try_new("info"))
 //!     .unwrap()
 //!     .and_then(fmt_layer)
 //!     .with_subscriber(Registry::default());
