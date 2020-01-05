@@ -34,8 +34,14 @@ impl SpanStack {
     }
 
     pub(crate) fn pop(&mut self, expected_id: &Id) -> Option<Id> {
-        if &self.stack.last()?.id == expected_id {
-            let ContextId { id, duplicate } = self.stack.pop()?;
+        if let Some((idx, _)) = self
+            .stack
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_, ctx_id)| ctx_id.id == *expected_id)
+        {
+            let ContextId { id, duplicate } = self.stack.remove(idx);
             if !duplicate {
                 self.ids.remove(&id);
             }
@@ -57,4 +63,28 @@ impl SpanStack {
 
 thread_local! {
     static CONTEXT: RefCell<SpanStack> = RefCell::new(SpanStack::new());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Id, SpanStack};
+
+    #[test]
+    fn pop_last_span() {
+        let mut stack = SpanStack::new();
+        let id = Id::from_u64(1);
+        stack.push(id.clone());
+
+        assert_eq!(Some(id.clone()), stack.pop(&id));
+    }
+
+    #[test]
+    fn pop_first_span() {
+        let mut stack = SpanStack::new();
+        stack.push(Id::from_u64(1));
+        stack.push(Id::from_u64(2));
+
+        let id = Id::from_u64(1);
+        assert_eq!(Some(id.clone()), stack.pop(&id));
+    }
 }
