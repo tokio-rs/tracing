@@ -1,5 +1,3 @@
-#![feature(async_await)]
-
 use test_std_future::{
     PollN,
     block_on_future,
