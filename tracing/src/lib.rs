@@ -416,7 +416,7 @@
 //!
 //! Let's consider the `log` crate's yak-shaving example:
 //!
-//! ```rust
+//! ```rust,ignore
 //! use std::{error::Error, io};
 //! use tracing::{debug, error, info, span, warn, Level};
 //!
