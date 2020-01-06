@@ -188,6 +188,8 @@ fn cloning_a_span_calls_clone_span() {
         .run_with_handle();
     with_default(subscriber, || {
         let span = span!(Level::TRACE, "foo");
+        // Allow the "redundant" `.clone` since it is used to call into the `.clone_span` hook.
+        #[allow(clippy::redundant_clone)]
         let _span2 = span.clone();
     });
 

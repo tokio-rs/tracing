@@ -139,10 +139,8 @@ impl EnvFilter {
     /// # Examples
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
-    /// # fn main() {
     /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(LevelFilter::INFO.into());
-    /// # }
     /// ```
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, Directive};
@@ -153,7 +151,6 @@ impl EnvFilter {
     ///     .add_directive("my_crate::my_other_module::something=info".parse()?);
     /// # Ok(())
     /// # }
-    /// # fn main() {}
     /// ```
     pub fn add_directive(mut self, directive: Directive) -> Self {
         if let Some(stat) = directive.to_static() {

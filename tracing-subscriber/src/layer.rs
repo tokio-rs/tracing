@@ -200,7 +200,6 @@ where
     /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
-    /// # fn main() {
     /// pub struct FooLayer {
     ///     // ...
     /// }
@@ -243,7 +242,6 @@ where
     /// let subscriber = FooLayer::new()
     ///     .and_then(BarLayer::new())
     ///     .with_subscriber(MySubscriber::new());
-    /// # }
     /// ```
     ///
     /// Multiple layers may be composed in this manner:
@@ -251,7 +249,6 @@ where
     /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
-    /// # fn main() {
     /// # pub struct FooLayer {}
     /// # pub struct BarLayer {}
     /// # pub struct MySubscriber {}
@@ -289,7 +286,6 @@ where
     ///     .and_then(BarLayer::new())
     ///     .and_then(BazLayer::new())
     ///     .with_subscriber(MySubscriber::new());
-    /// # }
     /// ```
     fn and_then<L>(self, layer: L) -> Layered<L, Self, S>
     where
@@ -313,7 +309,6 @@ where
     /// ```rust
     /// # use tracing_subscriber::layer::Layer;
     /// # use tracing_core::Subscriber;
-    /// # fn main() {
     /// pub struct FooLayer {
     ///     // ...
     /// }
@@ -344,7 +339,6 @@ where
     /// # }
     /// let subscriber = FooLayer::new()
     ///     .with_subscriber(MySubscriber::new());
-    /// # }
     ///```
     ///
     /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
