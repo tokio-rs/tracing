@@ -370,7 +370,7 @@ please let us know! We'd love to add your project to the list!
 [OpenTelemetry]: https://opentelemetry.io/
 [`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
 [honeycomb.io]: https://www.honeycomb.io/
-[`tracing-actix]: https://crates.io/crates/tracing-actix
+[`tracing-actix`]: https://crates.io/crates/tracing-actix
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
