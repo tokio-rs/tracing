@@ -1,8 +1,9 @@
 use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
-// the `#[tracing::instrument]` attribute creates a span with the name "shave"
-// and a field (a key/value pair) whose key is "yak" and the value is the value of `yak`.
+// the `#[tracing::instrument]` attribute creates and enters a span
+// every time the instrumented function is called. The span is named after the
+// the function or method. Paramaters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG log level with two fields:

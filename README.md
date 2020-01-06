@@ -33,34 +33,30 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ## Usage
 
-(The below example is borrowed from the `log` crate's yak-shaving
+(The examples below are borrowed from the `log` crate's yak-shaving
 [example](https://docs.rs/log/0.4.10/log/index.html#examples), modified to
-idiomatic `tracing`)
+idiomatic `tracing`.)
 
-In `Cargo.toml`:
+### In Applications
 
-```toml
-[dependencies]
-tracing = "0.1"
-tracing-subscriber = "0.2.0-alpha.2"
-```
+In order to record trace events, executables have to use a `Subscriber`
+implementation compatible with `tracing`. A `Subscriber` implements a way of
+collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
+[`fmt` module](https://docs.rs/tracing-subscriber/0.2.0-alpha.2/tracing_subscriber/fmt/index.html) provides reasonable defaults.
+Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
 
-In `src/main.rs`:
+The simplest way to use a subscriber is to call the `set_global_default` function.
 
 ```rust
-mod yak_shave;
-
-use std::{error::Error, io};
-use tracing::{debug, error, info, span, warn, Level};
+use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use yak_shave;
 
 fn main() {
     // a builder for `FmtSubscriber`.
     let subscriber = FmtSubscriber::builder()
-        // all spans/events with a level higher than DEBUG (e.g, info, warn, etc.)
+        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
         // will be written to stdout.
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::TRACE)
         // completes the builder.
         .finish();
 
@@ -79,14 +75,57 @@ fn main() {
 }
 ```
 
-In `src/yak_shave.rs`:
+```toml
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = "0.2.0-alpha.2"
+```
+
+This subscriber will be used as the default in all threads for the remainder of the duration
+of the program, similar to how loggers work in the `log` crate.
+
+In addition, you can locally override the default subscriber. For example:
+
+```rust
+use tracing::{info, Level};
+use tracing_subscruber::FmtSubscriber;
+
+fn main() {
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // builds the subscriber.
+        .finish();   
+
+    tracing::subscriber::with_default(subscriber, || {
+        info!("This will be logged to stdout");
+    });
+    info!("This will _not_ be logged to stdout");
+}
+```
+
+Any trace events generated outside the context of a subscriber will not be collected.
+
+This approach allows trace data to be collected by multiple subscribers
+within different contexts in the program. Note that the override only applies to the
+currently executing thread; other threads will not see the change from with_default.
+
+Once a subscriber has been set, instrumentation points may be added to the
+executable using the `tracing` crate's macros.
+
+### In Libraries
+
+Libraries should only rely on the `tracing` crate and use the provided macros
+and types to collect whatever information might be useful to downstream consumers.
 
 ```rust
 use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
-// the `#[tracing::instrument]` attribute creates a span with the name "shave"
-// and a field (a key/value pair) whose key is "yak" and the value is the value of `yak`.
+// the `#[tracing::instrument]` attribute creates and enters a span
+// every time the instrumented function is called. The span is named after the
+// the function or method. Paramaters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -139,69 +178,13 @@ pub fn shave_all(yaks: usize) -> usize {
 }
 ```
 
-### In Applications
-
-In order to record trace events, executables have to use a `Subscriber`
-implementation compatible with `tracing`. A `Subscriber` implements a way of
-collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
-[`fmt` module](https://docs.rs/tracing-subscriber/0.2.0-alpha.2/tracing_subscriber/fmt/index.html) provides reasonable defaults.
-Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
-
-The simplest way to use a subscriber is to call the `set_global_default` function:
-
-```rust
-use tracing_subscruber::FmtSubscriber;
-
-fn main() {
-    let subscriber = tracing_subscruber::FmtSubscriber::builder()
-        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-        // builds the subscriber.
-        .finish();   
-
-    tracing::subscriber::set_global_default(subscriber)
-      .expect("setting tracing default failed");
-}
+```toml
+[dependencies]
+tracing = "0.1"
 ```
 
-This subscriber will be used as the default in all threads for the remainder of the duration
-of the program, similar to how loggers work in the `log` crate.
-
-In addition, you can locally override the default subscriber. For example:
-
-```rust
-use tracing_subscruber::FmtSubscriber;
-use tracing::info;
-
-fn main() {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-        // builds the subscriber.
-        .finish();   
-
-    tracing::subscriber::with_default(subscriber, || {
-        info!("This will be logged to stdout");
-    });
-    info!("This will _not_ be logged to stdout");
-}
-```
-
-Any trace events generated outside the context of a subscriber will not be collected.
-
-Once a subscriber has been set, instrumentation points may be added to the
-executable using the `tracing` crate's macros.
-
-### In Libraries
-
-Libraries should only rely on the `tracing` crate and use the provided macros
-and types to collect whatever information might be useful to downstream consumers.
-The `shave` and `shave_all` functions above is a good example of library-like usage.
-
-Note: Libraries should *NOT* call `set_global_default()`, as this will cause conflicts when
-executables try to set the default later.
+Note: Libraries should *NOT* call `set_global_default()`, as this will cause
+conflicts when executables try to set the default later.
 
 ### In Asynchronous Code
 
@@ -260,6 +243,8 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 
 Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
+
+Note: the [`#[tracing::instrument]`](https://github.com/tokio-rs/tracing/issues/399)` macro does work correctly with the [async-trait](https://github.com/dtolnay/async-trait) crate. This bug is tracked in [#399](https://github.com/tokio-rs/tracing/issues/399).
 
 ## Getting Help
 
