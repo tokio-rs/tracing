@@ -337,6 +337,8 @@ with a simple drop-in replacement.
 
 ### Ecosystem
 
+## Related Crates
+
 In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 contains several additional crates designed to be used with the `tracing` ecosystem.
 This includes a collection of `Subscriber` implementations, as well as utility
@@ -345,19 +347,48 @@ applications.
 
 In particular, the following crates are likely to be of interest:
 
- - [`tracing-futures`] provides a compatibility layer with the `futures`
-   crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
- - [`tracing-subscriber`] provides `Subscriber` implementations and
-   utilities for working with `Subscriber`s. This includes a [`FmtSubscriber`]
-   `FmtSubscriber` for logging formatted trace data to stdout, with similar
-   filtering and formatting to the [`env_logger`] crate.
- - [`tracing-log`] provides a compatibility layer with the [`log`] crate,
-   allowing log messages to be recorded as `tracing` `Event`s within the
-   trace tree. This is useful when a project using `tracing` have
-   dependencies which use `log`.
- - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
-   It provides a subscriber that records the time elapsed between pairs of
-   `tracing` events and generates histograms.
+- [`tracing-futures`] provides a compatibility layer with the `futures`
+  crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
+- [`tracing-subscriber`] provides `Subscriber` implementations and
+  utilities for working with `Subscriber`s. This includes a [`FmtSubscriber`]
+  `FmtSubscriber` for logging formatted trace data to stdout, with similar
+  filtering and formatting to the [`env_logger`] crate.
+- [`tracing-log`] provides a compatibility layer with the [`log`] crate,
+  allowing log messages to be recorded as `tracing` `Event`s within the
+  trace tree. This is useful when a project using `tracing` have
+  dependencies which use `log`. Note that if you're using
+  `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
+  `tracing-log` directly.
+
+Additionally, there are also several third-party crates which are not
+maintained by the `tokio` project. These include:
+
+- [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
+  It provides a subscriber that records the time elapsed between pairs of
+  `tracing` events and generates histograms.
+- [`tracing-opentelemetry`] provides a subscriber for emitting traces to
+  [OpenTelemetry]-compatible distributed tracing systems.
+- [`tracing-honeycomb`] implements a subscriber for reporting traces to
+  [honeycomb.io].
+- [`tracing-actix`] provides `tracing` integration for the `actix` actor
+  framework.
+- [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
+  GELF format.
+- [`tracing-coz`] provides integration with the [coz] causal profiler
+  (Linux-only).
+
+If you're the maintainer of a `tracing` ecosystem crate not listed above,
+please let us know! We'd love to add your project to the list!
+
+[`tracing-timing`]: https://crates.io/crates/tracing-timing
+[`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
+[OpenTelemetry]: https://opentelemetry.io/
+[`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+[honeycomb.io]: https://www.honeycomb.io/
+[`tracing-actix]: https://crates.io/crates/tracing-actix
+[`tracing-gelf`]: https://crates.io/crates/tracing-gelf
+[`tracing-coz`]: https://crates.io/crates/tracing-coz
+[coz]: https://github.com/plasma-umass/coz
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -369,7 +400,6 @@ undergoing active development. They may be less stable than `tracing` and
 [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
 [`tracing-subscriber`]: https://github.com/tokio-rs/tracing/tree/master/tracing-subscriber
 [`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
-[`tracing-timing`]: https://crates.io/crates/tracing-timing
 [`env_logger`]: https://crates.io/crates/env_logger
 [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 [`examples`]: https://github.com/tokio-rs/tracing/tree/master/examples

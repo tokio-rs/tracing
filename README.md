@@ -331,6 +331,42 @@ The crates included as part of Tracing are:
 [sub-crates]: https://crates.io/crates/tracing-subscriber
 [sub-docs]: https://docs.rs/tracing-subscriber
 
+## Related Crates
+
+In addition to this repository, here are also several third-party crates which
+are not maintained by the `tokio` project. These include:
+
+- [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
+  It provides a subscriber that records the time elapsed between pairs of
+  `tracing` events and generates histograms.
+- [`tracing-opentelemetry`] provides a subscriber for emitting traces to
+  [OpenTelemetry]-compatible distributed tracing systems.
+- [`tracing-honeycomb`] implements a subscriber for reporting traces to
+  [honeycomb.io].
+- [`tracing-actix`] provides `tracing` integration for the `actix` actor
+  framework.
+- [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
+  GELF format.
+- [`tracing-coz`] provides integration with the [coz] causal profiler
+  (Linux-only).
+
+(if you're the maintainer of a `tracing` ecosystem crate not in this list,
+please let us know!)
+
+[`tracing-timing`]: https://crates.io/crates/tracing-timing
+[`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
+[OpenTelemetry]: https://opentelemetry.io/
+[`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+[honeycomb.io]: https://www.honeycomb.io/
+[`tracing-actix]: https://crates.io/crates/tracing-actix
+[`tracing-gelf`]: https://crates.io/crates/tracing-gelf
+[`tracing-coz`]: https://crates.io/crates/tracing-coz
+[coz]: https://github.com/plasma-umass/coz
+
+**Note:** that some of the ecosystem crates are currently unreleased and
+undergoing active development. They may be less stable than `tracing` and
+`tracing-core`.
+
 ## External Resources
 
 This is a list of links to blog posts, conference talks, and tutorials about
