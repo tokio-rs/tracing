@@ -14,6 +14,8 @@ use tracing_core::{
 ///
 /// ## Examples
 ///
+/// Constructing a default fmt subscriber via the Layer API:
+///
 /// ```rust
 /// use tracing_subscriber::{fmt, registry::Registry};
 /// use tracing_subscriber::prelude::*;
