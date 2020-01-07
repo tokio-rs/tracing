@@ -133,7 +133,7 @@ impl Registry {
     /// [`CloseGuard`]: ./struct.CloseGuard.html
     pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
         CLOSE_COUNT.with(|count| {
-            let c = count.get();
+            let c = dbg!(count.get());
             count.set(c + 1);
         });
         CloseGuard {
@@ -243,10 +243,11 @@ impl Subscriber for Registry {
         };
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
+        dbg!((span.metadata.name(), refs));
         if !std::thread::panicking() {
             assert!(refs < std::usize::MAX, "reference count overflow!");
         }
-        if refs > 1 {
+        if dbg!(refs > 1) {
             return false;
         }
 
