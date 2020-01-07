@@ -12,6 +12,20 @@ use tracing_core::{
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
 ///
+/// ## Examples
+///
+/// Constructing a default fmt subscriber via the Layer API:
+///
+/// ```rust
+/// use tracing_subscriber::{fmt, registry::Registry};
+/// use tracing_subscriber::prelude::*;
+///
+/// let subscriber = fmt::Layer::default()
+///     .with_subscriber(Registry::default());
+///
+/// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
 /// [`Layer`]: ../layer/trait.Layer.html
 #[derive(Debug)]
 pub struct Layer<
@@ -28,6 +42,48 @@ pub struct Layer<
 
 /// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
 /// events and spans.
+///
+/// ## Examples
+///
+/// Constructing a layer with the default configuration:
+///
+/// ```rust
+/// use tracing_subscriber::fmt;
+/// use tracing_subscriber::prelude::*;
+///
+/// let fmt_layer = fmt::Layer::builder().finish();
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
+/// Overriding the layer's behavior:
+///
+/// ```rust
+/// use tracing_subscriber::fmt;
+/// use tracing_subscriber::prelude::*;
+///
+/// let fmt_layer = fmt::Layer::builder()
+///    .with_target(false) // don't include event targets when logging
+///    .finish();
+///
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
+/// Setting a custom  event formatter:
+///
+/// ```rust
+/// use tracing_subscriber::fmt::{self, format::Format, time};
+/// use tracing_subscriber::prelude::*;
+///
+/// let fmt = Format::default().with_timer(time::Uptime::default());
+/// let fmt_layer = fmt::Layer::builder()
+///     .event_format(fmt)
+///     .with_target(false)
+///     .finish();
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
 #[derive(Debug)]
 pub struct LayerBuilder<
     S,
