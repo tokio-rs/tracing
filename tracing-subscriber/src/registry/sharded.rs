@@ -353,7 +353,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Registry, CURRENT_SPANS};
+    use super::Registry;
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::{
         collections::VecDeque,
