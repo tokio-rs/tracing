@@ -644,4 +644,57 @@ mod tests {
             "spans closed out of order!"
         );
     }
+
+    #[test]
+    fn child_closes_grandparent() {
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
+        let (order_layer, closed_in_order) = CloseInOrder::new(vec!["span3", "span2", "span1"]);
+
+        let subscriber = order_layer
+            .and_then(ClosingLayer {
+                span1_removed: span1_removed.clone(),
+                span2_removed: span2_removed.clone(),
+            })
+            .with_subscriber(Registry::default());
+
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            let span3 = tracing::info_span!(parent: &span2, "span3");
+
+            assert!(!span1_removed.load(Ordering::Acquire));
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(span1);
+            drop(span2);
+
+            assert!(
+                !span1_removed.load(Ordering::Acquire),
+                "span1 must not have closed yet (span2 is keeping it open)"
+            );
+            assert!(
+                !span2_removed.load(Ordering::Acquire),
+                "span2 must not have closed yet (span3 is keeping it open)"
+            );
+
+            drop(span3);
+
+            assert!(
+                span2_removed.load(Ordering::Acquire),
+                "closing span3 should have closed span2"
+            );
+            assert!(
+                span1_removed.load(Ordering::Acquire),
+                "closing span2 should have closed span1"
+            );
+        });
+
+        assert!(
+            closed_in_order.load(Ordering::Acquire),
+            "spans closed out of order!"
+        );
+    }
 }
