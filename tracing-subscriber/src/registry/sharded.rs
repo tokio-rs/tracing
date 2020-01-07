@@ -352,9 +352,12 @@ impl<'a> SpanData<'a> for Data<'a> {
 mod tests {
     use super::{Registry, CURRENT_SPANS};
     use crate::{layer::Context, registry::LookupSpan, Layer};
-    use std::sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
+    use std::{
+        collections::VecDeque,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc, Mutex,
+        },
     };
     use tracing::{self, subscriber::with_default};
     use tracing_core::{
@@ -394,6 +397,11 @@ mod tests {
             let span = tracing::debug_span!("span");
             drop(span);
         });
+    }
+
+    struct CloseInOrder {
+        inner: Mutex<VecDeque<&'static str>>,
+        okay: Arc<AtomicBool>,
     }
 
     struct ClosingLayer {
@@ -436,6 +444,43 @@ mod tests {
     impl Drop for ClosingSpan {
         fn drop(&mut self) {
             self.is_removed.store(true, Ordering::Release)
+        }
+    }
+
+    impl<S> Layer<S> for CloseInOrder
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+            let span = &ctx.span(&id).unwrap();
+            let name = span.name();
+            if let Ok(mut lock) = self.inner.lock() {
+                if let Some(next) = lock.pop_front() {
+                    if next != name {
+                        println!(
+                            "expected span \"{}\" to close next, but \"{}\" closed instead!",
+                            next, name
+                        );
+                        self.okay.store(false, Ordering::Release);
+                    }
+                } else {
+                    println!(
+                        "span \"{}\" closed when no more spans were expected to close",
+                        name
+                    );
+                    self.okay.store(false, Ordering::Release);
+                }
+            }
+        }
+    }
+
+    impl CloseInOrder {
+        fn new(i: impl IntoIterator<Item = &'static str>) -> (Self, Arc<AtomicBool>) {
+            let closes = i.into_iter().collect::<VecDeque<_>>();
+            let inner = Mutex::new(closes);
+            let okay = Arc::new(AtomicBool::new(true));
+            let handle = okay.clone();
+            (Self { inner, okay }, handle)
         }
     }
 
@@ -552,5 +597,47 @@ mod tests {
             drop(span2);
             assert!(span2_removed.load(Ordering::Acquire));
         });
+    }
+
+    #[test]
+    fn child_closes_parent() {
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
+        let (order_layer, closed_in_order) = CloseInOrder::new(vec!["span2", "span1"]);
+
+        let subscriber = order_layer
+            .and_then(ClosingLayer {
+                span1_removed: span1_removed.clone(),
+                span2_removed: span2_removed.clone(),
+            })
+            .with_subscriber(Registry::default());
+
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+
+            assert!(!span1_removed.load(Ordering::Acquire));
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(span1);
+
+            assert!(
+                !span1_removed.load(Ordering::Acquire),
+                "span1 must not have closed yet (span2 is keeping it open)"
+            );
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(span2);
+
+            assert!(span2_removed.load(Ordering::Acquire));
+            assert!(span1_removed.load(Ordering::Acquire));
+        });
+
+        assert!(
+            closed_in_order.load(Ordering::Acquire),
+            "spans closed out of order!"
+        );
     }
 }
