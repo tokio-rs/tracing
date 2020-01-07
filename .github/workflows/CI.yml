@@ -45,9 +45,10 @@ jobs:
         #- tracing
         #- tracing-subscriber
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: install cargo-hack
       uses: actions-rs/cargo@v1
@@ -72,9 +73,10 @@ jobs:
         - std log-always
         - std
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: cargo check
       working-directory: tracing
@@ -95,9 +97,10 @@ jobs:
         - registry
         - env-filter
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: cargo check
       working-directory: tracing-subscriber
