@@ -38,12 +38,10 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # fn main() {
 //! use dispatcher::Dispatch;
 //!
 //! let my_subscriber = FooSubscriber::new();
 //! let my_dispatch = Dispatch::new(my_subscriber);
-//! # }
 //! ```
 //! Then, we can use [`with_default`] to set our `Dispatch` as the default for
 //! the duration of a block:
@@ -63,7 +61,6 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # fn main() {
 //! # let my_subscriber = FooSubscriber::new();
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
@@ -74,7 +71,6 @@
 //! });
 //!
 //! // no default subscriber again
-//! # }
 //! ```
 //! It's important to note that `with_default` will not propagate the current
 //! thread's default subscriber to any threads spawned within the `with_default`
@@ -100,7 +96,6 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # fn main() {
 //! # let my_subscriber = FooSubscriber::new();
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
@@ -111,7 +106,6 @@
 //!     .expect("global default was already set!");
 //!
 //! // `my_subscriber` is now the default
-//! # }
 //! ```
 //!
 //! **Note**: the thread-local scoped dispatcher (`with_default`) requires the
@@ -258,7 +252,7 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
     {
         unsafe {
-            GLOBAL_DISPATCH = Some(dispatcher.clone());
+            GLOBAL_DISPATCH = Some(dispatcher);
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);

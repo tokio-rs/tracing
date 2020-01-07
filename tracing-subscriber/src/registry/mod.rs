@@ -16,7 +16,6 @@
 //! ```rust
 //! use tracing_subscriber::{registry::Registry, Layer};
 //! # use tracing_core::Subscriber;
-//! # fn main() {
 //! # pub struct FooLayer {}
 //! # pub struct BarLayer {}
 //! # impl<S: Subscriber> Layer<S> for FooLayer {}
@@ -31,7 +30,6 @@
 //! let subscriber = FooLayer::new()
 //!     .and_then(BarLayer::new())
 //!     .with_subscriber(Registry::default());
-//! # }
 //! ```
 //!
 //! If a type implementing `Layer` depends on the functionality of a `Registry`
@@ -42,7 +40,6 @@
 //! use tracing_subscriber::{registry, Layer};
 //! use tracing_core::Subscriber;
 //!
-//! # fn main() {
 //! pub struct MyLayer {
 //!     // ...
 //! }
@@ -53,7 +50,6 @@
 //! {
 //!     // ...
 //! }
-//! # }
 //! ```
 //! When this bound is added, the `Layer` implementation will be guaranteed
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that

@@ -1,9 +1,9 @@
+use crate::stdlib::future::Future;
 use crate::{Instrument, Instrumented, WithDispatch};
 use futures_core_preview::{
     future::FutureObj,
     task::{LocalSpawn, Spawn, SpawnError},
 };
-use std::future::Future;
 
 impl<T> Spawn for Instrumented<T>
 where

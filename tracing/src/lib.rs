@@ -416,40 +416,63 @@
 //!
 //! Let's consider the `log` crate's yak-shaving example:
 //!
-//! ```rust
-//! use tracing::{info, span, warn, Level};
+//! ```rust,ignore
+//! use std::{error::Error, io};
+//! use tracing::{debug, error, info, span, warn, Level};
 //!
-//! # #[derive(Debug)] pub struct Yak(String);
-//! # impl Yak { fn shave(&mut self, _: u32) {} }
-//! # fn find_a_razor() -> Result<u32, u32> { Ok(1) }
-//! # fn main() {
-//! pub fn shave_the_yak(yak: &mut Yak) {
-//!     let span = span!(Level::TRACE, "shave_the_yak", ?yak);
+//! // the `#[tracing::instrument]` attribute creates and enters a span
+//! // every time the instrumented function is called. The span is named after the
+//! // the function or method. Paramaters passed to the function are recorded as fields.
+//! #[tracing::instrument]
+//! pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
+//!     // this creates an event at the DEBUG level with two fields:
+//!     // - `excitement`, with the key "excitement" and the value "yay!"
+//!     // - `message`, with the key "message" and the value "hello! I'm gonna shave a yak."
+//!     //
+//!     // unlike other fields, `message`'s shorthand initialization is just the string itself.
+//!     debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
+//!     if yak == 3 {
+//!         warn!("could not locate yak!");
+//!         // note that this is intended to demonstrate `tracing`'s features, not idiomatic
+//!         // error handling! in a library or application, you should consider returning
+//!         // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
+//!         return Err(io::Error::new(io::ErrorKind::Other, "shaving yak failed!").into());
+//!     } else {
+//!         debug!("yak shaved successfully");
+//!     }
+//!     Ok(())
+//! }
+//!
+//! pub fn shave_all(yaks: usize) -> usize {
+//!     // Constructs a new span named "shaving_yaks" at the TRACE level,
+//!     // and a field whose key is "yaks". This is equivalent to writing:
+//!     //
+//!     // let span = span!(Level::TRACE, "shaving_yaks", yaks = yaks);
+//!     //
+//!     // local variables (`yaks`) can be used as field values
+//!     // without an assignment, similar to struct initializers.
+//!     let span = span!(Level::TRACE, "shaving_yaks", yaks);
 //!     let _enter = span.enter();
 //!
-//!     // Since the span is annotated with the yak, it is part of the context
-//!     // for everything happening inside the span. Therefore, we don't need
-//!     // to add it to the message for this event, as the `log` crate does.
-//!     info!(target: "yak_events", "Commencing yak shaving");
-//!     loop {
-//!         match find_a_razor() {
-//!             Ok(razor) => {
-//!                 // We can add the razor as a field rather than formatting it
-//!                 // as part of the message, allowing subscribers to consume it
-//!                 // in a more structured manner:
-//!                 info!(%razor, "Razor located");
-//!                 yak.shave(razor);
-//!                 break;
-//!             }
-//!             Err(err) => {
-//!                 // However, we can also create events with formatted messages,
-//!                 // just as we would for log records.
-//!                 warn!("Unable to locate a razor: {}, retrying", err);
-//!             }
+//!     info!("shaving yaks");
+//!
+//!     let mut yaks_shaved = 0;
+//!     for yak in 1..=yaks {
+//!         let res = shave(yak);
+//!         debug!(yak, shaved = res.is_ok());
+//!
+//!         if let Err(ref error) = res {
+//!             // Like spans, events can also use the field initialization shorthand.
+//!             // In this instance, `yak` is the field being initalized.
+//!             error!(yak, error = error.as_ref(), "failed to shave yak!");
+//!         } else {
+//!             yaks_shaved += 1;
 //!         }
+//!         debug!(yaks_shaved);
 //!     }
+//!
+//!     yaks_shaved
 //! }
-//! # }
 //! ```
 //!
 //! ## In libraries
@@ -560,10 +583,38 @@
 //!  - [`tracing-log`] provides a compatibility layer with the [`log`] crate,
 //!    allowing log messages to be recorded as `tracing` `Event`s within the
 //!    trace tree. This is useful when a project using `tracing` have
-//!    dependencies which use `log`.
+//!    dependencies which use `log`. Note that if you're using
+//!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
+//!    `tracing-log` directly.
+//!
+//! Additionally, there are also several third-party crates which are not
+//! maintained by the `tokio` project. These include:
+//!
 //!  - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
 //!    It provides a subscriber that records the time elapsed between pairs of
 //!    `tracing` events and generates histograms.
+//!  - [`tracing-opentelemetry`] provides a subscriber for emitting traces to
+//!    [OpenTelemetry]-compatible distributed tracing systems.
+//!  - [`tracing-honeycomb`] implements a subscriber for reporting traces to
+//!    [honeycomb.io].
+//!  - [`tracing-actix`] provides `tracing` integration for the `actix` actor
+//!    framework.
+//!  - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
+//!    GELF format.
+//!  - [`tracing-coz`] provides integration with the [coz] causal profiler
+//!    (Linux-only).
+//!
+//! If you're the maintainer of a `tracing` ecosystem crate not listed above,
+//! please let us know! We'd love to add your project to the list!
+//!
+//! [`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
+//! [OpenTelemetry]: https://opentelemetry.io/
+//! [`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+//! [honeycomb.io]: https://www.honeycomb.io/
+//! [`tracing-actix`]: https://crates.io/crates/tracing-actix
+//! [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
+//! [`tracing-coz`]: https://crates.io/crates/tracing-coz
+//! [coz]: https://github.com/plasma-umass/coz
 //!
 //! **Note:** that some of the ecosystem crates are currently unreleased and
 //! undergoing active development. They may be less stable than `tracing` and
@@ -633,15 +684,12 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
     unused,
     unused_allocation,

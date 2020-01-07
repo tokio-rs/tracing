@@ -45,15 +45,12 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -98,7 +95,6 @@ use syn::{
 ///     tracing::info!("inside my_function!");
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 /// Setting the level for the generated span:
 /// ```
@@ -107,7 +103,6 @@ use syn::{
 /// pub fn my_function() {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 /// Overriding the generated span's target:
 /// ```
@@ -116,7 +111,6 @@ use syn::{
 /// pub fn my_function() {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
@@ -129,7 +123,6 @@ use syn::{
 /// fn my_function(arg: usize, non_debug: NonDebug) {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
@@ -142,7 +135,6 @@ use syn::{
 ///     // ...
 ///     # Ok(())
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html

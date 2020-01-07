@@ -81,7 +81,6 @@ pub trait VisitOutput<Out>: Visit {
 ///     let mut visitor = MyVisitor::new();
 ///     r.record(&mut visitor);
 /// }
-/// # fn main() {}
 /// ```
 /// [visitor]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
 /// [attr]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Attributes.html

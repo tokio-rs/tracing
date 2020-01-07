@@ -10,12 +10,88 @@ jobs:
       matrix:
         rust: [stable, 1.39.0]
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: ${{ matrix.rust }}
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
     - uses: actions/checkout@master
     - name: Check
       run: cargo check --all --bins --examples --tests --benches
+
+  cargo-hack:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # cargo hack --feature-powerset will have a significant permutation
+        # number, we can't just use --all as it increases the runtime
+        # further than what we would like to
+        subcrate:
+        - tracing-attributes
+        - tracing-core
+        - tracing-futures
+        - tracing-log
+        - tracing-macros
+        - tracing-serde
+        - tracing-tower
+        # tracing and tracing-subscriber have too many features to be checked by
+        # cargo-hack --feature-powerset, combinatorics there is exploding.
+        #- tracing
+        #- tracing-subscriber
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable
+    - uses: actions/checkout@master
+    - name: install cargo-hack
+      run: cargo install cargo-hack
+    - name: cargo hack check
+      working-directory: ${{ matrix.subcrate }}
+      run: cargo hack check --feature-powerset --no-dev-deps
+
+  cargo-check-tracing:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        featureset:
+        - ""
+        - async-await
+        - async-await std
+        - async-await log-always
+        - async-await std log-always
+        - log-always
+        - std log-always
+        - std
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable
+    - uses: actions/checkout@master
+    - name: cargo check
+      working-directory: tracing
+      run: cargo check --no-default-features --features "${{ matrix.featureset }}"
+
+  cargo-check-subscriber:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        featureset:
+        - ""
+        - fmt
+        - fmt ansi
+        - fmt json
+        - fmt json ansi
+        - fmt registry
+        - fmt env-filter
+        - registry
+        - env-filter
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable
+    - uses: actions/checkout@master
+    - name: cargo check
+      working-directory: tracing-subscriber
+      run: cargo check --no-default-features --features "${{ matrix.featureset }}"
 
   test-versions:
     # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
@@ -25,9 +101,10 @@ jobs:
       matrix:
         rust: [stable, beta, nightly, 1.39.0]
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: ${{ matrix.rust }}
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
@@ -42,9 +119,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: Build
       run: cargo build
@@ -56,9 +134,10 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        profile: minimal
     - uses: actions/checkout@master
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
@@ -76,9 +155,10 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: nightly
+        toolchain: nightly
+        profile: minimal
     - uses: actions/checkout@master
     - name: "Test tracing-futures std::future support"
       run: (cd tracing-futures/test_std_future && cargo test)
@@ -94,21 +174,27 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        components: rustfmt
+        profile: minimal
     - uses: actions/checkout@master
     - name: rustfmt
       run: cargo fmt --all -- --check
 
   warnings:
     # Check for any warnings. This is informational and thus is allowed to fail.
-    needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: hecrj/setup-rust-action@v1
+    - uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        components: clippy
+        profile: minimal
     - uses: actions/checkout@master
-    - name: warnings
-      run: RUSTFLAGS="-Dwarnings" cargo check --all
+    - name: Clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all --bins --examples --tests --benches -- -D warnings

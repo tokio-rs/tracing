@@ -102,7 +102,6 @@ pub struct Iter {
 /// # extern crate tracing_core as tracing;
 /// use std::fmt::{self, Write};
 /// use tracing::field::{Value, Visit, Field};
-/// # fn main() {
 /// pub struct StringVisitor<'a> {
 ///     string: &'a mut String,
 /// }
@@ -112,7 +111,6 @@ pub struct Iter {
 ///         write!(self.string, "{} = {:?}; ", field.name(), value).unwrap();
 ///     }
 /// }
-/// # }
 /// ```
 /// This visitor will format each recorded value using `fmt::Debug`, and
 /// append the field name and formatted value to the provided string,
@@ -135,7 +133,6 @@ pub struct Iter {
 /// # extern crate tracing_core as tracing;
 /// # use std::fmt::{self, Write};
 /// # use tracing::field::{Value, Visit, Field};
-/// # fn main() {
 /// pub struct SumVisitor {
 ///     sum: i64,
 /// }
@@ -153,7 +150,6 @@ pub struct Iter {
 ///         // Do nothing
 ///     }
 /// }
-/// # }
 /// ```
 ///
 /// This visitor (which is probably not particularly useful) keeps a running
