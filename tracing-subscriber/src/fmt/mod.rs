@@ -94,6 +94,27 @@
 //! // Note this will only fail if you try to set the global default
 //! // subscriber multiple times
 //! ```
+//!
+//! ### Composing Layers
+//!
+//! Composing an [`EnvFilter`] `Layer` and a [format `Layer`](../fmt/struct.Layer.html):
+//!
+//! ```rust
+//! use tracing_subscriber::{fmt, Layer, registry::Registry, EnvFilter};
+//!
+//! let fmt_layer = fmt::Layer::builder()
+//!     .with_target(false)
+//!     .finish();
+//!
+//! let subscriber = EnvFilter::try_from_default_env()
+//!     .or_else(|_| EnvFilter::try_new("info"))
+//!     .unwrap()
+//!     .and_then(fmt_layer)
+//!     .with_subscriber(Registry::default());
+//!
+//! tracing::subscriber::set_global_default(subscriber).unwrap();
+//! ```
+//!
 //! [`EnvFilter`]: ../filter/struct.EnvFilter.html
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: ../filter/index.html
