@@ -310,16 +310,20 @@ impl<'a> Drop for CloseGuard<'a> {
         // except by avoiding a double-panic.
         let _ = CLOSE_COUNT.try_with(|count| {
             let c = count.get();
+            // Decrement the count to indicate that _this_ guard's
+            // `on_close` callback has completed.
+            //
+            // Note that we *must* do this before we actually remove the span
+            // from the registry, since dropping the `DataInner` may trigger a
+            // new close, if this span is the last reference to a parent span.
+            count.set(c - 1);
+
             // If the current close count is 1, this stack frame is the last
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
                 self.registry.spans.remove(id_to_idx(&self.id));
             }
-
-            // Decrement the count to indicate that _this_ guard's
-            // `on_close` callback has completed.
-            count.set(c - 1);
         });
     }
 }
