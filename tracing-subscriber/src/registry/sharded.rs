@@ -13,7 +13,7 @@ use std::{
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
-    dispatcher,
+    dispatcher::{self, Dispatch},
     span::{self, Current, Id},
     Event, Interest, Metadata, Subscriber,
 };
@@ -288,11 +288,10 @@ impl Drop for DataInner {
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
-            dispatcher::get_default(|subscriber| {
-                if let Some(parent) = self.parent.take() {
-                    let _ = subscriber.try_close(parent);
-                }
-            })
+            let subscriber = dispatcher::get_default(Dispatch::clone);
+            if let Some(parent) = self.parent.take() {
+                let _ = subscriber.try_close(parent);
+            }
         }
     }
 }
