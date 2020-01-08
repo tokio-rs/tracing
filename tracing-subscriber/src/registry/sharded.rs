@@ -13,7 +13,7 @@ use std::{
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
-    dispatcher,
+    dispatcher::{self, Dispatch},
     span::{self, Current, Id},
     Event, Interest, Metadata, Subscriber,
 };
@@ -133,7 +133,7 @@ impl Registry {
     /// [`CloseGuard`]: ./struct.CloseGuard.html
     pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
         CLOSE_COUNT.with(|count| {
-            let c = count.get();
+            let c = dbg!(count.get());
             count.set(c + 1);
         });
         CloseGuard {
@@ -243,10 +243,11 @@ impl Subscriber for Registry {
         };
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
+        dbg!((span.metadata.name(), refs));
         if !std::thread::panicking() {
             assert!(refs < std::usize::MAX, "reference count overflow!");
         }
-        if refs > 1 {
+        if dbg!(refs > 1) {
             return false;
         }
 
@@ -288,11 +289,10 @@ impl Drop for DataInner {
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
-            dispatcher::get_default(|subscriber| {
-                if let Some(parent) = self.parent.take() {
-                    let _ = subscriber.try_close(parent);
-                }
-            })
+            let subscriber = dispatcher::get_default(Dispatch::clone);
+            if let Some(parent) = self.parent.take() {
+                let _ = subscriber.try_close(parent);
+            }
         }
     }
 }
@@ -310,16 +310,20 @@ impl<'a> Drop for CloseGuard<'a> {
         // except by avoiding a double-panic.
         let _ = CLOSE_COUNT.try_with(|count| {
             let c = count.get();
+            // Decrement the count to indicate that _this_ guard's
+            // `on_close` callback has completed.
+            //
+            // Note that we *must* do this before we actually remove the span
+            // from the registry, since dropping the `DataInner` may trigger a
+            // new close, if this span is the last reference to a parent span.
+            count.set(c - 1);
+
             // If the current close count is 1, this stack frame is the last
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
                 self.registry.spans.remove(id_to_idx(&self.id));
             }
-
-            // Decrement the count to indicate that _this_ guard's
-            // `on_close` callback has completed.
-            count.set(c - 1);
         });
     }
 }
@@ -350,11 +354,14 @@ impl<'a> SpanData<'a> for Data<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Registry, CURRENT_SPANS};
+    use super::Registry;
     use crate::{layer::Context, registry::LookupSpan, Layer};
-    use std::sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
+    use std::{
+        collections::VecDeque,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc, Mutex,
+        },
     };
     use tracing::{self, subscriber::with_default};
     use tracing_core::{
@@ -394,6 +401,11 @@ mod tests {
             let span = tracing::debug_span!("span");
             drop(span);
         });
+    }
+
+    struct CloseInOrder {
+        inner: Mutex<VecDeque<&'static str>>,
+        okay: Arc<AtomicBool>,
     }
 
     struct ClosingLayer {
@@ -436,6 +448,43 @@ mod tests {
     impl Drop for ClosingSpan {
         fn drop(&mut self) {
             self.is_removed.store(true, Ordering::Release)
+        }
+    }
+
+    impl<S> Layer<S> for CloseInOrder
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+            let span = &ctx.span(&id).unwrap();
+            let name = span.name();
+            if let Ok(mut lock) = self.inner.lock() {
+                if let Some(next) = lock.pop_front() {
+                    if next != name {
+                        println!(
+                            "expected span \"{}\" to close next, but \"{}\" closed instead!",
+                            next, name
+                        );
+                        self.okay.store(false, Ordering::Release);
+                    }
+                } else {
+                    println!(
+                        "span \"{}\" closed when no more spans were expected to close",
+                        name
+                    );
+                    self.okay.store(false, Ordering::Release);
+                }
+            }
+        }
+    }
+
+    impl CloseInOrder {
+        fn new(i: impl IntoIterator<Item = &'static str>) -> (Self, Arc<AtomicBool>) {
+            let closes = i.into_iter().collect::<VecDeque<_>>();
+            let inner = Mutex::new(closes);
+            let okay = Arc::new(AtomicBool::new(true));
+            let handle = okay.clone();
+            (Self { inner, okay }, handle)
         }
     }
 
@@ -552,5 +601,100 @@ mod tests {
             drop(span2);
             assert!(span2_removed.load(Ordering::Acquire));
         });
+    }
+
+    #[test]
+    fn child_closes_parent() {
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
+        let (order_layer, closed_in_order) = CloseInOrder::new(vec!["span2", "span1"]);
+
+        let subscriber = order_layer
+            .and_then(ClosingLayer {
+                span1_removed: span1_removed.clone(),
+                span2_removed: span2_removed.clone(),
+            })
+            .with_subscriber(Registry::default());
+
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+
+            assert!(!span1_removed.load(Ordering::Acquire));
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(span1);
+
+            assert!(
+                !span1_removed.load(Ordering::Acquire),
+                "span1 must not have closed yet (span2 is keeping it open)"
+            );
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(span2);
+
+            assert!(span2_removed.load(Ordering::Acquire));
+            assert!(span1_removed.load(Ordering::Acquire));
+        });
+
+        assert!(
+            closed_in_order.load(Ordering::Acquire),
+            "spans closed out of order!"
+        );
+    }
+
+    #[test]
+    fn child_closes_grandparent() {
+        let span1_removed = Arc::new(AtomicBool::new(false));
+        let span2_removed = Arc::new(AtomicBool::new(false));
+        let (order_layer, closed_in_order) = CloseInOrder::new(vec!["span3", "span2", "span1"]);
+
+        let subscriber = order_layer
+            .and_then(ClosingLayer {
+                span1_removed: span1_removed.clone(),
+                span2_removed: span2_removed.clone(),
+            })
+            .with_subscriber(Registry::default());
+
+        let dispatch = dispatcher::Dispatch::new(subscriber);
+
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            let span3 = tracing::info_span!(parent: &span2, "span3");
+
+            assert!(!span1_removed.load(Ordering::Acquire));
+            assert!(!span2_removed.load(Ordering::Acquire));
+
+            drop(span1);
+            drop(span2);
+
+            assert!(
+                !span1_removed.load(Ordering::Acquire),
+                "span1 must not have closed yet (span2 is keeping it open)"
+            );
+            assert!(
+                !span2_removed.load(Ordering::Acquire),
+                "span2 must not have closed yet (span3 is keeping it open)"
+            );
+
+            drop(span3);
+
+            assert!(
+                span2_removed.load(Ordering::Acquire),
+                "closing span3 should have closed span2"
+            );
+            assert!(
+                span1_removed.load(Ordering::Acquire),
+                "closing span2 should have closed span1"
+            );
+        });
+
+        assert!(
+            closed_in_order.load(Ordering::Acquire),
+            "spans closed out of order!"
+        );
     }
 }
