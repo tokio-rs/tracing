@@ -25,7 +25,28 @@ jobs:
         command: check
         args: --all --bins --examples --tests --benches
 
+  cache-cargo-hack:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Fetch latest release version of cargo-hack
+      run: |
+        mkdir -p .github/caching
+        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
+    - name: Cache cargo-hack/bin
+      id: cache-cargo-hack
+      uses: actions/cache@v1
+      with:
+        path: ${{ runner.tool_cache }}/cargo-hack/bin
+        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
+    - name: Install cargo-hack
+      if: "steps.cache-cargo-hack.outputs.cache-hit != 'true'"
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: --root ${{ runner.tool_cache }}/cargo-hack --force cargo-hack
+
   cargo-hack:
+    needs: cache-cargo-hack
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -50,11 +71,16 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
-    - name: install cargo-hack
-      uses: actions-rs/cargo@v1
+    - name: Fetch latest release version of cargo-hack
+      run: |
+        mkdir -p .github/caching
+        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
+    - name: Restore cargo-hack/bin
+      uses: actions/cache@v1
       with:
-        command: install
-        args: cargo-hack
+        path: ${{ runner.tool_cache }}/cargo-hack/bin
+        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
+    - run: echo "::add-path::${{ runner.tool_cache }}/cargo-hack/bin"
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --feature-powerset --no-dev-deps
