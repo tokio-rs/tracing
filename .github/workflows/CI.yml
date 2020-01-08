@@ -14,11 +14,11 @@ jobs:
       matrix:
         rust: [stable, 1.39.0]
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
-    - uses: actions/checkout@master
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -45,11 +45,11 @@ jobs:
         #- tracing
         #- tracing-subscriber
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
     - name: install cargo-hack
       uses: actions-rs/cargo@v1
       with:
@@ -73,11 +73,11 @@ jobs:
         - std log-always
         - std
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
     - name: cargo check
       working-directory: tracing
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -97,11 +97,11 @@ jobs:
         - registry
         - env-filter
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
     - name: cargo check
       working-directory: tracing-subscriber
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -114,11 +114,11 @@ jobs:
       matrix:
         rust: [stable, beta, nightly, 1.39.0]
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
-    - uses: actions/checkout@master
     - name: Build
       uses: actions-rs/cargo@v1
       with:
@@ -137,11 +137,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
     - name: Build
       uses: actions-rs/cargo@v1
       with:
@@ -157,11 +157,11 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
     - name: "Test static max level"
@@ -181,11 +181,11 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
         profile: minimal
-    - uses: actions/checkout@master
     - name: "Test tracing-futures std::future support"
       run: (cd tracing-futures/test_std_future && cargo test)
     - name: "Test tracing-attributes async/await support"
@@ -200,12 +200,12 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         components: rustfmt
         profile: minimal
-    - uses: actions/checkout@master
     - name: rustfmt
       uses: actions-rs/cargo@v1
       with:
@@ -216,12 +216,12 @@ jobs:
     # Check for any warnings. This is informational and thus is allowed to fail.
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         components: clippy
         profile: minimal
-    - uses: actions/checkout@master
     - name: Clippy
       uses: actions-rs/clippy-check@v1
       with:
