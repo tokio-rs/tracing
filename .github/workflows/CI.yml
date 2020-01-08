@@ -145,10 +145,6 @@ jobs:
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -168,10 +164,6 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
