@@ -245,3 +245,26 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --bins --examples --tests --benches -- -D warnings
+
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Fetch latest release version of cargo-audit
+      run: |
+        mkdir -p .github/caching
+        cargo search cargo-audit | grep '^cargo-audit' | awk '{gsub(/"/,"",$3); print $3}' > .github/caching/cargo-audit.lock
+    - name: Cache cargo-audit/bin
+      id: cache-cargo-audit
+      uses: actions/cache@v1
+      with:
+        path: ${{ runner.tool_cache }}/cargo-audit/bin
+        key: cargo-audit-bin-${{ hashFiles('.github/caching/cargo-audit.lock') }}
+    - name: Install cargo-audit
+      if: "steps.cache-cargo-audit.outputs.cache-hit != 'true'"
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: --root ${{ runner.tool_cache }}/cargo-audit --force cargo-audit
+    - run: echo "::add-path::${{ runner.tool_cache }}/cargo-audit/bin"
+    - run: cargo audit
