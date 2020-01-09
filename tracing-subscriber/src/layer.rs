@@ -8,7 +8,12 @@ use tracing_core::{
 
 #[cfg(feature = "registry")]
 use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, collections::HashSet, marker::PhantomData, sync::RwLock};
+use std::{
+    any::TypeId,
+    collections::HashSet,
+    marker::PhantomData,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 /// A composable handler for `tracing` events.
 ///
@@ -430,10 +435,12 @@ where
         F: Filter<Self, S>,
         Self: Sized,
     {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+
         Filtered {
             layer: self,
             filter,
-            disabled_spans: RwLock::new(HashSet::new()),
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             _s: PhantomData,
         }
     }
@@ -546,7 +553,7 @@ pub struct Layered<L, I, S = I> {
 pub struct Filtered<L, S, F> {
     layer: L,
     filter: F,
-    disabled_spans: RwLock<HashSet<span::Id>>,
+    id: usize,
     _s: PhantomData<fn(S)>,
 }
 
@@ -577,10 +584,13 @@ where
     }
 }
 
+struct DisabledBy(HashSet<usize>);
+
+#[cfg(feature = "registry")]
 impl<L, S, F> Layer<S> for Filtered<L, S, F>
 where
     L: Layer<S>,
-    S: Subscriber + 'static,
+    S: Subscriber + for<'a> LookupSpan<'a> + 'static,
     F: Filter<L, S> + 'static,
 {
     #[inline]
@@ -588,7 +598,15 @@ where
         if self.filter.filter(attrs.metadata(), &ctx) {
             self.layer.new_span(attrs, id, ctx);
         } else {
-            self.disabled_spans.write().unwrap().insert(id.clone());
+            let span = ctx.span(id).unwrap();
+            let mut exts = span.extensions_mut();
+            if let Some(ref mut disabled_by) = exts.get_mut::<DisabledBy>() {
+                disabled_by.0.insert(self.id);
+            } else {
+                let mut disabled = DisabledBy(HashSet::new());
+                disabled.0.insert(self.id);
+                exts.insert(disabled)
+            }
         }
     }
 
@@ -601,7 +619,13 @@ where
 
     /// Notifies this layer that a span with the given ID was entered.
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        if self.disabled_spans.read().unwrap().contains(id) {
+        if {
+            let span = ctx.span(id).unwrap();
+            let exts = span.extensions();
+            exts.get::<DisabledBy>()
+                .map(|d| d.0.contains(&self.id))
+                .unwrap_or(false)
+        } {
             return;
         }
         self.layer.on_enter(id, ctx)
@@ -609,7 +633,13 @@ where
 
     /// Notifies this layer that the span with the given ID was exited.
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        if self.disabled_spans.read().unwrap().contains(id) {
+        if {
+            let span = ctx.span(id).unwrap();
+            let exts = span.extensions();
+            exts.get::<DisabledBy>()
+                .map(|d| d.0.contains(&self.id))
+                .unwrap_or(false)
+        } {
             return;
         }
         self.layer.on_exit(id, ctx)
@@ -617,7 +647,13 @@ where
 
     /// Notifies this layer that the span with the given ID has been closed.
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        if self.disabled_spans.write().unwrap().remove(&id) {
+        if {
+            let span = ctx.span(&id).unwrap();
+            let exts = span.extensions();
+            exts.get::<DisabledBy>()
+                .map(|d| d.0.contains(&self.id))
+                .unwrap_or(false)
+        } {
             return;
         }
         self.layer.on_close(id, ctx)
