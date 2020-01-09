@@ -305,6 +305,7 @@ impl error::Error for SetGlobalDefaultError {}
 ///
 /// [dispatcher]: ../dispatcher/struct.Dispatch.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
@@ -345,6 +346,7 @@ where
 ///
 /// [dispatcher]: ../dispatcher/struct.Dispatch.html
 #[cfg(not(feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
@@ -675,6 +677,7 @@ impl State {
 // ===== impl DefaultGuard =====
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {

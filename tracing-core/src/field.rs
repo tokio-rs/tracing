@@ -198,6 +198,7 @@ pub trait Visit {
     /// **Note**: this is only enabled when the Rust standard library is
     /// present.
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         self.record_debug(field, &format_args!("{}", value))
     }
@@ -332,6 +333,7 @@ impl Value for str {
 impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Value for dyn std::error::Error + 'static {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_error(key, self)
