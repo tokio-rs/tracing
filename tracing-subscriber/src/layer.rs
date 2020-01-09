@@ -7,8 +7,8 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData};
+use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
+use std::{any::TypeId, collections::HashSet, marker::PhantomData, sync::RwLock};
 
 /// A composable handler for `tracing` events.
 ///
@@ -433,6 +433,7 @@ where
         Filtered {
             layer: self,
             filter,
+            disabled_spans: RwLock::new(HashSet::new()),
             _s: PhantomData,
         }
     }
@@ -541,10 +542,11 @@ pub struct Layered<L, I, S = I> {
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 /// [`Filter`]: ../layer/trait.Layer.html
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Filtered<L, S, F> {
     layer: L,
     filter: F,
+    disabled_spans: RwLock<HashSet<span::Id>>,
     _s: PhantomData<fn(S)>,
 }
 
@@ -556,6 +558,10 @@ where
     L: Layer<S>,
     S: Subscriber + 'static,
 {
+    fn filter_callsite(&self, metadata: &Metadata<'_>) -> tracing_core::subscriber::Interest {
+        tracing_core::subscriber::Interest::sometimes()
+    }
+
     /// Filter on a specific span or event's metadata.
     fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool;
 }
@@ -581,6 +587,8 @@ where
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         if self.filter.filter(attrs.metadata(), &ctx) {
             self.layer.new_span(attrs, id, ctx);
+        } else {
+            self.disabled_spans.write().unwrap().insert(id.clone());
         }
     }
 
@@ -589,6 +597,30 @@ where
         if self.filter.filter(event.metadata(), &ctx) {
             self.layer.on_event(event, ctx);
         }
+    }
+
+    /// Notifies this layer that a span with the given ID was entered.
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if self.disabled_spans.read().unwrap().contains(id) {
+            return;
+        }
+        self.layer.on_enter(id, ctx)
+    }
+
+    /// Notifies this layer that the span with the given ID was exited.
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if self.disabled_spans.read().unwrap().contains(id) {
+            return;
+        }
+        self.layer.on_exit(id, ctx)
+    }
+
+    /// Notifies this layer that the span with the given ID has been closed.
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        if self.disabled_spans.write().unwrap().remove(&id) {
+            return;
+        }
+        self.layer.on_close(id, ctx)
     }
 }
 
