@@ -80,3 +80,7 @@ harness = false
 [[bench]]
 name = "fmt"
 harness = false
+
+[[bench]]
+name = "layer_filter"
+harness = false
