@@ -257,6 +257,7 @@ where
 }
 
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
 where
     layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
@@ -360,6 +361,7 @@ where
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
         SubscriberBuilder {
             filter: self.filter,
@@ -395,6 +397,7 @@ where
     ///
     /// See [`format::Json`]
     #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(
         self,
     ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
@@ -409,6 +412,7 @@ where
 }
 
 #[cfg(feature = "env-filter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 impl<N, E, W> SubscriberBuilder<N, E, crate::EnvFilter, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
@@ -428,6 +432,7 @@ where
 }
 
 #[cfg(feature = "env-filter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 impl<N, E, W> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
@@ -524,6 +529,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
     /// [`with_max_level`]: #method.with_max_level
     #[cfg(feature = "env-filter")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
     pub fn with_env_filter(
         self,
         filter: impl Into<crate::EnvFilter>,

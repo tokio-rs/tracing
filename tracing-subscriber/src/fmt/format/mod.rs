@@ -26,6 +26,7 @@ use ansi_term::{Colour, Style};
 mod json;
 
 #[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use json::*;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
@@ -166,6 +167,7 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`Json`].
     #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
         Format {
             format: PhantomData,
