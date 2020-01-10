@@ -1,3 +1,15 @@
+# 0.1.9 (January 10, 2020)
+
+### Added
+
+- API docs now show what feature flags are required to enable each item (#523)
+
+### Fixed
+
+- A panic when the current default subscriber subscriber calls
+  `dispatcher::with_default` as it is being dropped (#522)
+- Incorrect documentation for `Subscriber::drop_span` (#524)
+
 # 0.1.8 (December 20, 2019)
 
 ### Added
