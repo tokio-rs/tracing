@@ -78,6 +78,7 @@
     while_true
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
 
