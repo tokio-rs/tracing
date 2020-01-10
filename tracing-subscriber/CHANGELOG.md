@@ -1,4 +1,4 @@
-# 0.2.0-alpha.3 (December 8, 2019)
+# 0.2.0-alpha.3 (January 10, 2020)
 
 ### Added
 
