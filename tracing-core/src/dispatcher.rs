@@ -669,9 +669,13 @@ impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
         if let Some(dispatch) = self.0.take() {
-            let _ = CURRENT_STATE.try_with(|state| {
-                *state.default.borrow_mut() = dispatch;
-            });
+            // Replace the dispatcher and then drop the old one outside
+            // of the thread-local context. Dropping the dispatch may
+            // lead to the drop of a subscriber which, in the process,
+            // could then also attempt to access the same thread local
+            // state -- causing a clash.
+            let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
+            drop(prev)
         }
     }
 }
