@@ -55,6 +55,7 @@
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
 #![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.0")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -250,6 +251,7 @@ pub struct WithDispatch<T> {
 impl<T: Sized> Instrument for T {}
 
 #[cfg(feature = "std-future")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
 impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
     type Output = T::Output;
 
@@ -261,6 +263,7 @@ impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrum
 }
 
 #[cfg(feature = "futures-01")]
+#[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
 impl<T: futures_01::Future> futures_01::Future for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -272,6 +275,7 @@ impl<T: futures_01::Future> futures_01::Future for Instrumented<T> {
 }
 
 #[cfg(feature = "futures-01")]
+#[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
 impl<T: Stream> Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -283,6 +287,7 @@ impl<T: Stream> Stream for Instrumented<T> {
 }
 
 #[cfg(feature = "futures-01")]
+#[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
 impl<T: Sink> Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
@@ -331,6 +336,7 @@ impl<T> Instrumented<T> {
 impl<T: Sized> WithSubscriber for T {}
 
 #[cfg(all(feature = "futures-01", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "futures-01", feature = "std"))))]
 impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
     type Item = T::Item;
     type Error = T::Error;
@@ -342,6 +348,7 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
 }
 
 #[cfg(all(feature = "std-future", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "std-future", feature = "std"))))]
 impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
@@ -356,6 +363,10 @@ impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDis
 #[cfg(feature = "std")]
 impl<T> WithDispatch<T> {
     #[cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03"))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03")))
+    )]
     pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
