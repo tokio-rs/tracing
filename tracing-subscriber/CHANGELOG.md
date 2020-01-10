@@ -1,3 +1,24 @@
+# 0.2.0-alpha.3 (December 8, 2019)
+
+### Added
+
+- **fmt**: Public `FormattedFields::new` constructor (#478)
+- **fmt**: Added examples to `fmt::Layer` documentation (#510)
+- Documentation now shows what feature flags are required by each API item (#525)
+
+### Fixed
+
+- **fmt**: Missing space between timestamp and level (#480)
+- **fmt**: Incorrect formatting with `with_target(false)` (#481)
+- **fmt**: `fmt::SubscriberBuilder::init` not setting up `log` compatibility
+  (#489)
+- **registry**: Spans exited out of order not being closed properly on exit
+  (#509)
+- **registry**: Memory leak when spans are closed by a child span closing (#514)
+- **registry**: Spans closed by a child span closing not also closing _their_
+  parents (#514)
+- Compilation errors with `no-default-features` (#499, #500)
+
 # 0.2.0-alpha.2 (December 8, 2019)
 
 ### Added
