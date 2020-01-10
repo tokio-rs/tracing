@@ -93,6 +93,7 @@ macro_rules! try_lock {
 
 pub mod field;
 pub mod filter;
+pub mod filter2;
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
