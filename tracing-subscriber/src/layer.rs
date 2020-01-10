@@ -314,12 +314,27 @@ where
         F: Filter<Self, S>,
         Self: Sized,
     {
+<<<<<<< Updated upstream
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
         Filtered {
             layer: self,
             filter,
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+=======
+        static ID: AtomicUsize = AtomicUsize::new(0);
+        let id = ID.fetch_add(1, Ordering::Relaxed);
+        if id == std::usize::MAX {
+            panic!(
+                "you tried to construct {} unique filters, why would you do this?",
+                std::usize::MAX
+            );
+        }
+        Filtered {
+            layer: self,
+            filter,
+            id,
+>>>>>>> Stashed changes
             _s: PhantomData,
         }
     }
@@ -450,9 +465,13 @@ where
     L: Layer<S>,
     S: Subscriber + 'static,
 {
+<<<<<<< Updated upstream
     fn filter_callsite(&self, metadata: &Metadata<'_>) -> tracing_core::subscriber::Interest {
         tracing_core::subscriber::Interest::sometimes()
     }
+=======
+    fn filter_callsite(&self, metadata: &Metadata<'static>) -> tracing_core::subscriber::Interest;
+>>>>>>> Stashed changes
 
     /// Filter on a specific span or event's metadata.
     fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool;

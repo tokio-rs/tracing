@@ -19,31 +19,31 @@ struct NopLayer;
 
 impl<S: Subscriber> Layer<S> for NopLayer {
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-        criterion::black_box((span, values, ctx));
+        // criterion::black_box((span, values, ctx));
     }
 
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-        criterion::black_box((span, follows, ctx));
+        // criterion::black_box((span, follows, ctx));
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        criterion::black_box((event, ctx));
+        // criterion::black_box((event, ctx));
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        criterion::black_box((id, ctx));
+        // criterion::black_box((id, ctx));
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        criterion::black_box((id, ctx));
+        // criterion::black_box((id, ctx));
     }
 
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        criterion::black_box((id, ctx));
+        // criterion::black_box((id, ctx));
     }
 
     fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
-        criterion::black_box((old, new, ctx));
+        // criterion::black_box((old, new, ctx));
     }
 }
 struct FakeFilter {
@@ -148,6 +148,47 @@ fn multi_threaded(c: &mut Criterion) {
                 total
             })
         });
+        group.bench_with_input(
+            BenchmarkId::new("shared_span", n_layers),
+            &n_layers,
+            |b, _| {
+                b.iter_custom(|iters| {
+                    let mut total = Duration::from_secs(0);
+                    for _ in 0..iters {
+                        let dispatch = dispatch();
+                        let bench = MultithreadedBench::new(dispatch.clone());
+                        let span = tracing::dispatcher::with_default(&dispatch, || {
+                            tracing::info_span!("test")
+                        });
+                        let span1 = span.clone();
+                        let span2 = span.clone();
+                        let span3 = span.clone();
+                        let span4 = span.clone();
+                        let span = tracing::info_span!("test");
+                        let elapsed = bench
+                            .thread(move || {
+                                let entered = span1.enter();
+                                drop(entered);
+                            })
+                            .thread(move || {
+                                let entered = span2.enter();
+                                drop(entered);
+                            })
+                            .thread(move || {
+                                let entered = span3.enter();
+                                drop(entered);
+                            })
+                            .thread(move || {
+                                let entered = span4.enter();
+                                drop(entered);
+                            })
+                            .run();
+                        total += elapsed;
+                    }
+                    total
+                })
+            },
+        );
     };
     bench_span(0, || {
         let s = Registry::default().with(NopLayer).with(NopLayer);
