@@ -30,6 +30,7 @@ use tracing_core::{
 /// directives.
 // TODO(eliza): document filter directive syntax?
 #[cfg(feature = "env-filter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
 pub struct EnvFilter {
     // TODO: eventually, this should be exposed by the registry.
