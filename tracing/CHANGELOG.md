@@ -1,3 +1,14 @@
+# 0.1.12 (January 10, 2019)
+
+### Added
+
+- `Span::with_subscriber` method to access the subscriber that tracks a `Span`
+  (#503)
+- API documentation now shows which features are required by feature-flagged
+  items (#523)
+- Improved README examples (#496)
+- Documentation links to related crates (#507)
+
 # 0.1.11 (December 20, 2019)
 
 ### Added
