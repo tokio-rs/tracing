@@ -78,6 +78,7 @@
     while_true
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
 
@@ -174,6 +175,7 @@ pub trait Instrument: Sized {
 ///
 /// [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a
     /// `WithDispatch` wrapper.
@@ -232,6 +234,7 @@ pub struct Instrumented<T> {
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
