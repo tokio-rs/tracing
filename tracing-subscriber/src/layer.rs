@@ -422,6 +422,7 @@ pub struct Identity {
 /// [stored data]: ../registry/struct.SpanRef.html
 /// [`Context::scope`]: struct.Context.html#method.scope
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct Scope<'a, L: LookupSpan<'a>>(
     Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
 );
@@ -635,6 +636,7 @@ where
 }
 
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, L, S> LookupSpan<'a> for Layered<L, S>
 where
     S: Subscriber + LookupSpan<'a>,

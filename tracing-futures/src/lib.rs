@@ -55,7 +55,6 @@
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
 #![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.0")]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
