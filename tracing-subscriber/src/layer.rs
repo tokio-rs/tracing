@@ -416,6 +416,7 @@ pub struct Identity {
 /// [stored data]: ../registry/struct.SpanRef.html
 /// [`Context::scope`]: struct.Context.html#method.scope
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct Scope<'a, L: LookupSpan<'a>>(
     Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
 );
@@ -629,6 +630,7 @@ where
 }
 
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, L, S> LookupSpan<'a> for Layered<L, S>
 where
     S: Subscriber + LookupSpan<'a>,
@@ -730,6 +732,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
     #[inline]
     #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
         S: LookupMetadata,
@@ -754,6 +757,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -774,6 +778,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
     #[inline]
     #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn exists(&self, id: &span::Id) -> bool
     where
         S: LookupMetadata,
@@ -801,6 +806,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -834,6 +840,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// [stored data]: ../registry/struct.SpanRef.html
     /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
@@ -878,6 +885,7 @@ impl Identity {
 // === impl Scope ===
 
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
     type Item = SpanRef<'a, L>;
 
@@ -888,6 +896,7 @@ impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
 }
 
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.pad("Scope { .. }")

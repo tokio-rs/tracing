@@ -218,6 +218,7 @@ where
 
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
         LayerBuilder {
             fmt_event: self.fmt_event.with_ansi(ansi),
@@ -252,6 +253,7 @@ where
 
     /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
     #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
         LayerBuilder {
             fmt_event: self.fmt_event.json(),

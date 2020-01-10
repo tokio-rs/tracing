@@ -52,6 +52,7 @@
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`registry`]: registry/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.5")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -93,24 +94,29 @@ macro_rules! try_lock {
 pub mod field;
 pub mod filter;
 #[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
 pub(crate) mod thread;
 
 #[cfg(feature = "env-filter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use filter::EnvFilter;
 
 pub use layer::Layer;
 
 #[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub use registry::Registry;
 
 #[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub use fmt::Subscriber as FmtSubscriber;
 
 use std::default::Default;
