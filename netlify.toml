@@ -2,7 +2,7 @@
   command = """
   curl https://sh.rustup.rs -sSf | sh -s -- -y \
   && source $HOME/.cargo/env \
-  && RUSTDOCFLAGS=\"--cfg docsrs\" cargo doc --no-deps
+  && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
   """
   publish = "target/doc"
 
