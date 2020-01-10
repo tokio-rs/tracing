@@ -674,6 +674,7 @@
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing/0.1.11")]
 #![warn(
     missing_debug_implementations,
@@ -720,7 +721,7 @@ pub use self::{
     event::Event,
     field::Value,
     subscriber::Subscriber,
-    tracing_core::{dispatcher, event, Level, Metadata},
+    tracing_core::{event, Level, Metadata},
 };
 
 #[doc(hidden)]
@@ -740,6 +741,7 @@ pub use tracing_attributes::instrument;
 #[macro_use]
 mod macros;
 
+pub mod dispatcher;
 pub mod field;
 pub mod level_filters;
 pub mod span;
