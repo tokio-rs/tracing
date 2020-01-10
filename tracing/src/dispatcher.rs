@@ -149,3 +149,11 @@ pub use tracing_core::dispatcher::DefaultGuard;
 pub use tracing_core::dispatcher::{
     get_default, set_global_default, Dispatch, SetGlobalDefaultError,
 };
+
+/// Private API for internal use by tracing's macros.
+///
+/// This function is *not* considered part of `tracing`'s public API, and has no
+/// stability guarantees. If you use it, and it breaks or disappears entirely,
+/// don't say we didn;'t warn you.
+#[doc(hidden)]
+pub use tracing_core::dispatcher::has_been_set;
