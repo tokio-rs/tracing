@@ -357,11 +357,8 @@ mod tests {
     use super::Registry;
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::{
-        collections::VecDeque,
-        sync::{
-            atomic::{AtomicBool, Ordering},
-            Arc, Mutex,
-        },
+        collections::HashMap,
+        sync::{Arc, Mutex, Weak},
     };
     use tracing::{self, subscriber::with_default};
     use tracing_core::{
@@ -403,104 +400,179 @@ mod tests {
         });
     }
 
-    struct CloseInOrder {
-        inner: Mutex<VecDeque<&'static str>>,
-        okay: Arc<AtomicBool>,
+    struct CloseLayer {
+        inner: Arc<Mutex<CloseState>>,
     }
 
-    struct ClosingLayer {
-        span1_removed: Arc<AtomicBool>,
-        span2_removed: Arc<AtomicBool>,
+    struct CloseHandle {
+        state: Arc<Mutex<CloseState>>,
     }
 
-    impl<S> Layer<S> for ClosingLayer
+    #[derive(Default)]
+    struct CloseState {
+        open: HashMap<&'static str, Weak<()>>,
+        closed: Vec<(&'static str, Weak<()>)>,
+    }
+
+    struct SetRemoved(Arc<()>);
+
+    impl<S> Layer<S> for CloseLayer
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
         fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");
-            let is_removed = match dbg!(span.name()) {
-                "span1" => self.span1_removed.clone(),
-                "span2" => self.span2_removed.clone(),
-                _ => return,
-            };
+            let mut lock = self.inner.lock().unwrap();
+            let is_removed = Arc::new(());
+            assert!(
+                lock.open
+                    .insert(span.name(), Arc::downgrade(&is_removed))
+                    .is_none(),
+                "test layer saw multiple spans with the same name, the test is probably messed up"
+            );
             let mut extensions = span.extensions_mut();
-            extensions.insert(ClosingSpan { is_removed });
+            extensions.insert(SetRemoved(is_removed));
         }
 
         fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-            dbg!(&id);
-            assert!(&ctx.span(&id).is_some());
-            let span = &ctx.span(&id).unwrap();
-            match dbg!(span.name()) {
-                "span1" | "span2" => {}
-                _ => return,
+            let span = if let Some(span) = ctx.span(&id) {
+                span
+            } else {
+                println!(
+                    "span {:?} did not exist in `on_close`, are we panicking?",
+                    id
+                );
+                return;
             };
-            let extensions = span.extensions();
-            assert!(extensions.get::<ClosingSpan>().is_some());
-        }
-    }
-
-    struct ClosingSpan {
-        is_removed: Arc<AtomicBool>,
-    }
-
-    impl Drop for ClosingSpan {
-        fn drop(&mut self) {
-            self.is_removed.store(true, Ordering::Release)
-        }
-    }
-
-    impl<S> Layer<S> for CloseInOrder
-    where
-        S: Subscriber + for<'a> LookupSpan<'a>,
-    {
-        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-            let span = &ctx.span(&id).unwrap();
             let name = span.name();
+            println!("close {} ({:?})", name, id);
             if let Ok(mut lock) = self.inner.lock() {
-                if let Some(next) = lock.pop_front() {
-                    if next != name {
-                        println!(
-                            "expected span \"{}\" to close next, but \"{}\" closed instead!",
-                            next, name
-                        );
-                        self.okay.store(false, Ordering::Release);
-                    }
-                } else {
-                    println!(
-                        "span \"{}\" closed when no more spans were expected to close",
-                        name
-                    );
-                    self.okay.store(false, Ordering::Release);
+                if let Some(is_removed) = lock.open.remove(name) {
+                    assert!(is_removed.upgrade().is_some());
+                    lock.closed.push((name, is_removed));
                 }
             }
         }
     }
 
-    impl CloseInOrder {
-        fn new(i: impl IntoIterator<Item = &'static str>) -> (Self, Arc<AtomicBool>) {
-            let closes = i.into_iter().collect::<VecDeque<_>>();
-            let inner = Mutex::new(closes);
-            let okay = Arc::new(AtomicBool::new(true));
-            let handle = okay.clone();
-            (Self { inner, okay }, handle)
+    impl CloseLayer {
+        fn new() -> (Self, CloseHandle) {
+            let state = Arc::new(Mutex::new(CloseState::default()));
+            (
+                Self {
+                    inner: state.clone(),
+                },
+                CloseHandle { state },
+            )
+        }
+    }
+
+    impl CloseState {
+        fn is_open(&self, span: &str) -> bool {
+            self.open.contains_key(span)
+        }
+
+        fn is_closed(&self, span: &str) -> bool {
+            self.closed.iter().any(|(name, _)| name == &span)
+        }
+    }
+
+    impl CloseHandle {
+        fn assert_closed(&self, span: &str) {
+            let lock = self.state.lock().unwrap();
+            assert!(
+                lock.is_closed(span),
+                "expected {} to be closed{}",
+                span,
+                if lock.is_open(span) {
+                    " (it was still open)"
+                } else {
+                    ", but it never existed (is there a problem with the test?)"
+                }
+            )
+        }
+
+        fn assert_open(&self, span: &str) {
+            let lock = self.state.lock().unwrap();
+            assert!(
+                lock.is_open(span),
+                "expected {} to be open{}",
+                span,
+                if lock.is_closed(span) {
+                    " (it was still open)"
+                } else {
+                    ", but it never existed (is there a problem with the test?)"
+                }
+            )
+        }
+
+        fn assert_removed(&self, span: &str) {
+            let lock = self.state.lock().unwrap();
+            let is_removed = match lock.closed.iter().find(|(name, _)| name == &span) {
+                Some((_, is_removed)) => is_removed,
+                None => panic!(
+                    "expected {} to be removed from the registry, but it was not closed {}",
+                    span,
+                    if lock.is_closed(span) {
+                        " (it was still open)"
+                    } else {
+                        ", but it never existed (is there a problem with the test?)"
+                    }
+                ),
+            };
+            assert!(
+                is_removed.upgrade().is_none(),
+                "expected {} to have been removed from the registry",
+                span
+            )
+        }
+
+        fn assert_not_removed(&self, span: &str) {
+            let lock = self.state.lock().unwrap();
+            let is_removed = match lock.closed.iter().find(|(name, _)| name == &span) {
+                Some((_, is_removed)) => is_removed,
+                None if lock.is_open(span) => return,
+                None => unreachable!(),
+            };
+            assert!(
+                is_removed.upgrade().is_some(),
+                "expected {} to have been removed from the registry",
+                span
+            )
+        }
+
+        #[allow(unused)] // may want this for future tests
+        fn assert_last_closed(&self, span: Option<&str>) {
+            let lock = self.state.lock().unwrap();
+            let last = lock.closed.last().map(|(span, _)| span);
+            assert_eq!(
+                last,
+                span.as_ref(),
+                "expected {:?} to have closed last",
+                span
+            );
+        }
+
+        fn assert_closed_in_order(&self, order: impl AsRef<[&'static str]>) {
+            let lock = self.state.lock().unwrap();
+            let order = order.as_ref();
+            for (i, name) in order.iter().enumerate() {
+                assert_eq!(
+                    lock.closed.get(i).map(|(span, _)| span),
+                    Some(name),
+                    "expected close order: {:?}, actual: {:?}",
+                    order,
+                    lock.closed.iter().map(|(name, _)| name).collect::<Vec<_>>()
+                );
+            }
         }
     }
 
     #[test]
     fn spans_are_removed_from_registry() {
-        let span1_removed = Arc::new(AtomicBool::new(false));
-        let span2_removed = Arc::new(AtomicBool::new(false));
-
-        let span1_removed2 = span1_removed.clone();
-        let span2_removed2 = span2_removed.clone();
-
+        let (close_layer, state) = CloseLayer::new();
         let subscriber = AssertionLayer
-            .and_then(ClosingLayer {
-                span1_removed,
-                span2_removed,
-            })
+            .and_then(close_layer)
             .with_subscriber(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
@@ -517,8 +589,8 @@ mod tests {
             drop(span);
         });
 
-        assert!(span1_removed2.load(Ordering::Acquire));
-        assert!(span2_removed2.load(Ordering::Acquire));
+        state.assert_removed("span1");
+        state.assert_removed("span2");
 
         // Ensure the registry itself outlives the span.
         drop(dispatch);
@@ -526,17 +598,9 @@ mod tests {
 
     #[test]
     fn spans_are_only_closed_when_the_last_ref_drops() {
-        let span1_removed = Arc::new(AtomicBool::new(false));
-        let span2_removed = Arc::new(AtomicBool::new(false));
-
-        let span1_removed2 = span1_removed.clone();
-        let span2_removed2 = span2_removed.clone();
-
+        let (close_layer, state) = CloseLayer::new();
         let subscriber = AssertionLayer
-            .and_then(ClosingLayer {
-                span1_removed,
-                span2_removed,
-            })
+            .and_then(close_layer)
             .with_subscriber(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
@@ -555,11 +619,11 @@ mod tests {
             span2_clone
         });
 
-        assert!(span1_removed2.load(Ordering::Acquire));
-        assert!(!span2_removed2.load(Ordering::Acquire));
+        state.assert_removed("span1");
+        state.assert_not_removed("span2");
 
         drop(span2);
-        assert!(span2_removed2.load(Ordering::Acquire));
+        state.assert_removed("span1");
 
         // Ensure the registry itself outlives the span.
         drop(dispatch);
@@ -567,14 +631,9 @@ mod tests {
 
     #[test]
     fn span_enter_guards_are_dropped_out_of_order() {
-        let span1_removed = Arc::new(AtomicBool::new(false));
-        let span2_removed = Arc::new(AtomicBool::new(false));
-
+        let (close_layer, state) = CloseLayer::new();
         let subscriber = AssertionLayer
-            .and_then(ClosingLayer {
-                span1_removed: span1_removed.clone(),
-                span2_removed: span2_removed.clone(),
-            })
+            .and_then(close_layer)
             .with_subscriber(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
@@ -594,107 +653,74 @@ mod tests {
             drop(enter1);
             drop(span1);
 
-            assert!(span1_removed.load(Ordering::Acquire));
-            assert!(!span2_removed.load(Ordering::Acquire));
+            state.assert_removed("span1");
+            state.assert_not_removed("span2");
 
             drop(enter2);
+            state.assert_not_removed("span2");
+
             drop(span2);
-            assert!(span2_removed.load(Ordering::Acquire));
+            state.assert_removed("span1");
+            state.assert_removed("span2");
         });
     }
 
     #[test]
     fn child_closes_parent() {
-        let span1_removed = Arc::new(AtomicBool::new(false));
-        let span2_removed = Arc::new(AtomicBool::new(false));
-        let (order_layer, closed_in_order) = CloseInOrder::new(vec!["span2", "span1"]);
+        // This test asserts that if a parent span's handle is dropped before
+        // a child span's handle, the parent will remain open until child
+        // closes, and will then be closed.
 
-        let subscriber = order_layer
-            .and_then(ClosingLayer {
-                span1_removed: span1_removed.clone(),
-                span2_removed: span2_removed.clone(),
-            })
-            .with_subscriber(Registry::default());
+        let (close_layer, state) = CloseLayer::new();
+        let subscriber = close_layer.with_subscriber(Registry::default());
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
         dispatcher::with_default(&dispatch, || {
-            let span1 = tracing::info_span!("span1");
-            let span2 = tracing::info_span!(parent: &span1, "span2");
+            let span1 = tracing::info_span!("parent");
+            let span2 = tracing::info_span!(parent: &span1, "child");
 
-            assert!(!span1_removed.load(Ordering::Acquire));
-            assert!(!span2_removed.load(Ordering::Acquire));
+            state.assert_open("parent");
+            state.assert_open("child");
 
             drop(span1);
-
-            assert!(
-                !span1_removed.load(Ordering::Acquire),
-                "span1 must not have closed yet (span2 is keeping it open)"
-            );
-            assert!(!span2_removed.load(Ordering::Acquire));
+            state.assert_open("parent");
+            state.assert_open("child");
 
             drop(span2);
-
-            assert!(span2_removed.load(Ordering::Acquire));
-            assert!(span1_removed.load(Ordering::Acquire));
+            state.assert_closed("parent");
+            state.assert_closed("child");
         });
-
-        assert!(
-            closed_in_order.load(Ordering::Acquire),
-            "spans closed out of order!"
-        );
     }
 
     #[test]
     fn child_closes_grandparent() {
-        let span1_removed = Arc::new(AtomicBool::new(false));
-        let span2_removed = Arc::new(AtomicBool::new(false));
-        let (order_layer, closed_in_order) = CloseInOrder::new(vec!["span3", "span2", "span1"]);
-
-        let subscriber = order_layer
-            .and_then(ClosingLayer {
-                span1_removed: span1_removed.clone(),
-                span2_removed: span2_removed.clone(),
-            })
-            .with_subscriber(Registry::default());
+        // This test asserts that, when a span is kept open by a child which
+        // is *itself* kept open by a child, closing the grandchild will close
+        // both the parent *and* the grandparent.
+        let (close_layer, state) = CloseLayer::new();
+        let subscriber = close_layer.with_subscriber(Registry::default());
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
         dispatcher::with_default(&dispatch, || {
-            let span1 = tracing::info_span!("span1");
-            let span2 = tracing::info_span!(parent: &span1, "span2");
-            let span3 = tracing::info_span!(parent: &span2, "span3");
+            let span1 = tracing::info_span!("grandparent");
+            let span2 = tracing::info_span!(parent: &span1, "parent");
+            let span3 = tracing::info_span!(parent: &span2, "child");
 
-            assert!(!span1_removed.load(Ordering::Acquire));
-            assert!(!span2_removed.load(Ordering::Acquire));
+            state.assert_open("grandparent");
+            state.assert_open("parent");
+            state.assert_open("child");
 
             drop(span1);
             drop(span2);
-
-            assert!(
-                !span1_removed.load(Ordering::Acquire),
-                "span1 must not have closed yet (span2 is keeping it open)"
-            );
-            assert!(
-                !span2_removed.load(Ordering::Acquire),
-                "span2 must not have closed yet (span3 is keeping it open)"
-            );
+            state.assert_open("grandparent");
+            state.assert_open("parent");
+            state.assert_open("child");
 
             drop(span3);
 
-            assert!(
-                span2_removed.load(Ordering::Acquire),
-                "closing span3 should have closed span2"
-            );
-            assert!(
-                span1_removed.load(Ordering::Acquire),
-                "closing span2 should have closed span1"
-            );
+            state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
-
-        assert!(
-            closed_in_order.load(Ordering::Acquire),
-            "spans closed out of order!"
-        );
     }
 }
