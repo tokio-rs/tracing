@@ -1,5 +1,9 @@
 [build]
-  command = "curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env && cargo doc --no-deps"
+  command = """
+  curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly \
+  && source $HOME/.cargo/env \
+  && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
+  """
   publish = "target/doc"
 
 [[redirects]]
