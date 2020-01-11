@@ -1,4 +1,9 @@
-# 0.2.0 (Nov XX, 2019)
+# 0.2.1
+
+- docs: add `doc-cfg` attributes to tracing, tracing-core, tracing-futures, tracing-subscriber (#523, #525) 
+- `no_std` support (#498)
+
+# 0.2.0 (Dec 3, 2019)
 
 ### Changed
 

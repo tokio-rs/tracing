@@ -1,6 +1,6 @@
 [package]
 name = "tracing-futures"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 edition = "2018"
 repository = "https://github.com/tokio-rs/tracing"
