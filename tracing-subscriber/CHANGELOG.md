@@ -1,3 +1,9 @@
+# 0.2.0-alpha.4 (January 11, 2020)
+
+### Fixed
+
+- **registry**: Removed inadvertantly committed `dbg!` macros (#533)
+
 # 0.2.0-alpha.3 (January 10, 2020)
 
 ### Added
