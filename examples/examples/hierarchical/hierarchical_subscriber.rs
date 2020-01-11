@@ -24,6 +24,7 @@ use std::{
     collections::HashMap,
     fmt,
     io::{self, Write},
+    mem,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Mutex,
@@ -65,7 +66,7 @@ impl CurrentSpanPerThread {
     }
 }
 
-pub struct SloggishSubscriber {
+pub struct HierarchicalSubscriber {
     // TODO: this can probably be unified with the "stack" that's used for
     // printing?
     current: CurrentSpanPerThread,
@@ -73,6 +74,7 @@ pub struct SloggishSubscriber {
     stdout: io::Stdout,
     stack: Mutex<Vec<Id>>,
     spans: Mutex<HashMap<Id, Span>>,
+    prior_event: Mutex<DateTime<Local>>,
     ids: AtomicUsize,
 }
 
@@ -152,7 +154,7 @@ impl<'a> Visit for Event<'a> {
     }
 }
 
-impl SloggishSubscriber {
+impl HierarchicalSubscriber {
     pub fn new(indent_amount: usize) -> Self {
         Self {
             current: CurrentSpanPerThread::new(),
@@ -161,6 +163,7 @@ impl SloggishSubscriber {
             stack: Mutex::new(vec![]),
             spans: Mutex::new(HashMap::new()),
             ids: AtomicUsize::new(1),
+            prior_event: Mutex::new(Local::now()),
         }
     }
 
@@ -206,7 +209,7 @@ impl SloggishSubscriber {
     }
 }
 
-impl Subscriber for SloggishSubscriber {
+impl Subscriber for HierarchicalSubscriber {
     fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }
@@ -281,16 +284,21 @@ impl Subscriber for SloggishSubscriber {
         let mut stdout = self.stdout.lock();
         let indent = self.stack.lock().unwrap().len();
         self.print_indent(&mut stdout, indent).unwrap();
+        let mut prior = self.prior_event.lock().unwrap();
         let now = Local::now();
+        let elapsed = now - *prior;
+
         write!(
             &mut stdout,
-            "{timestamp} {level}",
+            "{timestamp}{unit} {level}",
             timestamp = Style::new()
                 .dimmed()
-                .paint(now.format("%b %-d, %-I:%M:%S").to_string()),
+                .paint(elapsed.num_microseconds().unwrap().to_string()),
+            unit = Style::new().dimmed().paint("µs"),
             level = ColorLevel(event.metadata().level())
         )
         .unwrap();
+        mem::replace(&mut *prior, now);
         let mut visitor = Event {
             stdout,
             comma: false,
