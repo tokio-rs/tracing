@@ -1,6 +1,6 @@
 [build]
   command = """
-  curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly \
+  curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly --profile minimal \
   && source $HOME/.cargo/env \
   && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
   """

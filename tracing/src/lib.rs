@@ -670,7 +670,7 @@ pub use self::{
     event::Event,
     field::Value,
     subscriber::Subscriber,
-    tracing_core::{dispatcher, event, Level, Metadata},
+    tracing_core::{event, Level, Metadata},
 };
 
 #[doc(hidden)]
@@ -690,6 +690,7 @@ pub use tracing_attributes::instrument;
 #[macro_use]
 mod macros;
 
+pub mod dispatcher;
 pub mod field;
 pub mod level_filters;
 pub mod span;
