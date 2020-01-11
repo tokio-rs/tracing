@@ -93,7 +93,7 @@ fn main() {
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2.0-alpha.2"
+tracing-subscriber = "0.2.0-alpha.3"
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -111,7 +111,7 @@ fn main() {
         // will be written to stdout.
         .with_max_level(Level::TRACE)
         // builds the subscriber.
-        .finish();   
+        .finish();
 
     tracing::subscriber::with_default(subscriber, || {
         info!("This will be logged to stdout");
@@ -236,7 +236,7 @@ my_future
     .await
 ```
 
-`Future::instrument` attaches a span to the future, ensuring that the span's lifetime 
+`Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
 The second, and preferred, option is through the
