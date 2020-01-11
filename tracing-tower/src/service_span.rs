@@ -13,12 +13,15 @@ pub struct Service<S> {
 }
 
 #[cfg(feature = "tower-layer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
 pub use self::layer::*;
 
 #[cfg(feature = "tower-util")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower-util")))]
 pub use self::make::MakeService;
 
 #[cfg(feature = "tower-layer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
 mod layer {
     use super::*;
 
@@ -73,6 +76,7 @@ mod layer {
 }
 
 #[cfg(feature = "tower-layer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
 pub mod make {
     use super::*;
     use pin_project::pin_project;
@@ -105,6 +109,7 @@ pub mod make {
     }
 
     #[cfg(feature = "tower-layer")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
     pub fn layer<T, R, G>(get_span: G) -> MakeLayer<T, R, G>
     where
         G: GetSpan<T> + Clone,
@@ -118,6 +123,7 @@ pub mod make {
     // === impl MakeLayer ===
 
     #[cfg(feature = "tower-layer")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
     impl<M, T, R, G> tower_layer::Layer<M> for MakeLayer<T, R, G>
     where
         M: tower_make::MakeService<T, R>,
@@ -131,6 +137,7 @@ pub mod make {
     }
 
     #[cfg(feature = "tower-layer")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
     impl<T, R, G> Clone for MakeLayer<T, R, G>
     where
         G: GetSpan<T> + Clone,
