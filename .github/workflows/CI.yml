@@ -14,15 +14,39 @@ jobs:
       matrix:
         rust: [stable, 1.39.0]
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
-    - uses: actions/checkout@master
     - name: Check
-      run: cargo check --all --bins --examples --tests --benches
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --all --bins --examples --tests --benches
+
+  cache-cargo-hack:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Fetch latest release version of cargo-hack
+      run: |
+        mkdir -p .github/caching
+        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
+    - name: Cache cargo-hack/bin
+      id: cache-cargo-hack
+      uses: actions/cache@v1
+      with:
+        path: ${{ runner.tool_cache }}/cargo-hack/bin
+        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
+    - name: Install cargo-hack
+      if: "steps.cache-cargo-hack.outputs.cache-hit != 'true'"
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: --root ${{ runner.tool_cache }}/cargo-hack --force cargo-hack
 
   cargo-hack:
+    needs: cache-cargo-hack
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,12 +66,21 @@ jobs:
         #- tracing
         #- tracing-subscriber
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: stable
     - uses: actions/checkout@master
-    - name: install cargo-hack
-      run: cargo install cargo-hack
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+    - name: Fetch latest release version of cargo-hack
+      run: |
+        mkdir -p .github/caching
+        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
+    - name: Restore cargo-hack/bin
+      uses: actions/cache@v1
+      with:
+        path: ${{ runner.tool_cache }}/cargo-hack/bin
+        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
+    - run: echo "::add-path::${{ runner.tool_cache }}/cargo-hack/bin"
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --feature-powerset --no-dev-deps
@@ -66,10 +99,11 @@ jobs:
         - std log-always
         - std
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: stable
     - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
     - name: cargo check
       working-directory: tracing
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -89,10 +123,11 @@ jobs:
         - registry
         - env-filter
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: stable
     - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
     - name: cargo check
       working-directory: tracing-subscriber
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -105,15 +140,16 @@ jobs:
       matrix:
         rust: [stable, beta, nightly, 1.39.0]
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
-    - uses: actions/checkout@master
-    - name: Build
-      run: cargo build
     - name: Run tests
-      run: cargo test --all
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all
 
   test-os:
     # Test against stable Rust across macOS, Windows, and Linux.
@@ -123,26 +159,27 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
-    - name: Build
-      run: cargo build
     - name: Run tests
-      run: cargo test --all
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all
 
   features-stable:
     # Feature flag tests that run on stable Rust.
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
-    - uses: actions/checkout@master
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
     - name: "Test static max level"
@@ -152,18 +189,21 @@ jobs:
     - name: "Test tracing no-std support"
       run: (cd tracing && cargo test --no-default-features)
     - name: "Test tracing all features"
-      run: cargo test -p tracing --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: -p tracing --all-features
 
   features-nightly:
     # Feature flag tests for features that require nightly Rust.
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
         profile: minimal
-    - uses: actions/checkout@master
     - name: "Test tracing-futures std::future support"
       run: (cd tracing-futures/test_std_future && cargo test)
     - name: "Test tracing-attributes async/await support"
@@ -178,27 +218,53 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         components: rustfmt
         profile: minimal
-    - uses: actions/checkout@master
     - name: rustfmt
-      run: cargo fmt --all -- --check
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
 
   warnings:
     # Check for any warnings. This is informational and thus is allowed to fail.
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         components: clippy
         profile: minimal
-    - uses: actions/checkout@master
     - name: Clippy
       uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --bins --examples --tests --benches -- -D warnings
+
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Fetch latest release version of cargo-audit
+      run: |
+        mkdir -p .github/caching
+        cargo search cargo-audit | grep '^cargo-audit' | awk '{gsub(/"/,"",$3); print $3}' > .github/caching/cargo-audit.lock
+    - name: Cache cargo-audit/bin
+      id: cache-cargo-audit
+      uses: actions/cache@v1
+      with:
+        path: ${{ runner.tool_cache }}/cargo-audit/bin
+        key: cargo-audit-bin-${{ hashFiles('.github/caching/cargo-audit.lock') }}
+    - name: Install cargo-audit
+      if: "steps.cache-cargo-audit.outputs.cache-hit != 'true'"
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: --root ${{ runner.tool_cache }}/cargo-audit --force cargo-audit
+    - run: echo "::add-path::${{ runner.tool_cache }}/cargo-audit/bin"
+    - run: cargo audit
