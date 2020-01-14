@@ -33,6 +33,12 @@ fn test_always_log() {
     error!(foo = 5);
     test.assert_logged("foo=5");
 
+    error!(foo = std::num::NonZeroU16::new(42).unwrap());
+    test.assert_logged("foo=42");
+
+    error!(foo = std::num::Wrapping(39));
+    test.assert_logged("foo=39");
+
     warn!("hello {};", "world");
     test.assert_logged("hello world;");
 
