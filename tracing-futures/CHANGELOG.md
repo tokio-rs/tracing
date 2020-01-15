@@ -1,4 +1,11 @@
-# 0.2.0 (Nov XX, 2019)
+# 0.2.1 (Jan 15, 2020)
+
+### Added
+
+- API documentation now shows which features are required by feature-flagged items (#523)
+- `no_std` support (#498)
+
+# 0.2.0 (Dec 3, 2019)
 
 ### Changed
 
