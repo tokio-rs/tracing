@@ -208,7 +208,7 @@ it is polled, leading to very confusing and incorrect output.
 For more details, see [the documentation on closing spans](https://tracing.rs/tracing/span/index.html#closing-spans).
 
 There are two ways to instrument asynchronous code. The first is through the
-[`Future::instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+[`Future::instrument`](https://docs.rs/tracing-futures/0.2.1/tracing_futures/trait.Instrument.html#method.instrument) combinator:
 
 ```rust
 use tracing_futures::Instrument;

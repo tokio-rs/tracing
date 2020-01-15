@@ -1,6 +1,8 @@
-# 0.2.1
+# 0.2.1 (Jan 15, 2020)
 
-- docs: add `doc-cfg` attributes to tracing, tracing-core, tracing-futures, tracing-subscriber (#523, #525) 
+### Added
+
+- API documentation now shows which features are required by feature-flagged items (#523)
 - `no_std` support (#498)
 
 # 0.2.0 (Dec 3, 2019)

@@ -49,12 +49,12 @@
 //! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
-//! [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/index.html
+//! [span]: https://docs.rs/tracing/0.1.11/tracing/span/index.html
+//! [`Subscriber`]: https://docs.rs/tracing/0.1.11/tracing/subscriber/index.html
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
-#![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.1")]
 #![warn(
     missing_debug_implementations,
     missing_docs,

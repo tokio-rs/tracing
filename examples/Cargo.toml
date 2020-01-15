@@ -19,7 +19,7 @@ tracing = "0.1"
 tracing-core = "0.1"
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tracing-subscriber = { version = "0.2.0-alpha.1", path = "../tracing-subscriber", features = ["json", "chrono"] }
-tracing-futures = { version = "0.2.0", path = "../tracing-futures", features = ["futures-01"] }
+tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["futures-01"] }
 tracing-attributes =  "0.1.2"
 tracing-log = { path = "../tracing-log", version = "0.1.1", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
