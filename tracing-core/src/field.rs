@@ -42,8 +42,8 @@ use crate::stdlib::{
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
-    ops::Range,
     num,
+    ops::Range,
 };
 
 use self::private::ValidLen;
@@ -279,18 +279,42 @@ macro_rules! impl_values {
 }
 
 macro_rules! ty_to_nonzero {
-    (u8) => {NonZeroU8};
-    (u16) => {NonZeroU16};
-    (u32) => {NonZeroU32};
-    (u64) => {NonZeroU64};
-    (u128) => {NonZeroU128};
-    (usize) => {NonZeroUsize};
-    (i8) => {NonZeroI8};
-    (i16) => {NonZeroI16};
-    (i32) => {NonZeroI32};
-    (i64) => {NonZeroI64};
-    (i128) => {NonZeroI128};
-    (isize) => {NonZeroIsize};
+    (u8) => {
+        NonZeroU8
+    };
+    (u16) => {
+        NonZeroU16
+    };
+    (u32) => {
+        NonZeroU32
+    };
+    (u64) => {
+        NonZeroU64
+    };
+    (u128) => {
+        NonZeroU128
+    };
+    (usize) => {
+        NonZeroUsize
+    };
+    (i8) => {
+        NonZeroI8
+    };
+    (i16) => {
+        NonZeroI16
+    };
+    (i32) => {
+        NonZeroI32
+    };
+    (i64) => {
+        NonZeroI64
+    };
+    (i128) => {
+        NonZeroI128
+    };
+    (isize) => {
+        NonZeroIsize
+    };
 }
 
 macro_rules! impl_one_value {
@@ -304,11 +328,7 @@ macro_rules! impl_one_value {
     (normal, $value_ty:tt, $op:expr, $record:ident) => {
         impl $crate::sealed::Sealed for $value_ty {}
         impl $crate::field::Value for $value_ty {
-            fn record(
-                &self,
-                key: &$crate::field::Field,
-                visitor: &mut dyn $crate::field::Visit,
-            ) {
+            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
                 visitor.$record(key, $op(*self))
             }
         }
@@ -323,11 +343,7 @@ macro_rules! impl_one_value {
         use num::*;
         impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
         impl $crate::field::Value for ty_to_nonzero!($value_ty) {
-            fn record(
-                &self,
-                key: &$crate::field::Field,
-                visitor: &mut dyn $crate::field::Visit,
-            ) {
+            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
                 visitor.$record(key, $op(self.get()))
             }
         }
@@ -359,11 +375,7 @@ impl_values! {
 
 impl<T: crate::sealed::Sealed> crate::sealed::Sealed for Wrapping<T> {}
 impl<T: crate::field::Value> crate::field::Value for Wrapping<T> {
-    fn record(
-        &self,
-        key: &crate::field::Field,
-        visitor: &mut dyn crate::field::Visit,
-    ) {
+    fn record(&self, key: &crate::field::Field, visitor: &mut dyn crate::field::Visit) {
         self.0.record(key, visitor)
     }
 }

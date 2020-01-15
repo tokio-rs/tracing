@@ -49,9 +49,9 @@ macro_rules! event_without_message {
     };
 }
 
-event_without_message!{event_without_message: 42}
-event_without_message!{wrapping_event_without_message: std::num::Wrapping(42)}
-event_without_message!{nonzeroi32_event_without_message: std::num::NonZeroI32::new(42).unwrap()}
+event_without_message! {event_without_message: 42}
+event_without_message! {wrapping_event_without_message: std::num::Wrapping(42)}
+event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::new(42).unwrap()}
 // needs API breakage
 //event_without_message!{nonzerou128_event_without_message: std::num::NonZeroU128::new(42).unwrap()}
 
