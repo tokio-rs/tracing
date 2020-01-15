@@ -36,3 +36,7 @@ http = { version = "0.1", optional = true }
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
