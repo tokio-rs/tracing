@@ -18,32 +18,42 @@ use tracing::{
     Level,
 };
 
-#[test]
-fn event_without_message() {
-    let (subscriber, handle) = subscriber::mock()
-        .event(
-            event::mock().with_fields(
-                field::mock("answer")
-                    .with_value(&42)
-                    .and(
-                        field::mock("to_question")
-                            .with_value(&"life, the universe, and everything"),
-                    )
-                    .only(),
-            ),
-        )
-        .done()
-        .run_with_handle();
+macro_rules! event_without_message {
+    ($name:ident: $e:expr) => {
+        #[test]
+        fn $name() {
+            let (subscriber, handle) = subscriber::mock()
+                .event(
+                    event::mock().with_fields(
+                        field::mock("answer")
+                            .with_value(&42)
+                            .and(
+                                field::mock("to_question")
+                                    .with_value(&"life, the universe, and everything"),
+                            )
+                            .only(),
+                    ),
+                )
+                .done()
+                .run_with_handle();
 
-    with_default(subscriber, || {
-        info!(
-            answer = 42,
-            to_question = "life, the universe, and everything"
-        );
-    });
+            with_default(subscriber, || {
+                info!(
+                    answer = $e,
+                    to_question = "life, the universe, and everything"
+                );
+            });
 
-    handle.assert_finished();
+            handle.assert_finished();
+        }
+    };
 }
+
+event_without_message!{event_without_message: 42}
+event_without_message!{wrapping_event_without_message: std::num::Wrapping(42)}
+event_without_message!{nonzeroi32_event_without_message: std::num::NonZeroI32::new(42).unwrap()}
+// needs API breakage
+//event_without_message!{nonzerou128_event_without_message: std::num::NonZeroU128::new(42).unwrap()}
 
 #[test]
 fn event_with_message() {
