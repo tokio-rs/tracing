@@ -314,7 +314,11 @@ macro_rules! impl_one_value {
         }
     };
     (nonzero, $value_ty:tt, $op:expr, $record:ident) => {
-        // Out of some reason this `use num::*;` is reported as unused.
+        // This `use num::*;` is reported as unused because it gets emitted
+        // for every single invocation of this macro, so there are multiple `use`s.
+        // All but the first are useless indeed.
+        // We need this import because we can't write a path where one part is
+        // the `ty_to_nonzero!($value_ty)` invocation.
         #[allow(clippy::useless_attribute, unused)]
         use num::*;
         impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
