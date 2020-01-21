@@ -418,7 +418,7 @@ pub struct Identity {
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct Scope<'a, L: LookupSpan<'a>>(
-    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
+    Option<registry::Scope<'a, L>>,
 );
 
 // === impl Layered ===
@@ -850,11 +850,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
     {
-        let scope = self.lookup_current().map(|span| {
-            let parents = span.from_root();
-            parents.chain(std::iter::once(span))
-        });
-        Scope(scope)
+        Scope(self.subscriber.map(registry::LookupSpan::scope))
     }
 }
 

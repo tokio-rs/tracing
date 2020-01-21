@@ -164,7 +164,8 @@ pub trait LookupSpan<'a> {
 
     fn scope_data(&'a self) -> Self::Scope;
 
-    fn scope(&'a self) -> Scope<'a, Self, Self::Scope>
+    fn scope(&'a self) -> Scope<'a, Self
+    >
     where
         Self: Sized,
     {
@@ -175,15 +176,14 @@ pub trait LookupSpan<'a> {
     }
 }
 
-pub struct Scope<'a, L, S> {
+pub struct Scope<'a, L: LookupSpan<'a>> {
     registry: &'a L,
-    scope: S,
+    scope: L::Scope,
 }
 
-impl<'a, L, S> Iterator for Scope<'a, L, S>
+impl<'a, L> Iterator for Scope<'a, L>
 where
     L: LookupSpan<'a>,
-    S: Iterator<Item = L::Data>
 {
     type Item = SpanRef<'a, L>;
     fn next(&mut self) -> Option<Self::Item> {
