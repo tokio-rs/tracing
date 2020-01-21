@@ -636,9 +636,14 @@ where
     S: Subscriber + LookupSpan<'a>,
 {
     type Data = S::Data;
+    type Scope = S::Scope;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
+    }
+
+    fn scope_data(&'a self) -> Self::Scope {
+        self.inner.scope_data()
     }
 }
 

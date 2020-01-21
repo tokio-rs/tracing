@@ -1,13 +1,10 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
-
 pub(crate) use tracing_core::span::Id;
-
 struct ContextId {
     id: Id,
     duplicate: bool,
 }
-
 /// `SpanStack` tracks what spans are currently executing on a thread-local basis.
 ///
 /// A "separate current span" for each thread is a semantic choice, as each span
@@ -59,7 +56,37 @@ impl SpanStack {
             .find(|context_id| !context_id.duplicate)
             .map(|context_id| &context_id.id)
     }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Id> {
+        self.stack.iter().rev().filter_map(|&ContextId { ref id, duplicate }| if duplicate { None } else { Some(id) })
+    }
 }
+
+// impl Iterator for Entered {
+//     type Item = Id;
+//     #[inline]
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.idx == 0 {
+//             return None;
+//         }
+//         CONTEXT.with(|cx| {
+//             let cx = cx.borrow();
+//             loop {
+//                 match cx.stack.get(self.idx) {
+//                     _ if self.idx == 0 => return None,
+//                     Some(ContextId { ref id, duplicate}) if duplicate => self.idx -= 1,
+//                     None => self.idx -= 1,
+//                     Some(ContextId { ref id, .. }) => return Some(id.clone())
+//                 }
+//             }
+//         })
+//     }
+
+//     #[inline]
+//     fn size_hint(&self) -> (usize, Option<usize>) {
+//         (self.idx, Some(self.idx))
+//     }
+// }
 
 thread_local! {
     static CONTEXT: RefCell<SpanStack> = RefCell::new(SpanStack::new());

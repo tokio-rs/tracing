@@ -4,12 +4,13 @@ use super::stack::SpanStack;
 use crate::{
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
-        LookupSpan, SpanData,
+        LookupSpan, SpanData, SpanRef,
     },
     sync::RwLock,
 };
 use std::{
     cell::{Cell, RefCell},
+    iter,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -70,6 +71,21 @@ struct DataInner {
     ref_count: AtomicUsize,
     pub(crate) extensions: RwLock<ExtensionsInner>,
 }
+
+pub struct RegistryScope<'a>(
+    #[cfg(feature = "smallvec")]
+    iter::Rev<smallvec::IntoIter<SpanDataVecArray<'a>>>,
+    #[cfg(not(feature = "smallvec"))]
+    iter::Rev<std::vec::IntoIter<SpanData<'a>>>,
+);
+
+#[cfg(feature = "smallvec")]
+pub(crate) type SpanDataVec<'span> = smallvec::SmallVec<SpanDataVecArray<'span>>;
+#[cfg(not(feature = "smallvec"))]
+pub(crate) type SpanDataVec<'span> = Vec<Data<'span>>;
+
+#[cfg(feature = "smallvec")]
+type SpanDataVecArray<'span> = [Data<'span>; 16];
 
 // === impl Registry ===
 
@@ -260,10 +276,48 @@ impl Subscriber for Registry {
 
 impl<'a> LookupSpan<'a> for Registry {
     type Data = Data<'a>;
+    type Scope = RegistryScope<'a>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         let inner = self.get(id)?;
         Some(Data { inner })
+    }
+
+    fn scope_data(&'a self) -> RegistryScope<'a> {
+        let mut stack = SpanDataVec::new();
+        CURRENT_SPANS.with(|current| {
+
+            let current = current.borrow();
+            for id in current.iter() {
+                if let Some(span) = self.span(id) {
+                    if stack.iter().any(|span| span.id() == id.clone()) {
+                        continue;
+                    }
+                    let parents = span.parents();
+                    stack.push(span.data);
+                    for parent in parents {
+                        if stack.iter().any(|span| span.id() == parent.id()) {
+                            continue;
+                        }
+                        stack.push(parent.data);
+                    }
+                }
+            }
+        });
+        RegistryScope(stack.into_iter().rev())
+    }
+}
+
+impl<'a> Iterator for RegistryScope<'a> {
+    type Item = Data<'a>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
@@ -721,5 +775,36 @@ mod tests {
 
             state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
+    }
+
+    #[test]
+    fn scope_includes_parents_and_entered() {
+        let dispatch = dispatcher::Dispatch::new(Registry::default());
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            let span3 = tracing::info_span!("span3");
+            let _enter3 = span3.enter();
+            let _enter2 = span2.enter();
+            let scope = dispatch.downcast_ref::<Registry>().expect("registry should downcast").scope().map(|span| span.name()).collect::<Vec<_>>();
+            let expected = vec!["span3", "span1", "span2"];
+            assert_eq!(scope, expected)
+        })
+    }
+
+    #[test]
+    fn scope_dedups() {
+        let dispatch = dispatcher::Dispatch::new(Registry::default());
+        dispatcher::with_default(&dispatch, || {
+            let span1 = tracing::info_span!("span1");
+            let _enter1 = span1.enter();
+            let span2 = tracing::info_span!("span2");
+            let _enter2 = span2.enter();
+            let span3 = tracing::info_span!("span3");
+            let _enter3 = span3.enter();
+            let scope = dispatch.downcast_ref::<Registry>().expect("registry should downcast").scope().map(|span| span.name()).collect::<Vec<_>>();
+            let expected = vec!["span1", "span2", "span3"];
+            assert_eq!(scope, expected)
+        })
     }
 }

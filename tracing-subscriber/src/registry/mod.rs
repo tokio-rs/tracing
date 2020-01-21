@@ -74,6 +74,14 @@ mod stack;
 pub use extensions::{Extensions, ExtensionsMut};
 pub use sharded::{Data, Registry};
 
+#[cfg(feature = "smallvec")]
+pub(crate) type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
+#[cfg(not(feature = "smallvec"))]
+pub(crate) type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
+
+#[cfg(feature = "smallvec")]
+type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
 /// Provides access to stored span metadata.
 ///
 /// Subscribers which store span metadata and associate it with span IDs should
@@ -118,6 +126,7 @@ pub trait LookupMetadata {
 pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;
+    type Scope: Iterator<Item = Self::Data>;
 
     /// Returns the [`SpanData`] for a given `Id`, if it exists.
     ///
@@ -149,6 +158,38 @@ pub trait LookupSpan<'a> {
         let data = self.span_data(&id)?;
         Some(SpanRef {
             registry: self,
+            data,
+        })
+    }
+
+    fn scope_data(&'a self) -> Self::Scope;
+
+    fn scope(&'a self) -> Scope<'a, Self, Self::Scope>
+    where
+        Self: Sized,
+    {
+        let scope = self.scope_data();
+        Scope {
+            scope, registry: self,
+        }
+    }
+}
+
+pub struct Scope<'a, L, S> {
+    registry: &'a L,
+    scope: S,
+}
+
+impl<'a, L, S> Iterator for Scope<'a, L, S>
+where
+    L: LookupSpan<'a>,
+    S: Iterator<Item = L::Data>
+{
+    type Item = SpanRef<'a, L>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let data = self.scope.next()?;
+        Some(SpanRef {
+            registry: self.registry,
             data,
         })
     }
@@ -213,9 +254,6 @@ pub struct FromRoot<'a, R: LookupSpan<'a>> {
     #[cfg(not(feature = "smallvec"))]
     inner: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
 }
-
-#[cfg(feature = "smallvec")]
-type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
 
 impl<'a, R> SpanRef<'a, R>
 where
@@ -283,11 +321,6 @@ where
     /// **Note**: if the "smallvec" feature flag is not enabled, this may
     /// allocate.
     pub fn from_root(&self) -> FromRoot<'a, R> {
-        #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
-        #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
-
         // an alternative way to handle this would be to the recursive approach that
         // `fmt` uses that _does not_ entail any allocation in this fmt'ing
         // spans path.
