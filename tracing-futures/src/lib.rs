@@ -303,7 +303,7 @@ impl<T: futures_01::Sink> futures_01::Sink for Instrumented<T> {
     }
 }
 
-#[cfg(all(feature = "futures-03", feature = "std"))]
+#[cfg(all(feature = "futures-03", feature = "std-future"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "futures-03", feature = "std-future"))))]
 impl<T: futures::Stream> futures::Stream for Instrumented<T> {
     type Item = T::Item;
