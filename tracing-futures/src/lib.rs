@@ -318,6 +318,48 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
     }
 }
 
+#[cfg(all(feature = "futures-03", feature = "std-future"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "futures-03", feature = "std-future"))))]
+impl<I, T: futures::Sink<I>> futures::Sink<I> for Instrumented<T>
+where
+    T: futures::Sink<I>,
+{
+    type Error = T::Error;
+
+    fn poll_ready(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_ready(this.inner, cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::start_send(this.inner, item)
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_flush(this.inner, cx)
+    }
+
+    fn poll_close(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_close(this.inner, cx)
+    }
+}
+
 impl<T> Instrumented<T> {
     /// Borrows the `Span` that this type is instrumented by.
     pub fn span(&self) -> &Span {
@@ -555,7 +597,7 @@ mod tests {
 
     #[cfg(all(feature = "futures-03", feature = "std-future"))]
     mod futures_03_tests {
-        use futures::{future, stream, FutureExt, StreamExt};
+        use futures::{future, sink, stream, FutureExt, SinkExt, StreamExt};
         use tracing::subscriber::with_default;
 
         use super::*;
@@ -579,6 +621,28 @@ mod tests {
                     .for_each(|_| future::ready(()))
                     .now_or_never()
                     .unwrap();
+            });
+            handle.assert_finished();
+        }
+
+        #[test]
+        fn sink_enter_exit_is_reasonable() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .drop_span(span::mock().named("foo"))
+                .run_with_handle();
+            with_default(subscriber, || {
+                sink::drain()
+                    .instrument(tracing::trace_span!("foo"))
+                    .send(1u8)
+                    .now_or_never()
+                    .unwrap()
+                    .unwrap()
             });
             handle.assert_finished();
         }
