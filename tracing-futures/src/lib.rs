@@ -87,8 +87,6 @@ pub(crate) mod stdlib;
 #[cfg(feature = "std-future")]
 use crate::stdlib::{pin::Pin, task::Context};
 
-#[cfg(feature = "futures-01")]
-use futures_01::{Sink, StartSend, Stream};
 use tracing::dispatcher;
 use tracing::{Dispatch, Span};
 
@@ -275,7 +273,7 @@ impl<T: futures_01::Future> futures_01::Future for Instrumented<T> {
 
 #[cfg(feature = "futures-01")]
 #[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
-impl<T: Stream> Stream for Instrumented<T> {
+impl<T: futures_01::Stream> futures_01::Stream for Instrumented<T> {
     type Item = T::Item;
     type Error = T::Error;
 
@@ -287,11 +285,14 @@ impl<T: Stream> Stream for Instrumented<T> {
 
 #[cfg(feature = "futures-01")]
 #[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
-impl<T: Sink> Sink for Instrumented<T> {
+impl<T: futures_01::Sink> futures_01::Sink for Instrumented<T> {
     type SinkItem = T::SinkItem;
     type SinkError = T::SinkError;
 
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
+    fn start_send(
+        &mut self,
+        item: Self::SinkItem,
+    ) -> futures_01::StartSend<Self::SinkItem, Self::SinkError> {
         let _enter = self.span.enter();
         self.inner.start_send(item)
     }
@@ -299,6 +300,63 @@ impl<T: Sink> Sink for Instrumented<T> {
     fn poll_complete(&mut self) -> futures_01::Poll<(), Self::SinkError> {
         let _enter = self.span.enter();
         self.inner.poll_complete()
+    }
+}
+
+#[cfg(all(feature = "futures-03", feature = "std-future"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "futures-03", feature = "std-future"))))]
+impl<T: futures::Stream> futures::Stream for Instrumented<T> {
+    type Item = T::Item;
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Option<Self::Item>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_next(this.inner, cx)
+    }
+}
+
+#[cfg(all(feature = "futures-03", feature = "std-future"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "futures-03", feature = "std-future"))))]
+impl<I, T: futures::Sink<I>> futures::Sink<I> for Instrumented<T>
+where
+    T: futures::Sink<I>,
+{
+    type Error = T::Error;
+
+    fn poll_ready(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_ready(this.inner, cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::start_send(this.inner, item)
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_flush(this.inner, cx)
+    }
+
+    fn poll_close(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> futures::task::Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        T::poll_close(this.inner, cx)
     }
 }
 
@@ -396,36 +454,36 @@ pub(crate) mod support;
 mod tests {
     use super::{test_support::*, *};
 
-    struct PollN<T, E> {
-        and_return: Option<Result<T, E>>,
-        finish_at: usize,
-        polls: usize,
-    }
-
-    impl PollN<(), ()> {
-        fn new_ok(finish_at: usize) -> Self {
-            Self {
-                and_return: Some(Ok(())),
-                finish_at,
-                polls: 0,
-            }
-        }
-
-        fn new_err(finish_at: usize) -> Self {
-            Self {
-                and_return: Some(Err(())),
-                finish_at,
-                polls: 0,
-            }
-        }
-    }
-
     #[cfg(feature = "futures-01")]
-    mod futures_tests {
-        use futures_01::{future, stream, task, Async, Future};
+    mod futures_01_tests {
+        use futures_01::{future, stream, task, Async, Future, Stream};
         use tracing::subscriber::with_default;
 
         use super::*;
+
+        struct PollN<T, E> {
+            and_return: Option<Result<T, E>>,
+            finish_at: usize,
+            polls: usize,
+        }
+
+        impl PollN<(), ()> {
+            fn new_ok(finish_at: usize) -> Self {
+                Self {
+                    and_return: Some(Ok(())),
+                    finish_at,
+                    polls: 0,
+                }
+            }
+
+            fn new_err(finish_at: usize) -> Self {
+                Self {
+                    and_return: Some(Err(())),
+                    finish_at,
+                    polls: 0,
+                }
+            }
+        }
 
         impl<T, E> futures_01::Future for PollN<T, E> {
             type Item = T;
@@ -463,7 +521,6 @@ mod tests {
             handle.assert_finished();
         }
 
-        #[cfg(feature = "futures-01")]
         #[test]
         fn future_error_ends_span() {
             let (subscriber, handle) = subscriber::mock()
@@ -533,6 +590,59 @@ mod tests {
                         });
                     runtime.block_on(Box::new(future)).unwrap();
                 })
+            });
+            handle.assert_finished();
+        }
+    }
+
+    #[cfg(all(feature = "futures-03", feature = "std-future"))]
+    mod futures_03_tests {
+        use futures::{future, sink, stream, FutureExt, SinkExt, StreamExt};
+        use tracing::subscriber::with_default;
+
+        use super::*;
+
+        #[test]
+        fn stream_enter_exit_is_reasonable() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .drop_span(span::mock().named("foo"))
+                .run_with_handle();
+            with_default(subscriber, || {
+                stream::iter(&[1, 2, 3])
+                    .instrument(tracing::trace_span!("foo"))
+                    .for_each(|_| future::ready(()))
+                    .now_or_never()
+                    .unwrap();
+            });
+            handle.assert_finished();
+        }
+
+        #[test]
+        fn sink_enter_exit_is_reasonable() {
+            let (subscriber, handle) = subscriber::mock()
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .enter(span::mock().named("foo"))
+                .exit(span::mock().named("foo"))
+                .drop_span(span::mock().named("foo"))
+                .run_with_handle();
+            with_default(subscriber, || {
+                sink::drain()
+                    .instrument(tracing::trace_span!("foo"))
+                    .send(1u8)
+                    .now_or_never()
+                    .unwrap()
+                    .unwrap()
             });
             handle.assert_finished();
         }
