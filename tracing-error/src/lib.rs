@@ -2,29 +2,26 @@ mod ctx;
 pub mod fmt;
 mod layer;
 use std::error::Error;
-use tracing_core::{dispatcher, Metadata};
+use tracing::{dispatcher, Metadata};
 
 pub use self::ctx::*;
 pub use self::layer::ErrorLayer;
 
-pub struct ContextError<F = fmt::DefaultFields> {
+pub struct ContextError {
     inner: Box<dyn Error + Send + Sync>,
-    context: Option<Context<F>>,
+    context: Context,
 }
 
-impl<F> ContextError<F> {
-    pub fn from_error(error: Box<dyn Error + Send + Sync + 'static>) -> Self
-    where
-        F: for<'writer> fmt::FormatFields<'writer> + 'static,
-    {
+impl ContextError {
+    pub fn from_error(error: Box<dyn Error + Send + Sync + 'static>) -> Self {
         ContextError {
             inner: error,
-            context: Context::<F>::current(),
+            context: Context::current(),
         }
     }
 
-    pub fn context(&self) -> Option<&Context<F>> {
-        self.context.as_ref()
+    pub fn context(&self) -> &Context {
+        &self.context
     }
 
     pub fn span_backtrace(&self) -> fmt::SpanBacktrace<&Self> {
@@ -40,14 +37,14 @@ pub trait TraceError: Error {
         ContextError::from_error(Box::new(self))
     }
 
-    fn context<F>(&self) -> Option<&Context<F>>
+    fn context(&self) -> Option<&Context>
     where
-        F: for<'writer> fmt::FormatFields<'writer> + 'static,
         Self: Sized + 'static,
     {
-        (self as &dyn Error)
-            .downcast_ref::<ContextError<F>>()?
-            .context()
+        let cx = (self as &dyn Error)
+            .downcast_ref::<ContextError>()?
+            .context();
+        Some(cx)
     }
 
     fn span_backtrace(&self) -> fmt::SpanBacktrace<&(dyn Error + 'static)>
@@ -60,13 +57,13 @@ pub trait TraceError: Error {
 
 impl<T> TraceError for T where T: Error {}
 
-impl<F> std::fmt::Display for ContextError<F> {
+impl std::fmt::Display for ContextError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.inner.fmt(f)
     }
 }
 
-impl<F> std::fmt::Debug for ContextError<F> {
+impl std::fmt::Debug for ContextError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ContextError")
             .field("inner", &self.inner)
@@ -75,7 +72,7 @@ impl<F> std::fmt::Debug for ContextError<F> {
     }
 }
 
-impl<F> Error for ContextError<F> {
+impl Error for ContextError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.inner.source()
     }

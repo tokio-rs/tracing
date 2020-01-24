@@ -376,12 +376,10 @@ impl<E> fmt::Display for FormattedFields<E> {
     }
 }
 
-impl<E> FormattedFields<E> {
-    pub fn new(fmt_fields: String) -> Self {
-        Self {
-            fmt_fields,
-            _format_event: PhantomData,
-        }
+impl<E> Deref for FormattedFields<E> {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.fields
     }
 }
 

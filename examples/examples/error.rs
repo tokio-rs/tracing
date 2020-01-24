@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 use tracing::debug;
 use tracing_error::{ErrorLayer, TraceError};
-use tracing_subscriber::{fmt::FmtLayer, registry::Registry, Layer};
+use tracing_subscriber::{fmt::Layer as FmtLayer, registry::Registry, Layer, prelude::*};
 
 #[tracing::instrument]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
@@ -52,9 +52,9 @@ fn do_another_thing(
 
 #[tracing::instrument]
 fn main() {
-    let subscriber = ErrorLayer::default()
-        .and_then(FmtLayer::default())
-        .with_subscriber(Registry::default());
+    let subscriber = Registry::default()
+        .with(ErrorLayer::default())
+        .with(FmtLayer::default());
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
     match do_something("hello world") {
         Ok(result) => println!("did something successfully: {}", result),
