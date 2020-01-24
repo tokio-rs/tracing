@@ -2,7 +2,7 @@ use super::fmt::{DefaultFields, FormatFields};
 use super::{Context, ContextSpan};
 use std::any::TypeId;
 use std::marker::PhantomData;
-use tracing_core::{span, Subscriber};
+use tracing::{span, Subscriber, Metadata, Dispatch};
 use tracing_subscriber::{
     fmt::FormattedFields,
     layer::{self, Layer},
@@ -11,11 +11,15 @@ use tracing_subscriber::{
 
 pub struct ErrorLayer<S, F = DefaultFields> {
     format: F,
-    get_context: GetContext<F>,
+
+    get_context: WithContext,
     _subscriber: PhantomData<fn(S)>,
 }
 
-pub(crate) struct GetContext<F>(fn(&tracing_core::Dispatch) -> Option<Context<F>>);
+// this function "remembers" the types of the subscriber and the formatter,
+// so that we can downcast to something aware of them without knowing those
+// types at the callsite.
+pub(crate) struct WithContext(fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool));
 
 impl<S, F> Layer<S> for ErrorLayer<S, F>
 where
@@ -38,7 +42,7 @@ where
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         match id {
             id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
-            id if id == TypeId::of::<GetContext<F>>() => {
+            id if id == TypeId::of::<WithContext>() => {
                 Some(&self.get_context as *const _ as *const ())
             }
             _ => None,
@@ -54,45 +58,39 @@ where
     pub fn new(format: F) -> Self {
         Self {
             format,
-            get_context: GetContext(Self::get_context),
+            get_context: WithContext(Self::get_context),
             _subscriber: PhantomData,
         }
     }
 
-    fn get_context(dispatch: &tracing_core::Dispatch) -> Option<Context<F>> {
+    fn get_context(dispatch: &Dispatch, id: &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool) {
         let subscriber = dispatch
             .downcast_ref::<S>()
             .expect("subscriber should downcast to expected type; this is a bug!");
-        let curr_span = subscriber.current_span();
-        let curr_id = curr_span.id()?;
         let span = subscriber
-            .span(curr_id)
+            .span(id)
             .expect("registry should have a span for the current ID");
-        let mut ctx = Context::new();
-        let fields = span
-            .extensions()
-            .get::<FormattedFields<F>>()
-            .map(|f| f.fmt_fields.clone())
-            .unwrap_or_default();
-        ctx.push(span.metadata(), fields);
-        for span in span.parents() {
-            let fields = span
+        let parents = span.parents();
+        for span in std::iter::once(span).chain(parents) {
+            let cont = if let Some(fields) = span
                 .extensions()
                 .get::<FormattedFields<F>>()
-                .map(|f| f.fmt_fields.clone())
-                .unwrap_or_default();
-            ctx.push(span.metadata(), fields);
+            {
+                f(span.metadata(), fields.fields.as_str())
+            } else {
+
+                f(span.metadata(), "")
+            };
+            if !cont {
+                break
+            }
         }
-        Some(ctx)
     }
 }
 
-impl<F> GetContext<F>
-where
-    F: for<'writer> FormatFields<'writer> + 'static,
-{
-    pub(crate) fn get_context(&self, dispatch: &tracing_core::Dispatch) -> Option<Context<F>> {
-        (self.0)(dispatch)
+impl WithContext {
+    pub(crate) fn with_context<'a>(&self, dispatch: &'a Dispatch, id: &span::Id, mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool) {
+        (self.0)(dispatch, id, &mut f)
     }
 }
 
