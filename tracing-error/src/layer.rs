@@ -1,8 +1,7 @@
-use super::fmt::{DefaultFields, FormatFields};
-use super::{Context, ContextSpan};
 use std::any::TypeId;
 use std::marker::PhantomData;
-use tracing::{span, Subscriber, Metadata, Dispatch};
+use tracing::{span, Dispatch, Metadata, Subscriber};
+use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
 use tracing_subscriber::{
     fmt::FormattedFields,
     layer::{self, Layer},
@@ -19,7 +18,9 @@ pub struct ErrorLayer<S, F = DefaultFields> {
 // this function "remembers" the types of the subscriber and the formatter,
 // so that we can downcast to something aware of them without knowing those
 // types at the callsite.
-pub(crate) struct WithContext(fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool));
+pub(crate) struct WithContext(
+    fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
+);
 
 impl<S, F> Layer<S> for ErrorLayer<S, F>
 where
@@ -63,7 +64,11 @@ where
         }
     }
 
-    fn get_context(dispatch: &Dispatch, id: &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool) {
+    fn get_context(
+        dispatch: &Dispatch,
+        id: &span::Id,
+        f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool,
+    ) {
         let subscriber = dispatch
             .downcast_ref::<S>()
             .expect("subscriber should downcast to expected type; this is a bug!");
@@ -72,24 +77,25 @@ where
             .expect("registry should have a span for the current ID");
         let parents = span.parents();
         for span in std::iter::once(span).chain(parents) {
-            let cont = if let Some(fields) = span
-                .extensions()
-                .get::<FormattedFields<F>>()
-            {
+            let cont = if let Some(fields) = span.extensions().get::<FormattedFields<F>>() {
                 f(span.metadata(), fields.fields.as_str())
             } else {
-
                 f(span.metadata(), "")
             };
             if !cont {
-                break
+                break;
             }
         }
     }
 }
 
 impl WithContext {
-    pub(crate) fn with_context<'a>(&self, dispatch: &'a Dispatch, id: &span::Id, mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool) {
+    pub(crate) fn with_context<'a>(
+        &self,
+        dispatch: &'a Dispatch,
+        id: &span::Id,
+        mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool,
+    ) {
         (self.0)(dispatch, id, &mut f)
     }
 }
