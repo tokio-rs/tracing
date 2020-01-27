@@ -62,6 +62,15 @@ pub struct Field {
     fields: FieldSet,
 }
 
+/// An empty field.
+///
+/// This can be used to indicate that the value of a field is not currently
+/// present but will be recorded later.
+///
+/// When a field's value is `Empty`. it will not be recorded.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Empty;
+
 /// Describes the fields present on a span.
 pub struct FieldSet {
     /// The names of each field on the described span.
@@ -454,6 +463,12 @@ impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
+}
+
+impl crate::sealed::Sealed for Empty {}
+impl Value for Empty {
+    #[inline]
+    fn record(&self, _: &Field, _: &mut dyn Visit) {}
 }
 
 // ===== impl Field =====
@@ -859,6 +874,25 @@ mod test {
         impl Visit for MyVisitor {
             fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
+            }
+        }
+        let valueset = fields.value_set(values);
+        valueset.record(&mut MyVisitor);
+    }
+
+    #[test]
+    fn empty_fields_are_skipped() {
+        let fields = TEST_META_1.fields();
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&Empty as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&Empty as &dyn Value)),
+        ];
+
+        struct MyVisitor;
+        impl Visit for MyVisitor {
+            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+                assert_eq!(field.name(), "bar")
             }
         }
         let valueset = fields.value_set(values);
