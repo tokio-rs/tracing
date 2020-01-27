@@ -60,8 +60,8 @@ fn do_another_thing(
 #[tracing::instrument]
 fn main() {
     let subscriber = Registry::default()
-        .with(ErrorLayer::default())
-        .with(FmtLayer::default());
+        .with(FmtLayer::default())
+        .with(ErrorLayer::default());
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
     match do_something("hello world") {
         Ok(result) => println!("did something successfully: {}", result),
