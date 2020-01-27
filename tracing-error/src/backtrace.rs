@@ -1,4 +1,3 @@
-use super::try_bool;
 use crate::layer::WithContext;
 use std::fmt;
 use tracing::{Metadata, Span};
@@ -24,6 +23,16 @@ impl SpanTrace {
             }
         });
     }
+}
+
+macro_rules! try_bool {
+    ($e:expr, $dest:ident) => {{
+        let ret = $e.unwrap_or_else(|e| $dest = Some(e));
+        if $dest.is_some() {
+            return false;
+        }
+        ret
+    }};
 }
 
 impl fmt::Display for SpanTrace {
