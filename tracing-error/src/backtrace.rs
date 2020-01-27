@@ -4,15 +4,15 @@ use std::fmt;
 use tracing::{Metadata, Span};
 
 #[derive(Clone)]
-pub struct SpanBacktrace {
+pub struct SpanTrace {
     span: Span,
 }
 
-// === impl SpanBacktrace ===
+// === impl SpanTrace ===
 
-impl SpanBacktrace {
+impl SpanTrace {
     pub fn capture() -> Self {
-        SpanBacktrace {
+        SpanTrace {
             span: Span::current(),
         }
     }
@@ -26,7 +26,7 @@ impl SpanBacktrace {
     }
 }
 
-impl fmt::Debug for SpanBacktrace {
+impl fmt::Debug for SpanTrace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut err = None;
         let mut span = 0;
@@ -58,7 +58,7 @@ impl fmt::Debug for SpanBacktrace {
     }
 }
 
-impl fmt::Display for SpanBacktrace {
+impl fmt::Display for SpanTrace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self, f)
     }
