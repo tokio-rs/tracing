@@ -1,9 +1,8 @@
 #![deny(rust_2018_idioms)]
 use std::error::Error;
 use std::fmt::{self, Write as _};
-use tracing::debug;
 use tracing_error::{ErrorLayer, SpanTrace};
-use tracing_subscriber::{fmt::Layer as FmtLayer, prelude::*, registry::Registry, Layer};
+use tracing_subscriber::{fmt::Layer as FmtLayer, prelude::*, registry::Registry};
 
 #[tracing::instrument]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
