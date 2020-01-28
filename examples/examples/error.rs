@@ -40,8 +40,7 @@ impl Error for FooError {
 impl fmt::Display for FooError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(self.message)?;
-        f.write_char('\n')?;
-        write!(f, "{}", self.context)
+        write!(f, "\n{}", self.context)
     }
 }
 

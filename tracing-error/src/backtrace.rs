@@ -27,17 +27,19 @@ impl SpanTrace {
 
 macro_rules! try_bool {
     ($e:expr, $dest:ident) => {{
-        let ret = $e.unwrap_or_else(|e| $dest = Some(e));
-        if $dest.is_some() {
+        let ret = $e.unwrap_or_else(|e| $dest = Err(e));
+
+        if $dest.is_err() {
             return false;
         }
+
         ret
     }};
 }
 
 impl fmt::Display for SpanTrace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut err = None;
+        let mut err = Ok(());
         let mut span = 0;
 
         writeln!(f, "span backtrace:")?;
@@ -60,10 +62,7 @@ impl fmt::Display for SpanTrace {
             true
         });
 
-        match err {
-            Some(e) => Err(e),
-            _ => Ok(()),
-        }
+        err
     }
 }
 
