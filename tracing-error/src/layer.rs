@@ -35,9 +35,10 @@ where
             return;
         }
         let mut fields = String::new();
-        self.format.format_fields(&mut fields, attrs);
-        span.extensions_mut()
-            .insert(FormattedFields::<F>::new(fields));
+        if self.format.format_fields(&mut fields, attrs).is_ok() {
+            span.extensions_mut()
+                .insert(FormattedFields::<F>::new(fields));
+        }
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
