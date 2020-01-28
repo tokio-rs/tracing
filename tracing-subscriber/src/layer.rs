@@ -532,6 +532,9 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        if id == TypeId::of::<Self>() {
+            return Some(self as *const _ as *const ());
+        }
         self.layer
             .downcast_raw(id)
             .or_else(|| self.inner.downcast_raw(id))
@@ -623,6 +626,9 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        if id == TypeId::of::<Self>() {
+            return Some(self as *const _ as *const ());
+        }
         self.layer
             .downcast_raw(id)
             .or_else(|| self.inner.downcast_raw(id))
