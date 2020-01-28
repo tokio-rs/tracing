@@ -83,7 +83,7 @@ pub struct Metadata<'a> {
 pub struct Kind(KindInner);
 
 /// Describes the level of verbosity of a span or event.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Level(LevelInner);
 
 // ===== impl Metadata =====

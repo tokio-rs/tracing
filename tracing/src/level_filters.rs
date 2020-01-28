@@ -177,7 +177,7 @@ mod tests {
         for (filter, level) in mapping.iter() {
             assert_eq!(filter.clone().into_level(), *level);
             if let Some(level) = level {
-                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
+                assert_eq!(LevelFilter::from_level(*level), *filter);
             }
         }
     }
