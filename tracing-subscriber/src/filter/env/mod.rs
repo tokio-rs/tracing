@@ -31,38 +31,59 @@ use tracing_core::{
 ///
 /// # Directives
 ///
-/// A filter consists of one or more directives. Directives match on [`Span`]s and [`Event`]s
-/// and specify a maximum verbosity [level] to enable for those that match. The directive
-/// syntax is similar to the one presented in [`env_logger`]. The syntax consists of
-/// of four parts: `target[span{field=value}]=level`.
+/// A filter consists of the following:
+/// - One or more directives which match on [`Span`]s and [`Event`]s.
+/// - A maximum verbosity [`level`] which enables (e.g., _selects for_)
+///   spans and events that match. Like `log`, `tracing` considers less exclusive
+///   levels (like `trace` or `info`) to be more verbose than more exclusive levels
+///   (like `error` or `warn`).
 ///
-/// - `target` matches the event's target, generally this will be the
-///   module path. Examples, `h2`, `tokio::net`, etc. For more information on targets, see
-///   documentation for [`Metadata`].
-/// - `span` matches on the span name that you want to filter on.
-///    If this is supplied with a `target` it will match on all filter spans
-///    within that `target`.
-/// - `field` matches the fields within spans. Field names can also be supplied without a `value`
-///    and will match on any `Span` or `Event` that has a field with that name.
+/// The directive syntax is similar to that of [`env_logger`]'s. At a high level, the syntax for directives
+/// consists of several parts:
+///
+/// ```
+/// target[span{field=value}]=level
+/// ```
+///
+/// Each component (`target`, `span`, `field`, `value`, and `level`) will be covered in turn.
+///
+/// - `target` matches the event or span's target. In general, this is the module path and/or crate name.
+///    Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
+///    please refer to [`Metadata`]'s documentation.
+/// - `span` matches on the span's name. If a `span` directive is provided alongside a `target`,
+///    the `span` directive will match on spans _within_ the `target`.
+/// - `field` matches on fields within spans. Field names can also be supplied without a `value`
+///    and will match on any [`Span`] or [`Event`] that has a field with that name.
 ///    For example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
-/// - `value` matches the _output_ of the span's value. If a value is a numeric literal or a bool,
-///    it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
-///    from the value. Examples, `1`, `\"some_string\"`, etc.
+/// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
+///    it will match _only_ on that value. Otherwise, this filter acts as a regex on
+///    the `std::fmt::Debug` output from the value.
 /// - `level` sets a maximum verbosity level accepted by this directive.
 ///
-/// The portion of the synatx that is included within the square brackets is `tracing` specific.
-/// All portions of the syntax may be omitted. If a `value` is provided a `field`
-/// must be specified. If just a level is provided, it will set the maximum level for all `Span`s and `Event`s that are not enabled by other filters.
-/// A directive without a level will enable anything that matches.
+/// ## Usage Notes
+///
+/// - The portion of the directive which is included within the square brackets is `tracing`-specific.
+/// - Any portion of the directive can be omitted.
+///     - The sole exception are the `field` and `value` directives. If either a field or value
+///       directive is provided, the complementary directive _must also_ be provided.
+/// - If only a level is provided, it will set the maximum level for all `Span`s and `Event`s
+///   that are not enabled by other filters.
+/// - A directive without a level will enable anything that it matches.
 ///
 /// ## Examples
 ///
-/// - `tokio::net=info` will enable all spans or events that occur within the `tokio::net`module
-/// with the `info` verbosity level or below
-/// - `my_crate[span_a]=trace` will enable all spans and events that are occur within the `my_crate` crate,
-/// within the `span_a` span and with any level `trace` and above.
-/// - `[span_b{name=\"bob\"}]` will enable all spans and events with any target that occur within a
-/// span with the name `span_b` and a field `name` with the value `\"bob\"`.
+/// - `tokio::net=info` will match on all spans or events that:
+///    - occur in the `net` module of the `tokio` crate,
+///    - at the level `info` or above.
+/// - `my_crate[span_a]=trace` will match all spans and events that:
+///    - occur within the `my_crate` crate,
+///    - are within the `span_a` span or named `span_a`,
+///    - at the level `trace` or above.
+/// - `[span_b{name=\"bob\"}]` will match on all spans or event that:
+///    - occur within _any_ module or crate,
+///    - are within the `span_b` span or named `span_b`,
+///    - have a field named `name` and the value `"bob"`,
+///    - at _any_ level.
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
@@ -170,17 +191,19 @@ impl EnvFilter {
 
     /// Add a filtering directive to this `EnvFilter`.
     ///
-    /// The added directive will be used in addition to any previously set
-    /// directives, either added using this method or provided when the filter
-    /// is constructed.
+    /// The newly added directive will be used _in addition to_
+    /// any previously set directives. Previously set directives
+    /// where either added with this method or
+    /// provided when the filter is constructed.
     ///
     /// Filters may be created from may be [`LevelFilter`]s, which will
     /// enable all traces at or below a certain verbosity level, or
     /// parsed from a string specifying a directive.
     ///
-    /// If a filter directive is inserted that matches exactly the same spans
-    /// and events as a previous filter, but sets a different level for those
-    /// spans and events, the previous directive is overwritten.
+    /// If a newly inserted filter directive matches the same spans
+    /// and events as a prior filter, but sets a different level threshold
+    /// for those spans and events, the previous directive is overwritten and
+    /// replaced by the new filter directive.
     ///
     /// [`LevelFilter`]: struct.LevelFilter.html
     ///
