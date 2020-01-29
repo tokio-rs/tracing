@@ -28,7 +28,47 @@ use tracing_core::{
 
 /// A `Layer` which filters spans and events based on a set of filter
 /// directives.
-// TODO(eliza): document filter directive syntax?
+///
+/// # Directives
+///
+/// A filter consists of one or more directives. Directives match on [`Span`]s and [`Event`]s
+/// and specify a maximum verbosity [level] to enable for those that match. The directive
+/// syntax is similar to the one presented in [`env_logger`]. The syntax consists of
+/// of four parts: `target[span{field=value}]=level`.
+///
+/// - `target` matches the event's target, generally this will be the
+///   module path. Examples, `h2`, `tokio::net`, etc. For more information on targets, see
+///   documentation for [`Metadata`].
+/// - `span` matches on the span name that you want to filter on.
+///    If this is supplied with a `target` it will match on all filter spans
+///    within that `target`.
+/// - `field` matches the fields within spans. Field names can also be supplied without a `value`
+///    and will match on any `Span` or `Event` that has a field with that name.
+///    For example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
+/// - `value` matches the _output_ of the span's value. If a value is a numeric literal or a bool,
+///    it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
+///    from the value. Examples, `1`, `\"some_string\"`, etc.
+/// - `level` sets a maximum verbosity level accepted by this directive.
+///
+/// The portion of the synatx that is included within the square brackets is `tracing` specific.
+/// All portions of the syntax may be omitted. If a `value` is provided a `field`
+/// must be specified. If just a level is provided, it will set the maximum level for all `Span`s and `Event`s that are not enabled by other filters.
+/// A directive without a level will enable anything that matches.
+///
+/// ## Examples
+///
+/// - `tokio::net=info` will enable all spans or events that occur within the `tokio::net`module
+/// with the `info` verbosity level or below
+/// - `my_crate[span_a]=trace` will enable all spans and events that are occur within the `my_crate` crate,
+/// within the `span_a` span and with any level `trace` and above.
+/// - `[span_b{name=\"bob\"}]` will enable all spans and events with any target that occur within a
+/// span with the name `span_b` and a field `name` with the value `\"bob\"`.
+///
+/// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
+/// [`Span`]: ../../tracing_core/span/index.html
+/// [`Event`]: ../../tracing_core/struct.Event.html
+/// [`level`]: ../../tracing_core/struct.Level.html
+/// [`Metadata`]: ../../tracing_core/struct.Metadata.html
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
