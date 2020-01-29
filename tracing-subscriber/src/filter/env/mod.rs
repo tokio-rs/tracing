@@ -64,7 +64,7 @@ use tracing_core::{
 /// - `[span_b{name=\"bob\"}]` will enable all spans and events with any target that occur within a
 /// span with the name `span_b` and a field `name` with the value `\"bob\"`.
 ///
-/// [`Layer`]:
+/// [`Layer`]: ../layer/trait.Layer.html
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: ../../tracing_core/span/index.html
 /// [`Event`]: ../../tracing_core/struct.Event.html
