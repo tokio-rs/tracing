@@ -1,9 +1,7 @@
-#[macro_use]
-extern crate tracing;
-#[macro_use]
 extern crate criterion;
+extern crate tracing;
 
-use criterion::{black_box, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
 use std::{
@@ -18,7 +16,7 @@ struct EnabledSubscriber;
 impl tracing::Subscriber for EnabledSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
-        Id::from_u64(0xDEADFACE)
+        Id::from_u64(0xDEAD_FACE)
     }
 
     fn event(&self, event: &Event<'_>) {
@@ -63,7 +61,7 @@ impl tracing::Subscriber for VisitingSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let mut visitor = Visitor(self.0.lock().unwrap());
         span.record(&mut visitor);
-        Id::from_u64(0xDEADFACE)
+        Id::from_u64(0xDEAD_FACE)
     }
 
     fn record(&self, _span: &Id, values: &span::Record<'_>) {
@@ -106,6 +104,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("enter_span", |b| {
         tracing::subscriber::with_default(EnabledSubscriber, || {
             let span = span!(Level::TRACE, "span");
+            #[allow(clippy::unit_arg)]
             b.iter(|| black_box(span.in_scope(|| {})))
         });
     });

@@ -120,12 +120,14 @@ impl Default for ChronoFmtType {
 
 /// Retrieve and print the current UTC time.
 #[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ChronoUtc {
     format: ChronoFmtType,
 }
 
 #[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl ChronoUtc {
     /// Format the time using the [`RFC 3339`] format
     /// (a subset of [`ISO 8601`]).
@@ -152,6 +154,7 @@ impl ChronoUtc {
 }
 
 #[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl FormatTime for ChronoUtc {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let time = chrono::Utc::now();
@@ -164,12 +167,14 @@ impl FormatTime for ChronoUtc {
 
 /// Retrieve and print the current local time.
 #[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ChronoLocal {
     format: ChronoFmtType,
 }
 
 #[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl ChronoLocal {
     /// Format the time using the [`RFC 3339`] format
     /// (a subset of [`ISO 8601`]).
@@ -196,6 +201,7 @@ impl ChronoLocal {
 }
 
 #[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl FormatTime for ChronoLocal {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let time = chrono::Local::now();
@@ -219,8 +225,8 @@ where
         write!(writer, "{}", style.suffix())?;
     } else {
         timer.format_time(writer)?;
-        write!(writer, " ")?;
     }
+    writer.write_char(' ')?;
     Ok(())
 }
 

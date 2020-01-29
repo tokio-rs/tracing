@@ -27,7 +27,7 @@
 //!   Enabled by default.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
-//! - `registry_unstable`: enables the experimental [`registry`] module.
+//! - `registry`: enables the experimental [`registry`] module.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
 //!
 //! ### Optional Dependencies
@@ -51,7 +51,8 @@
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`registry`]: registry/index.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.1.5")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.0-alpha.4")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -61,15 +62,12 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -87,8 +85,8 @@ macro_rules! try_lock {
     ($lock:expr, else $els:expr) => {
         match $lock {
             Ok(l) => l,
-            Err(_) if std::thread::panicking() => $els,
-            Err(_) => panic!("lock poisoned"),
+            Err(_err) if std::thread::panicking() => $els,
+            Err(_err) => panic!("lock poisoned"),
         }
     };
 }
@@ -96,22 +94,29 @@ macro_rules! try_lock {
 pub mod field;
 pub mod filter;
 #[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
-#[cfg(feature = "registry_unstable")]
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
 pub(crate) mod thread;
 
 #[cfg(feature = "env-filter")]
-#[allow(deprecated)]
-pub use filter::{EnvFilter, Filter};
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+pub use filter::EnvFilter;
 
 pub use layer::Layer;
 
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+pub use registry::Registry;
+
 #[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub use fmt::Subscriber as FmtSubscriber;
 
 use std::default::Default;

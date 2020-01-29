@@ -1,3 +1,39 @@
+# 0.1.9 (January 10, 2020)
+
+### Added
+
+- API docs now show what feature flags are required to enable each item (#523)
+
+### Fixed
+
+- A panic when the current default subscriber subscriber calls
+  `dispatcher::with_default` as it is being dropped (#522)
+- Incorrect documentation for `Subscriber::drop_span` (#524)
+
+# 0.1.8 (December 20, 2019)
+
+### Added
+
+- `Default` impl for `Dispatch` (#411)
+
+### Fixed
+
+- Removed duplicate `lazy_static` dependencies (#424)
+- Fixed no-std dependencies being enabled even when `std` feature flag is set
+  (#424)
+- Broken link to `Metadata` in `Event` docs (#461)
+
+# 0.1.7 (October 18, 2019)
+
+### Added
+
+- Added `dispatcher::set_default` API which returns a drop guard (#388)
+
+### Fixed
+
+- Added missing `Value` impl for `u8` (#392)
+- Broken links in docs.
+
 # 0.1.7 (October 18, 2019)
 
 ### Added

@@ -6,10 +6,9 @@
 [![Documentation][docs-badge]][docs-url]
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
-[![Build Status][azure-badge]][azure-url]
+[![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
 ![maintenance status][maint-badge]
-
 
 [Documentation][docs-url] | [Chat (discord)][discord-url]
 
@@ -22,10 +21,10 @@
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_log
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
-[azure-badge]: https://dev.azure.com/tracing/tracing/_apis/build/status/tokio-rs.tracing?branchName=master
-[azure-url]: https://dev.azure.com/tracing/tracing/_build/latest?definitionId=1&branchName=master
+[actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
+[actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
-[discord-url]: https://discordapp.com/invite/XdPzyTZ
+[discord-url]: https://discord.gg/EeF3cQw
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg
 
 ## Overview
@@ -41,7 +40,7 @@ This crate provides:
 - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
   and outputs them as [`tracing::Event`]s.
 - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
-  with `tracing` (optional, enabled by the `env-logger` feature).
+  with `tracing` (optional, enabled by the `env_logger` feature).
 
 [`tracing`]: https://crates.io/crates/tracing
 [`log`]: https://crates.io/crates/log

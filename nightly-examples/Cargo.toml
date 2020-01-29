@@ -13,9 +13,13 @@ edition = "2018"
 
 [dev-dependencies]
 tracing = "0.1"
-tracing-subscriber = { version = "0.1", path = "../tracing-subscriber", features = ["json"] }
+tracing-subscriber = { version = "0.2.0-alpha.1", path = "../tracing-subscriber", features = ["json"] }
 tracing-futures = { path = "../tracing-futures", default-features = false, features = ["std-future"] }
-tokio = { git = "https://github.com/tokio-rs/tokio.git" }
+futures = "0.3"
+tokio = { version = "0.2", features = ["full"] }
+hyper = { git = "https://github.com/hyperium/hyper" }
+http = "0.2"
 tracing-attributes = { path = "../tracing-attributes" }
-futures-preview = "0.3.0-alpha.18"
+tracing-tower = { version = "0.1", path = "../tracing-tower" }
+tower = "0.3"
 clap = "2.33"

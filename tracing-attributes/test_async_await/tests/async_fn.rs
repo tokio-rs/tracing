@@ -1,12 +1,9 @@
-#![feature(async_await)]
-
 use test_std_future::{
     PollN,
     block_on_future,
     support::*,
 };
 
-use tokio_test::task::MockTask;
 use tracing::subscriber::with_default;
 
 #[tracing_attributes::instrument]
@@ -28,9 +25,8 @@ fn async_fn_only_enters_for_polls() {
         .drop_span(span::mock().named("test_async_fn"))
         .done()
         .run_with_handle();
-    let mut task = MockTask::new();
     with_default(subscriber, || {
-        block_on_future(&mut task, async { test_async_fn(2).await }).unwrap();
+        block_on_future(async { test_async_fn(2).await }).unwrap();
     });
     handle.assert_finished();
 }

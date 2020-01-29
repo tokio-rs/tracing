@@ -320,10 +320,11 @@ pub trait Subscriber: 'static {
         id.clone()
     }
 
-    /// **This method is soft-deprecated.**
+    /// **This method is deprecated.**
     ///
-    /// Although using it won’t cause compilation warning, new code should
-    /// call or implement [`try_close`] instead.
+    /// Using `drop_span` may result in subscribers composed using
+    /// `tracing-subscriber` crate's `Layer` trait from observing close events.
+    /// Use [`try_close`] instead.
     ///
     /// The default implementation of this function does nothing.
     ///
@@ -369,7 +370,7 @@ pub trait Subscriber: 'static {
     /// [`drop_span`]: trait.Subscriber.html#method.drop_span
     fn try_close(&self, id: span::Id) -> bool {
         #[allow(deprecated)]
-        let _ = self.drop_span(id);
+        self.drop_span(id);
         false
     }
 

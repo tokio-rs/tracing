@@ -1,92 +1,56 @@
-#![deny(rust_2018_idioms)]
-use tracing::{debug, error, info, span, trace, warn, Level};
+use std::{error::Error, io};
+use tracing::{debug, error, info, span, warn, Level};
 
-use std::{error::Error, fmt};
-
+// the `#[tracing::instrument]` attribute creates and enters a span
+// every time the instrumented function is called. The span is named after the
+// the function or method. Paramaters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
-    debug!(
-        message = "hello! I'm gonna shave a yak.",
-        excitement = "yay!"
-    );
+    // this creates an event at the DEBUG log level with two fields:
+    // - `excitement`, with the key "excitement" and the value "yay!"
+    // - `message`, with the key "message" and the value "hello! I'm gonna shave a yak."
+    //
+    // unlike other fields, `message`'s shorthand initialization is just the string itself.
+    debug!(excitement = "yay!", "hello! I'm gonna shave a yak.");
     if yak == 3 {
-        warn!(target: "yak_events", "could not locate yak!");
-        Err(ShaveError::new(yak, YakError::new("could not locate yak")))?;
+        warn!("could not locate yak!");
+        // note that this is intended to demonstrate `tracing`'s features, not idiomatic
+        // error handling! in a library or application, you should consider returning
+        // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
+        return Err(io::Error::new(io::ErrorKind::Other, "shaving yak failed!").into());
     } else {
-        trace!(target: "yak_events", "yak shaved successfully");
+        debug!("yak shaved successfully");
     }
     Ok(())
 }
 
 pub fn shave_all(yaks: usize) -> usize {
-    let span = span!(Level::TRACE, "shaving_yaks", yaks_to_shave = yaks);
+    // Constructs a new span named "shaving_yaks" at the TRACE level,
+    // and a field whose key is "yaks". This is equivalent to writing:
+    //
+    // let span = span!(Level::TRACE, "shaving_yaks", yaks = yaks);
+    //
+    // local variables (`yaks`) can be used as field values
+    // without an assignment, similar to struct initializers.
+    let span = span!(Level::TRACE, "shaving_yaks", yaks);
     let _enter = span.enter();
 
     info!("shaving yaks");
 
-    let mut num_shaved = 0;
+    let mut yaks_shaved = 0;
     for yak in 1..=yaks {
         let res = shave(yak);
-        trace!(target: "yak_events", yak, shaved = res.is_ok());
+        debug!(yak, shaved = res.is_ok());
 
         if let Err(ref error) = res {
-            error!(
-                message = "failed to shave yak!",
-                yak,
-                error = error.as_ref()
-            );
+            // Like spans, events can also use the field initialization shorthand.
+            // In this instance, `yak` is the field being initalized.
+            error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
-            num_shaved += 1;
+            yaks_shaved += 1;
         }
-
-        trace!(target: "yak_events", yaks_shaved = num_shaved);
+        debug!(yaks_shaved);
     }
 
-    num_shaved
-}
-
-#[derive(Debug)]
-struct ShaveError {
-    source: Box<dyn Error + 'static>,
-    yak: usize,
-}
-
-impl fmt::Display for ShaveError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "shaving yak #{} failed!", self.yak)
-    }
-}
-
-impl Error for ShaveError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(self.source.as_ref())
-    }
-}
-
-impl ShaveError {
-    fn new(yak: usize, source: impl Into<Box<dyn Error + 'static>>) -> Self {
-        Self {
-            source: source.into(),
-            yak,
-        }
-    }
-}
-
-#[derive(Debug)]
-struct YakError {
-    description: &'static str,
-}
-
-impl fmt::Display for YakError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.description)
-    }
-}
-
-impl Error for YakError {}
-
-impl YakError {
-    fn new(description: &'static str) -> Self {
-        Self { description }
-    }
+    yaks_shaved
 }

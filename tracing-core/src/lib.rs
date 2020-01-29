@@ -49,8 +49,11 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.7", default-features = false }
+//!   tracing-core = { version = "0.1.9", default-features = false }
 //!   ```
+//!
+//!   *Compiler support: requires rustc 1.39+*
+//!
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 //!
 //! [`span::Id`]: span/struct.Id.html
@@ -65,8 +68,9 @@
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.7")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.9")]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -76,15 +80,12 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -94,9 +95,6 @@
 )]
 #[cfg(not(feature = "std"))]
 extern crate alloc;
-
-#[macro_use]
-extern crate lazy_static;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
@@ -208,6 +206,27 @@ macro_rules! metadata {
         )
     };
 }
+
+// std uses lazy_static from crates.io
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate lazy_static;
+
+// no_std uses vendored version of lazy_static 1.4.0 (4216696) with spin
+// This can conflict when included in a project already using std lazy_static
+// Remove this module when cargo enables specifying dependencies for no_std
+#[cfg(not(feature = "std"))]
+#[macro_use]
+mod lazy_static;
+
+// Trimmed-down vendored version of spin 0.5.2 (0387621)
+// Dependency of no_std lazy_static, not required in a std build
+#[cfg(not(feature = "std"))]
+pub(crate) mod spin;
+
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub use self::spin::Once;
 
 pub mod callsite;
 pub mod dispatcher;

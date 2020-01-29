@@ -274,6 +274,7 @@ impl fmt::Display for Level {
 }
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl crate::stdlib::error::Error for ParseLevelError {}
 
 impl FromStr for Level {

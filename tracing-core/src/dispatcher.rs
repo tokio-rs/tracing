@@ -38,12 +38,10 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # fn main() {
 //! use dispatcher::Dispatch;
 //!
 //! let my_subscriber = FooSubscriber::new();
 //! let my_dispatch = Dispatch::new(my_subscriber);
-//! # }
 //! ```
 //! Then, we can use [`with_default`] to set our `Dispatch` as the default for
 //! the duration of a block:
@@ -63,7 +61,6 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # fn main() {
 //! # let my_subscriber = FooSubscriber::new();
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
@@ -74,7 +71,6 @@
 //! });
 //!
 //! // no default subscriber again
-//! # }
 //! ```
 //! It's important to note that `with_default` will not propagate the current
 //! thread's default subscriber to any threads spawned within the `with_default`
@@ -100,7 +96,6 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # fn main() {
 //! # let my_subscriber = FooSubscriber::new();
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
@@ -111,7 +106,6 @@
 //!     .expect("global default was already set!");
 //!
 //! // `my_subscriber` is now the default
-//! # }
 //! ```
 //!
 //! **Note**: the thread-local scoped dispatcher (`with_default`) requires the
@@ -201,6 +195,7 @@ struct State {
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
 pub struct DefaultGuard(Option<Dispatch>);
 
@@ -217,6 +212,7 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// [`Event`]: ../event/struct.Event.html
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this (rather than simply resetting after calling
@@ -234,6 +230,7 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 ///
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
@@ -258,7 +255,7 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
     {
         unsafe {
-            GLOBAL_DISPATCH = Some(dispatcher.clone());
+            GLOBAL_DISPATCH = Some(dispatcher);
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);
@@ -291,6 +288,7 @@ impl fmt::Display for SetGlobalDefaultError {
 }
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl error::Error for SetGlobalDefaultError {}
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
@@ -584,6 +582,13 @@ impl Dispatch {
     }
 }
 
+impl Default for Dispatch {
+    /// Returns the current default dispatcher
+    fn default() -> Self {
+        get_default(|default| default.clone())
+    }
+}
+
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Dispatch(...)")
@@ -668,9 +673,13 @@ impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
         if let Some(dispatch) = self.0.take() {
-            let _ = CURRENT_STATE.try_with(|state| {
-                *state.default.borrow_mut() = dispatch;
-            });
+            // Replace the dispatcher and then drop the old one outside
+            // of the thread-local context. Dropping the dispatch may
+            // lead to the drop of a subscriber which, in the process,
+            // could then also attempt to access the same thread local
+            // state -- causing a clash.
+            let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
+            drop(prev)
         }
     }
 }
@@ -798,6 +807,44 @@ mod test {
             fn exit(&self, _: &span::Id) {}
         }
 
-        with_default(&Dispatch::new(TestSubscriber), || mk_span())
+        with_default(&Dispatch::new(TestSubscriber), mk_span)
+    }
+
+    #[test]
+    fn default_no_subscriber() {
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<NoSubscriber>());
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn default_dispatch() {
+        struct TestSubscriber;
+        impl Subscriber for TestSubscriber {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
+                true
+            }
+
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+                span::Id::from_u64(0xAAAA)
+            }
+
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+
+            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+
+            fn event(&self, _: &Event<'_>) {}
+
+            fn enter(&self, _: &span::Id) {}
+
+            fn exit(&self, _: &span::Id) {}
+        }
+        let guard = set_default(&Dispatch::new(TestSubscriber));
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<TestSubscriber>());
+
+        drop(guard);
+        let default_dispatcher = Dispatch::default();
+        assert!(default_dispatcher.is::<NoSubscriber>());
     }
 }

@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     // missing_docs, // TODO: add documentation!
@@ -7,17 +8,13 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
-
     unused,
     unused_allocation,
     unused_comparisons,
@@ -33,6 +30,7 @@ pub mod request_span;
 pub mod service_span;
 
 #[cfg(feature = "http")]
+#[cfg_attr(docsrs, doc(cfg(feature = "http")))]
 pub mod http;
 
 pub type InstrumentedService<S, R> = service_span::Service<request_span::Service<S, R>>;
@@ -69,6 +67,7 @@ where
 }
 
 #[cfg(feature = "tower-util")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower-util")))]
 pub trait InstrumentMake<T, R>
 where
     Self: tower_util::MakeService<T, R> + Sized,
@@ -91,6 +90,7 @@ where
 impl<S, R> InstrumentableService<R> for S where S: Service<R> + Sized {}
 
 #[cfg(feature = "tower-util")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower-util")))]
 impl<M, T, R> InstrumentMake<T, R> for M where M: tower_util::MakeService<T, R> {}
 
 pub trait GetSpan<T>: crate::sealed::Sealed<T> {

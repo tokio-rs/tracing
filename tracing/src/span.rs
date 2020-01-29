@@ -29,15 +29,11 @@
 //!
 //! For example:
 //! ```rust
-//! #[macro_use]
-//! extern crate tracing;
-//! use tracing::Level;
+//! use tracing::{span, Level};
 //!
-//! # fn main() {
 //! /// Construct a new span at the `INFO` level named "my_span", with a single
 //! /// field named answer , with the value `42`.
 //! let my_span = span!(Level::INFO, "my_span", answer = 42);
-//! # }
 //! ```
 //!
 //! The documentation for the [`span!`] macro provides additional examples of
@@ -71,7 +67,6 @@
 //! ```
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var);
 //!
@@ -82,7 +77,6 @@
 //!
 //! // Perform some work inside of the context of `my_span`...
 //! // Dropping the `_enter` guard will exit the span.
-//! # }
 //!```
 //!
 //! `in_scope` takes a closure or function pointer and executes it inside the
@@ -90,7 +84,6 @@
 //! ```
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var = &my_var);
 //!
@@ -103,7 +96,6 @@
 //! my_span.in_scope(|| {
 //!     // Perform some more work in the context of `my_span`.
 //! });
-//! # }
 //! ```
 //!
 //! **Note:** Since entering a span takes `&self`, and `Span`s are `Clone`,
@@ -122,7 +114,6 @@
 //! ```
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! // this span is considered the "root" of a new trace tree:
 //! span!(Level::INFO, "root").in_scope(|| {
 //!     // since we are now inside "root", this span is considered a child
@@ -136,7 +127,6 @@
 //!     });
 //!     // another span created here would also be a child of "root".
 //! });
-//! # }
 //!```
 //!
 //! In addition, the parent of a span may be explicitly specified in
@@ -145,7 +135,6 @@
 //! ```rust
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! // Create, but do not enter, a span called "foo".
 //! let foo = span!(Level::INFO, "foo");
 //!
@@ -156,7 +145,6 @@
 //! // Although we have currently entered "bar", "baz"'s parent span
 //! // will be "foo".
 //! let baz = span!(parent: &foo, Level::INFO, "baz");
-//! # }
 //! ```
 //!
 //! A child span should typically be considered _part_ of its parent. For
@@ -231,7 +219,6 @@
 //! ```
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! {
 //!     span!(Level::TRACE, "my_span").in_scope(|| {
 //!         // perform some work in the context of `my_span`...
@@ -241,7 +228,6 @@
 //!     // dropped, the subscriber will be informed via `drop_span`.
 //!
 //! } // --> Subscriber::drop_span(my_span)
-//! # }
 //! ```
 //!
 //! However, if multiple handles exist, the span can still be re-entered even if
@@ -267,7 +253,6 @@
 //! ```rust
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! # let n = 1;
 //! let span = span!(Level::TRACE, "my_loop");
 //! let _enter = span.enter();
@@ -275,20 +260,17 @@
 //!     # let _ = i;
 //!     // ...
 //! }
-//! # }
 //! ```
 //! Or, should we create a new span for each iteration of the loop, as in:
 //! ```rust
 //! # #[macro_use] extern crate tracing;
 //! # use tracing::Level;
-//! # fn main() {
 //! # let n = 1u64;
 //! for i in 0..n {
 //!     let span = span!(Level::TRACE, "my_loop", iteration = i);
 //!     let _enter = span.enter();
 //!     // ...
 //! }
-//! # }
 //! ```
 //!
 //! Depending on the circumstances, we might want to do either, or both. For
@@ -523,7 +505,6 @@ impl Span {
     /// ```
     /// #[macro_use] extern crate tracing;
     /// # use tracing::Level;
-    /// # fn main() {
     /// let span = span!(Level::INFO, "my_span");
     /// let guard = span.enter();
     ///
@@ -533,14 +514,12 @@ impl Span {
     ///
     /// // code here is no longer within the span
     ///
-    /// # }
     /// ```
     ///
     /// Guards need not be explicitly dropped:
     ///
     /// ```
     /// #[macro_use] extern crate tracing;
-    /// # fn main() {
     /// fn my_function() -> String {
     ///     // enter a span for the duration of this function.
     ///     let span = trace_span!("my_function");
@@ -556,7 +535,6 @@ impl Span {
     /// fn my_other_function() {
     ///     // ...
     /// }
-    /// # }
     /// ```
     ///
     /// Sub-scopes may be created to limit the duration for which the span is
@@ -564,7 +542,6 @@ impl Span {
     ///
     /// ```
     /// #[macro_use] extern crate tracing;
-    /// # fn main() {
     /// let span = info_span!("my_great_span");
     ///
     /// {
@@ -578,13 +555,12 @@ impl Span {
     ///
     /// // this event is not inside the span.
     /// info!("i'm outside the span!")
-    /// # }
     /// ```
     ///
     /// [`Subscriber::enter`]: ../subscriber/trait.Subscriber.html#method.enter
     /// [`Subscriber::exit`]: ../subscriber/trait.Subscriber.html#method.exit
     /// [`Id`]: ../struct.Id.html
-    pub fn enter<'a>(&'a self) -> Entered<'a> {
+    pub fn enter(&self) -> Entered<'_> {
         if let Some(ref inner) = self.inner.as_ref() {
             inner.subscriber.enter(&inner.id);
         }
@@ -612,7 +588,6 @@ impl Span {
     /// ```
     /// # #[macro_use] extern crate tracing;
     /// # use tracing::Level;
-    /// # fn main() {
     /// let my_span = span!(Level::TRACE, "my_span");
     ///
     /// my_span.in_scope(|| {
@@ -622,23 +597,19 @@ impl Span {
     ///
     /// // this event occurs outside the span.
     /// trace!("i'm not in the span!");
-    /// # }
     /// ```
     ///
     /// Calling a function and returning the result:
     /// ```
-    /// # #[macro_use] extern crate tracing;
-    /// # use tracing::Level;
+    /// # use tracing::{info_span, Level};
     /// fn hello_world() -> String {
     ///     "Hello world!".to_owned()
     /// }
     ///
-    /// # fn main() {
     /// let span = info_span!("hello_world");
     /// // the span will be entered for the duration of the call to
     /// // `hello_world`.
     /// let a_string = span.in_scope(hello_world);
-    /// # }
     ///
     pub fn in_scope<F: FnOnce() -> T, T>(&self, f: F) -> T {
         let _enter = self.enter();
@@ -701,9 +672,28 @@ impl Span {
 
     /// Returns `true` if this span was disabled by the subscriber and does not
     /// exist.
+    ///
+    /// See also [`is_none`].
+    ///
+    /// [`is_none`]: #method.is_none
     #[inline]
     pub fn is_disabled(&self) -> bool {
         self.inner.is_none()
+    }
+
+    /// Returns `true` if this span was constructed by [`Span::none`] and is
+    /// empty.
+    ///
+    /// If `is_none` returns `true` for a given span, then [`is_disabled`] will
+    /// also return `true`.  However, when a span is disabled by the subscriber
+    /// rather than constructed by `Span::none`, this method will return
+    /// `false`, while `is_disabled` will return `true`.
+    ///
+    /// [`Span::none`]: #method.none
+    /// [`is_disabled`]: #method.is_disabled
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        self.is_disabled() && self.meta.is_none()
     }
 
     /// Indicates that the span with the given ID has an indirect causal
@@ -720,10 +710,43 @@ impl Span {
     ///
     /// If this span is disabled, or the resulting follows-from relationship
     /// would be invalid, this function will do nothing.
-    pub fn follows_from(&self, from: impl for<'a> Into<Option<&'a Id>>) -> &Self {
+    ///
+    /// # Examples
+    ///
+    /// Setting a `follows_from` relationship with a `Span`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// let span1 = span!(Level::INFO, "span_1");
+    /// let span2 = span!(Level::DEBUG, "span_2");
+    /// span2.follows_from(span1);
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with the current span:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// let span = span!(Level::INFO, "hello!");
+    /// span.follows_from(Span::current());
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with a `Span` reference:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// let span = span!(Level::INFO, "hello!");
+    /// let curr = Span::current();
+    /// span.follows_from(&curr);
+    /// ```
+    ///
+    /// Setting a `follows_from` relationship with an `Id`:
+    /// ```
+    /// # use tracing::{span, Id, Level, Span};
+    /// let span = span!(Level::INFO, "hello!");
+    /// let id = span.id();
+    /// span.follows_from(id);
+    /// ```
+    pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
         if let Some(ref inner) = self.inner {
             if let Some(from) = from.into() {
-                inner.follows_from(from);
+                inner.follows_from(&from);
             }
         }
         self
@@ -736,7 +759,7 @@ impl Span {
 
     /// Returns this span's `Metadata`, if it is enabled.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
-        self.meta.clone()
+        self.meta
     }
 
     #[cfg(feature = "log")]
@@ -760,6 +783,17 @@ impl Span {
                 );
             }
         }
+    }
+
+    /// Invokes a function with a reference to this span's ID and subscriber.
+    ///
+    /// if this span is enabled, the provided function is called, and the result is returned.
+    /// If the span is disabled, the function is not called, and this method returns `None`
+    /// instead.
+    pub fn with_subscriber<T>(&self, f: impl FnOnce((&Id, &Dispatch)) -> T) -> Option<T> {
+        self.inner
+            .as_ref()
+            .map(|inner| f((&inner.id, &inner.subscriber)))
     }
 }
 

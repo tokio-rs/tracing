@@ -43,7 +43,7 @@ pub(crate) enum ValueMatch {
     Bool(bool),
     U64(u64),
     I64(i64),
-    Pat(MatchPattern),
+    Pat(Box<MatchPattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -132,7 +132,10 @@ impl FromStr for ValueMatch {
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
             .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
-            .or_else(|_| s.parse::<MatchPattern>().map(ValueMatch::Pat))
+            .or_else(|_| {
+                s.parse::<MatchPattern>()
+                    .map(|p| ValueMatch::Pat(Box::new(p)))
+            })
     }
 }
 
@@ -236,7 +239,7 @@ impl CallsiteMatch {
 }
 
 impl SpanMatch {
-    pub(crate) fn visitor<'a>(&'a self) -> MatchVisitor<'a> {
+    pub(crate) fn visitor(&self) -> MatchVisitor<'_> {
         MatchVisitor { inner: self }
     }
 

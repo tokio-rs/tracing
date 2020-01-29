@@ -15,6 +15,8 @@
 //! tracing-attributes = "0.1.0"
 //! ```
 //!
+//! *Compiler support: requires rustc 1.39+*
+//!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
 //! to automatically create and enter `tracing` [span] when that function is
 //! called. For example:
@@ -31,9 +33,9 @@
 //! ```
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
+//! [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
 //! [instrument]: attr.instrument.html
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.5")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.6")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -43,15 +45,12 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -75,8 +74,15 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
-/// The generated span's name will be the name of the function, and any
-/// arguments to that function will be recorded as fields using `fmt::Debug`.
+/// The generated span's name will be the name of the function. Any arguments
+/// to that function will be recorded as fields using [`fmt::Debug`]. To skip
+/// recording a function's or method's argument, pass the argument's name
+/// to the `skip` argument on the `#[instrument]` macro. For example,
+/// `skip` can be used when an argument to an instrumented function does
+/// not implement [`fmt::Debug`], or to exclude an argument with a verbose
+/// or costly Debug implementation. Note that:
+/// - multiple argument names can be passed to `skip`.
+/// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
 /// # Examples
 /// Instrumenting a function:
@@ -89,7 +95,6 @@ use syn::{
 ///     tracing::info!("inside my_function!");
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 /// Setting the level for the generated span:
 /// ```
@@ -98,7 +103,6 @@ use syn::{
 /// pub fn my_function() {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 /// Overriding the generated span's target:
 /// ```
@@ -107,32 +111,35 @@ use syn::{
 /// pub fn my_function() {
 ///     // ...
 /// }
-/// # fn main() {}
 /// ```
 ///
-/// When the `async-await` feature flag is enabled, `async fn`s may also be
-/// instrumented:
+/// To skip recording an argument, pass the argument's name to the `skip`:
 ///
-/// ```compile_fail
-/// // this currently only compiles on nightly.
-/// #![feature(async-await)]
+/// ```
 /// # use tracing_attributes::instrument;
+/// struct NonDebug;
 ///
+/// #[instrument(skip(non_debug))]
+/// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+/// ```
+///
+/// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
+/// `async fn`s may also be instrumented:
+///
+/// ```
+/// # use tracing_attributes::instrument;
 /// #[instrument]
 /// pub async fn my_function() -> Result<(), ()> {
 ///     // ...
 ///     # Ok(())
 /// }
-/// # fn main() {}
 /// ```
 ///
-/// # Notes
-/// - All argument types must implement `fmt::Debug`
-/// - When using `#[instrument]` on an `async fn`, the `tracing_futures` must
-///   also be specified as a dependency in `Cargo.toml`.
-///
-/// [span]: https://docs.rs/tracing/0.1.5/tracing/span/index.html
+/// [span]: https://docs.rs/tracing/0.1.6/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
+/// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
 pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
@@ -256,7 +263,7 @@ fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
     }
 }
 
-fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
+fn skips(args: &[NestedMeta]) -> Result<HashSet<Ident>, impl ToTokens> {
     let mut skips = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::List(MetaList {
             ref path,
@@ -286,7 +293,7 @@ fn skips(args: &AttributeArgs) -> Result<HashSet<Ident>, impl ToTokens> {
         .collect())
 }
 
-fn level(args: &AttributeArgs) -> impl ToTokens {
+fn level(args: &[NestedMeta]) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -340,7 +347,7 @@ fn level(args: &AttributeArgs) -> impl ToTokens {
     }
 }
 
-fn target(args: &AttributeArgs) -> impl ToTokens {
+fn target(args: &[NestedMeta]) -> impl ToTokens {
     let mut levels = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
@@ -367,7 +374,7 @@ fn target(args: &AttributeArgs) -> impl ToTokens {
     }
 }
 
-fn name(args: &AttributeArgs, default_name: String) -> impl ToTokens {
+fn name(args: &[NestedMeta], default_name: String) -> impl ToTokens {
     let mut names = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..

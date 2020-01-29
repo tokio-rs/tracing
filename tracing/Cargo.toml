@@ -8,8 +8,8 @@ name = "tracing"
 #   - README.md
 # - Update CHANGELOG.md.
 # - Create "v0.1.x" git tag
-version = "0.1.10"
-authors = ["Tokio Contributors <team@tokio.rs>"]
+version = "0.1.12"
+authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
@@ -27,9 +27,9 @@ keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
 
 [dependencies]
-tracing-core = { version = "0.1.7", default-features = false }
+tracing-core = { path = "../tracing-core", version = "0.1.9", default-features = false }
 log = { version = "0.4", optional = true }
-tracing-attributes = "0.1.5"
+tracing-attributes = "0.1.6"
 cfg-if = "0.1.10"
 
 [dev-dependencies]
@@ -72,5 +72,6 @@ harness = false
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "actively-developed" }
 
-[target.'cfg(not(feature = "std"))'.dependencies]
-spin = "0.5"
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

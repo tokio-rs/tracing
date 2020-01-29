@@ -108,7 +108,7 @@ impl Expect {
         }
     }
 
-    pub fn checker<'a>(&'a mut self, ctx: String) -> CheckVisitor<'a> {
+    pub fn checker(&mut self, ctx: String) -> CheckVisitor<'_> {
         CheckVisitor { expect: self, ctx }
     }
 

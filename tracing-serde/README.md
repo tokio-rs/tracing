@@ -43,6 +43,8 @@ tracing = "0.1"
 tracing-serde = "0.1"
 ```
 
+*Compiler support: requires rustc 1.39+*
+
 Next, add this to your crate:
 
 ```rust

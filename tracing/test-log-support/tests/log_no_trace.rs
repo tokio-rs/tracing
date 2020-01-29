@@ -32,6 +32,8 @@ fn test_always_log() {
     drop(foo);
     test.assert_logged("-- foo");
 
+    trace!(foo = 1, bar = 2, "hello world");
+    test.assert_logged("hello world foo=1 bar=2");
 
     let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
     test.assert_logged("foo; bar=3 baz=false");

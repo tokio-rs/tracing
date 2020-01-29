@@ -1,3 +1,31 @@
+# 0.1.12 (January 11, 2019)
+
+### Added
+
+- `Span::with_subscriber` method to access the subscriber that tracks a `Span`
+  (#503)
+- API documentation now shows which features are required by feature-flagged
+  items (#523)
+- Improved README examples (#496)
+- Documentation links to related crates (#507)
+
+# 0.1.11 (December 20, 2019)
+
+### Added
+
+- `Span::is_none` method (#475)
+- `LevelFilter::into_level` method (#470)
+- `LevelFilter::from_level` function and `From<Level>` impl (#471)
+- Documented minimum supported Rust version (#482)
+
+### Fixed
+
+- Incorrect parameter type to `Span::follows_from` that made it impossible to
+  call (#467)
+- Missing whitespace in `log` records generated when enabling the `log` feature
+  flag (#484)
+- Typos and missing links in documentation (#405, #423, #439)
+
 # 0.1.10 (October 23, 2019)
 
 ### Added

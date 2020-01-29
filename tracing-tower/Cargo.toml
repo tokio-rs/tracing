@@ -17,17 +17,26 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 
 [features]
-default = ["tower-layer", "tower-util", "http"]
+default = ["tower-layer", "tower-make", "http"]
+tower-make = [
+    "tower_make",
+    "pin-project",
+]
 
 [dependencies]
 tracing = "0.1"
-tracing-futures = { version = "0.1.0", path = "../tracing-futures" }
-futures = "0.1"
-tower-service = "0.2"
-tower-layer = { version = "0.1", optional = true }
-tower-util = { version = "0.1", optional = true }
+tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["std-future"] }
+futures = "0.3"
+tower-service = "0.3"
+tower-layer = { version = "0.3", optional = true }
+tower_make = { package = "tower-make", version = "0.3", optional = true }
+pin-project = { version = "0.4", optional = true }
 http = { version = "0.1", optional = true }
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

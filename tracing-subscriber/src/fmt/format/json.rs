@@ -1,5 +1,10 @@
-use super::{span, Format, FormatEvent, FormatFields, FormatTime};
-use crate::field::MakeVisitor;
+use super::{Format, FormatEvent, FormatFields, FormatTime};
+use crate::{
+    field::MakeVisitor,
+    fmt::fmt_layer::FmtContext,
+    fmt::fmt_layer::FormattedFields,
+    registry::{LookupMetadata, LookupSpan},
+};
 use serde::ser::{SerializeMap, Serializer as _};
 use serde_json::Serializer;
 use std::{
@@ -9,7 +14,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field},
-    Event,
+    Event, Subscriber,
 };
 use tracing_serde::AsSerde;
 
@@ -22,17 +27,22 @@ use tracing_log::NormalizeEvent;
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json;
 
-impl<N, T> FormatEvent<N> for Format<Json, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
-    N: for<'writer> FormatFields<'writer>,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &span::Context<'_, N>,
+        ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
-    ) -> fmt::Result {
+    ) -> fmt::Result
+    where
+        S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+    {
+        use serde_json::{json, Value};
         use tracing_serde::fields::AsMap;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -51,14 +61,31 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
-            ctx.with_current(|(_, span)| serializer.serialize_entry("span", &span))
-                .unwrap_or(Ok(()))?;
+            let id = ctx.ctx.current_span();
+            let id = id.id();
+            if let Some(id) = id {
+                if let Some(span) = ctx.ctx.span(id) {
+                    let ext = span.extensions();
+                    let data = ext
+                        .get::<FormattedFields<N>>()
+                        .expect("Unable to find FormattedFields in extensions; this is a bug");
+                    // TODO: let's _not_ do this, but this resolves
+                    // https://github.com/tokio-rs/tracing/issues/391.
+                    // We should probably rework this to use a `serde_json::Value` or something
+                    // similar in a JSON-specific layer, but I'd (david)
+                    // rather have a uglier fix now rather than shipping broken JSON.
+                    let mut fields: Value = serde_json::from_str(&data)?;
+                    fields["name"] = json!(span.metadata().name());
+                    serializer.serialize_entry("span", &fields).unwrap_or(());
+                }
+            }
 
             if self.display_target {
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            serializer.serialize_entry("fields", &event.field_map())
+            serializer.serialize_entry("fields", &event.field_map())?;
+            serializer.end()
         };
 
         visit().map_err(|_| fmt::Error)?;
@@ -239,14 +266,11 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 
 #[cfg(test)]
 mod test {
-
-    use crate::fmt::test::MockWriter;
-    use crate::fmt::time::FormatTime;
+    use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
-    use std::fmt;
-    use std::sync::Mutex;
+    use std::{fmt, sync::Mutex};
 
     struct MockTime;
     impl FormatTime for MockTime {
@@ -264,7 +288,7 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"name\":\"json_span\",\"fields\":\"{\\\"answer\\\":42,\\\"number\\\":3}\"},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
         test_json(make_writer, expected, &BUF);
     }

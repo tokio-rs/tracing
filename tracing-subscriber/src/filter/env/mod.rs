@@ -28,51 +28,9 @@ use tracing_core::{
 
 /// A `Layer` which filters spans and events based on a set of filter
 /// directives.
-///
-/// # Directives
-///
-/// A filter consists of one or more directives. Directives match [`Span`]s and [`Event`]s
-/// and specify a maximum verbosity [level] to enable for those that match. The directive
-/// syntax is similar to the one presented in `env_logger`. The syntax consists
-/// of four parts `target[span{field=value}]=level`.
-///
-/// - `target` matches the event's target, generally this will be the
-/// module path. Examples, `h2`, `tokio::net`, etc. For more information on targets, see documentation for [`Metadata`].
-/// - `span` matches on the span name that you want to filter on. If this is supplied with a `target`
-/// it will match on all filter spans within that `target.
-/// - `field` matches the fields within spans. Field names can also be supplied without a `value`
-/// and will match on any `Span` or `Event` that has a field with that name.
-/// For example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
-/// - `value` matches the _output_ of the span's value. If a value is a numeric literal or a bool,
-/// it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
-/// from the value. Examples, `1`, `\"some_string\"`, etc.
-/// - `level` sets a maximum verbosity level accepted by this directive
-///
-/// The portion of the synatx that is included within the square brackets is `tracing` specific.
-/// All portions of the syntax may be omitted. If a `value` is provided a `field`
-/// must be specified. If just a level is provided, it will set the maximum level for all `Span`s and `Event`s that are not enabled by other filters.
-/// A directive without a level will enable anything that matches.
-///
-/// ## Examples
-///
-/// - `tokio::net=info` will enable all spans or events that occur within the `tokio::net`module
-/// with the `info` verbosity level or below
-/// - `my_crate[span_a]=trace` will enable all spans and events that are occur within the `my_crate` crate,
-/// within the `span_a` span and with any level `trace` and above.
-/// - `[span_b{name=\"bob\"}]` will enable all spans and events with any target that occur within a
-/// span with the name `span_b` and a field `name` with the value `\"bob\"`.
-///
-/// [`Span`]: ../../tracing_core/span/index.html
-/// [`Event`]: ../../tracing_core/struct.Event.html
-/// [`level`]: ../../tracing_core/struct.Level.html
-/// [`Metadata`]: ../../tracing_core/struct.Metadata.html
-#[cfg_attr(
-    feature = "filter",
-    deprecated(
-        since = "0.1.2",
-        note = "the `filter` feature flag was renamed to `env-filter` and will be removed in 0.2",
-    )
-)]
+// TODO(eliza): document filter directive syntax?
+#[cfg(feature = "env-filter")]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
 pub struct EnvFilter {
     // TODO: eventually, this should be exposed by the registry.
@@ -188,10 +146,8 @@ impl EnvFilter {
     /// # Examples
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
-    /// # fn main() {
     /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(LevelFilter::INFO.into());
-    /// # }
     /// ```
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, Directive};
@@ -202,7 +158,6 @@ impl EnvFilter {
     ///     .add_directive("my_crate::my_other_module::something=info".parse()?);
     /// # Ok(())
     /// # }
-    /// # fn main() {}
     /// ```
     pub fn add_directive(mut self, directive: Directive) -> Self {
         if let Some(stat) = directive.to_static() {
@@ -461,7 +416,7 @@ mod tests {
     #[test]
     fn callsite_enabled_no_span_directive() {
         let filter = EnvFilter::new("app=debug").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,
@@ -479,7 +434,7 @@ mod tests {
     #[test]
     fn callsite_off() {
         let filter = EnvFilter::new("app=off").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::ERROR,
@@ -497,7 +452,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive() {
         let filter = EnvFilter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,
@@ -516,7 +471,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive_field() {
         let filter =
             EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,
@@ -535,7 +490,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive_multiple_fields() {
         let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
             .with_subscriber(NoSubscriber);
-        static META: &'static Metadata<'static> = &Metadata::new(
+        static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
             Level::TRACE,

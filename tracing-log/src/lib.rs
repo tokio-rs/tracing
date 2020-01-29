@@ -87,6 +87,7 @@
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -96,15 +97,12 @@
     const_err,
     dead_code,
     improper_ctypes,
-    legacy_directory_ownership,
     non_shorthand_field_patterns,
     no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
-    safe_extern_statics,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -126,16 +124,20 @@ use tracing_core::{
 };
 
 #[cfg(feature = "log-tracer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 pub mod log_tracer;
 
 #[cfg(feature = "trace-logger")]
+#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
 pub mod trace_logger;
 
 #[cfg(feature = "log-tracer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
 
 #[cfg(feature = "trace-logger")]
+#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
 #[deprecated(
     since = "0.1.1",
     note = "use the `tracing` crate's \"log\" feature flag instead"
@@ -145,6 +147,7 @@ pub use self::log_tracer::LogTracer;
 pub use self::trace_logger::TraceLogger;
 
 #[cfg(feature = "env_logger")]
+#[cfg_attr(docsrs, doc(cfg(feature = "env_logger")))]
 pub mod env_logger;
 
 /// Format a log record as a trace event in the current span.
@@ -216,7 +219,7 @@ struct Fields {
     line: field::Field,
 }
 
-static FIELD_NAMES: &'static [&'static str] = &[
+static FIELD_NAMES: &[&str] = &[
     "message",
     "log.target",
     "log.module_path",

@@ -35,7 +35,7 @@ impl Expect {
         if let Some(ref expected_target) = self.target {
             let target = actual.target();
             assert!(
-                expected_target == &target,
+                expected_target == target,
                 "expected {} to have target `{}`, but it had target `{}` instead",
                 ctx,
                 expected_target,

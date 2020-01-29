@@ -2,6 +2,7 @@
 pub use tracing_core::subscriber::*;
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatcher::DefaultGuard;
 
 /// Sets this subscriber as the default for the duration of a closure.
@@ -15,6 +16,7 @@ pub use tracing_core::dispatcher::DefaultGuard;
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: :../event/struct.Event.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
 where
     S: Subscriber + Send + Sync + 'static,
@@ -54,6 +56,7 @@ where
 /// [`Event`]: :../event/struct.Event.html
 /// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn set_default<S>(subscriber: S) -> DefaultGuard
 where
     S: Subscriber + Send + Sync + 'static,
