@@ -32,7 +32,7 @@ use tracing_core::{
 /// # Directives
 ///
 /// A filter consists of one or more directives. Directives match [`Span`]s and [`Event`]s
-/// and specify a maximum verbosity [`level`] to enable for those that match. The directive
+/// and specify a maximum verbosity [level] to enable for those that match. The directive
 /// syntax is similar to the one presented in `env_logger`. The syntax consists
 /// of four parts `target[span{field=value}]=level`.
 ///
