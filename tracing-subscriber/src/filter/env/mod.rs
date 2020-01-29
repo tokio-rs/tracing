@@ -41,7 +41,7 @@ use tracing_core::{
 /// The directive syntax is similar to that of [`env_logger`]'s. At a high level, the syntax for directives
 /// consists of several parts:
 ///
-/// ```
+/// ```text
 /// target[span{field=value}]=level
 /// ```
 ///
