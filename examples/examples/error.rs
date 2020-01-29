@@ -1,21 +1,21 @@
 #![deny(rust_2018_idioms)]
 use std::error::Error;
 use std::fmt;
-use tracing::debug;
-use tracing_error::{ErrorLayer, TraceError};
-use tracing_subscriber::{fmt::Layer as FmtLayer, registry::Registry, Layer, prelude::*};
+use tracing_error::{ErrorLayer, SpanTrace};
+use tracing_subscriber::{fmt::Layer as FmtLayer, prelude::*, registry::Registry};
 
 #[tracing::instrument]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
     match do_another_thing(42, false) {
         Ok(i) => Ok(i),
-        Err(e) => Err(FooError::new("something broke, lol", e).in_context()),
+        Err(e) => Err(FooError::new("something broke, lol", e)),
     }
 }
 #[derive(Debug)]
 struct FooError {
     message: &'static str,
     source: Box<dyn Error + Send + Sync + 'static>,
+    context: SpanTrace,
 }
 
 impl FooError {
@@ -26,6 +26,7 @@ impl FooError {
         Self {
             message,
             source: source.into(),
+            context: SpanTrace::capture(),
         }
     }
 }
@@ -38,7 +39,8 @@ impl Error for FooError {
 
 impl fmt::Display for FooError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad(self.message)
+        f.pad(self.message)?;
+        write!(f, "\n{}", self.context)
     }
 }
 
@@ -47,17 +49,20 @@ fn do_another_thing(
     answer: usize,
     will_succeed: bool,
 ) -> Result<&'static str, impl Error + Send + Sync + 'static> {
-    Err(std::io::Error::new(std::io::ErrorKind::Other, "something else broke!").in_context())
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        "something else broke!",
+    ))
 }
 
 #[tracing::instrument]
 fn main() {
     let subscriber = Registry::default()
-        .with(ErrorLayer::default())
-        .with(FmtLayer::default());
+        .with(FmtLayer::default())
+        .with(ErrorLayer::default());
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
     match do_something("hello world") {
         Ok(result) => println!("did something successfully: {}", result),
-        Err(e) => eprintln!("error: {}", e.span_backtrace()),
+        Err(e) => eprintln!("error: {}", e),
     };
 }
