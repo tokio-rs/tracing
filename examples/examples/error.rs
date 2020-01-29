@@ -1,6 +1,6 @@
 #![deny(rust_2018_idioms)]
 use std::error::Error;
-use std::fmt::{self, Write as _};
+use std::fmt;
 use tracing_error::{ErrorLayer, SpanTrace};
 use tracing_subscriber::{fmt::Layer as FmtLayer, prelude::*, registry::Registry};
 
