@@ -44,7 +44,7 @@ use tracing_core::{
 /// and will match on any `Span` or `Event` that has a field with that name.
 /// For example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
 /// - `value` matches the _output_ of the span's value. If a value is a numeric literal or a bool,
-// it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
+/// it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
 /// from the value. Examples, `1`, `\"some_string\"`, etc.
 /// - `level` sets a maximum verbosity level accepted by this directive
 ///
