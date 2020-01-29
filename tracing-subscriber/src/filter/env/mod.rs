@@ -50,7 +50,7 @@ use tracing_core::{
 ///
 /// The portion of the synatx that is included within the square brackets is `tracing` specific.
 /// All portions of the syntax are omissable. If a `value` is provided a `field`
-/// must be specified. If just a `level` is provided it will enable all `Span`s and `Event`s.
+/// must be specified. If just a level is provided, it will set the maximum level for all `Span`s and `Event`s that are not enabled by other filters.
 /// A directive without a level will enable anything that matches.
 ///
 /// ## Examples
