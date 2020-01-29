@@ -42,7 +42,7 @@ use tracing_core::{
 /// it will match on all filter spans within that `target.
 /// - `field` matches the fields within spans. Field names can also be supplied without a `value`
 /// and will match on any `Span` that contains that field name.
-/// Example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
+/// For example, `[span{field=\"value\"}]=debug`, `[{field}]=trace`, etc.
 /// - `value` matches the _output_ of the span's value. If a value is a numeric literal or a bool,
 // it will match that value only. Otherwise, it's a regex that matches the `std::fmt::Debug` output
 /// from the value. Examples, `1`, `\"some_string\"`, etc.
