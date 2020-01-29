@@ -37,7 +37,7 @@ use tracing_core::{
 /// of four parts `target[span{field=value}]=level`.
 ///
 /// - `target` matches the event's target, generally this will be the
-/// module path. Examples, `h2`, `tokio::net`, etc. For more info checkout the [`Metadata`] docs.
+/// module path. Examples, `h2`, `tokio::net`, etc. For more information on targets, see documentation for [`Metadata`].
 /// - `span` matches on the span name that you want to filter on. If this is supplied with a `target`
 /// it will match on all filter spans within that `target.
 /// - `field` matches the fields within spans. Field names can also be supplied without a `value`
