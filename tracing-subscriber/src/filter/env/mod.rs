@@ -36,7 +36,7 @@ use tracing_core::{
 /// syntax is similar to the one presented in `env_logger`. The syntax consists
 /// of four parts `target[span{field=value}]=level`.
 ///
-/// - `target` matches on the target that the event comes from, generally this will be the
+/// - `target` matches the event's target, generally this will be the
 /// module path. Examples, `h2`, `tokio::net`, etc. For more info checkout the [`Metadata`] docs.
 /// - `span` matches on the span name that you want to filter on. If this is supplied with a `target`
 /// it will match on all filter spans within that `target.
