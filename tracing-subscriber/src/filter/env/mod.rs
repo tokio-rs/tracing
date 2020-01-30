@@ -31,12 +31,11 @@ use tracing_core::{
 ///
 /// # Directives
 ///
-/// A filter consists of the following:
-/// - One or more directives which match on [`Span`]s and [`Event`]s.
-/// - A maximum verbosity [`level`] which enables (e.g., _selects for_)
-///   spans and events that match. Like `log`, `tracing` considers less exclusive
-///   levels (like `trace` or `info`) to be more verbose than more exclusive levels
-///   (like `error` or `warn`).
+/// A filter consists of one or more directives which match on [`Span`]s and [`Event`]s.
+/// Each directive may have a corresponding maximum verbosity [`level`] which
+/// enables (e.g., _selects for_) spans and events that match. Like `log`,
+/// `tracing` considers less exclusive levels (like `trace` or `info`) to be more
+/// verbose than more exclusive levels (like `error` or `warn`).
 ///
 /// The directive syntax is similar to that of [`env_logger`]'s. At a high level, the syntax for directives
 /// consists of several parts:
@@ -64,24 +63,25 @@ use tracing_core::{
 ///
 /// - The portion of the directive which is included within the square brackets is `tracing`-specific.
 /// - Any portion of the directive can be omitted.
-///     - The sole exception are the `field` and `value` directives. If either a field or value
-///       directive is provided, the complementary directive _must also_ be provided.
+///     - The sole exception are the `field` and `value` directives. If a `value` is provided,
+///       a `field` must _also_ be provided. However, the converse does not hold, as fields can
+///       be matched without a value.
 /// - If only a level is provided, it will set the maximum level for all `Span`s and `Event`s
 ///   that are not enabled by other filters.
 /// - A directive without a level will enable anything that it matches.
 ///
 /// ## Examples
 ///
-/// - `tokio::net=info` will match on all spans or events that:
+/// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
 ///    - at the level `info` or above.
-/// - `my_crate[span_a]=trace` will match on all spans and events that:
+/// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
-/// - `[span_b{name=\"bob\"}]` will match on all spans or event that:
+/// - `[span_b{name=\"bob\"}]` will enable all spans or event that:
 ///    - have _any_ target,
-///    - are within the `span_b` span or named `span_b`,
-///    - have a field named `name` and the value `"bob"`,
+///    - are inside a span named `span_b`,
+///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
