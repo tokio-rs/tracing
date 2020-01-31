@@ -53,7 +53,7 @@ tracing-serde = { version = "0.1.0", optional = true }
 parking_lot = { version = ">= 0.7, < 0.10", optional = true }
 
 # registry
-sharded-slab = { version = "0.0.7", optional = true }
+sharded-slab = { version = "0.0.8", optional = true }
 
 [dev-dependencies]
 tracing = "0.1"
