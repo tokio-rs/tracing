@@ -78,7 +78,7 @@ fn main() {
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2.0-alpha.4"
+tracing-subscriber = "0.2.0-alpha.5"
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
