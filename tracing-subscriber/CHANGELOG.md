@@ -1,3 +1,21 @@
+# 0.2.0-alpha.5 (January 31, 2020)
+
+### Added
+
+- **env_filter**: Documentation for filtering directives (#554)
+- **registry**, **env_filter**: Updated `smallvec` dependency to 0.1 (#543)
+
+### Fixed
+
+- **registry**: Fixed a memory leak in the slab used to store per-span data
+  (3c35048)
+- **Layer**: Fixed `Layered` subscribers failing to downcast to their own type
+  (#549)
+- **fmt**: Fixed a panic when multiple layers insert `FormattedFields`
+  extensions from the same formatter type (1c3bb70)
+- **fmt**: Fixed `fmt::Layer::on_record` inserting a new `FormattedFields` when
+  formatted fields for a span already exist (1c3bb70)
+
 # 0.2.0-alpha.4 (January 11, 2020)
 
 ### Fixed
