@@ -51,7 +51,7 @@ use tracing_core::{
 ///    please refer to [`Metadata`]'s documentation.
 /// - `span` matches on the span's name. If a `span` directive is provided alongside a `target`,
 ///    the `span` directive will match on spans _within_ the `target`.
-/// - `field` matches on fields within spans. Field names can also be supplied without a `value`
+/// - `field` matches on [fields] within spans. Field names can also be supplied without a `value`
 ///    and will match on any [`Span`] or [`Event`] that has a field with that name.
 ///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
@@ -68,7 +68,7 @@ use tracing_core::{
 ///       be matched without a value.
 /// - If only a level is provided, it will set the maximum level for all `Span`s and `Event`s
 ///   that are not enabled by other filters.
-/// - A directive without a level will enable anything that it matches.
+/// - A directive without a level will enable anything that it matches. This is equivalent to `=trace`.
 ///
 /// ## Examples
 ///
@@ -87,6 +87,7 @@ use tracing_core::{
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: ../../tracing_core/span/index.html
+/// [fields]: ../../tracing_core/struct.Field.html
 /// [`Event`]: ../../tracing_core/struct.Event.html
 /// [`level`]: ../../tracing_core/struct.Level.html
 /// [`Metadata`]: ../../tracing_core/struct.Metadata.html
