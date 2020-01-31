@@ -26,9 +26,71 @@ use tracing_core::{
     Metadata,
 };
 
-/// A `Layer` which filters spans and events based on a set of filter
+/// A [`Layer`] which filters spans and events based on a set of filter
 /// directives.
-// TODO(eliza): document filter directive syntax?
+///
+/// # Directives
+///
+/// A filter consists of one or more directives which match on [`Span`]s and [`Event`]s.
+/// Each directive may have a corresponding maximum verbosity [`level`] which
+/// enables (e.g., _selects for_) spans and events that match. Like `log`,
+/// `tracing` considers less exclusive levels (like `trace` or `info`) to be more
+/// verbose than more exclusive levels (like `error` or `warn`).
+///
+/// The directive syntax is similar to that of [`env_logger`]'s. At a high level, the syntax for directives
+/// consists of several parts:
+///
+/// ```text
+/// target[span{field=value}]=level
+/// ```
+///
+/// Each component (`target`, `span`, `field`, `value`, and `level`) will be covered in turn.
+///
+/// - `target` matches the event or span's target. In general, this is the module path and/or crate name.
+///    Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
+///    please refer to [`Metadata`]'s documentation.
+/// - `span` matches on the span's name. If a `span` directive is provided alongside a `target`,
+///    the `span` directive will match on spans _within_ the `target`.
+/// - `field` matches on [fields] within spans. Field names can also be supplied without a `value`
+///    and will match on any [`Span`] or [`Event`] that has a field with that name.
+///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
+/// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
+///    it will match _only_ on that value. Otherwise, this filter acts as a regex on
+///    the `std::fmt::Debug` output from the value.
+/// - `level` sets a maximum verbosity level accepted by this directive.
+///
+/// ## Usage Notes
+///
+/// - The portion of the directive which is included within the square brackets is `tracing`-specific.
+/// - Any portion of the directive can be omitted.
+///     - The sole exception are the `field` and `value` directives. If a `value` is provided,
+///       a `field` must _also_ be provided. However, the converse does not hold, as fields can
+///       be matched without a value.
+/// - If only a level is provided, it will set the maximum level for all `Span`s and `Event`s
+///   that are not enabled by other filters.
+/// - A directive without a level will enable anything that it matches. This is equivalent to `=trace`.
+///
+/// ## Examples
+///
+/// - `tokio::net=info` will enable all spans or events that:
+///    - have the `tokio::net` target,
+///    - at the level `info` or above.
+/// - `my_crate[span_a]=trace` will enable all spans and events that:
+///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
+///    - at the level `trace` or above.
+/// - `[span_b{name=\"bob\"}]` will enable all spans or event that:
+///    - have _any_ target,
+///    - are inside a span named `span_b`,
+///    - which has a field named `name` with value `bob`,
+///    - at _any_ level.
+///
+/// [`Layer`]: ../layer/trait.Layer.html
+/// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
+/// [`Span`]: ../../tracing_core/span/index.html
+/// [fields]: ../../tracing_core/struct.Field.html
+/// [`Event`]: ../../tracing_core/struct.Event.html
+/// [`level`]: ../../tracing_core/struct.Level.html
+/// [`Metadata`]: ../../tracing_core/struct.Metadata.html
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
