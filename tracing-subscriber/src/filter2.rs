@@ -16,31 +16,30 @@ pub struct Filtered<F, L, I, S = I> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct FilterId(usize);
+pub struct FilterId(u8);
 
 #[derive(Default)]
 pub(crate) struct FilterMap {
-    bitmap: [AtomicUsize; BITMAP_SHARDS],
+    bitmap: [u8; Self::SHARDS],
 }
 
 impl FilterMap {
-    pub const MAX_FILTERS: usize = 512;
-    const BITMAP_SHARDS: usize = MAX_FILTERS / BITS_PER_SHARD;
-    const BITS_PER_SHARD: usize = mem::size_of::<AtomicUsize>() * 8;
+    pub const MAX_FILTERS: usize = 8 * Self::SHARDS;
+    const SHARDS: usize = 32;
 
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn disable(&self, FilterId(filter): FilterId) {
-        let idx = filter / Self::BITMAP_SHARDS;
-        let bit = 1 << (filter % Self::BITS_PER_SHARD);
-        self.bitmap[idx].fetch_or(1 << bit, Ordering::Release);
+    pub fn disable(&mut self, FilterId(filter): FilterId) {
+        let idx = filter as usize / 8;
+        let bit = 1 << (filter % Self::SHARDS);
+        self.bitmap[idx] |= bit;
     }
 
-    pub fn is_enabled(&self, FilterId(filter): FilterId) {
-        let idx = filter / Self::BITMAP_SHARDS;
-        let bit = 1 << (filter % Self::BITS_PER_SHARD);
-        self.bitmap[idx].load(Ordering::Acquire) & bit != 0
+    pub fn is_enabled(&self, FilterId(filter): FilterId) -> bool {
+        let idx = filter as usize / 8;
+        let bit = 1 << (filter % Self::SHARDS);
+        self.bitmap[idx] & bit == 0
     }
 }
