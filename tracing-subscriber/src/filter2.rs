@@ -16,14 +16,15 @@ pub trait Filterable {
     fn is_enabled_by(&self, filter: FilterId, span: &span::Id) -> bool;
 }
 
-pub struct Filtered<F, L> {
+pub struct Filtered<F, L, S> {
     pub(crate) layer: L,
     // next: I,
     pub(crate) filter: F,
     pub(crate) id: FilterId,
+    pub(crate) _s: PhantomData<S>,
 }
 
-impl<S, F, L> Layer<S> for Filtered<F, L>
+impl<S, F, L> Layer<S> for Filtered<F, L, S>
 where
     S: Subscriber + Filterable,
     F: Filter<S> + 'static,
@@ -183,21 +184,14 @@ mod tests {
         let subscriber = NopFilterable { next_id: 0 }
             .with(NopLayer.with_filter(NopFilter1))
             .with(NopLayer.with_filter(NopFilter2));
-        let subscriber = tracing_core::Dispatch::new(subscriber);
 
         assert_eq!(
-            subscriber
-                .downcast_ref::<Filtered<NopFilter1, NopLayer>>()
-                .expect("downcast")
-                .id,
-            FilterId(0)
+            subscriber.layer.id,
+            FilterId(1)
         );
         assert_eq!(
-            subscriber
-                .downcast_ref::<Filtered<NopFilter2, NopLayer>>()
-                .expect("downcast")
-                .id,
-            FilterId(1)
+            subscriber.inner.layer.id,
+            FilterId(0)
         );
     }
 }

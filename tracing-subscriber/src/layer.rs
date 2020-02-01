@@ -430,7 +430,7 @@ where
     }
 
     /// TODO: docs
-    fn with_filter<F>(self, filter: F) -> crate::filter2::Filtered<F, Self>
+    fn with_filter<F>(self, filter: F) -> crate::filter2::Filtered<F, Self, S>
     where
         F: Filter<S>,
         S: crate::filter2::Filterable,
@@ -440,6 +440,7 @@ where
             layer: self,
             filter,
             id: crate::filter2::FilterId(0),
+            _s: PhantomData,
         }
     }
 
