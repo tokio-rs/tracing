@@ -28,29 +28,36 @@ tracing-serde = { path = "../tracing-serde" }
 # serde example
 serde_json = "1.0"
 
-futures = "0.1"
-tokio = "0.1"
-hyper = "0.12"
+futures = "0.3"
+tokio = { version = "0.2.11", features = ["full"] }
 
 # env-logger example
 env_logger = "0.6"
 
 # tower examples
-bytes = "0.4"
+tower = "0.3"
+tower-util = "0.3"
+tower-make = "0.3"
+http = "0.2"
+hyper = "0.13.2"
+rand = "0.7"
+bytes = "0.5"
+clap = "2.33"
+
+# tower examples
 h2 = "0.1.11"
 string = { git = "https://github.com/carllerche/string" }
-http = "0.1"
+# http = "0.1"
 tokio-current-thread = "0.1.1"
 tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
 tokio-io = "0.1"
 tokio-tcp = "0.1"
 tokio-buf = "0.1"
-tower = "0.1"
-tower-service = "0.2"
-tower-util = "0.1"
+# tower = "0.1"
+# tower-service = "0.2"
+# tower-util = "0.1"
 tower-hyper = "0.1"
 tower-http-util = "0.1"
-rand = "0.7"
 
 # sloggish example
 ansi_term = "0.11"

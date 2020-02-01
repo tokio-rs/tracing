@@ -1,10 +1,10 @@
 #![deny(rust_2018_idioms)]
 
-use futures::future;
-use hyper::rt::{Future, Stream};
-use hyper::server::conn::Http;
-use hyper::service::service_fn;
-use hyper::{Body, Method, Request, Response, StatusCode};
+use futures::{
+    future::{self, Future},
+    stream::Stream,
+};
+use hyper::{server::conn::Http, service::service_fn, Body, Method, Request, Response, StatusCode};
 
 use std::str;
 

@@ -1,147 +1,162 @@
-/*
-This example has been taken and modified from here :
-https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
-*/
 #![deny(rust_2018_idioms)]
 
-use tracing::{debug, error, info, span, warn, Level};
+//! A proxy that forwards data to another server and forwards that server's
+//! responses back to clients.
+//!
+//! Because the Tokio runtime uses a thread pool, each TCP connection is
+//! processed concurrently with all other TCP connections across multiple
+//! threads.
+//!
+//! You can showcase this by running this in one terminal:
+//!
+//!     cargo run --example proxy_server -- --log_format=(plain|json)
+//!
+//! This in another terminal
+//!
+//!     cargo run --example echo
+//!
+//! And finally this in another terminal
+//!
+//!     nc localhost 8081
+//!
+//! This final terminal will connect to our proxy, which will in turn connect to
+//! the echo server, and you'll be able to see data flowing between them.
+
+use clap::{arg_enum, value_t, App, Arg, ArgMatches};
+use futures::{future::try_join, prelude::*};
+use std::net::SocketAddr;
+use tokio::{
+    self, io,
+    net::{TcpListener, TcpStream},
+};
+use tracing::{debug, debug_span, info, warn};
+use tracing_attributes::instrument;
 use tracing_futures::Instrument;
 
-use std::env;
-use std::io::{self, Read, Write};
-use std::net::{Shutdown, SocketAddr};
-use std::sync::{Arc, Mutex};
+#[instrument]
+async fn transfer(
+    mut inbound: TcpStream,
+    proxy_addr: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut outbound = TcpStream::connect(&proxy_addr).await?;
 
-use tokio::io::{copy, shutdown};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::prelude::*;
+    let (mut ri, mut wi) = inbound.split();
+    let (mut ro, mut wo) = outbound.split();
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{fmt, EnvFilter};
+    let client_to_server = io::copy(&mut ri, &mut wo)
+        .map_ok(|bytes_copied| {
+            info!(bytes_copied);
+            bytes_copied
+        })
+        .map_err(|error| {
+            warn!(%error);
+            error
+        })
+        .instrument(debug_span!("client_to_server"));
+    let server_to_client = io::copy(&mut ro, &mut wi)
+        .map_ok(|bytes_copied| {
+            info!(bytes_copied);
+            bytes_copied
+        })
+        .map_err(|error| {
+            warn!(%error);
+            error
+        })
+        .instrument(debug_span!("server_to_client"));
 
-    let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
-
-    let listen_addr = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8081".to_string());
-    let listen_addr = listen_addr.parse::<SocketAddr>()?;
-
-    let server_addr = env::args()
-        .nth(2)
-        .unwrap_or_else(|| "127.0.0.1:3000".to_string());
-    let server_addr = server_addr.parse::<SocketAddr>()?;
-
-    // Create a TCP listener which will listen for incoming connections.
-    let socket = TcpListener::bind(&listen_addr)?;
-    info!("Listening on: {}", listen_addr);
-    info!("Proxying to: {}", server_addr);
-
-    let done = socket
-        .incoming()
-        .map_err(|error| error!(msg = "error accepting socket", %error))
-        .for_each(move |client| {
-            let server = TcpStream::connect(&server_addr);
-            let mut client_addr = None;
-            match client.peer_addr() {
-                Ok(addr) => {
-                    client_addr = Some(addr);
-                    info!(message = "client connected", client_addr = %addr);
-                }
-                Err(error) => warn!(
-                    message = "Could not get client information",
-                    %error
-                ),
-            }
-
-            let amounts = server.and_then(move |server| {
-                // Create separate read/write handles for the TCP clients that we're
-                // proxying data between. Note that typically you'd use
-                // `AsyncRead::split` for this operation, but we want our writer
-                // handles to have a custom implementation of `shutdown` which
-                // actually calls `TcpStream::shutdown` to ensure that EOF is
-                // transmitted properly across the proxied connection.
-                //
-                // As a result, we wrap up our client/server manually in arcs and
-                // use the impls below on our custom `MyTcpStream` type.
-                let client_reader = MyTcpStream(Arc::new(Mutex::new(client)));
-                let client_writer = client_reader.clone();
-                let server_reader = MyTcpStream(Arc::new(Mutex::new(server)));
-                let server_writer = server_reader.clone();
-
-                // Copy the data (in parallel) between the client and the server.
-                // After the copy is done we indicate to the remote side that we've
-                // finished by shutting down the connection.
-                let client_to_server = copy(client_reader, server_writer)
-                    .and_then(|(size, _, server_writer)| {
-                        info!(size);
-                        shutdown(server_writer).map(move |_| size)
-                    })
-                    .instrument(span!(Level::INFO, "client_to_server"));
-
-                let server_to_client = copy(server_reader, client_writer)
-                    .and_then(|(size, _, client_writer)| {
-                        info!(size);
-                        shutdown(client_writer).map(move |_| size)
-                    })
-                    .instrument(span!(Level::INFO, "server_to_client"));
-
-                client_to_server.join(server_to_client)
-            });
-
-            let msg = amounts
-                .map(move |(client_to_server, server_to_client)| {
-                    info!(
-                        message = "transfer completed",
-                        client_to_server, server_to_client,
-                    );
-                })
-                .map_err(|error| {
-                    // Don't panic. Maybe the client just disconnected too soon.
-                    debug!(%error);
-                })
-                .instrument(span!(Level::TRACE, "transfer", ?client_addr, ?server_addr));
-
-            tokio::spawn(msg);
-
-            Ok(())
-        });
-
-    let done = done.instrument(span!(Level::TRACE, "proxy", %listen_addr));
-    tokio::run(done);
+    let (client_to_server, server_to_client) = try_join(client_to_server, server_to_client).await?;
+    info!(client_to_server, server_to_client, "transfer completed",);
 
     Ok(())
 }
 
-// This is a custom type used to have a custom implementation of the
-// `AsyncWrite::shutdown` method which actually calls `TcpStream::shutdown` to
-// notify the remote end that we're done writing.
-#[derive(Clone)]
-struct MyTcpStream(Arc<Mutex<TcpStream>>);
-
-impl Read for MyTcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().read(buf)
+arg_enum! {
+    #[derive(PartialEq, Debug)]
+    pub enum LogFormat {
+        Plain,
+        Json,
     }
 }
 
-impl Write for MyTcpStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().write(buf)
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let matches = App::new("Proxy Server Example")
+        .version("1.0")
+        .arg(
+            Arg::with_name("log_format")
+                .possible_values(&LogFormat::variants())
+                .case_insensitive(true)
+                .long("log_format")
+                .value_name("log_format")
+                .help("Formatting of the logs")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("listen_addr")
+                .long("listen_addr")
+                .help("Address to listen on")
+                .takes_value(true)
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("server_addr")
+                .long("server_addr")
+                .help("Address to proxy to")
+                .takes_value(false)
+                .required(false),
+        )
+        .get_matches();
+
+    set_global_default(&matches)?;
+
+    let listen_addr = matches.value_of("listen_addr").unwrap_or("127.0.0.1:8081");
+    let listen_addr = listen_addr.parse::<SocketAddr>()?;
+
+    let server_addr = matches.value_of("server_addr").unwrap_or("127.0.0.1:3000");
+    let server_addr = server_addr.parse::<SocketAddr>()?;
+
+    let mut listener = TcpListener::bind(&listen_addr).await?;
+
+    info!("Listening on: {}", listen_addr);
+    info!("Proxying to: {}", server_addr);
+
+    while let Ok((inbound, client_addr)) = listener.accept().await {
+        info!(client.addr = %client_addr, "client connected");
+
+        let transfer = transfer(inbound, server_addr).map(|r| {
+            if let Err(err) = r {
+                // Don't panic, maybe the client just disconnected too soon
+                debug!(error = %err);
+            }
+        });
+
+        tokio::spawn(transfer);
     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
+    Ok(())
 }
 
-impl AsyncRead for MyTcpStream {}
-
-impl AsyncWrite for MyTcpStream {
-    fn shutdown(&mut self) -> Poll<(), io::Error> {
-        self.0.lock().unwrap().shutdown(Shutdown::Write)?;
-        Ok(().into())
+fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    use tracing_subscriber::{filter::EnvFilter, FmtSubscriber};
+    match value_t!(matches, "log_format", LogFormat).unwrap_or(LogFormat::Plain) {
+        LogFormat::Json => {
+            let subscriber = FmtSubscriber::builder()
+                .json()
+                .with_env_filter(
+                    EnvFilter::from_default_env().add_directive("proxy_server=trace".parse()?),
+                )
+                .finish();
+            tracing::subscriber::set_global_default(subscriber)?;
+        }
+        LogFormat::Plain => {
+            let subscriber = FmtSubscriber::builder()
+                .with_env_filter(
+                    EnvFilter::from_default_env().add_directive("proxy_server=trace".parse()?),
+                )
+                .finish();
+            tracing::subscriber::set_global_default(subscriber)?;
+        }
     }
+    Ok(())
 }
