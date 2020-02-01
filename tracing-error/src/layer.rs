@@ -8,6 +8,16 @@ use tracing_subscriber::{
     registry::LookupSpan,
 };
 
+/// A subscriber [`Layer`] that enables capturing [`SpanTrace`]s.
+///
+/// Optionally, this type may be constructed with a [field formatter] to use
+/// when formatting the fields of each span in a trace. When no formatter is
+/// provided, the [default format] is used instead.
+///
+/// [`Layer`]: https://docs.rs/tracing-subscriber/0.2.0-alpha.5/tracing_subscriber/layer/trait.Layer.html
+/// [`SpanTrace`]: ../struct.SpanTrace.html
+/// [field formatter]: https://docs.rs/tracing-subscriber/0.2.0-alpha.5/tracing_subscriber/fmt/trait.FormatFields.html
+/// [default format]: https://docs.rs/tracing-subscriber/0.2.0-alpha.5/tracing_subscriber/fmt/format/struct.DefaultFields.html
 pub struct ErrorLayer<S, F = DefaultFields> {
     format: F,
 
@@ -57,6 +67,9 @@ where
     F: for<'writer> FormatFields<'writer> + 'static,
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
+    /// Returns a new `ErrorLayer` with the provided [field formatter].
+    ///
+    /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.0-alpha.5/tracing_subscriber/fmt/trait.FormatFields.html
     pub fn new(format: F) -> Self {
         Self {
             format,
