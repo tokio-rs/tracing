@@ -430,33 +430,16 @@ where
     }
 
     /// TODO: docs
-    fn with_filter<F>(self, filter: F) -> Filtered<Self, S, F>
+    fn with_filter<F>(self, filter: F) -> crate::filter2::Filtered<F, Self>
     where
-        F: Filter<Self, S>,
+        F: Filter<S>,
+        S: crate::filter2::Filterable,
         Self: Sized,
     {
-<<<<<<< Updated upstream
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-
-        Filtered {
+        crate::filter2::Filtered {
             layer: self,
             filter,
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-=======
-        static ID: AtomicUsize = AtomicUsize::new(0);
-        let id = ID.fetch_add(1, Ordering::Relaxed);
-        if id == std::usize::MAX {
-            panic!(
-                "you tried to construct {} unique filters, why would you do this?",
-                std::usize::MAX
-            );
-        }
-        Filtered {
-            layer: self,
-            filter,
-            id,
->>>>>>> Stashed changes
-            _s: PhantomData,
+            id: crate::filter2::FilterId(0),
         }
     }
 
@@ -553,9 +536,9 @@ pub struct Context<'a, S> {
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Clone, Debug)]
 pub struct Layered<L, I, S = I> {
-    layer: L,
-    inner: I,
-    _s: PhantomData<fn(S)>,
+    pub(crate) layer: L,
+    pub(crate) inner: I,
+    pub(crate) _s: PhantomData<fn(S)>,
 }
 
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
@@ -575,27 +558,21 @@ pub struct Filtered<L, S, F> {
 /// `Filter` enables the filtering of composed [`Layers`].
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
-pub trait Filter<L, S>
+pub trait Filter<S>
 where
-    L: Layer<S>,
-    S: Subscriber + 'static,
+    S: Subscriber + crate::filter2::Filterable + 'static,
 {
-<<<<<<< Updated upstream
     fn filter_callsite(&self, metadata: &Metadata<'_>) -> tracing_core::subscriber::Interest {
         tracing_core::subscriber::Interest::sometimes()
     }
-=======
-    fn filter_callsite(&self, metadata: &Metadata<'static>) -> tracing_core::subscriber::Interest;
->>>>>>> Stashed changes
 
     /// Filter on a specific span or event's metadata.
     fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool;
 }
 
-impl<L, S, F> Filter<L, S> for F
+impl<S, F> Filter<S> for F
 where
-    L: Layer<S>,
-    S: Subscriber + 'static,
+    S: Subscriber + crate::filter2::Filterable + 'static,
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
     fn filter(&self, metadata: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
@@ -605,79 +582,79 @@ where
 
 struct DisabledBy(HashSet<usize>);
 
-#[cfg(feature = "registry")]
-impl<L, S, F> Layer<S> for Filtered<L, S, F>
-where
-    L: Layer<S>,
-    S: Subscriber + for<'a> LookupSpan<'a> + 'static,
-    F: Filter<L, S> + 'static,
-{
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        if self.filter.filter(attrs.metadata(), &ctx) {
-            self.layer.new_span(attrs, id, ctx);
-        } else {
-            let span = ctx.span(id).unwrap();
-            let mut exts = span.extensions_mut();
-            if let Some(ref mut disabled_by) = exts.get_mut::<DisabledBy>() {
-                disabled_by.0.insert(self.id);
-            } else {
-                let mut disabled = DisabledBy(HashSet::new());
-                disabled.0.insert(self.id);
-                exts.insert(disabled)
-            }
-        }
-    }
+// #[cfg(feature = "registry")]
+// impl<L, S, F> Layer<S> for Filtered<L, S, F>
+// where
+//     L: Layer<S>,
+//     S: Subscriber + for<'a> LookupSpan<'a> + 'static,
+//     F: Filter<S> + 'static,
+// {
+//     #[inline]
+//     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+//         if self.filter.filter(attrs.metadata(), &ctx) {
+//             self.layer.new_span(attrs, id, ctx);
+//         } else {
+//             let span = ctx.span(id).unwrap();
+//             let mut exts = span.extensions_mut();
+//             if let Some(ref mut disabled_by) = exts.get_mut::<DisabledBy>() {
+//                 disabled_by.0.insert(self.id);
+//             } else {
+//                 let mut disabled = DisabledBy(HashSet::new());
+//                 disabled.0.insert(self.id);
+//                 exts.insert(disabled)
+//             }
+//         }
+//     }
 
-    #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        if self.filter.filter(event.metadata(), &ctx) {
-            self.layer.on_event(event, ctx);
-        }
-    }
+//     #[inline]
+//     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+//         if self.filter.filter(event.metadata(), &ctx) {
+//             self.layer.on_event(event, ctx);
+//         }
+//     }
 
-    /// Notifies this layer that a span with the given ID was entered.
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        if {
-            let span = ctx.span(id).unwrap();
-            let exts = span.extensions();
-            exts.get::<DisabledBy>()
-                .map(|d| d.0.contains(&self.id))
-                .unwrap_or(false)
-        } {
-            return;
-        }
-        self.layer.on_enter(id, ctx)
-    }
+//     /// Notifies this layer that a span with the given ID was entered.
+//     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+//         if {
+//             let span = ctx.span(id).unwrap();
+//             let exts = span.extensions();
+//             exts.get::<DisabledBy>()
+//                 .map(|d| d.0.contains(&self.id))
+//                 .unwrap_or(false)
+//         } {
+//             return;
+//         }
+//         self.layer.on_enter(id, ctx)
+//     }
 
-    /// Notifies this layer that the span with the given ID was exited.
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        if {
-            let span = ctx.span(id).unwrap();
-            let exts = span.extensions();
-            exts.get::<DisabledBy>()
-                .map(|d| d.0.contains(&self.id))
-                .unwrap_or(false)
-        } {
-            return;
-        }
-        self.layer.on_exit(id, ctx)
-    }
+//     /// Notifies this layer that the span with the given ID was exited.
+//     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+//         if {
+//             let span = ctx.span(id).unwrap();
+//             let exts = span.extensions();
+//             exts.get::<DisabledBy>()
+//                 .map(|d| d.0.contains(&self.id))
+//                 .unwrap_or(false)
+//         } {
+//             return;
+//         }
+//         self.layer.on_exit(id, ctx)
+//     }
 
-    /// Notifies this layer that the span with the given ID has been closed.
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        if {
-            let span = ctx.span(&id).unwrap();
-            let exts = span.extensions();
-            exts.get::<DisabledBy>()
-                .map(|d| d.0.contains(&self.id))
-                .unwrap_or(false)
-        } {
-            return;
-        }
-        self.layer.on_close(id, ctx)
-    }
-}
+//     /// Notifies this layer that the span with the given ID has been closed.
+//     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+//         if {
+//             let span = ctx.span(&id).unwrap();
+//             let exts = span.extensions();
+//             exts.get::<DisabledBy>()
+//                 .map(|d| d.0.contains(&self.id))
+//                 .unwrap_or(false)
+//         } {
+//             return;
+//         }
+//         self.layer.on_close(id, ctx)
+//     }
+// }
 
 /// A layer that does nothing.
 #[derive(Clone, Debug, Default)]
@@ -910,6 +887,24 @@ where
         self.layer
             .downcast_raw(id)
             .or_else(|| self.inner.downcast_raw(id))
+    }
+}
+
+impl<L, S> crate::filter2::Filterable for Layered<L, S>
+where
+    S: Subscriber + crate::filter2::Filterable,
+    L: Layer<S> + 'static,
+{
+    fn register_filter(&mut self) -> crate::filter2::FilterId {
+        self.inner.register_filter()
+    }
+
+    fn disable_span(&self, filter: crate::filter2::FilterId, span: &span::Id) {
+        self.inner.disable_span(filter, span)
+    }
+
+    fn is_enabled_by(&self, filter: crate::filter2::FilterId, span: &span::Id) -> bool {
+        self.inner.is_enabled_by(filter, span)
     }
 }
 
@@ -1212,8 +1207,12 @@ pub(crate) mod tests {
         fn exit(&self, _: &span::Id) {}
     }
 
-    struct NopLayer;
+    pub(crate) struct NopLayer;
     impl<S: Subscriber> Layer<S> for NopLayer {}
+
+    #[allow(dead_code)]
+    pub(crate) struct NopLayer2;
+    impl<S: Subscriber> Layer<S> for NopLayer2 {}
 
     /// A layer that holds a string.
     ///
@@ -1227,10 +1226,9 @@ pub(crate) mod tests {
     impl<S: Subscriber> Layer<S> for StringLayer3 {}
 
     struct LevelFilter;
-    impl<L, S> Filter<L, S> for LevelFilter
+    impl<S> Filter<S> for LevelFilter
     where
-        L: Layer<S>,
-        S: Subscriber,
+        S: Subscriber + crate::filter2::Filterable,
     {
         fn filter(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
             if metadata.level() == &Level::INFO {
@@ -1271,12 +1269,12 @@ pub(crate) mod tests {
         assert_subscriber(s)
     }
 
-    #[test]
-    fn layers_can_be_filtered() {
-        NopLayer
-            .with_filter(LevelFilter)
-            .with_subscriber(NopSubscriber);
-    }
+    // #[test]
+    // fn layers_can_be_filtered() {
+    //     NopLayer
+    //         .with_filter(LevelFilter)
+    //         .with_subscriber(NopSubscriber);
+    // }
 
     #[test]
     fn two_layers_are_subscriber() {
