@@ -6,7 +6,7 @@ use std::fmt;
 use tracing_error::{ErrorLayer, SpanTrace};
 use tracing_subscriber::{fmt::Layer as FmtLayer, prelude::*, registry::Registry};
 
-type BoxError = Box<dyn Error + Send + Sync + Static>;
+type BoxError = Box<dyn Error + Send + Sync + 'static>;
 #[derive(Debug)]
 struct FooError {
     message: &'static str,
