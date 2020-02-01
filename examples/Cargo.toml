@@ -44,21 +44,6 @@ rand = "0.7"
 bytes = "0.5"
 clap = "2.33"
 
-# tower examples
-h2 = "0.1.11"
-string = { git = "https://github.com/carllerche/string" }
-# http = "0.1"
-tokio-current-thread = "0.1.1"
-tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tokio-io = "0.1"
-tokio-tcp = "0.1"
-tokio-buf = "0.1"
-# tower = "0.1"
-# tower-service = "0.2"
-# tower-util = "0.1"
-tower-hyper = "0.1"
-tower-http-util = "0.1"
-
 # sloggish example
 ansi_term = "0.11"
 humantime = "1.2"

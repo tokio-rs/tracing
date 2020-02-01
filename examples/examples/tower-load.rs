@@ -370,8 +370,8 @@ fn req_span<A>(req: &Request<A>) -> Span {
     );
 
     {
-        // TODO: this is a workaround because tracing_subscriber::fmt::Layer doesn't honor
-        // overridden span parents.
+        // TODO: this is a workaround because tracing_subscriber::fmt::Layer
+        // doesn't honor overridden span parents.
         let _enter = span.enter();
         debug!(message = "received request.", req.headers = ?req.headers(), req.version = ?req.version());
     }
