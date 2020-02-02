@@ -413,13 +413,6 @@ impl fmt::Display for FromEnvError {
 }
 
 impl Error for FromEnvError {
-    fn description(&self) -> &str {
-        match self.kind {
-            ErrorKind::Parse(ref p) => p.description(),
-            ErrorKind::Env(ref e) => e.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self.kind {
             ErrorKind::Parse(ref p) => Some(p),
