@@ -228,15 +228,12 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        error::Error::description(self).fmt(f)
+        let msg = match self.kind {
+            ErrorKind::SubscriberGone => "subscriber no longer exists",
+            ErrorKind::Poisoned => "lock poisoned",
+        };
+        f.pad(msg)
     }
 }
 
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match self.kind {
-            ErrorKind::SubscriberGone => "subscriber no longer exists",
-            ErrorKind::Poisoned => "lock poisoned",
-        }
-    }
-}
+impl error::Error for Error {}

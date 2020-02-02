@@ -58,6 +58,8 @@
     unused_parens,
     while_true
 )]
+// TODO: once `tracing` bumps its MSRV to 1.42, remove this allow.
+#![allow(unused)]
 extern crate proc_macro;
 
 use std::collections::HashSet;
