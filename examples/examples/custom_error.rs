@@ -10,7 +10,6 @@ type BoxError = Box<dyn Error + Send + Sync + 'static>;
 #[derive(Debug)]
 struct FooError {
     message: &'static str,
-    source: BoxError,
     // This struct captures the current `tracing` span context when it is
     // constructed. Later, when we display this error, we will format this
     // captured span trace.
@@ -18,20 +17,15 @@ struct FooError {
 }
 
 impl FooError {
-    fn new(message: &'static str, source: impl Into<BoxError>) -> Self {
+    fn new(message: &'static str) -> Self {
         Self {
             message,
-            source: source.into(),
             context: SpanTrace::capture(),
         }
     }
 }
 
-impl Error for FooError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(self.source.as_ref())
-    }
-}
+impl Error for FooError {}
 
 impl fmt::Display for FooError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -42,10 +36,7 @@ impl fmt::Display for FooError {
 
 #[tracing::instrument]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
-    match do_another_thing(42, false) {
-        Ok(i) => Ok(i),
-        Err(e) => Err(FooError::new("something broke, lol", e)),
-    }
+    do_another_thing(42, false)
 }
 
 #[tracing::instrument]
@@ -53,10 +44,7 @@ fn do_another_thing(
     answer: usize,
     will_succeed: bool,
 ) -> Result<&'static str, impl Error + Send + Sync + 'static> {
-    Err(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "something else broke!",
-    ))
+    Err(FooError::new("something broke, lol"))
 }
 
 #[tracing::instrument]
