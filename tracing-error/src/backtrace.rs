@@ -34,7 +34,25 @@ use tracing::{Metadata, Span};
 /// lightweight, and the resulting struct is not large. The `SpanTrace` struct
 /// is formatted lazily; instead, it simply stores a copy of the current span,
 /// and allows visiting the spans in that span's trace tree by calling the
-/// [`with_spans` method].
+/// [`with_spans` method][`with_spans`].
+///
+/// # Formatting
+///
+/// The `SpanTrace` type implements `fmt::Display`, formatting the span trace
+/// similarly to how Rust formats panics. For example:
+///
+/// ```text
+/// span backtrace:
+///    0: custom_error::do_another_thing
+///         with answer=42 will_succeed=false
+///           at examples/examples/custom_error.rs:42
+///    1: custom_error::do_something
+///         with foo="hello world"
+///           at examples/examples/custom_error.rs:37
+/// ```
+///
+/// Additionally, if custom formatting is desired, the [`with_spans`] method can
+/// be used to visit each span in the trace, formatting them in order.
 ///
 /// [`tracing`]: https://docs.rs/tracing
 /// [`Backtrace`]: https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html
@@ -43,7 +61,7 @@ use tracing::{Metadata, Span};
 /// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
 /// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/
-/// [`with_spans` method]: #method.with_spans.html
+/// [`with_spans`] method: #method.with_spans.html
 #[derive(Clone)]
 pub struct SpanTrace {
     span: Span,
