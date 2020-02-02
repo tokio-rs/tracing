@@ -406,8 +406,8 @@ impl From<env::VarError> for FromEnvError {
 impl fmt::Display for FromEnvError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
-            ErrorKind::Parse(ref p) => write!(f, "{}", p.to_string()),
-            ErrorKind::Env(ref e) => write!(f, "{}", e.to_string()),
+            ErrorKind::Parse(ref p) => p.fmt(f),
+            ErrorKind::Env(ref e) => e.fmt(f),
         }
     }
 }

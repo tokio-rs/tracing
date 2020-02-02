@@ -232,7 +232,7 @@ impl fmt::Display for Error {
             ErrorKind::SubscriberGone => "subscriber no longer exists",
             ErrorKind::Poisoned => "lock poisoned",
         };
-        write!(f, "{}", msg)
+        f.pad(msg)
     }
 }
 
