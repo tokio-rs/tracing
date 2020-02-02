@@ -58,6 +58,7 @@
     unused_parens,
     while_true
 )]
+#[allow(unused)]
 extern crate proc_macro;
 
 use std::collections::HashSet;
