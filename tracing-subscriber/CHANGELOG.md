@@ -1,3 +1,12 @@
+# 0.2.0-alpha.6 (February 3, 2020)
+
+### Fixed
+
+- **fmt**: Fixed empty `{}` printed after spans with no fields (f079f2d)
+- **fmt**: Fixed inconsistent formatting when ANSI colors are disabled (506a482)
+- **fmt**: Fixed mis-aligned levels when ANSI colors are disabled (eba1adb)
+- Fixed warnings on nightly Rust compilers (#558)
+
 # 0.2.0-alpha.5 (January 31, 2020)
 
 ### Added
