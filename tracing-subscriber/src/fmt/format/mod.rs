@@ -643,15 +643,21 @@ impl<'a> FmtLevel<'a> {
     }
 }
 
+const TRACE_STR: &str = "TRACE";
+const DEBUG_STR: &str = "DEBUG";
+const INFO_STR: &str = " INFO";
+const WARN_STR: &str = " WARN";
+const ERROR_STR: &str = "ERROR";
+
 #[cfg(not(feature = "ansi"))]
 impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.level {
-            Level::TRACE => f.pad("TRACE"),
-            Level::DEBUG => f.pad("DEBUG"),
-            Level::INFO => f.pad("INFO"),
-            Level::WARN => f.pad("WARN"),
-            Level::ERROR => f.pad("ERROR"),
+            Level::TRACE => f.pad(TRACE_STR),
+            Level::DEBUG => f.pad(DEBUG_STR),
+            Level::INFO => f.pad(INFO_STR),
+            Level::WARN => f.pad(WARN_STR),
+            Level::ERROR => f.pad(ERROR_STR),
         }
     }
 }
@@ -661,19 +667,19 @@ impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.ansi {
             match *self.level {
-                Level::TRACE => write!(f, "{}", Colour::Purple.paint("TRACE")),
-                Level::DEBUG => write!(f, "{}", Colour::Blue.paint("DEBUG")),
-                Level::INFO => write!(f, "{}", Colour::Green.paint(" INFO")),
-                Level::WARN => write!(f, "{}", Colour::Yellow.paint(" WARN")),
-                Level::ERROR => write!(f, "{}", Colour::Red.paint("ERROR")),
+                Level::TRACE => write!(f, "{}", Colour::Purple.paint(TRACE_STR)),
+                Level::DEBUG => write!(f, "{}", Colour::Blue.paint(DEBUG_STR)),
+                Level::INFO => write!(f, "{}", Colour::Green.paint(INFO_STR)),
+                Level::WARN => write!(f, "{}", Colour::Yellow.paint(WARN_STR)),
+                Level::ERROR => write!(f, "{}", Colour::Red.paint(ERROR_STR)),
             }
         } else {
             match *self.level {
-                Level::TRACE => f.pad("TRACE"),
-                Level::DEBUG => f.pad("DEBUG"),
-                Level::INFO => f.pad("INFO"),
-                Level::WARN => f.pad("WARN"),
-                Level::ERROR => f.pad("ERROR"),
+                Level::TRACE => f.pad(TRACE_STR),
+                Level::DEBUG => f.pad(DEBUG_STR),
+                Level::INFO => f.pad(INFO_STR),
+                Level::WARN => f.pad(WARN_STR),
+                Level::ERROR => f.pad(ERROR_STR),
             }
         }
     }
@@ -771,7 +777,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let expected = "fake time INFO tracing_subscriber::fmt::format::test: some ansi test\n";
+        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: some ansi test\n";
 
         test_ansi(make_writer, expected, false, &BUF);
     }
@@ -784,7 +790,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let expected = "fake time INFO tracing_subscriber::fmt::format::test: some ansi test\n";
+        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: some ansi test\n";
         let subscriber = crate::fmt::Subscriber::builder()
             .with_writer(make_writer)
             .with_timer(MockTime)
