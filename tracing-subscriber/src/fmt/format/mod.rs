@@ -576,7 +576,10 @@ where
             let fields = &ext
                 .get::<FormattedFields<N>>()
                 .expect("Unable to find FormattedFields in extensions; this is a bug");
-            write!(f, "{}{}{}:", bold.paint("{"), fields, bold.paint("}"))
+            if !fields.is_empty() {
+                write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+            }
+            f.pad(":")
         })?;
 
         if seen {
