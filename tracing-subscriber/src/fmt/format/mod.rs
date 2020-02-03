@@ -488,53 +488,33 @@ where
     pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>) -> Self {
         Self { ctx }
     }
+
+    fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
+    }
 }
 
-#[cfg(feature = "ansi")]
 impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let bold = self.bold();
         let mut seen = false;
+
         self.ctx.visit_spans(|span| {
-            if seen {
-                f.pad(":")?;
-            }
             seen = true;
-
-            let metadata = span.metadata();
-            if self.ansi {
-                write!(f, "{}", Style::new().bold().paint(metadata.name()))?;
-            } else {
-                write!(f, "{}", metadata.name())?;
-            }
-
-            Ok(()) as fmt::Result
+            write!(f, "{}:", bold.paint(span.metadata().name()))
         })?;
-        if seen {
-            f.pad(" ")?;
-        }
-        Ok(())
-    }
-}
 
-#[cfg(not(feature = "ansi"))]
-impl<'a, S, N> fmt::Display for FmtCtx<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut seen = false;
-        self.ctx.visit_spans(|span| {
-            if seen {
-                f.pad(":")?;
-            }
-            seen = true;
-            write!(f, "{}", span.name())
-        })?;
         if seen {
             f.pad(" ")?;
         }
@@ -566,33 +546,39 @@ where
     pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>) -> Self {
         Self { ctx }
     }
+
+    fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")] {
+            if self.ansi {
+                return Style::new().bold();
+            }
+        }
+
+
+        Style::new()
+    }
 }
 
-#[cfg(feature = "ansi")]
 impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let bold = self.bold();
         let mut seen = false;
-        let style = if self.ansi {
-            Style::new().bold()
-        } else {
-            Style::new()
-        };
+
         self.ctx.visit_spans(|span| {
-            let metadata = span.metadata();
-            write!(f, "{}", style.paint(metadata.name()))?;
+            write!(f, "{}", bold.paint(span.metadata().name()))?;
             seen = true;
 
             let ext = span.extensions();
-            let data = &ext
+            let fields = &ext
                 .get::<FormattedFields<N>>()
                 .expect("Unable to find FormattedFields in extensions; this is a bug");
-            write!(f, "{}{}{}", style.paint("{"), data, style.paint("}"))?;
-            ":".fmt(f)
+            write!(f, "{}{}{}:", bold.paint("{"), fields, bold.paint("}"))
         })?;
+
         if seen {
             f.pad(" ")?;
         }
@@ -601,27 +587,13 @@ where
 }
 
 #[cfg(not(feature = "ansi"))]
-impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut seen = false;
-        self.ctx.visit_spans(|span| {
-            write!(f, "{}", span.name())?;
-            seen = true;
+struct Style;
 
-            let fields = span.fields();
-            if !fields.is_empty() {
-                write!(f, "{{{}}}", fields)?;
-            }
-            ":".fmt(f)
-        })?;
-        if seen {
-            f.pad(" ")?;
-        }
-        Ok(())
+#[cfg(not(feature = "ansi"))]
+impl Style {
+    fn new() -> Self { Style }
+    fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
+        d
     }
 }
 
