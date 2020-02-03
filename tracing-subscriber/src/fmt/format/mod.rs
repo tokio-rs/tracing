@@ -516,7 +516,7 @@ where
         })?;
 
         if seen {
-            f.pad(" ")?;
+            f.write_char(' ')?;
         }
         Ok(())
     }
@@ -548,12 +548,12 @@ where
     }
 
     fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")] {
+        #[cfg(feature = "ansi")]
+        {
             if self.ansi {
                 return Style::new().bold();
             }
         }
-
 
         Style::new()
     }
@@ -579,11 +579,11 @@ where
             if !fields.is_empty() {
                 write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
             }
-            f.pad(":")
+            f.write_char(':')
         })?;
 
         if seen {
-            f.pad(" ")?;
+            f.write_char(' ')?;
         }
         Ok(())
     }
@@ -594,7 +594,9 @@ struct Style;
 
 #[cfg(not(feature = "ansi"))]
 impl Style {
-    fn new() -> Self { Style }
+    fn new() -> Self {
+        Style
+    }
     fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
         d
     }
