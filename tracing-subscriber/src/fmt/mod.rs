@@ -101,16 +101,18 @@
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, Layer, registry::Registry, EnvFilter};
+//! use tracing_subscriber::prelude::*;
 //!
 //! let fmt_layer = fmt::Layer::builder()
 //!     .with_target(false)
 //!     .finish();
-//!
-//! let subscriber = EnvFilter::try_from_default_env()
+//! let filter_layer = EnvFilter::try_from_default_env()
 //!     .or_else(|_| EnvFilter::try_new("info"))
-//!     .unwrap()
-//!     .and_then(fmt_layer)
-//!     .with_subscriber(Registry::default());
+//!     .unwrap();
+//!
+//! let subscriber = Registry::default()
+//!     .with(filter_layer)
+//!     .with(fmt_layer);
 //!
 //! tracing::subscriber::set_global_default(subscriber).unwrap();
 //! ```
