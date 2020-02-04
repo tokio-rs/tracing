@@ -1,3 +1,44 @@
+# 0.2.0 (February 4, 2020)
+
+### Breaking Changes
+
+- **fmt**: Renamed `Context` to `FmtContext` (#420, #425)
+- **fmt**: Renamed `Builder` to `SubscriberBuilder` (#420)
+- **filter**: Removed `Filter`. Use `EnvFilter` instead (#434)
+
+### Added
+
+- **registry**: `Registry`, a `Subscriber` implementation that `Layer`s can use
+  as a high-performance, in-memory span store. (#420, #425, #432, #433, #435)
+- **registry**: Added `LookupSpan` trait, implemented by `Subscriber`s to expose
+  stored span data to `Layer`s (#420)
+- **fmt**: Added `fmt::Layer`, to allow composing log formatting with other `Layer`s
+- **fmt**: Added support for JSON field and event formatting (#377, #415)
+- **filter**: Documentation for filtering directives (#554)
+
+### Changed
+
+- **fmt**: Renamed `Context` to `FmtContext` (#420, #425) (BREAKING)
+- **fmt**: Renamed `Builder` to `SubscriberBuilder` (#420) (BREAKING)
+- **fmt**: Reimplemented `fmt::Subscriber` in terms of the `Registry`
+  and `Layer`s (#420)
+
+### Removed
+
+- **filter**: Removed `Filter`. Use `EnvFilter` instead (#434) (BREAKING)
+
+### Fixed
+
+- **fmt**: Fixed memory leaks in the slab used to store per-span data
+  (3c35048)
+- **fmt**: `fmt::SubscriberBuilder::init` not setting up `log` compatibility
+  (#489)
+- **fmt**: Spans closed by a child span closing not also closing _their_
+  parents (#514)
+- **Layer**: Fixed `Layered` subscribers failing to downcast to their own type
+  (#549)
+- **Layer**: Fixed `Layer::downcast_ref` returning invalid references (#454)
+
 # 0.2.0-alpha.6 (February 3, 2020)
 
 ### Fixed
