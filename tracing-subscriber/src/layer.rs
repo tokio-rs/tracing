@@ -743,7 +743,8 @@ impl<'a, S: Subscriber> Context<'a, S> {
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref()?.span(id)?.metadata()
+        let span = self.subscriber.as_ref()?.span(id)?;
+        Some(span.metadata())
     }
 
     /// Returns [stored data] for the span with the given `id`, if it exists.
