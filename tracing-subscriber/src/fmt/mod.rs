@@ -133,7 +133,11 @@ pub mod writer;
 pub use fmt_layer::{FmtContext, FormattedFields, Layer, LayerBuilder};
 
 use crate::layer::Layer as _;
-use crate::{filter::LevelFilter, layer, registry::{Registry, LookupSpan}};
+use crate::{
+    filter::LevelFilter,
+    layer,
+    registry::{LookupSpan, Registry},
+};
 
 #[doc(inline)]
 pub use self::{
