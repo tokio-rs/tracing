@@ -277,18 +277,6 @@ where
     }
 }
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
-where
-    layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
-{
-    #[inline]
-    fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
-        self.inner.metadata(id)
-    }
-}
-
 // ===== impl SubscriberBuilder =====
 
 impl Default for SubscriberBuilder {
@@ -808,9 +796,9 @@ mod test {
     }
 
     #[test]
-    fn is_lookup_meta() {
-        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+    fn is_lookup_span() {
+        fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
         let subscriber = Subscriber::new();
-        assert_lookup_meta(subscriber)
+        assert_lookup_span(subscriber)
     }
 }

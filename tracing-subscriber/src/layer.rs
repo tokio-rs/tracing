@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
+use crate::registry::{self, LookupSpan, Registry, SpanRef};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -728,22 +728,22 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// closed or the ID is invalid).
     ///
     /// **Note**: This requires the wrapped subscriber to implement the
-    /// [`LookupMetadata`] trait. `Layer` implementations that wish to use this
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
     /// function can bound their `Subscriber` type parameter with
     /// ```rust,ignore
-    /// where S: Subscriber + LookupMetadata,
+    /// where S: Subscriber + for<'a> LookupSpan<'a>,
     /// ```
     /// or similar.
     ///
-    /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
-        S: LookupMetadata,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref()?.metadata(id)
+        self.subscriber.as_ref()?.span(id)?.metadata(id)
     }
 
     /// Returns [stored data] for the span with the given `id`, if it exists.
@@ -774,25 +774,26 @@ impl<'a, S: Subscriber> Context<'a, S> {
     /// Returns `true` if an active span exists for the given `Id`.
     ///
     /// **Note**: This requires the wrapped subscriber to implement the
-    /// [`LookupMetadata`] trait. `Layer` implementations that wish to use this
+    /// [`LookupSpan`] trait. `Layer` implementations that wish to use this
     /// function can bound their `Subscriber` type parameter with
     /// ```rust,ignore
-    /// where S: Subscriber + LookupMetadata,
+    /// where S: Subscriber + for<'a> LookupSpan<'a>,
     /// ```
     /// or similar.
     ///
-    /// [`LookupMetadata`]: ../registry/trait.LookupMetadata.html
+    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn exists(&self, id: &span::Id) -> bool
+
     where
-        S: LookupMetadata,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         self.subscriber
             .as_ref()
-            .map(|s| s.exists(id))
-            .unwrap_or(false)
+            .and_then(|s| s.span(id))
+            .is_some()
     }
 
     /// Returns [stored data] for the span that the wrapped subscriber considers

@@ -8,9 +8,8 @@
 //! [`layer::Context`][ctx] type will  provide methods allowing `Layer`s to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
-//! [`LookupSpan`], [`LookupMetadata`], and [`Subscriber`] on themselves (with
-//! [`SpanData`] implemented on the data _inside_ the store) can be used as a
-//! drop-in replacement.
+//! [`LookupSpan`] and [`Subscriber`] themselves (with [`SpanData`] implemented
+//! by the per-span data they store) can be used as a drop-in replacement.
 //!
 //! For example, we might create a `Registry` and add multiple `Layer`s like so:
 //! ```rust
@@ -61,8 +60,7 @@
 //! [`Registry`]: struct.Registry.html
 //! [ctx]: ../layer/struct.Context.html
 //! [lookup]: ../layer/struct.Context.html#method.span
-//! [`LookupSpan`]: trait.LookupSpan.html
-//! [`LookupMetadata`]: trait.LookupMetadata.html
+//! [`LookupSpan`]: trait.LookupSpan.html=
 //! [`SpanData`]: trait.SpanData.html
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
@@ -80,38 +78,6 @@ pub use sharded::Data;
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub use sharded::Registry;
-
-/// Provides access to stored span metadata.
-///
-/// Subscribers which store span metadata and associate it with span IDs should
-/// implement this trait; if they do, any [`Layer`]s wrapping them can look up
-/// metadata via the [`Context`] type's [`metadata()`] method.
-///
-/// [`Layer`]: ../layer/trait.Layer.html
-/// [`Context`]: ../layer/struct.Context.html
-/// [`metadata()`]: ../layer/struct.Context.html#method.metadata
-pub trait LookupMetadata {
-    /// Returns metadata for tne span with the given `id`, if it exists.
-    ///
-    /// If no span exists for the provided ID (e.g. the span has closed and been
-    /// removed from the registry, or the ID is invalid), this should return `None`.
-    fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>;
-
-    /// Returns `true` if a span with the given `id` exists, false otherwise.
-    ///
-    /// **Note**: The default implementation of this method is simply:
-    ///```rust,ignore
-    /// fn exists(&self, id: &span::Id) -> bool {
-    ///     self.metadata(id).is_some()
-    /// }
-    ///```
-    /// If the subscriber has a faster way of determining whether a span exists
-    /// for a given ID (e.g., if the ID is greater than the current value of an
-    /// increasing ID counter, etc), this method may be overridden as an optimization.
-    fn exists(&self, id: &Id) -> bool {
-        self.metadata(id).is_some()
-    }
-}
 
 /// Provides access to stored span data.
 ///
@@ -330,15 +296,6 @@ where
         let span = self.registry.span(&id)?;
         self.next = span.parent().map(|parent| parent.id());
         Some(span)
-    }
-}
-
-impl<L> LookupMetadata for L
-where
-    L: for<'a> LookupSpan<'a>,
-{
-    fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>> {
-        self.span_data(id).map(|data| data.metadata())
     }
 }
 

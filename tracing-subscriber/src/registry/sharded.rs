@@ -24,12 +24,12 @@ use tracing_core::{
 /// implementing various behaviors may be [added]. Unlike other types
 /// implementing `Subscriber` `Registry` does not actually record traces itself:
 /// instead, it collects and stores span data that is exposed to any `Layer`s
-/// wrapping it through implementations of the [`LookupSpan`] and
-/// [`LookupMetadata`] traits. The `Registry` is responsible for storing span
-/// metadata, recording relationships between spans, and tracking which spans
-/// are active and whicb are closed. In addition, it provides a mechanism
-/// `Layer`s to store user-defined per-span data, called [extensions], in the
-/// registry. This allows `Layer`-specific data to benefit from the `Registry`'s
+/// wrapping it through implementations of the [`LookupSpan`] trait.
+/// The `Registry` is responsible for storing span metadata, recording
+/// relationships between spans, and tracking which spans  are active and whicb
+/// are closed. In addition, it provides a mechanism for `Layer`s to store
+/// user-defined per-span data, called [extensions], in the registry. This
+/// allows `Layer`-specific data to benefit from the `Registry`'s
 /// high-performance concurrent storage.
 ///
 /// This registry is implemented using a [lock-free sharded slab][slab], and is
@@ -41,7 +41,6 @@ use tracing_core::{
 /// [`Layer`]: ../trait.Layer.html
 /// [added]: ../trait.Layer.html#method.with_subscriber
 /// [`LookupSpan`]: trait.LookupSpan.html
-/// [`LookupMetadata`]: trait.LookupMetadata.html
 /// [extensions]: extensions/index.html
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]

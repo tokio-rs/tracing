@@ -3,7 +3,7 @@ use crate::{
     field::MakeVisitor,
     fmt::fmt_layer::FmtContext,
     fmt::fmt_layer::FormattedFields,
-    registry::{LookupMetadata, LookupSpan},
+    registry::{LookupSpan},
 };
 use serde::ser::{SerializeMap, Serializer as _};
 use serde_json::Serializer;
@@ -29,7 +29,7 @@ pub struct Json;
 
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup> + LookupMetadata,
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
@@ -40,7 +40,7 @@ where
         event: &Event<'_>,
     ) -> fmt::Result
     where
-        S: Subscriber + for<'a> LookupSpan<'a> + LookupMetadata,
+        S: Subscriber + for<'a> LookupSpan<'a>,
     {
         use serde_json::{json, Value};
         use tracing_serde::fields::AsMap;
