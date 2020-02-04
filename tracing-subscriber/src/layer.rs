@@ -489,11 +489,7 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
         L: Layer<Self>,
         Self: Sized,
     {
-        Layered {
-            layer,
-            inner: self,
-            _s: PhantomData,
-        }
+        layer.with_subscriber(self)
     }
 }
 
