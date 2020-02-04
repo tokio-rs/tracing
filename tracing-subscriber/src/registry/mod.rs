@@ -13,7 +13,7 @@
 //!
 //! For example, we might create a `Registry` and add multiple `Layer`s like so:
 //! ```rust
-//! use tracing_subscriber::{registry::Registry, Layer};
+//! use tracing_subscriber::{registry::Registry, Layer, prelude::*};
 //! # use tracing_core::Subscriber;
 //! # pub struct FooLayer {}
 //! # pub struct BarLayer {}
@@ -23,12 +23,12 @@
 //! # fn new() -> Self { Self {} }
 //! # }
 //! # impl BarLayer {
-//! # fn new() -> Self { Self { }}
+//! # fn new() -> Self { Self {} }
 //! # }
 //!
-//! let subscriber = FooLayer::new()
-//!     .and_then(BarLayer::new())
-//!     .with_subscriber(Registry::default());
+//! let subscriber = Registry::default()
+//!     .with(FooLayer::new())
+//!     .with(BarLayer::new());
 //! ```
 //!
 //! If a type implementing `Layer` depends on the functionality of a `Registry`
