@@ -133,7 +133,7 @@ pub mod writer;
 pub use fmt_layer::{FmtContext, FormattedFields, Layer, LayerBuilder};
 
 use crate::layer::Layer as _;
-use crate::{filter::LevelFilter, layer, registry::Registry};
+use crate::{filter::LevelFilter, layer, registry::{Registry, LookupSpan}};
 
 #[doc(inline)]
 pub use self::{
@@ -274,6 +274,17 @@ where
         } else {
             self.inner.downcast_raw(id)
         }
+    }
+}
+
+impl<'a, N, E, F, W> LookupSpan<'a> for Subscriber<N, E, F, W>
+where
+    layer::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+{
+    type Data = <layer::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+
+    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
+        self.inner.span_data(id)
     }
 }
 
