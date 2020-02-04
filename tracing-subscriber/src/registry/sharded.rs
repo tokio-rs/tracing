@@ -43,6 +43,8 @@ use tracing_core::{
 /// [`LookupSpan`]: trait.LookupSpan.html
 /// [`LookupMetadata`]: trait.LookupMetadata.html
 /// [extensions]: extensions/index.html
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Registry {
     spans: Slab<DataInner>,
@@ -58,6 +60,8 @@ pub struct Registry {
 /// [`Registry`]: struct.Registry.html
 /// [`Layer`s]: ../trait.Layer.html
 /// [extensions]: extensions/index.html
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Data<'a> {
     inner: Guard<'a, DataInner>,

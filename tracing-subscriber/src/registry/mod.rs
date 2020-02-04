@@ -68,11 +68,18 @@ use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
 mod extensions;
+#[cfg(feature = "registry")]
 mod sharded;
+#[cfg(feature = "registry")]
 mod stack;
 
 pub use extensions::{Extensions, ExtensionsMut};
-pub use sharded::{Data, Registry};
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+pub use sharded::Data;
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+pub use sharded::Registry;
 
 /// Provides access to stored span metadata.
 ///
