@@ -98,8 +98,6 @@ pub mod filter;
 pub mod fmt;
 pub mod layer;
 pub mod prelude;
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
