@@ -60,7 +60,7 @@
 //! [`Registry`]: struct.Registry.html
 //! [ctx]: ../layer/struct.Context.html
 //! [lookup]: ../layer/struct.Context.html#method.span
-//! [`LookupSpan`]: trait.LookupSpan.html=
+//! [`LookupSpan`]: trait.LookupSpan.html
 //! [`SpanData`]: trait.SpanData.html
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 

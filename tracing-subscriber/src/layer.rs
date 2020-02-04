@@ -786,14 +786,10 @@ impl<'a, S: Subscriber> Context<'a, S> {
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn exists(&self, id: &span::Id) -> bool
-
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber
-            .as_ref()
-            .and_then(|s| s.span(id))
-            .is_some()
+        self.subscriber.as_ref().and_then(|s| s.span(id)).is_some()
     }
 
     /// Returns [stored data] for the span that the wrapped subscriber considers
