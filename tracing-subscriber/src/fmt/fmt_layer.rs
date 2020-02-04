@@ -573,10 +573,10 @@ mod test {
     }
 
     #[test]
-    fn is_lookup_meta() {
-        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+    fn is_lookup_span() {
+        fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
         let fmt = fmt::Layer::builder().finish();
         let subscriber = fmt.with_subscriber(Registry::default());
-        assert_lookup_meta(subscriber)
+        assert_lookup_span(subscriber)
     }
 }

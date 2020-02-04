@@ -133,7 +133,11 @@ pub mod writer;
 pub use fmt_layer::{FmtContext, FormattedFields, Layer, LayerBuilder};
 
 use crate::layer::Layer as _;
-use crate::{filter::LevelFilter, layer, registry::Registry};
+use crate::{
+    filter::LevelFilter,
+    layer,
+    registry::{LookupSpan, Registry},
+};
 
 #[doc(inline)]
 pub use self::{
@@ -277,15 +281,14 @@ where
     }
 }
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<N, E, F, W> crate::registry::LookupMetadata for Subscriber<N, E, F, W>
+impl<'a, N, E, F, W> LookupSpan<'a> for Subscriber<N, E, F, W>
 where
-    layer::Layered<F, Formatter<N, E, W>>: crate::registry::LookupMetadata,
+    layer::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
 {
-    #[inline]
-    fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>> {
-        self.inner.metadata(id)
+    type Data = <layer::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+
+    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
+        self.inner.span_data(id)
     }
 }
 
@@ -808,9 +811,9 @@ mod test {
     }
 
     #[test]
-    fn is_lookup_meta() {
-        fn assert_lookup_meta<T: crate::registry::LookupMetadata>(_: T) {}
+    fn is_lookup_span() {
+        fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
         let subscriber = Subscriber::new();
-        assert_lookup_meta(subscriber)
+        assert_lookup_span(subscriber)
     }
 }
