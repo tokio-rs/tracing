@@ -26,9 +26,9 @@
 //! # fn new() -> Self { Self { }}
 //! # }
 //!
-//! let subscriber = FooLayer::new()
-//!     .and_then(BarLayer::new())
-//!     .with_subscriber(Registry::default());
+//! let subscriber = Registry::default()
+//!     .with(FooLayer::new())
+//!     .with(BarLayer::new())
 //! ```
 //!
 //! If a type implementing `Layer` depends on the functionality of a `Registry`

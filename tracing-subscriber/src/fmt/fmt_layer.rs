@@ -20,8 +20,8 @@ use tracing_core::{
 /// use tracing_subscriber::{fmt, registry::Registry};
 /// use tracing_subscriber::prelude::*;
 ///
-/// let subscriber = fmt::Layer::default()
-///     .with_subscriber(Registry::default());
+/// let subscriber = Registry::default()
+///     .with(fmt::Layer::default());
 ///
 /// tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
