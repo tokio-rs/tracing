@@ -101,6 +101,7 @@
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, Layer, registry::Registry, EnvFilter};
+//! use tracing_subscriber::prelude::*;
 //!
 //! let fmt_layer = fmt::Layer::builder()
 //!     .with_target(false)

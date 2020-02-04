@@ -108,7 +108,8 @@ use std::{any::TypeId, marker::PhantomData};
 /// impl<S: Subscriber> Layer<S> for MyThirdLayer {
 ///     // ...
 /// }
-///
+/// # pub struct MyLayer {}
+/// # impl<S: Subscriber> Layer<S> for MyLayer {}
 /// # pub struct MySubscriber { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
 /// # impl Subscriber for MySubscriber {
@@ -121,6 +122,12 @@ use std::{any::TypeId, marker::PhantomData};
 /// #   fn exit(&self, _: &Id) {}
 /// }
 /// # impl MyLayer {
+/// # fn new() -> Self { Self {} }
+/// # }
+/// # impl MyOtherLayer {
+/// # fn new() -> Self { Self {} }
+/// # }
+/// # impl MyThirdLayer {
 /// # fn new() -> Self { Self {} }
 /// # }
 /// # impl MySubscriber {
