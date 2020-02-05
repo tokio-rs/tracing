@@ -1,4 +1,5 @@
-use std::any::TypeId;
+use std::any::{type_name, TypeId};
+use std::fmt;
 use std::marker::PhantomData;
 use tracing::{span, Dispatch, Metadata, Subscriber};
 use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
@@ -18,7 +19,6 @@ use tracing_subscriber::{
 /// [`SpanTrace`]: ../struct.SpanTrace.html
 /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.0/tracing_subscriber/fmt/trait.FormatFields.html
 /// [default format]: https://docs.rs/tracing-subscriber/0.2.0/tracing_subscriber/fmt/format/struct.DefaultFields.html
-#[derive(Debug)]
 pub struct ErrorLayer<S, F = DefaultFields> {
     format: F,
 
@@ -121,5 +121,14 @@ where
 {
     fn default() -> Self {
         Self::new(DefaultFields::default())
+    }
+}
+
+impl<S, F: fmt::Debug> fmt::Debug for ErrorLayer<S, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErrorLayer")
+            .field("format", &self.format)
+            .field("subscriber", &format_args!("{}", type_name::<S>()))
+            .finish()
     }
 }
