@@ -50,6 +50,7 @@
 //!         self.context.fmt(f)?;
 //!
 //!         // ... format other error context information, cause chain, etc ...
+//!         # Ok(())
 //!     }
 //! }
 //!
