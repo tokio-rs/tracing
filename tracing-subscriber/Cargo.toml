@@ -31,7 +31,7 @@ registry = ["sharded-slab"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 [dependencies]
-tracing-core = "0.1.2"
+tracing-core = { path = "../tracing-core", version = "0.1.2" }
 
 # only required by the filter feature
 matchers = { optional = true, version = "0.0.1" }
@@ -40,14 +40,14 @@ smallvec = { optional = true, version = "1"}
 lazy_static = { optional = true, version = "1" }
 
 # fmt
-tracing-log = { version = "0.1", optional = true, default-features = false, features = ["log-tracer", "std"] }
+tracing-log = { path = "../tracing-log", version = "0.1", optional = true, default-features = false, features = ["log-tracer", "std"] }
 ansi_term = { version = "0.11", optional = true }
 chrono = { version = "0.4", optional = true }
 
 # only required by the json feature
 serde_json = { version = "1.0", optional = true }
 serde = { version = "1.0", optional = true }
-tracing-serde = { version = "0.1.0", optional = true }
+tracing-serde = { path = "../tracing-serde", version = "0.1.0", optional = true }
 
 # opt-in deps
 parking_lot = { version = ">= 0.7, < 0.10", optional = true }
@@ -56,9 +56,9 @@ parking_lot = { version = ">= 0.7, < 0.10", optional = true }
 sharded-slab = { version = "0.0.8", optional = true }
 
 [dev-dependencies]
-tracing = "0.1"
+tracing = { path = "../tracing", version = "0.1"}
 log = "0.4"
-tracing-log = { version = "0.1" }
+tracing-log = { path = "../tracing-log", version = "0.1" }
 criterion = { version = "0.3", default_features = false }
 
 [badges]
