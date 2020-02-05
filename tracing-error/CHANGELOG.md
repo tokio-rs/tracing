@@ -5,4 +5,4 @@
 # 0.1.1 (February 5, 2020)
 
 - Fixed a typo in the crate description
-- Changed the maint badge from active to experimental
+- Changed the maintenance badge from active to experimental
