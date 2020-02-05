@@ -764,7 +764,7 @@ impl Span {
 
     #[cfg(feature = "log")]
     #[inline]
-    fn log(&self, message: fmt::Arguments) {
+    fn log(&self, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
             let logger = log::logger();
             let log_meta = log::Metadata::builder()
@@ -969,7 +969,7 @@ struct FmtValues<'a>(&'a Record<'a>);
 
 #[cfg(feature = "log")]
 impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
             res = write!(f, "{}={:?} ", k, v);
@@ -983,7 +983,7 @@ struct FmtAttrs<'a>(&'a Attributes<'a>);
 
 #[cfg(feature = "log")]
 impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
             res = write!(f, "{}={:?} ", k, v);
