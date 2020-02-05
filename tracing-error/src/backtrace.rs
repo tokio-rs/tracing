@@ -140,20 +140,26 @@ impl fmt::Display for SpanTrace {
         let mut err = Ok(());
         let mut span = 0;
 
-        writeln!(f, "span backtrace:")?;
+        write!(f, "span backtrace:")?;
         self.with_spans(|metadata, fields| {
             try_bool!(
-                writeln!(f, "{:>4}: {}::{}", span, metadata.target(), metadata.name()),
+                write!(
+                    f,
+                    "\n{:>4}: {}::{}",
+                    span,
+                    metadata.target(),
+                    metadata.name()
+                ),
                 err
             );
             if !fields.is_empty() {
-                try_bool!(writeln!(f, "           with {}", fields), err);
+                try_bool!(write!(f, "\n           with {}", fields), err);
             }
             if let Some((file, line)) = metadata
                 .file()
                 .and_then(|file| metadata.line().map(|line| (file, line)))
             {
-                try_bool!(writeln!(f, "             at {}:{}", file, line), err);
+                try_bool!(write!(f, "\n             at {}:{}", file, line), err);
             }
 
             span += 1;
