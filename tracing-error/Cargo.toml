@@ -8,7 +8,7 @@ name = "tracing-error"
 #   - README.md
 # - Update CHANGELOG.md.
 # - Create "v0.1.x" git tag
-version = "0.1.0"
+version = "0.1.1"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "Jane Lusby <jlusby@yaah.dev>",
@@ -19,7 +19,7 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
 description = """
-Utilities for enriching erorrs with `tracing`.
+Utilities for enriching errors with `tracing`.
 """
 categories = [
     "development-tools::debugging",
@@ -38,7 +38,7 @@ tracing-subscriber = { version = "0.2.0", default-features = false, features = [
 tracing = "0.1"
 
 [badges]
-maintenance = { status = "actively-developed" }
+maintenance = { status = "experimental" }
 
 [package.metadata.docs.rs]
 all-features = true
