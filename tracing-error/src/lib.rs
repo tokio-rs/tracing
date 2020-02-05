@@ -93,7 +93,7 @@
 //! [event]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 //! [`tracing`]: https://docs.rs/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-error/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-error/0.1.1")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
