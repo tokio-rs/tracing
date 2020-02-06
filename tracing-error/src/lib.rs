@@ -118,19 +118,27 @@
 )]
 mod backtrace;
 ///
-pub mod heap_error;
+#[cfg(not(feature = "stack-error"))]
+mod heap_error;
 mod layer;
 ///
-pub mod stack_error;
+#[cfg(feature = "stack-error")]
+mod stack_error;
 
 pub use self::backtrace::SpanTrace;
+#[cfg(not(feature = "stack-error"))]
+pub use self::heap_error::TracedError;
 pub use self::layer::ErrorLayer;
+#[cfg(feature = "stack-error")]
+pub use self::stack_error::TracedError;
 
 /// The `tracing-error` prelude.
 ///
 /// This brings into scope the `Instrument` and `SpanTraceExt` extension traits that are used to
 /// attach Spantraces to errors and subsequently retrieve them from dyn Errors.
 pub mod prelude {
-    // pub use crate::heap_error::{Instrument as _, SpanTraceExt as _};
-    pub use crate::stack_error::{Instrument as _, SpanTraceExt as _};
+    #[cfg(not(feature = "stack-error"))]
+    pub use crate::heap_error::{Instrument as _, IntoTracedError as _, SpanTraceExt as _};
+    #[cfg(feature = "stack-error")]
+    pub use crate::stack_error::{Instrument as _, IntoTracedError as _, SpanTraceExt as _};
 }

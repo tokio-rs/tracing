@@ -39,6 +39,21 @@ impl Display for TracedError {
 }
 
 ///
+pub trait IntoTracedError<E> {
+    ///
+    fn in_current_span(self) -> TracedError;
+}
+
+impl<E> IntoTracedError<E> for E
+where
+    E: Error + Send + Sync + 'static,
+{
+    fn in_current_span(self) -> TracedError {
+        TracedError::new(self)
+    }
+}
+
+///
 pub trait Instrument<T, E> {
     ///
     fn in_current_span(self) -> Result<T, TracedError>;
