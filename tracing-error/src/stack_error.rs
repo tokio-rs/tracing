@@ -25,7 +25,7 @@ where
         // The repr(C) is necessary to ensure that the struct is layed out in the order we
         // specified it so that we can safely access the vtable and spantrace fields thru a type
         // erased pointer to the original object.
-        let vtable = ErrorVTable {
+        let vtable = &ErrorVTable {
             object_ref: object_ref::<E>,
         };
 
@@ -41,7 +41,7 @@ where
 
 #[repr(C)]
 struct ErrorImpl<E> {
-    vtable: ErrorVTable,
+    vtable: &'static ErrorVTable,
     spantrace: SpanTrace,
     // NOTE: Don't use directly. Use only through vtable. Erased type may have
     // different alignment.
