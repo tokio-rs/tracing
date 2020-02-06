@@ -118,6 +118,8 @@
 )]
 mod backtrace;
 mod layer;
+mod stack_error;
 
 pub use self::backtrace::SpanTrace;
 pub use self::layer::ErrorLayer;
+pub use self::stack_error::{Instrument, SpanTraceExt, TracedError};
