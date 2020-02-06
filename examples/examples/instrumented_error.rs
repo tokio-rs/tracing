@@ -3,7 +3,7 @@
 #![deny(rust_2018_idioms)]
 use std::error::Error;
 use std::fmt;
-use tracing_error::{ErrorLayer, Instrument as _, SpanTrace, SpanTraceExt as _};
+use tracing_error::{prelude::*, ErrorLayer};
 use tracing_subscriber::{fmt::Layer as FmtLayer, prelude::*, registry::Registry};
 
 #[derive(Debug)]
@@ -35,7 +35,9 @@ fn do_another_thing(
     answer: usize,
     will_succeed: bool,
 ) -> Result<&'static str, impl Error + Send + Sync + 'static> {
-    Err(FooError::new("something broke, lol")).in_current_span()
+    Err(FooError::new("something broke, lol"))
+        .in_current_span()
+        .in_current_span()
 }
 
 #[tracing::instrument]
