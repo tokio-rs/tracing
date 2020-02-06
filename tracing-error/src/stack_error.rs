@@ -50,13 +50,12 @@ struct ErrorImpl<E> {
 
 impl ErrorImpl<Erased> {
     pub(crate) fn error(&self) -> &(dyn Error + Send + Sync + 'static) {
-        // # Safety
-        //
-        // The pointer used in this fn is guaranteed to be parameterized on the original error type
-        // that was erased from the ErrorImpl object pointer before calling this fn. This means it
-        // can safely be used to cast our pointer back to its original type. The original pointer
-        // type is then implicitly converted to a trait object which then attaches the correct
-        // Error vtable to the pointer when we return it as a dyn Error.
+        // safety: this function is used to cast a type-erased pointer to a pointer to error's
+        // original type. the `ErrorImpl::error` method, which calls this function, requires that
+        // the type this function casts to be the original erased type of the error; failure to
+        // uphold this is UB. since the `From` impl is parameterized over the original error type,
+        // the function pointer we construct here will also retain the original type. therefore,
+        // when this is consumed by the `error` method, it will be safe to call.
         unsafe { &*(self.vtable.object_ref)(self) }
     }
 }
