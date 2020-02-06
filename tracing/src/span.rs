@@ -649,6 +649,7 @@ impl Span {
     /// // ...
     ///
     /// // Now, record a value for parting as well.
+    /// // (note that the field name is passed as a string slice)
     /// span.record("parting", &"goodbye world!");
     /// ```
     /// However, it may also be used to record a _new_ value for a field whose
