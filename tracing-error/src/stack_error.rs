@@ -25,7 +25,7 @@ where
         // The repr(C) is necessary to ensure that the struct is layed out in the order we
         // specified it so that we can safely access the vtable and spantrace fields thru a type
         // erased pointer to the original object.
-        let vtable = &ErrorVTable {
+        let vtable = ErrorVTable {
             object_ref: object_ref::<E>,
         };
 
@@ -33,7 +33,7 @@ where
             inner: ErrorImpl {
                 vtable,
                 spantrace: SpanTrace::capture(),
-                _object: error,
+                error,
             },
         }
     }
@@ -41,11 +41,11 @@ where
 
 #[repr(C)]
 struct ErrorImpl<E> {
-    vtable: &'static ErrorVTable,
+    vtable: ErrorVTable,
     spantrace: SpanTrace,
     // NOTE: Don't use directly. Use only through vtable. Erased type may have
     // different alignment.
-    _object: E,
+    error: E,
 }
 
 impl ErrorImpl<Erased> {
@@ -73,8 +73,8 @@ unsafe fn object_ref<E>(e: &ErrorImpl<Erased>) -> &(dyn Error + Send + Sync + 's
 where
     E: Error + Send + Sync + 'static,
 {
-    // Attach E's native Error vtable onto a pointer to self._object.
-    &(*(e as *const ErrorImpl<Erased> as *const ErrorImpl<E>))._object
+    // Attach E's native Error vtable onto a pointer to self.error.
+    &(*(e as *const ErrorImpl<Erased> as *const ErrorImpl<E>)).error
 }
 
 impl<E> Error for TracedError<E> {
@@ -131,7 +131,7 @@ where
     E: Error + Send + Sync + 'static,
 {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&self._object)
+        Some(&self.error)
     }
 }
 
@@ -140,7 +140,7 @@ where
     E: Error + Send + Sync + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&self._object, f)
+        Debug::fmt(&self.error, f)
     }
 }
 
@@ -149,7 +149,22 @@ where
     E: Error + Send + Sync + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self._object, f)
+        Display::fmt(&self.error, f)
+    }
+}
+
+///
+pub trait IntoTracedError<E> {
+    ///
+    fn in_current_span(self) -> TracedError<E>;
+}
+
+impl<E> IntoTracedError<E> for E
+where
+    E: Error + Send + Sync + 'static,
+{
+    fn in_current_span(self) -> TracedError<E> {
+        TracedError::from(self)
     }
 }
 

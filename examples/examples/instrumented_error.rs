@@ -27,7 +27,7 @@ impl fmt::Display for FooError {
 
 #[tracing::instrument]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
-    do_another_thing(42, false)
+    do_another_thing(42, false).in_current_span()
 }
 
 #[tracing::instrument]
@@ -35,9 +35,7 @@ fn do_another_thing(
     answer: usize,
     will_succeed: bool,
 ) -> Result<&'static str, impl Error + Send + Sync + 'static> {
-    Err(FooError::new("something broke, lol"))
-        .in_current_span()
-        .in_current_span()
+    Err(FooError::new("something broke, lol")).in_current_span()
 }
 
 #[tracing::instrument]
