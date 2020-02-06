@@ -35,13 +35,6 @@ verify() {
         err "git tag \`$TAG\` already exists"
         exit 1
     fi
-
-    PATH_DEPS=$(grep -F "path = \"" Cargo.toml | sed -e 's/^/  /')
-    if [ -n "$PATH_DEPS" ]; then
-        err "crate \`$CRATE\` contained path dependencies:\n$PATH_DEPS"
-        echo "path dependencies must be removed prior to release"
-        exit 1
-    fi
 }
 
 release() {
