@@ -122,4 +122,12 @@ mod stack_error;
 
 pub use self::backtrace::SpanTrace;
 pub use self::layer::ErrorLayer;
-pub use self::stack_error::{Instrument, SpanTraceExt, TracedError};
+pub use self::stack_error::TracedError;
+
+/// The `tracing-error` prelude.
+///
+/// This brings into scope the `Instrument` and `SpanTraceExt` extension traits that are used to
+/// attach Spantraces to errors and subsequently retrieve them from dyn Errors.
+pub mod prelude {
+    pub use crate::stack_error::{Instrument as _, SpanTraceExt as _};
+}
