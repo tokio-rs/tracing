@@ -635,7 +635,44 @@ impl Span {
         self.field(field).is_some()
     }
 
-    /// Visits that the field described by `field` has the value `value`.
+    /// Records that the field described by `field` has the value `value`.
+    ///
+    /// This may be used with [`field::Empty`] to declare fields whose values
+    /// are not known when the span is created, and record them later:
+    /// ```
+    /// use tracing::{trace_span, field};
+    ///
+    /// // Create a span with two fields: `greeting`, with the value "hello world", and
+    /// // `parting`, without a value.
+    /// let span = trace_span!("my_span", greeting = "hello world", parting = field::Empty);
+    ///
+    /// // ...
+    ///
+    /// // Now, record a value for parting as well.
+    /// // (note that the field name is passed as a string slice)
+    /// span.record("parting", &"goodbye world!");
+    /// ```
+    /// However, it may also be used to record a _new_ value for a field whose
+    /// value was already recorded:
+    /// ```
+    /// use tracing::info_span;
+    /// # fn do_something() -> Result<(), ()> { Err(()) }
+    ///
+    /// // Initially, let's assume that our attempt to do something is going okay...
+    /// let span = info_span!("doing_something", is_okay = true);
+    /// let _e = span.enter();
+    ///
+    /// match do_something() {
+    ///     Ok(something) => {
+    ///         // ...
+    ///     }
+    ///     Err(_) => {
+    ///         // Things are no longer okay!
+    ///         span.record("is_okay", &false);
+    ///     }
+    /// }
+    /// ```
+    /// [`field::Empty`]: ../field/struct.Empty.html
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
     where
         Q: field::AsField,
@@ -654,7 +691,7 @@ impl Span {
         self
     }
 
-    /// Visit all the fields in the span
+    /// Records all the fields in the provided `ValueSet`.
     pub fn record_all(&self, values: &field::ValueSet<'_>) -> &Self {
         let record = Record::new(values);
         if let Some(ref inner) = self.inner {
@@ -764,7 +801,7 @@ impl Span {
 
     #[cfg(feature = "log")]
     #[inline]
-    fn log(&self, message: fmt::Arguments) {
+    fn log(&self, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
             let logger = log::logger();
             let log_meta = log::Metadata::builder()
@@ -969,7 +1006,7 @@ struct FmtValues<'a>(&'a Record<'a>);
 
 #[cfg(feature = "log")]
 impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
             res = write!(f, "{}={:?} ", k, v);
@@ -983,7 +1020,7 @@ struct FmtAttrs<'a>(&'a Attributes<'a>);
 
 #[cfg(feature = "log")]
 impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
             res = write!(f, "{}={:?} ", k, v);

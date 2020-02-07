@@ -327,6 +327,23 @@
 //! # }
 //! ```
 //!
+//! Additionally, a span may declare fields with the special value [`Empty`],
+//! which indicates that that the value for that field does not currently exist
+//! but may be recorded later. For example:
+//!
+//! ```
+//! use tracing::{trace_span, field};
+//!
+//! // Create a span with two fields: `greeting`, with the value "hello world", and
+//! // `parting`, without a value.
+//! let span = trace_span!("my_span", greeting = "hello world", parting = field::Empty);
+//!
+//! // ...
+//!
+//! // Now, record a value for parting as well.
+//! span.record("parting", &"goodbye world!");
+//! ```
+//!
 //! Note that a span may have up to 32 fields. The following will not compile:
 //!
 //! ```rust,compile_fail
@@ -379,6 +396,7 @@
 //! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 //! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
 //! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//! [`Empty`]: field/struct.Empty.html
 //!
 //! ### Shorthand Macros
 //!
