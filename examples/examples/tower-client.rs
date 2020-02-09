@@ -1,4 +1,4 @@
-use http::{Method, Request, Response, Uri};
+use http::{Method, Request, Uri};
 use hyper::{client::Client, Body};
 use std::time::Duration;
 use tower::{Service, ServiceBuilder};
