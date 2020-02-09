@@ -27,6 +27,7 @@
 //! [builder]: struct.LogTracer.html#method.builder
 //! [ignore]: struct.Builder.html#method.ignore_crate
 use crate::{format_trace, AsTrace};
+use log;
 pub use log::SetLoggerError;
 use tracing_core::dispatcher;
 
@@ -53,16 +54,16 @@ impl LogTracer {
     /// ```rust
     /// # use std::error::Error;
     /// use tracing_log::LogTracer;
-    /// use log::{LevelFilter, info}
+    /// use log;
     ///
     /// # fn main() -> Result<(), Box<Error>> {
     /// LogTracer::builder()
     ///     .ignore_crate("foo") // suppose the `foo` crate is using `tracing`'s log feature
-    ///     .with_max_level(LevelFilter::Info)
+    ///     .with_max_level(log::LevelFilter::Info)
     ///     .init()?;
     ///
     /// // will be available for Subscribers as a tracing Event
-    /// info!("an example info log");
+    /// log::info!("an example info log");
     /// # Ok(())
     /// # }
     /// ```
