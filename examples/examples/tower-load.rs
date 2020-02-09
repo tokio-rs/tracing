@@ -297,7 +297,7 @@ impl fmt::Display for WrongMethod {
 impl std::error::Error for WrongMethod {}
 
 fn gen_uri(authority: &str) -> (usize, String) {
-    static ALPHABET: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static ALPHABET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let mut rng = rand::thread_rng();
     let idx = rng.gen_range(0, ALPHABET.len() + 1);
     let len = rng.gen_range(0, 26);
