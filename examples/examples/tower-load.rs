@@ -234,7 +234,7 @@ where
                     match handle.set_from(body) {
                         Err(error) => {
                             error!(message = "setting filter failed!", %error);
-                            rsp(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+                            rsp(StatusCode::INTERNAL_SERVER_ERROR, error)
                         }
                         Ok(()) => rsp(StatusCode::NO_CONTENT, Body::empty()),
                     }
