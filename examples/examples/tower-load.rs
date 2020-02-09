@@ -108,7 +108,7 @@ impl Service<Request<Body>> for Svc {
                     }
                     HandleError::Unknown => StatusCode::INTERNAL_SERVER_ERROR,
                 };
-                rsp(status, format!("{}", e))
+                rsp(status, e.to_string())
             });
         future::ok(rsp)
     }
@@ -234,7 +234,7 @@ where
                     match handle.set_from(body) {
                         Err(error) => {
                             error!(message = "setting filter failed!", %error);
-                            rsp(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", error))
+                            rsp(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
                         }
                         Ok(()) => rsp(StatusCode::NO_CONTENT, Body::empty()),
                     }
@@ -301,7 +301,7 @@ fn gen_uri(authority: &str) -> (usize, String) {
     let mut rng = rand::thread_rng();
     let idx = rng.gen_range(0, ALPHABET.len() + 1);
     let len = rng.gen_range(0, 26);
-    let letter = ALPHABET.get(idx..idx + 1).unwrap_or("");
+    let letter = ALPHABET.get(idx..=idx).unwrap_or("");
     (len, format!("http://{}/{}", authority, letter))
 }
 
