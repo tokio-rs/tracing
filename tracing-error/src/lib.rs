@@ -130,25 +130,64 @@ pub use self::layer::ErrorLayer;
 #[cfg(feature = "stack-error")]
 pub use self::stack_error::TracedError;
 
-///
+/// Extension trait for instrumenting errors with `SpanTrace`s
 pub trait InstrumentError {
+    /// The type of the wrapped error after instrumentation
     type Instrumented;
 
+    /// Instrument an Error by bundling it with a SpanTrace
     ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::{TracedError, InstrumentError};
+    ///
+    /// fn wrap_error(e: impl std::error::Error + Send + Sync + 'static) -> TracedError {
+    ///     e.in_current_span()
+    /// }
+    /// ```
     fn in_current_span(self) -> Self::Instrumented;
 }
 
-///
+/// Extension trait for instrumenting errors in `Result`s with `SpanTrace`s
 pub trait InstrumentResult<T> {
+    /// The type of the wrapped error after instrumentation
     type Instrumented;
 
+    /// Instrument an Error by bundling it with a SpanTrace
     ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use std::{io, fs};
+    /// use tracing_error::{TracedError, InstrumentResult};
+    ///
+    /// # fn fallible_fn() -> io::Result<()> { fs::read_dir("......").map(drop) };
+    ///
+    /// fn do_thing() -> Result<(), TracedError> {
+    ///     fallible_fn().in_current_span()
+    /// }
+    /// ```
     fn in_current_span(self) -> Result<T, Self::Instrumented>;
 }
 
-///
+/// A trait for extracting SpanTraces created by `in_current_span()` from `dyn Error` trait objects
 pub trait SpanTraceExtract {
+    /// Attempts to downcast to a `TracedError` and return a reference to its SpanTrace
     ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::SpanTraceExtract;
+    /// use std::error::Error;
+    ///
+    /// fn print_span_trace(e: &(dyn Error + 'static)) {
+    ///     let span_trace = e.span_trace();
+    ///     if let Some(span_trace) = span_trace {
+    ///         println!("{}", span_trace);
+    ///     }
+    /// }
+    /// ```
     fn span_trace(&self) -> Option<&SpanTrace>;
 }
 

@@ -3,7 +3,13 @@ use crate::{InstrumentError, InstrumentResult, SpanTraceExtract};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
+/// A wrapper type for Errors that bundles a SpanTrace with an inner `Error` type.
 ///
+/// # Notes
+///
+/// This type does not print the wrapped `SpanTrace` in either its `Debug` or `Display`
+/// implementations. The `SpanTrace` must be extracted via the `SpanTraceExtract` trait in order to
+/// be printed.
 pub struct TracedError {
     spantrace: SpanTrace,
     inner: Box<dyn Error + Send + Sync + 'static>,
