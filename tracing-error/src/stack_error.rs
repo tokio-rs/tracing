@@ -15,7 +15,7 @@ where
     E: Error + Send + Sync + 'static,
 {
     fn from(error: E) -> Self {
-        // SAFETY
+        // # SAFETY
         //
         // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
         // of the class safe. This saves a function pointer that is parameterized on the Error type
@@ -51,7 +51,9 @@ struct ErrorImpl<E> {
 
 impl ErrorImpl<Erased> {
     pub(crate) fn error(&self) -> &(dyn Error + Send + Sync + 'static) {
-        // safety: this function is used to cast a type-erased pointer to a pointer to error's
+        // # SAFETY
+        //
+        // this function is used to cast a type-erased pointer to a pointer to error's
         // original type. the `ErrorImpl::error` method, which calls this function, requires that
         // the type this function casts to be the original erased type of the error; failure to
         // uphold this is UB. since the `From` impl is parameterized over the original error type,

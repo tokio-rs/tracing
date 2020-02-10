@@ -117,11 +117,9 @@
     while_true
 )]
 mod backtrace;
-///
 #[cfg(not(feature = "stack-error"))]
 mod heap_error;
 mod layer;
-///
 #[cfg(feature = "stack-error")]
 mod stack_error;
 
