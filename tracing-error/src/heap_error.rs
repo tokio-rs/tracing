@@ -1,4 +1,5 @@
 use crate::SpanTrace;
+use crate::{InstrumentError, InstrumentResult, SpanTraceExtract};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
@@ -38,44 +39,30 @@ impl Display for TracedError {
     }
 }
 
-///
-pub trait IntoTracedError<E> {
-    ///
-    fn in_current_span(self) -> TracedError;
-}
-
-impl<E> IntoTracedError<E> for E
+impl<E> InstrumentError for E
 where
     E: Error + Send + Sync + 'static,
 {
-    fn in_current_span(self) -> TracedError {
+    type Instrumented = TracedError;
+
+    fn in_current_span(self) -> Self::Instrumented {
         TracedError::new(self)
     }
 }
 
-///
-pub trait Instrument<T, E> {
-    ///
-    fn in_current_span(self) -> Result<T, TracedError>;
-}
-
-impl<T, E> Instrument<T, E> for Result<T, E>
+impl<T, E> InstrumentResult<T> for Result<T, E>
 where
     E: Error + Send + Sync + 'static,
 {
-    fn in_current_span(self) -> Result<T, TracedError> {
+    type Instrumented = TracedError;
+
+    fn in_current_span(self) -> Result<T, Self::Instrumented> {
         self.map_err(TracedError::new)
     }
 }
 
-///
-pub trait SpanTraceExt {
-    ///
-    fn spantrace(&self) -> Option<&SpanTrace>;
-}
-
-impl SpanTraceExt for &(dyn Error + 'static) {
-    fn spantrace(&self) -> Option<&SpanTrace> {
+impl SpanTraceExtract for &(dyn Error + 'static) {
+    fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<TracedError>().map(|e| &e.spantrace)
     }
 }

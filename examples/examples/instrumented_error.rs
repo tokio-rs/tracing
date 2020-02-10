@@ -51,7 +51,7 @@ fn main() {
             let trait_object: Box<dyn Error + 'static> = Box::new(e);
             let mut error = Some(trait_object.as_ref());
             while let Some(err) = error {
-                if let Some(spantrace) = err.spantrace() {
+                if let Some(spantrace) = err.span_trace() {
                     eprintln!("found a spantrace!:\n{}", spantrace);
                 }
                 eprintln!("error: {}", err);

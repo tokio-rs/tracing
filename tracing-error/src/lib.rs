@@ -132,13 +132,32 @@ pub use self::layer::ErrorLayer;
 #[cfg(feature = "stack-error")]
 pub use self::stack_error::TracedError;
 
+///
+pub trait InstrumentError {
+    type Instrumented;
+
+    ///
+    fn in_current_span(self) -> Self::Instrumented;
+}
+
+///
+pub trait InstrumentResult<T> {
+    type Instrumented;
+
+    ///
+    fn in_current_span(self) -> Result<T, Self::Instrumented>;
+}
+
+///
+pub trait SpanTraceExtract {
+    ///
+    fn span_trace(&self) -> Option<&SpanTrace>;
+}
+
 /// The `tracing-error` prelude.
 ///
-/// This brings into scope the `Instrument` and `SpanTraceExt` extension traits that are used to
+/// This brings into scope the `InstrumentError` and `SpanTraceExtract` extension traits that are used to
 /// attach Spantraces to errors and subsequently retrieve them from dyn Errors.
 pub mod prelude {
-    #[cfg(not(feature = "stack-error"))]
-    pub use crate::heap_error::{Instrument as _, IntoTracedError as _, SpanTraceExt as _};
-    #[cfg(feature = "stack-error")]
-    pub use crate::stack_error::{Instrument as _, IntoTracedError as _, SpanTraceExt as _};
+    pub use crate::{InstrumentError as _, InstrumentResult as _, SpanTraceExtract as _};
 }

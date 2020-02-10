@@ -1,4 +1,5 @@
 use crate::SpanTrace;
+use crate::{InstrumentError, InstrumentResult, SpanTraceExtract};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
@@ -85,7 +86,7 @@ impl<E> Error for TracedError<E> {
     // function in the vtable to safely convert the pointer type back to the original type then
     // returns the reference to the internal error.
     //
-    // This function is necessary for the `downcast_ref` in `SpanTraceExt` to work, because it
+    // This function is necessary for the `downcast_ref` in `SpanTraceExtract` to work, because it
     // needs a concrete type to downcast to and we cannot downcast to ErrorImpls parameterized on
     // errors defined in other crates. By erasing the type here we can always cast back to the
     // Erased version of the ErrorImpl pointer and still access the internal error type safely
@@ -153,44 +154,30 @@ where
     }
 }
 
-///
-pub trait IntoTracedError<E> {
-    ///
-    fn in_current_span(self) -> TracedError<E>;
-}
-
-impl<E> IntoTracedError<E> for E
+impl<E> InstrumentError for E
 where
     E: Error + Send + Sync + 'static,
 {
-    fn in_current_span(self) -> TracedError<E> {
+    type Instrumented = TracedError<E>;
+
+    fn in_current_span(self) -> Self::Instrumented {
         TracedError::from(self)
     }
 }
 
-///
-pub trait Instrument<T, E> {
-    ///
-    fn in_current_span(self) -> Result<T, TracedError<E>>;
-}
-
-impl<T, E> Instrument<T, E> for Result<T, E>
+impl<T, E> InstrumentResult<T> for Result<T, E>
 where
     E: Error + Send + Sync + 'static,
 {
-    fn in_current_span(self) -> Result<T, TracedError<E>> {
+    type Instrumented = TracedError<E>;
+
+    fn in_current_span(self) -> Result<T, Self::Instrumented> {
         self.map_err(TracedError::from)
     }
 }
 
-///
-pub trait SpanTraceExt {
-    ///
-    fn spantrace(&self) -> Option<&SpanTrace>;
-}
-
-impl SpanTraceExt for &(dyn Error + 'static) {
-    fn spantrace(&self) -> Option<&SpanTrace> {
+impl SpanTraceExtract for &(dyn Error + 'static) {
+    fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<ErrorImpl<Erased>>()
             .map(|inner| &inner.spantrace)
     }
