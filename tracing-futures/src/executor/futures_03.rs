@@ -1,9 +1,5 @@
-use crate::stdlib::future::Future;
 use crate::{Instrument, Instrumented, WithDispatch};
-use futures_task::{
-    future::FutureObj,
-    task::{LocalSpawn, Spawn, SpawnError},
-};
+use futures_task::{FutureObj, LocalFutureObj, LocalSpawn, Spawn, SpawnError};
 
 impl<T> Spawn for Instrumented<T>
 where
@@ -19,7 +15,7 @@ where
     /// tasks.
     fn spawn_obj(&self, future: FutureObj<'static, ()>) -> Result<(), SpawnError> {
         let future = future.instrument(self.span.clone());
-        self.inner.spawn_obj(Box::pin(future))
+        self.inner.spawn_obj(FutureObj::new(Box::new(future)))
     }
 
     /// Determines whether the executor is able to spawn new tasks.
@@ -47,7 +43,8 @@ where
     /// having been shut down so that it is no longer able to accept
     /// tasks.
     fn spawn_obj(&self, future: FutureObj<'static, ()>) -> Result<(), SpawnError> {
-        self.inner.spawn_obj(Box::pin(self.with_dispatch(future)))
+        self.inner
+            .spawn_obj(FutureObj::new(Box::new(self.with_dispatch(future))))
     }
 
     /// Determines whether the executor is able to spawn new tasks.
@@ -76,7 +73,8 @@ where
     /// tasks.
     fn spawn_local_obj(&self, future: LocalFutureObj<'static, ()>) -> Result<(), SpawnError> {
         let future = future.instrument(self.span.clone());
-        self.inner.spawn_local_obj(Box::pin(future))
+        self.inner
+            .spawn_local_obj(LocalFutureObj::new(Box::new(future)))
     }
 
     /// Determines whether the executor is able to spawn new tasks.
@@ -93,7 +91,7 @@ where
 
 impl<T> LocalSpawn for WithDispatch<T>
 where
-    T: Spawn,
+    T: LocalSpawn,
 {
     /// Spawns a future that will be run to completion.
     ///
@@ -105,7 +103,7 @@ where
     /// tasks.
     fn spawn_local_obj(&self, future: LocalFutureObj<'static, ()>) -> Result<(), SpawnError> {
         self.inner
-            .spawn_local_obj(Box::pin(self.with_dispatch(future)))
+            .spawn_local_obj(LocalFutureObj::new(Box::new(self.with_dispatch(future))))
     }
 
     /// Determines whether the executor is able to spawn new tasks.

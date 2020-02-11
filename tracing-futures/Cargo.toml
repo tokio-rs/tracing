@@ -20,7 +20,7 @@ license = "MIT"
 [features]
 default = ["std-future", "std"]
 futures-01 = ["futures_01"]
-futures-03 = ["std-future", "futures", "futures-task"]
+futures-03 = ["std-future", "futures", "futures-task", "std"]
 std-future = ["pin-project"]
 std = ["tracing/std"]
 
