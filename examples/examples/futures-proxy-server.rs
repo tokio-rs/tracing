@@ -1,5 +1,3 @@
-#![deny(rust_2018_idioms)]
-
 //! A proxy that forwards data to another server and forwards that server's
 //! responses back to clients.
 //!
@@ -21,6 +19,11 @@
 //!
 //! This final terminal will connect to our proxy, which will in turn connect to
 //! the echo server, and you'll be able to see data flowing between them.
+//!
+//! This example has been taken and modified from here :
+//! https://raw.githubusercontent.com/tokio-rs/tokio/master/tokio/examples/proxy.rs
+
+#![deny(rust_2018_idioms)]
 
 use clap::{arg_enum, value_t, App, Arg, ArgMatches};
 use futures::{future::try_join, prelude::*};
