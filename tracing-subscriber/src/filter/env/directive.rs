@@ -385,7 +385,7 @@ impl<T> DirectiveSet<T> {
     }
 
     pub(crate) fn iter(&self) -> std::slice::Iter<'_, T> {
-        self.directives[..].iter()
+        self.directives.iter()
     }
 }
 
@@ -413,8 +413,10 @@ impl<T: Match + Ord> DirectiveSet<T> {
         if *level > self.max_level {
             self.max_level = level.clone();
         }
-        self.directives.push(directive);
-        self.directives.sort_unstable();
+        match self.directives.binary_search(&directive) {
+            Ok(i) => self.directives[i] = directive,
+            Err(i) => self.directives.insert(i, directive),
+        }
     }
 }
 
