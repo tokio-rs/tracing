@@ -46,7 +46,7 @@ pub(crate) type Statics = DirectiveSet<StaticDirective>;
 #[derive(Debug, PartialEq)]
 pub(crate) struct DirectiveSet<T> {
     directives: BTreeSet<T>,
-    max_level: LevelFilter,
+    pub(crate) max_level: LevelFilter,
 }
 
 pub(crate) type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
