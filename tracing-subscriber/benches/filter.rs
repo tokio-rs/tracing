@@ -104,6 +104,66 @@ fn bench_static(c: &mut Criterion) {
             })
         });
     });
+    group.bench_function("enabled_one", |b| {
+        let filter = "static_filter=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::info!(target: "static_filter", "hi");
+            })
+        });
+    });
+    group.bench_function("enabled_many", |b| {
+        let filter = "foo=debug,bar=trace,baz=error,quux=warn,static_filter=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::info!(target: "static_filter", "hi");
+            })
+        });
+    });
+    group.bench_function("disabled_level_one", |b| {
+        let filter = "static_filter=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::debug!(target: "static_filter", "hi");
+            })
+        });
+    });
+    group.bench_function("disabled_level_many", |b| {
+        let filter = "foo=debug,bar=info,baz=error,quux=warn,static_filter=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::trace!(target: "static_filter", "hi");
+            })
+        });
+    });
+    group.bench_function("disabled_one", |b| {
+        let filter = "foo=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::info!(target: "static_filter", "hi");
+            })
+        });
+    });
+    group.bench_function("disabled_many", |b| {
+        let filter = "foo=debug,bar=trace,baz=error,quux=warn,whibble=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::info!(target: "static_filter", "hi");
+            })
+        });
+    });
     group.bench_function("baseline_multithreaded", |b| {
         let dispatch = tracing::dispatcher::Dispatch::new(EnabledSubscriber);
         b.iter_custom(|iters| {
@@ -275,5 +335,29 @@ fn bench_dynamic(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_static, bench_dynamic);
+fn bench_mixed(c: &mut Criterion) {
+    let mut group = c.benchmark_group("mixed");
+    group.bench_function("disabled", |b| {
+        let filter = "[foo]=trace,bar[quux]=debug,[{baz}]=debug,asdf=warn,wibble=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::info!(target: "static_filter", "hi");
+            })
+        });
+    });
+    group.bench_function("disabled_by_level", |b| {
+        let filter = "[foo]=info,bar[quux]=debug,asdf=warn,static_filter=info"
+            .parse::<EnvFilter>()
+            .expect("should parse");
+        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+            b.iter(|| {
+                tracing::trace!(target: "static_filter", "hi");
+            })
+        });
+    });
+}
+
+criterion_group!(benches, bench_static, bench_dynamic, bench_mixed);
 criterion_main!(benches);
