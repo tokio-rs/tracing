@@ -68,8 +68,7 @@ use tracing_core::{field::FieldSet, span::Id, Metadata};
 mod extensions;
 #[cfg(feature = "registry")]
 mod sharded;
-#[cfg(feature = "registry")]
-mod stack;
+pub(crate) mod stack;
 
 pub use extensions::{Extensions, ExtensionsMut};
 #[cfg(feature = "registry")]
