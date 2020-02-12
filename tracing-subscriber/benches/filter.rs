@@ -108,9 +108,7 @@ fn bench_static(c: &mut Criterion) {
         });
     });
     group.bench_function("disabled_one", |b| {
-        let filter = "foo=info"
-            .parse::<EnvFilter>()
-            .expect("should parse");
+        let filter = "foo=info".parse::<EnvFilter>().expect("should parse");
         tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 tracing::info!(target: "static_filter", "hi");
