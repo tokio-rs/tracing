@@ -15,9 +15,8 @@ use crate::{
     filter::LevelFilter,
     layer::{Context, Layer},
     sync::RwLock,
-    thread,
 };
-use std::{collections::HashMap, env, error::Error, fmt, str::FromStr};
+use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
     field::Field,
@@ -95,14 +94,15 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
 pub struct EnvFilter {
-    // TODO: eventually, this should be exposed by the registry.
-    scope: thread::Local<Vec<LevelFilter>>,
-
     statics: directive::Statics,
     dynamics: directive::Dynamics,
 
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
+}
+
+thread_local! {
+    static SCOPE: RefCell<Vec<LevelFilter>> = RefCell::new(Vec::new());
 }
 
 type FieldMap<T> = HashMap<Field, T>;
@@ -232,7 +232,6 @@ impl EnvFilter {
         }
 
         Self {
-            scope: thread::Local::new(),
             statics,
             dynamics,
             by_id: RwLock::new(HashMap::new()),
@@ -277,22 +276,20 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
-        self.scope
-            .with(|scope| {
-                for filter in scope.iter() {
-                    if filter >= level {
-                        return true;
-                    }
+        SCOPE.with(|scope| {
+            for filter in scope.borrow().iter() {
+                if filter >= level {
+                    return true;
                 }
+            }
 
-                // Otherwise, fall back to checking if the callsite is
-                // statically enabled.
-                // TODO(eliza): we *might* want to check this only if the `log`
-                // feature is enabled, since if this is a `tracing` event with a
-                // real callsite, it would already have been statically enabled...
-                self.statics.enabled(metadata)
-            })
-            .unwrap_or_else(|| self.statics.enabled(metadata))
+            // Otherwise, fall back to checking if the callsite is
+            // statically enabled.
+            // TODO(eliza): we *might* want to check this only if the `log`
+            // feature is enabled, since if this is a `tracing` event with a
+            // real callsite, it would already have been statically enabled...
+            self.statics.enabled(metadata)
+        })
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
@@ -314,13 +311,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            self.scope.with(|scope| scope.push(span.level()));
+            SCOPE.with(|scope| scope.borrow_mut().push(span.level()));
         }
     }
 
     fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
         if self.cares_about_span(id) {
-            self.scope.with(|scope| scope.pop());
+            SCOPE.with(|scope| scope.borrow_mut().pop());
         }
     }
 
