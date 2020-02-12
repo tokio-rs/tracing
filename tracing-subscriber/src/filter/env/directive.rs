@@ -482,7 +482,10 @@ impl Dynamics {
 impl Statics {
     pub(crate) fn enabled(&self, meta: &Metadata<'_>) -> bool {
         let level = meta.level();
-        self.directives_for(meta).any(|d| d.level >= *level)
+        match self.directives_for(meta).next() {
+            Some(d) =>  d.level >= *level,
+            None => false,
+        }
     }
 }
 
