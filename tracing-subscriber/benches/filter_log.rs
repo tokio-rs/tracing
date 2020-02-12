@@ -128,7 +128,7 @@ fn bench_static(c: &mut Criterion) {
         });
     });
     group.bench_function("baseline_multithreaded", |b| {
-        let dispatch = tracing::dispatcher::Dispatch::new(EnabledSubscriber);
+        let dispatch = Dispatch::new(EnabledSubscriber);
         b.iter_custom(|iters| {
             let mut total = Duration::from_secs(0);
             for _ in 0..iters {
@@ -156,7 +156,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        let dispatch = tracing::dispatcher::Dispatch::new(EnabledSubscriber.with(filter));
+        let dispatch = Dispatch::new(EnabledSubscriber.with(filter));
         b.iter_custom(|iters| {
             let mut total = Duration::from_secs(0);
             for _ in 0..iters {
@@ -218,7 +218,7 @@ fn bench_dynamic(c: &mut Criterion) {
         });
     });
     group.bench_function("baseline_multithreaded", |b| {
-        let dispatch = tracing::dispatcher::Dispatch::new(EnabledSubscriber);
+        let dispatch = Dispatch::new(EnabledSubscriber);
         b.iter_custom(|iters| {
             let mut total = Duration::from_secs(0);
             for _ in 0..iters {
@@ -250,7 +250,7 @@ fn bench_dynamic(c: &mut Criterion) {
     });
     group.bench_function("multithreaded", |b| {
         let filter = "[foo]=trace".parse::<EnvFilter>().expect("should parse");
-        let dispatch = tracing::dispatcher::Dispatch::new(EnabledSubscriber.with(filter));
+        let dispatch = Dispatch::new(EnabledSubscriber.with(filter));
         b.iter_custom(|iters| {
             let mut total = Duration::from_secs(0);
             for _ in 0..iters {
