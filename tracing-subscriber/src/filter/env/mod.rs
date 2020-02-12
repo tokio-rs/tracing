@@ -96,7 +96,7 @@ use tracing_core::{
 pub struct EnvFilter {
     statics: directive::Statics,
     dynamics: directive::Dynamics,
-
+    has_dynamics: bool,
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
 }
@@ -219,6 +219,7 @@ impl EnvFilter {
         if let Some(stat) = directive.to_static() {
             self.statics.add(stat)
         } else {
+            self.has_dynamics = true;
             self.dynamics.add(directive);
         }
         self
@@ -226,14 +227,16 @@ impl EnvFilter {
 
     fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
         let (dynamics, mut statics) = Directive::make_tables(directives);
+        let has_dynamics = !dynamics.is_empty();
 
-        if statics.is_empty() && dynamics.is_empty() {
+        if statics.is_empty() && !has_dynamics {
             statics.add(directive::StaticDirective::default());
         }
 
         Self {
             statics,
             dynamics,
+            has_dynamics,
             by_id: RwLock::new(HashMap::new()),
             by_cs: RwLock::new(HashMap::new()),
         }
@@ -245,17 +248,17 @@ impl EnvFilter {
     }
 
     fn base_interest(&self) -> Interest {
-        if self.dynamics.is_empty() {
-            Interest::never()
-        } else {
+        if self.has_dynamics {
             Interest::sometimes()
+        } else {
+            Interest::never()
         }
     }
 }
 
 impl<S: Subscriber> Layer<S> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if metadata.is_span() {
+        if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
             // dynamic filter that should be constructed for it. If so, it
             // should always be enabled, since it influences filtering.
@@ -276,8 +279,11 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
+
         // is it possible for a dynamic filter directive to enable this event?
-        if self.dynamics.max_level >= *level {
+        // if not, we can avoid the thread local access + iterating over the
+        // spans in the current scope.
+        if self.has_dynamics && self.dynamics.max_level >= *level {
             let enabled_by_scope = SCOPE.with(|scope| {
                 for filter in scope.borrow().iter() {
                     if filter >= level {
