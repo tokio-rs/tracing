@@ -1,5 +1,5 @@
 use crate::SpanTrace;
-use crate::{InstrumentError, InstrumentResult, SpanTraceExtract};
+use crate::{ExtractSpanTrace, InstrumentError, InstrumentResult};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
@@ -10,7 +10,7 @@ struct Erased;
 /// # Notes
 ///
 /// This type does not print the wrapped `SpanTrace` in either its `Debug` or `Display`
-/// implementations. The `SpanTrace` must be extracted via the `SpanTraceExtract` trait in order to
+/// implementations. The `SpanTrace` must be extracted via the `ExtractSpanTrace` trait in order to
 /// be printed.
 pub struct TracedError<E> {
     inner: ErrorImpl<E>,
@@ -94,7 +94,7 @@ impl<E> Error for TracedError<E> {
     // function in the vtable to safely convert the pointer type back to the original type then
     // returns the reference to the internal error.
     //
-    // This function is necessary for the `downcast_ref` in `SpanTraceExtract` to work, because it
+    // This function is necessary for the `downcast_ref` in `ExtractSpanTrace` to work, because it
     // needs a concrete type to downcast to and we cannot downcast to ErrorImpls parameterized on
     // errors defined in other crates. By erasing the type here we can always cast back to the
     // Erased version of the ErrorImpl pointer and still access the internal error type safely
@@ -184,7 +184,7 @@ where
     }
 }
 
-impl SpanTraceExtract for &(dyn Error + 'static) {
+impl ExtractSpanTrace for &(dyn Error + 'static) {
     fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<ErrorImpl<Erased>>()
             .map(|inner| &inner.spantrace)

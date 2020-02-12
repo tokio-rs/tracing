@@ -1,5 +1,5 @@
 use crate::SpanTrace;
-use crate::{InstrumentError, InstrumentResult, SpanTraceExtract};
+use crate::{ExtractSpanTrace, InstrumentError, InstrumentResult};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
@@ -8,7 +8,7 @@ use std::fmt::{self, Debug, Display};
 /// # Notes
 ///
 /// This type does not print the wrapped `SpanTrace` in either its `Debug` or `Display`
-/// implementations. The `SpanTrace` must be extracted via the `SpanTraceExtract` trait in order to
+/// implementations. The `SpanTrace` must be extracted via the `ExtractSpanTrace` trait in order to
 /// be printed.
 pub struct TracedError {
     spantrace: SpanTrace,
@@ -67,7 +67,7 @@ where
     }
 }
 
-impl SpanTraceExtract for &(dyn Error + 'static) {
+impl ExtractSpanTrace for &(dyn Error + 'static) {
     fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<TracedError>().map(|e| &e.spantrace)
     }

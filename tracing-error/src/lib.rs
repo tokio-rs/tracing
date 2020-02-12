@@ -20,6 +20,15 @@
 //!
 //! *Compiler support: requires `rustc` 1.39+*
 //!
+//! ## Feature Flags
+//!
+//! - `stack-error` - Enables an unstable experimental version of TracedError that is parameterized
+//! on the error it wraps, letting it store the error on the stack rather than on the heap in a Box
+//! while still allowing the `SpanTrace`s to be extracted from the error regardless of what type it
+//! is parameterized on. It does so by inserting a dummy error into the chain and uses the `source`
+//! call on this dummy error to transmute the pointer to itself to a type erased version from which
+//! we can extract the actual SpanTrace.
+//!
 //! ## Usage
 //!
 //! Currently, `tracing-error` provides the [`SpanTrace`] type, which captures
@@ -172,13 +181,13 @@ pub trait InstrumentResult<T> {
 }
 
 /// A trait for extracting SpanTraces created by `in_current_span()` from `dyn Error` trait objects
-pub trait SpanTraceExtract {
+pub trait ExtractSpanTrace {
     /// Attempts to downcast to a `TracedError` and return a reference to its SpanTrace
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use tracing_error::SpanTraceExtract;
+    /// use tracing_error::ExtractSpanTrace;
     /// use std::error::Error;
     ///
     /// fn print_span_trace(e: &(dyn Error + 'static)) {
@@ -193,8 +202,8 @@ pub trait SpanTraceExtract {
 
 /// The `tracing-error` prelude.
 ///
-/// This brings into scope the `InstrumentError` and `SpanTraceExtract` extension traits that are used to
+/// This brings into scope the `InstrumentError` and `ExtractSpanTrace` extension traits that are used to
 /// attach Spantraces to errors and subsequently retrieve them from dyn Errors.
 pub mod prelude {
-    pub use crate::{InstrumentError as _, InstrumentResult as _, SpanTraceExtract as _};
+    pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }
