@@ -276,20 +276,32 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
-        SCOPE.with(|scope| {
-            for filter in scope.borrow().iter() {
-                if filter >= level {
-                    return true;
+        // is it possible for a dynamic filter directive to enable this event?
+        if self.dynamics.max_level >= *level {
+            let enabled_by_scope = SCOPE.with(|scope| {
+                for filter in scope.borrow().iter() {
+                    if filter >= level {
+                        return true;
+                    }
                 }
+                false
+            });
+            if enabled_by_scope {
+                return true;
             }
+        }
 
+        // is it possible for a static filter directive to enable this event?
+        if self.statics.max_level >= *level {
             // Otherwise, fall back to checking if the callsite is
             // statically enabled.
             // TODO(eliza): we *might* want to check this only if the `log`
             // feature is enabled, since if this is a `tracing` event with a
             // real callsite, it would already have been statically enabled...
-            self.statics.enabled(metadata)
-        })
+            return self.statics.enabled(metadata);
+        }
+
+        false
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
