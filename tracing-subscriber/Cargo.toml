@@ -74,5 +74,9 @@ name = "filter"
 harness = false
 
 [[bench]]
+name = "filter_log"
+harness = false
+
+[[bench]]
 name = "fmt"
 harness = false
