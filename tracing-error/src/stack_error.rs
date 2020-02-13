@@ -134,12 +134,14 @@ impl Error for ErrorImpl<Erased> {
 
 impl Debug for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Instrumented Error SpanTrace:")?;
         Debug::fmt(&self.span_trace, f)
     }
 }
 
 impl Display for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Instrumented Error SpanTrace:")?;
         Display::fmt(&self.span_trace, f)
     }
 }

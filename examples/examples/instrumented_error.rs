@@ -49,15 +49,34 @@ fn main() {
         Ok(result) => println!("did something successfully: {}", result),
         Err(e) => {
             let trait_object: Box<dyn Error + 'static> = Box::new(e);
-            let mut error = Some(trait_object.as_ref());
-            while let Some(err) = error {
-                if let Some(spantrace) = err.span_trace() {
-                    eprintln!("found a spantrace!:\n{}", spantrace);
-                } else {
-                    eprintln!("error: {}", err);
-                }
-                error = err.source();
-            }
+            eprintln!("printing error chain naively");
+            print_naive_spantraces(trait_object.as_ref());
+
+            eprintln!("\nprinting error with extract method");
+            print_extracted_spantraces(trait_object.as_ref());
         }
     };
+}
+
+fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
+    let mut error = Some(error);
+    while let Some(err) = error {
+        if let Some(spantrace) = err.span_trace() {
+            eprintln!("found a spantrace!:\n{}", spantrace);
+        } else {
+            eprintln!("error: {}", err);
+        }
+        error = err.source();
+    }
+}
+
+fn print_naive_spantraces(error: &(dyn Error + 'static)) {
+    let mut error = Some(error);
+    let mut ind = 0;
+    eprintln!("Error:");
+    while let Some(err) = error {
+        eprintln!("{:>4}: {}", ind, err);
+        error = err.source();
+        ind += 1;
+    }
 }
