@@ -140,21 +140,20 @@ impl fmt::Display for SpanTrace {
         let mut err = Ok(());
         let mut span = 0;
 
-        write!(f, "span backtrace:")?;
         self.with_spans(|metadata, fields| {
+            if span > 0 {
+                try_bool!(write!(f, "\n",), err);
+            }
+
             try_bool!(
-                write!(
-                    f,
-                    "\n{:>4}: {}::{}",
-                    span,
-                    metadata.target(),
-                    metadata.name()
-                ),
+                write!(f, "{:>4}: {}::{}", span, metadata.target(), metadata.name()),
                 err
             );
+
             if !fields.is_empty() {
                 try_bool!(write!(f, "\n           with {}", fields), err);
             }
+
             if let Some((file, line)) = metadata
                 .file()
                 .and_then(|file| metadata.line().map(|line| (file, line)))
@@ -170,8 +169,46 @@ impl fmt::Display for SpanTrace {
     }
 }
 
+struct SpanTraceFrame<'a> {
+    metadata: &'a Metadata<'a>,
+    fields: &'a str,
+}
+
+impl<'a> fmt::Debug for SpanTraceFrame<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{{ target: {:?}, name: {:?}",
+            self.metadata.target(),
+            self.metadata.name()
+        )?;
+
+        if !self.fields.is_empty() {
+            write!(f, ", fields: {:?}", self.fields)?;
+        }
+
+        if let Some((file, line)) = self
+            .metadata
+            .file()
+            .and_then(|file| self.metadata.line().map(|line| (file, line)))
+        {
+            write!(f, ", file: {:?}, line: {:?}", file, line)?;
+        }
+
+        write!(f, " }}")?;
+
+        Ok(())
+    }
+}
+
 impl fmt::Debug for SpanTrace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        write!(f, "SpanTrace ")?;
+        let mut dbg = f.debug_list();
+        self.with_spans(|metadata, fields| {
+            dbg.entry(&SpanTraceFrame { metadata, fields });
+            true
+        });
+        dbg.finish()
     }
 }

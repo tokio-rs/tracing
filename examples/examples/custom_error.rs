@@ -28,7 +28,10 @@ impl Error for FooError {}
 impl fmt::Display for FooError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(self.message)?;
-        write!(f, "\n{}", self.context)
+        write!(f, "\n\nspan backtrace:\n{}", self.context)?;
+        write!(f, "\n\ndebug span backtrace: {:?}", self.context)?;
+        write!(f, "\n\nalt debug span backtrace: {:#?}", self.context)?;
+        Ok(())
     }
 }
 
