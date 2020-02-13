@@ -59,7 +59,7 @@ impl Error for ErrorImpl {
 
 impl Debug for ErrorImpl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Instrumented Error SpanTrace:")?;
+        writeln!(f, "span backtrace:")?;
         Debug::fmt(&self.span_trace, f)
     }
 }
