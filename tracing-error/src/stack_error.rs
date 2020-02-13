@@ -39,7 +39,7 @@ where
         Self {
             inner: ErrorImpl {
                 vtable,
-                spantrace: SpanTrace::capture(),
+                span_trace: SpanTrace::capture(),
                 error,
             },
         }
@@ -49,7 +49,7 @@ where
 #[repr(C)]
 struct ErrorImpl<E> {
     vtable: &'static ErrorVTable,
-    spantrace: SpanTrace,
+    span_trace: SpanTrace,
     // NOTE: Don't use directly. Use only through vtable. Erased type may have
     // different alignment.
     error: E,
@@ -86,7 +86,10 @@ where
     &(*(e as *const ErrorImpl<Erased> as *const ErrorImpl<E>)).error
 }
 
-impl<E> Error for TracedError<E> {
+impl<E> Error for TracedError<E>
+where
+    E: std::error::Error + 'static,
+{
     // # SAFETY
     //
     // This function is safe so long as all functions on `ErrorImpl<Erased>` only ever access the
@@ -105,15 +108,21 @@ impl<E> Error for TracedError<E> {
     }
 }
 
-impl<E> Debug for TracedError<E> {
+impl<E> Debug for TracedError<E>
+where
+    E: std::error::Error,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TRACED ERROR PLACEHOLDER")
+        Debug::fmt(&self.inner.error, f)
     }
 }
 
-impl<E> Display for TracedError<E> {
+impl<E> Display for TracedError<E>
+where
+    E: std::error::Error,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TRACED ERROR PLACEHOLDER")
+        Display::fmt(&self.inner.error, f)
     }
 }
 
@@ -125,40 +134,13 @@ impl Error for ErrorImpl<Erased> {
 
 impl Debug for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(self.error(), f)
+        Debug::fmt(&self.span_trace, f)
     }
 }
 
 impl Display for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.error(), f)
-    }
-}
-
-impl<E> Error for ErrorImpl<E>
-where
-    E: Error + Send + Sync + 'static,
-{
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&self.error)
-    }
-}
-
-impl<E> Debug for ErrorImpl<E>
-where
-    E: Error + Send + Sync + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&self.error, f)
-    }
-}
-
-impl<E> Display for ErrorImpl<E>
-where
-    E: Error + Send + Sync + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.error, f)
+        Display::fmt(&self.span_trace, f)
     }
 }
 
@@ -187,6 +169,6 @@ where
 impl ExtractSpanTrace for &(dyn Error + 'static) {
     fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<ErrorImpl<Erased>>()
-            .map(|inner| &inner.spantrace)
+            .map(|inner| &inner.span_trace)
     }
 }

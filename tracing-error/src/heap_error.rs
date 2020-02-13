@@ -11,8 +11,12 @@ use std::fmt::{self, Debug, Display};
 /// implementations. The `SpanTrace` must be extracted via the `ExtractSpanTrace` trait in order to
 /// be printed.
 pub struct TracedError {
-    spantrace: SpanTrace,
-    inner: Box<dyn Error + Send + Sync + 'static>,
+    inner: ErrorImpl,
+}
+
+struct ErrorImpl {
+    span_trace: SpanTrace,
+    error: Box<dyn Error + Send + Sync + 'static>,
 }
 
 impl TracedError {
@@ -21,27 +25,47 @@ impl TracedError {
         E: Error + Send + Sync + 'static,
     {
         Self {
-            spantrace: SpanTrace::capture(),
-            inner: Box::new(error),
+            inner: ErrorImpl {
+                span_trace: SpanTrace::capture(),
+                error: Box::new(error),
+            },
         }
     }
 }
 
 impl Error for TracedError {
     fn source<'a>(&'a self) -> Option<&'a (dyn Error + 'static)> {
-        self.inner.source()
+        Some(&self.inner)
     }
 }
 
 impl Debug for TracedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
+        Debug::fmt(&self.inner.error, f)
     }
 }
 
 impl Display for TracedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.inner, f)
+        Display::fmt(&self.inner.error, f)
+    }
+}
+
+impl Error for ErrorImpl {
+    fn source<'a>(&'a self) -> Option<&'a (dyn Error + 'static)> {
+        self.error.source()
+    }
+}
+
+impl Debug for ErrorImpl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&self.span_trace, f)
+    }
+}
+
+impl Display for ErrorImpl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.span_trace, f)
     }
 }
 
@@ -69,6 +93,6 @@ where
 
 impl ExtractSpanTrace for &(dyn Error + 'static) {
     fn span_trace(&self) -> Option<&SpanTrace> {
-        self.downcast_ref::<TracedError>().map(|e| &e.spantrace)
+        self.downcast_ref::<ErrorImpl>().map(|e| &e.span_trace)
     }
 }
