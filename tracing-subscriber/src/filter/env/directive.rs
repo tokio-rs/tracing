@@ -483,7 +483,7 @@ impl Statics {
     pub(crate) fn enabled(&self, meta: &Metadata<'_>) -> bool {
         let level = meta.level();
         match self.directives_for(meta).next() {
-            Some(d) =>  d.level >= *level,
+            Some(d) => d.level >= *level,
             None => false,
         }
     }
