@@ -2,14 +2,7 @@ use super::super::level::{self, LevelFilter};
 use super::{field, FieldMap, FilterVec};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{
-    cmp::Ordering,
-    collections::btree_set::{self, BTreeSet},
-    error::Error,
-    fmt,
-    iter::FromIterator,
-    str::FromStr,
-};
+use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Metadata};
 
 /// A single filtering directive.
@@ -45,7 +38,7 @@ pub(crate) type Statics = DirectiveSet<StaticDirective>;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct DirectiveSet<T> {
-    directives: BTreeSet<T>,
+    directives: Vec<T>,
     max_level: LevelFilter,
 }
 
@@ -134,7 +127,7 @@ impl Directive {
         directives: impl IntoIterator<Item = Directive>,
     ) -> (Dynamics, Statics) {
         // TODO(eliza): this could be made more efficient...
-        let (dyns, stats): (BTreeSet<Directive>, BTreeSet<Directive>) =
+        let (dyns, stats): (Vec<Directive>, Vec<Directive>) =
             directives.into_iter().partition(Directive::is_dynamic);
         let statics = stats
             .into_iter()
@@ -391,7 +384,7 @@ impl<T> DirectiveSet<T> {
         self.directives.is_empty()
     }
 
-    pub(crate) fn iter(&self) -> btree_set::Iter<'_, T> {
+    pub(crate) fn iter(&self) -> std::slice::Iter<'_, T> {
         self.directives.iter()
     }
 }
@@ -399,7 +392,7 @@ impl<T> DirectiveSet<T> {
 impl<T: Ord> Default for DirectiveSet<T> {
     fn default() -> Self {
         Self {
-            directives: BTreeSet::new(),
+            directives: Vec::new(),
             max_level: LevelFilter::OFF,
         }
     }
@@ -420,7 +413,10 @@ impl<T: Match + Ord> DirectiveSet<T> {
         if *level > self.max_level {
             self.max_level = level.clone();
         }
-        let _ = self.directives.replace(directive);
+        match self.directives.binary_search(&directive) {
+            Ok(i) => self.directives[i] = directive,
+            Err(i) => self.directives.insert(i, directive),
+        }
     }
 }
 
