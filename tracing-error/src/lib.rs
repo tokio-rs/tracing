@@ -16,29 +16,26 @@
 //!
 //! * [`ErrorLayer`], a [subscriber layer] which enables capturing `SpanTrace`s
 //!
+//! * [`InstrumentResult`]/[`InstrumentError`], traits for bundling errors with a [`SpanTrace`]
+//! with their [`in_current_span()`] methods.
+//!
+//! * [`ExtractSpanTrace`], a trait for extracting `SpanTrace`s from behind `dyn Error` trait
+//! objects.
+//!
 //! **Note**: This crate is currently experimental.
 //!
 //! *Compiler support: requires `rustc` 1.39+*
 //!
 //! ## Feature Flags
 //!
-//! - `stack-error` - Enables an unstable experimental version of TracedError that is parameterized
-//! on the error it wraps, letting it store the error on the stack rather than on the heap in a Box
-//! while still allowing the `SpanTrace`s to be extracted from the error regardless of what type it
-//! is parameterized on. It does so by inserting a dummy error into the chain and uses the `source`
-//! call on this dummy error to transmute the pointer to itself to a type erased version from which
-//! we can extract the actual SpanTrace.
+//! - `stack-error` - Enables an experimental version of [`TracedError`] that statically wraps an error
+//! type without using Heap Allocations which can still extract its SpanTrace from behind a
+//! [`std::error::Error`] trait object via type erasure.
 //!
 //! ## Usage
 //!
-//! Currently, `tracing-error` provides the [`SpanTrace`] type, which captures
-//! the current `tracing` span context when it is constructed and allows it to
-//! be displayed at a later time.
-//!
-//! This crate does not _currently_ provide any actual error types implementing
-//! `std::error::Error`. Instead, user-constructed errors or libraries
-//! implementing error types may capture a [`SpanTrace`] and include it as part
-//! of their error types.
+//! `tracing-error` provides the [`SpanTrace`] type, which captures the current `tracing` span
+//! context when it is constructed and allows it to be displayed at a later time.
 //!
 //! For example:
 //!
@@ -74,8 +71,59 @@
 //!     }
 //! }
 //! ```
-//! In the future, this crate may also provide its own `Error` types as well,
-//! for users who do not wish to use other error-handling libraries.
+//!
+//! This crate also provides the [`InstrumentResult`]/[`InstrumentError`] traits which can be used
+//! to wrap errors with a [`TracedError`] which bundles the inner error with a [`SpanTrace`].
+//!
+//! ```rust
+//! # use std::error::Error;
+//! use tracing_error::InstrumentResult;
+//!
+//! # fn fake_main() -> Result<(), Box<dyn Error>> {
+//! std::fs::read_to_string("myfile.txt").in_current_span()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Once an error has been wrapped with with a [`TracedError`] the [`SpanTrace`] can be extracted
+//! one of 3 ways, either via [`TracedError`]'s `Display`/`Debug` implementations, or via the
+//! [`ExtractSpanTrace`] trait.
+//!
+//! ```rust
+//! use std::error::Error;
+//! use tracing_error::ExtractSpanTrace as _;
+//!
+//! fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
+//!     let mut error = Some(error);
+//!     let mut ind = 0;
+//!
+//!     eprintln!("Error:");
+//!
+//!     while let Some(err) = error {
+//!         if let Some(spantrace) = err.span_trace() {
+//!             eprintln!("found a spantrace!:\n{}", spantrace);
+//!         } else {
+//!             eprintln!("{:>4}: {}", ind, err);
+//!         }
+//!
+//!         error = err.source();
+//!         ind += 1;
+//!     }
+//! }
+//!
+//! fn print_naive_spantraces(error: &(dyn Error + 'static)) {
+//!     let mut error = Some(error);
+//!     let mut ind = 0;
+//!
+//!     eprintln!("Error:");
+//!
+//!     while let Some(err) = error {
+//!         eprintln!("{:>4}: {}", ind, err);
+//!         error = err.source();
+//!         ind += 1;
+//!     }
+//! }
+//! ```
 //!
 //! Applications that wish to use `tracing-error`-enabled errors should
 //! construct an [`ErrorLayer`] and add it to their [`Subscriber`] in order to
@@ -98,10 +146,16 @@
 //!
 //! [`SpanTrace`]: struct.SpanTrace.html
 //! [`ErrorLayer`]: struct.ErrorLayer.html
+//! [`TracedError`]: struct.ErrorLayer.html
+//! [`InstrumentResult`]: trait.SpanTrace.html
+//! [`InstrumentError`]: trait.SpanTrace.html
+//! [`ExtractSpanTrace`]: trait.SpanTrace.html
+//! [`in_current_span()`]: trait.InstrumentResult.html#tymethod.in_current_span
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [event]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 //! [`tracing`]: https://docs.rs/tracing
+//! [`std::error::Error`]: https://doc.rust-lang.org/nightly/std/error/trait.Error.html
 #![doc(html_root_url = "https://docs.rs/tracing-error/0.1.1")]
 #![warn(
     missing_debug_implementations,

@@ -6,12 +6,6 @@ use std::fmt::{self, Debug, Display};
 struct Erased;
 
 /// A wrapper type for Errors that bundles a SpanTrace with an inner `Error` type.
-///
-/// # Notes
-///
-/// This type does not print the wrapped `SpanTrace` in either its `Debug` or `Display`
-/// implementations. The `SpanTrace` must be extracted via the `ExtractSpanTrace` trait in order to
-/// be printed.
 pub struct TracedError<E> {
     inner: ErrorImpl<E>,
 }

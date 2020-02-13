@@ -62,13 +62,19 @@ fn main() {
 // before printing before printing it.
 fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
     let mut error = Some(error);
+    let mut ind = 0;
+
+    eprintln!("Error:");
+
     while let Some(err) = error {
         if let Some(spantrace) = err.span_trace() {
             eprintln!("found a spantrace!:\n{}", spantrace);
         } else {
-            eprintln!("error: {}", err);
+            eprintln!("{:>4}: {}", ind, err);
         }
+
         error = err.source();
+        ind += 1;
     }
 }
 
