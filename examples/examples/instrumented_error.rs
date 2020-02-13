@@ -53,8 +53,9 @@ fn main() {
             while let Some(err) = error {
                 if let Some(spantrace) = err.span_trace() {
                     eprintln!("found a spantrace!:\n{}", spantrace);
+                } else {
+                    eprintln!("error: {}", err);
                 }
-                eprintln!("error: {}", err);
                 error = err.source();
             }
         }
