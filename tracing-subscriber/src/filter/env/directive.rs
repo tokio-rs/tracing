@@ -406,6 +406,7 @@ impl<T: Match + Ord> DirectiveSet<T> {
         self.directives
             .iter()
             .filter(move |d| d.cares_about(metadata))
+            .rev()
     }
 
     pub(crate) fn add(&mut self, directive: T) {
