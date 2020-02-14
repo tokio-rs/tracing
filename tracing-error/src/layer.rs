@@ -15,10 +15,10 @@ use tracing_subscriber::{
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [`Layer`]: https://docs.rs/tracing-subscriber/0.2.0/tracing_subscriber/layer/trait.Layer.html
+/// [`Layer`]: https://docs.rs/tracing-subscriber/0.2.1/tracing_subscriber/layer/trait.Layer.html
 /// [`SpanTrace`]: ../struct.SpanTrace.html
-/// [field formatter]: https://docs.rs/tracing-subscriber/0.2.0/tracing_subscriber/fmt/trait.FormatFields.html
-/// [default format]: https://docs.rs/tracing-subscriber/0.2.0/tracing_subscriber/fmt/format/struct.DefaultFields.html
+/// [field formatter]: https://docs.rs/tracing-subscriber/0.2.1/tracing_subscriber/fmt/trait.FormatFields.html
+/// [default format]: https://docs.rs/tracing-subscriber/0.2.1/tracing_subscriber/fmt/format/struct.DefaultFields.html
 pub struct ErrorLayer<S, F = DefaultFields> {
     format: F,
 
@@ -70,7 +70,7 @@ where
 {
     /// Returns a new `ErrorLayer` with the provided [field formatter].
     ///
-    /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.0/tracing_subscriber/fmt/trait.FormatFields.html
+    /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.1/tracing_subscriber/fmt/trait.FormatFields.html
     pub fn new(format: F) -> Self {
         Self {
             format,
