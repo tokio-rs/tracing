@@ -72,7 +72,7 @@
 //! }
 //! ```
 //!
-//! This crate also provides the [`InstrumentResult`]/[`InstrumentError`] traits which can be used
+//! This crate also provides the [`InstrumentResult`] and [`InstrumentError`] traits, which can be used
 //! to wrap errors with a [`TracedError`] which bundles the inner error with a [`SpanTrace`].
 //!
 //! ```rust
