@@ -77,7 +77,7 @@
 //!
 //! ```rust
 //! # use std::error::Error;
-//! use tracing_error::InstrumentResult;
+//! use tracing_error::prelude::*;
 //!
 //! # fn fake_main() -> Result<(), Box<dyn Error>> {
 //! std::fs::read_to_string("myfile.txt").in_current_span()?;
