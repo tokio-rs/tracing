@@ -19,7 +19,7 @@
 //! * [`InstrumentResult`]/[`InstrumentError`], traits for bundling errors with a [`SpanTrace`]
 //! with their [`in_current_span()`] methods.
 //!
-//! * [`ExtractSpanTrace`], a trait for extracting `SpanTrace`s from behind `dyn Error` trait
+//! * [`ExtractSpanTrace`]extension trait, for extracting `SpanTrace`s from behind `dyn Error` trait
 //! objects.
 //!
 //! **Note**: This crate is currently experimental.
