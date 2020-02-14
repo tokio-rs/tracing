@@ -39,7 +39,7 @@ pub(crate) type Statics = DirectiveSet<StaticDirective>;
 #[derive(Debug, PartialEq)]
 pub(crate) struct DirectiveSet<T> {
     directives: Vec<T>,
-    max_level: LevelFilter,
+    pub(crate) max_level: LevelFilter,
 }
 
 pub(crate) type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
@@ -406,6 +406,7 @@ impl<T: Match + Ord> DirectiveSet<T> {
         self.directives
             .iter()
             .filter(move |d| d.cares_about(metadata))
+            .rev()
     }
 
     pub(crate) fn add(&mut self, directive: T) {
@@ -482,7 +483,10 @@ impl Dynamics {
 impl Statics {
     pub(crate) fn enabled(&self, meta: &Metadata<'_>) -> bool {
         let level = meta.level();
-        self.directives_for(meta).any(|d| d.level >= *level)
+        match self.directives_for(meta).next() {
+            Some(d) => d.level >= *level,
+            None => false,
+        }
     }
 }
 
