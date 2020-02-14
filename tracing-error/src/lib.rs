@@ -20,8 +20,8 @@
 //! provide an [`in_current_span()`] method for bundling errors with a
 //! [`SpanTrace`].
 //!
-//! * [`ExtractSpanTrace`], a trait for extracting `SpanTrace`s from behind `dyn
-//! Error` trait objects.
+//! * [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
+//! behind `dyn Error` trait objects.
 //!
 //! **Note**: This crate is currently experimental.
 //!
@@ -75,13 +75,13 @@
 //! }
 //! ```
 //!
-//! This crate also provides the [`InstrumentResult`]/[`InstrumentError`] traits
-//! which can be used to wrap errors with a [`TracedError`] which bundles the
-//! inner error with a [`SpanTrace`].
+//! This crate also provides the [`InstrumentResult`] and [`InstrumentError`]
+//! traits, which can be used to wrap errors with a [`TracedError`] which
+//! bundles the inner error with a [`SpanTrace`].
 //!
 //! ```rust
 //! # use std::error::Error;
-//! use tracing_error::InstrumentResult;
+//! use tracing_error::prelude::*;
 //!
 //! # fn fake_main() -> Result<(), Box<dyn Error>> {
 //! std::fs::read_to_string("myfile.txt").in_current_span()?;
