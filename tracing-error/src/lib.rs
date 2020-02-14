@@ -108,7 +108,7 @@
 //!
 //!     while let Some(err) = error {
 //!         if let Some(spantrace) = err.span_trace() {
-//!             eprintln!("found a spantrace!:\n{}", spantrace);
+//!             eprintln!("found a spantrace:\n{}", spantrace);
 //!         } else {
 //!             eprintln!("{:>4}: {}", ind, err);
 //!         }
