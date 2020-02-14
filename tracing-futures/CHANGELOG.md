@@ -1,3 +1,15 @@
+# 0.2.2 (Feb 14, 2020)
+
+### Added
+
+- Support for `futures` 0.3 `Stream`s and `Sink`s (#544)
+
+### Fixed
+
+- Compilation errors when using the `futures-03` feature (#576)
+
+Thanks to @obergner and @najamelan for their contributions to this release!
+
 # 0.2.1 (Jan 15, 2020)
 
 ### Added
