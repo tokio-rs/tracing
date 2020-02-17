@@ -381,6 +381,20 @@ impl<T> Instrumented<T> {
         &mut self.inner
     }
 
+    /// Get a pinned reference to the wrapped type.
+    #[cfg(feature = "std-future")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
+    pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
+        self.project_ref().inner
+    }
+
+    /// Get a pinned mutable reference to the wrapped type.
+    #[cfg(feature = "std-future")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
+    pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+        self.project().inner
+    }
+
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
@@ -430,6 +444,20 @@ impl<T> WithDispatch<T> {
     /// Borrows the `Dispatch` that this type is instrumented by.
     pub fn dispatch(&self) -> &Dispatch {
         &self.dispatch
+    }
+
+    /// Get a pinned reference to the wrapped type.
+    #[cfg(feature = "std-future")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
+    pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
+        self.project_ref().inner
+    }
+
+    /// Get a pinned mutable reference to the wrapped type.
+    #[cfg(feature = "std-future")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
+    pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+        self.project().inner
     }
 
     /// Borrows the wrapped type.
