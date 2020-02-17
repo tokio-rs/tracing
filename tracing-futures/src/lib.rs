@@ -459,7 +459,7 @@ impl<T> WithDispatch<T> {
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
         self.project().inner
     }
-  
+
     /// Borrows the wrapped type.
     pub fn inner(&self) -> &T {
         &self.inner
