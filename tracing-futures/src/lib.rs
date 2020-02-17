@@ -419,12 +419,8 @@ impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDis
 
 #[cfg(feature = "std")]
 impl<T> WithDispatch<T> {
-    #[cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03"))]
-    #[cfg_attr(
-        docsrs,
-        doc(cfg(any(feature = "tokio", feature = "tokio-alpha", feature = "futures-03")))
-    )]
-    pub(crate) fn with_dispatch<U: Sized>(&self, inner: U) -> WithDispatch<U> {
+    /// Wrap a future, stream, sink or executor with the same subscriber as this WithDispatch.
+    pub fn with_dispatch<U>(&self, inner: U) -> WithDispatch<U> {
         WithDispatch {
             dispatch: self.dispatch.clone(),
             inner,
@@ -434,6 +430,16 @@ impl<T> WithDispatch<T> {
     /// Borrows the `Dispatch` that this type is instrumented by.
     pub fn dispatch(&self) -> &Dispatch {
         &self.dispatch
+    }
+
+    /// Borrows the wrapped type.
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
+
+    /// Mutably borrows the wrapped type.
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 
     /// Consumes the `WithDispatch`, returning the wrapped type.
