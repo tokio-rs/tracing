@@ -137,6 +137,7 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) timer: T,
     pub(crate) ansi: bool,
     pub(crate) display_target: bool,
+    pub(crate) display_level: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -146,6 +147,7 @@ impl Default for Format<Full, SystemTime> {
             timer: SystemTime,
             ansi: true,
             display_target: true,
+            display_level: true,
         }
     }
 }
@@ -160,6 +162,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_level: self.display_level,
         }
     }
 
@@ -174,6 +177,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_level: self.display_level,
         }
     }
 
@@ -194,6 +198,7 @@ impl<F, T> Format<F, T> {
             timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_level: self.display_level,
         }
     }
 
@@ -204,6 +209,7 @@ impl<F, T> Format<F, T> {
             timer: (),
             ansi: self.ansi,
             display_target: self.display_target,
+            display_level: self.display_level,
         }
     }
 
@@ -216,6 +222,14 @@ impl<F, T> Format<F, T> {
     pub fn with_target(self, display_target: bool) -> Format<F, T> {
         Format {
             display_target,
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's level is displayed.
+    pub fn with_level(self, display_level: bool) -> Format<F, T> {
+        Format {
+            display_level,
             ..self
         }
     }
@@ -244,21 +258,32 @@ where
         #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
-        let (fmt_level, full_ctx) = {
+        if self.display_level {
+            let fmt_level = {
+                #[cfg(feature = "ansi")]
+                {
+                    FmtLevel::new(meta.level(), self.ansi)
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    FmtLevel::new(meta.level())
+                }
+            };
+            write!(writer, "{} ", fmt_level)?;
+        }
+
+        let full_ctx = {
             #[cfg(feature = "ansi")]
             {
-                (
-                    FmtLevel::new(meta.level(), self.ansi),
-                    FullCtx::new(ctx, self.ansi),
-                )
+                FullCtx::new(ctx, self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
-                (FmtLevel::new(meta.level()), FullCtx::new(&ctx))
+                FullCtx::new(&ctx)
             }
         };
 
-        write!(writer, "{} {}", fmt_level, full_ctx)?;
+        write!(writer, "{}", full_ctx)?;
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
@@ -798,5 +823,29 @@ mod test {
 
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert_eq!(expected, actual.as_str());
+    }
+
+    #[test]
+    fn without_level() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("hello");
+        });
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(
+            "fake time tracing_subscriber::fmt::format::test: hello\n",
+            actual.as_str()
+        );
     }
 }
