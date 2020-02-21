@@ -18,13 +18,12 @@
 //! Spans are created using the [`span!`] macro. This macro is invoked with the
 //! following arguments, in order:
 //!
-//! - The [`target`] and/or [`parent`](parent) attributes, if the user wishes to override
-//!   their default values.
+//! - The [`target`] and/or [`parent`][parent] attributes, if the user wishes to
+//!   override their default values.
 //! - The span's [verbosity level]
 //! - A string literal providing the span's name.
 //! - Finally, between zero and 32 arbitrary key/value fields.
 //!
-//! [parent]: #span-relationships
 //! [`target`]: ../struct.Metadata.html#method.target
 //!
 //! For example:
@@ -47,12 +46,10 @@
 //!
 //! The [`Attributes`] type contains data associated with a span, and is
 //! provided to the [`Subscriber`] when a new span is created. It contains
-//! the span's metadata, the ID of [the span's parent] if one was explicitly set,
-//! and any fields whose values were recorded when the span was constructed.
-//! The subscriber, which is responsible for recording `tracing` data, can then
-//! store or record these values.
-//!
-//! [the span's parent]: #span-relationships
+//! the span's metadata, the ID of [the span's parent][parent] if one was
+//! explicitly set, and any fields whose values were recorded when the span was
+//! constructed. The subscriber, which is responsible for recording `tracing`
+//! data, can then store or record these values.
 //!
 //! # The Span Lifecycle
 //!
@@ -298,6 +295,7 @@
 //! [`in_scope`]: struct.Span.html#method.in_scope
 //! [`follows_from`]: struct.Span.html#method.follows_from
 //! [guard]: struct.Entered.html
+//! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 
 use crate::stdlib::{

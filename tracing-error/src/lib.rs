@@ -90,7 +90,8 @@
 //! [`SpanTrace`]: struct.SpanTrace.html
 //! [`ErrorLayer`]: struct.ErrorLayer.html
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [event]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+//! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 //! [`tracing`]: https://docs.rs/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-error/0.1.1")]

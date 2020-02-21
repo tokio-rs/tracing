@@ -127,7 +127,7 @@ extern crate alloc;
 ///
 /// [`Identifier`]: callsite/struct.Identifier.html
 /// [`Callsite`]: callsite/trait.Callsite.html
-/// [`Callsite`]: callsite/trait.Callsite.html#method.id
+/// [`Callsite::id`]: callsite/trait.Callsite.html#method.id
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
