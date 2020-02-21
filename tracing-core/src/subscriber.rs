@@ -452,8 +452,8 @@ impl dyn Subscriber {
 /// `Subscriber`s return an `Interest` from their [`register_callsite`] methods
 /// in order to determine whether that span should be enabled or disabled.
 ///
-/// [`Subscriber`] ../trait.Subscriber.html
-/// [clone_span]: ../trait.Subscriber.html#method.register_callsite
+/// [`Subscriber`]: ../trait.Subscriber.html
+/// [`register_callsite`]: ../trait.Subscriber.html#method.register_callsite
 #[derive(Clone, Debug)]
 pub struct Interest(InterestKind);
 

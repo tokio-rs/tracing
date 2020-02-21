@@ -12,8 +12,11 @@
 //! [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 //! [`TraceLogger`]: struct.TraceLogger.html
 //! [`log::Record`]: https://docs.rs/log/0.4.8/log/struct.Record.html
-//! [flags]: https://docs.rs/tracing/0.1.10/tracing/#crate-feature-flags
-#![deprecated(since = "0.1.1", note = "use the `tracing` crate's \"log\" feature flag instead")]
+//! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
+#![deprecated(
+    since = "0.1.1",
+    note = "use the `tracing` crate's \"log\" feature flag instead"
+)]
 use crate::AsLog;
 use std::{
     cell::RefCell,
@@ -38,6 +41,7 @@ use tracing_core::{
 /// flags][flags] on the `tracing` crate should be used instead.
 ///
 /// [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
+/// [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 pub struct TraceLogger {
     settings: Builder,
     spans: Mutex<HashMap<Id, SpanLineBuilder>>,

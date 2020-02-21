@@ -61,7 +61,7 @@ use tracing::{Metadata, Span};
 /// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
 /// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/
-/// [`with_spans`] method: #method.with_spans.html
+/// [`with_spans`]: #method.with_spans
 #[derive(Clone)]
 pub struct SpanTrace {
     span: Span,
