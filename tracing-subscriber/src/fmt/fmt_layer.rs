@@ -64,6 +64,7 @@ pub struct Layer<
 ///
 /// let fmt_layer = fmt::Layer::builder()
 ///    .with_target(false) // don't include event targets when logging
+///    .with_level(false) // don't include event levels when logging
 ///    .finish();
 ///
 /// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
@@ -232,6 +233,16 @@ where
     pub fn with_target(self, display_target: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
         LayerBuilder {
             fmt_event: self.fmt_event.with_target(display_target),
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets whether or not an event's level is displayed.
+    pub fn with_level(self, display_level: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
+        LayerBuilder {
+            fmt_event: self.fmt_event.with_level(display_level),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
             _inner: self._inner,
