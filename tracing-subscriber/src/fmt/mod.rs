@@ -406,6 +406,17 @@ where
         }
     }
 
+    /// Sets whether or not an event's level is displayed.
+    pub fn with_level(
+        self,
+        display_level: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_level(display_level),
+        }
+    }
+
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`].
