@@ -179,7 +179,9 @@ pub struct Parents<'a, R> {
 /// An iterator over a span's parents, starting with the root of the trace
 /// tree.
 ///
-/// For additonal details, see [`Context::scope`].
+/// For additonal details, see [`SpanRef::from_root`].
+///
+/// [`Span::from_root`]: struct.SpanRef.html#method.from_root
 pub struct FromRoot<'a, R: LookupSpan<'a>> {
     #[cfg(feature = "smallvec")]
     inner: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,

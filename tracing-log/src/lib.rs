@@ -86,6 +86,7 @@
 //! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+//! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(

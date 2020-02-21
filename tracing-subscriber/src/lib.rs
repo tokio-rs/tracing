@@ -132,8 +132,11 @@ impl CurrentSpan {
         }
     }
 
-    /// Returns the [`Id`](::Id) of the span in which the current thread is
+    /// Returns the [`Id`] of the span in which the current thread is
     /// executing, or `None` if it is not inside of a span.
+    ///
+    ///
+    /// [`Id`]: https://docs.rs/tracing/latest/tracing/span/struct.Id.html
     pub fn id(&self) -> Option<Id> {
         self.current.with(|current| current.last().cloned())?
     }

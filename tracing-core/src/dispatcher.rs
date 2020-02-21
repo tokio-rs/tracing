@@ -477,7 +477,7 @@ impl Dispatch {
     /// `Dispatch` forwards to.
     ///
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`event`]: ../subscriber/trait.Subscriber.html#method.event
+    /// [`enter`]: ../subscriber/trait.Subscriber.html#method.enter
     #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.subscriber.enter(span);
@@ -485,8 +485,11 @@ impl Dispatch {
 
     /// Records that a span has been exited.
     ///
-    /// This calls the [`exit`](::Subscriber::exit) function on the `Subscriber`
-    /// that this `Dispatch` forwards to.
+    /// This calls the [`exit`] function on the [`Subscriber`] that this
+    /// `Dispatch` forwards to.
+    ///
+    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+    /// [`exit`]: ../subscriber/trait.Subscriber.html#method.exit
     #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.subscriber.exit(span);
@@ -526,7 +529,7 @@ impl Dispatch {
     ///
     /// [span ID]: ../span/struct.Id.html
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`clone_span`]: ../subscriber/trait.Subscriber.html#method.clone_span
+    /// [`drop_span`]: ../subscriber/trait.Subscriber.html#method.drop_span
     /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
     /// [`try_close`]: #method.try_close
     #[inline]
