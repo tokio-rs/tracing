@@ -210,8 +210,17 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
             FnArg::Receiver(_) => Box::new(iter::once(Ident::new("self", param.span()))),
         })
-        .filter(|ident| !skips.contains(ident))
         .collect();
+
+    for skip in &skips {
+        if !param_names.contains(skip) {
+            return quote_spanned!(skip.span()=>
+                compile_error!("attempting to skip non-existing parameter")
+            ).into();
+        }
+    }
+
+    let param_names: Vec<Ident> = param_names.into_iter().filter(|ident| !skips.contains(ident)).collect();
 
     let fields = match fields(&args, &param_names) {
         Ok(fields) => fields,
