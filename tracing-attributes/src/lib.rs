@@ -62,7 +62,7 @@
 #![allow(unused)]
 extern crate proc_macro;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::iter;
 
 use proc_macro::TokenStream;
@@ -70,7 +70,7 @@ use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     spanned::Spanned, AttributeArgs, FieldPat, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
     MetaNameValue, NestedMeta, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct,
-    PatType, Signature,
+    PatType, Path, Signature,
 };
 
 /// Instruments a function to create and enter a `tracing` [span] every time
@@ -85,6 +85,15 @@ use syn::{
 /// or costly Debug implementation. Note that:
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
+///
+/// You can also pass additional fields (key-value pairs with arbitrary data)
+/// to the generated span. This is achieved using the `fields` argument on the
+/// `#[instrument]` macro. You can use a string, integer or boolean literal as
+/// a value for each field. The name of the field must be a single valid Rust
+/// identifier, nested (dotted) field names are not supported.
+///
+/// Note that overlap between the names of fields and (non-skipped) arguments
+/// will result in a compile error.
 ///
 /// # Examples
 /// Instrumenting a function:
@@ -123,6 +132,16 @@ use syn::{
 ///
 /// #[instrument(skip(non_debug))]
 /// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+/// ```
+///
+/// To add an additional context to the span, you can pass key-value pairs to `fields`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(fields(foo="bar", id=1, show=true))]
+/// fn my_function(arg: usize) {
 ///     // ...
 /// }
 /// ```
@@ -193,6 +212,12 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         })
         .filter(|ident| !skips.contains(ident))
         .collect();
+
+    let fields = match fields(&args, &param_names) {
+        Ok(fields) => fields,
+        Err(err) => return quote!(#err).into(),
+    };
+
     let param_names_clone = param_names.clone();
 
     // Generate the instrumented function body.
@@ -225,6 +250,19 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     let target = target(&args);
     let span_name = name(&args, ident_str);
 
+    let mut quoted_fields: Vec<_> = param_names
+        .into_iter()
+        .map(|i| quote!(#i = tracing::field::debug(&#i)))
+        .collect();
+    quoted_fields.extend(fields.into_iter().map(|(key, value)| {
+        let value = match value {
+            Some(value) => quote!(#value),
+            None => quote!(tracing::field::Empty),
+        };
+
+        quote!(#key = #value)
+    }));
+
     quote!(
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
@@ -234,7 +272,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
                 target: #target,
                 #level,
                 #span_name,
-                #(#param_names = tracing::field::debug(&#param_names_clone)),*
+                #(#quoted_fields),*
             );
             #body
         }
@@ -350,22 +388,22 @@ fn level(args: &[NestedMeta]) -> impl ToTokens {
 }
 
 fn target(args: &[NestedMeta]) -> impl ToTokens {
-    let mut levels = args.iter().filter_map(|arg| match arg {
+    let mut targets = args.iter().filter_map(|arg| match arg {
         NestedMeta::Meta(Meta::NameValue(MetaNameValue {
             ref path, ref lit, ..
         })) if path.is_ident("target") => Some(lit.clone()),
         _ => None,
     });
-    let level = levels.next();
+    let target = targets.next();
 
-    // If we found more than one arg named "level", that's a syntax error...
-    if let Some(lit) = levels.next() {
+    // If we found more than one arg named "target", that's a syntax error...
+    if let Some(lit) = targets.next() {
         return quote_spanned! {lit.span()=>
             compile_error!("expected only a single `target` argument!")
         };
     }
 
-    match level {
+    match target {
         Some(Lit::Str(ref lit)) => quote!(#lit),
         Some(lit) => quote_spanned! {lit.span()=>
             compile_error!(
@@ -373,6 +411,93 @@ fn target(args: &[NestedMeta]) -> impl ToTokens {
             )
         },
         None => quote!(module_path!()),
+    }
+}
+
+fn fields(
+    args: &[NestedMeta],
+    param_names: &[Ident],
+) -> Result<(Vec<(Ident, Option<Lit>)>), impl ToTokens> {
+    let mut fields = args.iter().filter_map(|arg| match arg {
+        NestedMeta::Meta(Meta::List(MetaList {
+            ref path,
+            ref nested,
+            ..
+        })) if path.is_ident("fields") => Some(nested.clone()),
+        _ => None,
+    });
+    let field_holder = fields.next();
+
+    // If we found more than one arg named "fields", that's a syntax error...
+    if let Some(lit) = fields.next() {
+        return Err(quote_spanned! {lit.span()=>
+            compile_error!("expected only a single `fields` argument!")
+        });
+    }
+
+    match field_holder {
+        Some(fields) => {
+            let mut parsed = Vec::default();
+            let mut visited_keys: HashSet<String> = Default::default();
+            let param_set: HashSet<String> = param_names.iter().map(|i| i.to_string()).collect();
+            for field in fields.into_iter() {
+                let (key, value) = match field {
+                    NestedMeta::Meta(meta) => match meta {
+                        Meta::NameValue(kv) => (kv.path, Some(kv.lit)),
+                        Meta::Path(path) => (path, None),
+                        _ => {
+                            return Err(quote_spanned! {meta.span()=>
+                                compile_error!("each field must be a key with an optional value. Keys must be valid Rust identifiers (nested keys with dots are not supported).")
+                            })
+                        }
+                    },
+                    _ => {
+                        return Err(quote_spanned! {field.span()=>
+                            compile_error!("`fields` argument should be a list of key-value fields")
+                        })
+                    }
+                };
+
+                let key = match key.get_ident() {
+                    Some(key) => key,
+                    None => {
+                        return Err(quote_spanned! {key.span()=>
+                            compile_error!("field keys must be valid Rust identifiers (nested keys with dots are not supported).")
+                        })
+                    }
+                };
+
+                let key_str = key.to_string();
+                if param_set.contains(&key_str) {
+                    return Err(quote_spanned! {key.span()=>
+                        compile_error!("field overlaps with (non-skipped) parameter name")
+                    });
+                }
+
+                if visited_keys.contains(&key_str) {
+                    return Err(quote_spanned! {key.span()=>
+                        compile_error!("each field key must appear at most once")
+                    });
+                } else {
+                    visited_keys.insert(key_str);
+                }
+
+                if let Some(literal) = &value {
+                    match literal {
+                        Lit::Bool(_) | Lit::Str(_) | Lit::Int(_) => {}
+                        _ => {
+                            return Err(quote_spanned! {literal.span()=>
+                                compile_error!("values can be only strings, integers or booleans")
+                            })
+                        }
+                    }
+                }
+
+                parsed.push((key.clone(), value));
+            }
+            Ok(parsed)
+        }
+        None => Ok(Default::default()),
     }
 }
 
