@@ -86,13 +86,14 @@ use syn::{
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
-/// You can also pass additional fields (key-value pairs with arbitrary data) to the generated span.
-/// This is achieved using the `fields` argument on the `#[instrument]` macro. You can use a string,
-/// integer or boolean literal as a value for each field. The name of the field must be a valid
-/// Rust identifier, nested (dotted) field names are not supported.
+/// You can also pass additional fields (key-value pairs with arbitrary data)
+/// to the generated span. This is achieved using the `fields` argument on the
+/// `#[instrument]` macro. You can use a string, integer or boolean literal as
+/// a value for each field. The name of the field must be a single valid Rust
+/// identifier, nested (dotted) field names are not supported.
 ///
-/// Note that overlap between the names of fields and (non-skipped) arguments will result in a
-/// compile error.
+/// Note that overlap between the names of fields and (non-skipped) arguments
+/// will result in a compile error.
 ///
 /// # Examples
 /// Instrumenting a function:
