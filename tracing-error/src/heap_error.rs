@@ -53,14 +53,14 @@ impl Error for ErrorImpl {
 
 impl Debug for ErrorImpl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "span backtrace:")?;
+        f.pad("span backtrace:\n")?;
         Debug::fmt(&self.span_trace, f)
     }
 }
 
 impl Display for ErrorImpl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "span backtrace:")?;
+        f.pad("span backtrace:\n")?;
         Display::fmt(&self.span_trace, f)
     }
 }

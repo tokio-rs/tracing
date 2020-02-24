@@ -128,14 +128,14 @@ impl Error for ErrorImpl<Erased> {
 
 impl Debug for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "span backtrace:")?;
+        f.pad("span backtrace:\n")?;
         Debug::fmt(&self.span_trace, f)
     }
 }
 
 impl Display for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "span backtrace:")?;
+        f.pad("span backtrace:\n")?;
         Display::fmt(&self.span_trace, f)
     }
 }
