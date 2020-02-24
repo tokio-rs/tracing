@@ -1,3 +1,17 @@
+# 0.1.10 (January 24, 2020)
+
+### Added
+
+- `field::Empty` type for declaring empty fields whose values will be recorded
+  later (#548)
+- `field::Value` implementations for `Wrapping` and `NonZero*` numbers (#538)
+
+### Fixed
+
+- Broken and unresolvable links in RustDoc (#595)
+
+Thanks to @oli-cosmian for contributing to this release!
+
 # 0.1.9 (January 10, 2020)
 
 ### Added
