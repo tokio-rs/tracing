@@ -3,7 +3,7 @@ use crate::{ExtractSpanTrace, InstrumentError, InstrumentResult};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
-/// A wrapper type for Errors that bundles a SpanTrace with an inner `Error` type.
+/// A wrapper type for Errors that bundles a `SpanTrace` with an inner `Error` type.
 ///
 /// # Notes
 ///
