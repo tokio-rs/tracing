@@ -1,5 +1,5 @@
 use crate::SpanTrace;
-use crate::{ExtractSpanTrace, InstrumentError, InstrumentResult};
+use crate::{ExtractSpanTrace, InstrumentError};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
@@ -60,7 +60,7 @@ impl Debug for ErrorImpl {
 
 impl Display for ErrorImpl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Instrumented Error SpanTrace:")?;
+        writeln!(f, "span backtrace:")?;
         Display::fmt(&self.span_trace, f)
     }
 }
@@ -73,17 +73,6 @@ where
 
     fn in_current_span(self) -> Self::Instrumented {
         TracedError::new(self)
-    }
-}
-
-impl<T, E> InstrumentResult<T> for Result<T, E>
-where
-    E: Error + Send + Sync + 'static,
-{
-    type Instrumented = TracedError;
-
-    fn in_current_span(self) -> Result<T, Self::Instrumented> {
-        self.map_err(TracedError::new)
     }
 }
 

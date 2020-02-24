@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Display};
 
 struct Erased;
 
-/// A wrapper type for Errors that bundles a SpanTrace with an inner `Error` type.
+/// A wrapper type for `Error`s that bundles a `SpanTrace` with an inner `Error` type.
 pub struct TracedError<E> {
     inner: ErrorImpl<E>,
 }
@@ -86,10 +86,10 @@ where
 {
     // # SAFETY
     //
-    // This function is safe so long as all functions on `ErrorImpl<Erased>` only ever access the
-    // wrapped error type via the `error` method defined on `ErrorImpl<Erased>`, which uses the
-    // function in the vtable to safely convert the pointer type back to the original type then
-    // returns the reference to the internal error.
+    // This function is safe so long as all functions on `ErrorImpl<Erased>` uphold the invariant
+    // that the wrapped error is only ever accessed by the `error` method. This method uses the
+    // function in the vtable to safely convert the pointer type back to the original type, and
+    // then returns the reference to the erased error.
     //
     // This function is necessary for the `downcast_ref` in `ExtractSpanTrace` to work, because it
     // needs a concrete type to downcast to and we cannot downcast to ErrorImpls parameterized on
@@ -128,14 +128,14 @@ impl Error for ErrorImpl<Erased> {
 
 impl Debug for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Instrumented Error SpanTrace:")?;
+        writeln!(f, "span backtrace:")?;
         Debug::fmt(&self.span_trace, f)
     }
 }
 
 impl Display for ErrorImpl<Erased> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Instrumented Error SpanTrace:")?;
+        writeln!(f, "span backtrace:")?;
         Display::fmt(&self.span_trace, f)
     }
 }
@@ -148,17 +148,6 @@ where
 
     fn in_current_span(self) -> Self::Instrumented {
         TracedError::from(self)
-    }
-}
-
-impl<T, E> InstrumentResult<T> for Result<T, E>
-where
-    E: Error + Send + Sync + 'static,
-{
-    type Instrumented = TracedError<E>;
-
-    fn in_current_span(self) -> Result<T, Self::Instrumented> {
-        self.map_err(TracedError::from)
     }
 }
 

@@ -249,6 +249,17 @@ pub trait InstrumentResult<T> {
     fn in_current_span(self) -> Result<T, Self::Instrumented>;
 }
 
+impl<T, E> InstrumentResult<T> for Result<T, E>
+where
+    E: InstrumentError,
+{
+    type Instrumented = <E as InstrumentError>::Instrumented;
+
+    fn in_current_span(self) -> Result<T, Self::Instrumented> {
+        self.map_err(E::in_current_span)
+    }
+}
+
 /// A trait for extracting SpanTraces created by `in_current_span()` from `dyn
 /// Error` trait objects
 pub trait ExtractSpanTrace {
