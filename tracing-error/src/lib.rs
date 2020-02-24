@@ -31,7 +31,7 @@
 //!
 //! - `stack-error` - Enables an experimental version of [`TracedError`] that
 //! statically wraps an error type without using heap allocations. The contained
-//! [`SpanTrace`] can still extract its SpanTrace from behind a
+//! [`SpanTrace`] can still be extracted from behind a
 //! [`std::error::Error`] trait object via type erasure.
 //!
 //! ## Usage
@@ -90,7 +90,7 @@
 //! ```
 //!
 //! Once an error has been wrapped with with a [`TracedError`] the [`SpanTrace`]
-//! can be extracted one of 3 ways, either via [`TracedError`]'s
+//! can be extracted one of 3 ways: either via [`TracedError`]'s
 //! `Display`/`Debug` implementations, or via the [`ExtractSpanTrace`] trait.
 //!
 //! For example, here is how one might print the errors but specialize the
@@ -120,7 +120,7 @@
 //!
 //! ```
 //!
-//! Where-as here we can still display the content of the `SpanTraces` without
+//! Whereas here, we can still display the content of the `SpanTraces` without
 //! any special casing by simply printing all errors in our error chain.
 //!
 //! ```rust
@@ -161,10 +161,10 @@
 //!
 //! [`SpanTrace`]: struct.SpanTrace.html
 //! [`ErrorLayer`]: struct.ErrorLayer.html
-//! [`TracedError`]: struct.ErrorLayer.html
-//! [`InstrumentResult`]: trait.SpanTrace.html
-//! [`InstrumentError`]: trait.SpanTrace.html
-//! [`ExtractSpanTrace`]: trait.SpanTrace.html
+//! [`TracedError`]: struct.TracedError.html
+//! [`InstrumentResult`]: trait.InstrumentResult.html
+//! [`InstrumentError`]: trait.InstrumentError.html
+//! [`ExtractSpanTrace`]: trait.ExtractSpanTrace.html
 //! [`in_current_span()`]: trait.InstrumentResult.html#tymethod.in_current_span
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [event]: https://docs.rs/tracing/latest/tracing/struct.Event.html
@@ -284,8 +284,8 @@ pub trait ExtractSpanTrace {
 
 /// The `tracing-error` prelude.
 ///
-/// This brings into scope the `InstrumentError` and `ExtractSpanTrace`
-/// extension traits that are used to attach Spantraces to errors and
+/// This brings into scope the `InstrumentError, `InstrumentResult`, and `ExtractSpanTrace`
+/// extension traits. These traits allow attaching `SpanTrace`s to errors and
 /// subsequently retrieve them from dyn Errors.
 pub mod prelude {
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};

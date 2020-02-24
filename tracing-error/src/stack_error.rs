@@ -18,8 +18,8 @@ where
         // # SAFETY
         //
         // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
-        // of the class safe. This saves a function pointer that is parameterized on the Error type
-        // being stored inside the ErrorImpl, this lets the object_ref function safely cast a type
+        // of this struct's methods safe. This saves a function pointer that is parameterized on the Error type
+        // being stored inside the ErrorImpl. This lets the object_ref function safely cast a type
         // erased `ErrorImpl` back to its original type, which is needed in order to forward our
         // error/display/debug impls to the internal error type from the type erased error type.
         //
