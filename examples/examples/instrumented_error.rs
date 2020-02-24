@@ -61,8 +61,8 @@ fn main() {
     };
 }
 
-// Iterate through the source errors and check if each error is a placeholder for a `SpanTrace`
-// before printing before printing it.
+// Iterate through the source errors and check if each error is actually the attached `SpanTrace`
+// before printing it
 fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
     let mut error = Some(error);
     let mut ind = 0;
@@ -80,7 +80,7 @@ fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
 }
 
 // Iterate through source errors and print all sources as errors uniformly, regardless of whether
-// or not that error is actually a placeholder for extracting a SpanTrace
+// or not that error has a `SpanTrace` attached or not.
 fn print_naive_spantraces(error: &(dyn Error + 'static)) {
     let mut error = Some(error);
     let mut ind = 0;
