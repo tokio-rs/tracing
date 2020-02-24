@@ -286,7 +286,7 @@ pub trait ExtractSpanTrace {
 ///
 /// This brings into scope the `InstrumentError, `InstrumentResult`, and `ExtractSpanTrace`
 /// extension traits. These traits allow attaching `SpanTrace`s to errors and
-/// subsequently retrieve them from dyn Errors.
+/// subsequently retrieving them from `dyn Error` trait objects.
 pub mod prelude {
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }
