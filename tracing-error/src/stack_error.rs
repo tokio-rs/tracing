@@ -70,13 +70,13 @@ struct ErrorVTable {
 // # SAFETY
 //
 // This function must be parameterized on the type E of the original error that is being stored
-// inside of the `ErrorImpl`. When it is correctly parameterized it defines a function that safely
-// casts the Erased ErrorImpl pointer type back to the original pointer type.
+// inside of the `ErrorImpl`. When it is parameterized by the correct type, it safely
+// casts the erased `ErrorImpl` pointer type back to the original pointer type.
 unsafe fn object_ref<E>(e: &ErrorImpl<Erased>) -> &(dyn Error + Send + Sync + 'static)
 where
     E: Error + Send + Sync + 'static,
 {
-    // Attach E's native Error vtable onto a pointer to self.error.
+    // Attach E's native Error vtable onto a pointer to e.error.
     &(*(e as *const ErrorImpl<Erased> as *const ErrorImpl<E>)).error
 }
 
@@ -94,7 +94,7 @@ where
     // This function is necessary for the `downcast_ref` in `ExtractSpanTrace` to work, because it
     // needs a concrete type to downcast to and we cannot downcast to ErrorImpls parameterized on
     // errors defined in other crates. By erasing the type here we can always cast back to the
-    // Erased version of the ErrorImpl pointer and still access the internal error type safely
+    // Erased version of the ErrorImpl pointer, and still access the internal error type safely
     // through the vtable.
     fn source<'a>(&'a self) -> Option<&'a (dyn Error + 'static)> {
         let erased = unsafe { &*(&self.inner as *const ErrorImpl<E> as *const ErrorImpl<Erased>) };
