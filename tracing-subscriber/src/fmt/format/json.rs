@@ -23,7 +23,9 @@ use tracing_log::NormalizeEvent;
 ///
 /// The full format includes fields from all entered spans.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Json;
+pub struct Json {
+    pub(crate) flatten_event: bool,
+}
 
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
@@ -41,7 +43,6 @@ where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
         use serde_json::{json, Value};
-        use tracing_serde::fields::AsMap;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
 
@@ -52,8 +53,11 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
+        let flatten_event = self.format.flatten_event;
+
         let mut visit = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(writer));
+
             let mut serializer = serializer.serialize_map(None)?;
 
             serializer.serialize_entry("timestamp", &timestamp)?;
@@ -82,8 +86,16 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            serializer.serialize_entry("fields", &event.field_map())?;
-            serializer.end()
+            if flatten_event {
+                use tracing_serde::fields::AsMap;
+                serializer.serialize_entry("fields", &event.field_map())?;
+                serializer.end()
+            } else {
+                let mut visitor = tracing_serde::SerdeMapVisitor::new(serializer);
+                event.record(&mut visitor);
+
+                visitor.finish()
+            }
         };
 
         visit().map_err(|_| fmt::Error)?;

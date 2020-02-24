@@ -7,10 +7,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::{
-    fmt::{self, Write},
-    marker::PhantomData,
-};
+use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field, Visit},
     Event, Level, Subscriber,
@@ -133,7 +130,7 @@ pub struct Full;
 /// span.
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
-    format: PhantomData<F>,
+    format: F,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
     pub(crate) display_target: bool,
@@ -143,7 +140,7 @@ pub struct Format<F = Full, T = SystemTime> {
 impl Default for Format<Full, SystemTime> {
     fn default() -> Self {
         Format {
-            format: PhantomData,
+            format: Full,
             timer: SystemTime,
             ansi: true,
             display_target: true,
@@ -158,7 +155,7 @@ impl<F, T> Format<F, T> {
     /// See [`Compact`].
     pub fn compact(self) -> Format<Compact, T> {
         Format {
-            format: PhantomData,
+            format: Compact,
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
@@ -173,7 +170,24 @@ impl<F, T> Format<F, T> {
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
         Format {
-            format: PhantomData,
+            format: Json::default(),
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+            display_level: self.display_level,
+        }
+    }
+
+    /// Use the full JSON format with event metadata flattened.
+    ///
+    /// See [`Json`].
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn json_flatten(self) -> Format<Json, T> {
+        Format {
+            format: Json {
+                flatten_event: true,
+            },
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
