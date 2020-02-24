@@ -49,7 +49,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.9", default-features = false }
+//!   tracing-core = { version = "0.1.10", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -68,7 +68,7 @@
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.9")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.10")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
