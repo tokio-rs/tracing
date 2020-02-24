@@ -41,7 +41,6 @@ fn do_another_thing(
     Err(FooError::new("something broke, lol").in_current_span())
 }
 
-
 #[tracing::instrument]
 fn main() {
     let subscriber = Registry::default()
