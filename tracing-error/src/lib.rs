@@ -30,7 +30,7 @@
 //! ## Feature Flags
 //!
 //! - `stack-error` - Enables an experimental version of [`TracedError`] that
-//! statically wraps an error type without using Heap Allocations. The contained
+//! statically wraps an error type without using heap allocations. The contained
 //! [`SpanTrace`] can still extract its SpanTrace from behind a
 //! [`std::error::Error`] trait object via type erasure.
 //!
