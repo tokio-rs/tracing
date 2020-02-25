@@ -1,9 +1,14 @@
-use crate::SpanTrace;
-use crate::{ExtractSpanTrace, InstrumentError, InstrumentResult};
+//! Generic wrapper type and accompanying traits for instrumenting a single error type e.g. an
+//! error enum.
+//!
+//! Note: This type avoids heap allocations and implements `From<E: Error>` where as the boxed
+//! variant does not, so it is more convenient to work with and more efficient when working with a
+//! single known error type.
+
+use crate::{Erased, SpanTrace};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
-struct Erased;
 
 /// A wrapper type for `Error`s that bundles a `SpanTrace` with an inner `Error` type.
 pub struct TracedError<E> {
@@ -41,9 +46,9 @@ where
 }
 
 #[repr(C)]
-struct ErrorImpl<E> {
+pub(crate) struct ErrorImpl<E> {
     vtable: &'static ErrorVTable,
-    span_trace: SpanTrace,
+    pub(crate) span_trace: SpanTrace,
     // NOTE: Don't use directly. Use only through vtable. Erased type may have
     // different alignment.
     error: E,
@@ -140,6 +145,62 @@ impl Display for ErrorImpl<Erased> {
     }
 }
 
+/// Extension trait for instrumenting errors with `SpanTrace`s
+pub trait InstrumentError {
+    /// The type of the wrapped error after instrumentation
+    type Instrumented;
+
+    /// Instrument an Error by bundling it with a SpanTrace
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::generic::{TracedError, InstrumentError};
+    ///
+    /// fn wrap_error<E>(e: E) -> TracedError<E>
+    /// where
+    ///     E: std::error::Error + Send + Sync + 'static,
+    /// {
+    ///     e.in_current_span()
+    /// }
+    /// ```
+    fn in_current_span(self) -> Self::Instrumented;
+}
+
+/// Extension trait for instrumenting errors in `Result`s with `SpanTrace`s
+pub trait InstrumentResult<T> {
+    /// The type of the wrapped error after instrumentation
+    type Instrumented;
+
+    /// Instrument an Error by bundling it with a SpanTrace
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use std::{io, fs};
+    /// use tracing_error::generic::{TracedError, InstrumentResult};
+    ///
+    /// # fn fallible_fn() -> io::Result<()> { fs::read_dir("......").map(drop) };
+    ///
+    /// fn do_thing() -> Result<(), TracedError<io::Error>> {
+    ///     fallible_fn().in_current_span()
+    /// }
+    /// ```
+    fn in_current_span(self) -> Result<T, Self::Instrumented>;
+}
+
+impl<T, E> InstrumentResult<T> for Result<T, E>
+where
+    E: InstrumentError,
+{
+    type Instrumented = <E as InstrumentError>::Instrumented;
+
+    fn in_current_span(self) -> Result<T, Self::Instrumented> {
+        self.map_err(E::in_current_span)
+    }
+}
+
+
 impl<E> InstrumentError for E
 where
     E: Error + Send + Sync + 'static,
@@ -148,12 +209,5 @@ where
 
     fn in_current_span(self) -> Self::Instrumented {
         TracedError::from(self)
-    }
-}
-
-impl ExtractSpanTrace for &(dyn Error + 'static) {
-    fn span_trace(&self) -> Option<&SpanTrace> {
-        self.downcast_ref::<ErrorImpl<Erased>>()
-            .map(|inner| &inner.span_trace)
     }
 }

@@ -35,8 +35,6 @@ edition = "2018"
 
 [features]
 
-stack-error = []
-
 [dependencies]
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.1", default-features = false, features = ["registry", "fmt"] }
 tracing = { path = "../tracing", version = "0.1"}
