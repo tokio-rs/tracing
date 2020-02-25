@@ -215,12 +215,16 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     for skip in &skips {
         if !param_names.contains(skip) {
             return quote_spanned!(skip.span()=>
-                compile_error!("attempting to skip non-existing parameter")
-            ).into();
+                compile_error!("attempting to skip non-existent parameter")
+            )
+            .into();
         }
     }
 
-    let param_names: Vec<Ident> = param_names.into_iter().filter(|ident| !skips.contains(ident)).collect();
+    let param_names: Vec<Ident> = param_names
+        .into_iter()
+        .filter(|ident| !skips.contains(ident))
+        .collect();
 
     let fields = match fields(&args, &param_names) {
         Ok(fields) => fields,
