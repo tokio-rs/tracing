@@ -190,8 +190,8 @@
 )]
 mod backtrace;
 pub mod boxed;
-mod layer;
 pub mod generic;
+mod layer;
 
 pub use self::backtrace::SpanTrace;
 pub use self::layer::ErrorLayer;
@@ -224,7 +224,10 @@ impl ExtractSpanTrace for &(dyn std::error::Error + 'static) {
     fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<generic::ErrorImpl<Erased>>()
             .map(|inner| &inner.span_trace)
-            .or_else(|| self.downcast_ref::<boxed::ErrorImpl>().map(|inner| &inner.span_trace))
+            .or_else(|| {
+                self.downcast_ref::<boxed::ErrorImpl>()
+                    .map(|inner| &inner.span_trace)
+            })
     }
 }
 

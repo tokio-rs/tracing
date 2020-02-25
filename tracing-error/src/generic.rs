@@ -9,7 +9,6 @@ use crate::{Erased, SpanTrace};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
-
 /// A wrapper type for `Error`s that bundles a `SpanTrace` with an inner `Error` type.
 pub struct TracedError<E> {
     inner: ErrorImpl<E>,
@@ -199,7 +198,6 @@ where
         self.map_err(E::in_current_span)
     }
 }
-
 
 impl<E> InstrumentError for E
 where
