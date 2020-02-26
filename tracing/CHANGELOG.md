@@ -3,7 +3,7 @@
 ### Changed
 
 - The `instrument` attribute was placed under an on-by-default feature
-  flag.
+  flag (#603)
 
 # 0.1.12 (January 11, 2019)
 
