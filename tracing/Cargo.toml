@@ -29,7 +29,7 @@ edition = "2018"
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.10", default-features = false }
 log = { version = "0.4", optional = true }
-tracing-attributes = { path = "../tracing-attributes", version = "0.1.6"}
+tracing-attributes = { path = "../tracing-attributes", version = "0.1.6", optional = true }
 cfg-if = "0.1.10"
 
 [dev-dependencies]
@@ -38,7 +38,7 @@ criterion = { version = "0.3", default_features = false }
 log = "0.4"
 
 [features]
-default = ["std"]
+default = ["std", "attributes"]
 
 max_level_off   = []
 max_level_error = []
@@ -59,6 +59,7 @@ async-await = []
 
 std = ["tracing-core/std"]
 log-always = ["log"]
+attributes = ["tracing-attributes"]
 
 [[bench]]
 name = "subscriber"
