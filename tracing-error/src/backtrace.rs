@@ -42,7 +42,6 @@ use tracing::{Metadata, Span};
 /// similarly to how Rust formats panics. For example:
 ///
 /// ```text
-/// span backtrace:
 ///    0: custom_error::do_another_thing
 ///         with answer=42 will_succeed=false
 ///           at examples/examples/custom_error.rs:42
