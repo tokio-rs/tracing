@@ -252,7 +252,9 @@ impl<S: SerializeMap> SerdeMapVisitor<S> {
     }
 }
 
-struct SerdeStructVisitor<S: SerializeStruct> {
+/// Implements `tracing_core::field::Visit` for some `serde::ser::SerializeStruct`.
+#[derive(Debug)]
+pub struct SerdeStructVisitor<S: SerializeStruct> {
     serializer: S,
     state: Result<(), S::Error>,
 }
@@ -300,7 +302,7 @@ impl<S: SerializeStruct> SerdeStructVisitor<S> {
     /// Completes serializing the visited object, returning `Ok(())` if all
     /// fields were serialized correctly, or `Error(S::Error)` if a field could
     /// not be serialized.
-    fn finish(self) -> Result<S::Ok, S::Error> {
+    pub fn finish(self) -> Result<S::Ok, S::Error> {
         self.state?;
         self.serializer.end()
     }

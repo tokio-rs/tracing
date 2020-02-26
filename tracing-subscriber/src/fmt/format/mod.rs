@@ -149,6 +149,20 @@ impl Default for Format<Full, SystemTime> {
     }
 }
 
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<T> Format<Json, T> {
+    /// Use the full JSON format with event metadata flattened.
+    ///
+    /// See [`Json`].
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn flattened_json(mut self, flatten_event: bool) -> Format<Json, T> {
+        self.format.flatten_event(flatten_event);
+        self
+    }
+}
+
 impl<F, T> Format<F, T> {
     /// Use a less verbose output format.
     ///
@@ -171,23 +185,6 @@ impl<F, T> Format<F, T> {
     pub fn json(self) -> Format<Json, T> {
         Format {
             format: Json::default(),
-            timer: self.timer,
-            ansi: self.ansi,
-            display_target: self.display_target,
-            display_level: self.display_level,
-        }
-    }
-
-    /// Use the full JSON format with event metadata flattened.
-    ///
-    /// See [`Json`].
-    #[cfg(feature = "json")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json_flatten(self) -> Format<Json, T> {
-        Format {
-            format: Json {
-                flatten_event: true,
-            },
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,

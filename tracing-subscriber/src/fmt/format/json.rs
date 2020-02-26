@@ -27,6 +27,12 @@ pub struct Json {
     pub(crate) flatten_event: bool,
 }
 
+impl Json {
+    pub(crate) fn flatten_event(&mut self, flatten_event: bool) {
+        self.flatten_event = flatten_event;
+    }
+}
+
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
