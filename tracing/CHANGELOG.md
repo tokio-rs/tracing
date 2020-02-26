@@ -1,3 +1,10 @@
+# Unreleased
+
+### Changed
+
+- The `instrument` attribute was placed under an on-by-default feature
+  flag.
+
 # 0.1.12 (January 11, 2019)
 
 ### Added
