@@ -1,3 +1,14 @@
+# 0.2.3 (Feb 26, 2020)
+
+### Added
+
+- `WithDispatch::inner` and `WithDispatch::inner_mut` methods to allow borrowing
+  the wrapped type (#589)
+- `WithDispatch::with_dispatch` method, to propagate the subscriber to another
+  type (#589)
+- `inner_pin_ref` and `inner_pin_mut` methods to `Instrumented` and
+  `WithDispatch` to project to the inner future when pinned (#590)
+
 # 0.2.2 (Feb 14, 2020)
 
 ### Added

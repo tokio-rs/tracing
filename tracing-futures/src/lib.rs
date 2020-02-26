@@ -43,18 +43,18 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-futures = { version = "0.2", default-features = false }
+//!   tracing-futures = { version = "0.2.3", default-features = false }
 //!   ```
 //!
 //! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/0.1.12/tracing/span/index.html
-//! [`Subscriber`]: https://docs.rs/tracing/0.1.12/tracing/subscriber/index.html
+//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
-#![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.2")]
+#![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.3")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -96,7 +96,7 @@ pub mod executor;
 /// Extension trait allowing futures, streams, sinks, and executors to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]: https://docs.rs/tracing/0.1.9/tracing/span/index.html
+/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
@@ -125,7 +125,7 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: https://docs.rs/tracing/0.1.9/tracing/span/struct.Span.html#method.enter
+    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
@@ -160,8 +160,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: https://docs.rs/tracing/0.1.9/tracing/span/struct.Span.html#method.current
-    /// [entered]: https://docs.rs/tracing/0.1.9/tracing/span/struct.Span.html#method.enter
+    /// [current]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.current
+    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -171,7 +171,7 @@ pub trait Instrument: Sized {
 /// Extension trait allowing futures, streams, and skins to be instrumented with
 /// a `tracing` [`Subscriber`].
 ///
-/// [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html
+/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
@@ -183,8 +183,8 @@ pub trait WithSubscriber: Sized {
     /// When the wrapped type is an executor, the subscriber will be set as the
     /// default for any futures spawned on that executor.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/0.1.9/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
@@ -206,8 +206,8 @@ pub trait WithSubscriber: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/0.1.9/tracing/subscriber/trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/0.1.9/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {
         WithDispatch {
