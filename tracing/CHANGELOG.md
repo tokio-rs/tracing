@@ -1,9 +1,26 @@
-# Unreleased
+# 0.1.13 (February 26, 2019)
+
+### Added
+
+- **field**: `field::Empty` type for declaring empty fields whose values will be
+  recorded later (#548)
+- **field**: `field::Value` implementations for `Wrapping` and `NonZero*`
+  numbers (#538)
+- **attributes**: Support for adding arbitrary literal fields to spans generated
+  by `#[instrument]` (#569)
+- **attributes**: `#[instrument]` now emits a helpful compiler error when
+  attempting to skip a function parameter (#600)
 
 ### Changed
 
-- The `instrument` attribute was placed under an on-by-default feature
-  flag (#603)
+- **attributes**: The `#[instrument]` attribute was placed under an on-by-default
+  feature flag "attributes" (#603)
+
+### Fixed
+
+- Broken and unresolvable links in RustDoc (#595)
+
+Thanks to @oli-cosmian and @Kobzol for contributing to this release!
 
 # 0.1.12 (January 11, 2019)
 

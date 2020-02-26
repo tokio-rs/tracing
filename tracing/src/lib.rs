@@ -665,7 +665,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.12", default-features = false }
+//!   tracing = { version = "0.1.13", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -698,7 +698,7 @@
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.12")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.13")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
