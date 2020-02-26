@@ -146,6 +146,8 @@
 //!
 //! For example:
 //! ```
+//! # #[cfg(feature = "attributes")]
+//! # {
 //! use tracing::{Level, event, instrument};
 //!
 //! #[instrument]
@@ -155,6 +157,7 @@
 //!     event!(Level::INFO, "inside my_function!");
 //!     // ...
 //! }
+//! # }
 //! # fn main() {}
 //! ```
 //!
