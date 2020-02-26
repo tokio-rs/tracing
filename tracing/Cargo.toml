@@ -29,7 +29,7 @@ edition = "2018"
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.10", default-features = false }
 log = { version = "0.4", optional = true }
-tracing-attributes = { path = "../tracing-attributes", version = "0.1.6", optional = true }
+tracing-attributes = { path = "../tracing-attributes", version = "0.1.7", optional = true }
 cfg-if = "0.1.10"
 
 [dev-dependencies]
