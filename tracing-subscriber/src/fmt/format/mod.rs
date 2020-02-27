@@ -7,10 +7,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::{
-    fmt::{self, Write},
-    marker::PhantomData,
-};
+use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field, Visit},
     Event, Level, Subscriber,
@@ -133,7 +130,7 @@ pub struct Full;
 /// span.
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
-    format: PhantomData<F>,
+    format: F,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
     pub(crate) display_target: bool,
@@ -143,7 +140,7 @@ pub struct Format<F = Full, T = SystemTime> {
 impl Default for Format<Full, SystemTime> {
     fn default() -> Self {
         Format {
-            format: PhantomData,
+            format: Full,
             timer: SystemTime,
             ansi: true,
             display_target: true,
@@ -158,7 +155,7 @@ impl<F, T> Format<F, T> {
     /// See [`Compact`].
     pub fn compact(self) -> Format<Compact, T> {
         Format {
-            format: PhantomData,
+            format: Compact,
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
@@ -168,12 +165,25 @@ impl<F, T> Format<F, T> {
 
     /// Use the full JSON format.
     ///
-    /// See [`Json`].
+    /// The full format includes fields from all entered spans.
+    ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate","fields":{"message":"some message", "key": "value"}}
+    /// ```
+    ///
+    /// # Options
+    ///
+    /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
+    /// object.
+    ///
+    /// [`Format::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
         Format {
-            format: PhantomData,
+            format: Json::default(),
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
@@ -232,6 +242,25 @@ impl<F, T> Format<F, T> {
             display_level,
             ..self
         }
+    }
+}
+
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<T> Format<Json, T> {
+    /// Use the full JSON format with the event's event fields flattened.
+    ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate", "message":"some message", "key": "value"}
+    /// ```
+    /// See [`Json`](../format/struct.Json.html).
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
+        self.format.flatten_event(flatten_event);
+        self
     }
 }
 
