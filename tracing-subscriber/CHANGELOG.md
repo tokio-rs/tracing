@@ -3,7 +3,7 @@
 ### Added
 
 - **fmt**: Added `flatten_event` to `SubscriberBuilder` (#599)
-- **fnt**: Added `with_level` to `SubscriberBuilder` (#594)
+- **fmt**: Added `with_level` to `SubscriberBuilder` (#594)
 
 # 0.2.1 (February 13, 2020)
 
