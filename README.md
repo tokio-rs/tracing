@@ -88,7 +88,7 @@ In addition, you can locally override the default subscriber. For example:
 
 ```rust
 use tracing::{info, Level};
-use tracing_subscruber::FmtSubscriber;
+use tracing_subscriber::FmtSubscriber;
 
 fn main() {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
