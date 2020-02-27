@@ -55,7 +55,7 @@ extern crate tracing_serde;
 use tracing_serde::AsSerde;
 ```
 
-Please read the [`tracing` documentation](https://docs.rs/tracing/0.1.0/tracing/index.html)
+Please read the [`tracing` documentation](https://docs.rs/tracing/0.1.1/tracing/index.html)
 for more information on how to create trace data.
 
 This crate provides the `as_serde` function, via the `AsSerde` trait,
