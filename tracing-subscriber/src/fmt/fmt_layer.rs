@@ -293,7 +293,7 @@ where
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl<S, T, W> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
-    /// Sets the json layer being built to flatten event metadata.
+    /// Sets the JSON layer being built to flatten event metadata.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn flatten_event(
