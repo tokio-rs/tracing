@@ -274,7 +274,7 @@ where
     ///
     /// # Options
     ///
-    /// - [`LayerBuilder::flatten_event`] can be used to enable flattening event metadata into the root
+    /// - [`LayerBuilder::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
     /// [`LayerBuilder::flatten_event`]: #method.flatten_event
