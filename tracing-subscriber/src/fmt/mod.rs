@@ -419,7 +419,7 @@ where
 
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
-    /// See [`format::Compact`].
+    /// See [`format::Compact`](../fmt/format/struct.Compact.html).
     pub fn compact(self) -> SubscriberBuilder<N, format::Format<format::Compact, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -432,7 +432,7 @@ where
 
     /// Sets the subscriber being built to use a JSON formatter.
     ///
-    /// See [`format::Json`]
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(
@@ -444,6 +444,23 @@ where
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.json(),
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    /// Sets the json subscriber being built to flatten event metadata.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn flatten_event(
+        self,
+        flatten_event: bool,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.flatten_event(flatten_event),
         }
     }
 }
