@@ -175,7 +175,7 @@ impl<F, T> Format<F, T> {
     ///
     /// # Options
     ///
-    /// - [`Format::flatten_event`] can be used to enable flattening event metadata into the root
+    /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
     /// [`Format::flatten_event`]: #method.flatten_event
@@ -248,7 +248,7 @@ impl<F, T> Format<F, T> {
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl<T> Format<Json, T> {
-    /// Use the full JSON format with event metadata flattened.
+    /// Use the full JSON format with the event's event fields flattened.
     ///
     /// # Example Output
     ///

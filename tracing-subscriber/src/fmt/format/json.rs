@@ -31,7 +31,7 @@ use tracing_log::NormalizeEvent;
 ///
 /// # Options
 ///
-/// - [`Json::flatten_event`] can be used to enable flattening event metadata into the root
+/// - [`Json::flatten_event`] can be used to enable flattening event fields into the root
 /// object.
 ///
 /// [`Json::flatten_event`]: #method.flatten_event
