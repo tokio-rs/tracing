@@ -263,11 +263,45 @@ where
     }
 
     /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    ///
+    /// The full format includes fields from all entered spans.
+    ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate","fields":{"message":"some message", "key": "value"}}
+    /// ```
+    ///
+    /// # Options
+    ///
+    /// - [`LayerBuilder::flatten_event`] can be used to enable flattening event fields into the root
+    /// object.
+    ///
+    /// [`LayerBuilder::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
         LayerBuilder {
             fmt_event: self.fmt_event.json(),
+            fmt_fields: format::JsonFields::new(),
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<S, T, W> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    /// Sets the JSON layer being built to flatten event metadata.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn flatten_event(
+        self,
+        flatten_event: bool,
+    ) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        LayerBuilder {
+            fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
             make_writer: self.make_writer,
             _inner: self._inner,
