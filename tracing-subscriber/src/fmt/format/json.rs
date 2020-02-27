@@ -22,13 +22,25 @@ use tracing_log::NormalizeEvent;
 /// Marker for `Format` that indicates that the verbose json log format should be used.
 ///
 /// The full format includes fields from all entered spans.
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+///
+/// # Example Output
+///
+/// ```ignore,json
+/// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate","fields":{"message":"some message", "key": "value"}}
+/// ```
+///
+/// # Options
+///
+/// - `Json::flatten_event` can be used to enable flattening event metadata into the root
+/// object.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
     pub(crate) flatten_event: bool,
 }
 
 impl Json {
-    pub(crate) fn flatten_event(&mut self, flatten_event: bool) {
+    /// If set to `true` event metadata will be flattened into the root object.
+    pub fn flatten_event(&mut self, flatten_event: bool) {
         self.flatten_event = flatten_event;
     }
 }
@@ -92,7 +104,7 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            if flatten_event {
+            if !flatten_event {
                 use tracing_serde::fields::AsMap;
                 serializer.serialize_entry("fields", &event.field_map())?;
                 serializer.end()
@@ -106,6 +118,14 @@ where
 
         visit().map_err(|_| fmt::Error)?;
         writeln!(writer)
+    }
+}
+
+impl Default for Json {
+    fn default() -> Json {
+        Json {
+            flatten_event: false,
+        }
     }
 }
 
@@ -306,16 +326,31 @@ mod test {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF);
+        test_json(make_writer, expected, &BUF, false);
+    }
+
+    #[test]
+    fn json_flattened_event() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"message\":\"some json test\"}\n";
+
+        test_json(make_writer, expected, &BUF, true);
     }
 
     #[cfg(feature = "json")]
-    fn test_json<T>(make_writer: T, expected: &str, buf: &Mutex<Vec<u8>>)
+    fn test_json<T>(make_writer: T, expected: &str, buf: &Mutex<Vec<u8>>, flatten_event: bool)
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
         let subscriber = crate::fmt::Subscriber::builder()
             .json()
+            .flatten_event(flatten_event)
             .with_writer(make_writer)
             .with_timer(MockTime)
             .finish();

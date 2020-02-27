@@ -154,10 +154,15 @@ impl Default for Format<Full, SystemTime> {
 impl<T> Format<Json, T> {
     /// Use the full JSON format with event metadata flattened.
     ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate", "message":"some message", "key": "value"}
+    /// ```
     /// See [`Json`].
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn flattened_json(mut self, flatten_event: bool) -> Format<Json, T> {
+    pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
         self.format.flatten_event(flatten_event);
         self
     }

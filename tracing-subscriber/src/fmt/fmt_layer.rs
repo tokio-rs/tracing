@@ -275,6 +275,25 @@ where
     }
 }
 
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<S, T, W> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    /// Sets the json layer being built to flatten event metadata.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn flatten_event(
+        self,
+        flatten_event: bool,
+    ) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        LayerBuilder {
+            fmt_event: self.fmt_event.flatten_event(flatten_event),
+            fmt_fields: format::JsonFields::new(),
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+}
+
 impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     /// Sets the field formatter that the layer being built will use to record
     /// fields.

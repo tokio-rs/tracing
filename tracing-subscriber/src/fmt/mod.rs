@@ -448,6 +448,23 @@ where
     }
 }
 
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    /// Sets the json subscriber being built to flatten event metadata.
+    ///
+    /// See [`format::Json`]
+    pub fn flatten_event(
+        self,
+        flatten_event: bool,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.flatten_event(flatten_event),
+        }
+    }
+}
+
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 impl<N, E, W> SubscriberBuilder<N, E, crate::EnvFilter, W>
