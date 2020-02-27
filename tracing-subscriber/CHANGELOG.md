@@ -1,3 +1,9 @@
+# 0.2.2 (February 27, 2020)
+
+### Added
+
+- **fmt**: Added `flatten_event` to `SubscriberBuilder` (#599)
+
 # 0.2.1 (February 13, 2020)
 
 ### Changed
