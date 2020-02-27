@@ -151,6 +151,8 @@ pub use self::trace_logger::TraceLogger;
 #[cfg_attr(docsrs, doc(cfg(feature = "env_logger")))]
 pub mod env_logger;
 
+pub use log;
+
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     let filter_meta = record.as_trace();
