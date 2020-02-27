@@ -149,25 +149,6 @@ impl Default for Format<Full, SystemTime> {
     }
 }
 
-#[cfg(feature = "json")]
-#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<T> Format<Json, T> {
-    /// Use the full JSON format with event metadata flattened.
-    ///
-    /// # Example Output
-    ///
-    /// ```ignore,json
-    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate", "message":"some message", "key": "value"}
-    /// ```
-    /// See [`Json`].
-    #[cfg(feature = "json")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
-        self.format.flatten_event(flatten_event);
-        self
-    }
-}
-
 impl<F, T> Format<F, T> {
     /// Use a less verbose output format.
     ///
@@ -184,7 +165,20 @@ impl<F, T> Format<F, T> {
 
     /// Use the full JSON format.
     ///
-    /// See [`Json`].
+    /// The full format includes fields from all entered spans.
+    ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate","fields":{"message":"some message", "key": "value"}}
+    /// ```
+    ///
+    /// # Options
+    ///
+    /// - [`Format::flatten_event`] can be used to enable flattening event metadata into the root
+    /// object.
+    ///
+    /// [`Format::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
@@ -248,6 +242,25 @@ impl<F, T> Format<F, T> {
             display_level,
             ..self
         }
+    }
+}
+
+#[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+impl<T> Format<Json, T> {
+    /// Use the full JSON format with event metadata flattened.
+    ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate", "message":"some message", "key": "value"}
+    /// ```
+    /// See [`Json`](../format/struct.Json.html).
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
+        self.format.flatten_event(flatten_event);
+        self
     }
 }
 
