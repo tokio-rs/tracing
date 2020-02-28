@@ -220,7 +220,7 @@ pub trait ExtractSpanTrace {
     fn span_trace(&self) -> Option<&SpanTrace>;
 }
 
-impl ExtractSpanTrace for &(dyn std::error::Error + 'static) {
+impl ExtractSpanTrace for dyn std::error::Error + 'static {
     fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<generic::ErrorImpl<Erased>>()
             .map(|inner| &inner.span_trace)
