@@ -627,7 +627,7 @@
 //!
 //! ### Consuming `log` Records
 //!
-//! Additionally, the [`tracing-log`] crate provides a compatibility layer which
+//! The [`tracing-log`] crate provides a compatibility layer which
 //! allows a `tracing` [`Subscriber`] to consume `log` records as though they
 //! were `tracing` [events]. This allows applications using `tracing` to record
 //! the logs emitted by dependencies using `log` as events within the context of
