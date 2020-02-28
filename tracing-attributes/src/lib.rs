@@ -202,7 +202,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         // Pull out the arguments-to-be-skipped first, so we can filter results below.
         let skips = match skips(&args) {
             Ok(skips) => skips,
-            Err(err) => return quote!(#err).into(),
+            Err(err) => return quote!(#err),
         };
 
         let param_names: Vec<Ident> = params
@@ -218,8 +218,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             if !param_names.contains(skip) {
                 return quote_spanned! {skip.span()=>
                     compile_error!("attempting to skip non-existent parameter")
-                }
-                .into();
+                };
             }
         }
 
@@ -230,7 +229,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 
         let fields = match fields(&args, &param_names) {
             Ok(fields) => fields,
-            Err(err) => return quote!(#err).into(),
+            Err(err) => return quote!(#err),
         };
 
         let param_names_clone = param_names.clone();
