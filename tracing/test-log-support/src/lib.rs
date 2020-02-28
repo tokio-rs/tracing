@@ -18,7 +18,7 @@ struct Logger {
 impl Log for Logger {
     fn enabled(&self, meta: &Metadata) -> bool {
         for (target, level) in &self.filters {
-            if meta.target().starts_with(dbg!(target)) {
+            if meta.target().starts_with(target) {
                 return meta.level() <= *level;
             }
         }
