@@ -584,6 +584,58 @@
 //! Once a subscriber has been set, instrumentation points may be added to the
 //! executable using the `tracing` crate's macros.
 //!
+//! ## `log` Compatibility
+//!
+//! The [`log`] crate provides a simple, lightweight logging facade for Rust.
+//! While `tracing` builds upon `log`'s foundation with richer structured
+//! diagnostic data, `log`'s simplicity and ubiquity make it the "lowest common
+//! denominator" for text-based logging in Rust — a vast majority of Rust
+//! libraries and applications either emit or consume `log` records. Therefore,
+//! `tracing` provides multiple forms of interoperability with `log`: `tracing`
+//! instrumentation can emit `log` records, and a compatibility layer enables
+//! `tracing` [`Subscriber`]s to consume `log` records as `tracing` [`Event`]s.
+//!
+//! ### Emitting `log` Records
+//!
+//! This crate provides two feature flags, "log" and "log-always", which will
+//! cause [spans] and [events] to emit `log` records. When the "log" feature is
+//! enabled, if no `tracing` `Subscriber` is active, invoking an event macro or
+//! creating a span with fields will emit a `log` record. This is intended
+//! primarily for use in libraries which wish to emit diagnostics that can be
+//! consumed by applications using `tracing` *or* `log`, without paying the
+//! additional overhead of emitting both forms of diagnostics when `tracing` is
+//! in use.
+//!
+//! Enabling the "log-always" feature will cause `log` records to be emitted
+//! even if a `tracing` `Subscriber` _is_ set. This is intended to be used in
+//! applications where a `log` `Logger` is being used to record a textual log,
+//! and `tracing` is used only to record other forms of diagnostics (such as
+//! metrics, profiling, or distributed tracing data). Unlike the "log" feature,
+//! libraries generally should **not** enable the "log-always" feature, as doing
+//! so will prevent applications from being able to opt out of the `log` records.
+//!
+//! See [here][flags] for more details on this crate's feature flags.
+//!
+//! The generated `log` records' messages will be a string representation of the
+//! span or event's fields, and all additional information recorded by `log`
+//! (target, verbosity level, module path, file, and line number) will also be
+//! populated. Additionally, `log` records are also generated when spans are
+//! entered, exited, and closed. Since these additional span lifecycle logs have
+//! the potential to be very verbose, and don't include additional fields, they
+//! are categorized under a separate `log` target, "tracing::span", which may be
+//! enabled or disabled separately from other `log` records emitted by `tracing`.
+//!
+//! ### Consuming `log` Records
+//!
+//! The [`tracing-log`] crate provides a compatibility layer which
+//! allows a `tracing` [`Subscriber`] to consume `log` records as though they
+//! were `tracing` [events]. This allows applications using `tracing` to record
+//! the logs emitted by dependencies using `log` as events within the context of
+//! the application's trace tree. See [that crate's documentation][log-tracer]
+//! for details.
+//!
+//! [log-tracer]: https://docs.rs/tracing-log/latest/tracing_log/#convert-log-records-to-tracing-events
+//!
 //! ## Related Crates
 //!
 //! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
@@ -640,7 +692,7 @@
 //! undergoing active development. They may be less stable than `tracing` and
 //! `tracing-core`.
 //!
-//! ##  Crate Feature Flags
+//! ## Crate Feature Flags
 //!
 //! The following crate feature flags are available:
 //!
@@ -677,6 +729,7 @@
 //! [`Span`]: span/struct.Span.html
 //! [`in_scope`]: span/struct.Span.html#method.in_scope
 //! [`Event`]: struct.Event.html
+//! [event]: struct.Event.html
 //! [`Subscriber`]: subscriber/trait.Subscriber.html
 //! [Subscriber::event]: subscriber/trait.Subscriber.html#tymethod.event
 //! [`enter`]: subscriber/trait.Subscriber.html#tymethod.enter
@@ -696,6 +749,7 @@
 //! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
+//! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing/0.1.13")]
