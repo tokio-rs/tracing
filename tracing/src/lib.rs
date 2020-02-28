@@ -768,6 +768,9 @@ mod macros;
 
 pub mod dispatcher;
 pub mod field;
+/// Module for instrumenting `std::future::Future`.
+#[cfg(feature = "std")]
+pub mod futures;
 pub mod level_filters;
 pub mod span;
 pub(crate) mod stdlib;
