@@ -120,6 +120,38 @@ impl SpanTrace {
             }
         });
     }
+
+    /// Returns the status of this SpanTrace, indicating whether this backtrace request was unsupported, empty, or a span trace was actually captured.
+    pub fn status(&self) -> SpanTraceStatus {
+        if self.span == Span::none() {
+            SpanTraceStatus::Empty
+        } else {
+            let mut status = None;
+            self.span.with_subscriber(|(_, s)| {
+                if s.downcast_ref::<WithContext>().is_none() {
+                    status = Some(SpanTraceStatus::Captured);
+                }
+            });
+
+            status.unwrap_or(SpanTraceStatus::Unsupported)
+        }
+    }
+}
+
+/// The current status of a SpanTrace, indicating whether it was captured or whether it is empty
+/// for some other reason.
+#[derive(Debug)]
+pub enum SpanTraceStatus {
+    /// Formatting a SpanTrace is not supported, likely because there is no ErrorLayer or the
+    /// ErrorLayer is from a different version of tracing_error
+    Unsupported,
+
+    /// The SpanTrace is empty, likely because it was captured outside of any `span`s
+    Empty,
+
+    /// A span trace has been captured and the `SpanTrace` should print reasonable information when
+    /// rendered.
+    Captured,
 }
 
 macro_rules! try_bool {
