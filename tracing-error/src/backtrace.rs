@@ -128,7 +128,7 @@ impl SpanTrace {
         } else {
             let mut status = None;
             self.span.with_subscriber(|(_, s)| {
-                if s.downcast_ref::<WithContext>().is_none() {
+                if s.downcast_ref::<WithContext>().is_some() {
                     status = Some(SpanTraceStatus::Captured);
                 }
             });
@@ -140,7 +140,7 @@ impl SpanTrace {
 
 /// The current status of a SpanTrace, indicating whether it was captured or whether it is empty
 /// for some other reason.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SpanTraceStatus {
     /// Formatting a SpanTrace is not supported, likely because there is no ErrorLayer or the
     /// ErrorLayer is from a different version of tracing_error
@@ -241,5 +241,63 @@ impl fmt::Debug for SpanTrace {
             true
         });
         dbg.finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tracing_subscriber::{prelude::*, registry::Registry};
+    use tracing::subscriber::with_default;
+    use tracing::{span, Level};
+    use crate::ErrorLayer;
+
+
+    #[test]
+    fn capture_supported() {
+        let subscriber = Registry::default()
+            .with(ErrorLayer::default());
+
+        with_default(subscriber, || {
+            let span = span!(Level::ERROR, "test span");
+            let _guard = span.enter();
+
+            let span_trace = SpanTrace::capture();
+
+            dbg!(&span_trace);
+
+            assert_eq!(SpanTraceStatus::Captured, span_trace.status())
+        });
+
+    }
+
+    #[test]
+    fn capture_empty() {
+        let subscriber = Registry::default()
+            .with(ErrorLayer::default());
+
+        with_default(subscriber, || {
+            let span_trace = SpanTrace::capture();
+
+            dbg!(&span_trace);
+
+            assert_eq!(SpanTraceStatus::Empty, span_trace.status())
+        });
+    }
+
+    #[test]
+    fn capture_unsupported() {
+        let subscriber = Registry::default();
+
+        with_default(subscriber, || {
+            let span = span!(Level::ERROR, "test span");
+            let _guard = span.enter();
+
+            let span_trace = SpanTrace::capture();
+
+            dbg!(&span_trace);
+
+            assert_eq!(SpanTraceStatus::Unsupported, span_trace.status())
+        });
     }
 }
