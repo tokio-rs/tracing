@@ -247,16 +247,14 @@ impl fmt::Debug for SpanTrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tracing_subscriber::{prelude::*, registry::Registry};
+    use crate::ErrorLayer;
     use tracing::subscriber::with_default;
     use tracing::{span, Level};
-    use crate::ErrorLayer;
-
+    use tracing_subscriber::{prelude::*, registry::Registry};
 
     #[test]
     fn capture_supported() {
-        let subscriber = Registry::default()
-            .with(ErrorLayer::default());
+        let subscriber = Registry::default().with(ErrorLayer::default());
 
         with_default(subscriber, || {
             let span = span!(Level::ERROR, "test span");
@@ -268,13 +266,11 @@ mod tests {
 
             assert_eq!(SpanTraceStatus::Captured, span_trace.status())
         });
-
     }
 
     #[test]
     fn capture_empty() {
-        let subscriber = Registry::default()
-            .with(ErrorLayer::default());
+        let subscriber = Registry::default().with(ErrorLayer::default());
 
         with_default(subscriber, || {
             let span_trace = SpanTrace::capture();
