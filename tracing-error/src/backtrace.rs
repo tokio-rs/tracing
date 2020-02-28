@@ -123,34 +123,43 @@ impl SpanTrace {
 
     /// Returns the status of this SpanTrace, indicating whether this backtrace request was unsupported, empty, or a span trace was actually captured.
     pub fn status(&self) -> SpanTraceStatus {
-        if self.span.is_none() {
-            SpanTraceStatus::Empty
+        SpanTraceStatus(if self.span.is_none() {
+            SpanTraceStatusInner::Empty
         } else {
             let mut status = None;
             self.span.with_subscriber(|(_, s)| {
                 if s.downcast_ref::<WithContext>().is_some() {
-                    status = Some(SpanTraceStatus::Captured);
+                    status = Some(SpanTraceStatusInner::Captured);
                 }
             });
 
-            status.unwrap_or(SpanTraceStatus::Unsupported)
-        }
+            status.unwrap_or(SpanTraceStatusInner::Unsupported)
+        })
     }
 }
 
 /// The current status of a SpanTrace, indicating whether it was captured or whether it is empty
 /// for some other reason.
 #[derive(Debug, PartialEq, Eq)]
-pub enum SpanTraceStatus {
+pub struct SpanTraceStatus(SpanTraceStatusInner);
+
+impl SpanTraceStatus {
     /// Formatting a SpanTrace is not supported, likely because there is no ErrorLayer or the
     /// ErrorLayer is from a different version of tracing_error
-    Unsupported,
+    pub const UNSUPPORTED: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Unsupported);
 
     /// The SpanTrace is empty, likely because it was captured outside of any `span`s
-    Empty,
+    pub const EMPTY: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Empty);
 
     /// A span trace has been captured and the `SpanTrace` should print reasonable information when
     /// rendered.
+    pub const CAPTURED: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Captured);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum SpanTraceStatusInner {
+    Unsupported,
+    Empty,
     Captured,
 }
 
@@ -264,7 +273,7 @@ mod tests {
 
             dbg!(&span_trace);
 
-            assert_eq!(SpanTraceStatus::Captured, span_trace.status())
+            assert_eq!(SpanTraceStatus::CAPTURED, span_trace.status())
         });
     }
 
@@ -277,7 +286,7 @@ mod tests {
 
             dbg!(&span_trace);
 
-            assert_eq!(SpanTraceStatus::Empty, span_trace.status())
+            assert_eq!(SpanTraceStatus::EMPTY, span_trace.status())
         });
     }
 
@@ -293,7 +302,7 @@ mod tests {
 
             dbg!(&span_trace);
 
-            assert_eq!(SpanTraceStatus::Unsupported, span_trace.status())
+            assert_eq!(SpanTraceStatus::UNSUPPORTED, span_trace.status())
         });
     }
 }
