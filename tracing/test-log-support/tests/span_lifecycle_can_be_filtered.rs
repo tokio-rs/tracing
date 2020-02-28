@@ -58,7 +58,7 @@ fn span_lifecycle_can_be_filtered() {
 
     let bar = span!(Level::INFO, "bar");
     // lifecycles for INFO spans should be logged
-    test.assert_logged("bar;");
+    test.assert_logged("bar");
 
     bar.in_scope(|| {
         // entering the INFO span should be logged

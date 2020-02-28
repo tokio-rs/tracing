@@ -490,12 +490,12 @@ impl Span {
         };
 
         if_log_enabled! {{
-            let (target, delim) = if attrs.is_empty() {
-                (LIFECYCLE_LOG_TARGET, "")
+            let target = if attrs.is_empty() {
+                LIFECYCLE_LOG_TARGET
             } else {
-                (meta.target(), ";")
+                meta.target()
             };
-            span.log(target, format_args!("++ {}{}{}", meta.name(), delim, FmtAttrs(attrs)));
+            span.log(target, format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
         }}
 
         span
@@ -707,12 +707,12 @@ impl Span {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.meta {
-                let (target, delim) = if record.is_empty() {
-                    (LIFECYCLE_LOG_TARGET, "")
+                let target = if record.is_empty() {
+                    LIFECYCLE_LOG_TARGET
                 } else {
-                    (meta.target(), ";")
+                    meta.target()
                 };
-                self.log(target, format_args!("{}{}{}", meta.name(), delim, FmtValues(&record)));
+                self.log(target, format_args!("{}{}", meta.name(), FmtValues(&record)));
             }
         }}
 
@@ -1032,8 +1032,10 @@ struct FmtValues<'a>(&'a Record<'a>);
 impl<'a> fmt::Display for FmtValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
+        let mut is_first = true;
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, " {}={:?}", k, v);
+            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
+            is_first = false;
         });
         res
     }
@@ -1046,8 +1048,10 @@ struct FmtAttrs<'a>(&'a Attributes<'a>);
 impl<'a> fmt::Display for FmtAttrs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
+        let mut is_first = true;
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, " {}={:?}", k, v);
+            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
+            is_first = false;
         });
         res
     }

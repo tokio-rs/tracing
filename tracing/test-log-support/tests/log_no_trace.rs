@@ -19,7 +19,7 @@ fn test_always_log() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
-    test.assert_logged("foo;");
+    test.assert_logged("foo");
 
     foo.in_scope(|| {
         test.assert_logged("-> foo");
