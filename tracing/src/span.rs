@@ -364,6 +364,10 @@ pub struct Entered<'a> {
     span: &'a Span,
 }
 
+/// `log` target for span lifecycle (creation/enter/exit/close) records.
+#[cfg(feature = "log")]
+const LIFECYCLE_LOG_TARGET: &'static str = "tracing::span";
+
 // ===== impl Span =====
 
 impl Span {
@@ -486,7 +490,12 @@ impl Span {
         };
 
         if_log_enabled! {{
-            span.log(format_args!("++ {}; {}", meta.name(), FmtAttrs(attrs)));
+            let target = if attrs.is_empty() {
+                LIFECYCLE_LOG_TARGET
+            } else {
+                meta.target()
+            };
+            span.log(target, format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
         }}
 
         span
@@ -565,7 +574,7 @@ impl Span {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.meta {
-                self.log(format_args!("-> {}", meta.name()));
+                self.log(LIFECYCLE_LOG_TARGET, format_args!("-> {}", meta.name()));
             }
         }}
 
@@ -698,7 +707,12 @@ impl Span {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.meta {
-                self.log(format_args!("{}; {}", meta.name(), FmtValues(&record)));
+                let target = if record.is_empty() {
+                    LIFECYCLE_LOG_TARGET
+                } else {
+                    meta.target()
+                };
+                self.log(target, format_args!("{}{}", meta.name(), FmtValues(&record)));
             }
         }}
 
@@ -799,23 +813,35 @@ impl Span {
 
     #[cfg(feature = "log")]
     #[inline]
-    fn log(&self, message: fmt::Arguments<'_>) {
+    fn log(&self, target: &str, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
             let logger = log::logger();
             let log_meta = log::Metadata::builder()
                 .level(level_to_log!(meta.level()))
-                .target(meta.target())
+                .target(target)
                 .build();
             if logger.enabled(&log_meta) {
-                logger.log(
-                    &log::Record::builder()
-                        .metadata(log_meta)
-                        .module_path(meta.module_path())
-                        .file(meta.file())
-                        .line(meta.line())
-                        .args(message)
-                        .build(),
-                );
+                if let Some(ref inner) = self.inner {
+                    logger.log(
+                        &log::Record::builder()
+                            .metadata(log_meta)
+                            .module_path(meta.module_path())
+                            .file(meta.file())
+                            .line(meta.line())
+                            .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                            .build(),
+                    );
+                } else {
+                    logger.log(
+                        &log::Record::builder()
+                            .metadata(log_meta)
+                            .module_path(meta.module_path())
+                            .file(meta.file())
+                            .line(meta.line())
+                            .args(message)
+                            .build(),
+                    );
+                }
             }
         }
     }
@@ -912,7 +938,7 @@ impl Drop for Span {
 
         if_log_enabled!({
             if let Some(ref meta) = self.meta {
-                self.log(format_args!("-- {}", meta.name()));
+                self.log(LIFECYCLE_LOG_TARGET, format_args!("-- {}", meta.name()));
             }
         })
     }
@@ -993,7 +1019,7 @@ impl<'a> Drop for Entered<'a> {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.span.meta {
-                self.span.log(format_args!("<- {}", meta.name()));
+                self.span.log(LIFECYCLE_LOG_TARGET, format_args!("<- {}", meta.name()));
             }
         }}
     }
@@ -1006,8 +1032,10 @@ struct FmtValues<'a>(&'a Record<'a>);
 impl<'a> fmt::Display for FmtValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
+        let mut is_first = true;
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{}={:?} ", k, v);
+            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
+            is_first = false;
         });
         res
     }
@@ -1020,8 +1048,10 @@ struct FmtAttrs<'a>(&'a Attributes<'a>);
 impl<'a> fmt::Display for FmtAttrs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
+        let mut is_first = true;
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{}={:?} ", k, v);
+            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
+            is_first = false;
         });
         res
     }

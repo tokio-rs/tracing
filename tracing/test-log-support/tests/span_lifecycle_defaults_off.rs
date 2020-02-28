@@ -6,8 +6,8 @@ use test_log_support::Test;
 use tracing::Level;
 
 #[test]
-fn test_always_log() {
-    let test = Test::start();
+fn span_lifecycle_defaults_off() {
+    let test = Test::with_filters(&[("span_lifecycle_defaults_off", log::LevelFilter::Trace)]);
 
     error!(foo = 5);
     test.assert_logged("foo=5");
@@ -19,24 +19,41 @@ fn test_always_log() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
-    test.assert_logged("foo");
+    test.assert_not_logged();
 
     foo.in_scope(|| {
-        test.assert_logged("-> foo");
+        // enter should not be logged
+        test.assert_not_logged();
 
         trace!({foo = 3, bar = 4}, "hello {};", "san francisco");
         test.assert_logged("hello san francisco; foo=3 bar=4");
     });
-    test.assert_logged("<- foo");
+    // exit should not be logged
+    test.assert_not_logged();
 
     drop(foo);
-    test.assert_logged("-- foo");
+    // drop should not be logged
+    test.assert_not_logged();
 
     trace!(foo = 1, bar = 2, "hello world");
     test.assert_logged("hello world foo=1 bar=2");
 
     let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
+    // creating a span with fields _should_ be logged.
     test.assert_logged("foo; bar=3 baz=false");
 
+    foo.in_scope(|| {
+        // entering the span should not be logged
+        test.assert_not_logged();
+    });
+    // exiting the span should not be logged
+    test.assert_not_logged();
+
+    foo.record("baz", &true);
+    // recording a field should be logged
+    test.assert_logged("foo; baz=true");
+
     drop(foo);
+    // drop should not be logged.
+    test.assert_not_logged();
 }
