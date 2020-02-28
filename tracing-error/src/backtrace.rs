@@ -123,7 +123,7 @@ impl SpanTrace {
 
     /// Returns the status of this SpanTrace, indicating whether this backtrace request was unsupported, empty, or a span trace was actually captured.
     pub fn status(&self) -> SpanTraceStatus {
-        if self.span == Span::none() {
+        if self.span.is_none() {
             SpanTraceStatus::Empty
         } else {
             let mut status = None;
