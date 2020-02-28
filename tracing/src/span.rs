@@ -490,12 +490,12 @@ impl Span {
         };
 
         if_log_enabled! {{
-            let target = if dbg!(attrs.is_empty()) {
-                LIFECYCLE_LOG_TARGET
+            let (target, delim) = if attrs.is_empty() {
+                (LIFECYCLE_LOG_TARGET, "")
             } else {
-                meta.target()
+                (meta.target(), ";")
             };
-            span.log(target, format_args!("++ {}; {}", meta.name(), FmtAttrs(attrs)));
+            span.log(target, format_args!("++ {}{}{}", meta.name(), delim, FmtAttrs(attrs)));
         }}
 
         span
@@ -707,12 +707,12 @@ impl Span {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.meta {
-                let target = if record.is_empty() {
-                    LIFECYCLE_LOG_TARGET
+                let (target, delim) = if record.is_empty() {
+                    (LIFECYCLE_LOG_TARGET, "")
                 } else {
-                    meta.target()
+                    (meta.target(), ";")
                 };
-                self.log(target, format_args!("{}; {}", meta.name(), FmtValues(&record)));
+                self.log(target, format_args!("{}{}{}", meta.name(), delim, FmtValues(&record)));
             }
         }}
 
@@ -821,15 +821,27 @@ impl Span {
                 .target(target)
                 .build();
             if logger.enabled(&log_meta) {
-                logger.log(
-                    &log::Record::builder()
-                        .metadata(log_meta)
-                        .module_path(meta.module_path())
-                        .file(meta.file())
-                        .line(meta.line())
-                        .args(message)
-                        .build(),
-                );
+                if let Some(ref inner) = self.inner {
+                    logger.log(
+                        &log::Record::builder()
+                            .metadata(log_meta)
+                            .module_path(meta.module_path())
+                            .file(meta.file())
+                            .line(meta.line())
+                            .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                            .build(),
+                    );
+                } else {
+                    logger.log(
+                        &log::Record::builder()
+                            .metadata(log_meta)
+                            .module_path(meta.module_path())
+                            .file(meta.file())
+                            .line(meta.line())
+                            .args(message)
+                            .build(),
+                    );
+                }
             }
         }
     }
@@ -1021,7 +1033,7 @@ impl<'a> fmt::Display for FmtValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{}={:?} ", k, v);
+            res = write!(f, " {}={:?}", k, v);
         });
         res
     }
@@ -1035,7 +1047,7 @@ impl<'a> fmt::Display for FmtAttrs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
         self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{}={:?} ", k, v);
+            res = write!(f, " {}={:?}", k, v);
         });
         res
     }

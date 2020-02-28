@@ -12,7 +12,9 @@ impl tracing::Subscriber for NopSubscriber {
         true
     }
     fn new_span(&self, _: &tracing::span::Attributes) -> tracing::span::Id {
-        tracing::span::Id::from_u64(1)
+        use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        tracing::span::Id::from_u64(NEXT.fetch_add(1, Relaxed))
     }
     fn record(&self, _: &tracing::span::Id, _: &tracing::span::Record) {}
     fn record_follows_from(&self, _: &tracing::span::Id, _: &tracing::span::Id) {}
@@ -25,7 +27,7 @@ impl tracing::Subscriber for NopSubscriber {
 }
 
 #[test]
-fn test_always_log() {
+fn log_with_trace() {
     tracing::subscriber::set_global_default(NopSubscriber).expect("set global should succeed");
 
     let test = Test::start();
@@ -46,24 +48,24 @@ fn test_always_log() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
-    test.assert_logged("++ foo;");
+    test.assert_logged("++ foo; span=1");
 
     foo.in_scope(|| {
-        test.assert_logged("-> foo");
+        test.assert_logged("-> foo; span=1");
 
         trace!({foo = 3, bar = 4}, "hello {};", "san francisco");
         test.assert_logged("hello san francisco; foo=3 bar=4");
     });
-    test.assert_logged("<- foo");
+    test.assert_logged("<- foo; span=1");
 
     drop(foo);
-    test.assert_logged("-- foo");
+    test.assert_logged("-- foo; span=1");
 
     let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
-    test.assert_logged("++ foo; bar=3 baz=false");
+    test.assert_logged("++ foo; bar=3 baz=false; span=2");
 
     drop(foo);
-    test.assert_logged("-- foo");
+    test.assert_logged("-- foo; span=2");
 
     trace!(foo = 1, bar = 2, "hello world");
     test.assert_logged("hello world foo=1 bar=2");
