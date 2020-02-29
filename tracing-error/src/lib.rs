@@ -202,7 +202,7 @@ mod layer;
 #[cfg(feature = "stack-error")]
 mod stack_error;
 
-pub use self::backtrace::SpanTrace;
+pub use self::backtrace::{SpanTrace, SpanTraceStatus};
 #[cfg(not(feature = "stack-error"))]
 pub use self::heap_error::TracedError;
 pub use self::layer::ErrorLayer;
