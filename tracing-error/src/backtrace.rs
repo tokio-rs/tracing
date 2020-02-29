@@ -128,7 +128,7 @@ impl SpanTrace {
     /// * there was no current span, so a trace was not captured
     /// * a span trace was successfully captured
     pub fn status(&self) -> SpanTraceStatus {
-        SpanTraceStatus(if self.span.is_none() {
+        let inner = if self.span.is_none() {
             SpanTraceStatusInner::Empty
         } else {
             let mut status = None;
@@ -139,25 +139,29 @@ impl SpanTrace {
             });
 
             status.unwrap_or(SpanTraceStatusInner::Unsupported)
-        })
+        };
+
+        SpanTraceStatus(inner)
     }
 }
 
-/// The current status of a SpanTrace, indicating whether it was captured or whether it is empty
-/// for some other reason.
+/// The current status of a SpanTrace, indicating whether it was captured or
+/// whether it is empty for some other reason.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SpanTraceStatus(SpanTraceStatusInner);
 
 impl SpanTraceStatus {
-    /// Formatting a SpanTrace is not supported, likely because there is no ErrorLayer or the
-    /// ErrorLayer is from a different version of tracing_error
+    /// Formatting a SpanTrace is not supported, likely because there is no
+    /// ErrorLayer or the ErrorLayer is from a different version of
+    /// tracing_error
     pub const UNSUPPORTED: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Unsupported);
 
-    /// The SpanTrace is empty, likely because it was captured outside of any `span`s
+    /// The SpanTrace is empty, likely because it was captured outside of any
+    /// `span`s
     pub const EMPTY: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Empty);
 
-    /// A span trace has been captured and the `SpanTrace` should print reasonable information when
-    /// rendered.
+    /// A span trace has been captured and the `SpanTrace` should print
+    /// reasonable information when rendered.
     pub const CAPTURED: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Captured);
 }
 
