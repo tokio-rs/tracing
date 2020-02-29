@@ -121,7 +121,12 @@ impl SpanTrace {
         });
     }
 
-    /// Returns the status of this SpanTrace, indicating whether this backtrace request was unsupported, empty, or a span trace was actually captured.
+    /// Returns the status of this `SpanTrace`.
+    ///
+    /// The status indicates one of the following:
+    /// * the current subscriber does not support capturing `SpanTrace`s
+    /// * there was no current span, so a trace was not captured
+    /// * a span trace was successfully captured
     pub fn status(&self) -> SpanTraceStatus {
         SpanTraceStatus(if self.span.is_none() {
             SpanTraceStatusInner::Empty
