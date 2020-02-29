@@ -151,7 +151,7 @@ where
     }
 }
 
-impl ExtractSpanTrace for &(dyn Error + 'static) {
+impl ExtractSpanTrace for dyn Error + 'static {
     fn span_trace(&self) -> Option<&SpanTrace> {
         self.downcast_ref::<ErrorImpl<Erased>>()
             .map(|inner| &inner.span_trace)
