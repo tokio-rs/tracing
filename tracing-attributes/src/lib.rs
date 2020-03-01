@@ -197,41 +197,66 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     // function name
     let ident_str = ident.to_string();
 
-    // Pull out the arguments-to-be-skipped first, so we can filter results below.
-    let skips = match skips(&args) {
-        Ok(skips) => skips,
-        Err(err) => return quote!(#err).into(),
-    };
+    // generate this inside a closure, so we can return early on errors.
+    let span = (|| {
+        // Pull out the arguments-to-be-skipped first, so we can filter results below.
+        let skips = match skips(&args) {
+            Ok(skips) => skips,
+            Err(err) => return quote!(#err),
+        };
 
-    let param_names: Vec<Ident> = params
-        .clone()
-        .into_iter()
-        .flat_map(|param| match param {
-            FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
-            FnArg::Receiver(_) => Box::new(iter::once(Ident::new("self", param.span()))),
-        })
-        .collect();
+        let param_names: Vec<Ident> = params
+            .clone()
+            .into_iter()
+            .flat_map(|param| match param {
+                FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
+                FnArg::Receiver(_) => Box::new(iter::once(Ident::new("self", param.span()))),
+            })
+            .collect();
 
-    for skip in &skips {
-        if !param_names.contains(skip) {
-            return quote_spanned!(skip.span()=>
-                compile_error!("attempting to skip non-existent parameter")
-            )
-            .into();
+        for skip in &skips {
+            if !param_names.contains(skip) {
+                return quote_spanned! {skip.span()=>
+                    compile_error!("attempting to skip non-existent parameter")
+                };
+            }
         }
-    }
 
-    let param_names: Vec<Ident> = param_names
-        .into_iter()
-        .filter(|ident| !skips.contains(ident))
-        .collect();
+        let param_names: Vec<Ident> = param_names
+            .into_iter()
+            .filter(|ident| !skips.contains(ident))
+            .collect();
 
-    let fields = match fields(&args, &param_names) {
-        Ok(fields) => fields,
-        Err(err) => return quote!(#err).into(),
-    };
+        let fields = match fields(&args, &param_names) {
+            Ok(fields) => fields,
+            Err(err) => return quote!(#err),
+        };
 
-    let param_names_clone = param_names.clone();
+        let param_names_clone = param_names.clone();
+
+        let level = level(&args);
+        let target = target(&args);
+        let span_name = name(&args, ident_str);
+
+        let mut quoted_fields: Vec<_> = param_names
+            .into_iter()
+            .map(|i| quote!(#i = tracing::field::debug(&#i)))
+            .collect();
+        quoted_fields.extend(fields.into_iter().map(|(key, value)| {
+            let value = match value {
+                Some(value) => quote!(#value),
+                None => quote!(tracing::field::Empty),
+            };
+
+            quote!(#key = #value)
+        }));
+        quote!(tracing::span!(
+            target: #target,
+            #level,
+            #span_name,
+            #(#quoted_fields),*
+        ))
+    })();
 
     // Generate the instrumented function body.
     // If the function is an `async fn`, this will wrap it in an async block,
@@ -259,34 +284,12 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         )
     };
 
-    let level = level(&args);
-    let target = target(&args);
-    let span_name = name(&args, ident_str);
-
-    let mut quoted_fields: Vec<_> = param_names
-        .into_iter()
-        .map(|i| quote!(#i = tracing::field::debug(&#i)))
-        .collect();
-    quoted_fields.extend(fields.into_iter().map(|(key, value)| {
-        let value = match value {
-            Some(value) => quote!(#value),
-            None => quote!(tracing::field::Empty),
-        };
-
-        quote!(#key = #value)
-    }));
-
     quote!(
         #(#attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
         {
-            let __tracing_attr_span = tracing::span!(
-                target: #target,
-                #level,
-                #span_name,
-                #(#quoted_fields),*
-            );
+            let __tracing_attr_span = #span;
             #body
         }
     )
