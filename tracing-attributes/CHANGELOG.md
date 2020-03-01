@@ -1,3 +1,10 @@
+# 0.1.8 (March 1, 2020)
+
+### Fixed
+
+- Invalid input to `#[instrument]` no longer results in cryptic syntax errors
+  (#615)
+
 # 0.1.7 (February 26, 2020)
 
 ### Added
