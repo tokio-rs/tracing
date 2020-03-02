@@ -1,11 +1,14 @@
+// this is the only way to make the path attribute play nice with `in
+// crate::support`...
+#[allow(clippy::module_inception)]
 #[path = "../../tracing/tests/support/mod.rs"]
-mod inner;
-pub use inner::*;
+mod support;
 use std::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
+pub use support::*;
 use tokio_test::task;
 
 pub struct PollN<T, E> {
