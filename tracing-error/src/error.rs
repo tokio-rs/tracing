@@ -15,7 +15,7 @@ struct Erased;
 /// An example of implementing an error type for a library using `TracedError`
 /// might look like this
 ///
-/// ```rust
+/// ```rust,compile_fail
 /// #[derive(Debug, thiserror::Error)]
 /// pub struct Error {
 ///     source: TracedError<Kind>,
@@ -188,7 +188,10 @@ pub trait InstrumentError {
     /// ```rust
     /// use tracing_error::{TracedError, InstrumentError};
     ///
-    /// fn wrap_error(e: impl std::error::Error + Send + Sync + 'static) -> TracedError {
+    /// fn wrap_error<E>(e: E) -> TracedError<E>
+    /// where
+    ///     E: std::error::Error + Send + Sync + 'static
+    /// {
     ///     e.in_current_span()
     /// }
     /// ```
@@ -211,7 +214,7 @@ pub trait InstrumentResult<T> {
     ///
     /// # fn fallible_fn() -> io::Result<()> { fs::read_dir("......").map(drop) };
     ///
-    /// fn do_thing() -> Result<(), TracedError> {
+    /// fn do_thing() -> Result<(), TracedError<io::Error>> {
     ///     fallible_fn().in_current_span()
     /// }
     /// ```
