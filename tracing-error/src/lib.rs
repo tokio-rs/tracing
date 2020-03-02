@@ -22,20 +22,12 @@
 //!
 //! ## Feature Flags
 //!
-//! - `traced-error` - Enables a generic error type that bundles a `SpanTrace`
-//! with an inner error type. This is a good match for the error-kind pattern
-//! where you have an error type with an inner enum of error variants and you
-//! would like to capture a span trace that can be extracted during printing
-//! without formatting the span trace as part of your display impl.
-//!
-//! Enabling the above feature also brings in the following traits
-//!
-//! * [`InstrumentResult`] and [`InstrumentError`] extension traits, which
-//! provide an [`in_current_span()`] method for bundling errors with a
-//! [`SpanTrace`].
-//!
-//! * [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
-//! behind `dyn Error` trait objects.
+//! - `traced-error` - Enables the [`TracedError`] type and related Traits
+//!     - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
+//!     provide an [`in_current_span()`] method for bundling errors with a
+//!     [`SpanTrace`].
+//!     - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
+//!     behind `dyn Error` trait objects.
 //!
 //! ## Usage
 //!

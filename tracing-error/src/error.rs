@@ -4,7 +4,42 @@ use std::fmt::{self, Debug, Display};
 
 struct Erased;
 
-/// A wrapper type for `Error`s that bundles a `SpanTrace` with an inner `Error` type.
+/// A wrapper type for `Error`s that bundles a `SpanTrace` with an inner `Error`
+/// type.
+///
+/// This type is a good match for the error-kind pattern where you have an error
+/// type with an inner enum of error variants and you would like to capture a
+/// span trace that can be extracted during printing without formatting the span
+/// trace as part of your display impl.
+///
+/// An example of implementing an error type for a library using `TracedError`
+/// might look like this
+///
+/// ```rust
+/// #[derive(Debug, thiserror::Error)]
+/// pub struct Error {
+///     source: TracedError<Kind>,
+///     backtrace: Backtrace,
+/// }
+///
+/// impl fmt::Display for Error {
+///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         fmt::Display::fmt(&self.source, fmt)
+///     }
+/// }
+///
+/// impl<E> From<E> for Error
+/// where
+///     Kind: From<E>,
+/// {
+///     fn from(source: E) -> Self {
+///         Self {
+///             source: Kind::from(source).into(),
+///             backtrace: Backtrace::capture(),
+///         }
+///     }
+/// }
+/// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
 pub struct TracedError<E> {
     inner: ErrorImpl<E>,
