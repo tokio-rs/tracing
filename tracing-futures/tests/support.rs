@@ -1,11 +1,11 @@
-#[path = "../../../tracing/tests/support/mod.rs"]
+#[path = "../../tracing/tests/support/mod.rs"]
 pub mod support;
-
 use std::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
+pub use support::*;
 use tokio_test::task;
 
 pub struct PollN<T, E> {

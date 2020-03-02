@@ -1,8 +1,6 @@
-use test_std_future::{
-    PollN,
-    block_on_future,
-    support::*,
-};
+#[path = "../../tracing-futures/tests/support.rs"]
+mod support;
+use support::*;
 
 use tracing::subscriber::with_default;
 
