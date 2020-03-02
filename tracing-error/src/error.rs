@@ -1,11 +1,11 @@
 use crate::SpanTrace;
-use crate::{ExtractSpanTrace, InstrumentError, InstrumentResult};
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
 
 struct Erased;
 
 /// A wrapper type for `Error`s that bundles a `SpanTrace` with an inner `Error` type.
+#[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
 pub struct TracedError<E> {
     inner: ErrorImpl<E>,
 }
@@ -140,9 +140,86 @@ impl Display for ErrorImpl<Erased> {
     }
 }
 
+/// Extension trait for instrumenting errors with `SpanTrace`s
+#[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
+pub trait InstrumentError {
+    /// The type of the wrapped error after instrumentation
+    type Instrumented;
+
+    /// Instrument an Error by bundling it with a SpanTrace
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::{TracedError, InstrumentError};
+    ///
+    /// fn wrap_error(e: impl std::error::Error + Send + Sync + 'static) -> TracedError {
+    ///     e.in_current_span()
+    /// }
+    /// ```
+    fn in_current_span(self) -> Self::Instrumented;
+}
+
+/// Extension trait for instrumenting errors in `Result`s with `SpanTrace`s
+#[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
+pub trait InstrumentResult<T> {
+    /// The type of the wrapped error after instrumentation
+    type Instrumented;
+
+    /// Instrument an Error by bundling it with a SpanTrace
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use std::{io, fs};
+    /// use tracing_error::{TracedError, InstrumentResult};
+    ///
+    /// # fn fallible_fn() -> io::Result<()> { fs::read_dir("......").map(drop) };
+    ///
+    /// fn do_thing() -> Result<(), TracedError> {
+    ///     fallible_fn().in_current_span()
+    /// }
+    /// ```
+    fn in_current_span(self) -> Result<T, Self::Instrumented>;
+}
+
+impl<T, E> InstrumentResult<T> for Result<T, E>
+where
+    E: InstrumentError,
+{
+    type Instrumented = <E as InstrumentError>::Instrumented;
+
+    fn in_current_span(self) -> Result<T, Self::Instrumented> {
+        self.map_err(E::in_current_span)
+    }
+}
+
+/// A trait for extracting SpanTraces created by `in_current_span()` from `dyn
+/// Error` trait objects
+#[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
+pub trait ExtractSpanTrace {
+    /// Attempts to downcast to a `TracedError` and return a reference to its
+    /// SpanTrace
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::ExtractSpanTrace;
+    /// use std::error::Error;
+    ///
+    /// fn print_span_trace(e: &(dyn Error + 'static)) {
+    ///     let span_trace = e.span_trace();
+    ///     if let Some(span_trace) = span_trace {
+    ///         println!("{}", span_trace);
+    ///     }
+    /// }
+    /// ```
+    fn span_trace(&self) -> Option<&SpanTrace>;
+}
+
 impl<E> InstrumentError for E
 where
-    E: Error + Send + Sync + 'static,
+    TracedError<E>: From<E>,
 {
     type Instrumented = TracedError<E>;
 
