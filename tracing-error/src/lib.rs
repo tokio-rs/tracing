@@ -16,23 +16,18 @@
 //!
 //! * [`ErrorLayer`], a [subscriber layer] which enables capturing `SpanTrace`s
 //!
-//! * [`InstrumentResult`] and [`InstrumentError`] extension traits, which
-//! provide an [`in_current_span()`] method for bundling errors with a
-//! [`SpanTrace`].
-//!
-//! * [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
-//! behind `dyn Error` trait objects.
-//!
 //! **Note**: This crate is currently experimental.
 //!
 //! *Compiler support: requires `rustc` 1.39+*
 //!
 //! ## Feature Flags
 //!
-//! - `stack-error` - Enables an experimental version of [`TracedError`] that
-//! statically wraps an error type without using heap allocations. The contained
-//! [`SpanTrace`] can still be extracted from behind a
-//! [`std::error::Error`] trait object via type erasure.
+//! - `traced-error` - Enables the [`TracedError`] type and related Traits
+//!     - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
+//!     provide an [`in_current_span()`] method for bundling errors with a
+//!     [`SpanTrace`].
+//!     - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
+//!     behind `dyn Error` trait objects.
 //!
 //! ## Usage
 //!
@@ -172,6 +167,7 @@
 //! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 //! [`tracing`]: https://docs.rs/tracing
 //! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing-error/0.1.1")]
 #![warn(
     missing_debug_implementations,
@@ -196,98 +192,23 @@
     while_true
 )]
 mod backtrace;
-#[cfg(not(feature = "stack-error"))]
-mod heap_error;
+#[cfg(feature = "traced-error")]
+mod error;
 mod layer;
-#[cfg(feature = "stack-error")]
-mod stack_error;
 
 pub use self::backtrace::{SpanTrace, SpanTraceStatus};
-#[cfg(not(feature = "stack-error"))]
-pub use self::heap_error::TracedError;
+#[cfg(feature = "traced-error")]
+pub use self::error::{ExtractSpanTrace, InstrumentError, InstrumentResult, TracedError};
 pub use self::layer::ErrorLayer;
-#[cfg(feature = "stack-error")]
-pub use self::stack_error::TracedError;
 
-/// Extension trait for instrumenting errors with `SpanTrace`s
-pub trait InstrumentError {
-    /// The type of the wrapped error after instrumentation
-    type Instrumented;
-
-    /// Instrument an Error by bundling it with a SpanTrace
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use tracing_error::{TracedError, InstrumentError};
-    ///
-    /// fn wrap_error(e: impl std::error::Error + Send + Sync + 'static) -> TracedError {
-    ///     e.in_current_span()
-    /// }
-    /// ```
-    fn in_current_span(self) -> Self::Instrumented;
-}
-
-/// Extension trait for instrumenting errors in `Result`s with `SpanTrace`s
-pub trait InstrumentResult<T> {
-    /// The type of the wrapped error after instrumentation
-    type Instrumented;
-
-    /// Instrument an Error by bundling it with a SpanTrace
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use std::{io, fs};
-    /// use tracing_error::{TracedError, InstrumentResult};
-    ///
-    /// # fn fallible_fn() -> io::Result<()> { fs::read_dir("......").map(drop) };
-    ///
-    /// fn do_thing() -> Result<(), TracedError> {
-    ///     fallible_fn().in_current_span()
-    /// }
-    /// ```
-    fn in_current_span(self) -> Result<T, Self::Instrumented>;
-}
-
-impl<T, E> InstrumentResult<T> for Result<T, E>
-where
-    E: InstrumentError,
-{
-    type Instrumented = <E as InstrumentError>::Instrumented;
-
-    fn in_current_span(self) -> Result<T, Self::Instrumented> {
-        self.map_err(E::in_current_span)
-    }
-}
-
-/// A trait for extracting SpanTraces created by `in_current_span()` from `dyn
-/// Error` trait objects
-pub trait ExtractSpanTrace {
-    /// Attempts to downcast to a `TracedError` and return a reference to its
-    /// SpanTrace
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use tracing_error::ExtractSpanTrace;
-    /// use std::error::Error;
-    ///
-    /// fn print_span_trace(e: &(dyn Error + 'static)) {
-    ///     let span_trace = e.span_trace();
-    ///     if let Some(span_trace) = span_trace {
-    ///         println!("{}", span_trace);
-    ///     }
-    /// }
-    /// ```
-    fn span_trace(&self) -> Option<&SpanTrace>;
-}
-
-/// The `tracing-error` prelude.
-///
-/// This brings into scope the `InstrumentError, `InstrumentResult`, and `ExtractSpanTrace`
-/// extension traits. These traits allow attaching `SpanTrace`s to errors and
-/// subsequently retrieving them from `dyn Error` trait objects.
+#[cfg(feature = "traced-error")]
+#[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
 pub mod prelude {
+    //! The `tracing-error` prelude.
+    //!
+    //! This brings into scope the `InstrumentError, `InstrumentResult`, and `ExtractSpanTrace`
+    //! extension traits. These traits allow attaching `SpanTrace`s to errors and
+    //! subsequently retrieving them from `dyn Error` trait objects.
+
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }
