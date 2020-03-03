@@ -13,9 +13,9 @@ Utilities for instrumenting errors with [`tracing`].
 [Documentation (release)][docs-url] | [Documentation (master)][docs-master-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-error.svg
-[crates-url]: https://crates.io/crates/tracing-error/0.1.0
+[crates-url]: https://crates.io/crates/tracing-error/0.1.2
 [docs-badge]: https://docs.rs/tracing-error/badge.svg
-[docs-url]: https://docs.rs/tracing-error/0.1.0/tracing_error
+[docs-url]: https://docs.rs/tracing-error/0.1.2/tracing_error
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_error
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -108,8 +108,8 @@ fn main() {
 }
 ```
 
-[`SpanTrace`]: https://docs.rs/tracing-error/0.1.0/tracing_error/struct.SpanTrace.html
-[`ErrorLayer`]: https://docs.rs/tracing-error/0.1.0/tracing_error/struct.ErrorLayer.html
+[`SpanTrace`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.SpanTrace.html
+[`ErrorLayer`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.ErrorLayer.html
 [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 [event]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
