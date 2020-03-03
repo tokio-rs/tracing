@@ -62,9 +62,8 @@ where
 {
     let mut task = task::spawn(future);
     loop {
-        match task.poll() {
-            Poll::Ready(v) => break v,
-            _ => {}
+        if let Poll::Ready(v) = task.poll() {
+            break v;
         }
     }
 }
