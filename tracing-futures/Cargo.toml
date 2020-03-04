@@ -19,7 +19,7 @@ license = "MIT"
 
 [features]
 default = ["std-future", "std"]
-futures-01 = ["futures_01"]
+futures-01 = ["futures_01", "std"]
 futures-03 = ["std-future", "futures", "futures-task", "std"]
 std-future = ["pin-project"]
 std = ["tracing/std"]
@@ -35,6 +35,8 @@ tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
+tokio-test = "0.2"
+tracing-core = { path = "../tracing-core", version = "0.1.2" }
 
 [badges]
 azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }

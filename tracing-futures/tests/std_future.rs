@@ -1,8 +1,5 @@
-#[macro_use]
-extern crate tracing;
-extern crate tracing_core;
-
-use test_std_future::{block_on_future, support::*, PollN};
+mod support;
+use support::*;
 
 use tracing::{subscriber::with_default, Level};
 use tracing_futures::Instrument;
@@ -18,7 +15,7 @@ fn enter_exit_is_reasonable() {
         .done()
         .run_with_handle();
     with_default(subscriber, || {
-        let future = PollN::new_ok(2).instrument(span!(Level::TRACE, "foo"));
+        let future = PollN::new_ok(2).instrument(tracing::span!(Level::TRACE, "foo"));
         block_on_future(future).unwrap();
     });
     handle.assert_finished();
@@ -35,7 +32,7 @@ fn error_ends_span() {
         .done()
         .run_with_handle();
     with_default(subscriber, || {
-        let future = PollN::new_err(2).instrument(span!(Level::TRACE, "foo"));
+        let future = PollN::new_err(2).instrument(tracing::span!(Level::TRACE, "foo"));
         block_on_future(future).unwrap_err();
     });
     handle.assert_finished();
