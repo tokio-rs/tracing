@@ -168,7 +168,7 @@
 //! [`tracing`]: https://docs.rs/tracing
 //! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/tracing-error/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/tracing-error/0.1.2")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
