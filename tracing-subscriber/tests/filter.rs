@@ -83,6 +83,8 @@ fn level_filter_event_with_target() {
 
 #[test]
 fn not_order_dependent() {
+    // this test reproduces tokio-rs/tracing#623
+    
     let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
