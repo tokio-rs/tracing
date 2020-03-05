@@ -82,6 +82,33 @@ fn level_filter_event_with_target() {
 }
 
 #[test]
+fn not_order_dependent() {
+    let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
+        .event(event::mock().at_level(Level::WARN).with_target("stuff"))
+        .event(event::mock().at_level(Level::ERROR))
+        .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::trace!("this should be disabled");
+        tracing::info!("this shouldn't be");
+        tracing::debug!(target: "stuff", "this should be enabled");
+        tracing::debug!("but this shouldn't");
+        tracing::trace!(target: "stuff", "and neither should this");
+        tracing::warn!(target: "stuff", "this should be enabled");
+        tracing::error!("this should be enabled too");
+        tracing::error!(target: "stuff", "this should be enabled also");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
 fn span_name_filter_is_dynamic() {
     let filter: EnvFilter = "info,[cool_span]=debug"
         .parse()
