@@ -406,14 +406,19 @@ impl<T: Match + Ord> DirectiveSet<T> {
         self.directives
             .iter()
             .filter(move |d| d.cares_about(metadata))
-            .rev()
     }
 
     pub(crate) fn add(&mut self, directive: T) {
+        // does this directive enable a more verbose level than the current
+        // max? if so, update the max level.
         let level = directive.level();
         if *level > self.max_level {
             self.max_level = level.clone();
         }
+        // insert the directive into the vec of directives, ordered by
+        // specificity (length of target + number of field filters). this
+        // ensures that, when finding a directive to match a span or event, we
+        // search the directive set in most specific first order.
         match self.directives.binary_search(&directive) {
             Ok(i) => self.directives[i] = directive,
             Err(i) => self.directives.insert(i, directive),
@@ -431,14 +436,9 @@ impl<T: Match + Ord> FromIterator<T> for DirectiveSet<T> {
 
 impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        let max_level = &mut self.max_level;
-        let ds = iter.into_iter().inspect(|d| {
-            let level = d.level();
-            if *level > *max_level {
-                *max_level = level.clone();
-            }
-        });
-        self.directives.extend(ds);
+        for directive in iter.into_iter() {
+            self.add(directive);
+        }
     }
 }
 
