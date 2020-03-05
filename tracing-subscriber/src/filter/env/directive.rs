@@ -409,7 +409,7 @@ impl<T: Match + Ord> DirectiveSet<T> {
     }
 
     pub(crate) fn add(&mut self, directive: T) {
-        // does this directive enable a more verbose level than the current 
+        // does this directive enable a more verbose level than the current
         // max? if so, update the max level.
         let level = directive.level();
         if *level > self.max_level {
