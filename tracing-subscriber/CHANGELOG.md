@@ -1,3 +1,10 @@
+# 0.2.3 (March 5, 2020)
+
+### Fixed
+
+- **env-filter**: Regression where filter directives were selected in the order
+  they were listed, rather than most specific first (#624)
+
 # 0.2.2 (February 27, 2020)
 
 ### Added
