@@ -1,7 +1,10 @@
 mod support;
 use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
-use tracing_subscriber::{filter::EnvFilter, prelude::*};
+use tracing_subscriber::{
+    filter::{EnvFilter, LevelFilter},
+    prelude::*,
+};
 
 #[test]
 fn level_filter_event() {
@@ -76,6 +79,60 @@ fn level_filter_event_with_target() {
         tracing::warn!(target: "stuff", "this should be enabled");
         tracing::error!("this should be enabled too");
         tracing::error!(target: "stuff", "this should be enabled also");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn not_order_dependent() {
+    // this test reproduces tokio-rs/tracing#623
+
+    let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
+        .event(event::mock().at_level(Level::WARN).with_target("stuff"))
+        .event(event::mock().at_level(Level::ERROR))
+        .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::trace!("this should be disabled");
+        tracing::info!("this shouldn't be");
+        tracing::debug!(target: "stuff", "this should be enabled");
+        tracing::debug!("but this shouldn't");
+        tracing::trace!(target: "stuff", "and neither should this");
+        tracing::warn!(target: "stuff", "this should be enabled");
+        tracing::error!("this should be enabled too");
+        tracing::error!(target: "stuff", "this should be enabled also");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn add_directive_enables_event() {
+    // this test reproduces tokio-rs/tracing#591
+
+    // by default, use info level
+    let mut filter = EnvFilter::new(LevelFilter::INFO.to_string());
+
+    // overwrite with a more specific directive
+    filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));
+
+    let (subscriber, finished) = subscriber::mock()
+        .event(event::mock().at_level(Level::INFO).with_target("hello"))
+        .event(event::mock().at_level(Level::TRACE).with_target("hello"))
+        .done()
+        .run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::info!(target: "hello", "hello info");
+        tracing::trace!(target: "hello", "hello trace");
     });
 
     finished.assert_finished();
