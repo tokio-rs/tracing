@@ -9,8 +9,15 @@ use std::str;
 use tracing::{debug, info, span, Level};
 use tracing_futures::Instrument;
 
-#[tracing::instrument]
 async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    let span = span!(
+        Level::INFO,
+        "request",
+        method = ?req.method(),
+        uri = ?req.uri(),
+        headers = ?req.headers()
+    );
+    let _enter = span.enter();
     info!("received request");
     let mut response = Response::new(Body::empty());
 
@@ -37,9 +44,9 @@ async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
                 .map(|byte| byte.to_ascii_uppercase())
                 .collect::<Vec<u8>>();
             debug!(
-                message = "uppercased request body",
                 body = ?str::from_utf8(&body[..]),
-                uppercased = ?str::from_utf8(&upper[..])
+                uppercased = ?str::from_utf8(&upper[..]),
+                "uppercased request body"
             );
 
             *response.body_mut() = Body::from(upper);
@@ -56,8 +63,8 @@ async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
             let body = hyper::body::to_bytes(req).await?;
             let reversed = body.iter().rev().cloned().collect::<Vec<u8>>();
             debug!(
-                message = "reversed request body",
                 body = ?str::from_utf8(&body[..]),
+                "reversed request body"
             );
             *response.body_mut() = Body::from(reversed);
             (

@@ -40,7 +40,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tokio::{join, time};
+use tokio::{time, try_join};
 use tower::{Service, ServiceBuilder, ServiceExt};
 use tracing::{self, debug, error, info, span, trace, warn, Level, Span};
 use tracing_futures::Instrument;
@@ -70,13 +70,20 @@ async fn main() -> Result<(), Err> {
     let svc = Server::bind(&addr).serve(svc);
     let admin = Server::bind(&admin_addr).serve(admin);
 
-    let _ = join!(
-        load_gen(&addr),
-        load_gen(&addr),
-        load_gen(&addr),
-        svc,
-        admin
+    let res = try_join!(
+        tokio::spawn(load_gen(addr)),
+        tokio::spawn(load_gen(addr)),
+        tokio::spawn(load_gen(addr)),
+        tokio::spawn(svc),
+        tokio::spawn(admin)
     );
+
+    match res {
+        Ok(_) => info!("load generator exited successfully"),
+        Err(e) => {
+            error!(error = ?e, "load generator failed");
+        }
+    }
     Ok(())
 }
 
@@ -233,7 +240,7 @@ where
                     let body = hyper::body::to_bytes(req).await?;
                     match handle.set_from(body) {
                         Err(error) => {
-                            error!(message = "setting filter failed!", %error);
+                            error!(%error, "setting filter failed!");
                             rsp(StatusCode::INTERNAL_SERVER_ERROR, error)
                         }
                         Ok(()) => rsp(StatusCode::NO_CONTENT, Body::empty()),
@@ -305,9 +312,8 @@ fn gen_uri(authority: &str) -> (usize, String) {
     (len, format!("http://{}/{}", authority, letter))
 }
 
-// .instrument(tracing::info_span!(target: "gen", "load_gen", remote.addr=%addr));
-#[tracing::instrument]
-async fn load_gen(addr: &SocketAddr) -> Result<(), Err> {
+#[tracing::instrument(target = "gen", "load_gen")]
+async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
     let svc = ServiceBuilder::new()
         .buffer(5)
         .layer(request_span::layer(req_span))
@@ -318,6 +324,7 @@ async fn load_gen(addr: &SocketAddr) -> Result<(), Err> {
         let authority = format!("{}", addr);
         let mut svc = svc.clone();
         svc.ready().await?;
+
         let f = async move {
             let sleep = rand::thread_rng().gen_range(0, 25);
             time::delay_for(Duration::from_millis(sleep)).await;
@@ -328,9 +335,18 @@ async fn load_gen(addr: &SocketAddr) -> Result<(), Err> {
                 .body(Body::empty())
                 .unwrap();
 
+            let span = tracing::debug_span!(
+                target: "gen",
+                "request",
+                req.method = ?req.method(),
+                req.path = ?req.uri().path(),
+            );
+            let _s = span.enter();
+
+            info!(target: "gen", "sending request");
             let rsp = match svc.call(req).await {
                 Err(e) => {
-                    error!(target: "gen", message = "request error!", error = %e);
+                    error!(target: "gen", error = %e, "request error!");
                     return Err(e);
                 }
                 Ok(rsp) => rsp,
@@ -338,12 +354,12 @@ async fn load_gen(addr: &SocketAddr) -> Result<(), Err> {
 
             let status = rsp.status();
             if status != StatusCode::OK {
-                error!(target: "gen", message = "error received from server!", ?status);
+                error!(target: "gen", status = ?status, "error received from server!");
             }
 
             let body = match hyper::body::to_bytes(rsp).await {
                 Err(e) => {
-                    error!(target: "gen", message = "body error!", error = ?e);
+                    error!(target: "gen", error = ?e, "body error!");
                     return Err(e.into());
                 }
                 Ok(body) => body,
@@ -352,7 +368,7 @@ async fn load_gen(addr: &SocketAddr) -> Result<(), Err> {
             info!(target: "gen", message = "response complete.", rsp.body = %body);
             Ok(())
         }
-        .instrument(span!(target: "gen", Level::INFO, "load_gen", remote.addr=%addr));
+        .instrument(span!(target: "gen", Level::INFO, "generated_request", remote.addr=%addr));
         tokio::spawn(f);
     }
 
@@ -366,14 +382,7 @@ fn req_span<A>(req: &Request<A>) -> Span {
         "request",
         req.method = ?req.method(),
         req.path = ?req.uri().path(),
-        headers = ?req.headers()
     );
-
-    {
-        // TODO: this is a workaround because tracing_subscriber::fmt::Layer
-        // doesn't honor overridden span parents.
-        let _enter = span.enter();
-        debug!(message = "received request.", req.headers = ?req.headers(), req.version = ?req.version());
-    }
+    debug!(message = "received request.", req.headers = ?req.headers(), req.version = ?req.version());
     span
 }
