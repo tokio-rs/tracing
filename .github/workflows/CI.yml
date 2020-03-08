@@ -194,19 +194,6 @@ jobs:
         command: test
         args: -p tracing --all-features
 
-  features-nightly:
-    # Feature flag tests for features that require nightly Rust.
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-    - name: "Test nightly-only examples"
-      run: (cd nightly-examples && cargo test)
-
   style:
     # Check style.
     needs: check
