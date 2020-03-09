@@ -341,32 +341,33 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
                 req.method = ?req.method(),
                 req.path = ?req.uri().path(),
             );
-            let _s = span.enter();
+            async move {
+                info!(target: "gen", "sending request");
+                let rsp = match svc.call(req).await {
+                    Err(e) => {
+                        error!(target: "gen", error = %e, "request error!");
+                        return Err(e);
+                    }
+                    Ok(rsp) => rsp,
+                };
 
-            info!(target: "gen", "sending request");
-            let rsp = match svc.call(req).await {
-                Err(e) => {
-                    error!(target: "gen", error = %e, "request error!");
-                    return Err(e);
+                let status = rsp.status();
+                if status != StatusCode::OK {
+                    error!(target: "gen", status = ?status, "error received from server!");
                 }
-                Ok(rsp) => rsp,
-            };
 
-            let status = rsp.status();
-            if status != StatusCode::OK {
-                error!(target: "gen", status = ?status, "error received from server!");
+                let body = match hyper::body::to_bytes(rsp).await {
+                    Err(e) => {
+                        error!(target: "gen", error = ?e, "body error!");
+                        return Err(e.into());
+                    }
+                    Ok(body) => body,
+                };
+                let body = String::from_utf8(body.to_vec())?;
+                info!(target: "gen", message = "response complete.", rsp.body = %body);
+                Ok(())
             }
-
-            let body = match hyper::body::to_bytes(rsp).await {
-                Err(e) => {
-                    error!(target: "gen", error = ?e, "body error!");
-                    return Err(e.into());
-                }
-                Ok(body) => body,
-            };
-            let body = String::from_utf8(body.to_vec())?;
-            info!(target: "gen", message = "response complete.", rsp.body = %body);
-            Ok(())
+            .instrument(span)
         }
         .instrument(span!(target: "gen", Level::INFO, "generated_request", remote.addr=%addr));
         tokio::spawn(f);
