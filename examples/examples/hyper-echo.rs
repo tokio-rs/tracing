@@ -1,19 +1,15 @@
 #![deny(rust_2018_idioms)]
 
-use futures::future;
-use hyper::rt::{Future, Stream};
-use hyper::server::conn::Http;
-use hyper::service::service_fn;
-use hyper::{Body, Method, Request, Response, StatusCode};
-
+use http::{Method, Request, Response, StatusCode};
+use hyper::{
+    service::{make_service_fn, service_fn},
+    Body, Server,
+};
 use std::str;
+use tracing::{debug, info, span, Level};
+use tracing_futures::Instrument;
 
-use tracing::{debug, error, info, span, Level};
-use tracing_futures::{Instrument, Instrumented};
-
-type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
-
-fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
+async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     let span = span!(
         Level::INFO,
         "request",
@@ -25,67 +21,56 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
     info!("received request");
     let mut response = Response::new(Body::empty());
 
-    let (rsp_span, fut): (_, BoxFut) = match (req.method(), req.uri().path()) {
+    let (rsp_span, resp) = match (req.method(), req.uri().path()) {
         // Serve some instructions at /
         (&Method::GET, "/") => {
             const BODY: &str = "Try POSTing data to /echo";
             *response.body_mut() = Body::from(BODY);
-            (
-                span!(Level::INFO, "response", body = %(&BODY)),
-                Box::new(future::ok(response)),
-            )
+            (span!(Level::INFO, "response", body = %(&BODY)), response)
         }
 
         // Simply echo the body back to the client.
         (&Method::POST, "/echo") => {
-            let body = req.into_body();
             let span = span!(Level::INFO, "response", response_kind = %"echo");
-            *response.body_mut() = body;
-            (span, Box::new(future::ok(response)))
+            *response.body_mut() = req.into_body();
+            (span, response)
         }
 
         // Convert to uppercase before sending back to client.
         (&Method::POST, "/echo/uppercase") => {
-            let mapping = req.into_body().map(|chunk| {
-                let upper = chunk
-                    .iter()
-                    .map(|byte| byte.to_ascii_uppercase())
-                    .collect::<Vec<u8>>();
-                debug!(
-                    message = "uppercased request body",
-                    chunk = ?str::from_utf8(&chunk[..]),
-                    uppercased = ?str::from_utf8(&upper[..])
-                );
-                upper
-            });
+            let body = hyper::body::to_bytes(req).await?;
+            let upper = body
+                .iter()
+                .map(|byte| byte.to_ascii_uppercase())
+                .collect::<Vec<u8>>();
+            debug!(
+                body = ?str::from_utf8(&body[..]),
+                uppercased = ?str::from_utf8(&upper[..]),
+                "uppercased request body"
+            );
 
-            *response.body_mut() = Body::wrap_stream(mapping);
+            *response.body_mut() = Body::from(upper);
             (
                 span!(Level::INFO, "response", response_kind = %"uppercase"),
-                Box::new(future::ok(response)),
+                response,
             )
         }
 
         // Reverse the entire body before sending back to the client.
-        //
-        // Since we don't know the end yet, we can't simply stream
-        // the chunks as they arrive. So, this returns a different
-        // future, waiting on concatenating the full body, so that
-        // it can be reversed. Only then can we return a `Response`.
         (&Method::POST, "/echo/reversed") => {
             let span = span!(Level::TRACE, "response", response_kind = %"reversed");
             let _enter = span.enter();
-            let reversed = req.into_body().concat2().map(move |chunk| {
-                let body = chunk.iter().rev().cloned().collect::<Vec<u8>>();
-                debug!(
-                    message = "reversed request body",
-                    chunk = ?str::from_utf8(&chunk[..]),
-                    body = ?str::from_utf8(&body[..]),
-                );
-                *response.body_mut() = Body::from(body);
-                response
-            });
-            (span.clone(), Box::new(reversed))
+            let body = hyper::body::to_bytes(req).await?;
+            let reversed = body.iter().rev().cloned().collect::<Vec<u8>>();
+            debug!(
+                body = ?str::from_utf8(&body[..]),
+                "reversed request body"
+            );
+            *response.body_mut() = Body::from(reversed);
+            (
+                span!(Level::INFO, "reversed", body = ?(&response.body())),
+                response,
+            )
         }
 
         // The 404 Not Found route...
@@ -98,15 +83,16 @@ fn echo(req: Request<Body>) -> Instrumented<BoxFut> {
                     body = ?(),
                     status = ?StatusCode::NOT_FOUND,
                 ),
-                Box::new(future::ok(response)),
+                response,
             )
         }
     };
-
-    fut.instrument(rsp_span)
+    let f = async { resp }.instrument(rsp_span);
+    Ok(f.await)
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -124,27 +110,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_span = span!(Level::TRACE, "server", %local_addr);
     let _enter = server_span.enter();
 
-    let server = tokio::net::TcpListener::bind(&local_addr)
-        .expect("bind")
-        .incoming()
-        .fold(Http::new(), move |http, sock| {
-            let remote_addr = sock.peer_addr().unwrap();
-            let serve = http
-                .serve_connection(sock, service_fn(echo))
-                .map_err(|error| {
-                    error!(message = "serve error", %error);
-                })
-                .instrument(span!(Level::TRACE, "connection", %remote_addr));
-            hyper::rt::spawn(serve);
-            Ok::<_, std::io::Error>(http)
-        })
-        .map(|_| ())
-        .map_err(|error| {
-            error!(message = "server error", %error);
-        })
+    let service = make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(echo)) });
+    let server = Server::bind(&local_addr)
+        .serve(service)
         .instrument(server_span.clone());
+
     info!("listening...");
-    hyper::rt::run(server);
+    server.await?;
 
     Ok(())
 }

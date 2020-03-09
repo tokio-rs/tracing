@@ -26,7 +26,7 @@ fn req_span<A>(req: &Request<A>) -> tracing::Span {
     span
 }
 
-const ROOT: &'static str = "/";
+const ROOT: &str = "/";
 
 #[derive(Debug)]
 pub struct Svc;

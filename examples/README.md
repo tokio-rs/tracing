@@ -27,9 +27,14 @@ This directory contains a collection of examples that demonstrate the use of the
   + `futures-proxy-server`: Demonstrates the use of `tracing-futures` by
     implementing a simple proxy server, based on [this example][tokio-proxy]
     from `tokio`.
-  + `futures-spawn`: A simple demonstration of the relationship between the
-    spans representing spawned futures.
+  + `async_fn`: Demonstrates how asynchronous functions can be
+     instrumented.
+  + `echo`: Demonstrates a `tracing`-instrumented variant of Tokio's `echo` example.
 - **tracing-tower**:
+  + `tower-client`: Demonstrates the use of `tracing-tower` to instrument a
+    simple `tower` HTTP/1.1 client.
+  + `tower-server`: Demonstrates the use of `tracing-tower` to instrument a
+    simple `tower` HTTP/1.1 server.
   + `tower-h2-client`: Demonstrates the use of `tracing-tower` to instrument a
     simple `tower-h2` HTTP/2 client (based on [this example][h2-client] from
     `tower-h2`).
@@ -45,12 +50,8 @@ This directory contains a collection of examples that demonstrate the use of the
     [this example][echo] from `hyper`, and using `tracing-log` to record logs
     emitted by `hyper`.
 
-The [nightly-examples] directory contains examples of how `tracing` can be used
-with async/await. These are kept separate as async/await is currently only
-available on nightly Rust toolchains.
 
 [tokio-proxy]: https://github.com/tokio-rs/tokio/blob/v0.1.x/tokio/examples/proxy.rs
 [echo]: https://github.com/hyperium/hyper/blob/0.12.x/examples/echo.rs
 [h2-client]: https://github.com/tower-rs/tower-h2/blob/0865040d699697bbaf1c3b77b3f256b72f98cdf4/examples/client.rs
 [h2-server]: https://github.com/tower-rs/tower-h2/blob/0865040d699697bbaf1c3b77b3f256b72f98cdf4/examples/server.rs
-[nightly-examples]: ../nightly-examples
