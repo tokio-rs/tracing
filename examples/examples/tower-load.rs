@@ -368,6 +368,7 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
                 Ok(())
             }
             .instrument(span)
+            .await
         }
         .instrument(span!(target: "gen", Level::INFO, "generated_request", remote.addr=%addr));
         tokio::spawn(f);
