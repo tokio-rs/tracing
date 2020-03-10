@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupMetadata, LookupSpan, Registry, SpanRef};
+use crate::registry::{self, LookupSpan, Registry, SpanRef};
 use std::{
     any::TypeId,
     collections::HashSet,
