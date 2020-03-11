@@ -4,10 +4,13 @@
 //! # Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
-//! scoped, structured, and async-aware diagnostics. This crate provides helpers
-//! for consuming tracing instrumentation for visualization as a
-//! flamegraph/flamechart which can be useful for finding performance
-//! bottlenecks.
+//! scoped, structured, and async-aware diagnostics. `tracing-flame` provides helpers
+//! for consuming `tracing` instrumentation that can later be visualized as a
+//! flamegraph/flamechart. Flamegraphs/flamecharts are useful for identifying performance
+//! issues bottlenecks in an application. For more details, see Brendan Gregg's [post]
+//! on flamegraphs.
+//!
+//! [post]: http://www.brendangregg.com/flamegraphs.html
 //!
 //! ## Usage
 //!
@@ -32,18 +35,18 @@
 //! // your code here ..
 //! ```
 //!
-//! Alternatively you can provide any type that implements `std::io::Write` to
+//! As an alternative, you can provide _any_ type that implements `std::io::Write` to
 //! `FlameLayer::new`.
 //!
 //! ## Generating The Image
 //!
-//! To convert your text representation to a visual one first install inferno
+//! To convert the textual representation of a flamegraph to a visual one, first install `inferno`:
 //!
 //! ```console
 //! cargo install inferno
 //! ```
 //!
-//! Then pass the file your error layer created into `inferno-flamegraph`
+//! Then, pass the file created by `FlameLayer` into `inferno-flamegraph`:
 //!
 //! ```console
 //! # flamegraph
@@ -55,19 +58,19 @@
 //!
 //! ## Differences between `flamegraph`s and `flamechart`s
 //!
-//! By default `inferno-flamegraph` creates `flamegraph`s. Flamegraphs is that
-//! they collapse identical stack frames and sort them based on their names.
-//! This is great for multithreaded programs and long running programs where the
-//! same frames happen many times for short durations because it simplifies the
-//! graph and gives you a broad idea of overall time spent in each part of the
-//! stack.
+//! By default, `inferno-flamegraph` creates flamegraphs. Flamegraphs operate by
+//! that collapsing identical stack frames and sorting them on the frame's names.
+//! 
+//! This behavior is great for multithreaded programs and long-running programs
+//! where the same frames occur _many_ times, for short durations, because it reduces
+//! noise in the graph and gives the reader a better idea of the 
+//! overall time spent in each part of the application.
 //!
-//! However it is sometimes desirable to preserve the exact ordering of events
-//! as they were emitted by `tracing-flame`, so you can see exactly when each
-//! span is entered relative to the other and get an accurate visual trace of
-//! the execution of your program. To get this style of representation you
-//! should instead generate a `flamechart`, which does not sort or collapse
-//! identical stack frames.
+//! However, it is sometimes desirable to preserve the _exact_ ordering of events
+//! as they were emitted by `tracing-flame`, so that it is clear when each
+//! span is entered relative to others and get an accurate visual trace of
+//! the execution of your program. This representation is best created with a 
+//! `flamechart`, which _does not_ sort or collapse identical stack frames.
 //!
 //! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
@@ -144,21 +147,17 @@ where
         let spans = spans.rev();
         let mut stack = String::new();
 
-        stack
-            .write_str("tracing")
-            .expect("expected: write to String never fails");
+        stack.push_str("tracing");
 
         for parent in spans {
-            stack
-                .write_str("; ")
-                .expect("expected: write to String never fails");
+            stack.push_str("; ");
             write(&mut stack, parent).expect("expected: write to String never fails");
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
             .expect("expected: write to String never fails");
         writeln!(
-            *self.out.lock().expect("expected: lock is never poisoned"),
+            *self.out.lock().unwrap(),
             "{}",
             stack
         )
@@ -171,15 +170,11 @@ where
         let first = spans.next();
 
         let mut stack = String::new();
-        stack
-            .write_str("tracing; ")
-            .expect("expected: write to String never fails");
+        stack.push_str("tracing; ");
 
         for parent in spans.rev() {
             write(&mut stack, parent).expect("expected: write to String never fails");
-            stack
-                .write_str("; ")
-                .expect("expected: write to String never fails");
+            stack.push_str("; ");
         }
 
         write(&mut stack, first.expect("expected: always at least 1 span"))
