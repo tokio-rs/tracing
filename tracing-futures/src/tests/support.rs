@@ -23,7 +23,7 @@ where
     E: Unpin,
 {
     type Output = Result<T, E>;
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
 
         this.polls += 1;
