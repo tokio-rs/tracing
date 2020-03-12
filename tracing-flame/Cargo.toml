@@ -11,5 +11,3 @@ edition = "2018"
 # tracing = { path = "../tracing", version = "0.12"}
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.3", default-features = false, features = ["registry", "fmt", "smallvec"] }
 tracing = { path = "../tracing", version = "0.1.12"}
-thiserror = "1.0.11"
-displaydoc = "0.1.5"

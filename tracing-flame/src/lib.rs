@@ -29,7 +29,7 @@
 //! fn setup_global_subscriber() -> FlameGuard<BufWriter<File>> {
 //!     let fmt_layer = fmt::Layer::default();
 //!
-//!     let flame_layer = FlameLayer::write_to_file("./tracing.folded").unwrap();
+//!     let flame_layer = FlameLayer::with_file("./tracing.folded").unwrap();
 //!     let _guard = flame_layer.flush_on_drop();
 //!
 //!     let subscriber = Registry::default()
@@ -85,7 +85,7 @@
 //! [`FlameLayer`]: struct.FlameLayer.html
 mod error;
 
-use error::Error;
+use error::{Kind, Error};
 use std::fmt;
 use std::fmt::Write as _;
 use std::fs::File;
@@ -95,6 +95,8 @@ use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::MutexGuard;
+use std::sync::PoisonError;
 use std::time::{Duration, Instant};
 use tracing::span::Attributes;
 use tracing::Id;
@@ -157,9 +159,9 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    pub fn write_to_file(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn with_file(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
-        let file = File::create(path).map_err(|source| Error::IO {
+        let file = File::create(path).map_err(|source| Kind::IO {
             path: path.into(),
             source,
         })?;
@@ -174,7 +176,7 @@ where
     W: Write + 'static,
 {
     fn new_span(&self, _: &Attributes, id: &Id, ctx: Context<S>) {
-        let samples = self.time_since_last_event();
+        let samples = self.time_since_last_event().unwrap();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
         let parents = first.from_root();
@@ -190,8 +192,8 @@ where
 
         write!(&mut stack, " {}", samples.as_nanos())
             .expect("expected: write to String never fails");
-        writeln!(*self.out.lock().unwrap(), "{}", stack)
-            .expect("expected: write to String never fails");
+
+        let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
     }
 
     #[allow(clippy::needless_return)]
@@ -205,9 +207,16 @@ where
                     $e.expect($msg)
                 }
             };
+            ($e:expr) => {
+                if panicking {
+                    return;
+                } else {
+                    $e.unwrap()
+                }
+            };
         }
 
-        let samples = self.time_since_last_event();
+        let samples = expect!(self.time_since_last_event());
         let first = expect!(ctx.span(&id), "expected: span id exists in registry");
         let parents = first.from_root();
 
@@ -230,14 +239,8 @@ where
             write!(&mut stack, " {}", samples.as_nanos()),
             "expected: write to String never fails"
         );
-        expect!(
-            writeln!(
-                *expect!(self.out.lock(), "expected: lock is never poisoned"),
-                "{}",
-                stack
-            ),
-            "expected: write to String never fails"
-        );
+
+        let _ = writeln!(*expect!(self.out.lock()), "{}", stack);
     }
 }
 
@@ -246,16 +249,13 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn time_since_last_event(&self) -> Duration {
+    fn time_since_last_event(&self) -> Result<Duration, PoisonError<MutexGuard<'_, Instant>>> {
         let now = Instant::now();
-        let mut guard = self
-            .last_event
-            .lock()
-            .expect("expected: lock is never poisoned");
+        let mut guard = self.last_event.lock()?;
         let prev = *guard;
         let diff = now - prev;
         *guard = now;
-        diff
+        Ok(diff)
     }
 }
 
