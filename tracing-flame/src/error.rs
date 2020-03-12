@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::fmt;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct Error {
@@ -15,7 +15,7 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match &self.inner {
-            Kind::IO{ ref source, .. } => Some(source),
+            Kind::IO { ref source, .. } => Some(source),
         }
     }
 }
@@ -38,11 +38,12 @@ pub enum Kind {
     },
 }
 
-
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IO { path, .. } => write!(f, "cannot create output file. path={}", path.display()),
+            Self::IO { path, .. } => {
+                write!(f, "cannot create output file. path={}", path.display())
+            }
         }
     }
 }

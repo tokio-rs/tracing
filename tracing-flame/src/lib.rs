@@ -85,7 +85,7 @@
 //! [`FlameLayer`]: struct.FlameLayer.html
 mod error;
 
-use error::{Kind, Error};
+use error::{Error, Kind};
 use std::fmt;
 use std::fmt::Write as _;
 use std::fs::File;
