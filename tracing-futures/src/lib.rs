@@ -476,5 +476,8 @@ impl<T> WithDispatch<T> {
     }
 }
 
-#[cfg(test)]
+// The test support code requires the standard library (and requires `tracing`'s
+// "std" feature). Unfortunately, if we enable this on our dev dependency, it is
+// always enabled. Instead, we have to skip the tests when std is disabled.
+#[cfg(all(feature = "std", test))]
 mod tests;
