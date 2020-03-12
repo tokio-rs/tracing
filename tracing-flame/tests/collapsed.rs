@@ -2,22 +2,16 @@ use std::thread::sleep;
 use std::time::Duration;
 use tracing::{span, Level};
 use tracing_flame::FlameLayer;
-use tracing_subscriber::filter::EnvFilter;
-use tracing_subscriber::{fmt, prelude::*, registry::Registry};
+use tracing_subscriber::{prelude::*, registry::Registry};
 
 #[test]
 fn capture_supported() {
-    let filter = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("info"))
-        .unwrap();
-
     {
-        let subscriber = fmt::Layer::builder()
-            .with_target(false)
-            .finish()
-            .and_then(FlameLayer::write_to_file("./tracing.folded").unwrap())
-            .and_then(filter)
-            .with_subscriber(Registry::default());
+        let flame_layer = FlameLayer::write_to_file("./tracing.folded").unwrap();
+        let _guard = flame_layer.flush_on_drop();
+
+        let subscriber = Registry::default()
+            .with(flame_layer);
 
         tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 

@@ -22,14 +22,22 @@
 //! ## Layer Setup
 //!
 //! ```rust
-//! fn setup_global_subscriber() {
-//!     use tracing_flame::FlameLayer;
-//!     use tracing_subscriber::{registry::Registry, prelude::*};
+//! use std::{fs::File, io::BufWriter};
+//! use tracing_flame::{FlameGuard, FlameLayer};
+//! use tracing_subscriber::{registry::Registry, prelude::*, fmt};
+//!
+//! fn setup_global_subscriber() -> FlameGuard<BufWriter<File>> {
+//!     let fmt_layer = fmt::Layer::default();
+//!
+//!     let flame_layer = FlameLayer::write_to_file("./tracing.folded").unwrap();
+//!     let _guard = flame_layer.flush_on_drop();
 //!
 //!     let subscriber = Registry::default()
-//!         .with(FlameLayer::write_to_file("./tracing2.folded").unwrap());
+//!         .with(fmt_layer)
+//!         .with(flame_layer);
 //!
 //!     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+//!     _guard
 //! }
 //!
 //! // your code here ..
@@ -94,15 +102,23 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
 use tracing_subscriber::Layer;
+use std::sync::Arc;
 
 pub struct FlameLayer<S, W>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Subscriber,
     W: Write + 'static,
 {
-    out: Mutex<W>,
+    out: Arc<Mutex<W>>,
     last_event: Mutex<Instant>,
     _inner: PhantomData<S>,
+}
+
+pub struct FlameGuard<W>
+where
+    W: Write + 'static,
+{
+    out: Arc<Mutex<W>>,
 }
 
 impl<S, W> FlameLayer<S, W>
@@ -112,14 +128,33 @@ where
 {
     pub fn new(writer: W) -> Self {
         Self {
-            out: Mutex::new(writer),
+            out: Arc::new(Mutex::new(writer)),
             last_event: Mutex::new(Instant::now()),
             _inner: PhantomData,
         }
     }
+
+    pub fn flush_on_drop(&self) -> FlameGuard<W> {
+        FlameGuard {
+            out: self.out.clone(),
+        }
+    }
 }
 
-impl<S> FlameLayer<S, File>
+impl<W> Drop for FlameGuard<W>
+where
+    W: Write + 'static,
+{
+    fn drop(&mut self) {
+        dbg!(());
+        match self.out.lock().unwrap().flush() {
+            Ok(_) => (),
+            Err(e) => eprintln!("Error: {}", e),
+        }
+    }
+}
+
+impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
@@ -129,8 +164,8 @@ where
             path: path.into(),
             source,
         })?;
-        // let writer = BufWriter::new(file);
-        Ok(Self::new(file))
+        let writer = BufWriter::new(file);
+        Ok(Self::new(writer))
     }
 }
 
@@ -142,16 +177,17 @@ where
     fn new_span(&self, _: &Attributes, id: &Id, ctx: Context<S>) {
         let samples = self.time_since_last_event();
 
-        let mut spans = SpanIter::new(id.clone(), &ctx);
-        let _ = spans.next();
-        let spans = spans.rev();
+        let parent = ctx.span(id).expect("expected: span id exists in registry").parent();
+
         let mut stack = String::new();
 
         stack.push_str("tracing");
 
-        for parent in spans {
-            stack.push_str("; ");
-            write(&mut stack, parent).expect("expected: write to String never fails");
+        if let Some(parent) = parent {
+            for parent in parent.from_root() {
+                stack.push_str("; ");
+                write(&mut stack, parent).expect("expected: write to String never fails");
+            }
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
@@ -164,29 +200,40 @@ where
         .expect("expected: write to String never fails");
     }
 
+    #[allow(clippy::needless_return)]
     fn on_close(&self, id: Id, ctx: Context<S>) {
+        let panicking = std::thread::panicking();
+        macro_rules! expect {
+            ($e:expr, $msg:literal) => {
+                if panicking {
+                    return;
+                } else {
+                    $e.expect($msg)
+                }
+            };
+        }
+
         let samples = self.time_since_last_event();
-        let mut spans = SpanIter::new(id, &ctx);
-        let first = spans.next();
+        let first = expect!(ctx.span(&id), "expected: span id exists in registry");
+        let parent = first.parent();
 
         let mut stack = String::new();
         stack.push_str("tracing; ");
 
-        for parent in spans.rev() {
-            write(&mut stack, parent).expect("expected: write to String never fails");
-            stack.push_str("; ");
+        if let Some(parent) = parent {
+            for parent in parent.from_root() {
+                expect!(write(&mut stack, parent), "expected: write to String never fails");
+                stack.push_str("; ");
+            }
         }
 
-        write(&mut stack, first.expect("expected: always at least 1 span"))
-            .expect("expected: write to String never fails");
-        write!(&mut stack, " {}", samples.as_nanos())
-            .expect("expected: write to String never fails");
-        writeln!(
-            *self.out.lock().expect("expected: lock is never poisoned"),
+        expect!(write(&mut stack, first), "expected: write to String never fails");
+        expect!(write!(&mut stack, " {}", samples.as_nanos()), "expected: write to String never fails");
+        expect!(writeln!(
+            *expect!(self.out.lock(), "expected: lock is never poisoned"),
             "{}",
             stack
-        )
-        .expect("expected: write to String never fails");
+        ), "expected: write to String never fails");
     }
 }
 
@@ -223,50 +270,4 @@ where
     }
 
     Ok(())
-}
-
-struct SpanIter<'a, S>
-where
-    S: for<'span> LookupSpan<'span>,
-{
-    spans: std::vec::IntoIter<SpanRef<'a, S>>,
-}
-
-impl<'a, S> SpanIter<'a, S>
-where
-    S: Subscriber + for<'span> LookupSpan<'span>,
-{
-    fn new(id: Id, ctx: &'a Context<'a, S>) -> SpanIter<'a, S> {
-        let mut spans = Vec::new();
-        let mut curr_span = ctx.span(&id);
-
-        while let Some(span) = curr_span {
-            curr_span = span.parent();
-            spans.push(span);
-        }
-
-        Self {
-            spans: spans.into_iter(),
-        }
-    }
-}
-
-impl<'a, S> DoubleEndedIterator for SpanIter<'a, S>
-where
-    S: Subscriber + for<'span> LookupSpan<'span>,
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.spans.next_back()
-    }
-}
-
-impl<'a, S> Iterator for SpanIter<'a, S>
-where
-    S: Subscriber + for<'span> LookupSpan<'span>,
-{
-    type Item = SpanRef<'a, S>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.spans.next()
-    }
 }
