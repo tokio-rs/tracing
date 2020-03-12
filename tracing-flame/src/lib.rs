@@ -176,10 +176,8 @@ where
     fn new_span(&self, _: &Attributes, id: &Id, ctx: Context<S>) {
         let samples = self.time_since_last_event();
 
-        let first = ctx
-            .span(id)
-            .expect("expected: span id exists in registry");
-            let parents = first.from_root();
+        let first = ctx.span(id).expect("expected: span id exists in registry");
+        let parents = first.from_root();
 
         let mut stack = String::new();
 
