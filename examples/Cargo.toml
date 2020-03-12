@@ -49,5 +49,8 @@ clap = "2.33"
 ansi_term = "0.11"
 humantime = "1.2"
 log = "0.4"
+
+# infero example
 inferno = "0.9.4"
 eyre = "0.3.5"
+indenter = "0.1.3"

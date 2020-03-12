@@ -1,4 +1,4 @@
-use eyre::{ErrReport, WrapErr};
+use error::{ErrReport, WrapErr};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::thread::sleep;
@@ -66,4 +66,96 @@ fn main() -> Result<(), ErrReport> {
     make_flamegraph().wrap_err("Unable to create flamegraph svg")?;
 
     Ok(())
+}
+
+mod error {
+    pub use eyre::*;
+
+    pub type ErrReport = eyre::ErrReport<TracingContext>;
+
+    use indenter::Indented;
+    use std::any::{Any, TypeId};
+    use std::error::Error;
+    use std::fmt::Write as _;
+    use tracing_error::{ExtractSpanTrace, SpanTrace, SpanTraceStatus};
+
+    pub struct TracingContext {
+        span_trace: Option<SpanTrace>,
+    }
+
+    fn get_deepest_spantrace<'a>(error: &'a (dyn Error + 'static)) -> Option<&'a SpanTrace> {
+        Chain::new(error)
+            .rev()
+            .flat_map(|error| error.span_trace())
+            .next()
+    }
+
+    impl EyreContext for TracingContext {
+        fn default(error: &(dyn std::error::Error + 'static)) -> Self {
+            let span_trace = if get_deepest_spantrace(error).is_none() {
+                Some(SpanTrace::capture())
+            } else {
+                None
+            };
+
+            Self {
+                span_trace: span_trace,
+            }
+        }
+
+        fn member_ref(&self, typeid: TypeId) -> Option<&dyn Any> {
+            if typeid == TypeId::of::<SpanTrace>() {
+                self.span_trace.as_ref().map(|s| s as &dyn Any)
+            } else {
+                None
+            }
+        }
+
+        fn display(
+            &self,
+            error: &(dyn std::error::Error + 'static),
+            f: &mut core::fmt::Formatter<'_>,
+        ) -> core::fmt::Result {
+            write!(f, "{}", error)?;
+
+            if f.alternate() {
+                for cause in Chain::new(error).skip(1) {
+                    write!(f, ": {}", cause)?;
+                }
+            }
+
+            Ok(())
+        }
+
+        fn debug(
+            &self,
+            error: &(dyn std::error::Error + 'static),
+            f: &mut core::fmt::Formatter<'_>,
+        ) -> core::fmt::Result {
+            if f.alternate() {
+                return core::fmt::Debug::fmt(error, f);
+            }
+
+            let errors = Chain::new(error).rev().enumerate();
+
+            for (n, error) in errors {
+                writeln!(f)?;
+                write!(Indented::numbered(f, n), "{}", error)?;
+            }
+
+            let span_trace = self
+                .span_trace
+                .as_ref()
+                .or_else(|| get_deepest_spantrace(error))
+                .expect("SpanTrace capture failed");
+
+            match span_trace.status() {
+            SpanTraceStatus::CAPTURED => write!(f, "\n\nSpan Trace:\n{}", span_trace)?,
+            SpanTraceStatus::UNSUPPORTED => write!(f, "\n\nWarning: SpanTrace capture is Unsupported.\nEnsure that you've setup an error layer and the versions match")?,
+            _ => (),
+        }
+
+            Ok(())
+        }
+    }
 }
