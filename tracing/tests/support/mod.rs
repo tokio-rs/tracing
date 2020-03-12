@@ -6,7 +6,7 @@ pub mod span;
 pub mod subscriber;
 
 #[derive(Debug, Eq, PartialEq)]
-pub(in crate::support) enum Parent {
+pub(super) enum Parent {
     ContextualRoot,
     Contextual(String),
     ExplicitRoot,

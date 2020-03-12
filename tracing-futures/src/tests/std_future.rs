@@ -1,8 +1,7 @@
-mod support;
-use support::*;
-
 use tracing::{subscriber::with_default, Level};
-use tracing_futures::Instrument;
+
+use super::support::*;
+use crate::*;
 
 #[test]
 fn enter_exit_is_reasonable() {

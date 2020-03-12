@@ -10,7 +10,7 @@ use std::fmt;
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct MockEvent {
     pub fields: Option<field::Expect>,
-    pub(in crate::support) parent: Option<Parent>,
+    pub(super) parent: Option<Parent>,
     metadata: metadata::Expect,
 }
 
@@ -78,7 +78,7 @@ impl MockEvent {
         }
     }
 
-    pub(in crate::support) fn check(&mut self, event: &tracing::Event<'_>) {
+    pub(super) fn check(&mut self, event: &tracing::Event<'_>) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata

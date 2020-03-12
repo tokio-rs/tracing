@@ -1,7 +1,7 @@
 // this is the only way to make the path attribute play nice with `in
 // crate::support`...
 #[allow(clippy::module_inception)]
-#[path = "../../tracing/tests/support/mod.rs"]
+#[path = "../../../tracing/tests/support/mod.rs"]
 mod support;
 use std::{
     future::Future,

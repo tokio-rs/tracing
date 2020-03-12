@@ -1,4 +1,4 @@
-#[path = "../../tracing-futures/tests/support.rs"]
+#[path = "../../tracing-futures/src/tests/support.rs"]
 // we don't use some of the test support functions, but `tracing-futures` does.
 #[allow(dead_code)]
 mod support;
