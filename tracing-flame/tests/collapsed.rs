@@ -10,8 +10,7 @@ fn capture_supported() {
         let flame_layer = FlameLayer::write_to_file("./tracing.folded").unwrap();
         let _guard = flame_layer.flush_on_drop();
 
-        let subscriber = Registry::default()
-            .with(flame_layer);
+        let subscriber = Registry::default().with(flame_layer);
 
         tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 

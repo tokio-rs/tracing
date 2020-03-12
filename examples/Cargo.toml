@@ -18,6 +18,7 @@ tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", optional = true }
 tracing = { path = "../tracing", version = "0.1"}
 tracing-core = { path = "../tracing-core", version = "0.1"}
 tracing-error = { path = "../tracing-error" }
+tracing-flame = { path = "../tracing-flame" }
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.3", features = ["json", "chrono"] }
 tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["futures-01"] }
@@ -48,3 +49,5 @@ clap = "2.33"
 ansi_term = "0.11"
 humantime = "1.2"
 log = "0.4"
+inferno = "0.9.4"
+eyre = "0.3.5"

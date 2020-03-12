@@ -68,16 +68,16 @@
 //!
 //! By default, `inferno-flamegraph` creates flamegraphs. Flamegraphs operate by
 //! that collapsing identical stack frames and sorting them on the frame's names.
-//! 
+//!
 //! This behavior is great for multithreaded programs and long-running programs
 //! where the same frames occur _many_ times, for short durations, because it reduces
-//! noise in the graph and gives the reader a better idea of the 
+//! noise in the graph and gives the reader a better idea of the
 //! overall time spent in each part of the application.
 //!
 //! However, it is sometimes desirable to preserve the _exact_ ordering of events
 //! as they were emitted by `tracing-flame`, so that it is clear when each
 //! span is entered relative to others and get an accurate visual trace of
-//! the execution of your program. This representation is best created with a 
+//! the execution of your program. This representation is best created with a
 //! `flamechart`, which _does not_ sort or collapse identical stack frames.
 //!
 //! [`tracing`]: https://docs.rs/tracing
@@ -93,6 +93,7 @@ use std::io::BufWriter;
 use std::io::Write;
 use std::marker::PhantomData;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::span::Attributes;
@@ -102,7 +103,6 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
 use tracing_subscriber::Layer;
-use std::sync::Arc;
 
 pub struct FlameLayer<S, W>
 where
@@ -146,7 +146,6 @@ where
     W: Write + 'static,
 {
     fn drop(&mut self) {
-        dbg!(());
         match self.out.lock().unwrap().flush() {
             Ok(_) => (),
             Err(e) => eprintln!("Error: {}", e),
@@ -177,27 +176,24 @@ where
     fn new_span(&self, _: &Attributes, id: &Id, ctx: Context<S>) {
         let samples = self.time_since_last_event();
 
-        let parent = ctx.span(id).expect("expected: span id exists in registry").parent();
+        let first = ctx
+            .span(id)
+            .expect("expected: span id exists in registry");
+            let parents = first.from_root();
 
         let mut stack = String::new();
 
         stack.push_str("tracing");
 
-        if let Some(parent) = parent {
-            for parent in parent.from_root() {
-                stack.push_str("; ");
-                write(&mut stack, parent).expect("expected: write to String never fails");
-            }
+        for parent in parents {
+            stack.push_str("; ");
+            write(&mut stack, parent).expect("expected: write to String never fails");
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
             .expect("expected: write to String never fails");
-        writeln!(
-            *self.out.lock().unwrap(),
-            "{}",
-            stack
-        )
-        .expect("expected: write to String never fails");
+        writeln!(*self.out.lock().unwrap(), "{}", stack)
+            .expect("expected: write to String never fails");
     }
 
     #[allow(clippy::needless_return)]
@@ -215,25 +211,35 @@ where
 
         let samples = self.time_since_last_event();
         let first = expect!(ctx.span(&id), "expected: span id exists in registry");
-        let parent = first.parent();
+        let parents = first.from_root();
 
         let mut stack = String::new();
         stack.push_str("tracing; ");
 
-        if let Some(parent) = parent {
-            for parent in parent.from_root() {
-                expect!(write(&mut stack, parent), "expected: write to String never fails");
-                stack.push_str("; ");
-            }
+        for parent in parents {
+            expect!(
+                write(&mut stack, parent),
+                "expected: write to String never fails"
+            );
+            stack.push_str("; ");
         }
 
-        expect!(write(&mut stack, first), "expected: write to String never fails");
-        expect!(write!(&mut stack, " {}", samples.as_nanos()), "expected: write to String never fails");
-        expect!(writeln!(
-            *expect!(self.out.lock(), "expected: lock is never poisoned"),
-            "{}",
-            stack
-        ), "expected: write to String never fails");
+        expect!(
+            write(&mut stack, first),
+            "expected: write to String never fails"
+        );
+        expect!(
+            write!(&mut stack, " {}", samples.as_nanos()),
+            "expected: write to String never fails"
+        );
+        expect!(
+            writeln!(
+                *expect!(self.out.lock(), "expected: lock is never poisoned"),
+                "{}",
+                stack
+            ),
+            "expected: write to String never fails"
+        );
     }
 }
 
