@@ -83,7 +83,7 @@ jobs:
     - run: echo "::add-path::${{ runner.tool_cache }}/cargo-hack/bin"
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
-      run: cargo hack check --feature-powerset --no-dev-deps
+      run: cargo hack check --feature-powerset --no-dev-deps --tests --benches
 
   cargo-check-tracing:
     runs-on: ubuntu-latest
@@ -106,7 +106,7 @@ jobs:
         profile: minimal
     - name: cargo check
       working-directory: tracing
-      run: cargo check --no-default-features --features "${{ matrix.featureset }}"
+      run: cargo check --no-default-features --features "${{ matrix.featureset }}" --tests --benches
 
   cargo-check-subscriber:
     runs-on: ubuntu-latest
@@ -130,7 +130,7 @@ jobs:
         profile: minimal
     - name: cargo check
       working-directory: tracing-subscriber
-      run: cargo check --no-default-features --features "${{ matrix.featureset }}"
+      run: cargo check --no-default-features --features "${{ matrix.featureset }}" --tests --benches
 
   test-versions:
     # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
