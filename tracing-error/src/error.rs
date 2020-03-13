@@ -17,9 +17,24 @@ struct Erased;
 ///
 /// ```rust,compile_fail
 /// #[derive(Debug, thiserror::Error)]
+/// enum Kind {
+///     // ...
+/// }
+///
+/// #[derive(Debug)]
 /// pub struct Error {
 ///     source: TracedError<Kind>,
 ///     backtrace: Backtrace,
+/// }
+///
+/// impl std::error::Error for Error {
+///     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+///         self.source.source()
+///     }
+///
+///     fn backtrace(&self) -> Option<&Backtrace> {
+///         Some(&self.backtrace)
+///     }
 /// }
 ///
 /// impl fmt::Display for Error {
