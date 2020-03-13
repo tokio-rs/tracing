@@ -263,6 +263,10 @@ fn write<S>(dest: &mut String, span: SpanRef<'_, S>) -> fmt::Result
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
+    if let Some(module_path) = span.metadata().module_path() {
+        write!(dest, "{}::", module_path)?;
+    }
+
     write!(dest, "{}", span.name())?;
 
     if let Some(file) = span.metadata().file() {
