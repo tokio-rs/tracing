@@ -83,6 +83,8 @@ macro_rules! try_lock {
         try_lock!($lock, else return)
     };
     ($lock:expr, else $els:expr) => {
+        // see: https://github.com/rust-lang/rust-clippy/issues/3688
+        #[allow(clippy::match_wild_err_arm)]
         match $lock {
             Ok(l) => l,
             Err(_err) if std::thread::panicking() => $els,
