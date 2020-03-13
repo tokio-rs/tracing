@@ -440,19 +440,18 @@ where
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
-        if let Some(FormattedFields { ref mut fields, .. }) =
-            extensions.get_mut::<FormattedFields<N>>()
-        {
-            let _ = self.fmt_fields.format_fields(fields, attrs);
-        } else {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
-            }
+
+        if extensions.get_mut::<FormattedFields<N>>().is_some() {
+            return;
+        }
+
+        let mut buf = String::new();
+        if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
+            let fmt_fields = FormattedFields {
+                fields: buf,
+                _format_event: PhantomData::<fn(N)>,
+            };
+            extensions.insert(fmt_fields);
         }
     }
 
