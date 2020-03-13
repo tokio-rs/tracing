@@ -445,7 +445,7 @@ where
             let mut buf = String::new();
             if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
                 let fmt_fields = FormattedFields {
-                     fields: buf,
+                    fields: buf,
                     _format_event: PhantomData::<fn(N)>,
                 };
                 extensions.insert(fmt_fields);
