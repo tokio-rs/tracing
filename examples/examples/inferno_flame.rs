@@ -99,7 +99,7 @@ mod error {
             };
 
             Self {
-                span_trace: span_trace,
+                span_trace,
             }
         }
 
