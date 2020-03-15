@@ -146,6 +146,17 @@ use syn::{
 /// }
 /// ```
 ///
+/// If the function returns a `Result<T, E>`, you can add `err` to emit error events when the
+/// function returns `Err`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err)]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+///
 /// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
 /// `async fn`s may also be instrumented:
 ///
@@ -262,14 +273,40 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     // If the function is an `async fn`, this will wrap it in an async block,
     // which is `instrument`ed using `tracing-futures`. Otherwise, this will
     // enter the span and then perform the rest of the body.
+    // If `err` is in args, instrument any resulting `Err`s.
     let body = if asyncness.is_some() {
-        quote_spanned! {block.span()=>
-            tracing_futures::Instrument::instrument(
-                async move { #block },
-                __tracing_attr_span
-            )
-                .await
+        if instrument_err(&args) {
+            quote_spanned! {block.span()=>
+                tracing_futures::Instrument::instrument(async move {
+                    match async move { #block }.await {
+                        Ok(x) => Ok(x),
+                        Err(e) => {
+                            tracing::error!("{}", e);
+                            Err(e)
+                        }
+                    }
+                }, __tracing_attr_span).await
+            }
+        } else {
+            quote_spanned! {block.span()=>
+                tracing_futures::Instrument::instrument(
+                    async move { #block },
+                    __tracing_attr_span
+                )
+                    .await
+            }
         }
+    } else if instrument_err(&args) {
+        quote_spanned!(block.span()=>
+            let __tracing_attr_guard = __tracing_attr_span.enter();
+            match { #block } {
+                Ok(x) => Ok(x),
+                Err(e) => {
+                    tracing::error!("{}", e);
+                    Err(e)
+                }
+            }
+        )
     } else {
         quote_spanned!(block.span()=>
             let __tracing_attr_guard = __tracing_attr_span.enter();
@@ -534,4 +571,11 @@ fn name(args: &[NestedMeta], default_name: String) -> impl ToTokens {
         }
         None => quote!(#default_name),
     }
+}
+
+fn instrument_err(args: &[NestedMeta]) -> bool {
+    args.iter().any(|arg| match arg {
+        NestedMeta::Meta(Meta::Path(path)) => path.is_ident("err"),
+        _ => false,
+    })
 }
