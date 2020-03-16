@@ -281,7 +281,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
                     match async move { #block }.await {
                         Ok(x) => Ok(x),
                         Err(e) => {
-                            tracing::error!("{}", e);
+                            tracing::error!(error = %e);
                             Err(e)
                         }
                     }
@@ -302,7 +302,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             match { #block } {
                 Ok(x) => Ok(x),
                 Err(e) => {
-                    tracing::error!("{}", e);
+                    tracing::error!(error = %e);
                     Err(e)
                 }
             }
