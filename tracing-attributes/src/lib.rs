@@ -146,8 +146,8 @@ use syn::{
 /// }
 /// ```
 ///
-/// If the function returns a `Result<T, E>`, you can add `err` to emit error events when the
-/// function returns `Err`:
+/// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, you can add
+/// `err` to emit error events when the function returns `Err`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
