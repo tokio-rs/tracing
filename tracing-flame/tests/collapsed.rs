@@ -7,8 +7,7 @@ use tracing_subscriber::{prelude::*, registry::Registry};
 #[test]
 fn capture_supported() {
     {
-        let flame_layer = FlameLayer::with_file("./tracing.folded").unwrap();
-        let _guard = flame_layer.flush_on_drop();
+        let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
 
         let subscriber = Registry::default().with(flame_layer);
 

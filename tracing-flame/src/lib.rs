@@ -26,11 +26,10 @@
 //! use tracing_flame::{FlameGuard, FlameLayer};
 //! use tracing_subscriber::{registry::Registry, prelude::*, fmt};
 //!
-//! fn setup_global_subscriber() -> FlameGuard<BufWriter<File>> {
+//! fn setup_global_subscriber() -> impl Drop {
 //!     let fmt_layer = fmt::Layer::default();
 //!
-//!     let flame_layer = FlameLayer::with_file("./tracing.folded").unwrap();
-//!     let _guard = flame_layer.flush_on_drop();
+//!     let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
 //!
 //!     let subscriber = Registry::default()
 //!         .with(fmt_layer)
@@ -116,6 +115,7 @@ where
     _inner: PhantomData<S>,
 }
 
+#[must_use]
 pub struct FlameGuard<W>
 where
     W: Write + 'static,
@@ -159,14 +159,16 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    pub fn with_file(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, impl Drop), Error> {
         let path = path.as_ref();
         let file = File::create(path).map_err(|source| Kind::IO {
             path: path.into(),
             source,
         })?;
         let writer = BufWriter::new(file);
-        Ok(Self::new(writer))
+        let layer = Self::new(writer);
+        let guard = layer.flush_on_drop();
+        Ok((layer, guard))
     }
 }
 

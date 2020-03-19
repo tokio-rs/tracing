@@ -10,9 +10,8 @@ use tracing_subscriber::{prelude::*, registry::Registry};
 static PATH: &str = "./flame.folded";
 
 fn setup_global_subscriber() -> Result<FlameGuard<BufWriter<File>>, ErrReport> {
-    let flame_layer =
+    let (flame_layer, _guard) =
         FlameLayer::with_file(PATH).wrap_err("Unable to instantiate tracing FlameLayer")?;
-    let _guard = flame_layer.flush_on_drop();
 
     let subscriber = Registry::default().with(flame_layer);
 
