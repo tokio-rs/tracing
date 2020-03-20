@@ -4,7 +4,7 @@ use std::io::{BufReader, BufWriter};
 use std::thread::sleep;
 use std::time::Duration;
 use tracing::{span, Level};
-use tracing_flame::{FlameLayer};
+use tracing_flame::FlameLayer;
 use tracing_subscriber::{prelude::*, registry::Registry};
 
 static PATH: &str = "./flame.folded";
@@ -97,9 +97,7 @@ mod error {
                 None
             };
 
-            Self {
-                span_trace,
-            }
+            Self { span_trace }
         }
 
         fn member_ref(&self, typeid: TypeId) -> Option<&dyn Any> {
