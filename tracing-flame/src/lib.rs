@@ -23,7 +23,7 @@
 //!
 //! ```rust
 //! use std::{fs::File, io::BufWriter};
-//! use tracing_flame::{FlameGuard, FlameLayer};
+//! use tracing_flame::FlameLayer;
 //! use tracing_subscriber::{registry::Registry, prelude::*, fmt};
 //!
 //! fn setup_global_subscriber() -> impl Drop {
@@ -116,7 +116,7 @@ where
 }
 
 #[must_use]
-pub struct FlameGuard<W>
+struct FlameGuard<W>
 where
     W: Write + 'static,
 {
@@ -136,7 +136,7 @@ where
         }
     }
 
-    pub fn flush_on_drop(&self) -> FlameGuard<W> {
+    pub fn flush_on_drop(&self) -> impl Drop {
         FlameGuard {
             out: self.out.clone(),
         }

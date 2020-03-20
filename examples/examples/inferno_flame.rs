@@ -4,12 +4,12 @@ use std::io::{BufReader, BufWriter};
 use std::thread::sleep;
 use std::time::Duration;
 use tracing::{span, Level};
-use tracing_flame::{FlameGuard, FlameLayer};
+use tracing_flame::{FlameLayer};
 use tracing_subscriber::{prelude::*, registry::Registry};
 
 static PATH: &str = "./flame.folded";
 
-fn setup_global_subscriber() -> Result<FlameGuard<BufWriter<File>>, ErrReport> {
+fn setup_global_subscriber() -> Result<impl Drop, ErrReport> {
     let (flame_layer, _guard) =
         FlameLayer::with_file(PATH).wrap_err("Unable to instantiate tracing FlameLayer")?;
 
