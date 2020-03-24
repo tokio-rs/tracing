@@ -168,7 +168,7 @@ pub trait Instrument: Sized {
     }
 }
 
-/// Extension trait allowing futures, streams, and skins to be instrumented with
+/// Extension trait allowing futures, streams, and sinks to be instrumented with
 /// a `tracing` [`Subscriber`].
 ///
 /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
