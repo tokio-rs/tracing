@@ -6,11 +6,6 @@ edition = "2018"
 
 [features]
 default = []
-broken = ["tower-h2"]
-
-[dependencies]
-# optional dependencies cannot be dev-dependencies.
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", optional = true }
 
 [dev-dependencies]
 
