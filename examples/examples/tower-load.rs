@@ -322,8 +322,7 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
 
     while let Some(_) = time::interval(Duration::from_millis(50)).next().await {
         let authority = format!("{}", addr);
-        let mut svc = svc.clone();
-        svc.ready().await?;
+        let mut svc = svc.clone().ready_oneshot().await?;
 
         let f = async move {
             let sleep = rand::thread_rng().gen_range(0, 25);
