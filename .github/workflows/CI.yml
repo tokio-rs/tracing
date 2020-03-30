@@ -81,6 +81,9 @@ jobs:
         path: ${{ runner.tool_cache }}/cargo-hack/bin
         key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
     - run: echo "::add-path::${{ runner.tool_cache }}/cargo-hack/bin"
+    # if `cargo-hack` somehow doesn't exist after loading it from the cache,
+    # make *sure* it's there.
+    - run: cargo hack --help || { cargo install --force cargo-hack; }
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --feature-powerset --no-dev-deps
