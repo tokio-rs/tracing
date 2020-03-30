@@ -20,8 +20,6 @@
 //!
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
 //!   similar to the [`env_logger` crate]. Enabled by default.
-//! - `filter`: Alias for `env-filter`. This feature flag was renamed in version
-//!   0.1.2, and will be removed in version 0.2.
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
