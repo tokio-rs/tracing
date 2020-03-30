@@ -6,11 +6,6 @@ edition = "2018"
 
 [features]
 default = []
-broken = ["tower-h2"]
-
-[dependencies]
-# optional dependencies cannot be dev-dependencies.
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", optional = true }
 
 [dev-dependencies]
 
@@ -36,7 +31,7 @@ env_logger = "0.6"
 
 # tower examples
 tower = "0.3"
-tower-util = "0.3"
+tower-util = "0.3.1"
 tower-make = "0.3"
 http = "0.2"
 hyper = "0.13.2"
