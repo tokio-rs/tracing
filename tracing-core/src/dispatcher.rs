@@ -265,6 +265,24 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     }
 }
 
+/// Clears the global default dispatch set in `set_global_default`.
+///
+/// This should be called exactly once at the end of the program and outside of all spans. This is necessary in contexts
+/// where the tracing dispatcher performs externally observable cleanup on drop, such as transmission to an
+/// external server. Continued use of the `tracing` crate after this function is called may result
+/// in undefined behavior.
+///
+/// Note: Libraries should *NOT* call `clear_global_default()`! A library cannot guarantee the
+/// program is about to exit.
+pub unsafe fn clear_global_default() -> Result<(), SetGlobalDefaultError> {
+    if GLOBAL_INIT.compare_and_swap(INITIALIZED, UNINITIALIZED, Ordering::SeqCst) == INITIALIZED {
+        GLOBAL_DISPATCH = None;
+        Ok(())
+    } else {
+        Err(SetGlobalDefaultError { _no_construct: () })
+    }
+}
+
 /// Returns true if a `tracing` dispatcher has ever been set.
 ///
 /// This may be used to completely elide trace points if tracing is not in use
@@ -322,9 +340,9 @@ where
                 let mut default = state.default.borrow_mut();
 
                 if default.is::<NoSubscriber>() {
-                    if let Some(global) = get_global() {
+                    if let Some(global) = unsafe { get_global() } {
                         // don't redo this call on the next check
-                        *default = global.clone();
+                        *default = unsafe { (*global).clone() };
                     }
                 }
                 f(&*default)
@@ -350,17 +368,18 @@ where
     }
 }
 
-fn get_global() -> Option<&'static Dispatch> {
+/// Care should be taken to prevent safe rust from storing this
+/// reference with the `'static` lifetime, as it may be less than `'static`
+/// due to `clear_global_default`.
+unsafe fn get_global() -> Option<*const Dispatch> {
     if GLOBAL_INIT.load(Ordering::SeqCst) != INITIALIZED {
         return None;
     }
-    unsafe {
-        // This is safe given the invariant that setting the global dispatcher
-        // also sets `GLOBAL_INIT` to `INITIALIZED`.
-        Some(GLOBAL_DISPATCH.as_ref().expect(
-            "invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set",
-        ))
-    }
+    // This is safe given the invariant that setting the global dispatcher
+    // also sets `GLOBAL_INIT` to `INITIALIZED`.
+    Some(GLOBAL_DISPATCH.as_ref().expect(
+        "invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set",
+    ))
 }
 
 pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
