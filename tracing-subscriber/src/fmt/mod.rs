@@ -182,6 +182,84 @@ pub struct SubscriberBuilder<
     inner: Layer<Registry, N, E, W>,
 }
 
+/// Returns a new [`SubscriberBuilder`] for configuring a [formatting subscriber].
+///
+/// This is essentially shorthand for [`SubscriberBuilder::default()]`.
+///
+/// # Examples
+///
+/// Using [`init`] to set the default subscriber:
+///
+/// ```rust
+/// tracing_subscriber::fmt::subscriber().init();
+/// ```
+///
+/// Configuring the output format:
+///
+/// ```rust
+/// use tracing_subscriber::fmt;
+///
+/// fmt::subscriber()
+///     // Configure formatting settings.
+///     .with_target(false)
+///     .with_timer(fmt::time::Uptime::default())
+///     .with_level(true)
+///     // Set the subscriber as the default.
+///     .init();
+/// ```
+///
+/// [`try_init`] returns an error if the default subscriber could not be set:
+///
+/// ```rust
+/// use std::error::Error;
+///
+/// fn init_subscriber() -> Result<(), Box<dyn Error>> {
+///     tracing_subscriber::fmt::subscriber()
+///         // Configure the subscriber to emit logs in JSON format.
+///         .json()
+///         // Configure the subscriber to flatten event fields in the output JSON objects.
+///         .flatten_event()
+///         // Set the subscriber as the default, returning an error if this fails.
+///         .try_init()?;
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// Rather than setting the subscriber as the default, [`finish`] _returns_ the
+/// constructed subscriber, which may then be passed to other functions:
+///
+/// ```rust
+/// let subscriber = tracing_subscriber::fmt::subscriber()
+///     .with_max_level(tracing::Level::DEBUG)
+///     .compact()
+///     .finish();
+///
+/// tracing::subscriber::with_default(subscriber, || {
+///     // the subscriber will only be set as the default
+///     // inside this closure...
+/// })
+/// ```
+///
+/// [`SubscriberBuilder`]: struct.SubscriberBuilder.html
+/// [formatting subscriber]: struct.Subscriber.html
+/// [`SubscriberBuilder::default()`]: struct.SubscriberBuilder.html#method.default
+/// [`init`]: struct.SubscriberBuilder.html#method.init
+/// [`try_init`]: struct.SubscriberBuilder.html#method.try_init
+/// [`finish`]: struct.SubscriberBuilder.html#method.finish
+pub fn subscriber() -> SubscriberBuilder {
+    SubscriberBuilder::default()
+}
+
+/// Returns a new [`LayerBuilder`] for configuring a [formatting layer].
+///
+/// [`LayerBuilder`]: struct.LayerBuilder.html
+/// [formatting layer]: struct.Layer.html
+/// [`LayerBuilder::default()`]: struct.LayerBuilder.html#method.default
+pub fn layer<S>() -> LayerBuilder<S> {
+    LayerBuilder::default()
+}
+
 impl Subscriber {
     /// The maximum [verbosity level] that is enabled by a `Subscriber` by
     /// default.
