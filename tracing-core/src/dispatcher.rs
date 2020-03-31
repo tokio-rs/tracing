@@ -361,8 +361,8 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
-    if let Some(d) = get_global() {
-        f(d)
+    if let Some(d) = unsafe { get_global() } {
+        f(unsafe { &*d })
     } else {
         f(&Dispatch::none())
     }
