@@ -59,7 +59,7 @@
 //!     .finish();
 //! ```
 //!
-//! You can find the configuration methods for [`FmtSubscriber`] in [`fmt::SubscriberBuilder`].
+//! You can find the configuration methods for [`FmtSubscriber`] in [`fmtBuilder`].
 //!
 //! ### Filters
 //!
@@ -120,7 +120,7 @@
 //! [`EnvFilter`]: ../filter/struct.EnvFilter.html
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: ../filter/index.html
-//! [`fmt::SubscriberBuilder`]: ./struct.SubscriberBuilder.html
+//! [`fmtBuilder`]: ./struct.SubscriberBuilder.html
 //! [`FmtSubscriber`]: ./struct.Subscriber.html
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
@@ -191,15 +191,14 @@ pub struct SubscriberBuilder<
 /// Using [`init`] to set the default subscriber:
 ///
 /// ```rust
-/// tracing_subscriber::fmt::subscriber().init();
+/// tracing_subscriber::fmt().init();
 /// ```
 ///
 /// Configuring the output format:
 ///
 /// ```rust
-/// use tracing_subscriber::fmt;
 ///
-/// fmt::subscriber()
+/// tracing_subscriber::fmt()
 ///     // Configure formatting settings.
 ///     .with_target(false)
 ///     .with_timer(fmt::time::Uptime::default())
@@ -214,7 +213,7 @@ pub struct SubscriberBuilder<
 /// use std::error::Error;
 ///
 /// fn init_subscriber() -> Result<(), Box<dyn Error>> {
-///     tracing_subscriber::fmt::subscriber()
+///     tracing_subscriber::fmt()
 ///         // Configure the subscriber to emit logs in JSON format.
 ///         .json()
 ///         // Configure the subscriber to flatten event fields in the output JSON objects.
@@ -230,7 +229,7 @@ pub struct SubscriberBuilder<
 /// constructed subscriber, which may then be passed to other functions:
 ///
 /// ```rust
-/// let subscriber = tracing_subscriber::fmt::subscriber()
+/// let subscriber = tracing_subscriber::fmt()
 ///     .with_max_level(tracing::Level::DEBUG)
 ///     .compact()
 ///     .finish();
@@ -247,7 +246,7 @@ pub struct SubscriberBuilder<
 /// [`init`]: struct.SubscriberBuilder.html#method.init
 /// [`try_init`]: struct.SubscriberBuilder.html#method.try_init
 /// [`finish`]: struct.SubscriberBuilder.html#method.finish
-pub fn subscriber() -> SubscriberBuilder {
+pub fn fmt() -> SubscriberBuilder {
     SubscriberBuilder::default()
 }
 
@@ -432,6 +431,19 @@ where
     pub fn init(self) {
         self.try_init()
             .expect("Unable to install global subscriber")
+    }
+}
+
+impl<N, E, F, W> Into<tracing_core::Dispatch> for SubscriberBuilder<N, E, F, W>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+    E: FormatEvent<Registry, N> + 'static,
+    W: MakeWriter + 'static,
+    F: layer::Layer<Formatter<N, E, W>> + Send + Sync + 'static,
+    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry> + Send + Sync + 'static,
+{
+    fn into(self) -> tracing_core::Dispatch {
+        tracing_core::Dispatch::new(self.finish())
     }
 }
 
@@ -622,30 +634,25 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// Setting a filter based on the value of the `RUST_LOG` environment
     /// variable:
     /// ```rust
-    /// use tracing_subscriber::{FmtSubscriber, EnvFilter};
+    /// use tracing_subscriber::{fmt, EnvFilter};
     ///
-    /// let subscriber = FmtSubscriber::builder()
+    /// fmt()
     ///     .with_env_filter(EnvFilter::from_default_env())
-    ///     .finish();
+    ///     .init();
     /// ```
     ///
     /// Setting a filter based on a pre-set filter directive string:
     /// ```rust
-    /// use tracing_subscriber::FmtSubscriber;
+    /// use tracing_subscriber::fmt;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let subscriber = FmtSubscriber::builder()
+    /// fmt()
     ///     .with_env_filter("my_crate=info,my_crate::my_mod=debug,[my_span]=trace")
-    ///     .finish();
-    /// # Ok(()) }
+    ///     .init();
     /// ```
     ///
     /// Adding additional directives to a filter constructed from an env var:
     /// ```rust
-    /// use tracing_subscriber::{
-    ///     FmtSubscriber,
-    ///     filter::{EnvFilter, LevelFilter},
-    /// };
+    /// use tracing_subscriber::{fmt, filter::{EnvFilter, LevelFilter}};
     ///
     /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
     /// let filter = EnvFilter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
@@ -655,9 +662,9 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     // any directives parsed from the env variable.
     ///     .add_directive("my_crate::my_mod=debug".parse()?);
     ///
-    /// let subscriber = FmtSubscriber::builder()
+    /// fmt()
     ///     .with_env_filter(filter)
-    ///     .finish();
+    ///     .try_init()?;
     /// # Ok(())}
     /// ```
     /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
@@ -689,21 +696,18 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///
     /// Enable up to the `DEBUG` verbosity level:
     /// ```rust
-    /// use tracing_subscriber::FmtSubscriber;
+    /// use tracing_subscriber::fmt;
     /// use tracing::Level;
     ///
-    /// let subscriber = FmtSubscriber::builder()
+    /// fmt()
     ///     .with_max_level(Level::DEBUG)
-    ///     .finish();
+    ///     .init();
     /// ```
     /// This subscriber won't record any spans or events!
     /// ```rust
-    /// use tracing_subscriber::{
-    ///     FmtSubscriber,
-    ///     filter::LevelFilter,
-    /// };
+    /// use tracing_subscriber::{FmtSubscriber, filter::LevelFilter};
     ///
-    /// let subscriber = FmtSubscriber::builder()
+    /// let subscriber = fmt()
     ///     .with_max_level(LevelFilter::OFF)
     ///     .finish();
     /// ```
@@ -762,11 +766,12 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// Using `stderr` rather than `stdout`:
     ///
     /// ```rust
+    /// use tracing_subscriber::fmt;
     /// use std::io;
     ///
-    /// let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+    /// fmt()
     ///     .with_writer(io::stderr)
-    ///     .finish();
+    ///     .init();
     /// ```
     ///
     /// [`MakeWriter`]: trait.MakeWriter.html
@@ -788,8 +793,15 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 /// If the `tracing-log` feature is enabled, this will also install
 /// the [`LogTracer`] to convert `log` records into `tracing` `Event`s.
 ///
+/// This is shorthand for
+///
+/// ```rust
+/// tracing_subscriber::fmt().try_init()
+/// ```
+///
 ///
 /// # Errors
+///
 /// Returns an Error if the initialization was unsuccessful,
 /// likely because a global subscriber was already installed by another
 /// call to `try_init`.
@@ -812,6 +824,12 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///
 /// If the `tracing-log` feature is enabled, this will also install
 /// the LogTracer to convert `Log` records into `tracing` `Event`s.
+///
+/// This is shorthand for
+///
+/// ```rust
+/// tracing_subscriber::fmt().init()
+/// ```
 ///
 /// # Panics
 /// Panics if the initialization was unsuccessful, likely because a
