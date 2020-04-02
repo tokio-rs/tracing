@@ -85,6 +85,7 @@
 mod error;
 
 use error::{Error, Kind};
+use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
 use std::fs::File;
@@ -94,8 +95,6 @@ use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::MutexGuard;
-use std::sync::PoisonError;
 use std::time::{Duration, Instant};
 use tracing::span::Attributes;
 use tracing::Id;
@@ -105,13 +104,17 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
 use tracing_subscriber::Layer;
 
+thread_local! {
+    static START: Instant = Instant::now();
+    static LAST_EVENT: Cell<Instant> =  Cell::new(START.with(|f| *f));
+}
+
 pub struct FlameLayer<S, W>
 where
     S: Subscriber,
     W: Write + 'static,
 {
     out: Arc<Mutex<W>>,
-    last_event: Mutex<Instant>,
     _inner: PhantomData<S>,
 }
 
@@ -129,9 +132,11 @@ where
     W: Write + 'static,
 {
     pub fn new(writer: W) -> Self {
+        // Initialize the start used by all threads when initializing the
+        // LAST_EVENT when constructing the layer
+        START.with(|_| ());
         Self {
             out: Arc::new(Mutex::new(writer)),
-            last_event: Mutex::new(Instant::now()),
             _inner: PhantomData,
         }
     }
@@ -178,7 +183,7 @@ where
     W: Write + 'static,
 {
     fn new_span(&self, _: &Attributes, id: &Id, ctx: Context<S>) {
-        let samples = self.time_since_last_event().unwrap();
+        let samples = self.time_since_last_event();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
         let parents = first.from_root();
@@ -218,7 +223,7 @@ where
             };
         }
 
-        let samples = expect!(self.time_since_last_event());
+        let samples = self.time_since_last_event();
         let first = expect!(ctx.span(&id), "expected: span id exists in registry");
         let parents = first.from_root();
 
@@ -251,13 +256,16 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn time_since_last_event(&self) -> Result<Duration, PoisonError<MutexGuard<'_, Instant>>> {
+    fn time_since_last_event(&self) -> Duration {
         let now = Instant::now();
-        let mut guard = self.last_event.lock()?;
-        let prev = *guard;
-        let diff = now - prev;
-        *guard = now;
-        Ok(diff)
+
+        let prev = LAST_EVENT.with(|e| {
+            let prev = e.get();
+            e.set(now);
+            prev
+        });
+
+        now - prev
     }
 }
 
