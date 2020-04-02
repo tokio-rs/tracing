@@ -9,7 +9,7 @@
 //! - An [`Id`] assigned by the subscriber that uniquely identifies it in relation
 //!   to other spans.
 //! - The span's [parent] in the trace tree.
-//! - [Metadata] describing that describes static characteristics of all spans
+//! - [Metadata] that describes static characteristics of all spans
 //!   originating from that callsite, such as its name, source code location,
 //!   [verbosity level], and the names of its fields.
 //!
