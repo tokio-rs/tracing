@@ -19,6 +19,18 @@
 //! [`FlameLayer`] then you feed these into `inferno-flamegraph` to generate the
 //! flamegraph/flamechart image.
 //!
+//! This crate is meant to be used in a two step process:
+//!
+//! 1. A textual representation of the spans that are entered and exited are
+//!    capture captured with [`FlameLayer`].
+//! 2. Feed the textual representation into `inferno-flamegraph` to generate the
+//!    flamegraph or flamechart.
+//!
+//! *Note*: when using a buffered writer as the writer for the layer you need to
+//! ensure that the buffer has been flushed before the data is passed into
+//! `inferno-flamegraph`. For more details on how to flush the internal writer
+//! of the `FlameLayer` check out the docs for [`FlushGuard`].
+//!
 //! ## Layer Setup
 //!
 //! ```rust
@@ -82,7 +94,29 @@
 //! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
 //! [`FlameLayer`]: struct.FlameLayer.html
-mod error;
+//! [`FlushGuard`]: struct.FlushGuard.html
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    private_in_public,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 
 pub use error::Error;
 
@@ -106,11 +140,47 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
 use tracing_subscriber::Layer;
 
+mod error;
+
 thread_local! {
     static START: Instant = Instant::now();
     static LAST_EVENT: Cell<Instant> =  Cell::new(START.with(|f| *f));
 }
 
+/// A Layer that logs span open/close events as folded flame graph stack
+/// samples.
+///
+/// The output of `FlameLayer` emulates the output of commands like `perf` once
+/// they've been collapsed by `inferno-flamegraph`. The output of this layer
+/// should look similar to the output of the following commands:
+///
+/// ```sh
+/// perf record --call-graph dwarf target/release/mybin
+/// perf script | inferno-collapse-perf > stacks.folded
+/// ```
+///
+/// # Sample Counts
+///
+/// Because `tracing-flame` doesn't use sampling the number at the end of each
+/// folded stack trace does not represent a number of samples of that stack,
+/// instead the numbers on each line are the number of nanoseconds since the
+/// last event in the same thread.
+///
+/// # Droping and Flushing
+///
+/// Because of the way that `tracing` works, if you use a global subscriber the
+/// drop implementations on your various layers will not get called when your
+/// program exits. This means that if you're using a buffered writer as the
+/// inner writer for the `FlameLayer` you're not guaranteed to see all the
+/// events that have been emitted in the file by default.
+///
+/// To help with this `FlameLayer` exposes the [`flush_on_drop`] function, which
+/// returns a [`FlushGuard`]. The `FlushGuard` will flush on drop and if
+/// necessary can be used to manually flush the writer within the `FlameLayer`.
+///
+/// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
+/// [`flush_on_drop`]: struct.FlameLayer.html#method.with_file
+#[derive(Debug)]
 pub struct FlameLayer<S, W>
 where
     S: Subscriber,
@@ -120,8 +190,15 @@ where
     _inner: PhantomData<S>,
 }
 
+/// An RAII implementation for managing flushing a global writer that is
+/// otherwise inaccessible.
+///
+/// This type is only needed when using
+/// `tracing::subscriber::set_global_default`, which prevents the drop
+/// implementation of layers from running when the program exits.
 #[must_use]
-pub struct FlameGuard<W>
+#[derive(Debug)]
+pub struct FlushGuard<W>
 where
     W: Write + 'static,
 {
@@ -133,6 +210,8 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
+    /// Return a new FlameLayer that outputs all folded stack samples to the
+    /// provided writer
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the layer
@@ -143,17 +222,21 @@ where
         }
     }
 
-    pub fn flush_on_drop(&self) -> FlameGuard<W> {
-        FlameGuard {
+    /// Return a `FlushGuard` which will flush the `FlameLayer`'s writer when
+    /// it gets dropped or whenever `flush` is manually invoked on the guard.
+    pub fn flush_on_drop(&self) -> FlushGuard<W> {
+        FlushGuard {
             out: self.out.clone(),
         }
     }
 }
 
-impl<W> FlameGuard<W>
+impl<W> FlushGuard<W>
 where
     W: Write + 'static,
 {
+    /// Flush the internal writer of the `FlameLayer`, ensuring that all
+    /// intermediately buffered contents reach their destination.
     pub fn flush(&self) -> Result<(), Error> {
         Ok(self
             .out
@@ -164,7 +247,7 @@ where
     }
 }
 
-impl<W> Drop for FlameGuard<W>
+impl<W> Drop for FlushGuard<W>
 where
     W: Write + 'static,
 {
@@ -180,7 +263,9 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlameGuard<BufWriter<File>>), Error> {
+    /// Construct a FlameLayer and a Buffered Writer to the given path and a
+    /// FlushGuard from said FlameLayer.
+    pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlushGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
         let file = File::create(path).map_err(|source| Kind::CreateFile {
             path: path.into(),
@@ -198,7 +283,7 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn new_span(&self, _: &Attributes, id: &Id, ctx: Context<S>) {
+    fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let samples = self.time_since_last_event();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
@@ -220,7 +305,7 @@ where
     }
 
     #[allow(clippy::needless_return)]
-    fn on_close(&self, id: Id, ctx: Context<S>) {
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         let panicking = std::thread::panicking();
         macro_rules! expect {
             ($e:expr, $msg:literal) => {

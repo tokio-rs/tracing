@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
+/// The error type for `tracing-flame`
 #[derive(Debug)]
 pub struct Error {
     inner: Kind,
