@@ -179,7 +179,7 @@ thread_local! {
 /// necessary can be used to manually flush the writer within the `FlameLayer`.
 ///
 /// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
-/// [`flush_on_drop`]: struct.FlameLayer.html#method.with_file
+/// [`FlushGuard`]: struct.FlushGuard.html
 #[derive(Debug)]
 pub struct FlameLayer<S, W>
 where
