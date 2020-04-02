@@ -14,16 +14,44 @@ use tracing_core::{
 ///
 /// ## Examples
 ///
-/// Constructing a default fmt subscriber via the Layer API:
+/// Constructing a layer with the default configuration:
 ///
 /// ```rust
-/// use tracing_subscriber::{fmt, registry::Registry};
+/// use tracing_subscriber::{fmt, Registry};
 /// use tracing_subscriber::prelude::*;
 ///
 /// let subscriber = Registry::default()
 ///     .with(fmt::Layer::default());
 ///
 /// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
+/// Overriding the layer's behavior:
+///
+/// ```rust
+/// use tracing_subscriber::{fmt, Registry};
+/// use tracing_subscriber::prelude::*;
+///
+/// let fmt_layer = fmt::Layer::default()
+///    .with_target(false) // don't include event targets when logging
+///    .with_level(false); // don't include event levels when logging
+///
+/// let subscriber = Registry::default().with(fmt_layer);
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// ```
+///
+/// Setting a custom  event formatter:
+///
+/// ```rust
+/// use tracing_subscriber::fmt::{self, format::Format, time};
+/// use tracing_subscriber::prelude::*;
+///
+/// let fmt = Format::default().with_timer(time::Uptime::default());
+/// let fmt_layer = fmt::Layer::default()
+///     .event_format(fmt)
+///     .with_target(false);
+/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
@@ -43,70 +71,39 @@ pub struct Layer<
 /// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
 /// events and spans.
 ///
-/// ## Examples
-///
-/// Constructing a layer with the default configuration:
-///
-/// ```rust
-/// use tracing_subscriber::fmt;
-/// use tracing_subscriber::prelude::*;
-///
-/// let fmt_layer = fmt::Layer::builder().finish();
-/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
-/// # tracing::subscriber::set_global_default(subscriber).unwrap();
-/// ```
-///
-/// Overriding the layer's behavior:
-///
-/// ```rust
-/// use tracing_subscriber::fmt;
-/// use tracing_subscriber::prelude::*;
-///
-/// let fmt_layer = fmt::Layer::builder()
-///    .with_target(false) // don't include event targets when logging
-///    .with_level(false) // don't include event levels when logging
-///    .finish();
-///
-/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
-/// # tracing::subscriber::set_global_default(subscriber).unwrap();
-/// ```
-///
-/// Setting a custom  event formatter:
-///
-/// ```rust
-/// use tracing_subscriber::fmt::{self, format::Format, time};
-/// use tracing_subscriber::prelude::*;
-///
-/// let fmt = Format::default().with_timer(time::Uptime::default());
-/// let fmt_layer = fmt::Layer::builder()
-///     .event_format(fmt)
-///     .with_target(false)
-///     .finish();
-/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
-/// # tracing::subscriber::set_global_default(subscriber).unwrap();
-/// ```
-#[derive(Debug)]
-pub struct LayerBuilder<
+/// **Note**: As of `tracing-subscriber` 0.2.4, the separate builder type is now
+/// deprecated, as the `Layer` type itself supports all the builder's
+/// configuration methods. This is now an alias for `Layer`.
+#[deprecated(
+    since = "0.2.4",
+    note = "a separate layer builder type is not necessary, `Layer`s now support configuration"
+)]
+pub type LayerBuilder<
     S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> {
-    fmt_fields: N,
-    fmt_event: E,
-    make_writer: W,
-    _inner: PhantomData<S>,
-}
+> = Layer<S, N, E, W>;
 
 impl<S> Layer<S> {
-    /// Returns a new [`LayerBuilder`](struct.LayerBuilder.html) for configuring a `Layer`.
+    /// Returns a new [`LayerBuilder`](type.LayerBuilder.html) for configuring a `Layer`.
+    #[deprecated(
+        since = "0.2.4",
+        note = "a separate layer builder is not necessary, use `Layer::new`/`Layer::default` instead"
+    )]
+    #[allow(deprecated)]
     pub fn builder() -> LayerBuilder<S> {
-        LayerBuilder::default()
+        Layer::default()
+    }
+
+    /// Returns a new [`Layer`](struct.Layer.html) with the default configuration.
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
 // This needs to be a seperate impl block because they place different bounds on the type paramaters.
-impl<S, N, E, W> LayerBuilder<S, N, E, W>
+impl<S, N, E, W> Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -125,9 +122,8 @@ where
     /// ```rust
     /// use tracing_subscriber::fmt::{self, format};
     ///
-    /// let layer = fmt::Layer::builder()
-    ///     .event_format(format::Format::default().compact())
-    ///     .finish();
+    /// let layer = fmt::Layer::default()
+    ///     .event_format(format::Format::default().compact());
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
@@ -135,11 +131,11 @@ where
     /// [event formatter]: ../format/trait.FormatEvent.html
     /// [`FmtContext`]: ../struct.FmtContext.html
     /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-    pub fn event_format<E2>(self, e: E2) -> LayerBuilder<S, N, E2, W>
+    pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
     {
-        LayerBuilder {
+        Layer {
             fmt_fields: self.fmt_fields,
             fmt_event: e,
             make_writer: self.make_writer,
@@ -149,7 +145,7 @@ where
 }
 
 // This needs to be a seperate impl block because they place different bounds on the type paramaters.
-impl<S, N, E, W> LayerBuilder<S, N, E, W> {
+impl<S, N, E, W> Layer<S, N, E, W> {
     /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
     ///
     /// # Examples
@@ -160,9 +156,8 @@ impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::Layer::builder()
-    ///     .with_writer(io::stderr)
-    ///     .finish();
+    /// let layer = fmt::Layer::default()
+    ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
@@ -170,11 +165,11 @@ impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     ///
     /// [`MakeWriter`]: ../fmt/trait.MakeWriter.html
     /// [`Layer`]: ../layer/trait.Layer.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> LayerBuilder<S, N, E, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> Layer<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
     {
-        LayerBuilder {
+        Layer {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             make_writer,
@@ -183,7 +178,7 @@ impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     }
 }
 
-impl<S, N, L, T, W> LayerBuilder<S, N, format::Format<L, T>, W>
+impl<S, N, L, T, W> Layer<S, N, format::Format<L, T>, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
@@ -198,8 +193,8 @@ where
     /// [`timer`]: ./time/trait.FormatTime.html
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
-    pub fn with_timer<T2>(self, timer: T2) -> LayerBuilder<S, N, format::Format<L, T2>, W> {
-        LayerBuilder {
+    pub fn with_timer<T2>(self, timer: T2) -> Layer<S, N, format::Format<L, T2>, W> {
+        Layer {
             fmt_event: self.fmt_event.with_timer(timer),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -208,8 +203,8 @@ where
     }
 
     /// Do not emit timestamps with spans and event.
-    pub fn without_time(self) -> LayerBuilder<S, N, format::Format<L, ()>, W> {
-        LayerBuilder {
+    pub fn without_time(self) -> Layer<S, N, format::Format<L, ()>, W> {
+        Layer {
             fmt_event: self.fmt_event.without_time(),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -220,8 +215,8 @@ where
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
-        LayerBuilder {
+    pub fn with_ansi(self, ansi: bool) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
             fmt_event: self.fmt_event.with_ansi(ansi),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -230,8 +225,8 @@ where
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
-        LayerBuilder {
+    pub fn with_target(self, display_target: bool) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
             fmt_event: self.fmt_event.with_target(display_target),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -240,8 +235,8 @@ where
     }
 
     /// Sets whether or not an event's level is displayed.
-    pub fn with_level(self, display_level: bool) -> LayerBuilder<S, N, format::Format<L, T>, W> {
-        LayerBuilder {
+    pub fn with_level(self, display_level: bool) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
             fmt_event: self.fmt_event.with_level(display_level),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -250,11 +245,11 @@ where
     }
 
     /// Sets the layer being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
-    pub fn compact(self) -> LayerBuilder<S, N, format::Format<format::Compact, T>, W>
+    pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
-        LayerBuilder {
+        Layer {
             fmt_event: self.fmt_event.compact(),
             fmt_fields: self.fmt_fields,
             make_writer: self.make_writer,
@@ -274,14 +269,14 @@ where
     ///
     /// # Options
     ///
-    /// - [`LayerBuilder::flatten_event`] can be used to enable flattening event fields into the root
+    /// - [`Layer::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
-    /// [`LayerBuilder::flatten_event`]: #method.flatten_event
+    /// [`Layer::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(self) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        LayerBuilder {
+    pub fn json(self) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Layer {
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
             make_writer: self.make_writer,
@@ -292,15 +287,15 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<S, T, W> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
+impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        LayerBuilder {
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Layer {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
             make_writer: self.make_writer,
@@ -309,14 +304,14 @@ impl<S, T, W> LayerBuilder<S, format::JsonFields, format::Format<format::Json, T
     }
 }
 
-impl<S, N, E, W> LayerBuilder<S, N, E, W> {
+impl<S, N, E, W> Layer<S, N, E, W> {
     /// Sets the field formatter that the layer being built will use to record
     /// fields.
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> LayerBuilder<S, N2, E, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Layer<S, N2, E, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
-        LayerBuilder {
+        Layer {
             fmt_event: self.fmt_event,
             fmt_fields,
             make_writer: self.make_writer,
@@ -325,6 +320,7 @@ impl<S, N, E, W> LayerBuilder<S, N, E, W> {
     }
 }
 
+#[allow(deprecated)]
 impl<S, N, E, W> LayerBuilder<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -335,28 +331,18 @@ where
     /// Builds a [`Layer`] with the provided configuration.
     ///
     /// [`Layer`]: struct.Layer.html
+    #[deprecated(
+        since = "0.2.4",
+        note = "`LayerBuilder` is no longer a separate type; this method is not necessary"
+    )]
     pub fn finish(self) -> Layer<S, N, E, W> {
+        self
+    }
+}
+
+impl<S> Default for Layer<S> {
+    fn default() -> Self {
         Layer {
-            make_writer: self.make_writer,
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            _inner: self._inner,
-        }
-    }
-}
-
-impl<S> Default for Layer<S>
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-{
-    fn default() -> Self {
-        LayerBuilder::default().finish()
-    }
-}
-
-impl<S> Default for LayerBuilder<S> {
-    fn default() -> Self {
-        LayerBuilder {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             make_writer: io::stdout,
@@ -582,17 +568,17 @@ mod test {
     #[test]
     fn impls() {
         let f = Format::default().with_timer(time::Uptime::default());
-        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let fmt = fmt::Layer::default().event_format(f);
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let fmt = fmt::Layer::default().event_format(f);
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let fmt = fmt::Layer::default().event_format(f);
         let subscriber = fmt.with_subscriber(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
     }
@@ -600,7 +586,7 @@ mod test {
     #[test]
     fn fmt_layer_downcasts() {
         let f = format::Format::default();
-        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let fmt = fmt::Layer::default().event_format(f);
         let subscriber = fmt.with_subscriber(Registry::default());
 
         let dispatch = Dispatch::new(subscriber);
@@ -610,7 +596,7 @@ mod test {
     #[test]
     fn fmt_layer_downcasts_to_parts() {
         let f = format::Format::default();
-        let fmt = fmt::Layer::builder().event_format(f).finish();
+        let fmt = fmt::Layer::default().event_format(f);
         let subscriber = fmt.with_subscriber(Registry::default());
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
@@ -620,7 +606,7 @@ mod test {
     #[test]
     fn is_lookup_span() {
         fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
-        let fmt = fmt::Layer::builder().finish();
+        let fmt = fmt::Layer::default();
         let subscriber = fmt.with_subscriber(Registry::default());
         assert_lookup_span(subscriber)
     }

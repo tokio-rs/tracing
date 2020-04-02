@@ -132,7 +132,9 @@ mod fmt_layer;
 pub mod format;
 pub mod time;
 pub mod writer;
-pub use fmt_layer::{FmtContext, FormattedFields, Layer, LayerBuilder};
+#[allow(deprecated)]
+pub use fmt_layer::LayerBuilder;
+pub use fmt_layer::{FmtContext, FormattedFields, Layer};
 
 use crate::layer::Layer as _;
 use crate::{
@@ -177,7 +179,7 @@ pub struct SubscriberBuilder<
     W = fn() -> io::Stdout,
 > {
     filter: F,
-    inner: LayerBuilder<Registry, N, E, W>,
+    inner: Layer<Registry, N, E, W>,
 }
 
 impl Subscriber {
@@ -315,7 +317,7 @@ where
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Subscriber<N, E, F, W> {
-        let subscriber = self.inner.finish().with_subscriber(Registry::default());
+        let subscriber = self.inner.with_subscriber(Registry::default());
         Subscriber {
             inner: self.filter.with_subscriber(subscriber),
         }
