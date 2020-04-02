@@ -1,5 +1,6 @@
 use std::thread::sleep;
 use std::time::Duration;
+use tempdir::TempDir;
 use tracing::{span, Level};
 use tracing_flame::FlameLayer;
 use tracing_subscriber::{prelude::*, registry::Registry};
@@ -7,7 +8,9 @@ use tracing_subscriber::{prelude::*, registry::Registry};
 #[test]
 fn capture_supported() {
     {
-        let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
+        let tmp_dir = TempDir::new("flamegraphs").unwrap();
+        let (flame_layer, _guard) =
+            FlameLayer::with_file(tmp_dir.path().join("tracing.folded")).unwrap();
 
         let subscriber = Registry::default().with(flame_layer);
 

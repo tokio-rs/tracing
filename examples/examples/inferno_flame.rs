@@ -1,17 +1,19 @@
 use error::{ErrReport, WrapErr};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
+use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
+use tempdir::TempDir;
 use tracing::{span, Level};
 use tracing_flame::FlameLayer;
 use tracing_subscriber::{prelude::*, registry::Registry};
 
-static PATH: &str = "./flame.folded";
+static PATH: &str = "flame.folded";
 
-fn setup_global_subscriber() -> Result<impl Drop, ErrReport> {
-    let (flame_layer, _guard) =
-        FlameLayer::with_file(PATH).wrap_err("Unable to instantiate tracing FlameLayer")?;
+fn setup_global_subscriber(dir: &Path) -> Result<impl Drop, ErrReport> {
+    let (flame_layer, _guard) = FlameLayer::with_file(dir.join(PATH))
+        .wrap_err("Unable to instantiate tracing FlameLayer")?;
 
     let subscriber = Registry::default().with(flame_layer);
 
@@ -20,13 +22,13 @@ fn setup_global_subscriber() -> Result<impl Drop, ErrReport> {
     Ok(_guard)
 }
 
-fn make_flamegraph() -> Result<(), ErrReport> {
-    let inf = File::open(PATH)
+fn make_flamegraph(dir: &Path) -> Result<(), ErrReport> {
+    let inf = File::open(dir.join(PATH))
         .wrap_err_with(|| format!("Failed open folded stack trace file. path={}", PATH))?;
     let reader = BufReader::new(inf);
 
-    let out =
-        File::create("./inferno.svg").wrap_err("Failed to create file for flamegraph image")?;
+    let out = File::create(dir.join("inferno.svg"))
+        .wrap_err("Failed to create file for flamegraph image")?;
     let writer = BufWriter::new(out);
 
     let mut opts = inferno::flamegraph::Options::default();
@@ -36,8 +38,10 @@ fn make_flamegraph() -> Result<(), ErrReport> {
 }
 
 fn main() -> Result<(), ErrReport> {
+    let tmp_dir = TempDir::new("flamegraphs").unwrap();
     {
-        let _guard = setup_global_subscriber().wrap_err("Unable to setup global subscriber");
+        let _guard =
+            setup_global_subscriber(tmp_dir.path()).wrap_err("Unable to setup global subscriber");
 
         {
             let span = span!(Level::ERROR, "outer");
@@ -62,7 +66,7 @@ fn main() -> Result<(), ErrReport> {
         sleep(Duration::from_millis(500));
     }
 
-    make_flamegraph().wrap_err("Unable to create flamegraph svg")?;
+    make_flamegraph(tmp_dir.path()).wrap_err("Unable to create flamegraph svg")?;
 
     Ok(())
 }
