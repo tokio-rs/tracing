@@ -84,7 +84,9 @@
 //! [`FlameLayer`]: struct.FlameLayer.html
 mod error;
 
-use error::{Error, Kind};
+pub use error::Error;
+
+use error::Kind;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -119,7 +121,7 @@ where
 }
 
 #[must_use]
-struct FlameGuard<W>
+pub struct FlameGuard<W>
 where
     W: Write + 'static,
 {
@@ -141,10 +143,24 @@ where
         }
     }
 
-    pub fn flush_on_drop(&self) -> impl Drop {
+    pub fn flush_on_drop(&self) -> FlameGuard<W> {
         FlameGuard {
             out: self.out.clone(),
         }
+    }
+}
+
+impl<W> FlameGuard<W>
+where
+    W: Write + 'static,
+{
+    pub fn flush(&self) -> Result<(), Error> {
+        Ok(self
+            .out
+            .lock()
+            .map_err(|_| Kind::LockError)?
+            .flush()
+            .map_err(Kind::FlushFile)?)
     }
 }
 
@@ -153,9 +169,9 @@ where
     W: Write + 'static,
 {
     fn drop(&mut self) {
-        match self.out.lock().unwrap().flush() {
+        match self.flush() {
             Ok(_) => (),
-            Err(e) => eprintln!("Error: {}", e),
+            Err(e) => e.report(),
         }
     }
 }
@@ -164,9 +180,9 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, impl Drop), Error> {
+    pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlameGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
-        let file = File::create(path).map_err(|source| Kind::IO {
+        let file = File::create(path).map_err(|source| Kind::CreateFile {
             path: path.into(),
             source,
         })?;
