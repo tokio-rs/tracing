@@ -100,21 +100,19 @@
 //! Composing an [`EnvFilter`] `Layer` and a [format `Layer`](../fmt/struct.Layer.html):
 //!
 //! ```rust
-//! use tracing_subscriber::{fmt, Layer, registry::Registry, EnvFilter};
+//! use tracing_subscriber::{fmt, EnvFilter};
 //! use tracing_subscriber::prelude::*;
 //!
-//! let fmt_layer = fmt::Layer::builder()
-//!     .with_target(false)
-//!     .finish();
+//! let fmt_layer = fmt::layer()
+//!     .with_target(false);
 //! let filter_layer = EnvFilter::try_from_default_env()
 //!     .or_else(|_| EnvFilter::try_new("info"))
 //!     .unwrap();
 //!
-//! let subscriber = Registry::default()
+//! tracing_subscriber::registry()
 //!     .with(filter_layer)
-//!     .with(fmt_layer);
-//!
-//! tracing::subscriber::set_global_default(subscriber).unwrap();
+//!     .with(fmt_layer)
+//!     .init();
 //! ```
 //!
 //! [`EnvFilter`]: ../filter/struct.EnvFilter.html
@@ -250,13 +248,16 @@ pub fn fmt() -> SubscriberBuilder {
     SubscriberBuilder::default()
 }
 
-/// Returns a new [`LayerBuilder`] for configuring a [formatting layer].
+/// Returns a new [formatting layer] that can be [composed] with other layers to
+/// construct a [`Subscriber`].
 ///
-/// [`LayerBuilder`]: struct.LayerBuilder.html
+/// This is a shorthand for the equivalent [`Layer::default`] function.
+///
 /// [formatting layer]: struct.Layer.html
-/// [`LayerBuilder::default()`]: struct.LayerBuilder.html#method.default
-pub fn layer<S>() -> LayerBuilder<S> {
-    LayerBuilder::default()
+/// [composed]: ../layer/index.html
+/// [`Layer::default`]: struct.Layer.html#method.default
+pub fn layer<S>() -> Layer<S> {
+    Layer::default()
 }
 
 impl Subscriber {
