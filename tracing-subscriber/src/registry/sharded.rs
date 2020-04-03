@@ -1,4 +1,4 @@
-use sharded_slab::{Guard, Slab};
+use sharded_slab::{Clear, Pool, PoolGuard};
 
 use super::stack::SpanStack;
 use crate::{
@@ -46,7 +46,7 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Registry {
-    spans: Slab<DataInner>,
+    spans: Pool<DataInner>,
 }
 
 /// Span data stored in a [`Registry`].
@@ -63,12 +63,14 @@ pub struct Registry {
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Data<'a> {
-    inner: Guard<'a, DataInner>,
+    inner: Guard<'a>,
 }
 
-#[derive(Debug)]
+type Guard<'a> = PoolGuard<'a, DataInner, sharded_slab::DefaultConfig>;
+
+#[derive(Debug, Default)]
 struct DataInner {
-    metadata: &'static Metadata<'static>,
+    metadata: Option<&'static Metadata<'static>>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
     pub(crate) extensions: RwLock<ExtensionsInner>,
@@ -78,7 +80,7 @@ struct DataInner {
 
 impl Default for Registry {
     fn default() -> Self {
-        Self { spans: Slab::new() }
+        Self { spans: Pool::new() }
     }
 }
 
@@ -121,11 +123,7 @@ pub(crate) struct CloseGuard<'a> {
 }
 
 impl Registry {
-    fn insert(&self, s: DataInner) -> Option<usize> {
-        self.spans.insert(s)
-    }
-
-    fn get(&self, id: &Id) -> Option<Guard<'_, DataInner>> {
+    fn get(&self, id: &Id) -> Option<Guard<'_>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -176,13 +174,19 @@ impl Subscriber for Registry {
             attrs.parent().map(|id| self.clone_span(id))
         };
 
-        let s = DataInner {
-            metadata: attrs.metadata(),
-            parent,
-            ref_count: AtomicUsize::new(1),
-            extensions: RwLock::new(ExtensionsInner::new()),
-        };
-        let id = self.insert(s).expect("Unable to allocate another span");
+        let id = self
+            .spans
+            .create(|data| {
+                data.metadata = Some(attrs.metadata());
+                data.parent = parent;
+                let prev_refs = data.ref_count.swap(1, Ordering::AcqRel);
+                assert_eq!(
+                    prev_refs, 0,
+                    "internal error: allocated span data must have ref count == 0. \
+                    this is probably a `tracing-subscriber`. bug."
+                );
+            })
+            .expect("Unable to allocate another span");
         idx_to_id(id)
     }
 
@@ -229,7 +233,7 @@ impl Subscriber for Registry {
                 let spans = spans.borrow();
                 let id = spans.current()?;
                 let span = self.get(id)?;
-                Some(Current::new(id.clone(), span.metadata))
+                Some(Current::new(id.clone(), span.metadata()))
             })
             .unwrap_or_else(Current::none)
     }
@@ -272,19 +276,16 @@ impl<'a> LookupSpan<'a> for Registry {
 
 // === impl DataInner ===
 
-impl Drop for DataInner {
+impl Clear for DataInner {
     // A span is not considered closed until all of its children have closed.
     // Therefore, each span's `DataInner` holds a "reference" to the parent
     // span, keeping the parent span open until all its children have closed.
     // When we close a span, we must then decrement the parent's ref count
     // (potentially, allowing it to close, if this child is the last reference
     // to that span).
-    fn drop(&mut self) {
-        // We have to actually unpack the option inside the `get_default`
-        // closure, since it is a `FnMut`, but testing that there _is_ a value
-        // here lets us avoid the thread-local access if we don't need the
-        // dispatcher at all.
-        if self.parent.is_some() {
+    fn clear(&mut self) {
+        self.metadata.take();
+        if let Some(parent) = self.parent.take() {
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
             // determine whether to call the `Layer`'s `on_close` callback ---
@@ -292,12 +293,23 @@ impl Drop for DataInner {
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
             let subscriber = dispatcher::get_default(Dispatch::clone);
-            if let Some(parent) = self.parent.take() {
-                let _ = subscriber.try_close(parent);
-            }
+            let _ = subscriber.try_close(parent);
         }
+        self.ref_count.store(0, Ordering::Release);
     }
 }
+
+impl DataInner {
+    #[inline]
+    fn metadata(&self) -> &'static Metadata<'static> {
+        self.metadata.expect(
+            "internal error: accessed a cleared span entry's metadata! \
+            this is probably a `tracing-subscriber` bug.",
+        )
+    }
+}
+
+// === impl CloseGuard ===
 
 impl<'a> CloseGuard<'a> {
     pub(crate) fn is_closing(&mut self) {
@@ -324,7 +336,7 @@ impl<'a> Drop for CloseGuard<'a> {
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
-                self.registry.spans.remove(id_to_idx(&self.id));
+                self.registry.spans.clear(id_to_idx(&self.id));
             }
         });
     }
@@ -338,7 +350,7 @@ impl<'a> SpanData<'a> for Data<'a> {
     }
 
     fn metadata(&self) -> &'static Metadata<'static> {
-        (*self).inner.metadata
+        (*self).inner.metadata()
     }
 
     fn parent(&self) -> Option<&Id> {

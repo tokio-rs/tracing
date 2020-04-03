@@ -117,12 +117,6 @@ pub(crate) struct ExtensionsInner {
 }
 
 impl ExtensionsInner {
-    /// Create an empty `Extensions`.
-    #[inline]
-    pub(crate) fn new() -> ExtensionsInner {
-        ExtensionsInner { map: None }
-    }
-
     /// Insert a type into this `Extensions`.
     ///
     /// If a extension of this type already existed, it will
@@ -188,7 +182,7 @@ fn test_extensions() {
     #[derive(Debug, PartialEq)]
     struct MyType(i32);
 
-    let mut extensions = ExtensionsInner::new();
+    let mut extensions = ExtensionsInner::default();
 
     extensions.insert(5i32);
     extensions.insert(MyType(10));

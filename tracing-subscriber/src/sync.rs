@@ -48,5 +48,10 @@ mod parking_lot_impl {
         pub(crate) fn write<'a>(&'a self) -> LockResult<RwLockWriteGuard<'a, T>> {
             Ok(self.inner.write())
         }
+
+        #[inline]
+        pub(crate) fn get_mut(&mut self) -> &mut T {
+            self.inner.get_mut()
+        }
     }
 }
