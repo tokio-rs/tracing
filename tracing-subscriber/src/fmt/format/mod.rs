@@ -90,13 +90,13 @@ pub trait FormatFields<'writer> {
 /// ```rust
 /// let format = tracing_subscriber::fmt::format()
 ///     .without_time()         // Don't include timestamps
-///     .with_targets(false)    // Don't include event targets.
+///     .with_target(false)     // Don't include event targets.
 ///     .with_level(false)      // Don't include event levels.
 ///     .compact();             // Use a more compact, abbreviated format.
 ///
 /// // Use the configured formatter when building a new subscriber.
 /// tracing_subscriber::fmt()
-///     .format_event(format)
+///     .event_format(format)
 ///     .init();
 /// ```
 pub fn format() -> Format {

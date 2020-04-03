@@ -37,7 +37,9 @@ pub trait FormatTime {
 ///
 /// This is equivalent to calling
 /// ```rust
+/// # fn timer() -> tracing_subscriber::fmt::time::SystemTime {
 /// tracing_subscriber::fmt::time::SystemTime::default()
+/// # }
 /// ```
 pub fn time() -> SystemTime {
     SystemTime::default()
@@ -53,7 +55,9 @@ pub fn time() -> SystemTime {
 ///
 /// This is equivalent to calling
 /// ```rust
+/// # fn timer() -> tracing_subscriber::fmt::time::Uptime {
 /// tracing_subscriber::fmt::time::Uptime::default()
+/// # }
 /// ```
 pub fn uptime() -> Uptime {
     Uptime::default()

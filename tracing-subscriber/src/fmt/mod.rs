@@ -52,9 +52,7 @@
 //! You can create one by calling:
 //!
 //! ```rust
-//! use tracing_subscriber::FmtSubscriber;
-//!
-//! let subscriber = FmtSubscriber::builder()
+//! let subscriber = tracing_subscriber::fmt()
 //!     // ... add configuration
 //!     .finish();
 //! ```
@@ -200,7 +198,7 @@ pub struct SubscriberBuilder<
 /// tracing_subscriber::fmt()
 ///     // Configure formatting settings.
 ///     .with_target(false)
-///     .with_timer(fmt::time::uptime())
+///     .with_timer(tracing_subscriber::fmt::time::uptime())
 ///     .with_level(true)
 ///     // Set the subscriber as the default.
 ///     .init();
@@ -211,12 +209,12 @@ pub struct SubscriberBuilder<
 /// ```rust
 /// use std::error::Error;
 ///
-/// fn init_subscriber() -> Result<(), Box<dyn Error>> {
+/// fn init_subscriber() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///     tracing_subscriber::fmt()
 ///         // Configure the subscriber to emit logs in JSON format.
 ///         .json()
 ///         // Configure the subscriber to flatten event fields in the output JSON objects.
-///         .flatten_event()
+///         .flatten_event(true)
 ///         // Set the subscriber as the default, returning an error if this fails.
 ///         .try_init()?;
 ///
@@ -598,7 +596,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///
     /// For example:
     /// ```rust
-    /// use tracing_subscriber::fmt::{Subscriber, format};
+    /// use tracing_subscriber::fmt::format;
     /// use tracing_subscriber::prelude::*;
     ///
     /// let formatter =
@@ -608,7 +606,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
-    /// let subscriber = Subscriber::builder()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .fmt_fields(formatter)
     ///     .finish();
     /// # drop(subscriber)
@@ -656,7 +654,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// ```rust
     /// use tracing_subscriber::{fmt, filter::{EnvFilter, LevelFilter}};
     ///
-    /// # fn filter() -> Result<(), Box<dyn std::error::Error>> {
+    /// # fn filter() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     /// let filter = EnvFilter::try_from_env("MY_CUSTOM_FILTER_ENV_VAR")?
     ///     // Set the base level when not matched by other directives to WARN.
     ///     .add_directive(LevelFilter::WARN.into())
@@ -707,7 +705,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// ```
     /// This subscriber won't record any spans or events!
     /// ```rust
-    /// use tracing_subscriber::{FmtSubscriber, filter::LevelFilter};
+    /// use tracing_subscriber::{fmt, filter::LevelFilter};
     ///
     /// let subscriber = fmt()
     ///     .with_max_level(LevelFilter::OFF)
@@ -798,7 +796,9 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 /// This is shorthand for
 ///
 /// ```rust
+/// # fn doc() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
 /// tracing_subscriber::fmt().try_init()
+/// # }
 /// ```
 ///
 ///
