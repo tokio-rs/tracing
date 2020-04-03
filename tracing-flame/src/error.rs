@@ -3,9 +3,7 @@ use std::path::PathBuf;
 
 /// The error type for `tracing-flame`
 #[derive(Debug)]
-pub struct Error {
-    inner: Kind,
-}
+pub struct Error(pub(crate) Kind);
 
 impl Error {
     pub(crate) fn report(&self) {
@@ -25,13 +23,13 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match &self.inner {
+        match &self.0 {
             Kind::CreateFile { ref source, .. } => Some(source),
             Kind::FlushFile(ref source) => Some(source),
             Kind::LockError => None,
@@ -39,18 +37,8 @@ impl std::error::Error for Error {
     }
 }
 
-impl<E> From<E> for Error
-where
-    E: Into<Kind>,
-{
-    fn from(err: E) -> Self {
-        let inner = err.into();
-        Self { inner }
-    }
-}
-
 #[derive(Debug)]
-pub enum Kind {
+pub(crate) enum Kind {
     CreateFile {
         source: std::io::Error,
         path: PathBuf,

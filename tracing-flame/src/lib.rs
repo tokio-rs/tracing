@@ -241,9 +241,11 @@ where
         Ok(self
             .out
             .lock()
-            .map_err(|_| Kind::LockError)?
+            .map_err(|_| Kind::LockError)
+            .map_err(Error)?
             .flush()
-            .map_err(Kind::FlushFile)?)
+            .map_err(Kind::FlushFile)
+            .map_err(Error)?)
     }
 }
 
@@ -267,10 +269,12 @@ where
     /// FlushGuard from said FlameLayer.
     pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlushGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
-        let file = File::create(path).map_err(|source| Kind::CreateFile {
-            path: path.into(),
-            source,
-        })?;
+        let file = File::create(path)
+            .map_err(|source| Kind::CreateFile {
+                path: path.into(),
+                source,
+            })
+            .map_err(Error)?;
         let writer = BufWriter::new(file);
         let layer = Self::new(writer);
         let guard = layer.flush_on_drop();
