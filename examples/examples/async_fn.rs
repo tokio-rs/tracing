@@ -45,7 +45,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing_subscriber::fmt()
         .with_env_filter("async_fn=trace")
-        .try_init()?;
+        .init();
 
     // Open a TCP stream to the socket address.
     //
