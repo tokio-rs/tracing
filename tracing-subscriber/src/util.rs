@@ -1,5 +1,6 @@
 //! Extension traits and other utilities to make working with subscribers more
 //! ergonomic.
+use std::{error::Error, fmt};
 use tracing_core::dispatcher::{self, Dispatch};
 
 /// Extension trait adding utility methods for subscriber initialization.
@@ -48,11 +49,11 @@ where
     ///
     /// [global default subscriber]: https://docs.rs/tracing/0.1.13/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
-    fn try_init(self) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    fn try_init(self) -> Result<(), TryInitError> {
         #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        tracing_log::LogTracer::init().map_err(TryInitError::new)?;
 
-        dispatcher::set_global_default(self.into())?;
+        dispatcher::set_global_default(self.into()).map_err(TryInitError::new)?;
 
         Ok(())
     }
@@ -77,3 +78,34 @@ where
 }
 
 impl<T> SubscriberInitExt for T where T: Into<Dispatch> {}
+
+/// Error returned by [`try_init`] if a global default subscriber could not be initialized.
+pub struct TryInitError {
+    inner: Box<dyn Error + Send + Sync + 'static>,
+}
+
+// ==== impl TryInitError ====
+
+impl TryInitError {
+    fn new(e: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
+        Self { inner: e.into() }
+    }
+}
+
+impl fmt::Debug for TryInitError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
+impl fmt::Display for TryInitError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
+    }
+}
+
+impl Error for TryInitError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.inner.source()
+    }
+}
