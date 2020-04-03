@@ -344,20 +344,31 @@ where
         #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
-        let (fmt_level, fmt_ctx) = {
+        if self.display_level {
+            let fmt_level = {
+                #[cfg(feature = "ansi")]
+                {
+                    FmtLevel::new(meta.level(), self.ansi)
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    FmtLevel::new(meta.level())
+                }
+            };
+            write!(writer, "{} ", fmt_level)?;
+        }
+
+        let fmt_ctx = {
             #[cfg(feature = "ansi")]
             {
-                (
-                    FmtLevel::new(meta.level(), self.ansi),
-                    FmtCtx::new(&ctx, self.ansi),
-                )
+                FmtCtx::new(&ctx, self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
-                (FmtLevel::new(meta.level()), FmtCtx::new(&ctx))
+                FmtCtx::new(&ctx)
             }
         };
-        write!(writer, "{} {}", fmt_level, fmt_ctx)?;
+        write!(writer, "{}", fmt_ctx)?;
         if self.display_target {
             write!(writer, "{}:", meta.target())?;
         }
