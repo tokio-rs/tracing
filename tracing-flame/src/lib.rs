@@ -22,14 +22,14 @@
 //! This crate is meant to be used in a two step process:
 //!
 //! 1. A textual representation of the spans that are entered and exited are
-//!    capture captured with [`FlameLayer`].
+//!   captured with [`FlameLayer`].
 //! 2. Feed the textual representation into `inferno-flamegraph` to generate the
 //!    flamegraph or flamechart.
 //!
-//! *Note*: when using a buffered writer as the writer for the layer you need to
+//! *Note*: when using a buffered writer as the writer for a `FlameLayer`, it is necessary to
 //! ensure that the buffer has been flushed before the data is passed into
 //! `inferno-flamegraph`. For more details on how to flush the internal writer
-//! of the `FlameLayer` check out the docs for [`FlushGuard`].
+//! of the `FlameLayer`, see the docs for [`FlushGuard`].
 //!
 //! ## Layer Setup
 //!
@@ -161,12 +161,12 @@ thread_local! {
 ///
 /// # Sample Counts
 ///
-/// Because `tracing-flame` doesn't use sampling the number at the end of each
-/// folded stack trace does not represent a number of samples of that stack,
-/// instead the numbers on each line are the number of nanoseconds since the
+/// Because `tracing-flame` doesn't use sampling, the number at the end of each
+/// folded stack trace does not represent a number of samples of that stack.
+/// Instead, the numbers on each line are the number of nanoseconds since the
 /// last event in the same thread.
 ///
-/// # Droping and Flushing
+/// # Dropping and Flushing
 ///
 /// Because of the way that `tracing` works, if you use a global subscriber the
 /// drop implementations on your various layers will not get called when your
@@ -174,9 +174,10 @@ thread_local! {
 /// inner writer for the `FlameLayer` you're not guaranteed to see all the
 /// events that have been emitted in the file by default.
 ///
-/// To help with this `FlameLayer` exposes the [`flush_on_drop`] function, which
-/// returns a [`FlushGuard`]. The `FlushGuard` will flush on drop and if
-/// necessary can be used to manually flush the writer within the `FlameLayer`.
+/// To ensure all data is flushed when the program exits, `FlameLayer` exposes
+/// the [`flush_on_drop`] function, which returns a [`FlushGuard`]. The `FlushGuard`
+/// will flush the writer when it is dropped. If necessary, it can also be used to manually
+/// flush the writer.
 ///
 /// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
 /// [`FlushGuard`]: struct.FlushGuard.html
@@ -190,7 +191,7 @@ where
     _inner: PhantomData<S>,
 }
 
-/// An RAII implementation for managing flushing a global writer that is
+/// An RAII guard for managing flushing a global writer that is
 /// otherwise inaccessible.
 ///
 /// This type is only needed when using
@@ -223,7 +224,7 @@ where
     }
 
     /// Return a `FlushGuard` which will flush the `FlameLayer`'s writer when
-    /// it gets dropped or whenever `flush` is manually invoked on the guard.
+    /// it is dropped, or when `flush` is manually invoked on the guard.
     pub fn flush_on_drop(&self) -> FlushGuard<W> {
         FlushGuard {
             out: self.out.clone(),
@@ -265,8 +266,8 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    /// Construct a FlameLayer and a Buffered Writer to the given path and a
-    /// FlushGuard from said FlameLayer.
+    /// Construct a `FlameLayer` that outputs to a `BufWriter` to the given path, and a
+    /// `FlushGuard` to ensure the writer is flushed.
     pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlushGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
         let file = File::create(path)
