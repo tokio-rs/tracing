@@ -4,7 +4,7 @@
 use std::error::Error;
 use std::fmt;
 use tracing_error::{prelude::*, ErrorLayer};
-use tracing_subscriber::{prelude::*, registry::Registry};
+use tracing_subscriber::prelude::*;
 
 #[derive(Debug)]
 struct FooError {
@@ -43,11 +43,12 @@ fn do_another_thing(
 
 #[tracing::instrument]
 fn main() {
-    let subscriber = Registry::default()
-        .with(tracing_subscriber::fmt::Layer::default())
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
         // The `ErrorLayer` subscriber layer enables the use of `SpanTrace`.
-        .with(ErrorLayer::default());
-    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+        .with(ErrorLayer::default())
+        .init();
+
     match do_something("hello world") {
         Ok(result) => println!("did something successfully: {}", result),
         Err(e) => {

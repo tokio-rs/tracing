@@ -36,11 +36,10 @@ use tracing::{debug, debug_span, info, warn};
 use tracing_attributes::instrument;
 use tracing_futures::Instrument;
 
+type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+
 #[instrument]
-async fn transfer(
-    mut inbound: TcpStream,
-    proxy_addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn transfer(mut inbound: TcpStream, proxy_addr: SocketAddr) -> Result<(), Error> {
     let mut outbound = TcpStream::connect(&proxy_addr).await?;
 
     let (mut ri, mut wi) = inbound.split();
@@ -82,7 +81,7 @@ arg_enum! {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Error> {
     let matches = App::new("Proxy Server Example")
         .version("1.0")
         .arg(
@@ -140,25 +139,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{filter::EnvFilter, FmtSubscriber};
+fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Error> {
+    let filter = tracing_subscriber::EnvFilter::from_default_env()
+        .add_directive("proxy_server=trace".parse()?);
+    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
     match value_t!(matches, "log_format", LogFormat).unwrap_or(LogFormat::Plain) {
         LogFormat::Json => {
-            let subscriber = FmtSubscriber::builder()
-                .json()
-                .with_env_filter(
-                    EnvFilter::from_default_env().add_directive("proxy_server=trace".parse()?),
-                )
-                .finish();
-            tracing::subscriber::set_global_default(subscriber)?;
+            subscriber.json().try_init()?;
         }
         LogFormat::Plain => {
-            let subscriber = FmtSubscriber::builder()
-                .with_env_filter(
-                    EnvFilter::from_default_env().add_directive("proxy_server=trace".parse()?),
-                )
-                .finish();
-            tracing::subscriber::set_global_default(subscriber)?;
+            subscriber.try_init()?;
         }
     }
     Ok(())

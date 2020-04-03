@@ -40,12 +40,12 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 
 #[tokio::main]
-pub async fn main() -> Result<(), Box<dyn Error>> {
+pub async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let addr = "127.0.0.1:6142".parse()?;
 
     tracing_subscriber::fmt()
         .with_env_filter("async_fn=trace")
-        .init();
+        .try_init()?;
 
     // Open a TCP stream to the socket address.
     //
