@@ -1,7 +1,6 @@
 //! This example demonstrates overriding the way `tracing-subscriber`'s
 //! `FmtSubscriber` formats fields on spans and events, using a closure.
 #![deny(rust_2018_idioms)]
-use tracing::Level;
 use tracing_subscriber;
 
 #[path = "fmt/yak_shave.rs"]
