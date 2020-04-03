@@ -14,7 +14,7 @@ fn main() {
 
     // Create a `fmt` subscriber that uses our custom event format, and set it
     // as the default.
-    fmt().event_format(format).init();
+    tracing_subscriber::fmt().event_format(format).init();
 
     // Shave some yaks!
     let number_of_yaks = 3;
