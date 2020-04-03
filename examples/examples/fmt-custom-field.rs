@@ -1,5 +1,22 @@
 //! This example demonstrates overriding the way `tracing-subscriber`'s
 //! `FmtSubscriber` formats fields on spans and events, using a closure.
+//!
+//! We'll create a custom format that prints key-value pairs separated by
+//! colons rather than equals signs, and separates fields with commas.
+//!
+//! For an event like
+//! ```rust
+//! tracing::info!(hello = "world", answer = 42);
+//! ```
+//!
+//! the default formatter will format the fields like this:
+//! ```not_rust
+//! hello="world" answer=42
+//! ```
+//! while our custom formatter will output
+//! ```not_rust
+//! hello: "world", answer: 42
+//! ```
 #![deny(rust_2018_idioms)]
 use tracing_subscriber;
 
@@ -10,9 +27,9 @@ fn main() {
     use tracing_subscriber::{fmt::format, prelude::*};
 
     // Format fields using the provided closure.
-    let format = format::debug_fn(|writer, _field, value| {
-        // We'll format _just_ the value of each field, ignoring the field name.
-        write!(writer, "{:?}", value)
+    let format = format::debug_fn(|writer, field, value| {
+        // We'll format the field name and value separated with a colon.
+        write!(writer, "{}: {:?}", field, value)
     })
     // Separate each field with a comma.
     // This method is provided by an extension trait in the
