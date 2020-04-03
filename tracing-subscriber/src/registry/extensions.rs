@@ -169,6 +169,13 @@ impl ExtensionsInner {
                 }
             })
     }
+
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        if let Some(ref mut map) = self.map {
+            map.clear();
+        }
+    }
 }
 
 impl fmt::Debug for ExtensionsInner {

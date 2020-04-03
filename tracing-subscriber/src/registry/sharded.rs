@@ -296,6 +296,10 @@ impl Clear for DataInner {
             let _ = subscriber.try_close(parent);
         }
         self.ref_count.store(0, Ordering::Release);
+
+        if let Ok(exts) = self.extensions.get_mut() {
+            exts.clear();
+        }
     }
 }
 
