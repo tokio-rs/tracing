@@ -73,8 +73,8 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
-        try_lock!(self.inner.read()).new_span(attrs, id, ctx)
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+        try_lock!(self.inner.read()).on_new_span(attrs, id, ctx)
     }
 
     #[inline]

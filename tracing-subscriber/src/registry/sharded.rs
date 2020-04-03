@@ -422,7 +422,7 @@ mod tests {
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        fn on_new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");
             let mut lock = self.inner.lock().unwrap();
             let is_removed = Arc::new(());
