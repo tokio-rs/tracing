@@ -6,7 +6,7 @@ use tracing_subscriber;
 mod yak_shave;
 
 fn main() {
-    tracing_subscriber::fmt::Subscriber::builder()
+    tracing_subscriber::fmt()
         // all spans/events with a level higher than DEBUG (e.g, info, warn, etc.)
         // will be written to stdout.
         .with_max_level(Level::DEBUG)

@@ -43,10 +43,9 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 pub async fn main() -> Result<(), Box<dyn Error>> {
     let addr = "127.0.0.1:6142".parse()?;
 
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+    tracing_subscriber::fmt()
         .with_env_filter("async_fn=trace")
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+        .try_init()?;
 
     // Open a TCP stream to the socket address.
     //

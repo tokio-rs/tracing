@@ -30,6 +30,35 @@ pub trait FormatTime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result;
 }
 
+/// Returns a new `SystemTime` timestamp provider.
+///
+/// This can then be configured further to determine how timestamps should be
+/// configured.
+///
+/// This is equivalent to calling
+/// ```rust
+/// tracing_subscriber::fmt::time::SystemTime::default()
+/// ```
+pub fn time() -> SystemTime {
+    SystemTime::default()
+}
+
+/// Returns a new `Uptime` timestamp provider.
+///
+/// With this timer, timestamps will be formatted with the amount of time
+/// elapsed since the timestamp provider was constructed.
+///
+/// This can then be configured further to determine how timestamps should be
+/// configured.
+///
+/// This is equivalent to calling
+/// ```rust
+/// tracing_subscriber::fmt::time::Uptime::default()
+/// ```
+pub fn uptime() -> Uptime {
+    Uptime::default()
+}
+
 impl<'a, F> FormatTime for &'a F
 where
     F: FormatTime,

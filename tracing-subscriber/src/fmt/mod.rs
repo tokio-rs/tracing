@@ -143,7 +143,8 @@ use crate::{
 
 #[doc(inline)]
 pub use self::{
-    format::{FormatEvent, FormatFields},
+    format::{format, FormatEvent, FormatFields},
+    time::time,
     writer::MakeWriter,
 };
 
@@ -199,7 +200,7 @@ pub struct SubscriberBuilder<
 /// tracing_subscriber::fmt()
 ///     // Configure formatting settings.
 ///     .with_target(false)
-///     .with_timer(fmt::time::Uptime::default())
+///     .with_timer(fmt::time::uptime())
 ///     .with_level(true)
 ///     // Set the subscriber as the default.
 ///     .init();
