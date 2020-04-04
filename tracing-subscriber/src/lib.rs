@@ -49,7 +49,7 @@
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`registry`]: registry/index.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.3")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.4")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
