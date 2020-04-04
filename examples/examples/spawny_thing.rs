@@ -10,6 +10,7 @@
 use tokio;
 
 use futures::future::join_all;
+use std::error::Error;
 use tracing::{debug, info};
 use tracing_attributes::instrument;
 
@@ -37,11 +38,10 @@ async fn subtask(number: usize) -> usize {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+        .try_init()?;
     parent_task(10).await;
     Ok(())
 }

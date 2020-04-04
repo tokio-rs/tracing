@@ -2,7 +2,7 @@ use tracing::Level;
 use tracing_subscriber;
 
 fn main() {
-    tracing_subscriber::FmtSubscriber::builder()
+    tracing_subscriber::fmt()
         // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
         // will be written to stdout.
         .with_max_level(Level::TRACE)

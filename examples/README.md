@@ -18,6 +18,10 @@ This directory contains a collection of examples that demonstrate the use of the
     which provides a subscriber implementation that logs traces to the console.
   + `fmt-stderr`: Demonstrates overriding the output stream used by the `fmt`
     subscriber.
+  + `fmt-custom-field`: Demonstrates overriding how the `fmt` subscriber formats
+    fields on spans and events.
+  + `fmt-custom-event`: Demonstrates overriding how the `fmt` subscriber formats
+    events.
   + `subscriber-filter`: Demonstrates the `tracing-subscriber::filter` module,
     which provides a layer which adds configurable filtering to a subscriber
     implementation.
