@@ -95,7 +95,7 @@ async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_log::env_logger::BuilderExt;
 
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    let subscriber = tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)
         .finish();
     let mut builder = env_logger::Builder::new();

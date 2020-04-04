@@ -44,19 +44,18 @@ use tokio::{time, try_join};
 use tower::{Service, ServiceBuilder, ServiceExt};
 use tracing::{self, debug, error, info, span, trace, warn, Level, Span};
 use tracing_futures::Instrument;
-use tracing_subscriber::{filter::EnvFilter, reload::Handle, FmtSubscriber};
+use tracing_subscriber::{filter::EnvFilter, reload::Handle};
 use tracing_tower::{request_span, request_span::make};
 
 type Err = Box<dyn Error + Send + Sync + 'static>;
 
 #[tokio::main]
 async fn main() -> Result<(), Err> {
-    let builder = FmtSubscriber::builder()
+    let builder = tracing_subscriber::fmt()
         .with_env_filter("info,tower_load=debug")
         .with_filter_reloading();
     let handle = builder.reload_handle();
-
-    let _ = tracing::subscriber::set_global_default(builder.finish());
+    builder.try_init()?;
 
     let addr = "[::1]:3000".parse::<SocketAddr>()?;
     let admin_addr = "[::1]:3001".parse::<SocketAddr>()?;

@@ -102,6 +102,7 @@ pub mod registry;
 pub mod reload;
 pub(crate) mod sync;
 pub(crate) mod thread;
+pub mod util;
 
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
@@ -113,9 +114,20 @@ pub use layer::Layer;
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub use registry::Registry;
 
+///
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+pub fn registry() -> Registry {
+    Registry::default()
+}
+
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub use fmt::Subscriber as FmtSubscriber;
+
+#[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
+pub use fmt::fmt;
 
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.

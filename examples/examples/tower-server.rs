@@ -88,10 +88,9 @@ impl<T> Service<T> for MakeSvc {
 
 #[tokio::main]
 async fn main() -> Result<(), Err> {
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+    tracing_subscriber::fmt()
         .with_env_filter("tower=trace")
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+        .try_init()?;
 
     let svc = ServiceBuilder::new()
         .timeout(Duration::from_millis(250))

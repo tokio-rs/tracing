@@ -26,10 +26,9 @@ fn req_span<A>(req: &Request<A>) -> tracing::Span {
 
 #[tokio::main]
 async fn main() -> Result<(), Err> {
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+    tracing_subscriber::fmt()
         .with_env_filter("tower=trace")
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+        .try_init()?;
 
     let mut svc = ServiceBuilder::new()
         .timeout(Duration::from_millis(250))

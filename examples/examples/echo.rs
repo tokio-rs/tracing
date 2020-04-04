@@ -36,13 +36,12 @@ use tracing::{debug, info, info_span, trace_span, warn};
 use tracing_futures::Instrument;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    use tracing_subscriber::{EnvFilter, FmtSubscriber};
+async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    use tracing_subscriber::EnvFilter;
 
-    let subscriber = FmtSubscriber::builder()
+    tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive("echo=trace".parse()?))
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+        .try_init()?;
 
     // Allow passing an address to listen on as the first argument of this
     // program, but otherwise we'll just set up our TCP listener on

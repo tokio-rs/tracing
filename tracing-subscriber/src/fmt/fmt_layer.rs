@@ -32,7 +32,7 @@ use tracing_core::{
 /// use tracing_subscriber::{fmt, Registry};
 /// use tracing_subscriber::prelude::*;
 ///
-/// let fmt_layer = fmt::Layer::default()
+/// let fmt_layer = fmt::layer()
 ///    .with_target(false) // don't include event targets when logging
 ///    .with_level(false); // don't include event levels when logging
 ///
@@ -43,11 +43,11 @@ use tracing_core::{
 /// Setting a custom  event formatter:
 ///
 /// ```rust
-/// use tracing_subscriber::fmt::{self, format::Format, time};
+/// use tracing_subscriber::fmt::{self, format, time};
 /// use tracing_subscriber::prelude::*;
 ///
-/// let fmt = Format::default().with_timer(time::Uptime::default());
-/// let fmt_layer = fmt::Layer::default()
+/// let fmt = format().with_timer(time::Uptime::default());
+/// let fmt_layer = fmt::layer()
 ///     .event_format(fmt)
 ///     .with_target(false);
 /// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
@@ -122,8 +122,8 @@ where
     /// ```rust
     /// use tracing_subscriber::fmt::{self, format};
     ///
-    /// let layer = fmt::Layer::default()
-    ///     .event_format(format::Format::default().compact());
+    /// let layer = fmt::layer()
+    ///     .event_format(format().compact());
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
@@ -156,7 +156,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::Layer::default()
+    /// let layer = fmt::layer()
     ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Layer as _;
