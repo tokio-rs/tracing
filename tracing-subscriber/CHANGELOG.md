@@ -1,4 +1,4 @@
-# 0.2.4 (April 4, 2020)
+# 0.2.4 (April 6, 2020)
 
 This release includes several API ergonomics improvements, including shorthand
 constructors for many types, and an extension trait for initializing subscribers
