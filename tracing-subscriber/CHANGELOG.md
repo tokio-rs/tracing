@@ -1,3 +1,39 @@
+# 0.2.4 (April 6, 2020)
+
+This release includes several API ergonomics improvements, including shorthand
+constructors for many types, and an extension trait for initializing subscribers
+using method-chaining style. Additionally, several bugs in less commonly used
+`fmt` APIs were fixed.
+
+### Added
+
+- **fmt**: Shorthand free functions for constructing most types in `fmt`
+  (including `tracing_subscriber::fmt()` to return a `SubscriberBuilder`,
+  `tracing_subscriber::fmt::layer()` to return a format `Layer`, etc) (#660)
+- **registry**: Shorthand free function `tracing_subscriber::registry()` to
+  construct a new registry (#660)
+- Added `SubscriberInitExt` extension trait for more ergonomic subscriber
+  initialization (#660)
+  
+### Changed
+
+- **fmt**: Moved `LayerBuilder` methods to `Layer` (#655)
+
+### Deprecated
+
+- **fmt**: `LayerBuilder`, as `Layer` now implements all builder methods (#655)
+  
+### Fixed
+
+- **fmt**: Fixed `Compact` formatter not omitting levels with
+  `with_level(false)` (#657)
+- **fmt**: Fixed `fmt::Layer` duplicating the fields for a new span if another
+  layer has already formatted its fields (#634)
+- **fmt**: Added missing space when using `record` to add new fields to a span
+  that already has fields (#659)
+- Updated outdated documentation (#647)
+
+
 # 0.2.3 (March 5, 2020)
 
 ### Fixed

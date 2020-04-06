@@ -42,7 +42,7 @@ idiomatic `tracing`.)
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
-[`fmt` module](https://docs.rs/tracing-subscriber/0.2.3/tracing_subscriber/fmt/index.html) provides reasonable defaults.
+[`fmt` module](https://docs.rs/tracing-subscriber/0.2.4/tracing_subscriber/fmt/index.html) provides reasonable defaults.
 Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
 
 The simplest way to use a subscriber is to call the `set_global_default` function.
@@ -75,7 +75,7 @@ fn main() {
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2.3"
+tracing-subscriber = "0.2.4"
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
