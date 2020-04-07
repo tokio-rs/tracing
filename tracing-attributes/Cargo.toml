@@ -49,5 +49,4 @@ tokio-test = { version = "0.2.0" }
 tracing-core = { path = "../tracing-core", version = "0.1"}
 
 [badges]
-azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
