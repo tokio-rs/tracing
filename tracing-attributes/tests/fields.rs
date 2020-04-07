@@ -15,6 +15,19 @@ fn fn_param(param: u32) {}
 #[instrument(fields(foo = "bar", empty))]
 fn fn_empty_field() {}
 
+#[instrument(fields(len = s.len()))]
+fn fn_expr_field(s: &str) {}
+
+#[derive(Debug)]
+struct HasField {
+    my_field: &'static str,
+}
+
+impl HasField {
+    #[instrument(fields(my_field = self.my_field), skip(self))]
+    fn self_expr_field(&self) {}
+}
+
 #[test]
 fn fields() {
     let span = span::mock().with_field(
@@ -26,6 +39,30 @@ fn fields() {
     );
     run_test(span, || {
         fn_no_param();
+    });
+}
+
+#[test]
+fn expr_field() {
+    let span = span::mock().with_field(
+        mock("s")
+            .with_value(&tracing::field::debug("hello world"))
+            .and(mock("len").with_value(&"hello world".len()))
+            .only(),
+    );
+    run_test(span, || {
+        fn_expr_field(&"hello world");
+    });
+}
+
+#[test]
+fn self_expr_field() {
+    let span = span::mock().with_field(mock("my_field").with_value(&"hello world").only());
+    run_test(span, || {
+        let has_field = HasField {
+            my_field: "hello world",
+        };
+        has_field.self_expr_field();
     });
 }
 
