@@ -32,7 +32,6 @@ env_logger = { version = "0.6", optional = true }
 tracing = { path = "../tracing", version = "0.1"}
 
 [badges]
-azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "actively-maintained" }
 
 [package.metadata.docs.rs]

@@ -62,7 +62,6 @@ tracing-log = { path = "../tracing-log", version = "0.1" }
 criterion = { version = "0.3", default_features = false }
 
 [badges]
-azure-devops = { project = "tracing/tracing", pipeline = "tokio-rs.tracing", build = "1" }
 maintenance = { status = "experimental" }
 
 [package.metadata.docs.rs]
