@@ -1,0 +1,15 @@
+[package]
+name = "tracing-appender"
+version = "0.1.0"
+authors = ["Zeki Sherif <zekshi@amazon.com>"]
+edition = "2018"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+description = """
+Provides an `appender` that writes to a file
+"""
+
+[dependencies]
+tracing-subscriber = {path = "../tracing-subscriber", version = "0.2.4"}
+crossbeam-channel = "0.4.2"
+chrono = "0.4.11"
