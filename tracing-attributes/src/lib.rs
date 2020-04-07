@@ -243,6 +243,18 @@ pub fn instrument(args: proc_macro::TokenStream, item: proc_macro::TokenStream) 
 
         let mut quoted_fields: Vec<_> = param_names
             .into_iter()
+            .filter(|param| {
+                // If any parameters have the same name as a custom field, skip
+                // and allow them to be formatted by the custom field.
+                if let Some(ref fields) = args.fields {
+                    fields.0.iter().all(|Field { ref name, .. }| {
+                        let first = name.first();
+                        first != name.last() || !first.iter().any(|name| name == &param)
+                    })
+                } else {
+                    true
+                }
+            })
             .map(|i| quote!(#i = tracing::field::debug(&#i)))
             .collect();
         let custom_fields = &args.fields;
