@@ -65,14 +65,15 @@ extern crate proc_macro;
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
-use proc_macro::TokenStream;
-use quote::{quote, quote_spanned, ToTokens};
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt as _};
+use syn::parse::{Parse, ParseStream};
 use syn::{
-    spanned::Spanned, AttributeArgs, FieldPat, FnArg, Ident, ItemFn, Lit, LitInt, Meta, MetaList,
-    MetaNameValue, NestedMeta, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct,
-    PatType, Path, Signature,
+    punctuated::Punctuated, spanned::Spanned, AttributeArgs, Expr, FieldPat, FnArg, Ident, ItemFn,
+    Lit, LitInt, LitStr, Meta, MetaList, MetaNameValue, NestedMeta, Pat, PatIdent, PatReference,
+    PatStruct, PatTuple, PatTupleStruct, PatType, Path, Signature, Token,
 };
-
+use syn::ext::IdentExt as _;
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
@@ -173,9 +174,9 @@ use syn::{
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
-pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn instrument(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
-    let args = syn::parse_macro_input!(args as AttributeArgs);
+    let args = syn::parse_macro_input!(args as InstrumentArgs);
 
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
@@ -204,18 +205,9 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             },
         ..
     } = sig;
-
-    // function name
-    let ident_str = ident.to_string();
-
+    let err = args.err;
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
-        // Pull out the arguments-to-be-skipped first, so we can filter results below.
-        let skips = match skips(&args) {
-            Ok(skips) => skips,
-            Err(err) => return quote!(#err),
-        };
-
         let param_names: Vec<Ident> = params
             .clone()
             .into_iter()
@@ -225,7 +217,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
             })
             .collect();
 
-        for skip in &skips {
+        for skip in args.skips.iter() {
             if !param_names.contains(skip) {
                 return quote_spanned! {skip.span()=>
                     compile_error!("attempting to skip non-existent parameter")
@@ -235,37 +227,37 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 
         let param_names: Vec<Ident> = param_names
             .into_iter()
-            .filter(|ident| !skips.contains(ident))
+            .filter(|ident| !args.skips.contains(ident))
             .collect();
-
-        let fields = match fields(&args, &param_names) {
-            Ok(fields) => fields,
-            Err(err) => return quote!(#err),
-        };
 
         let param_names_clone = param_names.clone();
 
-        let level = level(&args);
-        let target = target(&args);
-        let span_name = name(&args, ident_str);
+        let level = args.level();
+        let target = args.target();
+        let span_name = args.name.as_ref()
+            .map(|name| {  quote!(#name) })
+            .unwrap_or_else(|| { 
+                let ident_str = ident.to_string();
+                quote!(#ident_str) 
+            });
 
         let mut quoted_fields: Vec<_> = param_names
             .into_iter()
             .map(|i| quote!(#i = tracing::field::debug(&#i)))
             .collect();
-        quoted_fields.extend(fields.into_iter().map(|(key, value)| {
-            let value = match value {
-                Some(value) => quote!(#value),
-                None => quote!(tracing::field::Empty),
-            };
-
-            quote!(#key = #value)
-        }));
+        let custom_fields = &args.fields;
+        let custom_fields = if quoted_fields.is_empty() {
+            quote! { #custom_fields }
+        } else {
+            quote! {, #custom_fields }
+        };
         quote!(tracing::span!(
             target: #target,
             #level,
             #span_name,
-            #(#quoted_fields),*
+            #(#quoted_fields),* 
+            #custom_fields
+
         ))
     })();
 
@@ -275,7 +267,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     let body = if asyncness.is_some() {
-        if instrument_err(&args) {
+        if err {
             quote_spanned! {block.span()=>
                 tracing_futures::Instrument::instrument(async move {
                     match async move { #block }.await {
@@ -296,7 +288,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
                     .await
             }
         }
-    } else if instrument_err(&args) {
+    } else if err {
         quote_spanned!(block.span()=>
             let __tracing_attr_guard = __tracing_attr_span.enter();
             match { #block } {
@@ -324,6 +316,276 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         }
     )
     .into()
+}
+
+#[derive(Default, Debug)]
+struct InstrumentArgs {
+    level: Option<Level>,
+    name: Option<LitStr>,
+    target: Option<LitStr>,
+    skips: HashSet<Ident>,
+    fields: Option<Fields>,
+    err: bool,
+}
+
+impl InstrumentArgs {
+    fn level(&self) -> impl ToTokens {
+        fn is_level(lit: &LitInt, expected: u64) -> bool {
+            match lit.base10_parse::<u64>() {
+                Ok(value) => value == expected,
+                Err(_) => false,
+            }
+        }
+    
+        match &self.level {
+            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("trace") => {
+                quote!(tracing::Level::TRACE)
+            }
+            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("debug") => {
+                quote!(tracing::Level::DEBUG)
+            }
+            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("info") => {
+                quote!(tracing::Level::INFO)
+            }
+            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("warn") => {
+                quote!(tracing::Level::WARN)
+            }
+            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("error") => {
+                quote!(tracing::Level::ERROR)
+            }
+            Some(Level::Int(ref lit)) if is_level(lit, 1) => quote!(tracing::Level::TRACE),
+            Some(Level::Int(ref lit)) if is_level(lit, 2) => quote!(tracing::Level::DEBUG),
+            Some(Level::Int(ref lit)) if is_level(lit, 3) => quote!(tracing::Level::INFO),
+            Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
+            Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
+            Some(Level::Path(ref pat)) => quote!(#pat),
+            Some(lit) => quote!{
+                compile_error!(
+                    "unknown verbosity level, expected one of \"trace\", \
+                     \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
+                )
+            },
+            None => quote!(tracing::Level::INFO),
+        }
+    }
+
+    fn target(&self) -> impl ToTokens {
+        if let Some(ref target) = self.target {
+            quote!(#target)
+        } else {
+            quote!(module_path!())
+        }
+    }
+}
+
+impl Parse for InstrumentArgs {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let mut args = Self::default();
+        while !input.is_empty() {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(kw::name) {
+                if args.name.is_some() {
+                    return Err(input.error("expected only a single `name` argument"));
+                }
+                let name = input.parse::<StrArg<kw::name>>()?.value;
+                args.name = Some(name);
+            } else if lookahead.peek(kw::target) {
+                if args.target.is_some() {
+                    return Err(input.error("expected only a single `target` argument"));
+                }
+                let target = input.parse::<StrArg<kw::target>>()?.value;
+                args.target = Some(target);
+            } else if lookahead.peek(kw::level) {
+                if args.level.is_some() {
+                    return Err(input.error("expected only a single `level` argument"));
+                }
+                args.level = Some(input.parse()?);
+            } else if lookahead.peek(kw::skip) {
+                if !args.skips.is_empty() {
+                    return Err(input.error("expected only a single `skip` argument"));
+                }
+                let Skips(skips) = input.parse()?;
+                args.skips = skips;
+            } else if lookahead.peek(kw::fields) {
+                if args.fields.is_some() {
+                    return Err(input.error("expected only a single `fields` argument"));
+                }
+                args.fields = Some(input.parse()?);
+            } else if lookahead.peek(kw::err) {
+                let _ = input.parse::<kw::err>()?;
+                args.err = true;
+            } else if lookahead.peek(Token![,]) {
+                let _ = input.parse::<Token![,]>()?;
+            } else {
+                return Err(lookahead.error());
+            }
+        }
+        Ok(args)
+    }
+}
+
+struct StrArg<T> {
+    value: LitStr,
+    _p: std::marker::PhantomData<T>,
+}
+
+impl<T: Parse> Parse for StrArg<T> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _ = input.parse::<T>()?;
+        let _ = input.parse::<Token![=]>()?;
+        let value = input.parse()?;
+        Ok(Self {
+            value,
+            _p: std::marker::PhantomData,
+        })
+    }
+}
+
+struct Skips(HashSet<Ident>);
+
+impl Parse for Skips {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _ = input.parse::<kw::skip>();
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let names: Punctuated<Ident, Token![,]> = content.parse_terminated(Ident::parse_any)?;
+        let mut skips = HashSet::new();
+        for name in names {
+            if skips.contains(&name) {
+                return Err(syn::Error::new(
+                    name.span(),
+                    "tried to skip the same field twice",
+                ));
+            } else {
+                skips.insert(name);
+            }
+        }
+        Ok(Self(skips))
+    }
+}
+
+#[derive(Debug)]
+struct Fields(Punctuated<Field, Token![,]>);
+
+#[derive(Debug)]
+struct Field {
+    name: Punctuated<Ident, Token![.]>,
+    value: Option<Expr>,
+    kind: FieldKind,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum FieldKind {
+    Debug,
+    Display,
+    Value,
+}
+
+impl Parse for Fields {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _ = input.parse::<kw::fields>();
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let fields: Punctuated<_, Token![,]> = content.parse_terminated(Field::parse)?;
+        Ok(Self(fields))
+    }
+}
+
+impl ToTokens for Fields {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens)
+    }
+}
+
+impl Parse for Field {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let mut kind = FieldKind::Value;
+        if input.peek(Token![%]) {
+            input.parse::<Token![%]>()?;
+            kind = FieldKind::Display;
+        } else if input.peek(Token![?]) {
+            input.parse::<Token![?]>()?;
+            kind = FieldKind::Debug;
+        };
+        let name = Punctuated::parse_separated_nonempty_with(input, Ident::parse_any)?;
+        let value = if input.peek(Token![=]) {
+            input.parse::<Token![=]>()?;
+            if input.peek(Token![%]) {
+                input.parse::<Token![%]>()?;
+                kind = FieldKind::Display;
+            } else if input.peek(Token![?]) {
+                input.parse::<Token![?]>()?;
+                kind = FieldKind::Debug;
+            };
+            Some(input.parse()?)
+        } else {
+            None
+        };
+        Ok(Self {
+            name,
+            kind, 
+            value,
+        })
+    }
+}
+
+impl ToTokens for Field {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if let Some(ref value) = self.value {
+            let name = &self.name;
+            let kind = &self.kind;
+            tokens.extend(quote! {
+                #name = #kind#value
+            })
+        } else {
+            if self.kind == FieldKind::Value {
+                // XXX(eliza): I don't like that fields without values produce
+                // empty fields rather than local variable shorthand...but,
+                // we've released a version where field names without values in
+                // `instrument` produce empty field values, so changing it now
+                // is a breaking change. agh.
+                let name = &self.name;
+                tokens.extend(quote!(#name = tracing::field::Empty))
+            } else {
+                self.kind.to_tokens(tokens);
+                self.name.to_tokens(tokens);
+            }
+        }
+    }
+}
+
+impl ToTokens for FieldKind {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            FieldKind::Debug => tokens.extend(quote!{ ? }),
+            FieldKind::Display => tokens.extend(quote!{ % }),
+            _ => {},
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Level {
+    Str(LitStr),
+    Int(LitInt),
+    Path(Path),
+}
+
+impl Parse for Level {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _ = input.parse::<kw::level>()?;
+        let _ = input.parse::<Token![=]>()?;
+        let lookahead = input.lookahead1();
+        if lookahead.peek(LitStr) {
+            Ok(Self::Str(input.parse()?))        
+        } else if lookahead.peek(LitInt) {
+            Ok(Self::Int(input.parse()?))
+        } else if lookahead.peek(Ident) {
+            Ok(Self::Path(input.parse()?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
 }
 
 fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
@@ -377,60 +639,6 @@ fn skips(args: &[NestedMeta]) -> Result<HashSet<Ident>, impl ToTokens> {
             _ => None,
         })
         .collect())
-}
-
-fn level(args: &[NestedMeta]) -> impl ToTokens {
-    let mut levels = args.iter().filter_map(|arg| match arg {
-        NestedMeta::Meta(Meta::NameValue(MetaNameValue {
-            ref path, ref lit, ..
-        })) if path.is_ident("level") => Some(lit.clone()),
-        _ => None,
-    });
-    let level = levels.next();
-
-    // If we found more than one arg named "level", that's a syntax error...
-    if let Some(lit) = levels.next() {
-        return quote_spanned! {lit.span()=>
-            compile_error!("expected only a single `level` argument!")
-        };
-    }
-
-    fn is_level(lit: &LitInt, expected: u64) -> bool {
-        match lit.base10_parse::<u64>() {
-            Ok(value) => value == expected,
-            Err(_) => false,
-        }
-    }
-
-    match level {
-        Some(Lit::Str(ref lit)) if lit.value().eq_ignore_ascii_case("trace") => {
-            quote!(tracing::Level::TRACE)
-        }
-        Some(Lit::Str(ref lit)) if lit.value().eq_ignore_ascii_case("debug") => {
-            quote!(tracing::Level::DEBUG)
-        }
-        Some(Lit::Str(ref lit)) if lit.value().eq_ignore_ascii_case("info") => {
-            quote!(tracing::Level::INFO)
-        }
-        Some(Lit::Str(ref lit)) if lit.value().eq_ignore_ascii_case("warn") => {
-            quote!(tracing::Level::WARN)
-        }
-        Some(Lit::Str(ref lit)) if lit.value().eq_ignore_ascii_case("error") => {
-            quote!(tracing::Level::ERROR)
-        }
-        Some(Lit::Int(ref lit)) if is_level(lit, 1) => quote!(tracing::Level::TRACE),
-        Some(Lit::Int(ref lit)) if is_level(lit, 2) => quote!(tracing::Level::DEBUG),
-        Some(Lit::Int(ref lit)) if is_level(lit, 3) => quote!(tracing::Level::INFO),
-        Some(Lit::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
-        Some(Lit::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
-        Some(lit) => quote_spanned! {lit.span()=>
-            compile_error!(
-                "unknown verbosity level, expected one of \"trace\", \
-                 \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
-            )
-        },
-        None => quote!(tracing::Level::INFO),
-    }
 }
 
 fn target(args: &[NestedMeta]) -> impl ToTokens {
@@ -578,4 +786,13 @@ fn instrument_err(args: &[NestedMeta]) -> bool {
         NestedMeta::Meta(Meta::Path(path)) => path.is_ident("err"),
         _ => false,
     })
+}
+
+mod kw {
+    syn::custom_keyword!(fields);
+    syn::custom_keyword!(skip);
+    syn::custom_keyword!(level);
+    syn::custom_keyword!(target);
+    syn::custom_keyword!(name);
+    syn::custom_keyword!(err);
 }
