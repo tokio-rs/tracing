@@ -18,6 +18,12 @@ fn fn_empty_field() {}
 #[instrument(fields(len = s.len()))]
 fn fn_expr_field(s: &str) {}
 
+#[instrument(fields(s.len = s.len(), s.is_empty = s.is_empty()))]
+fn fn_two_expr_fields(s: &str) {}
+
+#[instrument(fields(%s, s.len = s.len()))]
+fn fn_clashy_expr_field(s: &str) {}
+
 #[derive(Debug)]
 struct HasField {
     my_field: &'static str,
@@ -52,6 +58,35 @@ fn expr_field() {
     );
     run_test(span, || {
         fn_expr_field(&"hello world");
+    });
+}
+
+#[test]
+fn two_expr_fields() {
+    let span = span::mock().with_field(
+        mock("s")
+            .with_value(&tracing::field::debug("hello world"))
+            .and(mock("s.len").with_value(&"hello world".len()))
+            .and(mock("s.is_empty").with_value(&false))
+            .only(),
+    );
+    run_test(span, || {
+        fn_two_expr_fields(&"hello world");
+    });
+}
+
+#[test]
+fn clashy_expr_field() {
+    let span = span::mock().with_field(
+        // Overriding the `s` field should record `s` as a `Display` value,
+        // rather than as a `Debug` value.
+        mock("s")
+            .with_value(&tracing::field::display("hello world"))
+            .and(mock("s.len").with_value(&"hello world".len()))
+            .only(),
+    );
+    run_test(span, || {
+        fn_clashy_expr_field(&"hello world");
     });
 }
 
