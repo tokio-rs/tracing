@@ -73,7 +73,7 @@ impl Default for FileAppenderBuilder {
     fn default() -> Self {
         FileAppenderBuilder {
             buffered_lines_limit: 100_000,
-            rotation: Rotation::Hourly,
+            rotation: Rotation::HOURLY,
         }
     }
 }
