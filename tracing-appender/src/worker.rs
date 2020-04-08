@@ -41,9 +41,9 @@ impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
 
     fn handle_recv(&mut self, result: &Result<Vec<u8>, RecvError>) -> io::Result<WorkerState> {
         match result {
-            Ok(msg) => match self.inner.write(&msg) {
-                Ok(_) => Ok(WorkerState::Continue),
-                Err(e) => Err(e),
+            Ok(msg) => {
+                self.inner.write(&msg)?;
+                Ok(WorkerState::Continue)
             },
             Err(_) => Ok(WorkerState::Disconnected),
         }
@@ -68,7 +68,7 @@ impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
     /// Blocks on the first recv of each batch of logs, unless the
     /// channel is disconnected. Afterwards, grabs as many logs as
     /// it can off the channel, buffers them and attempts a flush.
-    pub fn work(&mut self) -> io::Result<WorkerState> {
+    pub(crate) fn work(&mut self) -> io::Result<WorkerState> {
         self.handle_recv(&self.receiver.recv())?;
         let mut worker_state = WorkerState::Continue;
         while worker_state == WorkerState::Continue {
@@ -81,13 +81,12 @@ impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
     }
 
     /// Creates a worker thread that processes a channel until it's disconnected
-    pub fn worker_thread(mut self) -> std::thread::JoinHandle<()> {
+    pub(crate) fn worker_thread(mut self) -> std::thread::JoinHandle<()> {
         thread::spawn(move || loop {
             let result = self.work();
             match &result {
-                Ok(WorkerState::Continue) => {}
+                Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
                 Ok(WorkerState::Disconnected) => break,
-                Ok(WorkerState::Empty) => {}
                 Err(_) => {
                     // TODO: Expose a metric for IO Errors, or print to stderr
                 }
