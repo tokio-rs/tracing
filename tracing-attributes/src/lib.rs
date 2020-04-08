@@ -557,19 +557,17 @@ impl ToTokens for Field {
             tokens.extend(quote! {
                 #name = #kind#value
             })
+        } if self.kind == FieldKind::Value {
+            // XXX(eliza): I don't like that fields without values produce
+            // empty fields rather than local variable shorthand...but,
+            // we've released a version where field names without values in
+            // `instrument` produce empty field values, so changing it now
+            // is a breaking change. agh.
+            let name = &self.name;
+            tokens.extend(quote!(#name = tracing::field::Empty))
         } else {
-            if self.kind == FieldKind::Value {
-                // XXX(eliza): I don't like that fields without values produce
-                // empty fields rather than local variable shorthand...but,
-                // we've released a version where field names without values in
-                // `instrument` produce empty field values, so changing it now
-                // is a breaking change. agh.
-                let name = &self.name;
-                tokens.extend(quote!(#name = tracing::field::Empty))
-            } else {
-                self.kind.to_tokens(tokens);
-                self.name.to_tokens(tokens);
-            }
+            self.kind.to_tokens(tokens);
+            self.name.to_tokens(tokens);
         }
     }
 }
