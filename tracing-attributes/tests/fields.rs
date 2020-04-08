@@ -24,6 +24,11 @@ fn fn_two_expr_fields(s: &str) {}
 #[instrument(fields(%s, s.len = s.len()))]
 fn fn_clashy_expr_field(s: &str) {}
 
+
+#[instrument(fields(s = "s"))]
+fn fn_clashy_expr_field2(s: &str) {}
+
+
 #[derive(Debug)]
 struct HasField {
     my_field: &'static str,
@@ -87,6 +92,15 @@ fn clashy_expr_field() {
     );
     run_test(span, || {
         fn_clashy_expr_field(&"hello world");
+    });
+
+    let span = span::mock().with_field(
+        mock("s")
+            .with_value(&"s")
+            .only(),
+    );
+    run_test(span, || {
+        fn_clashy_expr_field2(&"hello world");
     });
 }
 
