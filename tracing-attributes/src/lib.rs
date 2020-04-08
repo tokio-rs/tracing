@@ -268,6 +268,7 @@ pub fn instrument(
         } else {
             quote! {, #custom_fields }
         };
+
         quote!(tracing::span!(
             target: #target,
             #level,
@@ -558,8 +559,7 @@ impl ToTokens for Field {
             tokens.extend(quote! {
                 #name = #kind#value
             })
-        }
-        if self.kind == FieldKind::Value {
+        } else if self.kind == FieldKind::Value {
             // XXX(eliza): I don't like that fields without values produce
             // empty fields rather than local variable shorthand...but,
             // we've released a version where field names without values in
