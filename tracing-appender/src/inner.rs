@@ -58,7 +58,7 @@ impl<F: WriterFactory> io::Write for InnerAppender<F> {
 }
 
 impl<F: WriterFactory> InnerAppender<F> {
-    pub fn new(
+    pub(crate) fn new(
         log_directory: &str,
         log_filename_prefix: &str,
         rotation: Rotation,
