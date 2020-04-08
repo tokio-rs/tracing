@@ -19,7 +19,7 @@ pub(crate) enum WorkerState {
 }
 
 impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
-    pub fn new(
+    pub(crate) fn new(
         receiver: Receiver<Vec<u8>>,
         log_directory: &str,
         log_filename_prefix: &str,
