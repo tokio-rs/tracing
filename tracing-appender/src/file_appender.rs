@@ -3,6 +3,7 @@ use crate::worker::Worker;
 use crate::Rotation;
 use chrono::Utc;
 use crossbeam_channel::{bounded, Sender};
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{io, thread};
 use tracing_subscriber::fmt::MakeWriter;
@@ -42,7 +43,6 @@ pub struct FileAppenderBuilder {
     rotation: Rotation,
 }
 
-#[allow(dead_code)]
 impl FileAppenderBuilder {
     pub fn buffered_lines_limit(mut self, buffered_lines_limit: usize) -> FileAppenderBuilder {
         self.buffered_lines_limit = buffered_lines_limit;
@@ -59,8 +59,8 @@ impl FileAppenderBuilder {
 
         let worker = Worker::new(
             receiver,
-            log_directory,
-            log_filename_prefix,
+            log_directory.as_ref(),
+            log_filename_prefix.as_ref(),
             self.rotation,
             BufWriterFactory {},
             Utc::now(),
@@ -93,7 +93,7 @@ impl std::io::Write for FileWriter {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        unimplemented!()
+        Ok(())
     }
 }
 

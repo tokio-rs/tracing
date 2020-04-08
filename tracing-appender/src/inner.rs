@@ -59,12 +59,15 @@ impl<F: WriterFactory> io::Write for InnerAppender<F> {
 
 impl<F: WriterFactory> InnerAppender<F> {
     pub(crate) fn new(
-        log_directory: &str,
-        log_filename_prefix: &str,
+        log_directory: &Path,
+        log_filename_prefix: &Path,
         rotation: Rotation,
         writer_factory: F,
         now: DateTime<Utc>,
     ) -> io::Result<Self> {
+        let log_directory = log_directory.to_str().unwrap();
+        let log_filename_prefix = log_filename_prefix.to_str().unwrap();
+
         let filename = rotation.join_date(log_filename_prefix, &now);
         let next_date = rotation.next_date(&now);
 
@@ -122,6 +125,6 @@ fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
             return OpenOptions::new().append(true).create(true).open(path);
         }
     }
-    
+
     new_file
 }

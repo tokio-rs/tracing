@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use crossbeam_channel::{Receiver, RecvError, TryRecvError};
 use std::fmt::Debug;
 use std::io::Write;
+use std::path::Path;
 use std::{io, thread};
 
 pub(crate) struct Worker<T: WriterFactory + Debug + Send + 'static> {
@@ -21,16 +22,16 @@ pub(crate) enum WorkerState {
 impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
     pub(crate) fn new(
         receiver: Receiver<Vec<u8>>,
-        log_directory: &str,
-        log_filename_prefix: &str,
+        log_directory: &Path,
+        log_filename_prefix: &Path,
         rotation: Rotation,
         writer_factory: T,
         now: DateTime<Utc>,
     ) -> io::Result<Self> {
         Ok(Self {
             inner: InnerAppender::new(
-                &log_directory,
-                &log_filename_prefix,
+                log_directory,
+                log_filename_prefix,
                 rotation,
                 writer_factory,
                 now,
@@ -44,7 +45,7 @@ impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
             Ok(msg) => {
                 self.inner.write(&msg)?;
                 Ok(WorkerState::Continue)
-            },
+            }
             Err(_) => Ok(WorkerState::Disconnected),
         }
     }
