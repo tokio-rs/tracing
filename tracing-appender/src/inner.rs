@@ -16,7 +16,7 @@ pub(crate) trait WriterFactory: Debug + Send {
 }
 
 #[derive(Debug)]
-pub struct BufWriterFactory {}
+pub(crate) struct BufWriterFactory {}
 
 impl WriterFactory for BufWriterFactory {
     type W = BufWriter<File>;
