@@ -67,13 +67,13 @@ use std::iter;
 
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt as _};
+use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 use syn::{
     punctuated::Punctuated, spanned::Spanned, AttributeArgs, Expr, FieldPat, FnArg, Ident, ItemFn,
     Lit, LitInt, LitStr, Meta, MetaList, MetaNameValue, NestedMeta, Pat, PatIdent, PatReference,
     PatStruct, PatTuple, PatTupleStruct, PatType, Path, Signature, Token,
 };
-use syn::ext::IdentExt as _;
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
@@ -174,7 +174,10 @@ use syn::ext::IdentExt as _;
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
-pub fn instrument(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn instrument(
+    args: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
     let args = syn::parse_macro_input!(args as InstrumentArgs);
 
@@ -234,11 +237,13 @@ pub fn instrument(args: proc_macro::TokenStream, item: proc_macro::TokenStream) 
 
         let level = args.level();
         let target = args.target();
-        let span_name = args.name.as_ref()
-            .map(|name| {  quote!(#name) })
-            .unwrap_or_else(|| { 
+        let span_name = args
+            .name
+            .as_ref()
+            .map(|name| quote!(#name))
+            .unwrap_or_else(|| {
                 let ident_str = ident.to_string();
-                quote!(#ident_str) 
+                quote!(#ident_str)
             });
 
         let mut quoted_fields: Vec<_> = param_names
@@ -267,7 +272,7 @@ pub fn instrument(args: proc_macro::TokenStream, item: proc_macro::TokenStream) 
             target: #target,
             #level,
             #span_name,
-            #(#quoted_fields),* 
+            #(#quoted_fields),*
             #custom_fields
 
         ))
@@ -348,7 +353,7 @@ impl InstrumentArgs {
                 Err(_) => false,
             }
         }
-    
+
         match &self.level {
             Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("trace") => {
                 quote!(tracing::Level::TRACE)
@@ -371,7 +376,7 @@ impl InstrumentArgs {
             Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
             Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
             Some(Level::Path(ref pat)) => quote!(#pat),
-            Some(lit) => quote!{
+            Some(lit) => quote! {
                 compile_error!(
                     "unknown verbosity level, expected one of \"trace\", \
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
@@ -541,11 +546,7 @@ impl Parse for Field {
         } else {
             None
         };
-        Ok(Self {
-            name,
-            kind, 
-            value,
-        })
+        Ok(Self { name, kind, value })
     }
 }
 
@@ -557,7 +558,8 @@ impl ToTokens for Field {
             tokens.extend(quote! {
                 #name = #kind#value
             })
-        } if self.kind == FieldKind::Value {
+        }
+        if self.kind == FieldKind::Value {
             // XXX(eliza): I don't like that fields without values produce
             // empty fields rather than local variable shorthand...but,
             // we've released a version where field names without values in
@@ -575,9 +577,9 @@ impl ToTokens for Field {
 impl ToTokens for FieldKind {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            FieldKind::Debug => tokens.extend(quote!{ ? }),
-            FieldKind::Display => tokens.extend(quote!{ % }),
-            _ => {},
+            FieldKind::Debug => tokens.extend(quote! { ? }),
+            FieldKind::Display => tokens.extend(quote! { % }),
+            _ => {}
         }
     }
 }
@@ -595,7 +597,7 @@ impl Parse for Level {
         let _ = input.parse::<Token![=]>()?;
         let lookahead = input.lookahead1();
         if lookahead.peek(LitStr) {
-            Ok(Self::Str(input.parse()?))        
+            Ok(Self::Str(input.parse()?))
         } else if lookahead.peek(LitInt) {
             Ok(Self::Int(input.parse()?))
         } else if lookahead.peek(Ident) {
