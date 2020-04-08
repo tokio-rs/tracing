@@ -401,6 +401,14 @@ impl Parse for InstrumentArgs {
                 }
                 let name = input.parse::<StrArg<kw::name>>()?.value;
                 args.name = Some(name);
+            } else if lookahead.peek(LitStr) {
+                // XXX: apparently we support names as either named args with an
+                // sign, _or_ as unnamed string literals. That's weird, but
+                // changing it is apparently breaking.
+                if args.name.is_some() {
+                    return Err(input.error("expected only a single `name` argument"));
+                }
+                args.name = Some(input.parse()?);
             } else if lookahead.peek(kw::target) {
                 if args.target.is_some() {
                     return Err(input.error("expected only a single `target` argument"));
