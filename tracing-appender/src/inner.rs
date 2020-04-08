@@ -119,11 +119,9 @@ fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
     if new_file.is_err() {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
-            OpenOptions::new().append(true).create(true).open(path)
-        } else {
-            new_file
+            return OpenOptions::new().append(true).create(true).open(path);
         }
-    } else {
-        new_file
     }
+    
+    new_file
 }
