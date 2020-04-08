@@ -51,8 +51,8 @@ impl FileAppenderBuilder {
 
     pub fn build(
         self,
-        log_directory: &str,
-        log_filename_prefix: &str,
+        log_directory: impl AsRef<Path>,
+        log_filename_prefix: impl AsRef<Path>,
         error_counter: &'static AtomicU64,
     ) -> io::Result<FileAppender> {
         let (sender, receiver) = bounded(self.buffered_lines_limit);
