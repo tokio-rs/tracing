@@ -5,11 +5,20 @@ pub mod file_appender;
 mod inner;
 mod worker;
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Rotation {
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct Rotation(RotationKind);
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+enum RotationKind {
     Hourly,
     Daily,
     Never,
+}
+
+impl Rotation {
+    pub const HOURLY: Self = Self(RotationKind::Hourly);
+    pub const DAILY: Self = Self(RotationKind::Daily);
+    pub const NEVER: Self = Self(RotationKind::Never);
 }
 
 impl Rotation {
