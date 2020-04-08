@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use std::io::Write;
 use std::{io, thread};
 
-pub struct Worker<T: WriterFactory + Debug + Send + 'static> {
+pub(crate) struct Worker<T: WriterFactory + Debug + Send + 'static> {
     inner: InnerAppender<T>,
     receiver: Receiver<Vec<u8>>,
 }
