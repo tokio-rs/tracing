@@ -12,7 +12,7 @@ pub struct Worker<T: WriterFactory + Debug + Send + 'static> {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum WorkerState {
+pub(crate) enum WorkerState {
     Empty,
     Disconnected,
     Continue,
