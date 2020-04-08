@@ -19,13 +19,19 @@ fn fn_empty_field() {}
 fn fn_expr_field(s: &str) {}
 
 #[instrument(fields(s.len = s.len(), s.is_empty = s.is_empty()))]
-fn fn_two_expr_fields(s: &str) { let _ = s; }
+fn fn_two_expr_fields(s: &str) {
+    let _ = s;
+}
 
 #[instrument(fields(%s, s.len = s.len()))]
-fn fn_clashy_expr_field(s: &str) { let _ = s; }
+fn fn_clashy_expr_field(s: &str) {
+    let _ = s;
+}
 
 #[instrument(fields(s = "s"))]
-fn fn_clashy_expr_field2(s: &str) { let _ = s; }
+fn fn_clashy_expr_field2(s: &str) {
+    let _ = s;
+}
 
 #[derive(Debug)]
 struct HasField {
