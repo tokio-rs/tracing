@@ -9,7 +9,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::path::Path;
 
-pub trait WriterFactory: Debug + Send {
+pub(crate) trait WriterFactory: Debug + Send {
     type W: Write + Debug + Send;
 
     fn create_writer(&self, directory: &str, filename: &str) -> io::Result<Self::W>;
