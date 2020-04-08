@@ -108,7 +108,7 @@ impl<F: WriterFactory> InnerAppender<F> {
         }
     }
 
-    pub fn should_rollover(&self, date: DateTime<Utc>) -> bool {
+    pub(crate) fn should_rollover(&self, date: DateTime<Utc>) -> bool {
         date >= self.next_date
     }
 }
