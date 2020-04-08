@@ -28,7 +28,7 @@ impl WriterFactory for BufWriterFactory {
 }
 
 #[derive(Debug)]
-pub(crate) struct InnerAppender<F: WriterFactory + Debug + Send> {
+pub(crate) struct InnerAppender<F: WriterFactory + Send> {
     log_directory: String,
     log_filename_prefix: String,
     writer: F::W,
