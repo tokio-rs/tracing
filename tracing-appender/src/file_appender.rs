@@ -42,11 +42,11 @@ impl FileAppender {
         FileAppenderBuilder::default()
     }
 
-    pub fn get_writer(self) -> FileWriter {
-        self.log_writer
+    pub fn writer(&self) -> FileWriter {
+        self.log_writer.clone()
     }
 
-    pub fn get_error_counter(self) -> Arc<AtomicU64> {
+    pub fn error_counter(&self) -> Arc<AtomicU64> {
         self.error_counter.clone()
     }
 }
@@ -94,6 +94,7 @@ impl Default for FileAppenderBuilder {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct FileWriter {
     channel: Sender<Vec<u8>>,
     error_counter: Arc<AtomicU64>,
