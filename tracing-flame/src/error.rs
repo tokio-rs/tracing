@@ -32,7 +32,6 @@ impl std::error::Error for Error {
         match &self.0 {
             Kind::CreateFile { ref source, .. } => Some(source),
             Kind::FlushFile(ref source) => Some(source),
-            Kind::LockError => None,
         }
     }
 }
@@ -44,7 +43,6 @@ pub(crate) enum Kind {
         path: PathBuf,
     },
     FlushFile(std::io::Error),
-    LockError,
 }
 
 impl fmt::Display for Kind {
@@ -54,10 +52,6 @@ impl fmt::Display for Kind {
                 write!(f, "cannot create output file. path={}", path.display())
             }
             Self::FlushFile { .. } => write!(f, "cannot flush output buffer"),
-            Self::LockError => write!(
-                f,
-                "encountered poison error when acquiring lock on output buffer"
-            ),
         }
     }
 }

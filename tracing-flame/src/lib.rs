@@ -14,11 +14,6 @@
 //!
 //! ## Usage
 //!
-//! This crate is meant to be used as a two step process. First, you capture a
-//! textual representation of the spans that are entered and exited with the
-//! [`FlameLayer`] then you feed these into `inferno-flamegraph` to generate the
-//! flamegraph/flamechart image.
-//!
 //! This crate is meant to be used in a two step process:
 //!
 //! 1. A textual representation of the spans that are entered and exited are
@@ -28,7 +23,7 @@
 //!
 //! *Note*: when using a buffered writer as the writer for a `FlameLayer`, it is necessary to
 //! ensure that the buffer has been flushed before the data is passed into
-//! `inferno-flamegraph`. For more details on how to flush the internal writer
+//! [`inferno-flamegraph`]. For more details on how to flush the internal writer
 //! of the `FlameLayer`, see the docs for [`FlushGuard`].
 //!
 //! ## Layer Setup
@@ -95,6 +90,7 @@
 //! [`inferno`]: https://docs.rs/inferno
 //! [`FlameLayer`]: struct.FlameLayer.html
 //! [`FlushGuard`]: struct.FlushGuard.html
+//! [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -168,11 +164,11 @@ thread_local! {
 ///
 /// # Dropping and Flushing
 ///
-/// Because of the way that `tracing` works, if you use a global subscriber the
-/// drop implementations on your various layers will not get called when your
-/// program exits. This means that if you're using a buffered writer as the
-/// inner writer for the `FlameLayer` you're not guaranteed to see all the
-/// events that have been emitted in the file by default.
+/// If you use a global subscriber the drop implementations on your various
+/// layers will not get called when your program exits. This means that if
+/// you're using a buffered writer as the inner writer for the `FlameLayer`
+/// you're not guaranteed to see all the events that have been emitted in the
+/// file by default.
 ///
 /// To ensure all data is flushed when the program exits, `FlameLayer` exposes
 /// the [`flush_on_drop`] function, which returns a [`FlushGuard`]. The `FlushGuard`
@@ -182,11 +178,7 @@ thread_local! {
 /// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
 /// [`FlushGuard`]: struct.FlushGuard.html
 #[derive(Debug)]
-pub struct FlameLayer<S, W>
-where
-    S: Subscriber,
-    W: Write + 'static,
-{
+pub struct FlameLayer<S, W> {
     out: Arc<Mutex<W>>,
     _inner: PhantomData<S>,
 }
@@ -239,14 +231,18 @@ where
     /// Flush the internal writer of the `FlameLayer`, ensuring that all
     /// intermediately buffered contents reach their destination.
     pub fn flush(&self) -> Result<(), Error> {
-        Ok(self
-            .out
-            .lock()
-            .map_err(|_| Kind::LockError)
-            .map_err(Error)?
-            .flush()
-            .map_err(Kind::FlushFile)
-            .map_err(Error)?)
+        let mut guard = match self.out.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                if !std::thread::panicking() {
+                    panic!("{}", e);
+                } else {
+                    return Ok(());
+                }
+            }
+        };
+
+        guard.flush().map_err(Kind::FlushFile).map_err(Error)
     }
 }
 
@@ -309,7 +305,7 @@ where
         let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
     }
 
-    #[allow(clippy::needless_return)]
+    // #[allow(clippy::needless_return)]
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         let panicking = std::thread::panicking();
         macro_rules! expect {

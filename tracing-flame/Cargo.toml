@@ -4,10 +4,12 @@ version = "0.1.0"
 authors = ["Jane Lusby <jlusby@yaah.dev>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["smallvec"]
+smallvec = ["tracing-subscriber/smallvec"]
 
 [dependencies]
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.3", default-features = false, features = ["registry", "fmt", "smallvec"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.3", default-features = false, features = ["registry", "fmt"] }
 tracing = { path = "../tracing", version = "0.1.12"}
 
 [dev-dependencies]
