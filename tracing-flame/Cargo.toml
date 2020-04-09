@@ -3,8 +3,6 @@ name = "tracing-flame"
 version = "0.1.0"
 authors = [
     "Jane Lusby <jlusby@yaah.dev>",
-    "Eliza Weisman <eliza@buoyant.io>",
-    "David Barsky <me@davidbarsky.com>",
     "Tokio Contributors <team@tokio.rs>"
 ]
 edition = "2018"
