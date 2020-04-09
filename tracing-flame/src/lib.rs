@@ -57,7 +57,7 @@
 //! As an alternative, you can provide _any_ type that implements `std::io::Write` to
 //! `FlameLayer::new`.
 //!
-//! ## Generating The Image
+//! ## Generating the Image
 //!
 //! To convert the textual representation of a flamegraph to a visual one, first install `inferno`:
 //!
@@ -89,7 +89,7 @@
 //! as they were emitted by `tracing-flame`, so that it is clear when each
 //! span is entered relative to others and get an accurate visual trace of
 //! the execution of your program. This representation is best created with a
-//! `flamechart`, which _does not_ sort or collapse identical stack frames.
+//! _flamechart_, which _does not_ sort or collapse identical stack frames.
 //!
 //! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
@@ -147,7 +147,7 @@ thread_local! {
     static LAST_EVENT: Cell<Instant> =  Cell::new(START.with(|f| *f));
 }
 
-/// A Layer that logs span open/close events as folded flame graph stack
+/// A `Layer` that records span open/close events as folded flamegraph stack
 /// samples.
 ///
 /// The output of `FlameLayer` emulates the output of commands like `perf` once
@@ -211,8 +211,8 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    /// Return a new FlameLayer that outputs all folded stack samples to the
-    /// provided writer
+    /// Returns a new `FlameLayer` that outputs all folded stack samples to the
+    /// provided writer.
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the layer
@@ -223,7 +223,7 @@ where
         }
     }
 
-    /// Return a `FlushGuard` which will flush the `FlameLayer`'s writer when
+    /// Returns a `FlushGuard` which will flush the `FlameLayer`'s writer when
     /// it is dropped, or when `flush` is manually invoked on the guard.
     pub fn flush_on_drop(&self) -> FlushGuard<W> {
         FlushGuard {
@@ -266,7 +266,7 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    /// Construct a `FlameLayer` that outputs to a `BufWriter` to the given path, and a
+    /// Construcst a `FlameLayer` that outputs to a `BufWriter` to the given path, and a
     /// `FlushGuard` to ensure the writer is flushed.
     pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlushGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
