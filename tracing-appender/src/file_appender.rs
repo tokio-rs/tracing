@@ -5,6 +5,7 @@ use chrono::Utc;
 use crossbeam_channel::{bounded, Sender};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::{io, thread};
 use tracing_subscriber::fmt::MakeWriter;
 
@@ -12,20 +13,28 @@ use tracing_subscriber::fmt::MakeWriter;
 pub struct FileAppender {
     log_writer: FileWriter,
     worker_thread: thread::JoinHandle<()>,
+    error_counter: Arc<AtomicU64>,
 }
 
 impl FileAppender {
-    fn new(
+    pub fn new(log_directory: &str, log_filename_prefix: &str) -> Self {
+        FileAppenderBuilder::default()
+            .build(log_directory, log_filename_prefix)
+            .expect("Failed to create FileAppender")
+    }
+
+    fn create_appender(
         sender: Sender<Vec<u8>>,
         worker: Worker<BufWriterFactory>,
-        error_counter: &'static AtomicU64,
+        error_counter: Arc<AtomicU64>,
     ) -> Self {
         Self {
             log_writer: FileWriter {
                 channel: sender,
-                error_counter,
+                error_counter: error_counter.clone(),
             },
             worker_thread: worker.worker_thread(),
+            error_counter,
         }
     }
 
@@ -35,6 +44,10 @@ impl FileAppender {
 
     pub fn get_writer(self) -> FileWriter {
         self.log_writer
+    }
+
+    pub fn get_error_counter(self) -> Arc<AtomicU64> {
+        self.error_counter.clone()
     }
 }
 
@@ -53,7 +66,6 @@ impl FileAppenderBuilder {
         self,
         log_directory: impl AsRef<Path>,
         log_filename_prefix: impl AsRef<Path>,
-        error_counter: &'static AtomicU64,
     ) -> io::Result<FileAppender> {
         let (sender, receiver) = bounded(self.buffered_lines_limit);
 
@@ -65,7 +77,11 @@ impl FileAppenderBuilder {
             BufWriterFactory {},
             Utc::now(),
         );
-        Ok(FileAppender::new(sender, worker?, error_counter))
+        Ok(FileAppender::create_appender(
+            sender,
+            worker?,
+            Arc::new(AtomicU64::new(0)),
+        ))
     }
 }
 
@@ -80,7 +96,7 @@ impl Default for FileAppenderBuilder {
 
 pub struct FileWriter {
     channel: Sender<Vec<u8>>,
-    error_counter: &'static AtomicU64,
+    error_counter: Arc<AtomicU64>,
 }
 
 impl std::io::Write for FileWriter {
