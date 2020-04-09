@@ -20,7 +20,7 @@ categories = [
     "development-tools::profiling",
     "asynchronous",
 ]
-keywords = ["tracing", "metrics", "subscriber"]
+keywords = ["tracing", "subscriber", "flamegraph", "profiling"]
 
 [features]
 default = ["smallvec"]

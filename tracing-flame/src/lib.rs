@@ -212,6 +212,7 @@ where
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the layer
+        let _unused = *START;
         Self {
             out: Arc::new(Mutex::new(writer)),
             _inner: PhantomData,
@@ -265,7 +266,7 @@ impl<S> FlameLayer<S, BufWriter<File>>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    /// Construcst a `FlameLayer` that outputs to a `BufWriter` to the given path, and a
+    /// Constructs a `FlameLayer` that outputs to a `BufWriter` to the given path, and a
     /// `FlushGuard` to ensure the writer is flushed.
     pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlushGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
