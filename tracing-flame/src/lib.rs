@@ -117,6 +117,7 @@
 pub use error::Error;
 
 use error::Kind;
+use lazy_static::lazy_static;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -138,9 +139,12 @@ use tracing_subscriber::Layer;
 
 mod error;
 
+lazy_static! {
+    static ref START: Instant = Instant::now();
+}
+
 thread_local! {
-    static START: Instant = Instant::now();
-    static LAST_EVENT: Cell<Instant> =  Cell::new(START.with(|f| *f));
+    static LAST_EVENT: Cell<Instant> =  Cell::new(*START);
 }
 
 /// A `Layer` that records span open/close events as folded flamegraph stack
@@ -208,7 +212,6 @@ where
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the layer
-        START.with(|_| ());
         Self {
             out: Arc::new(Mutex::new(writer)),
             _inner: PhantomData,
