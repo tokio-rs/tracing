@@ -16,15 +16,6 @@ pub(crate) struct InnerAppender {
     rotation: Rotation,
 }
 
-impl InnerAppender {
-    fn write_with_ts(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
-        // Even if refresh_writer fails, we still have the original writer. Ignore errors
-        // and proceed with the write.
-        let _ = self.refresh_writer(date);
-        self.writer.write(buf)
-    }
-}
-
 impl io::Write for InnerAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let now = Utc::now();
@@ -57,6 +48,13 @@ impl InnerAppender {
             next_date,
             rotation,
         })
+    }
+
+    fn write_with_ts(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
+        // Even if refresh_writer fails, we still have the original writer. Ignore errors
+        // and proceed with the write.
+        let _ = self.refresh_writer(date);
+        self.writer.write(buf)
     }
 
     pub(crate) fn refresh_writer(&mut self, now: DateTime<Utc>) {
