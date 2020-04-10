@@ -3,11 +3,9 @@ use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
 use std::io;
 use std::path::Path;
-use std::sync::{Mutex, MutexGuard};
-use tracing_subscriber::fmt::MakeWriter;
 
 pub struct RollingFileAppender {
-    inner: Mutex<InnerAppender>,
+    inner: InnerAppender,
 }
 
 impl RollingFileAppender {
@@ -17,7 +15,7 @@ impl RollingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
         RollingFileAppender {
-            inner: Mutex::new(
+            inner:
                 InnerAppender::new(
                     directory.as_ref(),
                     file_name_prefix.as_ref(),
@@ -25,48 +23,17 @@ impl RollingFileAppender {
                     Utc::now(),
                 )
                 .expect("Failed to create appender"),
-            ),
         }
     }
-
-    pub fn writer(&self) -> RollingFileWriter {
-        RollingFileWriter::new(&self.inner)
-    }
 }
 
-pub struct RollingFileWriter<'a> {
-    inner: &'a Mutex<InnerAppender>,
-}
-
-impl<'a> RollingFileWriter<'a> {
-    fn new(inner: &'a Mutex<InnerAppender>) -> Self {
-        Self { inner }
-    }
-
-    fn inner(&self) -> io::Result<MutexGuard<'a, InnerAppender>> {
-        self.inner
-            .lock()
-            .map_err(|_: std::sync::PoisonError<MutexGuard<InnerAppender>>| {
-                io::Error::from(io::ErrorKind::Other)
-            })
-    }
-}
-
-impl<'a> io::Write for RollingFileWriter<'a> {
+impl io::Write for RollingFileAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner()?.write(buf)
+        self.inner.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner()?.flush()
-    }
-}
-
-impl<'a> MakeWriter for RollingFileWriter<'a> {
-    type Writer = RollingFileWriter<'a>;
-
-    fn make_writer(&self) -> Self::Writer {
-        RollingFileWriter::new(&self.inner)
+        self.inner.flush()
     }
 }
 

@@ -6,6 +6,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
+use std::io::Write;
 
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
@@ -17,11 +18,11 @@ pub struct NonBlocking {
 }
 
 impl NonBlocking {
-    pub fn new<'a, T: MakeWriter + Send + Sync + 'static>(make_writer: T) -> NonBlocking {
-        NonBlockingBuilder::default().build(make_writer)
+    pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> NonBlocking {
+        NonBlockingBuilder::default().build(writer)
     }
 
-    fn create<'a, T: MakeWriter + Send + Sync + 'static>(
+    fn create<T: Write + Send + Sync + 'static>(
         sender: Sender<Vec<u8>>,
         error_counter: Arc<AtomicU64>,
         worker: Worker<T>,
@@ -49,9 +50,9 @@ impl NonBlockingBuilder {
         self
     }
 
-    pub fn build<'a, T: MakeWriter + Send + Sync + 'static>(self, make_writer: T) -> NonBlocking {
+    pub fn build<'a, T: Write + Send + Sync + 'static>(self, writer: T) -> NonBlocking {
         let (sender, receiver) = bounded(self.buffered_lines_limit);
-        let worker = Worker::new(receiver, make_writer);
+        let worker = Worker::new(receiver, writer);
 
         NonBlocking::create(sender, Arc::new(AtomicU64::new(0)), worker)
     }
@@ -73,12 +74,14 @@ impl std::io::Write for NonBlocking {
         }
         Ok(buf_size)
     }
-    #[inline] 
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.write(buf).map(|_|())
-    }
+
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.write(buf).map(|_|())
     }
 }
 

@@ -2,9 +2,8 @@ use crossbeam_channel::{Receiver, RecvError, TryRecvError};
 use std::fmt::Debug;
 use std::io::Write;
 use std::{io, thread};
-use tracing_subscriber::fmt::MakeWriter;
 
-pub(crate) struct Worker<T: MakeWriter + Send + Sync + 'static> {
+pub(crate) struct Worker<T: Write + Send + Sync + 'static> {
     writer: T,
     receiver: Receiver<Vec<u8>>,
 }
@@ -16,7 +15,7 @@ pub(crate) enum WorkerState {
     Continue,
 }
 
-impl<T: MakeWriter + Send + Sync + 'static> Worker<T> {
+impl<T: Write + Send + Sync + 'static> Worker<T> {
     pub(crate) fn new(receiver: Receiver<Vec<u8>>, writer: T) -> Worker<T> {
         Self { writer, receiver }
     }
@@ -24,7 +23,7 @@ impl<T: MakeWriter + Send + Sync + 'static> Worker<T> {
     fn handle_recv(&mut self, result: &Result<Vec<u8>, RecvError>) -> io::Result<WorkerState> {
         match result {
             Ok(msg) => {
-                self.writer.make_writer().write(&msg)?;
+                self.writer.write(&msg)?;
                 Ok(WorkerState::Continue)
             }
             Err(_) => Ok(WorkerState::Disconnected),
@@ -36,7 +35,7 @@ impl<T: MakeWriter + Send + Sync + 'static> Worker<T> {
         result: &Result<Vec<u8>, TryRecvError>,
     ) -> io::Result<WorkerState> {
         match result {
-            Ok(msg) => match self.writer.make_writer().write(&msg) {
+            Ok(msg) => match self.writer.write(&msg) {
                 Ok(_) => Ok(WorkerState::Continue),
                 Err(e) => Err(e),
             },
@@ -58,7 +57,7 @@ impl<T: MakeWriter + Send + Sync + 'static> Worker<T> {
             let handle_result = self.handle_try_recv(&try_recv_result);
             worker_state = handle_result?;
         }
-        self.writer.make_writer().flush()?;
+        self.writer.flush()?;
         Ok(worker_state)
     }
 
