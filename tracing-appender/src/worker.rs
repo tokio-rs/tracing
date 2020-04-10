@@ -1,11 +1,14 @@
 use crossbeam_channel::{Receiver, RecvError, TryRecvError};
 use std::fmt::Debug;
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{io, thread};
 
 pub(crate) struct Worker<T: Write + Send + Sync + 'static> {
     writer: T,
     receiver: Receiver<Vec<u8>>,
+    shutdown_signal: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -16,8 +19,16 @@ pub(crate) enum WorkerState {
 }
 
 impl<T: Write + Send + Sync + 'static> Worker<T> {
-    pub(crate) fn new(receiver: Receiver<Vec<u8>>, writer: T) -> Worker<T> {
-        Self { writer, receiver }
+    pub(crate) fn new(
+        receiver: Receiver<Vec<u8>>,
+        writer: T,
+        shutdown_signal: Arc<AtomicBool>,
+    ) -> Worker<T> {
+        Self {
+            writer,
+            receiver,
+            shutdown_signal,
+        }
     }
 
     fn handle_recv(&mut self, result: &Result<Vec<u8>, RecvError>) -> io::Result<WorkerState> {
@@ -63,15 +74,23 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
 
     /// Creates a worker thread that processes a channel until it's disconnected
     pub(crate) fn worker_thread(mut self) -> std::thread::JoinHandle<()> {
-        thread::spawn(move || loop {
-            let result = self.work();
-            match &result {
-                Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
-                Ok(WorkerState::Disconnected) => break,
-                Err(_) => {
-                    // TODO: Expose a metric for IO Errors, or print to stderr
+        thread::spawn(move || {
+            while !self.shutdown_signal.load(Ordering::Relaxed) {
+                let result = self.work();
+                match &result {
+                    Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
+                    Ok(WorkerState::Disconnected) => break,
+                    Err(_) => {
+                        // TODO: Expose a metric for IO Errors, or print to stderr
+                    }
                 }
             }
+            return match self.writer.flush() {
+                Ok(_) => (),
+                Err(e) => {
+                    eprintln!("Failed to flush. Error: {}", e);
+                }
+            };
         })
     }
 }

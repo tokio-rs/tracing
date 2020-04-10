@@ -2,39 +2,51 @@ use crate::worker::Worker;
 use crossbeam_channel::{bounded, Sender};
 use std::io;
 use std::io::Write;
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
 
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
+#[derive(Debug)]
+pub struct WorkerGuard {
+    guard: Option<JoinHandle<()>>,
+    shutdown_signal: Arc<AtomicBool>,
+}
+
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
-    _worker_guard: Arc<JoinHandle<()>>,
     error_counter: Arc<AtomicU64>,
     channel: Sender<Vec<u8>>,
     is_lossy: bool,
 }
 
 impl NonBlocking {
-    pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> NonBlocking {
+    pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().build(writer)
     }
 
     fn create<T: Write + Send + Sync + 'static>(
-        sender: Sender<Vec<u8>>,
-        error_counter: Arc<AtomicU64>,
-        worker: Worker<T>,
+        writer: T,
+        buffered_lines_limit: usize,
         is_lossy: bool,
-    ) -> NonBlocking {
-        Self {
-            channel: sender,
-            error_counter: error_counter.clone(),
-            _worker_guard: Arc::new(worker.worker_thread()),
-            is_lossy,
-        }
+    ) -> (NonBlocking, WorkerGuard) {
+        let (sender, receiver) = bounded(buffered_lines_limit);
+        let shutdown_signal = Arc::new(AtomicBool::new(false));
+
+        let worker = Worker::new(receiver, writer, shutdown_signal.clone());
+        let worker_guard = WorkerGuard::new(worker.worker_thread(), shutdown_signal);
+
+        (
+            Self {
+                channel: sender,
+                error_counter: Arc::new(AtomicU64::new(0)),
+                is_lossy,
+            },
+            worker_guard,
+        )
     }
 
     pub fn error_counter(&self) -> Arc<AtomicU64> {
@@ -59,11 +71,8 @@ impl NonBlockingBuilder {
         self
     }
 
-    pub fn build<'a, T: Write + Send + Sync + 'static>(self, writer: T) -> NonBlocking {
-        let (sender, receiver) = bounded(self.buffered_lines_limit);
-        let worker = Worker::new(receiver, writer);
-
-        NonBlocking::create(sender, Arc::new(AtomicU64::new(0)), worker, self.is_lossy)
+    pub fn build<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
+        NonBlocking::create(writer, self.buffered_lines_limit, self.is_lossy)
     }
 }
 
@@ -84,7 +93,10 @@ impl std::io::Write for NonBlocking {
                 self.error_counter.fetch_add(1, Ordering::Relaxed);
             }
         } else {
-            self.channel.send(buf.to_vec());
+            return match self.channel.send(buf.to_vec()) {
+                Ok(_) => Ok(buf_size),
+                Err(_) => Err(io::Error::from(io::ErrorKind::Other)),
+            };
         }
         Ok(buf_size)
     }
@@ -104,5 +116,31 @@ impl MakeWriter for NonBlocking {
 
     fn make_writer(&self) -> Self::Writer {
         self.clone()
+    }
+}
+
+impl WorkerGuard {
+    fn new(handle: JoinHandle<()>, shutdown_signal: Arc<AtomicBool>) -> Self {
+        WorkerGuard {
+            guard: Some(handle),
+            shutdown_signal,
+        }
+    }
+
+    fn stop(&mut self) -> std::thread::Result<()> {
+        match self.guard.take() {
+            Some(handle) => handle.join(),
+            None => Ok(()),
+        }
+    }
+}
+
+impl Drop for WorkerGuard {
+    fn drop(&mut self) {
+        self.shutdown_signal.store(true, Ordering::Relaxed);
+        match self.stop() {
+            Ok(_) => (),
+            Err(e) => println!("Failed to join worker thread. Error: {:?}", e),
+        }
     }
 }
