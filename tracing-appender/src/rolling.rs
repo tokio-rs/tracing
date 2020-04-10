@@ -15,14 +15,13 @@ impl RollingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
         RollingFileAppender {
-            inner:
-                InnerAppender::new(
-                    directory.as_ref(),
-                    file_name_prefix.as_ref(),
-                    rotation,
-                    Utc::now(),
-                )
-                .expect("Failed to create appender"),
+            inner: InnerAppender::new(
+                directory.as_ref(),
+                file_name_prefix.as_ref(),
+                rotation,
+                Utc::now(),
+            )
+            .expect("Failed to create appender"),
         }
     }
 }

@@ -56,7 +56,7 @@ impl InnerAppender {
         self.writer.write(buf)
     }
 
-     fn refresh_writer(&mut self, now: DateTime<Utc>) {
+    fn refresh_writer(&mut self, now: DateTime<Utc>) {
         if self.should_rollover(now) {
             let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
 

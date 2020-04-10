@@ -1,12 +1,12 @@
 use crate::worker::Worker;
 use crossbeam_channel::{bounded, Sender};
 use std::io;
+use std::io::Write;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
-use std::io::Write;
 
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
@@ -81,7 +81,7 @@ impl std::io::Write for NonBlocking {
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.write(buf).map(|_|())
+        self.write(buf).map(|_| ())
     }
 }
 
