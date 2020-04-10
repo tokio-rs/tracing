@@ -1,6 +1,5 @@
 use crate::worker::Worker;
 use crossbeam_channel::{bounded, Sender};
-use std::borrow::Borrow;
 use std::io;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -11,7 +10,7 @@ use tracing_subscriber::fmt::MakeWriter;
 
 pub struct NonBlocking {
     writer: NonBlockingWriter,
-    worker_guard: JoinHandle<()>,
+    _worker_guard: JoinHandle<()>,
     error_counter: Arc<AtomicU64>,
 }
 
@@ -50,6 +49,7 @@ impl NonBlocking {
     }
 }
 
+#[derive(Debug)]
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
 }
@@ -94,9 +94,6 @@ impl MakeWriter for NonBlockingWriter {
     type Writer = NonBlockingWriter;
 
     fn make_writer(&self) -> Self::Writer {
-        NonBlockingWriter {
-            channel: self.channel.clone(),
-            error_counter: self.error_counter.clone(),
-        }
+        self.clone()
     }
 }

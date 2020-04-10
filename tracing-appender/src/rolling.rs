@@ -54,7 +54,7 @@ impl<'a> MakeWriter for RollingFileWriter<'a> {
     }
 }
 
-pub fn hourly<P: AsRef<Path>>(directory: P, file_name_prefix: P) -> RollingFileAppender {
+pub fn hourly(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
     create_writer(
         Rotation::HOURLY,
         directory.as_ref(),

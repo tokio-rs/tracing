@@ -66,7 +66,7 @@ impl<F: WriterFactory> InnerAppender<F> {
 }
 
 impl<F: WriterFactory> InnerAppender<F> {
-    pub(crate) fn refresh_writer(&mut self, now: DateTime<Utc>) -> io::Result<()> {
+    pub(crate) fn refresh_writer(&mut self, now: DateTime<Utc>) {
         if self.should_rollover(now) {
             let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
 
@@ -76,17 +76,9 @@ impl<F: WriterFactory> InnerAppender<F> {
                 .writer_factory
                 .create_writer(&self.log_directory, &filename)
             {
-                Ok(writer) => {
-                    self.writer = writer;
-                    Ok(())
-                }
-                Err(err) => {
-                    eprintln!("Couldn't create writer for logs: {}", err);
-                    Err(err)
-                }
+                Ok(writer) => self.writer = writer,
+                Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
             }
-        } else {
-            Ok(())
         }
     }
 
