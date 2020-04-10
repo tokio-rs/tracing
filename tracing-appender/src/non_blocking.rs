@@ -15,6 +15,7 @@ pub struct NonBlocking {
     _worker_guard: Arc<JoinHandle<()>>,
     error_counter: Arc<AtomicU64>,
     channel: Sender<Vec<u8>>,
+    is_lossy: bool,
 }
 
 impl NonBlocking {
@@ -26,11 +27,13 @@ impl NonBlocking {
         sender: Sender<Vec<u8>>,
         error_counter: Arc<AtomicU64>,
         worker: Worker<T>,
+        is_lossy: bool,
     ) -> NonBlocking {
         Self {
             channel: sender,
             error_counter: error_counter.clone(),
             _worker_guard: Arc::new(worker.worker_thread()),
+            is_lossy,
         }
     }
 
@@ -42,6 +45,7 @@ impl NonBlocking {
 #[derive(Debug)]
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
+    is_lossy: bool,
 }
 
 impl NonBlockingBuilder {
@@ -50,11 +54,16 @@ impl NonBlockingBuilder {
         self
     }
 
+    pub fn lossy(mut self, is_lossy: bool) -> NonBlockingBuilder {
+        self.is_lossy = is_lossy;
+        self
+    }
+
     pub fn build<'a, T: Write + Send + Sync + 'static>(self, writer: T) -> NonBlocking {
         let (sender, receiver) = bounded(self.buffered_lines_limit);
         let worker = Worker::new(receiver, writer);
 
-        NonBlocking::create(sender, Arc::new(AtomicU64::new(0)), worker)
+        NonBlocking::create(sender, Arc::new(AtomicU64::new(0)), worker, self.is_lossy)
     }
 }
 
@@ -62,6 +71,7 @@ impl Default for NonBlockingBuilder {
     fn default() -> Self {
         NonBlockingBuilder {
             buffered_lines_limit: DEFAULT_BUFFERED_LINES_LIMIT,
+            is_lossy: true,
         }
     }
 }
@@ -69,8 +79,12 @@ impl Default for NonBlockingBuilder {
 impl std::io::Write for NonBlocking {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let buf_size = buf.len();
-        if self.channel.try_send(buf.to_vec()).is_err() {
-            self.error_counter.fetch_add(1, Ordering::Relaxed);
+        if self.is_lossy {
+            if self.channel.try_send(buf.to_vec()).is_err() {
+                self.error_counter.fetch_add(1, Ordering::Relaxed);
+            }
+        } else {
+            self.channel.send(buf.to_vec());
         }
         Ok(buf_size)
     }
