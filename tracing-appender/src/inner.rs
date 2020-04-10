@@ -1,11 +1,11 @@
-use std::{io, fs};
-use std::io::{Write, BufWriter};
+use std::io::{BufWriter, Write};
+use std::{fs, io};
 
 use crate::rolling::Rotation;
 use chrono::prelude::*;
 use std::fmt::Debug;
-use std::path::Path;
 use std::fs::{File, OpenOptions};
+use std::path::Path;
 
 #[derive(Debug)]
 pub(crate) struct InnerAppender {
@@ -26,7 +26,6 @@ impl io::Write for InnerAppender {
         self.writer.flush()
     }
 }
-
 
 impl InnerAppender {
     pub(crate) fn new(
@@ -63,8 +62,7 @@ impl InnerAppender {
 
             self.next_date = self.rotation.next_date(&now);
 
-            match create_writer(&self.log_directory, &filename)
-            {
+            match create_writer(&self.log_directory, &filename) {
                 Ok(writer) => self.writer = writer,
                 Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
             }
@@ -75,7 +73,6 @@ impl InnerAppender {
         date >= self.next_date
     }
 }
-
 
 fn create_writer(directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
     let file_path = Path::new(directory).join(filename);
@@ -94,5 +91,3 @@ fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
 
     new_file
 }
-
-

@@ -7,18 +7,13 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
 
-pub const DEFAULT_BUFFERED_LINES_LIMIT : usize = 128_000;
-
-pub struct NonBlocking {
-    writer: NonBlockingWriter,
-    _worker_guard: JoinHandle<()>,
-    error_counter: Arc<AtomicU64>,
-}
+pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
 #[derive(Clone, Debug)]
-pub struct NonBlockingWriter {
-    channel: Sender<Vec<u8>>,
+pub struct NonBlocking {
+    _worker_guard: Arc<JoinHandle<()>>,
     error_counter: Arc<AtomicU64>,
+    channel: Sender<Vec<u8>>,
 }
 
 impl NonBlocking {
@@ -32,17 +27,10 @@ impl NonBlocking {
         worker: Worker<T>,
     ) -> NonBlocking {
         Self {
-            writer: NonBlockingWriter {
-                channel: sender,
-                error_counter: error_counter.clone(),
-            },
-            _worker_guard: worker.worker_thread(),
-            error_counter
+            channel: sender,
+            error_counter: error_counter.clone(),
+            _worker_guard: Arc::new(worker.worker_thread()),
         }
-    }
-
-    pub fn writer(&self) -> NonBlockingWriter {
-        self.writer.clone()
     }
 
     pub fn error_counter(&self) -> Arc<AtomicU64> {
@@ -77,7 +65,7 @@ impl Default for NonBlockingBuilder {
     }
 }
 
-impl std::io::Write for NonBlockingWriter {
+impl std::io::Write for NonBlocking {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let buf_size = buf.len();
         if self.channel.try_send(buf.to_vec()).is_err() {
@@ -91,8 +79,8 @@ impl std::io::Write for NonBlockingWriter {
     }
 }
 
-impl MakeWriter for NonBlockingWriter {
-    type Writer = NonBlockingWriter;
+impl MakeWriter for NonBlocking {
+    type Writer = NonBlocking;
 
     fn make_writer(&self) -> Self::Writer {
         self.clone()

@@ -1,9 +1,9 @@
 use crate::inner::InnerAppender;
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
+use std::io;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
-use std::io;
 use tracing_subscriber::fmt::MakeWriter;
 
 pub struct RollingFileAppender {
@@ -11,7 +11,11 @@ pub struct RollingFileAppender {
 }
 
 impl RollingFileAppender {
-    pub fn new(rotation: Rotation, directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
+    pub fn new(
+        rotation: Rotation,
+        directory: impl AsRef<Path>,
+        file_name_prefix: impl AsRef<Path>,
+    ) -> RollingFileAppender {
         RollingFileAppender {
             inner: Mutex::new(
                 InnerAppender::new(
@@ -20,7 +24,7 @@ impl RollingFileAppender {
                     rotation,
                     Utc::now(),
                 )
-                    .expect("Failed to create appender"),
+                .expect("Failed to create appender"),
             ),
         }
     }
@@ -40,11 +44,11 @@ impl<'a> RollingFileWriter<'a> {
     }
 
     fn inner(&self) -> io::Result<MutexGuard<'a, InnerAppender>> {
-        self.inner.lock().map_err(
-            |_: std::sync::PoisonError<MutexGuard<InnerAppender>>| {
+        self.inner
+            .lock()
+            .map_err(|_: std::sync::PoisonError<MutexGuard<InnerAppender>>| {
                 io::Error::from(io::ErrorKind::Other)
-            },
-        )
+            })
     }
 }
 
@@ -66,28 +70,25 @@ impl<'a> MakeWriter for RollingFileWriter<'a> {
     }
 }
 
-pub fn hourly(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
-    RollingFileAppender::new(
-        Rotation::HOURLY,
-        directory,
-        file_name_prefix,
-    )
+pub fn hourly(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::HOURLY, directory, file_name_prefix)
 }
 
-pub fn daily(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
-    RollingFileAppender::new(
-        Rotation::DAILY,
-        directory,
-        file_name_prefix,
-    )
+pub fn daily(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
-pub fn never(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
-    RollingFileAppender::new(
-        Rotation::NEVER,
-        directory,
-        file_name_prefix,
-    )
+pub fn never(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::NEVER, directory, file_name_prefix)
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
