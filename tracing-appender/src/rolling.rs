@@ -2,14 +2,14 @@ use crate::inner::InnerAppender;
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::{fs, io};
 use tracing_subscriber::fmt::MakeWriter;
 
 pub struct RollingFileAppender {
-    inner: Mutex<InnerAppender<BufWriterFactory>>,
+    inner: Mutex<InnerAppender>,
 }
 
 impl RollingFileAppender {
@@ -34,17 +34,17 @@ impl RollingFileAppender {
 }
 
 pub struct RollingFileWriter<'a> {
-    inner: &'a Mutex<InnerAppender<BufWriterFactory>>,
+    inner: &'a Mutex<InnerAppender>,
 }
 
 impl<'a> RollingFileWriter<'a> {
-    fn new(inner: &'a Mutex<InnerAppender<BufWriterFactory>>) -> Self {
+    fn new(inner: &'a Mutex<InnerAppender>) -> Self {
         Self { inner }
     }
 
-    fn inner(&self) -> io::Result<MutexGuard<'a, InnerAppender<BufWriterFactory>>> {
+    fn inner(&self) -> io::Result<MutexGuard<'a, InnerAppender>> {
         self.inner.lock().map_err(
-            |_: std::sync::PoisonError<MutexGuard<InnerAppender<BufWriterFactory>>>| {
+            |_: std::sync::PoisonError<MutexGuard<InnerAppender>>| {
                 io::Error::from(io::ErrorKind::Other)
             },
         )
@@ -93,19 +93,11 @@ pub fn never(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) ->
     )
 }
 
-pub(crate) trait WriterFactory: Debug + Clone + Send {
-    type W: Write + Debug + Send;
-
-    fn create_writer(&self, directory: &str, filename: &str) -> io::Result<Self::W>;
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct BufWriterFactory {}
 
-impl WriterFactory for BufWriterFactory {
-    type W = BufWriter<File>;
-
-    fn create_writer(&self, directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
+impl BufWriterFactory {
+    pub fn create_writer(&self, directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
         let file_path = Path::new(directory).join(filename);
         Ok(BufWriter::new(open_file_create_parent_dirs(&file_path)?))
     }
