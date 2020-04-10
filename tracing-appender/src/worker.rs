@@ -1,14 +1,11 @@
-use crate::inner::{InnerAppender, WriterFactory};
-use crate::Rotation;
-use chrono::{DateTime, Utc};
 use crossbeam_channel::{Receiver, RecvError, TryRecvError};
 use std::fmt::Debug;
 use std::io::Write;
-use std::path::Path;
 use std::{io, thread};
+use tracing_subscriber::fmt::MakeWriter;
 
-pub(crate) struct Worker<T: WriterFactory + Debug + Send + 'static> {
-    inner: InnerAppender<T>,
+pub(crate) struct Worker<T: MakeWriter + Send + Sync + 'static> {
+    writer: T,
     receiver: Receiver<Vec<u8>>,
 }
 
@@ -19,31 +16,15 @@ pub(crate) enum WorkerState {
     Continue,
 }
 
-impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
-    pub(crate) fn new(
-        receiver: Receiver<Vec<u8>>,
-        log_directory: &Path,
-        log_filename_prefix: &Path,
-        rotation: Rotation,
-        writer_factory: T,
-        now: DateTime<Utc>,
-    ) -> io::Result<Self> {
-        Ok(Self {
-            inner: InnerAppender::new(
-                log_directory,
-                log_filename_prefix,
-                rotation,
-                writer_factory,
-                now,
-            )?,
-            receiver,
-        })
+impl<T: MakeWriter + Send + Sync + 'static> Worker<T> {
+    pub(crate) fn new(receiver: Receiver<Vec<u8>>, writer: T) -> Worker<T> {
+        Self { writer, receiver }
     }
 
     fn handle_recv(&mut self, result: &Result<Vec<u8>, RecvError>) -> io::Result<WorkerState> {
         match result {
             Ok(msg) => {
-                self.inner.write(&msg)?;
+                self.writer.make_writer().write(&msg)?;
                 Ok(WorkerState::Continue)
             }
             Err(_) => Ok(WorkerState::Disconnected),
@@ -55,7 +36,7 @@ impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
         result: &Result<Vec<u8>, TryRecvError>,
     ) -> io::Result<WorkerState> {
         match result {
-            Ok(msg) => match self.inner.write(&msg) {
+            Ok(msg) => match self.writer.make_writer().write(&msg) {
                 Ok(_) => Ok(WorkerState::Continue),
                 Err(e) => Err(e),
             },
@@ -77,7 +58,7 @@ impl<T: WriterFactory + Debug + Send + 'static> Worker<T> {
             let handle_result = self.handle_try_recv(&try_recv_result);
             worker_state = handle_result?;
         }
-        self.inner.flush()?;
+        self.writer.make_writer().flush()?;
         Ok(worker_state)
     }
 

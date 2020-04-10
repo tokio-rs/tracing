@@ -1,33 +1,12 @@
-use std::io::BufWriter;
+use std::io;
 use std::io::Write;
-use std::{fs, io};
 
-use crate::Rotation;
+use crate::rolling::{Rotation, WriterFactory};
 use chrono::prelude::*;
 use std::fmt::Debug;
-use std::fs::File;
-use std::fs::OpenOptions;
 use std::path::Path;
 
-pub(crate) trait WriterFactory: Debug + Send {
-    type W: Write + Debug + Send;
-
-    fn create_writer(&self, directory: &str, filename: &str) -> io::Result<Self::W>;
-}
-
-#[derive(Debug)]
-pub(crate) struct BufWriterFactory {}
-
-impl WriterFactory for BufWriterFactory {
-    type W = BufWriter<File>;
-
-    fn create_writer(&self, directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
-        let filepath = Path::new(directory).join(filename);
-        Ok(BufWriter::new(open_file_create_parent_dirs(&filepath)?))
-    }
-}
-
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct InnerAppender<F: WriterFactory + Send> {
     log_directory: String,
     log_filename_prefix: String,
@@ -114,17 +93,4 @@ impl<F: WriterFactory> InnerAppender<F> {
     pub(crate) fn should_rollover(&self, date: DateTime<Utc>) -> bool {
         date >= self.next_date
     }
-}
-
-// Open a file - if it throws any error, try creating the parent directory and then the file.
-fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
-    let new_file = OpenOptions::new().append(true).create(true).open(path);
-    if new_file.is_err() {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-            return OpenOptions::new().append(true).create(true).open(path);
-        }
-    }
-
-    new_file
 }
