@@ -129,8 +129,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tracing::span::Attributes;
-use tracing::Id;
+use tracing::span;
 use tracing::Subscriber;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
@@ -144,7 +143,17 @@ lazy_static! {
 }
 
 thread_local! {
-    static LAST_EVENT: Cell<Instant> =  Cell::new(*START);
+    static LAST_EVENT: Cell<Instant> = Cell::new(*START);
+
+    static THREAD_NAME: String = {
+        let thread = std::thread::current();
+        let mut thread_name = format!("{:?}", thread.id());
+        if let Some(name) = thread.name() {
+            thread_name += "-";
+            thread_name += name;
+        }
+        thread_name
+    };
 }
 
 /// A `Layer` that records span open/close events as folded flamegraph stack
@@ -288,7 +297,7 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         let samples = self.time_since_last_event();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
@@ -296,10 +305,10 @@ where
 
         let mut stack = String::new();
 
-        stack.push_str("tracing");
+        THREAD_NAME.with(|name| stack += name.as_str());
 
         for parent in parents {
-            stack.push_str("; ");
+            stack += "; ";
             write(&mut stack, parent).expect("expected: write to String never fails");
         }
 
@@ -310,7 +319,7 @@ where
     }
 
     // #[allow(clippy::needless_return)]
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         let panicking = std::thread::panicking();
         macro_rules! expect {
             ($e:expr, $msg:literal) => {
@@ -334,14 +343,15 @@ where
         let parents = first.from_root();
 
         let mut stack = String::new();
-        stack.push_str("tracing; ");
+        THREAD_NAME.with(|name| stack += name.as_str());
+        stack += "; ";
 
         for parent in parents {
             expect!(
                 write(&mut stack, parent),
                 "expected: write to String never fails"
             );
-            stack.push_str("; ");
+            stack += "; ";
         }
 
         expect!(
