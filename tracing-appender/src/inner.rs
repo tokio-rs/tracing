@@ -1,18 +1,17 @@
-use std::io;
+use std::{io, fs};
 use std::io::{Write, BufWriter};
 
-use crate::rolling::{Rotation, BufWriterFactory};
+use crate::rolling::Rotation;
 use chrono::prelude::*;
 use std::fmt::Debug;
 use std::path::Path;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 
 #[derive(Debug)]
 pub(crate) struct InnerAppender {
     log_directory: String,
     log_filename_prefix: String,
     writer: BufWriter<File>,
-    writer_factory: BufWriterFactory,
     next_date: DateTime<Utc>,
     rotation: Rotation,
 }
@@ -37,12 +36,12 @@ impl io::Write for InnerAppender {
     }
 }
 
+
 impl InnerAppender {
     pub(crate) fn new(
         log_directory: &Path,
         log_filename_prefix: &Path,
         rotation: Rotation,
-        writer_factory: BufWriterFactory,
         now: DateTime<Utc>,
     ) -> io::Result<Self> {
         let log_directory = log_directory.to_str().unwrap();
@@ -51,31 +50,22 @@ impl InnerAppender {
         let filename = rotation.join_date(log_filename_prefix, &now);
         let next_date = rotation.next_date(&now);
 
-        let mut appender = InnerAppender {
+        Ok(InnerAppender {
             log_directory: log_directory.to_string(),
             log_filename_prefix: log_filename_prefix.to_string(),
-            writer: writer_factory.create_writer(log_directory, &filename)?,
-            writer_factory,
+            writer: create_writer(log_directory, &filename)?,
             next_date,
             rotation,
-        };
-
-        appender
-            .write_with_ts(b"Init Application\n", now)
-            .and_then(|_| appender.flush().and(Ok(appender)))
+        })
     }
-}
 
-impl InnerAppender {
     pub(crate) fn refresh_writer(&mut self, now: DateTime<Utc>) {
         if self.should_rollover(now) {
             let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
 
             self.next_date = self.rotation.next_date(&now);
 
-            match self
-                .writer_factory
-                .create_writer(&self.log_directory, &filename)
+            match create_writer(&self.log_directory, &filename)
             {
                 Ok(writer) => self.writer = writer,
                 Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
@@ -87,3 +77,24 @@ impl InnerAppender {
         date >= self.next_date
     }
 }
+
+
+fn create_writer(directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
+    let file_path = Path::new(directory).join(filename);
+    Ok(BufWriter::new(open_file_create_parent_dirs(&file_path)?))
+}
+
+// Open a file - if it throws any error, try creating the parent directory and then the file.
+fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
+    let new_file = OpenOptions::new().append(true).create(true).open(path);
+    if new_file.is_err() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+            return OpenOptions::new().append(true).create(true).open(path);
+        }
+    }
+
+    new_file
+}
+
+

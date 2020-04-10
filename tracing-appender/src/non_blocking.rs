@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
 
+pub const DEFAULT_BUFFERED_LINES_LIMIT : usize = 128_000;
 
 pub struct NonBlocking {
     writer: NonBlockingWriter,
@@ -71,7 +72,7 @@ impl NonBlockingBuilder {
 impl Default for NonBlockingBuilder {
     fn default() -> Self {
         NonBlockingBuilder {
-            buffered_lines_limit: 100_000,
+            buffered_lines_limit: DEFAULT_BUFFERED_LINES_LIMIT,
         }
     }
 }

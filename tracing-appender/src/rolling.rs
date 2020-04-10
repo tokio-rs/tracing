@@ -1,11 +1,9 @@
 use crate::inner::InnerAppender;
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
-use std::fs::{File, OpenOptions};
-use std::io::BufWriter;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
-use std::{fs, io};
+use std::io;
 use tracing_subscriber::fmt::MakeWriter;
 
 pub struct RollingFileAppender {
@@ -20,7 +18,6 @@ impl RollingFileAppender {
                     directory.as_ref(),
                     file_name_prefix.as_ref(),
                     rotation,
-                    BufWriterFactory {},
                     Utc::now(),
                 )
                     .expect("Failed to create appender"),
@@ -91,29 +88,6 @@ pub fn never(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) ->
         directory,
         file_name_prefix,
     )
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct BufWriterFactory {}
-
-impl BufWriterFactory {
-    pub fn create_writer(&self, directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
-        let file_path = Path::new(directory).join(filename);
-        Ok(BufWriter::new(open_file_create_parent_dirs(&file_path)?))
-    }
-}
-
-// Open a file - if it throws any error, try creating the parent directory and then the file.
-fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
-    let new_file = OpenOptions::new().append(true).create(true).open(path);
-    if new_file.is_err() {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-            return OpenOptions::new().append(true).create(true).open(path);
-        }
-    }
-
-    new_file
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
