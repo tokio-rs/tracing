@@ -1,8 +1,8 @@
-use crate::non_blocking::{NonBlockingWriter, NonBlocking};
+use crate::non_blocking::NonBlocking;
 use tracing_subscriber::fmt::MakeWriter;
 
 mod inner;
-mod non_blocking;
+pub mod non_blocking;
 pub mod rolling;
 mod worker;
 

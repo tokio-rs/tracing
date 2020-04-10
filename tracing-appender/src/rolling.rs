@@ -13,7 +13,22 @@ pub struct RollingFileAppender {
 }
 
 impl RollingFileAppender {
-    fn writer(&self) -> RollingFileWriter {
+    pub fn new(rotation: Rotation, directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
+        RollingFileAppender {
+            inner: Mutex::new(
+                InnerAppender::new(
+                    directory.as_ref(),
+                    file_name_prefix.as_ref(),
+                    rotation,
+                    BufWriterFactory {},
+                    Utc::now(),
+                )
+                    .expect("Failed to create appender"),
+            ),
+        }
+    }
+
+    pub fn writer(&self) -> RollingFileWriter {
         RollingFileWriter::new(&self.inner)
     }
 }
@@ -55,46 +70,27 @@ impl<'a> MakeWriter for RollingFileWriter<'a> {
 }
 
 pub fn hourly(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
-    create_writer(
+    RollingFileAppender::new(
         Rotation::HOURLY,
-        directory.as_ref(),
-        file_name_prefix.as_ref(),
+        directory,
+        file_name_prefix,
     )
 }
 
-pub fn daily<P: AsRef<Path>>(directory: P, file_name_prefix: P) -> RollingFileAppender {
-    create_writer(
+pub fn daily(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
+    RollingFileAppender::new(
         Rotation::DAILY,
-        directory.as_ref(),
-        file_name_prefix.as_ref(),
+        directory,
+        file_name_prefix,
     )
 }
 
-pub fn never<P: AsRef<Path>>(directory: P, file_name_prefix: P) -> RollingFileAppender {
-    create_writer(
+pub fn never(directory: impl AsRef<Path>, file_name_prefix: impl AsRef<Path>) -> RollingFileAppender {
+    RollingFileAppender::new(
         Rotation::NEVER,
-        directory.as_ref(),
-        file_name_prefix.as_ref(),
+        directory,
+        file_name_prefix,
     )
-}
-
-fn create_writer(
-    rotation: Rotation,
-    directory: &Path,
-    file_name_prefix: &Path,
-) -> RollingFileAppender {
-    RollingFileAppender {
-        inner: Mutex::new(
-            InnerAppender::new(
-                directory,
-                file_name_prefix,
-                rotation,
-                BufWriterFactory {},
-                Utc::now(),
-            )
-            .expect("Failed to create appender"),
-        ),
-    }
 }
 
 pub(crate) trait WriterFactory: Debug + Clone + Send {
@@ -129,7 +125,7 @@ fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub(crate) struct Rotation(RotationKind);
+pub struct Rotation(RotationKind);
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 enum RotationKind {

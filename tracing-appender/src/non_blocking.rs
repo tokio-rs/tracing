@@ -35,7 +35,7 @@ impl NonBlocking {
                 channel: sender,
                 error_counter: error_counter.clone(),
             },
-            worker_guard: worker.worker_thread(),
+            _worker_guard: worker.worker_thread(),
             error_counter
         }
     }
