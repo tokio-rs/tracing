@@ -73,7 +73,10 @@ impl std::io::Write for NonBlocking {
         }
         Ok(buf_size)
     }
-
+    #[inline] 
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.write(buf).map(|_|())
+    }
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
