@@ -49,7 +49,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
             Ok(msg) => {
                 self.writer.write(&msg)?;
                 Ok(WorkerState::Continue)
-            },
+            }
             Err(TryRecvError::Empty) => Ok(WorkerState::Empty),
             Err(TryRecvError::Disconnected) => Ok(WorkerState::Disconnected),
         }

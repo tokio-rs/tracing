@@ -25,7 +25,7 @@ pub struct NonBlocking {
 
 impl NonBlocking {
     pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
-        NonBlockingBuilder::default().build(writer)
+        NonBlockingBuilder::default().finish(writer)
     }
 
     fn create<T: Write + Send + Sync + 'static>(
@@ -71,7 +71,7 @@ impl NonBlockingBuilder {
         self
     }
 
-    pub fn build<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
+    pub fn finish<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlocking::create(writer, self.buffered_lines_limit, self.is_lossy)
     }
 }

@@ -1,4 +1,4 @@
-use crate::non_blocking::NonBlocking;
+use crate::non_blocking::{NonBlocking, WorkerGuard};
 
 use std::io::Write;
 
@@ -7,7 +7,6 @@ pub mod non_blocking;
 pub mod rolling;
 mod worker;
 
-pub fn non_blocking<T: Write + Send + Sync + 'static>(writer: T) -> NonBlocking {
-    let (non_blocking, _guard) = NonBlocking::new(writer);
-    non_blocking
+pub fn non_blocking<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
+    NonBlocking::new(writer)
 }

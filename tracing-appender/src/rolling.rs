@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::io;
 use std::path::Path;
 
+#[derive(Debug)]
 pub struct RollingFileAppender {
     inner: InnerAppender,
 }

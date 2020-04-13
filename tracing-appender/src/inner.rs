@@ -19,7 +19,7 @@ pub(crate) struct InnerAppender {
 impl io::Write for InnerAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let now = Utc::now();
-        self.write_with_ts(buf, now)
+        self.write_timestamped(buf, now)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -49,7 +49,7 @@ impl InnerAppender {
         })
     }
 
-    fn write_with_ts(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
+    fn write_timestamped(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
         // Even if refresh_writer fails, we still have the original writer. Ignore errors
         // and proceed with the write.
         let _ = self.refresh_writer(date);
@@ -79,13 +79,15 @@ fn create_writer(directory: &str, filename: &str) -> io::Result<BufWriter<File>>
     Ok(BufWriter::new(open_file_create_parent_dirs(&file_path)?))
 }
 
-// Open a file - if it throws any error, try creating the parent directory and then the file.
 fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
-    let new_file = OpenOptions::new().append(true).create(true).open(path);
+    let mut open_options = OpenOptions::new();
+    open_options.append(true).create(true);
+
+    let new_file = open_options.open(path);
     if new_file.is_err() {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
-            return OpenOptions::new().append(true).create(true).open(path);
+            return open_options.open(path);
         }
     }
 
