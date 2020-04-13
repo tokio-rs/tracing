@@ -46,14 +46,12 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
         result: &Result<Vec<u8>, TryRecvError>,
     ) -> io::Result<WorkerState> {
         match result {
-            Ok(msg) => match self.writer.write(&msg) {
-                Ok(_) => Ok(WorkerState::Continue),
-                Err(e) => Err(e),
+            Ok(msg) => {
+                self.writer.write(&msg)?;
+                Ok(WorkerState::Continue)
             },
-            Err(e) => match e {
-                TryRecvError::Empty => Ok(WorkerState::Empty),
-                TryRecvError::Disconnected => Ok(WorkerState::Disconnected),
-            },
+            Err(TryRecvError::Empty) => Ok(WorkerState::Empty),
+            Err(TryRecvError::Disconnected) => Ok(WorkerState::Disconnected),
         }
     }
 
@@ -76,8 +74,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     pub(crate) fn worker_thread(mut self) -> std::thread::JoinHandle<()> {
         thread::spawn(move || {
             while !self.shutdown_signal.load(Ordering::Relaxed) {
-                let result = self.work();
-                match &result {
+                match self.work() {
                     Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
                     Ok(WorkerState::Disconnected) => break,
                     Err(_) => {
@@ -85,12 +82,9 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
                     }
                 }
             }
-            return match self.writer.flush() {
-                Ok(_) => (),
-                Err(e) => {
-                    eprintln!("Failed to flush. Error: {}", e);
-                }
-            };
+            if let Err(e) = self.writer.flush() {
+                eprintln!("Failed to flush. Error: {}", e);
+            }
         })
     }
 }
