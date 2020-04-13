@@ -52,8 +52,9 @@ impl InnerAppender {
     fn write_timestamped(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
         // Even if refresh_writer fails, we still have the original writer. Ignore errors
         // and proceed with the write.
-        let _ = self.refresh_writer(date);
-        self.writer.write(buf)
+        let buf_len = buf.len();
+        self.refresh_writer(date);
+        self.writer.write_all(buf).map(|_| buf_len)
     }
 
     fn refresh_writer(&mut self, now: DateTime<Utc>) {

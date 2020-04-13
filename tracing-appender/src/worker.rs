@@ -47,7 +47,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     ) -> io::Result<WorkerState> {
         match result {
             Ok(msg) => {
-                self.writer.write(&msg)?;
+                self.writer.write_all(&msg)?;
                 Ok(WorkerState::Continue)
             }
             Err(TryRecvError::Empty) => Ok(WorkerState::Empty),
