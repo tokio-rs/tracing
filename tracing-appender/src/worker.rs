@@ -59,6 +59,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     /// channel is disconnected. Afterwards, grabs as many logs as
     /// it can off the channel, buffers them and attempts a flush.
     pub(crate) fn work(&mut self) -> io::Result<WorkerState> {
+        // Worker thread yields here if receive buffer is empty
         self.handle_recv(&self.receiver.recv())?;
         let mut worker_state = WorkerState::Continue;
         while worker_state == WorkerState::Continue {
