@@ -43,11 +43,12 @@ impl io::Write for RollingFileAppender {
 /// a non-blocking, hourly file appender.
 ///
 /// # Examples
+///
 /// ``` rust
 ///
-/// # fn main
-/// # // Keep this to silence clippy `needless_doctest_main` warning.
-/// # () {
+/// #[clippy::allow(needless_doctest_main)]
+///
+/// fn main () {
 ///
 /// # fn doc() {
 ///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
