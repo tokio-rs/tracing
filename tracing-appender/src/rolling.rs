@@ -37,19 +37,26 @@ impl io::Write for RollingFileAppender {
     }
 }
 
-/// A function which creates a hourly rolling file appender. This appender implements only the
-/// `Write` trait and can be used with `NonBlocking` to provide a `MakeWriter` to be used with a
-/// tracing subscriber.
+/// Creates an hourly, rolling file appender.
+///
+/// The appender returned by `rolling::hourly` can be used with `non_blocking` to create
+/// a non-blocking, hourly file appender.
 /// # Examples
-/// ``` rust,ignore
-/// let appender = rolling::hourly("/some/path", "rolling.log");
-/// let (non_blocking_appender, _guard) = non_blocking(appender);
+/// ``` rust
+///
+/// fn main() {
+/// # fn doc() {
+/// let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
+/// let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 /// let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
 /// tracing::subscriber::with_default(subscriber.finish(), || {
 ///     tracing::event!(tracing::Level::INFO, "Hello");
 /// });
+/// # }
+/// }
+/// ```
 pub fn hourly(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
