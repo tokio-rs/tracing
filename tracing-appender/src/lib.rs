@@ -7,20 +7,19 @@ pub mod non_blocking;
 pub mod rolling;
 mod worker;
 
-
 /// Creates a non-blocking, off-thread writer.
 ///
 /// This spawns a dedicated worker thread which is responsible for writing log
-/// lines to the provided writer. When a line is written using the returned 
+/// lines to the provided writer. When a line is written using the returned
 /// `NonBlocking` struct's `make_writer` method, it will be enqueued to be
-/// written by the worker thread. 
+/// written by the worker thread.
 ///
 /// The queue has a fixed capacity, and if it becomes full, any logs written
-/// to it will be dropped until capacity is once again available. This may 
+/// to it will be dropped until capacity is once again available. This may
 /// occur if logs are consistently produced faster than the worker thread can
-/// output them. The queue capacity and behavior when full (i.e., whether to 
+/// output them. The queue capacity and behavior when full (i.e., whether to
 /// drop logs or to exert backpressure to slow down senders) can be configured
-/// using [`NonBlocking::builder()`]. This function simply returns the default 
+/// using [`NonBlocking::builder()`]. This function simply returns the default
 /// configuration &mdash; it is equivalent to
 ///
 /// ```rust
