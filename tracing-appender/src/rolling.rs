@@ -50,14 +50,14 @@ impl io::Write for RollingFileAppender {
 /// # () {
 ///
 /// # fn doc() {
-/// let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
-/// let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
+///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
+///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-/// let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-/// tracing::subscriber::with_default(subscriber.finish(), || {
-///     tracing::event!(tracing::Level::INFO, "Hello");
-/// });
+///     tracing::subscriber::with_default(subscriber.finish(), || {
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
 /// # }
 /// }
 /// ```
