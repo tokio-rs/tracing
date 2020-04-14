@@ -11,5 +11,6 @@ members = [
     "tracing-macros",
     "tracing-subscriber",
     "tracing-serde",
+    "tracing-appender",
     "examples"
 ]
