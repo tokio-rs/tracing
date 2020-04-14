@@ -41,11 +41,10 @@ impl io::Write for RollingFileAppender {
 ///
 /// The appender returned by `rolling::hourly` can be used with `non_blocking` to create
 /// a non-blocking, hourly file appender.
-///
 /// # Examples
 /// ``` rust
 ///
-/// # fn main() {
+/// fn main() {
 /// # fn doc() {
 /// let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
 /// let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
@@ -56,7 +55,7 @@ impl io::Write for RollingFileAppender {
 ///     tracing::event!(tracing::Level::INFO, "Hello");
 /// });
 /// # }
-/// # }
+/// }
 /// ```
 pub fn hourly(
     directory: impl AsRef<Path>,
