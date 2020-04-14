@@ -19,13 +19,13 @@ mod worker;
 /// occur if logs are consistently produced faster than the worker thread can
 /// output them. The queue capacity and behavior when full (i.e., whether to
 /// drop logs or to exert backpressure to slow down senders) can be configured
-/// using [`NonBlocking::builder()`]. This function simply returns the default
+/// using [`NonBlockingBuilder::default()`]. This function simply returns the default
 /// configuration &mdash; it is equivalent to
 ///
 /// ```rust
 /// # use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 /// # fn doc() -> (NonBlocking, WorkerGuard) {
-/// tracing_appender::non_blocking::NonBlocking::builder().finish()
+/// tracing_appender::non_blocking::NonBlocking::new(std::io::stdout())
 /// # }
 /// ```
 /// [`NonBlocking::builder()`]: /non_blocking/struct.NonBlocking.html#method.builder
