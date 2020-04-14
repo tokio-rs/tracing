@@ -45,9 +45,7 @@ impl io::Write for RollingFileAppender {
 /// # Examples
 ///
 /// ``` rust
-///
-/// #[clippy::allow(needless_doctest_main)]
-///
+/// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 ///
 /// # fn doc() {
