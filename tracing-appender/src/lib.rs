@@ -3,7 +3,9 @@ use crate::non_blocking::{NonBlocking, WorkerGuard};
 use std::io::Write;
 
 mod inner;
+/// Non blocking, off-thread writer
 pub mod non_blocking;
+/// Rolling file appender
 pub mod rolling;
 mod worker;
 
@@ -19,8 +21,8 @@ mod worker;
 /// occur if logs are consistently produced faster than the worker thread can
 /// output them. The queue capacity and behavior when full (i.e., whether to
 /// drop logs or to exert backpressure to slow down senders) can be configured
-/// using [`NonBlockingBuilder::default()`]. This function simply returns the default
-/// configuration &mdash; it is equivalent to
+/// using [`NonBlockingBuilder::default()`]: /non_blocking/struct.NonBlockingBuilder.html#method.default
+/// This function simply returns the default configuration &mdash; it is equivalent to
 ///
 /// ```rust
 /// # use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
@@ -30,8 +32,13 @@ mod worker;
 /// ```
 /// [`NonBlocking::builder()`]: /non_blocking/struct.NonBlocking.html#method.builder
 ///
+/// Also creates a `WorkerGuard` which is responsible for ensuring logs are flushed once the
+/// guard is dropped. The struct contains a reference to an `AtomicBool` which notifies the
+/// worker thread to stop and flush logs.
+///
 /// Note that the `WorkerGuard` returned by `non_blocking` _must_ be assigned to a binding that
-/// is not `_`, as `_` will result in the `WorkerGuard` being dropped immediately.
+/// is not `_`, as `_` will result in the `WorkerGuard` being dropped immediately. It should also
+/// not be dropped accidently if you want to ensure logs are flushed during panics.
 ///
 /// # Examples
 /// ``` rust

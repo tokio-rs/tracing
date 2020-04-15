@@ -8,14 +8,21 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
 
+/// Default number of lines to buffer before dropping logs if `NonBlocking` is is lossy.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
+/// `WorkerGuard` is responsible for informing the writer to flush logs in the case of a panic.
+///
+/// This guard should be held for as long as possible and should not be dropped accidentally.
+/// It contains a reference to an `AtomicBool` which is used to inform the off-thread writer's
+/// worker to shutdown and flush logs.
 #[derive(Debug)]
 pub struct WorkerGuard {
     guard: Option<JoinHandle<()>>,
     shutdown_signal: Arc<AtomicBool>,
 }
 
+/// `NonBlocking` is an off-thread writer
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: Arc<AtomicU64>,
@@ -24,6 +31,8 @@ pub struct NonBlocking {
 }
 
 impl NonBlocking {
+    /// Creates a non-blocking of thread writer using
+    /// [`NonBlockingBuilder::default()`]: ./struct.NonBlockingBuilder.html#method.default
     pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().finish(writer)
     }
@@ -49,11 +58,14 @@ impl NonBlocking {
         )
     }
 
+    /// Returns a counter for the number of times logs where dropped. This will always return zero if
+    /// `NonBlocking` is not lossy.
     pub fn error_counter(&self) -> Arc<AtomicU64> {
         self.error_counter.clone()
     }
 }
 
+/// Builder for constructing [NonBlocking]: ./struct.NonBlocking.html
 #[derive(Debug)]
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
@@ -61,16 +73,20 @@ pub struct NonBlockingBuilder {
 }
 
 impl NonBlockingBuilder {
+    /// Sets the number of lines to buffer before dropping logs.
     pub fn buffered_lines_limit(mut self, buffered_lines_limit: usize) -> NonBlockingBuilder {
         self.buffered_lines_limit = buffered_lines_limit;
         self
     }
 
+    /// Sets whether `NonBlocking` should be lossy or not. If set to `False`, `NonBlocking` will
+    /// block on writing logs to the channel.
     pub fn lossy(mut self, is_lossy: bool) -> NonBlockingBuilder {
         self.is_lossy = is_lossy;
         self
     }
 
+    /// Call to finish creation of `NonBlocking`
     pub fn finish<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlocking::create(writer, self.buffered_lines_limit, self.is_lossy)
     }
