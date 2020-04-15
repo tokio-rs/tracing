@@ -8,21 +8,47 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use tracing_subscriber::fmt::MakeWriter;
 
-/// Default number of lines to buffer before dropping logs if `NonBlocking` is is lossy.
+/// The default maximum number of buffered log lines.
+///
+/// If `NonBlocking` is configured to be lossy, it will drop any additional logs emitted when at
+/// capacity. If it is not lossy, backpressure will be exerted on senders, causing them to wait 
+/// until there is buffer capacity remaining before enqueuing new lines.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
-/// `WorkerGuard` is responsible for informing the writer to flush logs in the case of a panic.
+/// A guard which triggers an associated [`NonBlocking`] writer to flush logs when dropped.
 ///
-/// This guard should be held for as long as possible and should not be dropped accidentally.
-/// It contains a reference to an `AtomicBool` which is used to inform the off-thread writer's
-/// worker to shutdown and flush logs.
+/// Writing to a [`NonBlocking`] writer will **not** immediately write a log line to the underlying
+/// output. Instead, the log line will be enqueued to be written by the logging worker thread. In
+/// addition, to improve throughput, the non-blocking writer flushes the underlying output
+/// periodically, rather than every time a line is written. This means that if the program 
+/// terminates abruptly (such as by panicking, or by calling `std::process::exit`), some log lines 
+/// may not be written.
+///
+/// Since logs recorded near a crash are often necessary for diagnosing the failure, this type 
+/// provides a mechanism to ensure that all buffered logs are written to the output, and that the
+/// output is flushed prior to terminating. In order for this to work, this guard should generally 
+/// be held in the `main` function (or whatever the outermost scope of the program is). This will 
+/// ensure that it is dropped when unwinding, or when `main` returns.
 #[derive(Debug)]
 pub struct WorkerGuard {
     guard: Option<JoinHandle<()>>,
     shutdown_signal: Arc<AtomicBool>,
 }
 
-/// `NonBlocking` is an off-thread writer
+/// A non-blocking writer.
+///
+/// Writing to an output, such as `std::io::stdout` or a file, is typically a blocking operation.
+/// This means that a `Subscriber` where events are logged as they occur will block any threads 
+/// emitting events until the events have been logged. This type provides a way to move logging 
+/// out of an application's data path by sending log messages to a dedicated worker thread. Any
+/// logs written to a `NonBlocking` writer will be forwarded to a corresponding worker to be output.
+///
+/// This struct implements the [`MakeWriter` trait][make_writer] from the `tracing-subscriber`
+/// crate, and can be used with the [`tracing_subscriber::fmt`][fmt] module, or with any other 
+/// subscriber implementation that uses the `MakeWriter` interface.
+///
+/// [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+/// [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: Arc<AtomicU64>,
@@ -31,8 +57,13 @@ pub struct NonBlocking {
 }
 
 impl NonBlocking {
-    /// Creates a non-blocking of thread writer using
-    /// [`NonBlockingBuilder::default()`]: ./struct.NonBlockingBuilder.html#method.default
+    /// Returns a new `NonBlocking` writer wrapping the provided `writer`.
+    ///
+    /// The returned `NonBlocking` writer will have the [default configuration][default] values.
+    /// Other configurations can be specified using the [builder] interface.
+    ///
+    /// [default]: ./struct.NonBlockingBuilder.html#method.default 
+    /// [builder]: ./struct.NonBlockingBuilder.html
     pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().finish(writer)
     }
