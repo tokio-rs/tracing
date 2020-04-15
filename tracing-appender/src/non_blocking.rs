@@ -10,25 +10,30 @@ use tracing_subscriber::fmt::MakeWriter;
 
 /// The default maximum number of buffered log lines.
 ///
-/// If `NonBlocking` is configured to be lossy, it will drop any additional logs emitted when at
-/// capacity. If it is not lossy, backpressure will be exerted on senders, causing them to wait 
+/// If [NonBlocking][non-blocking] is configured to be lossy, it will drop any additional logs emitted when at
+/// capacity. If it is not lossy, backpressure will be exerted on senders, causing them to wait
 /// until there is buffer capacity remaining before enqueuing new lines.
+///
+/// [non-blocking]: ./struct.NonBlocking.html
+/// Recommended to be a power of 2.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
-/// A guard which triggers an associated [`NonBlocking`] writer to flush logs when dropped.
+/// A guard which triggers an associated [`NonBlocking`][non-blocking] writer to flush logs when dropped.
 ///
-/// Writing to a [`NonBlocking`] writer will **not** immediately write a log line to the underlying
+/// Writing to a [`NonBlocking`][non-blocking] writer will **not** immediately write a log line to the underlying
 /// output. Instead, the log line will be enqueued to be written by the logging worker thread. In
 /// addition, to improve throughput, the non-blocking writer flushes the underlying output
-/// periodically, rather than every time a line is written. This means that if the program 
-/// terminates abruptly (such as by panicking, or by calling `std::process::exit`), some log lines 
+/// periodically, rather than every time a line is written. This means that if the program
+/// terminates abruptly (such as by panicking, or by calling `std::process::exit`), some log lines
 /// may not be written.
 ///
-/// Since logs recorded near a crash are often necessary for diagnosing the failure, this type 
+/// [non-blocking]: ./struct.NonBlocking.html
+/// Since logs recorded near a crash are often necessary for diagnosing the failure, this type
 /// provides a mechanism to ensure that all buffered logs are written to the output, and that the
-/// output is flushed prior to terminating. In order for this to work, this guard should generally 
-/// be held in the `main` function (or whatever the outermost scope of the program is). This will 
+/// output is flushed prior to terminating. In order for this to work, this guard should generally
+/// be held in the `main` function (or whatever the outermost scope of the program is). This will
 /// ensure that it is dropped when unwinding, or when `main` returns.
+#[must_use]
 #[derive(Debug)]
 pub struct WorkerGuard {
     guard: Option<JoinHandle<()>>,
@@ -38,13 +43,13 @@ pub struct WorkerGuard {
 /// A non-blocking writer.
 ///
 /// Writing to an output, such as `std::io::stdout` or a file, is typically a blocking operation.
-/// This means that a `Subscriber` where events are logged as they occur will block any threads 
-/// emitting events until the events have been logged. This type provides a way to move logging 
+/// This means that a `Subscriber` where events are logged as they occur will block any threads
+/// emitting events until the events have been logged. This type provides a way to move logging
 /// out of an application's data path by sending log messages to a dedicated worker thread. Any
 /// logs written to a `NonBlocking` writer will be forwarded to a corresponding worker to be output.
 ///
 /// This struct implements the [`MakeWriter` trait][make_writer] from the `tracing-subscriber`
-/// crate, and can be used with the [`tracing_subscriber::fmt`][fmt] module, or with any other 
+/// crate, and can be used with the [`tracing_subscriber::fmt`][fmt] module, or with any other
 /// subscriber implementation that uses the `MakeWriter` interface.
 ///
 /// [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
@@ -62,7 +67,7 @@ impl NonBlocking {
     /// The returned `NonBlocking` writer will have the [default configuration][default] values.
     /// Other configurations can be specified using the [builder] interface.
     ///
-    /// [default]: ./struct.NonBlockingBuilder.html#method.default 
+    /// [default]: ./struct.NonBlockingBuilder.html#method.default
     /// [builder]: ./struct.NonBlockingBuilder.html
     pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().finish(writer)
@@ -96,7 +101,9 @@ impl NonBlocking {
     }
 }
 
-/// Builder for constructing [NonBlocking]: ./struct.NonBlocking.html
+/// Builder for constructing [`NonBlocking`][non-blocking]
+///
+/// [non-blocking]: ./struct.NonBlocking.html
 #[derive(Debug)]
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
@@ -104,14 +111,14 @@ pub struct NonBlockingBuilder {
 }
 
 impl NonBlockingBuilder {
-    /// Sets the number of lines to buffer before dropping logs.
+    /// Sets the number of lines to buffer before dropping logs or exerting backpressure on senders
     pub fn buffered_lines_limit(mut self, buffered_lines_limit: usize) -> NonBlockingBuilder {
         self.buffered_lines_limit = buffered_lines_limit;
         self
     }
 
-    /// Sets whether `NonBlocking` should be lossy or not. If set to `False`, `NonBlocking` will
-    /// block on writing logs to the channel.
+    /// Sets whether `NonBlocking` should be lossy or not. If set to `True`, logs will be dropped
+    /// if buffered limit is reached. If `False`, backpressure will be exerted on senders.
     pub fn lossy(mut self, is_lossy: bool) -> NonBlockingBuilder {
         self.is_lossy = is_lossy;
         self

@@ -6,18 +6,17 @@ use std::path::Path;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
-/// The file appender has a fixed rotation, which is defined by
-/// [`Rotation`]: tracing_appender/rolling/struct.Rotation.html
+/// The file appender has a fixed rotation, which is defined by [`Rotation`](struct.Rotation.html)
 ///
 /// The log file output is determined by providing a directory and log file name prefix.
 ///
 /// To construct a rolling file appender, use
-/// [`RollingFileAppender::new()`]: tracing_appender/rolling/struct.RollingFileAppender.html#method.new
+/// [`RollingFileAppender::new()`](struct.RollingFileAppender.html#method.new) or use one of
+/// the provided helpers:
 ///
-/// or use the provided helpers:
-/// [`Rotation::hourly()`]: tracing_appender/rolling/fn.hourly.html
-/// [`Rotation::daily()`]: tracing_appender/rolling/fn.daily.html
-/// [`Rotation::never()`]: tracing_appender/rolling/fn.never.html
+/// [`Rotation::hourly()`](fn.hourly.html)<br/>
+/// [`Rotation::daily()`](fn.daily.html)<br/>
+/// [`Rotation::never()`](fn.never.html)<br/>
 ///
 /// # Examples
 ///
@@ -163,7 +162,7 @@ pub fn never(
     RollingFileAppender::new(Rotation::NEVER, directory, file_name_prefix)
 }
 
-/// `Rotation`s defines a fixed period for rolling of a log file.
+/// Defines a fixed period for rolling of a log file.
 ///
 /// To use a `Rotation`, you can do the following:
 ///
