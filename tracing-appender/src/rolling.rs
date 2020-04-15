@@ -6,17 +6,12 @@ use std::path::Path;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
-/// The file appender has a fixed rotation, which is defined by [`Rotation`](struct.Rotation.html)
+/// This struct implements [`std:io::Write` trait][write] and will block on any write operation.
+/// It can be used in conjunction with [`NonBlocking`][non-blocking] to perform writes without
+/// blocking the main thread.
 ///
-/// The log file output is determined by providing a directory and log file name prefix.
-///
-/// To construct a rolling file appender, use
-/// [`RollingFileAppender::new()`](struct.RollingFileAppender.html#method.new) or use one of
-/// the provided helpers:
-///
-/// [`Rotation::hourly()`](fn.hourly.html)<br/>
-/// [`Rotation::daily()`](fn.daily.html)<br/>
-/// [`Rotation::never()`](fn.never.html)<br/>
+/// [write]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
+/// [non-blocking]: ../non_blocking/struct.NonBlocking.html
 ///
 /// # Examples
 ///
@@ -24,7 +19,10 @@ use std::path::Path;
 /// # fn docs() {
 /// use tracing_appender::rolling::RollingFileAppender;
 /// use tracing_appender::rolling::Rotation;
+/// use tracing_appender::non_blocking::NonBlocking;
+///
 /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
+/// let (non_blocking, _guard) = NonBlocking::new(file_appender);
 /// # }
 /// ```
 #[derive(Debug)]
@@ -33,8 +31,28 @@ pub struct RollingFileAppender {
 }
 
 impl RollingFileAppender {
-    /// Returns a `RollingFileAppender` that writes to a rolling log file in a provided `directory`
-    /// and with a file name prefix.
+    /// Returns a new `RollingFileAppender`
+    ///
+    /// The returned `RollingFileAppender` will have a fixed rotation whose behavior is
+    /// defined by [`Rotation`](struct.Rotation.html). The provided `directory` and
+    /// `file_name_prefix`, will determine the location and file name prefix of the log file.
+    ///
+    /// An alternative way to construct a `RollingFileAppender` is to use one of the helpers:
+    ///
+    /// [`Rotation::hourly()`][hourly],[`Rotation::daily()`][daily],[`Rotation::never()`][never]
+    ///
+    /// [hourly]: fn.hourly.html
+    /// [daily]: fn.daily.html
+    /// [never]: fn.never.html
+    ///
+    /// # Examples
+    /// ```rust
+    /// # fn docs() {
+    /// use tracing_appender::rolling::RollingFileAppender;
+    /// use tracing_appender::rolling::Rotation;
+    /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
+    /// # }
+    /// ```
     pub fn new(
         rotation: Rotation,
         directory: impl AsRef<Path>,
