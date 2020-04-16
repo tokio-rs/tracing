@@ -598,6 +598,17 @@ impl fmt::Debug for Dispatch {
     }
 }
 
+impl From<Box<dyn Subscriber + Send + Sync + 'static>> for Dispatch {
+    #[inline]
+    fn from(subscriber: Box<dyn Subscriber + Send + Sync + 'static>) -> Self {
+        let me = Dispatch {
+            subscriber: Arc::from(subscriber),
+        };
+        callsite::register_dispatch(&me);
+        me
+    }
+}
+
 impl<S> From<S> for Dispatch
 where
     S: Subscriber + Send + Sync + 'static,
