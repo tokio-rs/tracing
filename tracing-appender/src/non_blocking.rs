@@ -271,10 +271,10 @@ impl Drop for WorkerGuard {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::Rng;
+    use std::sync::Mutex;
     use std::thread;
     use std::time::Duration;
-    use std::sync::Mutex;
-    use rand::Rng;
 
     struct MockWriter {
         writer: Arc<Mutex<Vec<String>>>,
@@ -300,7 +300,10 @@ mod test {
                 return Err(std::io::Error::from(std::io::ErrorKind::WouldBlock));
             }
 
-            self.writer.lock().expect("expected guard").push(String::from_utf8_lossy(buf).to_string());
+            self.writer
+                .lock()
+                .expect("expected guard")
+                .push(String::from_utf8_lossy(buf).to_string());
             Ok(buf_len)
         }
 
@@ -349,16 +352,17 @@ mod test {
         let error_count = non_blocking.error_counter();
         let mut join_handles: Vec<JoinHandle<()>> = Vec::with_capacity(10);
 
-
         let subscriber = tracing_subscriber::fmt().with_writer(non_blocking.clone());
 
         tracing::subscriber::with_default(subscriber.finish(), || {
             for _ in 0..10 {
                 let mut non_blocking_cloned = non_blocking.clone();
-                join_handles.push(thread::spawn( move || {
+                join_handles.push(thread::spawn(move || {
                     // Sleep a random amount of time so that we can interleave the threads.
                     thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 1000)));
-                    non_blocking_cloned.write(format!("Hello").as_bytes()).expect("Failed to write hello from thread");
+                    non_blocking_cloned
+                        .write(format!("Hello").as_bytes())
+                        .expect("Failed to write hello from thread");
                 }));
             }
         });
@@ -375,8 +379,8 @@ mod test {
                         hello_count += 1;
                     }
                 }
-            },
-            Err(_) => {assert!(false)},
+            }
+            Err(_) => assert!(false),
         }
 
         drop(non_blocking);
