@@ -309,15 +309,11 @@ mod test {
 
         let error_count = non_blocking.error_counter();
 
-        non_blocking
-            .write_all("Hello".as_bytes())
-            .expect("Failed to write");
+        non_blocking.write_all(b"Hello").expect("Failed to write");
         assert_eq!(0, error_count.load(Ordering::Relaxed));
 
         let handle = thread::spawn(move || {
-            non_blocking
-                .write_all(", World".as_bytes())
-                .expect("Failed to write");
+            non_blocking.write_all(b", World").expect("Failed to write");
         });
 
         // Sleep a little to ensure previously spawned thread get's blocked on write.
@@ -348,19 +344,13 @@ mod test {
 
         let error_count = non_blocking.error_counter();
 
-        non_blocking
-            .write_all("Hello".as_bytes())
-            .expect("Failed to write");
+        non_blocking.write_all(b"Hello").expect("Failed to write");
         assert_eq!(0, error_count.load(Ordering::Relaxed));
 
-        non_blocking
-            .write_all(", World".as_bytes())
-            .expect("Failed to write");
+        non_blocking.write_all(b", World").expect("Failed to write");
         assert_eq!(1, error_count.load(Ordering::Relaxed));
 
-        non_blocking
-            .write_all(".".as_bytes())
-            .expect("Failed to write");
+        non_blocking.write_all(b".").expect("Failed to write");
         assert_eq!(2, error_count.load(Ordering::Relaxed));
 
         // Allow a line to be written
@@ -369,7 +359,7 @@ mod test {
 
         // Now, there is once again capacity in the buffer.
         non_blocking
-            .write_all("Universe".as_bytes())
+            .write_all(b"Universe")
             .expect("Failed to write");
         assert_eq!(2, error_count.load(Ordering::Relaxed));
 
