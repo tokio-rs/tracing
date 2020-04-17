@@ -31,11 +31,13 @@ pub struct RollingFileAppender {
 }
 
 impl RollingFileAppender {
-    /// Returns a new `RollingFileAppender`
+    /// Creates a new `RollingFileAppender`.
     ///
-    /// The returned `RollingFileAppender` will have a fixed rotation whose behavior is
-    /// defined by [`Rotation`](struct.Rotation.html). The provided `directory` and
-    /// `file_name_prefix`, will determine the location and file name prefix of the log file.
+    /// A `RollingFileAppender` will have a fixed rotation whose frequency is
+    /// defined by [`Rotation`](struct.Rotation.html). The `directory` and
+    /// `file_name_prefix` arguments determine the location and file name's _prefix_
+    /// of the log file. `RollingFileAppender` will automatically append the current date
+    /// and hour to the file name.
     ///
     /// An alternative way to construct a `RollingFileAppender` is to use one of the helpers:
     ///
@@ -85,9 +87,9 @@ impl io::Write for RollingFileAppender {
 /// The appender returned by `rolling::hourly` can be used with `non_blocking` to create
 /// a non-blocking, hourly file appender.
 ///
-/// The location of the log file will be specified the `directory` passed in.
-/// `file_name_prefix` specifies the prefix of the log file. It is appended by the
-/// current date and hour.
+/// The directory of the log file is specified with the `directory` argument.
+/// `file_name_prefix` specifies the _prefix_ of the log file. `RollingFileAppender` 
+/// adds the current date and hour to the log file.
 ///
 /// # Examples
 ///
@@ -119,8 +121,10 @@ pub fn hourly(
 /// The appender returned by `rolling::daily` can be used with `non_blocking` to create
 /// a non-blocking, daily file appender.
 ///
-/// The location of the log file will be specified the `directory` passed in.
-/// `file_name_prefix` specifies the prefix of the log file. It is appended by the current date.
+/// A `RollingFileAppender` will have a fixed rotation whose frequency is
+/// defined by [`Rotation`](struct.Rotation.html). The `directory` and
+/// `file_name_prefix` arguments determine the location and file name's _prefix_
+/// of the log file. `RollingFileAppender` will automatically append the current date.
 ///
 /// # Examples
 ///
@@ -182,9 +186,9 @@ pub fn never(
 
 /// Defines a fixed period for rolling of a log file.
 ///
-/// To use a `Rotation`, you can do the following:
+/// To use a `Rotation`, pick one of the following options:
 ///
-/// To get an hourly rotation:
+/// ### Hourly Rotation
 /// ```rust
 /// # fn docs() {
 /// use tracing_appender::rolling::Rotation;
@@ -192,7 +196,7 @@ pub fn never(
 /// # }
 /// ```
 ///
-/// To get an daily rotation:
+/// ### Daily Rotation
 /// ```rust
 /// # fn docs() {
 /// use tracing_appender::rolling::Rotation;
@@ -200,7 +204,7 @@ pub fn never(
 /// # }
 /// ```
 ///
-/// To never rotate:
+/// ### No Rotation
 /// ```rust
 /// # fn docs() {
 /// use tracing_appender::rolling::Rotation;
