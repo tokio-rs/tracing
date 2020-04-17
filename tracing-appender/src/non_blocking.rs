@@ -326,7 +326,7 @@ mod test {
         assert_eq!(line, "Hello");
 
         // Wait for thread to finish.
-        handle.join();
+        let _ = handle.join();
 
         // Thread has joined, we should be able to read the message it sent.
         line = rx.recv().unwrap();
