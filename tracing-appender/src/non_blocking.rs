@@ -381,7 +381,7 @@ mod test {
         for _ in 0..10 {
             let cloned_non_blocking = non_blocking.clone();
             join_handles.push(thread::spawn(move || {
-                let subscriber = tracing_subscriber::fmt().with_writer(cloned_non_blocking.clone());
+                let subscriber = tracing_subscriber::fmt().with_writer(cloned_non_blocking);
                 tracing::subscriber::with_default(subscriber.finish(), || {
                     tracing::event!(tracing::Level::INFO, "Hello");
                 });
