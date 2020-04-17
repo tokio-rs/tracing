@@ -287,3 +287,185 @@ impl Rotation {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rand::Rng;
+    use std::fs;
+    use std::io::Write;
+
+    const TEMP_DIR: &str = "tests/tempdir/";
+
+    fn clean_up(directory: &str) {
+        let dir_contents = fs::read_dir(directory).expect("Failed to read directory");
+
+        for entry in dir_contents {
+            let path = entry.expect("Expected dir entry").path();
+            fs::remove_file(path).expect("Failed to remove file")
+        }
+    }
+
+    fn find_random_number_in_logs(directory: &str, expected_value: u8) -> bool {
+        let dir_contents = fs::read_dir(directory).expect("Failed to read directory");
+
+        for entry in dir_contents {
+            let path = entry.expect("Expected dir entry").path();
+            let result = fs::read_to_string(path).expect("Failed to read file");
+
+            if let Ok(value) = result.as_str().parse::<u8>() {
+                if value == expected_value {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    fn generate_random_number() -> u8 {
+        rand::thread_rng().gen()
+    }
+
+    fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
+        appender
+            .write(msg.as_bytes())
+            .expect("Failed to write to appender");
+        appender.flush().expect("Failed to flush!");
+    }
+
+    fn test_appender(rotation: Rotation, directory: &str, file_prefix: &str) {
+        let mut appender = RollingFileAppender::new(rotation, directory, file_prefix);
+        let random_number: u8 = generate_random_number();
+
+        write_to_log(&mut appender, format!("{}", random_number).as_str());
+        assert!(find_random_number_in_logs(directory, random_number));
+
+        clean_up(directory)
+    }
+
+    #[test]
+    fn write_hourly_log() {
+        test_appender(
+            Rotation::HOURLY,
+            format!("{}{}", TEMP_DIR, "hourly/").as_ref(),
+            "app.log",
+        );
+    }
+
+    #[test]
+    fn write_daily_log() {
+        test_appender(
+            Rotation::DAILY,
+            format!("{}{}", TEMP_DIR, "daily/").as_ref(),
+            "app.log",
+        );
+    }
+
+    #[test]
+    fn write_never_log() {
+        test_appender(
+            Rotation::NEVER,
+            format!("{}{}", TEMP_DIR, "never/").as_ref(),
+            "app.log",
+        );
+    }
+
+    #[test]
+    fn test_next_date_hourly() {
+        let r = Rotation::HOURLY;
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_hour(1).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 20, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_hour(1).unwrap().with_minute(0).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(1, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_hour(2).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(23, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_day(2).unwrap().with_hour(0).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+    }
+
+    #[test]
+    fn test_next_date_daily() {
+        let r = Rotation::DAILY;
+
+        let mock_now = Utc.ymd(2020, 8, 1).and_hms(0, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_day(2).unwrap().with_hour(0).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 8, 1).and_hms(0, 20, 5);
+        let next = r.next_date(&mock_now);
+        assert_eq!(Utc.ymd(2020, 8, 2).and_hms(0, 0, 0), next);
+
+        let mock_now = Utc.ymd(2020, 8, 31).and_hms(11, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(Utc.ymd(2020, 9, 1).and_hms(0, 0, 0), next);
+
+        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+    }
+
+    #[test]
+    fn test_round_date_hourly() {
+        let r = Rotation::HOURLY;
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
+        assert_eq!(
+            Utc.ymd(2020, 2, 1).and_hms(10, 0, 0),
+            r.round_date(&mock_now)
+        );
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 0, 0);
+        assert_eq!(mock_now, r.round_date(&mock_now));
+    }
+
+    #[test]
+    fn test_rotation_path_daily() {
+        let r = Rotation::DAILY;
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
+        let path = r.join_date("MyApplication.log", &mock_now);
+        assert_eq!("MyApplication.log.2020-02-01", path);
+    }
+
+    #[test]
+    fn test_round_date_daily() {
+        let r = Rotation::DAILY;
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
+        assert_eq!(
+            Utc.ymd(2020, 2, 1).and_hms(0, 0, 0),
+            r.round_date(&mock_now)
+        );
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
+        assert_eq!(mock_now, r.round_date(&mock_now));
+    }
+
+    #[test]
+    fn test_next_date_never() {
+        let r = Rotation::NEVER;
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(next, Utc.ymd(9999, 1, 1).and_hms(1, 0, 0));
+    }
+
+    #[test]
+    fn test_join_date_never() {
+        let r = Rotation::NEVER;
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
+        let joined_date = r.join_date("Hello.log", &mock_now);
+        assert_eq!(joined_date, "Hello.log");
+    }
+}

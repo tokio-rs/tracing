@@ -267,3 +267,120 @@ impl Drop for WorkerGuard {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::thread;
+    use std::time::Duration;
+    use std::sync::Mutex;
+    use rand::Rng;
+
+    struct MockWriter {
+        writer: Arc<Mutex<Vec<String>>>,
+        max_writes_allowed: usize,
+        writes_attempted: usize,
+    }
+
+    impl Default for MockWriter {
+        fn default() -> Self {
+            MockWriter {
+                writer: Arc::new(Mutex::new(Vec::new())),
+                max_writes_allowed: 1,
+                writes_attempted: 0,
+            }
+        }
+    }
+
+    impl std::io::Write for MockWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            let buf_len = buf.len();
+            self.writes_attempted += 1;
+            if self.writes_attempted > self.max_writes_allowed {
+                return Err(std::io::Error::from(std::io::ErrorKind::WouldBlock));
+            }
+
+            self.writer.lock().expect("expected guard").push(String::from_utf8_lossy(buf).to_string());
+            Ok(buf_len)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn logs_dropped_if_lossy() {
+        let mock_writer = MockWriter::default();
+
+        let (mut non_blocking, _guard) = self::NonBlockingBuilder::default()
+            .lossy(true)
+            .buffered_lines_limit(1)
+            .finish(mock_writer);
+
+        let error_count = non_blocking.error_counter();
+
+        non_blocking
+            .write("Hello".as_bytes())
+            .expect("Failed to write");
+        assert_eq!(0, error_count.load(Ordering::Relaxed));
+
+        non_blocking
+            .write(", World".as_bytes())
+            .expect("Failed to write");
+        assert_eq!(1, error_count.load(Ordering::Relaxed));
+
+        non_blocking.write(".".as_bytes()).expect("Failed to write");
+        assert_eq!(2, error_count.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn multi_threaded_writes() {
+        let inner_writer = Arc::new(Mutex::new(Vec::new()));
+
+        let mut mock_writer = MockWriter::default();
+        mock_writer.max_writes_allowed = DEFAULT_BUFFERED_LINES_LIMIT;
+        mock_writer.writer = inner_writer.clone();
+
+        let (non_blocking, _guard) = self::NonBlockingBuilder::default()
+            .lossy(true)
+            .finish(mock_writer);
+
+        let error_count = non_blocking.error_counter();
+        let mut join_handles: Vec<JoinHandle<()>> = Vec::with_capacity(10);
+
+
+        let subscriber = tracing_subscriber::fmt().with_writer(non_blocking.clone());
+
+        tracing::subscriber::with_default(subscriber.finish(), || {
+            for _ in 0..10 {
+                let mut non_blocking_cloned = non_blocking.clone();
+                join_handles.push(thread::spawn( move || {
+                    // Sleep a random amount of time so that we can interleave the threads.
+                    thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 1000)));
+                    non_blocking_cloned.write(format!("Hello").as_bytes()).expect("Failed to write hello from thread");
+                }));
+            }
+        });
+
+        for handle in join_handles {
+            handle.join().expect("Failed to join thread");
+        }
+
+        let mut hello_count: u8 = 0;
+        match inner_writer.lock() {
+            Ok(guard) => {
+                for msg in guard.iter() {
+                    if msg.as_str().eq("Hello") {
+                        hello_count += 1;
+                    }
+                }
+            },
+            Err(_) => {assert!(false)},
+        }
+
+        drop(non_blocking);
+        assert_eq!(10, hello_count);
+        assert_eq!(0, error_count.load(Ordering::Relaxed));
+    }
+}
