@@ -271,39 +271,26 @@ impl Drop for WorkerGuard {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::Rng;
-    use std::sync::Mutex;
+    use std::sync::mpsc;
+    use std::sync::mpsc::TryRecvError;
     use std::thread;
     use std::time::Duration;
 
     struct MockWriter {
-        writer: Arc<Mutex<Vec<String>>>,
-        max_writes_allowed: usize,
-        writes_attempted: usize,
+        tx: mpsc::SyncSender<String>,
     }
 
-    impl Default for MockWriter {
-        fn default() -> Self {
-            MockWriter {
-                writer: Arc::new(Mutex::new(Vec::new())),
-                max_writes_allowed: 1,
-                writes_attempted: 0,
-            }
+    impl MockWriter {
+        fn new(capacity: usize) -> (Self, mpsc::Receiver<String>) {
+            let (tx, rx) = mpsc::sync_channel(capacity);
+            (Self { tx }, rx)
         }
     }
 
     impl std::io::Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
             let buf_len = buf.len();
-            self.writes_attempted += 1;
-            if self.writes_attempted > self.max_writes_allowed {
-                return Err(std::io::Error::from(std::io::ErrorKind::WouldBlock));
-            }
-
-            self.writer
-                .lock()
-                .expect("expected guard")
-                .push(String::from_utf8_lossy(buf).to_string());
+            let _ = self.tx.send(String::from_utf8_lossy(buf).to_string());
             Ok(buf_len)
         }
 
@@ -313,8 +300,46 @@ mod test {
     }
 
     #[test]
+    fn backpressure_exerted() {
+        let (mock_writer, rx) = MockWriter::new(1);
+        let (mut non_blocking, _guard) = self::NonBlockingBuilder::default()
+            .lossy(false)
+            .buffered_lines_limit(1)
+            .finish(mock_writer);
+
+        let error_count = non_blocking.error_counter();
+
+        non_blocking
+            .write_all("Hello".as_bytes())
+            .expect("Failed to write");
+        assert_eq!(0, error_count.load(Ordering::Relaxed));
+
+        let handle = thread::spawn(move || {
+            non_blocking
+                .write_all(", World".as_bytes())
+                .expect("Failed to write");
+        });
+
+        // Sleep a little to ensure previously spawned thread get's blocked on write.
+        thread::sleep(Duration::from_millis(100));
+        // We should not drop logs when blocked.
+        assert_eq!(0, error_count.load(Ordering::Relaxed));
+
+        // Read the first message to unblock sender.
+        let mut line = rx.recv().unwrap();
+        assert_eq!(line, "Hello");
+
+        // Wait for thread to finish.
+        handle.join();
+
+        // Thread has joined, we should be able to read the message it sent.
+        line = rx.recv().unwrap();
+        assert_eq!(line, ", World");
+    }
+
+    #[test]
     fn logs_dropped_if_lossy() {
-        let mock_writer = MockWriter::default();
+        let (mock_writer, rx) = MockWriter::new(1);
 
         let (mut non_blocking, _guard) = self::NonBlockingBuilder::default()
             .lossy(true)
@@ -333,17 +358,28 @@ mod test {
             .expect("Failed to write");
         assert_eq!(1, error_count.load(Ordering::Relaxed));
 
-        non_blocking.write_all(".".as_bytes()).expect("Failed to write");
+        non_blocking
+            .write_all(".".as_bytes())
+            .expect("Failed to write");
         assert_eq!(2, error_count.load(Ordering::Relaxed));
+
+        // Allow a line to be written
+        let line = rx.recv().unwrap();
+        assert_eq!(line, "Hello");
+
+        // Now, there is once again capacity in the buffer.
+        non_blocking
+            .write_all("Universe".as_bytes())
+            .expect("Failed to write");
+        assert_eq!(2, error_count.load(Ordering::Relaxed));
+
+        let line = rx.recv().unwrap();
+        assert_eq!(line, "Universe");
     }
 
     #[test]
     fn multi_threaded_writes() {
-        let inner_writer = Arc::new(Mutex::new(Vec::new()));
-
-        let mut mock_writer = MockWriter::default();
-        mock_writer.max_writes_allowed = DEFAULT_BUFFERED_LINES_LIMIT;
-        mock_writer.writer = inner_writer.clone();
+        let (mock_writer, rx) = MockWriter::new(DEFAULT_BUFFERED_LINES_LIMIT);
 
         let (non_blocking, _guard) = self::NonBlockingBuilder::default()
             .lossy(true)
@@ -352,39 +388,42 @@ mod test {
         let error_count = non_blocking.error_counter();
         let mut join_handles: Vec<JoinHandle<()>> = Vec::with_capacity(10);
 
-        let subscriber = tracing_subscriber::fmt().with_writer(non_blocking.clone());
-
-        tracing::subscriber::with_default(subscriber.finish(), || {
-            for _ in 0..10 {
-                let mut non_blocking_cloned = non_blocking.clone();
-                join_handles.push(thread::spawn(move || {
-                    // Sleep a random amount of time so that we can interleave the threads.
-                    thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 1000)));
-                    non_blocking_cloned
-                        .write_all("Hello".as_bytes())
-                        .expect("Failed to write hello from thread");
-                }));
-            }
-        });
+        for _ in 0..10 {
+            let cloned_non_blocking = non_blocking.clone();
+            join_handles.push(thread::spawn(move || {
+                let subscriber = tracing_subscriber::fmt().with_writer(cloned_non_blocking.clone());
+                tracing::subscriber::with_default(subscriber.finish(), || {
+                    tracing::event!(tracing::Level::INFO, "Hello");
+                });
+            }));
+        }
 
         for handle in join_handles {
             handle.join().expect("Failed to join thread");
         }
 
         let mut hello_count: u8 = 0;
-        match inner_writer.lock() {
-            Ok(guard) => {
-                for msg in guard.iter() {
-                    if msg.as_str().eq("Hello") {
-                        hello_count += 1;
-                    }
-                }
-            }
-            Err(_) => panic!("We unexpectedely failed to acquire lock!"),
+
+        let mut try_rcv_result = rx.try_recv();
+
+        while validate_try_recv("Hello", &try_rcv_result) {
+            hello_count += 1;
+            try_rcv_result = rx.try_recv();
         }
 
-        drop(non_blocking);
         assert_eq!(10, hello_count);
         assert_eq!(0, error_count.load(Ordering::Relaxed));
+        drop(non_blocking);
+    }
+
+    fn validate_try_recv(msg: &str, result: &Result<String, TryRecvError>) -> bool {
+        match result {
+            Ok(event_str) => {
+                assert!(event_str.contains(msg));
+                true
+            }
+            Err(TryRecvError::Empty) => false,
+            Err(TryRecvError::Disconnected) => false,
+        }
     }
 }

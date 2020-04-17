@@ -291,40 +291,23 @@ impl Rotation {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::Rng;
     use std::fs;
     use std::io::Write;
+    use tempdir::TempDir;
 
-    const TEMP_DIR: &str = "tests/tempdir/";
-
-    fn clean_up(directory: &str) {
-        let dir_contents = fs::read_dir(directory).expect("Failed to read directory");
-
-        for entry in dir_contents {
-            let path = entry.expect("Expected dir entry").path();
-            fs::remove_file(path).expect("Failed to remove file")
-        }
-    }
-
-    fn find_random_number_in_logs(directory: &str, expected_value: u8) -> bool {
-        let dir_contents = fs::read_dir(directory).expect("Failed to read directory");
+    fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
+        let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
 
         for entry in dir_contents {
             let path = entry.expect("Expected dir entry").path();
             let result = fs::read_to_string(path).expect("Failed to read file");
 
-            if let Ok(value) = result.as_str().parse::<u8>() {
-                if value == expected_value {
-                    return true;
-                }
+            if result.as_str() == expected_value {
+                return true;
             }
         }
 
         false
-    }
-
-    fn generate_random_number() -> u8 {
-        rand::thread_rng().gen()
     }
 
     fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
@@ -334,22 +317,24 @@ mod test {
         appender.flush().expect("Failed to flush!");
     }
 
-    fn test_appender(rotation: Rotation, directory: &str, file_prefix: &str) {
-        let mut appender = RollingFileAppender::new(rotation, directory, file_prefix);
-        let random_number: u8 = generate_random_number();
+    fn test_appender(rotation: Rotation, directory: TempDir, file_prefix: &str) {
+        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix);
 
-        write_to_log(&mut appender, format!("{}", random_number).as_str());
-        assert!(find_random_number_in_logs(directory, random_number));
+        let expected_value = "Hello";
+        write_to_log(&mut appender, expected_value);
+        assert!(find_str_in_log(directory.path(), expected_value));
 
-        clean_up(directory)
+        directory
+            .close()
+            .expect("Failed to explicitly close TempDir. TempDir should delete once out of scope.")
     }
 
     #[test]
     fn write_hourly_log() {
         test_appender(
             Rotation::HOURLY,
-            format!("{}{}", TEMP_DIR, "hourly/").as_ref(),
-            "app.log",
+            TempDir::new("hourly").expect("Failed to create tempdir"),
+            "hourly.log",
         );
     }
 
@@ -357,8 +342,8 @@ mod test {
     fn write_daily_log() {
         test_appender(
             Rotation::DAILY,
-            format!("{}{}", TEMP_DIR, "daily/").as_ref(),
-            "app.log",
+            TempDir::new("daily").expect("Failed to create tempdir"),
+            "daily.log",
         );
     }
 
@@ -366,8 +351,8 @@ mod test {
     fn write_never_log() {
         test_appender(
             Rotation::NEVER,
-            format!("{}{}", TEMP_DIR, "never/").as_ref(),
-            "app.log",
+            TempDir::new("never").expect("Failed to create tempdir"),
+            "never.log",
         );
     }
 
