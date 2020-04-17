@@ -18,16 +18,16 @@ use tracing_subscriber::fmt::MakeWriter;
 /// Recommended to be a power of 2.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
-/// A guard which triggers an associated [`NonBlocking`][non-blocking] writer to flush logs when dropped.
+/// A guard which triggers an associated [`NonBlocking`] writer to flush logs when dropped.
 ///
-/// Writing to a [`NonBlocking`][non-blocking] writer will **not** immediately write a log line to the underlying
+/// Writing to a [`NonBlocking`] writer will **not** immediately write a log line to the underlying
 /// output. Instead, the log line will be enqueued to be written by the logging worker thread. In
 /// addition, to improve throughput, the non-blocking writer flushes the underlying output
 /// periodically, rather than every time a line is written. This means that if the program
 /// terminates abruptly (such as by panicking, or by calling `std::process::exit`), some log lines
 /// may not be written.
 ///
-/// [non-blocking]: ./struct.NonBlocking.html
+/// [`NonBlocking`]: ./struct.NonBlocking.html
 /// Since logs recorded near a crash are often necessary for diagnosing the failure, this type
 /// provides a mechanism to ensure that all buffered logs are written to the output, and that the
 /// output is flushed prior to terminating. In order for this to work, this guard should generally
@@ -117,14 +117,18 @@ impl NonBlockingBuilder {
         self
     }
 
-    /// Sets whether `NonBlocking` should be lossy or not. If set to `True`, logs will be dropped
-    /// if buffered limit is reached. If `False`, backpressure will be exerted on senders.
+    /// Sets whether `NonBlocking` should be lossy or not.
+    ///
+    /// If set to `true`, logs will be dropped when the buffered limit is reached. If `false`, backpressure
+    /// will be exerted on senders, blocking them until the buffer has capacity again.
+    ///
+    /// By default, the built `NonBlocking` will be lossy.
     pub fn lossy(mut self, is_lossy: bool) -> NonBlockingBuilder {
         self.is_lossy = is_lossy;
         self
     }
 
-    /// Call to finish creation of `NonBlocking`
+    /// Completes the builder, returning the configured `NonBlocking`.
     pub fn finish<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlocking::create(writer, self.buffered_lines_limit, self.is_lossy)
     }
