@@ -324,16 +324,16 @@ mod test {
         let error_count = non_blocking.error_counter();
 
         non_blocking
-            .write("Hello".as_bytes())
+            .write_all("Hello".as_bytes())
             .expect("Failed to write");
         assert_eq!(0, error_count.load(Ordering::Relaxed));
 
         non_blocking
-            .write(", World".as_bytes())
+            .write_all(", World".as_bytes())
             .expect("Failed to write");
         assert_eq!(1, error_count.load(Ordering::Relaxed));
 
-        non_blocking.write(".".as_bytes()).expect("Failed to write");
+        non_blocking.write_all(".".as_bytes()).expect("Failed to write");
         assert_eq!(2, error_count.load(Ordering::Relaxed));
     }
 
@@ -361,7 +361,7 @@ mod test {
                     // Sleep a random amount of time so that we can interleave the threads.
                     thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 1000)));
                     non_blocking_cloned
-                        .write(format!("Hello").as_bytes())
+                        .write_all("Hello".as_bytes())
                         .expect("Failed to write hello from thread");
                 }));
             }
@@ -380,7 +380,7 @@ mod test {
                     }
                 }
             }
-            Err(_) => assert!(false),
+            Err(_) => panic!("We unexpectedely failed to acquire lock!"),
         }
 
         drop(non_blocking);

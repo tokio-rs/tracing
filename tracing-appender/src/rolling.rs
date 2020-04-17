@@ -329,7 +329,7 @@ mod test {
 
     fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
         appender
-            .write(msg.as_bytes())
+            .write_all(msg.as_bytes())
             .expect("Failed to write to appender");
         appender.flush().expect("Failed to flush!");
     }
