@@ -37,7 +37,7 @@ impl RollingFileAppender {
     /// defined by [`Rotation`](struct.Rotation.html). The `directory` and
     /// `file_name_prefix` arguments determine the location and file name's _prefix_
     /// of the log file. `RollingFileAppender` will automatically append the current date
-    /// and hour to the file name.
+    /// and hour (UTC format) to the file name.
     ///
     /// An alternative way to construct a `RollingFileAppender` is to use one of the helpers:
     ///
@@ -88,15 +88,14 @@ impl io::Write for RollingFileAppender {
 /// a non-blocking, hourly file appender.
 ///
 /// The directory of the log file is specified with the `directory` argument.
-/// `file_name_prefix` specifies the _prefix_ of the log file. `RollingFileAppender` 
-/// adds the current date and hour to the log file.
+/// `file_name_prefix` specifies the _prefix_ of the log file. `RollingFileAppender`
+/// adds the current date and hour to the log file in UTC.
 ///
 /// # Examples
 ///
 /// ``` rust
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
-///
 /// # fn doc() {
 ///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
@@ -109,6 +108,8 @@ impl io::Write for RollingFileAppender {
 /// # }
 /// }
 /// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log.YYYY-MM-DD-HH`.
 pub fn hourly(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
@@ -124,14 +125,13 @@ pub fn hourly(
 /// A `RollingFileAppender` will have a fixed rotation whose frequency is
 /// defined by [`Rotation`](struct.Rotation.html). The `directory` and
 /// `file_name_prefix` arguments determine the location and file name's _prefix_
-/// of the log file. `RollingFileAppender` will automatically append the current date.
+/// of the log file. `RollingFileAppender` will automatically append the current date in UTC.
 ///
 /// # Examples
 ///
 /// ``` rust
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
-///
 /// # fn doc() {
 ///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
@@ -144,6 +144,8 @@ pub fn hourly(
 /// # }
 /// }
 /// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log.YYYY-MM-DD`.
 pub fn daily(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
@@ -157,14 +159,13 @@ pub fn daily(
 /// a non-blocking, appender that never rotates.
 ///
 /// The location of the log file will be specified the `directory` passed in.
-/// `file_name_prefix` specifies the prefix of the log file. No date is appended to it.
+/// `file_name` specifies the prefix of the log file. No date is appended to it.
 ///
 /// # Examples
 ///
 /// ``` rust
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
-///
 /// # fn doc() {
 ///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
@@ -177,11 +178,10 @@ pub fn daily(
 /// # }
 /// }
 /// ```
-pub fn never(
-    directory: impl AsRef<Path>,
-    file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
-    RollingFileAppender::new(Rotation::NEVER, directory, file_name_prefix)
+///
+/// This will result in a log file located at `/some/path/non-rolling.log`.
+pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::NEVER, directory, file_name)
 }
 
 /// Defines a fixed period for rolling of a log file.
