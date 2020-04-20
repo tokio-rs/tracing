@@ -366,6 +366,9 @@ mod test {
 
         let line = rx.recv().unwrap();
         assert_eq!(line, "Universe");
+
+        /// There is a risk of this test hanging if a drop isn't explicitly
+        /// made on non_blocking when it is lossy
         drop(non_blocking);
     }
 
@@ -405,6 +408,9 @@ mod test {
 
         assert_eq!(10, hello_count);
         assert_eq!(0, error_count.load(Ordering::Relaxed));
+
+        /// There is a risk of this test hanging if a drop isn't explicitly
+        /// made on non_blocking when it is lossy
         drop(non_blocking);
     }
 
