@@ -302,6 +302,7 @@ mod test {
     #[test]
     fn backpressure_exerted() {
         let (mock_writer, rx) = MockWriter::new(1);
+
         let (mut non_blocking, _guard) = self::NonBlockingBuilder::default()
             .lossy(false)
             .buffered_lines_limit(1)
@@ -365,6 +366,7 @@ mod test {
 
         let line = rx.recv().unwrap();
         assert_eq!(line, "Universe");
+        drop(non_blocking);
     }
 
     #[test]
