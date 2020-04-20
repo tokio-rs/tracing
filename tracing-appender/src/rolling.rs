@@ -6,8 +6,8 @@ use std::path::Path;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
-/// This struct implements [`std:io::Write` trait][write] and will block on any write operation.
-/// It can be used in conjunction with [`NonBlocking`][non-blocking] to perform writes without
+/// `RollingFileAppender` implements [`std:io::Write` trait][write] and will block on write operations.
+/// It is intended to be used with [`NonBlocking`][non-blocking] to perform writes without
 /// blocking the current thread.
 ///
 /// [write]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
@@ -35,9 +35,11 @@ impl RollingFileAppender {
     /// of the log file. `RollingFileAppender` will automatically append the current date
     /// and hour (UTC format) to the file name.
     ///
-    /// An alternative way to construct a `RollingFileAppender` is to use one of the helpers:
+    /// Alternatively, a `RollingFileAppender` can be constructed using one of the following helpers:
     ///
-    /// [`Rotation::hourly()`][hourly],[`Rotation::daily()`][daily],[`Rotation::never()`][never]
+    /// - [`Rotation::hourly()`][hourly],
+    /// - [`Rotation::daily()`][daily],
+    /// - [`Rotation::never()`][never]
     ///
     /// [hourly]: fn.hourly.html
     /// [daily]: fn.daily.html
@@ -113,15 +115,15 @@ pub fn hourly(
     RollingFileAppender::new(Rotation::HOURLY, directory, file_name_prefix)
 }
 
-/// Creates an daily, rolling file appender.
+/// Creates a file appender that rotates daily.
 ///
 /// The appender returned by `rolling::daily` can be used with `non_blocking` to create
 /// a non-blocking, daily file appender.
 ///
-/// A `RollingFileAppender` will have a fixed rotation whose frequency is
+/// A `RollingFileAppender` has a fixed rotation whose frequency is
 /// defined by [`Rotation`](struct.Rotation.html). The `directory` and
 /// `file_name_prefix` arguments determine the location and file name's _prefix_
-/// of the log file. `RollingFileAppender` will automatically append the current date in UTC.
+/// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
 ///
 /// # Examples
 ///
@@ -152,10 +154,10 @@ pub fn daily(
 /// Creates a non-rolling, file appender
 ///
 /// The appender returned by `rolling::never` can be used with `non_blocking` to create
-/// a non-blocking, appender that never rotates.
+/// a non-blocking, non-rotating appender.
 ///
 /// The location of the log file will be specified the `directory` passed in.
-/// `file_name` specifies the prefix of the log file. No date is appended to it.
+/// `file_name` specifies the prefix of the log file. No date or time is appended.
 ///
 /// # Examples
 ///

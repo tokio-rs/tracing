@@ -10,29 +10,30 @@ use tracing_subscriber::fmt::MakeWriter;
 
 /// The default maximum number of buffered log lines.
 ///
-/// If [NonBlocking][non-blocking] is configured to be lossy, it will drop any additional logs emitted when at
-/// capacity. If it is not lossy, backpressure will be exerted on senders, causing them to wait
-/// until there is buffer capacity remaining before enqueuing new lines.
+/// If [`NonBlocking`][non-blocking] is lossy, it will drop spans/events at capacity.
+/// capacity. If [`NonBlocking`][non-blocking] is _not_ lossy,
+/// backpressure will be exerted on senders, causing them to block their
+/// respective threads until there is available capacity.
 ///
 /// [non-blocking]: ./struct.NonBlocking.html
 /// Recommended to be a power of 2.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
-/// A guard which triggers an associated [`NonBlocking`] writer to flush logs when dropped.
+/// A guard that flushes an associated [`NonBlocking`] of spans/events on drop.
 ///
-/// Writing to a [`NonBlocking`] writer will **not** immediately write a log line to the underlying
-/// output. Instead, the log line will be enqueued to be written by the logging worker thread. In
-/// addition, to improve throughput, the non-blocking writer flushes the underlying output
-/// periodically, rather than every time a line is written. This means that if the program
-/// terminates abruptly (such as by panicking, or by calling `std::process::exit`), some log lines
-/// may not be written.
+/// Writing to a [`NonBlocking`] writer will **not** immediately write a span or event to the underlying
+/// output. Instead, the span or event will be written by a dedicated logging thread at some later point.
+/// To increase throughput, the non-blocking writer will flush to the underlying output on 
+/// a periodic basis rather than every time a span or event is written. This means that if the program
+/// terminates abruptly (such as through an uncaught `panic` or a `std::process::exit`), some spans
+/// or events may not be written.
 ///
 /// [`NonBlocking`]: ./struct.NonBlocking.html
-/// Since logs recorded near a crash are often necessary for diagnosing the failure, this type
-/// provides a mechanism to ensure that all buffered logs are written to the output, and that the
-/// output is flushed prior to terminating. In order for this to work, this guard should generally
-/// be held in the `main` function (or whatever the outermost scope of the program is). This will
-/// ensure that it is dropped when unwinding, or when `main` returns.
+/// Since spans/events and events recorded near a crash are often necessary for diagnosing the failure, 
+/// `WorkerGuard` provides a mechanism to ensure that _all_ buffered logs are flushed to their output.
+/// `WorkerGuard` should be assigned in the `main` function or whatever the entrypoint of the program is.
+/// This will ensure that the guard will be dropped during an unwinding or when `main` exits
+/// successfully.
 #[must_use]
 #[derive(Debug)]
 pub struct WorkerGuard {
@@ -42,15 +43,15 @@ pub struct WorkerGuard {
 
 /// A non-blocking writer.
 ///
-/// Writing to an output, such as `std::io::stdout` or a file, is typically a blocking operation.
-/// This means that a `Subscriber` where events are logged as they occur will block any threads
-/// emitting events until the events have been logged. This type provides a way to move logging
-/// out of an application's data path by sending log messages to a dedicated worker thread. Any
-/// logs written to a `NonBlocking` writer will be forwarded to a corresponding worker to be output.
+/// While the line between "blocking" and "non-blocking" IO is fuzzy, writing to a file is typically 
+/// to be a _blocking_ operation. For an application whose `Subscriber` writes spans and events
+/// as they are emitted, an application might find the latency profile to be unacceptable.
+/// `NonBlocking` moves the writing out of an application's data path by sending spans and events
+/// to a dedicated logging thread.
 ///
-/// This struct implements the [`MakeWriter` trait][make_writer] from the `tracing-subscriber`
-/// crate, and can be used with the [`tracing_subscriber::fmt`][fmt] module, or with any other
-/// subscriber implementation that uses the `MakeWriter` interface.
+/// This struct implements [`MakeWriter`][make_writer] from the `tracing-subscriber`
+/// crate. Therefore, it can be used with the [`tracing_subscriber::fmt`][fmt] module
+/// or with any other subscriber/layer implementation that uses the `MakeWriter` trait.
 ///
 /// [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 /// [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
@@ -101,7 +102,7 @@ impl NonBlocking {
     }
 }
 
-/// Builder for constructing [`NonBlocking`][non-blocking]
+/// A builder for [`NonBlocking`][non-blocking].
 ///
 /// [non-blocking]: ./struct.NonBlocking.html
 #[derive(Debug)]
