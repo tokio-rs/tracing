@@ -23,13 +23,13 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 ///
 /// Writing to a [`NonBlocking`] writer will **not** immediately write a span or event to the underlying
 /// output. Instead, the span or event will be written by a dedicated logging thread at some later point.
-/// To increase throughput, the non-blocking writer will flush to the underlying output on 
+/// To increase throughput, the non-blocking writer will flush to the underlying output on
 /// a periodic basis rather than every time a span or event is written. This means that if the program
 /// terminates abruptly (such as through an uncaught `panic` or a `std::process::exit`), some spans
 /// or events may not be written.
 ///
 /// [`NonBlocking`]: ./struct.NonBlocking.html
-/// Since spans/events and events recorded near a crash are often necessary for diagnosing the failure, 
+/// Since spans/events and events recorded near a crash are often necessary for diagnosing the failure,
 /// `WorkerGuard` provides a mechanism to ensure that _all_ buffered logs are flushed to their output.
 /// `WorkerGuard` should be assigned in the `main` function or whatever the entrypoint of the program is.
 /// This will ensure that the guard will be dropped during an unwinding or when `main` exits
@@ -43,7 +43,7 @@ pub struct WorkerGuard {
 
 /// A non-blocking writer.
 ///
-/// While the line between "blocking" and "non-blocking" IO is fuzzy, writing to a file is typically 
+/// While the line between "blocking" and "non-blocking" IO is fuzzy, writing to a file is typically
 /// to be a _blocking_ operation. For an application whose `Subscriber` writes spans and events
 /// as they are emitted, an application might find the latency profile to be unacceptable.
 /// `NonBlocking` moves the writing out of an application's data path by sending spans and events

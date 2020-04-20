@@ -32,7 +32,7 @@ mod worker;
 /// ```
 /// [builder]: non_blocking/struct.NonBlockingBuilder.html#method.default
 ///
-/// <br/> This function returns a tuple of `NonBlocking` and `WorkerGuard`. 
+/// <br/> This function returns a tuple of `NonBlocking` and `WorkerGuard`.
 /// `NonBlocking` implements [`MakeWriter`] which integrates with `tracing_subscriber`.
 /// `WorkerGuard` is a drop guard that is responsible for flushing any remaining logs when
 /// the program terminates.
