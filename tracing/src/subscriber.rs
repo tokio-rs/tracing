@@ -57,6 +57,7 @@ where
 /// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+#[must_use = "Dropping the guard unregisters the subscriber."]
 pub fn set_default<S>(subscriber: S) -> DefaultGuard
 where
     S: Subscriber + Send + Sync + 'static,
