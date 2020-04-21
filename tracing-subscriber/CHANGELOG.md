@@ -1,3 +1,13 @@
+# 0.2.5 (April 21, 2020)
+
+### Changed
+
+- **fmt**: Bump sharded-slab dependency (#679)
+
+### Fixed
+
+- **fmt**: remove trailing space in `ChronoUtc` `format_time` (#677)
+
 # 0.2.4 (April 6, 2020)
 
 This release includes several API ergonomics improvements, including shorthand
