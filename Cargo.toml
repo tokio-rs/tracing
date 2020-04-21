@@ -5,6 +5,7 @@ members = [
     "tracing-core",
     "tracing-attributes",
     "tracing-error",
+    "tracing-flame",
     "tracing-futures",
     "tracing-tower",
     "tracing-log",
