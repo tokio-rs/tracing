@@ -3,7 +3,7 @@
 ### Fixed
 
 - docs.rs build failures (#618)
-- Fixing spelling in documentation skins -> sinks (#643)
+- Spelling in documentation skins -> sinks (#643)
 
 # 0.2.3 (Feb 26, 2020)
 
