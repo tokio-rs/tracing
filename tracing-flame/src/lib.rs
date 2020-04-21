@@ -318,7 +318,6 @@ where
         let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
     }
 
-    // #[allow(clippy::needless_return)]
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         let panicking = std::thread::panicking();
         macro_rules! expect {

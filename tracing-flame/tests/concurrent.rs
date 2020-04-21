@@ -8,8 +8,8 @@ use tracing_subscriber::{prelude::*, registry::Registry};
 #[test]
 fn capture_supported() {
     let tmp_dir = TempDir::new("flamegraphs").unwrap();
-    let (flame_layer, _guard) =
-        FlameLayer::with_file(tmp_dir.path().join("tracing.folded")).unwrap();
+    let path = tmp_dir.path().join("tracing.folded");
+    let (flame_layer, flame_guard) = FlameLayer::with_file(&path).unwrap();
 
     let subscriber = Registry::default().with(flame_layer);
 
@@ -32,4 +32,9 @@ fn capture_supported() {
     sleep(Duration::from_millis(100));
 
     thread.join().unwrap();
+    flame_guard.flush().unwrap();
+
+    let traces = std::fs::read_to_string(&path).unwrap();
+    println!("{}", traces);
+    assert_eq!(5, traces.lines().count());
 }
