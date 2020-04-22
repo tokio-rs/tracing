@@ -44,7 +44,7 @@ pub struct WorkerGuard {
 /// A non-blocking writer.
 ///
 /// While the line between "blocking" and "non-blocking" IO is fuzzy, writing to a file is typically
-/// to be a _blocking_ operation. For an application whose `Subscriber` writes spans and events
+/// considered to be a _blocking_ operation. For an application whose `Subscriber` writes spans and events
 /// as they are emitted, an application might find the latency profile to be unacceptable.
 /// `NonBlocking` moves the writing out of an application's data path by sending spans and events
 /// to a dedicated logging thread.
