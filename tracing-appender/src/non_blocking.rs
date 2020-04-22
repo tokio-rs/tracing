@@ -36,8 +36,11 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// successfully.
 ///
 /// # Examples
+///
 /// ``` rust
+/// # #[clippy::allow(needless_doctest_main)]
 /// fn main() {
+/// # fn doc() {
 ///     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
 ///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
 ///     tracing::subscriber::with_default(subscriber.finish(), || {
@@ -45,6 +48,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// // Exiting the context of `main` will drop the `_guard` and any remaining logs should get flushed
+/// # }
 /// }
 /// ```
 #[must_use]
