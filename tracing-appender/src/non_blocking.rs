@@ -39,7 +39,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 ///
 /// ``` rust
 /// # #[clippy::allow(needless_doctest_main)]
-/// fn main() {
+/// fn main () {
 /// # fn doc() {
 ///     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
 ///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
