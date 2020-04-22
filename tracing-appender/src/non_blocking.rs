@@ -19,7 +19,7 @@ use tracing_subscriber::fmt::MakeWriter;
 /// Recommended to be a power of 2.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
-/// A guard that flushes an associated [`NonBlocking`] of spans/events on drop.
+/// A guard that flushes spans/events associated to a [`NonBlocking`] on a drop
 ///
 /// Writing to a [`NonBlocking`] writer will **not** immediately write a span or event to the underlying
 /// output. Instead, the span or event will be written by a dedicated logging thread at some later point.
@@ -34,6 +34,19 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// `WorkerGuard` should be assigned in the `main` function or whatever the entrypoint of the program is.
 /// This will ensure that the guard will be dropped during an unwinding or when `main` exits
 /// successfully.
+///
+/// # Examples
+/// ``` rust
+/// fn main() {
+///     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
+///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
+///     tracing::subscriber::with_default(subscriber.finish(), || {
+///         // Emit some tracing events within context of the non_blocking `_guard` and tracing subscriber
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
+/// // Exiting the context of `main` will drop the `_guard` and any remaining logs should get flushed
+/// }
+/// ```
 #[must_use]
 #[derive(Debug)]
 pub struct WorkerGuard {

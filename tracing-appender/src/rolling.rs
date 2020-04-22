@@ -7,7 +7,7 @@ use std::path::Path;
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
 /// `RollingFileAppender` implements [`std:io::Write` trait][write] and will block on write operations.
-/// It is intended to be used with [`NonBlocking`][non-blocking] to perform writes without
+/// It may be used with [`NonBlocking`][non-blocking] to perform writes without
 /// blocking the current thread.
 ///
 /// [write]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
@@ -18,7 +18,6 @@ use std::path::Path;
 /// ```rust
 /// # fn docs() {
 /// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
-/// let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 /// # }
 /// ```
 #[derive(Debug)]
@@ -48,8 +47,7 @@ impl RollingFileAppender {
     /// # Examples
     /// ```rust
     /// # fn docs() {
-    /// use tracing_appender::rolling::RollingFileAppender;
-    /// use tracing_appender::rolling::Rotation;
+    /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
     /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
     /// # }
     /// ```
