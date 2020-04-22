@@ -47,7 +47,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 ///         // Emit some tracing events within context of the non_blocking `_guard` and tracing subscriber
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
-/// // Exiting the context of `main` will drop the `_guard` and any remaining logs should get flushed
+///     // Exiting the context of `main` will drop the `_guard` and any remaining logs should get flushed
 /// # }
 /// }
 /// ```
