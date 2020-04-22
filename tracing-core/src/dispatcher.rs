@@ -231,6 +231,7 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+#[must_use = "Dropping the guard unregisters the dispatcher."]
 pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
