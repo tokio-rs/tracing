@@ -976,6 +976,25 @@ impl<'a, S: Subscriber> Context<'a, S> {
         });
         Scope(scope)
     }
+
+    /// Visits every span in the current context with a closure.
+    ///
+    /// The provided closure will be called first with the current span,
+    /// and then with that span's parent, and then that span's parent,
+    /// and so on until a root span is reached.
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+        F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
+    {
+        // visit all the current spans
+        for span in self.scope() {
+            f(&span)?;
+        }
+        Ok(())
+    }
 }
 
 impl<'a, S> Context<'a, S> {

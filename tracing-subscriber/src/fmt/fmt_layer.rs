@@ -542,15 +542,11 @@ where
     /// The provided closure will be called first with the current span,
     /// and then with that span's parent, and then that span's parent,
     /// and so on until a root span is reached.
-    pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
+    pub fn visit_spans<E, F>(&self, f: F) -> Result<(), E>
     where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
-        // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
-        }
-        Ok(())
+        self.ctx.visit_spans(f)
     }
 }
 
