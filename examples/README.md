@@ -27,6 +27,8 @@ This directory contains a collection of examples that demonstrate the use of the
     implementation.
   + `tower-load`: Demonstrates how dynamically reloadable filters can be used to
     debug a server under load in production.
+  + `journald`: Demonstrates how to use `fmt` and `journald` layers to output to
+    both the terminal and the system journal.
 - **tracing-futures**:
   + `spawny-thing`: Demonstrates the use of the `#[instrument]` attribute macro
     asynchronous functions.

@@ -307,6 +307,9 @@ The crates included as part of Tracing are:
 * [`tracing-flame`]; Provides a layer for generating flame graphs based on
   tracing span entry / exit events.
 
+* [`tracing-journald`]: Provides a layer for recording events to the
+  Linux `journald` service, preserving structured data.
+
 [`tracing`]: tracing
 [`tracing-core`]: tracing
 [`tracing-futures`]: tracing-futures
@@ -320,6 +323,7 @@ The crates included as part of Tracing are:
 [`tracing-appender`]: tracing-appender
 [`tracing-error`]: tracing-error
 [`tracing-flame`]: tracing-flame
+[`tracing-journald`]: tracing-journald
 
 [fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
