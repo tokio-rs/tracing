@@ -1,6 +1,3 @@
-use http;
-use tracing;
-
 macro_rules! make_req_fns {
     ($($name:ident, $level:expr),+) => {
         $(

@@ -18,7 +18,6 @@
 //! hello: "world", answer: 42
 //! ```
 #![deny(rust_2018_idioms)]
-use tracing_subscriber;
 
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;

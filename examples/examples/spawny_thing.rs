@@ -7,8 +7,6 @@
 /// ```
 /// cargo +nightly run --example spawny_thing
 /// ```
-use tokio;
-
 use futures::future::join_all;
 use std::error::Error;
 use tracing::{debug, info};
