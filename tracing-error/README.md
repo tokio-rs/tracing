@@ -46,15 +46,6 @@ The crate provides the following:
 
 *Compiler support: requires `rustc` 1.39+*
 
-## Feature Flags
-
-- `traced-error` - Enables the [`TracedError`] type and related traits
-    - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
-    provide an [`in_current_span()`] method for bundling errors with a
-    [`SpanTrace`].
-    - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
-    behind `dyn Error` trait objects.
-
 ## Usage
 
 `tracing-error` provides the [`SpanTrace`] type, which captures the current
@@ -175,6 +166,15 @@ fn main() {
     tracing::subscriber::set_global_default(subscriber);
 }
 ```
+
+## Feature Flags
+
+- `traced-error` - Enables the [`TracedError`] type and related traits
+    - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
+    provide an [`in_current_span()`] method for bundling errors with a
+    [`SpanTrace`].
+    - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
+    behind `dyn Error` trait objects.
 
 ## License
 
