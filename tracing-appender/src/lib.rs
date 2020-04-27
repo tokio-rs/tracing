@@ -1,10 +1,10 @@
-//! Writers for logging events/spans
+//! Writers for logging events and spans
 //!
 //! # Overview
 //!
 //! [`tracing`][tracing] is a framework for instrumenting Rust programs to collect
 //! structured, event-based diagnostic information. This crate provides the ability
-//! for `tracing` events and spans to be recorded in a non blocking manner by using a
+//! for `tracing` events and spans to be recorded in a non-blocking manner by using a
 //! dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender]
 //! that can be used with or without the non blocking writer.
 //!
@@ -12,10 +12,16 @@
 //! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage
+//!
+//! First, add this to your `Cargo.toml`:
+//! ```toml
+//! tracing-appender = "0.1"
+//! ```
+//!
 //! This crate can be used in a few ways to record spans/events:
-//! 1. Using a `RollingFileAppender` to perform writes to a log file. This will block on writes.
-//! 2. Using *any* `std::io::Write` implementation in a non-blocking way
-//! 2. Using a combination of `NonBlocking` and `RollingFileAppender` to allow writes to a log file
+//!  - Using a `RollingFileAppender` to perform writes to a log file. This will block on writes.
+//!  - Using *any* `std::io::Write` implementation in a non-blocking way
+//!  - Using a combination of `NonBlocking` and `RollingFileAppender` to allow writes to a log file
 //! without blocking.
 //!
 //! ## Rolling File Appender
@@ -28,18 +34,18 @@
 //! # }
 //! ```
 //! This creates an hourly rotating file appender which outputs to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
-//! <br/> [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
+//! [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
 //!
 //! It implements the `std::io::Write` trait. To use with a subscriber, it must be combined with a
 //! [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
 //!
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 //!
-//! The [`rolling module`][rolling]'s documentation provides more detail on how to use this file appender.
+//! The [`rolling` module][rolling]'s documentation provides more detail on how to use this file appender.
 //!
 //! [rolling]: ./rolling/index.html
 //!
-//! ## Non Blocking Writer
+//! ## Non-Blocking Writer
 //!
 //! ```rust
 //! # fn doc() {
@@ -49,19 +55,17 @@
 //! # }
 //! ```
 //!
-//! Alternatively, you can provide *any* type that implements `std::io::Write` to `tracing_appender::nonblocking`
+//! Alternatively, you can provide *any* type that implements `std::io::Write` to `tracing_appender::non_blocking`
 //!
 //! The [`non_blocking module`][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
 //! [non_blocking]: ./non_blocking/index.html
 //!
-//! ## Non Blocking and rolling file appender
+//! ## Non-Blocking Rolling File Appender
 //!
 //! ```rust
 //! # fn docs() {
-//! use tracing_appender::rolling::{RollingFileAppender, Rotation};
-//!
-//! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
+//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 //! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
 //!
@@ -131,12 +135,9 @@ pub mod non_blocking;
 ///
 /// The following helpers are available for creating a rolling file appender.
 ///
-/// - [`Rotation::hourly()`][hourly]:
-///     <br/> This will result in log file located at `some_directory/log_file_name_prefix.YYYY-MM-DD-HH`
-/// - [`Rotation::daily()`][daily]:
-///     <br/> This will result in log file located at `some_directory/log_file_name_prefix.YYYY-MM-DD`
-/// - [`Rotation::never()`][never]:
-///     <br/> This will result in log file located at `some_directory/log_file_name`
+/// - [`Rotation::hourly()`][hourly]: This will result in log file located at `some_directory/log_file_name_prefix.YYYY-MM-DD-HH`
+/// - [`Rotation::daily()`][daily]: This will result in log file located at `some_directory/log_file_name_prefix.YYYY-MM-DD`
+/// - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
 ///
 /// [hourly]: fn.hourly.html
 /// [daily]: fn.daily.html
@@ -156,7 +157,7 @@ mod worker;
 
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
-/// See [`non_blocking module`][non_blocking]'s for more details.
+/// See the [`non_blocking` module's docs][non_blocking]'s for more details.
 ///
 /// [non_blocking]: ./non_blocking/index.html
 ///
