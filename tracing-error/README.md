@@ -201,8 +201,3 @@ terms or conditions.
 [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 [`SpanTrace`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.SpanTrace.html
 [`ErrorLayer`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.ErrorLayer.html
-[span]: https://docs.rs/tracing/latest/tracing/span/index.html
-[event]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-[subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
-[`tracing`]: https://crates.io/tracing
-

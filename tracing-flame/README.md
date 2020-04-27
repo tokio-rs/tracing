@@ -28,8 +28,8 @@ on flamegraphs.
 
 This crate is meant to be used in a two step process:
 
-1. A textual representation of the spans that are entered and exited are
-  captured with [`FlameLayer`].
+1. Capture textual representation of the spans that are entered and exited
+   with [`FlameLayer`].
 2. Feed the textual representation into `inferno-flamegraph` to generate the
    flamegraph or flamechart.
 
@@ -78,7 +78,7 @@ Then, pass the file created by `FlameLayer` into `inferno-flamegraph`:
 # flamegraph
 cat tracing.folded | inferno-flamegraph > tracing-flamegraph.svg
 
-#flamechart
+# flamechart
 cat tracing.folded | inferno-flamegraph --flamechart > tracing-flamechart.svg
 ```
 
@@ -112,7 +112,7 @@ terms or conditions.
 [`FlameLayer`]: https://docs.rs/tracing-flame/*/tracing_flame/struct.FlameLayer.html
 [`FlushGuard`]: https://docs.rs/tracing-flame/*/tracing_flame/struct.FlushGuard.html
 [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
-[tracing]: https://github.com/tokio-rs/tracing/tree/master/tracing
+[`tracing`]: https://github.com/tokio-rs/tracing/tree/master/tracing
 [crates-badge]: https://img.shields.io/crates/v/tracing-flame.svg
 [crates-url]: https://crates.io/crates/tracing-flame
 [docs-badge]: https://docs.rs/tracing-flame/badge.svg
