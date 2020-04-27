@@ -781,11 +781,10 @@ extern crate alloc;
 
 #[macro_use]
 extern crate cfg_if;
-use tracing_core;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
-pub extern crate log;
+pub use log;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
@@ -793,22 +792,17 @@ pub extern crate log;
 #[doc(hidden)]
 use tracing_core::*;
 
-pub use self::{
-    dispatcher::Dispatch,
-    event::Event,
-    field::Value,
-    subscriber::Subscriber,
-    tracing_core::{event, Level, Metadata},
-};
+pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
 
 #[doc(hidden)]
-pub use self::{
-    span::Id,
-    tracing_core::{
-        callsite::{self, Callsite},
-        metadata,
-    },
+pub use self::span::Id;
+
+#[doc(hidden)]
+pub use tracing_core::{
+    callsite::{self, Callsite},
+    metadata,
 };
+pub use tracing_core::{event, Level, Metadata};
 
 #[doc(inline)]
 pub use self::span::Span;
