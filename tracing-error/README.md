@@ -101,13 +101,9 @@ traits, which can be used to wrap errors with a [`TracedError`] which
 bundles the inner error with a [`SpanTrace`].
 
 ```rust
-# use std::error::Error;
 use tracing_error::prelude::*;
 
-# fn fake_main() -> Result<(), Box<dyn Error>> {
 std::fs::read_to_string("myfile.txt").in_current_span()?;
-# Ok(())
-# }
 ```
 
 Once an error has been wrapped with with a [`TracedError`] the [`SpanTrace`]
