@@ -16,7 +16,6 @@
 //! [`hello_world`]: https://github.com/tokio-rs/tokio/blob/132e9f1da5965530b63554d7a1c59824c3de4e30/tokio/examples/hello_world.rs
 #![deny(rust_2018_idioms)]
 
-use tokio;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
