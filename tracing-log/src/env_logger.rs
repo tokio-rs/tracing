@@ -1,6 +1,4 @@
 //! Utilities for configuring the `env_logger` crate to emit `tracing` events.
-use env_logger;
-use log;
 
 /// Extension trait to configure an `env_logger::Builder` to emit traces.
 pub trait BuilderExt: crate::sealed::Sealed {
