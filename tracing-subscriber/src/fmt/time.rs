@@ -1,8 +1,4 @@
 //! Formatters for event timestamps.
-
-#[cfg(feature = "chrono")]
-use chrono;
-
 #[cfg(feature = "ansi")]
 use ansi_term::Style;
 
