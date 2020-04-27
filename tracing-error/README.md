@@ -48,7 +48,7 @@ The crate provides the following:
 
 ## Feature Flags
 
-- `traced-error` - Enables the [`TracedError`] type and related Traits
+- `traced-error` - Enables the [`TracedError`] type and related traits
     - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
     provide an [`in_current_span()`] method for bundling errors with a
     [`SpanTrace`].
