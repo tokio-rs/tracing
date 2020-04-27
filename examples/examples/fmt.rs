@@ -1,6 +1,5 @@
 #![deny(rust_2018_idioms)]
 use tracing::{info, Level};
-use tracing_subscriber;
 
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;

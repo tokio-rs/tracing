@@ -24,7 +24,6 @@
 #![warn(rust_2018_idioms)]
 
 use futures::future::{FutureExt, TryFutureExt};
-use tokio;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
