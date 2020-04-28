@@ -60,8 +60,25 @@ The [rolling] module's documentation provides more detail on how to use this fil
 ## Non-Blocking Writer
 The example below demonstrates the construction of a `non_blocking` writer with `std::io::stdout()`, which implements [`MakeWriter`][[make_writer].
 ```rust
+use std::io::Error;
+
+struct TestWriter;
+
+impl std::io::Write for TestWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let buf_len = buf.len();
+    
+        println!("{:?}", buf);
+        Ok(buf_len)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 fn main() {
-    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
+    let (non_blocking, _guard) = tracing_appender::non_blocking(TestWriter);
     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
     tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
 }
