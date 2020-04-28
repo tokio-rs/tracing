@@ -401,7 +401,8 @@ mod test {
 
         let mut try_rcv_result = rx.try_recv();
 
-        while validate_try_recv("Hello", &try_rcv_result) {
+        while let Ok(event_str) = try_recv_result {
+            assert!(event_str.contains("hello"));
             hello_count += 1;
             try_rcv_result = rx.try_recv();
         }
