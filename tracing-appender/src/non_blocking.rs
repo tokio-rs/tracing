@@ -47,13 +47,15 @@
 //! # }
 //! ```
 use crate::worker::Worker;
+use crate::Msg;
 use crossbeam_channel::{bounded, Sender};
 use std::io;
 use std::io::Write;
 use std::sync::atomic::Ordering;
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::Duration;
 use tracing_subscriber::fmt::MakeWriter;
 
 /// The default maximum number of buffered log lines.
@@ -103,7 +105,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 #[derive(Debug)]
 pub struct WorkerGuard {
     guard: Option<JoinHandle<()>>,
-    shutdown_signal: Arc<AtomicBool>,
+    sender: Sender<Msg>,
 }
 
 /// A non-blocking writer.
@@ -123,7 +125,7 @@ pub struct WorkerGuard {
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: Arc<AtomicU64>,
-    channel: Sender<Vec<u8>>,
+    channel: Sender<Msg>,
     is_lossy: bool,
 }
 
@@ -145,10 +147,9 @@ impl NonBlocking {
         is_lossy: bool,
     ) -> (NonBlocking, WorkerGuard) {
         let (sender, receiver) = bounded(buffered_lines_limit);
-        let shutdown_signal = Arc::new(AtomicBool::new(false));
 
-        let worker = Worker::new(receiver, writer, shutdown_signal.clone());
-        let worker_guard = WorkerGuard::new(worker.worker_thread(), shutdown_signal);
+        let worker = Worker::new(receiver, writer);
+        let worker_guard = WorkerGuard::new(worker.worker_thread(), sender.clone());
 
         (
             Self {
@@ -213,11 +214,11 @@ impl std::io::Write for NonBlocking {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let buf_size = buf.len();
         if self.is_lossy {
-            if self.channel.try_send(buf.to_vec()).is_err() {
+            if self.channel.try_send(Msg::Line(buf.to_vec())).is_err() {
                 self.error_counter.fetch_add(1, Ordering::Relaxed);
             }
         } else {
-            return match self.channel.send(buf.to_vec()) {
+            return match self.channel.send(Msg::Line(buf.to_vec())) {
                 Ok(_) => Ok(buf_size),
                 Err(_) => Err(io::Error::from(io::ErrorKind::Other)),
             };
@@ -244,27 +245,25 @@ impl MakeWriter for NonBlocking {
 }
 
 impl WorkerGuard {
-    fn new(handle: JoinHandle<()>, shutdown_signal: Arc<AtomicBool>) -> Self {
+    fn new(handle: JoinHandle<()>, sender: Sender<Msg>) -> Self {
         WorkerGuard {
             guard: Some(handle),
-            shutdown_signal,
-        }
-    }
-
-    fn stop(&mut self) -> std::thread::Result<()> {
-        match self.guard.take() {
-            Some(handle) => handle.join(),
-            None => Ok(()),
+            sender,
         }
     }
 }
 
 impl Drop for WorkerGuard {
     fn drop(&mut self) {
-        self.shutdown_signal.store(true, Ordering::Relaxed);
-        match self.stop() {
+        match self
+            .sender
+            .send_timeout(Msg::Shutdown, Duration::from_millis(100))
+        {
             Ok(_) => (),
-            Err(e) => println!("Failed to join worker thread. Error: {:?}", e),
+            Err(e) => println!(
+                "Failed to send shutdown signal to logging worker. Error: {:?}",
+                e
+            ),
         }
     }
 }
