@@ -26,7 +26,7 @@ Writers for logging events and spans
 
 ## Overview
 
-structured, event-based diagnostic information. `tracing-appender` allows
+[`tracing`] is a framework for structured, event-based diagnostic information. `tracing-appender` allows
 events and spans to be recorded in a non-blocking manner through a dedicated logging thread. 
 It also provides a [`RollingFileAppender`] that can be used with _or_ without the non-blocking writer.
 
@@ -39,8 +39,8 @@ tracing-appender = "0.1"
 
 This crate can be used in a few ways to record spans/events:
  - Using a [`RollingFileAppender`] to write to a log file. This is a blocking operation.
- - Using *any* type implementing `std::io::Write` in a non-blocking fashion.
- - Using [`NonBlocking`] and [`RollingFileAppender`] together to write to write to log files in a non-blocking fashion.
+ - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
+ - Using [`NonBlocking`][non_blocking] and [`RollingFileAppender`] together to write to write to log files in a non-blocking fashion.
 
 ## Rolling File Appender
 
@@ -52,8 +52,7 @@ fn main(){
 This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
 [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
 
-The file appender implements `std::io::Write`. To be used with `tracing_subscriber::FmtSubscriber`, it must be combined with a [`MakeWriter`] implementation to be able to record tracing spans/event.
-
+The file appender implements [`std::io::Write`][write]. To be used with `tracing_subscriber::FmtSubscriber`, it must be combined with a [`MakeWriter`] implementation to be able to record tracing spans/event.
 
 The [rolling] module's documentation provides more detail on how to use this file appender.
 

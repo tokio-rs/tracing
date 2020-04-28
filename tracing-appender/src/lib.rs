@@ -2,26 +2,25 @@
 //!
 //! # Overview
 //!
-//! [`tracing`][tracing] is a framework for instrumenting Rust programs to collect
-//! structured, event-based diagnostic information. This crate provides the ability
-//! for `tracing` events and spans to be recorded in a non-blocking manner by using a
-//! dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender]
-//! that can be used with or without the non-blocking writer.
+//! [`tracing`][tracing] is a framework for structured, event-based diagnostic information.
+//! `tracing-appender` allows events and spans to be recorded in a non-blocking manner through
+//! a dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] that can
+//! be used with _or_ without the non-blocking writer.
 //!
 //! [file_appender]: ./rolling/struct.RollingFileAppender.html
 //! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage
 //!
-//! First, add this to your `Cargo.toml`:
+//! Add the following to your `Cargo.toml`:
 //! ```toml
 //! tracing-appender = "0.1"
 //! ```
 //!
 //! This crate can be used in a few ways to record spans/events:
-//!  - Using a `RollingFileAppender` to perform writes to a log file. This will block on writes.
-//!  - Using *any* `std::io::Write` implementation in a non-blocking way
-//!  - Using a combination of `NonBlocking` and `RollingFileAppender` to allow writes to a log file
+//!  - Using a [`RollingFileAppender`][rolling_struct] to perform writes to a log file. This will block on writes.
+//!  - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
+//!  - Using a combination of [`NonBlocking`][non_blocking] and [`RollingFileAppender`][rolling_struct] to allow writes to a log file
 //! without blocking.
 //!
 //! ## Rolling File Appender
@@ -31,19 +30,18 @@
 //! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
 //! # }
 //! ```
-//! This creates an hourly rotating file appender which outputs to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
+//! This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
 //! [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
 //!
-//! It implements the `std::io::Write` trait. To use with a subscriber, it must be combined with a
-//! [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
-//!
-//! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+//! The file appender implements [`std::io::Write`][write]. To be used with `tracing_subscriber::FmtSubscriber`,
+//! it must be combined with a [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
 //!
 //! The [`rolling` module][rolling]'s documentation provides more detail on how to use this file appender.
 //!
-//! [rolling]: ./rolling/index.html
-//!
 //! ## Non-Blocking Writer
+//!
+//! The example below demonstrates the construction of a `non_blocking` writer with `std::io::stdout()`,
+//! which implements [`MakeWriter`][make_writer].
 //!
 //! ```rust
 //! # fn doc() {
@@ -52,18 +50,29 @@
 //! tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
 //! # }
 //! ```
-//! **Note:** `_guard` is a [`WorkerGuard`][guard] which is returned by `tracing_appender::non_blocking`
+//! **Note:** `_guard` is a [`WorkerGuard`][guard] which is returned by [`tracing_appender::non_blocking`][non_blocking]
 //! to ensure buffered logs are flushed to their output in the case of abrupt terminations of a process.
 //! See [`WorkerGuard` module][guard] for more details.
 //!
-//! Alternatively, you can provide *any* type that implements [`std::io::Write`][write] to
-//! [`tracing_appender::non_blocking`][non_blocking]
+//! The example below demonstrates the construction of a [`tracing_appender::non_blocking`][non_blocking]
+//! writer constructed with a [`std::io::Write`][write]:
+//!
+//! ```rust
+//! # fn doc() {
+//! let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::Stdout);
+//! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
+//! tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
+//! # }
+//! ```
 //!
 //! The [`non_blocking module`][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
 //! [non_blocking]: ./non_blocking/index.html
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
 //! [guard]: ./non_blocking/struct.WorkerGuard.html
+//! [rolling]: ./rolling/index.html
+//! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+//! [rolling_struct]: ./rolling/struct.RollingFileAppender.html
 //!
 //! ## Non-Blocking Rolling File Appender
 //!
