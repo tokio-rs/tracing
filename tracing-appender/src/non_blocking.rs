@@ -311,7 +311,7 @@ mod test {
         let error_count = non_blocking.error_counter();
 
         non_blocking.write_all(b"Hello").expect("Failed to write");
-        assert_eq!(0, error_count.load(Ordering::Relaxed));
+        assert_eq!(0, error_count.load(Ordering::Acquire));
 
         let handle = thread::spawn(move || {
             non_blocking.write_all(b", World").expect("Failed to write");
@@ -320,7 +320,7 @@ mod test {
         // Sleep a little to ensure previously spawned thread get's blocked on write.
         thread::sleep(Duration::from_millis(100));
         // We should not drop logs when blocked.
-        assert_eq!(0, error_count.load(Ordering::Relaxed));
+        assert_eq!(0, error_count.load(Ordering::Acquire));
 
         // Read the first message to unblock sender.
         let mut line = rx.recv().unwrap();
@@ -346,13 +346,13 @@ mod test {
         let error_count = non_blocking.error_counter();
 
         non_blocking.write_all(b"Hello").expect("Failed to write");
-        assert_eq!(0, error_count.load(Ordering::Relaxed));
+        assert_eq!(0, error_count.load(Ordering::Acquire));
 
         non_blocking.write_all(b", World").expect("Failed to write");
-        assert_eq!(1, error_count.load(Ordering::Relaxed));
+        assert_eq!(1, error_count.load(Ordering::Acquire));
 
         non_blocking.write_all(b".").expect("Failed to write");
-        assert_eq!(2, error_count.load(Ordering::Relaxed));
+        assert_eq!(2, error_count.load(Ordering::Acquire));
 
         // Allow a line to be written
         let line = rx.recv().unwrap();
@@ -362,7 +362,7 @@ mod test {
         non_blocking
             .write_all(b"Universe")
             .expect("Failed to write");
-        assert_eq!(2, error_count.load(Ordering::Relaxed));
+        assert_eq!(2, error_count.load(Ordering::Acquire));
 
         let line = rx.recv().unwrap();
         assert_eq!(line, "Universe");
@@ -408,7 +408,7 @@ mod test {
         }
 
         assert_eq!(10, hello_count);
-        assert_eq!(0, error_count.load(Ordering::Relaxed));
+        assert_eq!(0, error_count.load(Ordering::Acquire));
 
         // There is a risk of this test hanging if a drop isn't explicitly made on non_blocking
         // when it is lossy
