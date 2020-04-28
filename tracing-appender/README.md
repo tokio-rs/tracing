@@ -26,24 +26,21 @@ Writers for logging events and spans
 
 ## Overview
 
-[`tracing`] is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information. This crate provides the ability
-for [`tracing`] events and spans to be recorded in a non-blocking manner by using a
-dedicated logging thread. It also provides a [`RollingFileAppender`]
-that can be used with or without the non-blocking writer.
+structured, event-based diagnostic information. `tracing-appender` allows
+events and spans to be recorded in a non-blocking manner through a dedicated logging thread. 
+It also provides a [`RollingFileAppender`] that can be used with _or_ without the non-blocking writer.
 
 ## Usage
 
-First, add this to your `Cargo.toml`:
+Add the following to your `Cargo.toml`:
 ```toml
 tracing-appender = "0.1"
 ```
 
 This crate can be used in a few ways to record spans/events:
- - Using a [`RollingFileAppender`] to perform writes to a log file. This will block on writes.
- - Using *any* `std::io::Write` implementation in a non-blocking way
- - Using a combination of [`NonBlocking`] and [`RollingFileAppender`] to allow writes to a log file
-without blocking.
+ - Using a [`RollingFileAppender`] to write to a log file. This is a blocking operation.
+ - Using *any* type implementing `std::io::Write` in a non-blocking fashion.
+ - Using [`NonBlocking`] and [`RollingFileAppender`] together to write to write to log files in a non-blocking fashion.
 
 ## Rolling File Appender
 
@@ -52,19 +49,16 @@ fn main(){
     let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
 }
 ```
-This creates an hourly rotating file appender which outputs to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
+This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
 [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
 
-It implements the `std::io::Write` trait. To use with a subscriber, it must be combined with a
-[`MakeWriter`] implementation to be able to record tracing spans/event.
+The file appender implements `std::io::Write`. To be used with `tracing_subscriber::FmtSubscriber`, it must be combined with a [`MakeWriter`] implementation to be able to record tracing spans/event.
 
 
 The [rolling] module's documentation provides more detail on how to use this file appender.
 
-
-
 ## Non-Blocking Writer
-
+The example below demonstrates the construction of a `non_blocking` writer with `std::io::stdout()`, which implements `MakeWriter`.
 ```rust
 fn main() {
     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
@@ -76,8 +70,7 @@ fn main() {
 to ensure buffered logs are flushed to their output in the case of abrupt terminations of a process.
 See [`WorkerGuard`] module for more details.
 
-Alternatively, you can provide *any* type that implements [`std::io::Write`] to
-[`tracing_appender::non_blocking`]
+The example below demonstrates the construction of a [`tracing_appender::non_blocking`] writer constructed with a [`std::io::Write`]:
 
 The [non_blocking] module's documentation provides more detail on how to use `non_blocking`.
 
