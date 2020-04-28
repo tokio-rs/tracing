@@ -33,7 +33,7 @@
 //! This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
 //! [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
 //!
-//! The file appender implements [`std::io::Write`][write]. To be used with `tracing_subscriber::FmtSubscriber`,
+//! The file appender implements [`std::io::Write`][write]. To be used with [`tracing_subscriber::FmtSubscriber`][fmt_subscrier],
 //! it must be combined with a [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
 //!
 //! The [`rolling` module][rolling]'s documentation provides more detail on how to use this file appender.
@@ -73,6 +73,7 @@
 //! [rolling]: ./rolling/index.html
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 //! [rolling_struct]: ./rolling/struct.RollingFileAppender.html
+//! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //!
 //! ## Non-Blocking Rolling File Appender
 //!
