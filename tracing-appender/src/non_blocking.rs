@@ -48,7 +48,7 @@
 //! ```
 use crate::worker::Worker;
 use crate::Msg;
-use crossbeam_channel::{bounded, Sender};
+use crossbeam_channel::{bounded, SendTimeoutError, Sender};
 use std::io;
 use std::io::Write;
 use std::sync::atomic::AtomicU64;
@@ -259,8 +259,8 @@ impl Drop for WorkerGuard {
             .sender
             .send_timeout(Msg::Shutdown, Duration::from_millis(100))
         {
-            Ok(_) => (),
-            Err(e) => println!(
+            Ok(_) | Err(SendTimeoutError::Disconnected(_)) => (),
+            Err(SendTimeoutError::Timeout(e)) => println!(
                 "Failed to send shutdown signal to logging worker. Error: {:?}",
                 e
             ),
