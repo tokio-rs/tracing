@@ -286,7 +286,7 @@ The crates included as part of Tracing are:
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-* [`tracing-opentelemetry`]: provides a layer that connects spans from multiple
+* [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
   systems into a trace and emits them to [OpenTelemetry]-compatible distributed
   tracing systems for processing and visualization.
   ([crates.io][otel-crates]|[docs][otel-docs])

@@ -4,30 +4,28 @@
 //!
 //! [tracing]: https://github.com/tokio-rs/tracing
 //!
-//! ```rust,no_run
+//! ```
 //! use opentelemetry::{api::Provider, sdk};
 //! use tracing::{error, span};
 //! use tracing_opentelemetry::OpenTelemetryLayer;
 //! use tracing_subscriber::layer::SubscriberExt;
 //! use tracing_subscriber::Registry;
 //!
-//! fn main() {
-//!     // Create a new tracer
-//!     let tracer = sdk::Provider::default().get_tracer("service_name");
+//! // Create a new tracer
+//! let tracer = sdk::Provider::default().get_tracer("service_name");
 //!
-//!     // Create a new OpenTelemetry tracing layer
-//!     let telemetry = OpenTelemetryLayer::with_tracer(tracer);
+//! // Create a new OpenTelemetry tracing layer
+//! let telemetry = OpenTelemetryLayer::with_tracer(tracer);
 //!
-//!     let subscriber = Registry::default().with(telemetry);
+//! let subscriber = Registry::default().with(telemetry);
 //!
-//!     // Trace executed code
-//!     tracing::subscriber::with_default(subscriber, || {
-//!         let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
-//!         let _enter = root.enter();
+//! // Trace executed code
+//! tracing::subscriber::with_default(subscriber, || {
+//!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
+//!     let _enter = root.enter();
 //!
-//!         error!("This event will be logged in the root span.");
-//!     });
-//! }
+//!     error!("This event will be logged in the root span.");
+//! });
 //! ```
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
