@@ -1,48 +1,129 @@
+//! Writers for logging events and spans
+//!
+//! # Overview
+//!
+//! [`tracing`][tracing] is a framework for structured, event-based diagnostic information.
+//! `tracing-appender` allows events and spans to be recorded in a non-blocking manner through
+//! a dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] that can
+//! be used with _or_ without the non-blocking writer.
+//!
+//! [file_appender]: ./rolling/struct.RollingFileAppender.html
+//! [tracing]: https://docs.rs/tracing/
+//!
+//! # Usage
+//!
+//! Add the following to your `Cargo.toml`:
+//! ```toml
+//! tracing-appender = "0.1"
+//! ```
+//!
+//! This crate can be used in a few ways to record spans/events:
+//!  - Using a [`RollingFileAppender`][rolling_struct] to perform writes to a log file. This will block on writes.
+//!  - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
+//!  - Using a combination of [`NonBlocking`][non_blocking] and [`RollingFileAppender`][rolling_struct] to allow writes to a log file
+//! without blocking.
+//!
+//! ## Rolling File Appender
+//!
+//! ```rust
+//! # fn docs() {
+//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+//! # }
+//! ```
+//! This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
+//! [`Rotation::DAILY`] and [`Rotation::NEVER`] are the other available options.
+//!
+//! The file appender implements [`std::io::Write`][write]. To be used with [`tracing_subscriber::FmtSubscriber`][fmt_subscrier],
+//! it must be combined with a [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
+//!
+//! The [`rolling` module][rolling]'s documentation provides more detail on how to use this file appender.
+//!
+//! ## Non-Blocking Writer
+//!
+//! The example below demonstrates the construction of a `non_blocking` writer with `std::io::stdout()`,
+//! which implements [`MakeWriter`][make_writer].
+//!
+//! ```rust
+//! # fn doc() {
+//! let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
+//! tracing_subscriber::fmt()
+//!     .with_writer(non_blocking)
+//!     .init();
+//! # }
+//! ```
+//! **Note:** `_guard` is a [`WorkerGuard`][guard] which is returned by [`tracing_appender::non_blocking`][non_blocking]
+//! to ensure buffered logs are flushed to their output in the case of abrupt terminations of a process.
+//! See [`WorkerGuard` module][guard] for more details.
+//!
+//! The example below demonstrates the construction of a [`tracing_appender::non_blocking`][non_blocking]
+//! writer constructed with a [`std::io::Write`][write]:
+//!
+//! ```rust
+//! use std::io::Error;
+//!
+//! struct TestWriter;
+//!
+//! impl std::io::Write for TestWriter {
+//!     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+//!         let buf_len = buf.len();
+//!         println!("{:?}", buf);
+//!         Ok(buf_len)
+//!     }
+//!
+//!     fn flush(&mut self) -> std::io::Result<()> {
+//!         Ok(())
+//!     }
+//! }
+//!
+//! # fn doc() {
+//! let (non_blocking, _guard) = tracing_appender::non_blocking(TestWriter);
+//! tracing_subscriber::fmt()
+//!     .with_writer(non_blocking)
+//!     .init();
+//! # }
+//! ```
+//!
+//! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
+//!
+//! [non_blocking]: ./non_blocking/index.html
+//! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [guard]: ./non_blocking/struct.WorkerGuard.html
+//! [rolling]: ./rolling/index.html
+//! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+//! [rolling_struct]: ./rolling/struct.RollingFileAppender.html
+//! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
+//!
+//! ## Non-Blocking Rolling File Appender
+//!
+//! ```rust
+//! # fn docs() {
+//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+//! let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+//! tracing_subscriber::fmt()
+//!     .with_writer(non_blocking)
+//!     .init();
+//! # }
+//! ```
 use crate::non_blocking::{NonBlocking, WorkerGuard};
 
 use std::io::Write;
 
 mod inner;
-/// A non-blocking, off-thread writer.
+
 pub mod non_blocking;
-/// A rolling file appender.
+
 pub mod rolling;
+
 mod worker;
 
-/// Creates a non-blocking, off-thread writer.
+/// Convenience function for creating a non-blocking, off-thread writer.
 ///
-/// This spawns a dedicated worker thread which is responsible for writing log
-/// lines to the provided writer. When a line is written using the returned
-/// `NonBlocking` struct's `make_writer` method, it will be enqueued to be
-/// written by the worker thread.
+/// See the [`non_blocking` module's docs][non_blocking]'s for more details.
 ///
-/// The queue has a fixed capacity, and if it becomes full, any logs written
-/// to it will be dropped until capacity is once again available. This may
-/// occur if logs are consistently produced faster than the worker thread can
-/// output them. The queue capacity and behavior when full (i.e., whether to
-/// drop logs or to exert backpressure to slow down senders) can be configured
-/// using [`NonBlockingBuilder::default()`][builder].
-/// This function returns the default configuration. It is equivalent to:
-///
-/// ```rust
-/// # use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
-/// # fn doc() -> (NonBlocking, WorkerGuard) {
-/// tracing_appender::non_blocking::NonBlocking::new(std::io::stdout())
-/// # }
-/// ```
-/// [builder]: non_blocking/struct.NonBlockingBuilder.html#method.default
-///
-/// <br/> This function returns a tuple of `NonBlocking` and `WorkerGuard`.
-/// `NonBlocking` implements [`MakeWriter`] which integrates with `tracing_subscriber`.
-/// `WorkerGuard` is a drop guard that is responsible for flushing any remaining logs when
-/// the program terminates.
-///
-/// Note that the `WorkerGuard` returned by `non_blocking` _must_ be assigned to a binding that
-/// is not `_`, as `_` will result in the `WorkerGuard` being dropped immediately.
-/// Unintentional drops of `WorkerGuard` remove the guarantee that logs will be flushed
-/// during a program's termination, in a panic or otherwise.
+/// [non_blocking]: ./non_blocking/index.html
 ///
 /// # Examples
+///
 /// ``` rust
 /// # fn docs() {
 /// let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());

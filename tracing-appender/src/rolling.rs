@@ -1,3 +1,32 @@
+//! A rolling file appender.
+//!
+//! Creates a new log file at a fixed frequency as defined by [`Rotation`](struct.Rotation.html).
+//! Logs will be written to this file for the duration of the period and will automatically roll over
+//! to the newly created log file once the time period has elapsed.
+//!
+//! The log file is created at the specified directory and file name prefix which *may* be appended with
+//! the date and time.
+//!
+//! The following helpers are available for creating a rolling file appender.
+//!
+//! - [`Rotation::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.YYYY-MM-DD-HH`
+//! will be created hourly
+//! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.YYYY-MM-DD`
+//! will be created daily
+//! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
+//!
+//! [hourly]: fn.hourly.html
+//! [daily]: fn.daily.html
+//! [never]: fn.never.html
+//!
+//! # Examples
+//!
+//! ```rust
+//! # fn docs() {
+//! use tracing_appender::rolling::{RollingFileAppender, Rotation};
+//! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
+//! # }
+//! ```
 use crate::inner::InnerAppender;
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
