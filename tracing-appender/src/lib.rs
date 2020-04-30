@@ -46,8 +46,9 @@
 //! ```rust
 //! # fn doc() {
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
-//! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-//! tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
+//! tracing_subscriber::fmt()
+//!     .with_writer(non_blocking)
+//!     .init();
 //! # }
 //! ```
 //! **Note:** `_guard` is a [`WorkerGuard`][guard] which is returned by [`tracing_appender::non_blocking`][non_blocking]
@@ -76,12 +77,13 @@
 //!
 //! # fn doc() {
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(TestWriter);
-//! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-//! tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
+//! tracing_subscriber::fmt()
+//!     .with_writer(non_blocking)
+//!     .init();
 //! # }
 //! ```
 //!
-//! The [`non_blocking module`][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
+//! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
 //! [non_blocking]: ./non_blocking/index.html
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
@@ -97,9 +99,9 @@
 //! # fn docs() {
 //! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-//! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-//!
-//! tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
+//! tracing_subscriber::fmt()
+//!     .with_writer(non_blocking)
+//!     .init();
 //! # }
 //! ```
 use crate::non_blocking::{NonBlocking, WorkerGuard};

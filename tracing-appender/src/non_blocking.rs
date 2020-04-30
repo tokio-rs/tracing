@@ -16,7 +16,7 @@
 //! ```rust
 //! # use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 //! # fn doc() -> (NonBlocking, WorkerGuard) {
-//! tracing_appender::non_blocking::NonBlocking::new(std::io::stdout())
+//! tracing_appender::non_blocking(std::io::stdout())
 //! # }
 //! ```
 //! [builder]: ./struct.NonBlockingBuilder.html#method.default

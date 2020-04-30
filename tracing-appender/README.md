@@ -16,9 +16,9 @@ Writers for logging events and spans
 [docs-badge]: https://docs.rs/tracing-appender/badge.svg
 [docs-url]: https://docs.rs/tracing-appender/0.1.0
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing-appender
+[docs-master-url]: https://tracing.rs/tracing-appender
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[mit-url]: LICENSE
+[mit-url]: ../LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
 [actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
@@ -91,8 +91,9 @@ The example below demonstrates the construction of a [`tracing_appender::non_blo
 ```rust
 fn main() {
     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::Stdout);
-    let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-    tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
+    tracing_subscriber::fmt()
+        .with_writer(non_blocking)
+        .init();
 }
 ```
 
@@ -104,9 +105,9 @@ The [non_blocking] module's documentation provides more detail on how to use `no
 fn main() {
     let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-    let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-    
-    tracing::subscriber::set_global_default(subscriber.finish()).expect("Could not set global default");
+   tracing_subscriber::fmt()
+       .with_writer(non_blocking)
+       .init();
 }
 ```
 
