@@ -4,9 +4,9 @@
 [![Documentation](https://docs.rs/tracing-opentelemetry/badge.svg)](https://docs.rs/tracing-opentelemetry)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 
-An OpenTelemetry layer for the [tracing] library.
+An OpenTelemetry layer for the [`tracing`] library.
 
-[tracing]: https://github.com/tokio-rs/tracing
+[`tracing`]: https://github.com/tokio-rs/tracing
 
 ## Tracers
 
@@ -16,8 +16,7 @@ via [opentelemetry-zipkin].
 [opentelemetry-jaeger]: https://github.com/open-telemetry/opentelemetry-rust/tree/master/opentelemetry-jaeger
 [opentelemetry-zipkin]: https://github.com/open-telemetry/opentelemetry-rust/tree/master/opentelemetry-zipkin
 
-Examples
---------
+## Examples
 
 ### Basic Usage
 
@@ -62,7 +61,6 @@ $ firefox http://localhost:16686/
 
 ![Jaeger UI](trace.png)
 
-References
-----------
+## References
 
 - [OpenTelemetry](https://opentelemetry.io/)
