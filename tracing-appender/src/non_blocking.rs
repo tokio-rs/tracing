@@ -365,10 +365,6 @@ mod test {
 
         let line = rx.recv().unwrap();
         assert_eq!(line, "Universe");
-
-        // There is a race condition where the dedicated logging thread will block on channel receive..
-        // Must explicitly drop non_blocking to prevent that.
-        drop(non_blocking);
     }
 
     #[test]
@@ -405,9 +401,5 @@ mod test {
 
         assert_eq!(10, hello_count);
         assert_eq!(0, error_count.load(Ordering::Acquire));
-
-        // There is a race condition where the dedicated logging thread will block on channel receive.
-        // Must explicitly drop non_blocking to prevent that.
-        drop(non_blocking);
     }
 }
