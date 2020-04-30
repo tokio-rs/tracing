@@ -152,8 +152,9 @@ where
     ///
     /// // Use the tracing subscriber `Registry`, or any other subscriber
     /// // that impls `LookupSpan`
-    /// let _subscriber = Registry::default()
+    /// let subscriber = Registry::default()
     ///     .with(otel_layer);
+    /// # drop(subscriber);
     /// ```
     pub fn with_tracer(tracer: T) -> Self {
         OpenTelemetryLayer {
