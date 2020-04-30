@@ -82,8 +82,8 @@ fn main() {
 # Run a supported collector like jaeger in the background
 $ docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
 
-# Run report to produce example spans
-$ cargo run --example report
+# Run example to produce spans (from parent examples directory)
+$ cargo run --example opentelemetry
 
 # View spans (see the image below)
 $ firefox http://localhost:16686/

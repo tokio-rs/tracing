@@ -1,5 +1,5 @@
 use opentelemetry::{api::Provider, global, sdk};
-use std::{thread, time::Duration};
+use std::{io, thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
 use tracing_opentelemetry::OpenTelemetryLayer;
@@ -17,14 +17,15 @@ fn expensive_work() -> &'static str {
     "success"
 }
 
-fn init_tracer() -> thrift::Result<()> {
+fn init_tracer() -> io::Result<()> {
     let exporter = opentelemetry_jaeger::Exporter::builder()
         .with_agent_endpoint("127.0.0.1:6831".parse().unwrap())
         .with_process(opentelemetry_jaeger::Process {
             service_name: "report_example".to_string(),
             tags: Vec::new(),
         })
-        .init()?;
+        .init()
+        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
     let provider = sdk::Provider::builder()
         .with_simple_exporter(exporter)
         .with_config(sdk::Config {
@@ -37,7 +38,7 @@ fn init_tracer() -> thrift::Result<()> {
     Ok(())
 }
 
-fn main() -> thrift::Result<()> {
+fn main() -> io::Result<()> {
     init_tracer()?;
     let tracer = global::trace_provider().get_tracer("tracing");
     let opentelemetry = OpenTelemetryLayer::with_tracer(tracer);
