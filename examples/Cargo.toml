@@ -20,6 +20,7 @@ tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = [
 tracing-attributes =  { path = "../tracing-attributes", version = "0.1.2"}
 tracing-log = { path = "../tracing-log", version = "0.1.1", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
+tracing-opentelemetry = { path = "../tracing-opentelemetry" }
 
 # serde example
 serde_json = "1.0"
@@ -50,3 +51,7 @@ inferno = "0.9.4"
 eyre = "0.3.5"
 indenter = "0.1.3"
 tempdir = "0.3.7"
+
+# opentelemetry example
+opentelemetry = "0.4"
+opentelemetry-jaeger = "0.3"
