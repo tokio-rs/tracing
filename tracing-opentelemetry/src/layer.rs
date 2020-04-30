@@ -9,8 +9,10 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
-/// OpenTelemetry layer for use in a project that uses [tracing].
+/// An [OpenTelemetry] propagation layer for use in a project that uses
+/// [tracing].
 ///
+/// [OpenTelemetry]: https://opentelemetry.io
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetryLayer<S, T: api::Tracer> {
     tracer: T,
@@ -60,7 +62,9 @@ pub(crate) fn build_context(builder: &mut api::SpanBuilder) -> api::SpanContext 
 struct SpanEventVisitor<'a>(&'a mut api::Event);
 
 impl<'a> field::Visit for SpanEventVisitor<'a> {
-    /// Record events on the underlying OpenTelemetry `Span`.
+    /// Record events on the underlying OpenTelemetry [`Span`].
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         if field.name() == "message" {
             self.0.name = format!("{:?}", value);
@@ -75,7 +79,9 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
 struct SpanAttributeVisitor<'a>(&'a mut api::SpanBuilder);
 
 impl<'a> field::Visit for SpanAttributeVisitor<'a> {
-    /// Set attributes on the underlying OpenTelemetry `Span`.
+    /// Set attributes on the underlying OpenTelemetry [`Span`].
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         let attribute = api::Key::new(field.name()).string(format!("{:?}", value));
         if let Some(attributes) = &mut self.0.attributes {
@@ -94,6 +100,10 @@ where
     /// Retrieve the parent OpenTelemetry [`SpanContext`] from the current
     /// tracing [`span`] through the [`Registry`]. This [`SpanContext`]
     /// links spans to their parent for proper hierarchical visualization.
+    ///
+    /// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
+    /// [`span`]: https://docs.rs/tracing/latest/tracing/struct.Span.html
+    /// [`Registry`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.Registry.html
     fn parent_context(
         &self,
         attrs: &Attributes<'_>,
@@ -117,8 +127,13 @@ where
         }
     }
 
-    /// Set the `OpenTelemetry` `Tracer` that this layer will use to produce
-    /// and track `Span`s.
+    /// Set the [`Tracer`] that this layer will use to produce and track
+    /// OpenTelemetry [`Span`]s.
+    ///
+    /// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    ///
+    /// # Examples
     ///
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, global, sdk};
@@ -188,8 +203,10 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     T: api::Tracer + 'static,
 {
-    /// Creates an `OpenTelemetry` `Span` for the corresponding `tracing` `Span`.
-    /// This will attempt to parse the parent context if possible from the given attributes.
+    /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`].
+    ///
+    /// [OpenTelemetry `Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    /// [tracing `Span`]: https://docs.rs/tracing/latest/tracing/struct.Span.html
     fn new_span(&self, attrs: &Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
@@ -211,7 +228,9 @@ where
         extensions.insert(builder);
     }
 
-    /// Record values for the given span.
+    /// Record OpenTelemetry [`attributes`] for the given values.
+    ///
+    /// [`attributes`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/struct.SpanBuilder.html#structfield.attributes
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
@@ -220,7 +239,14 @@ where
         }
     }
 
-    /// Record logs for the given event.
+    /// Records OpenTelemetry [`Event`] data on event.
+    ///
+    /// Note: an [`ERROR`]-level event will also set the OpenTelemetry span status code to
+    /// [`Unknown`], signaling that an error has occurred.
+    ///
+    /// [`Event`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/event/struct.Event.html
+    /// [`ERROR`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.ERROR
+    /// [`Unknown`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/enum.StatusCode.html#variant.Unknown
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         // Ignore events that are not in the context of a span
         if let Some(span_id) = ctx.current_span().id() {
@@ -253,7 +279,9 @@ where
         };
     }
 
-    /// Mark the `Span` as ended when it is closed.
+    /// Exports an OpenTelemetry [`Span`] on close.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();

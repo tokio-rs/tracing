@@ -1,11 +1,18 @@
 use crate::layer::{build_context, WithContext};
 use opentelemetry::api;
 
-/// `OpenTelemetrySpanExt` allows tracing spans to accept and return
-/// OpenTelemetry `SpanContext`s.
+/// Utility functions to allow tracing [`Span`]s to accept and return OpenTelemetry
+/// [`SpanContext`]s.
+///
+/// [`Span`]: https://docs.rs/tracing/latest/tracing/struct.Span.html
+/// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
 pub trait OpenTelemetrySpanExt {
-    /// Associates `self` with a given `OpenTelemetry` trace, using
-    /// the provided parent context.
+    /// Associates `self` with a given OpenTelemetry trace, using the provided
+    /// parent [`SpanContext`].
+    ///
+    /// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
+    ///
+    /// # Examples
     ///
     /// ```rust
     /// use opentelemetry::api::{self, HttpTextFormat};
@@ -33,7 +40,11 @@ pub trait OpenTelemetrySpanExt {
     /// ```
     fn set_parent(&self, span_context: api::SpanContext);
 
-    /// Extracts an `OpenTelemetry` context from `self`.
+    /// Extracts an OpenTelemetry [`SpanContext`] from `self`.
+    ///
+    /// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
+    ///
+    /// # Examples
     ///
     /// ```rust
     /// use opentelemetry::api;

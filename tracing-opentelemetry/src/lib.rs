@@ -1,8 +1,15 @@
 //! # Tracing OpenTelemetry
 //!
-//! An OpenTelemetry layer for the [tracing] library.
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
+//! structured, event-based diagnostic information. This crate provides a layer
+//! that connects spans from multiple systems into a trace and emits them to
+//! [OpenTelemetry]-compatible distributed tracing systems for processing and
+//! visualization.
 //!
-//! [tracing]: https://github.com/tokio-rs/tracing
+//! [OpenTelemetry]: https://opentelemetry.io
+//! [`tracing`]: https://github.com/tokio-rs/tracing
+//!
+//! ## Examples
 //!
 //! ```
 //! use opentelemetry::{api::Provider, sdk};
