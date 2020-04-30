@@ -1,0 +1,28 @@
+[package]
+name = "helloworld-tonic"
+version = "0.1.0"
+edition = "2018"
+
+[[bin]] # Bin to run the HelloWorld gRPC server
+name = "helloworld-server"
+path = "src/server.rs"
+
+[[bin]] # Bin to run the HelloWorld gRPC client
+name = "helloworld-client"
+path = "src/client.rs"
+
+[dependencies]
+http = "0.2"
+tonic = "0.1"
+prost = "0.6"
+tokio = { version = "0.2", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
+tracing-opentelemetry = "0.3"
+opentelemetry = { version = "0.4", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.3"
+
+[build-dependencies]
+tonic-build = "0.1"
+
+[workspace]
