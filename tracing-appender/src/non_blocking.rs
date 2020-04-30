@@ -272,7 +272,6 @@ impl Drop for WorkerGuard {
 mod test {
     use super::*;
     use std::sync::mpsc;
-    use std::sync::mpsc::TryRecvError;
     use std::thread;
     use std::time::Duration;
 
@@ -367,8 +366,8 @@ mod test {
         let line = rx.recv().unwrap();
         assert_eq!(line, "Universe");
 
-        // There is a risk of this test hanging if a drop isn't explicitly made on non_blocking
-        // when it is lossy
+        // There is a race condition where the dedicated logging thread will block on channel receive..
+        // Must explicitly drop non_blocking to prevent that.
         drop(non_blocking);
     }
 
@@ -399,30 +398,16 @@ mod test {
 
         let mut hello_count: u8 = 0;
 
-        let mut try_rcv_result = rx.try_recv();
-
-        while let Ok(event_str) = try_recv_result {
-            assert!(event_str.contains("hello"));
+        while let Ok(event_str) = rx.try_recv() {
+            assert!(event_str.contains("Hello"));
             hello_count += 1;
-            try_rcv_result = rx.try_recv();
         }
 
         assert_eq!(10, hello_count);
         assert_eq!(0, error_count.load(Ordering::Acquire));
 
-        // There is a risk of this test hanging if a drop isn't explicitly made on non_blocking
-        // when it is lossy
+        // There is a race condition where the dedicated logging thread will block on channel receive.
+        // Must explicitly drop non_blocking to prevent that.
         drop(non_blocking);
-    }
-
-    fn validate_try_recv(msg: &str, result: &Result<String, TryRecvError>) -> bool {
-        match result {
-            Ok(event_str) => {
-                assert!(event_str.contains(msg));
-                true
-            }
-            Err(TryRecvError::Empty) => false,
-            Err(TryRecvError::Disconnected) => false,
-        }
     }
 }
