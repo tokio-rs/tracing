@@ -1,9 +1,7 @@
-#[macro_use]
-extern crate tracing;
-
 use opentelemetry::api::{HttpTextFormat, Provider};
 use opentelemetry::{api, global};
 use std::collections::HashMap;
+use tracing::span;
 use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;

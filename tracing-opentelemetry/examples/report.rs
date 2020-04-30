@@ -1,8 +1,6 @@
-#[macro_use]
-extern crate tracing;
-
 use opentelemetry::{api::Provider, global, sdk};
 use std::{thread, time::Duration};
+use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;

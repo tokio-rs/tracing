@@ -5,10 +5,8 @@
 //! [tracing]: https://github.com/tokio-rs/tracing
 //!
 //! ```rust,no_run
-//! #[macro_use]
-//! extern crate tracing;
-//!
 //! use opentelemetry::{api::Provider, sdk};
+//! use tracing::{error, span};
 //! use tracing_opentelemetry::OpenTelemetryLayer;
 //! use tracing_subscriber::layer::SubscriberExt;
 //! use tracing_subscriber::Registry;
