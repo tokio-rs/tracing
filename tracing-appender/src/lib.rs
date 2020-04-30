@@ -136,3 +136,9 @@ mod worker;
 pub fn non_blocking<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
     NonBlocking::new(writer)
 }
+
+#[derive(Debug)]
+pub(crate) enum Msg {
+    Line(Vec<u8>),
+    Shutdown,
+}
