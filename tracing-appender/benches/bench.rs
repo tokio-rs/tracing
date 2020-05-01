@@ -47,7 +47,9 @@ fn multi_threaded_bench(non_blocking: NonBlocking, iters: u64) -> Duration {
 
     let start = Instant::now();
 
-    let cloned_make_writer = non_blocking.clone();
+    let cloned_make_writer = non_blocking;
+    let cloned_make_writer_2 = cloned_make_writer.clone();
+
     handles.push(thread::spawn(move || {
         let subscriber = tracing_subscriber::fmt().with_writer(cloned_make_writer);
         tracing::subscriber::with_default(subscriber.finish(), || {
@@ -56,8 +58,6 @@ fn multi_threaded_bench(non_blocking: NonBlocking, iters: u64) -> Duration {
             }
         });
     }));
-
-    let cloned_make_writer_2 = non_blocking.clone();
 
     handles.push(thread::spawn(move || {
         let subscriber = tracing_subscriber::fmt().with_writer(cloned_make_writer_2);
