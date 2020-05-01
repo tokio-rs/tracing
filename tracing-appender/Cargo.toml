@@ -15,4 +15,10 @@ crossbeam-channel = "0.4.2"
 chrono = "0.4.11"
 
 [dev-dependencies]
+criterion = { version = "0.3", default_features = false }
 tracing = { path = "../tracing", version = "0.1" }
+tempdir = "0.3"
+
+[[bench]]
+name = "bench"
+harness = false
