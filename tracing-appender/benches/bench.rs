@@ -1,12 +1,12 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use crossbeam_channel::{unbounded, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Instant;
 use tracing::{event, Level};
 use tracing_appender::non_blocking;
 use tracing_subscriber::fmt::MakeWriter;
-use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 struct SynchronousWriter {
@@ -35,10 +35,10 @@ impl std::io::Write for SynchronousWriter {
         match self.writer.lock() {
             Ok(mut guard) => {
                 guard.extend_from_slice(buf);
-            },
+            }
             Err(e) => {
                 eprintln!("Failed to acquire lock: {:?}", e);
-            },
+            }
         }
         Ok(buf_len)
     }
@@ -177,9 +177,5 @@ fn non_blocking_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    synchronous_benchmark,
-    non_blocking_benchmark
-);
+criterion_group!(benches, synchronous_benchmark, non_blocking_benchmark);
 criterion_main!(benches);
