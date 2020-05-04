@@ -215,7 +215,7 @@ impl std::io::Write for NonBlocking {
         let buf_size = buf.len();
         if self.is_lossy {
             if self.channel.try_send(Msg::Line(buf.to_vec())).is_err() {
-                self.error_counter.fetch_add(1, Ordering::Relaxed);
+                self.error_counter.fetch_add(1, Ordering::Release);
             }
         } else {
             return match self.channel.send(Msg::Line(buf.to_vec())) {
