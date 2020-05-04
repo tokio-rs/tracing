@@ -326,7 +326,7 @@ mod test {
         assert_eq!(line, "Hello");
 
         // Wait for thread to finish.
-        let _ = handle.join().expect("thread should not panic");
+        handle.join().expect("thread should not panic");
 
         // Thread has joined, we should be able to read the message it sent.
         line = rx.recv().unwrap();
