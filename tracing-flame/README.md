@@ -1,6 +1,6 @@
 # tracing-flame
 
-A Tracing [Layer][`FlameLayer`] for generating a folded stack trace for generating flamegraphs
+A [tracing] [`Layer`][`FlameLayer`] for generating a folded stack trace for generating flamegraphs
 and flamecharts with [`inferno`]
 
 [![Crates.io][crates-badge]][crates-url]
@@ -19,7 +19,7 @@ and flamecharts with [`inferno`]
 scoped, structured, and async-aware diagnostics. `tracing-flame` provides helpers
 for consuming `tracing` instrumentation that can later be visualized as a
 flamegraph/flamechart. Flamegraphs/flamecharts are useful for identifying performance
-issues bottlenecks in an application. For more details, see Brendan Gregg's [post]
+bottlenecks in an application. For more details, see Brendan Gregg's [post]
 on flamegraphs.
 
 [post]: http://www.brendangregg.com/flamegraphs.html
@@ -50,11 +50,10 @@ fn setup_global_subscriber() -> impl Drop {
 
     let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
 
-    let subscriber = Registry::default()
+    tracing_subscriber::registry()
         .with(fmt_layer)
-        .with(flame_layer);
-
-    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+        .with(flame_layer)
+        .init().
     _guard
 }
 

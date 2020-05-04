@@ -97,8 +97,8 @@ use tracing_error::prelude::*;
 std::fs::read_to_string("myfile.txt").in_current_span()?;
 ```
 
-Once an error has been wrapped with with a [`TracedError`] the [`SpanTrace`]
-can be extracted one of 3 ways: either via [`TracedError`]'s
+Once an error has been wrapped with with a [`TracedError`], the [`SpanTrace`]
+can be extracted one of three ways: either via [`TracedError`]'s
 `Display`/`Debug` implementations, or via the [`ExtractSpanTrace`] trait.
 
 For example, here is how one might print the errors but specialize the
