@@ -18,6 +18,7 @@ chrono = "0.4.11"
 criterion = { version = "0.3", default_features = false }
 tracing = { path = "../tracing", version = "0.1" }
 tempdir = "0.3"
+tracing = { path = "../tracing", version = "0.1" }
 
 [[bench]]
 name = "bench"

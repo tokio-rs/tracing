@@ -16,8 +16,8 @@
 //!
 //! This crate is meant to be used in a two step process:
 //!
-//! 1. A textual representation of the spans that are entered and exited are
-//!   captured with [`FlameLayer`].
+//! 1. Capture textual representation of the spans that are entered and exited
+//!    with [`FlameLayer`].
 //! 2. Feed the textual representation into `inferno-flamegraph` to generate the
 //!    flamegraph or flamechart.
 //!
@@ -66,7 +66,7 @@
 //! # flamegraph
 //! cat tracing.folded | inferno-flamegraph > tracing-flamegraph.svg
 //!
-//! #flamechart
+//! # flamechart
 //! cat tracing.folded | inferno-flamegraph --flamechart > tracing-flamechart.svg
 //! ```
 //!

@@ -667,8 +667,8 @@
 //!    `tracing` events and generates histograms.
 //!  - [`tracing-opentelemetry`] provides a subscriber for emitting traces to
 //!    [OpenTelemetry]-compatible distributed tracing systems.
-//!  - [`tracing-honeycomb`] implements a subscriber for reporting traces to
-//!    [honeycomb.io].
+//!  - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
+//!  - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 //!  - [`tracing-actix`] provides `tracing` integration for the `actix` actor
 //!    framework.
 //!  - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
@@ -681,7 +681,8 @@
 //!
 //! [`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
 //! [OpenTelemetry]: https://opentelemetry.io/
-//! [`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+//! [`tracing-honeycomb`]: https://crates.io/crates/tracing-honeycomb
+//! [`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 //! [honeycomb.io]: https://www.honeycomb.io/
 //! [`tracing-actix`]: https://crates.io/crates/tracing-actix
 //! [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
