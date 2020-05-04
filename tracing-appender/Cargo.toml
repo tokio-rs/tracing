@@ -16,3 +16,4 @@ chrono = "0.4.11"
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.1" }
+tempdir = "0.3"
