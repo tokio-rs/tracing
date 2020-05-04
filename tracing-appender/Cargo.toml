@@ -2,12 +2,20 @@
 name = "tracing-appender"
 version = "0.1.0"
 authors = ["Zeki Sherif <zekshi@amazon.com>"]
-edition = "2018"
+license = "MIT"
+readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
 description = """
-Provides an `appender` that writes to a file
+Application-level tracing for Rust.
 """
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["logging", "tracing", "file-appender", "non-blocking-writer"]
+edition = "2018"
 
 [dependencies]
 tracing-subscriber = {path = "../tracing-subscriber", version = "0.2.4"}
