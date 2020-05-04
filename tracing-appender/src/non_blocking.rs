@@ -316,7 +316,7 @@ mod test {
             non_blocking.write_all(b", World").expect("Failed to write");
         });
 
-        // Sleep a little to ensure previously spawned thread get's blocked on write.
+        // Sleep a little to ensure previously spawned thread gets blocked on write.
         thread::sleep(Duration::from_millis(100));
         // We should not drop logs when blocked.
         assert_eq!(0, error_count.load(Ordering::Acquire));
@@ -326,7 +326,7 @@ mod test {
         assert_eq!(line, "Hello");
 
         // Wait for thread to finish.
-        let _ = handle.join();
+        let _ = handle.join().expect("thread should not panic");
 
         // Thread has joined, we should be able to read the message it sent.
         line = rx.recv().unwrap();
