@@ -1,7 +1,10 @@
 [package]
 name = "tracing-appender"
 version = "0.1.0"
-authors = ["Zeki Sherif <zekshi@amazon.com>"]
+authors = [
+    "Zeki Sherif <zekshi@amazon.com>",
+    "Tokio Contributors <team@tokio.rs>"
+]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
