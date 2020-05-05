@@ -332,8 +332,8 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
   It provides a subscriber that records the time elapsed between pairs of
   `tracing` events and generates histograms.
-- [`tracing-honeycomb`] implements a subscriber for reporting traces to
-  [honeycomb.io].
+- [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
+- [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
@@ -345,7 +345,8 @@ are not maintained by the `tokio` project. These include:
 please let us know!)
 
 [`tracing-timing`]: https://crates.io/crates/tracing-timing
-[`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+[`tracing-honeycomb`]: https://crates.io/crates/tracing-honeycomb
+[`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf

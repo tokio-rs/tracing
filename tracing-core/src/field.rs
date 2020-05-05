@@ -17,15 +17,15 @@
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
 //! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
-//! implementation. The [`record`] trait method on the `Subscriber` trait
-//! allow `Subscriber` implementations to provide type-specific behaviour for
-//! consuming values of each type.
+//! implementation. `Subscriber`s are provided these primitive value types as
+//! `dyn Value` trait objects.
 //!
-//! Instances of the [`Visit`] trait are provided by `Subscriber`s to record the
-//! values attached to spans and `Event`. This trait represents the behavior
-//! used to record values of various types. For example, we might record
-//! integers by incrementing counters for their field names, rather than printing
-//! them.
+//! These trait objects can be formatted using `fmt::Debug`, but may also be
+//! recorded as typed data by calling the [`Value::record`] method on these
+//! trait objects with a _visitor_ implementing the [`Visit`] trait. This trait
+//! represents the behavior used to record values of various types. For example,
+//! we might record integers by incrementing counters for their field names,
+//! rather than printing them.
 //!
 //! [`Value`]: trait.Value.html
 //! [span]: ../span/
@@ -35,7 +35,8 @@
 //! [`Record`]: ../span/struct.Record.html
 //! [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
 //! [`record`]: ../subscriber/trait.Subscriber.html#method.record
-//! [`event`]:  ../subscriber/trait.Subscriber.html#method.record
+//! [`event`]:  ../subscriber/trait.Subscriber.html#method.event
+//! [`Value::record`]: trait.Value.html#method.record
 //! [`Visit`]: trait.Visit.html
 use crate::callsite;
 use crate::stdlib::{
@@ -424,6 +425,41 @@ impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
 impl<'a> Value for fmt::Arguments<'a> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, self)
+    }
+}
+
+impl fmt::Debug for dyn Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // We are only going to be recording the field value, so we don't
+        // actually care about the field name here.
+        struct NullCallsite;
+        static NULL_CALLSITE: NullCallsite = NullCallsite;
+        impl crate::callsite::Callsite for NullCallsite {
+            fn set_interest(&self, _: crate::subscriber::Interest) {
+                unreachable!("you somehow managed to register the null callsite?")
+            }
+
+            fn metadata(&self) -> &crate::Metadata<'_> {
+                unreachable!("you somehow managed to access the null callsite?")
+            }
+        }
+
+        static FIELD: Field = Field {
+            i: 0,
+            fields: FieldSet::new(&[], crate::identify_callsite!(&NULL_CALLSITE)),
+        };
+
+        let mut res = Ok(());
+        self.record(&FIELD, &mut |_: &Field, val: &dyn fmt::Debug| {
+            res = write!(f, "{:?}", val);
+        });
+        res
+    }
+}
+
+impl fmt::Display for dyn Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
     }
 }
 

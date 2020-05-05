@@ -70,9 +70,10 @@
 //! }
 //! ```
 //!
-//! This crate also provides the [`InstrumentResult`] and [`InstrumentError`]
-//! traits, which can be used to wrap errors with a [`TracedError`] which
-//! bundles the inner error with a [`SpanTrace`].
+//! This crate also provides [`TracedError`], for attaching a [`SpanTrace`] to
+//! an existing error. The easiest way to wrap errors in `TracedError` is to
+//! either use the [`InstrumentResult`] and [`InstrumentError`] traits or the
+//! `From`/`Into` traits.
 //!
 //! ```rust
 //! # use std::error::Error;
