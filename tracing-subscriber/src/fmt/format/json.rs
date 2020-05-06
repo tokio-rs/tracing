@@ -96,7 +96,23 @@ where
                     // We should probably rework this to use a `serde_json::Value` or something
                     // similar in a JSON-specific layer, but I'd (david)
                     // rather have a uglier fix now rather than shipping broken JSON.
-                    let mut fields: Value = serde_json::from_str(&data)?;
+                    let mut fields = match serde_json::from_str(&data) {
+                        Ok(fields) => fields,
+                        // We have previously recorded fields for this span
+                        // should be valid JSON. However, they appear to *not*
+                        // be valid JSON. This is almost certainly a bug, so
+                        // panic if we're in debug mode
+                        Err(e) if cfg!(debug_assertions) => panic!(
+                            "span '{}' had malformed fields:\n  {}\n  fields: {:?}",
+                            span.metadata().name(),
+                            e,
+                            data
+                        ),
+                        // If we *aren't* in debug mode, it's probably best not
+                        // crash the program, but let's at least make sure it's clear
+                        // that the fields are not supposed to be missing.
+                        Err(e) => json!({ "field_error": format!("{}", e) }),
+                    };
                     fields["name"] = json!(span.metadata().name());
                     serializer.serialize_entry("span", &fields).unwrap_or(());
                 }
