@@ -345,6 +345,41 @@ mod test {
         test_json(make_writer, expected, &BUF, true);
     }
 
+    #[test]
+    fn record_works() {
+        // This test reproduces issue #707, where using `Span::record` causes
+        // any events inside the span to be ignored.
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt().json().with_writer(make_writer).finish();
+
+        let parse_buf = || -> serde_json::Value {
+            let json = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+            serde_json::from_str(&json).expect("json should not be malformed")
+        };
+
+        with_default(subscriber, || {
+            tracing::info!("an event outside the root span");
+            assert_eq!(
+                parse_buf()["fields"]["message"],
+                "an event outside the root span"
+            );
+
+            let span = tracing::info_span!("the span", na = tracing::field::Empty);
+            span.record("na", &"value");
+            let _enter = span.enter();
+
+            tracing::info!("an event inside the root span");
+            assert_eq!(
+                parse_buf()["fields"]["message"],
+                "an event inside the root span"
+            );
+        });
+    }
+
     #[cfg(feature = "json")]
     fn test_json<T>(make_writer: T, expected: &str, buf: &Mutex<Vec<u8>>, flatten_event: bool)
     where
