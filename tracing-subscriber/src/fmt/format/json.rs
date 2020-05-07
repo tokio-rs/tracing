@@ -1,6 +1,7 @@
 use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
-    field::MakeVisitor, fmt::fmt_layer::FmtContext, fmt::fmt_layer::FormattedFields,
+    field::{RecordFields, VisitOutput},
+    fmt::fmt_layer::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
 use serde::ser::{SerializeMap, Serializer as _};
@@ -12,6 +13,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field},
+    span::Record,
     Event, Subscriber,
 };
 use tracing_serde::AsSerde;
@@ -62,7 +64,7 @@ where
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        use serde_json::{json, Value};
+        use serde_json::json;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
 
@@ -96,7 +98,23 @@ where
                     // We should probably rework this to use a `serde_json::Value` or something
                     // similar in a JSON-specific layer, but I'd (david)
                     // rather have a uglier fix now rather than shipping broken JSON.
-                    let mut fields: Value = serde_json::from_str(&data)?;
+                    let mut fields = match serde_json::from_str(&data) {
+                        Ok(fields) => fields,
+                        // We have previously recorded fields for this span
+                        // should be valid JSON. However, they appear to *not*
+                        // be valid JSON. This is almost certainly a bug, so
+                        // panic if we're in debug mode
+                        Err(e) if cfg!(debug_assertions) => panic!(
+                            "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
+                            span.metadata().name(),
+                            e,
+                            data
+                        ),
+                        // If we *aren't* in debug mode, it's probably best not
+                        // crash the program, but let's at least make sure it's clear
+                        // that the fields are not supposed to be missing.
+                        Err(e) => json!({ "field_error": format!("{}", e) }),
+                    };
                     fields["name"] = json!(span.metadata().name());
                     serializer.serialize_entry("span", &fields).unwrap_or(());
                 }
@@ -156,12 +174,56 @@ impl Default for JsonFields {
     }
 }
 
-impl<'a> MakeVisitor<&'a mut dyn Write> for JsonFields {
-    type Visitor = JsonVisitor<'a>;
+impl<'a> FormatFields<'a> for JsonFields {
+    /// Format the provided `fields` to the provided `writer`, returning a result.
+    fn format_fields<R: RecordFields>(
+        &self,
+        writer: &'a mut dyn fmt::Write,
+        fields: R,
+    ) -> fmt::Result {
+        let mut v = JsonVisitor::new(writer);
+        fields.record(&mut v);
+        v.finish()
+    }
 
-    #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
-        JsonVisitor::new(target)
+    /// Record additional field(s) on an existing span.
+    ///
+    /// By default, this appends a space to the current set of fields if it is
+    /// non-empty, and then calls `self.format_fields`. If different behavior is
+    /// required, the default implementation of this method can be overridden.
+    fn add_fields(&self, current: &'a mut String, fields: &Record<'_>) -> fmt::Result {
+        if !current.is_empty() {
+            // If fields were previously recorded on this span, we need to parse
+            // the current set of fields as JSON, add the new fields, and
+            // re-serialize them. Otherwise, if we just appended the new fields
+            // to a previously serialized JSON object, we would end up with
+            // malformed JSON.
+            //
+            // XXX(eliza): this is far from efficient, but unfortunately, it is
+            // necessary as long as the JSON formatter is implemented on top of
+            // an interface that stores all formatted fields as strings.
+            //
+            // We should consider reimplementing the JSON formatter as a
+            // separate layer, rather than a formatter for the `fmt` layer —
+            // then, we could store fields as JSON values, and add to them
+            // without having to parse and re-serialize.
+            let mut new = String::new();
+            let map: BTreeMap<&'_ str, serde_json::Value> =
+                serde_json::from_str(current).map_err(|_| fmt::Error)?;
+            let mut v = JsonVisitor::new(&mut new);
+            v.values = map;
+            fields.record(&mut v);
+            v.finish()?;
+            *current = new;
+        } else {
+            // If there are no previously recorded fields, we can just reuse the
+            // existing string.
+            let mut v = JsonVisitor::new(current);
+            fields.record(&mut v);
+            v.finish()?;
+        }
+
+        Ok(())
     }
 }
 
@@ -343,6 +405,51 @@ mod test {
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"message\":\"some json test\"}\n";
 
         test_json(make_writer, expected, &BUF, true);
+    }
+
+    #[test]
+    fn record_works() {
+        // This test reproduces issue #707, where using `Span::record` causes
+        // any events inside the span to be ignored.
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt().json().with_writer(make_writer).finish();
+
+        let parse_buf = || -> serde_json::Value {
+            let buf = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+            let json = buf
+                .lines()
+                .last()
+                .expect("expected at least one line to be written!");
+            match serde_json::from_str(&json) {
+                Ok(v) => v,
+                Err(e) => panic!(
+                    "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",
+                    e, json
+                ),
+            }
+        };
+
+        with_default(subscriber, || {
+            tracing::info!("an event outside the root span");
+            assert_eq!(
+                parse_buf()["fields"]["message"],
+                "an event outside the root span"
+            );
+
+            let span = tracing::info_span!("the span", na = tracing::field::Empty);
+            span.record("na", &"value");
+            let _enter = span.enter();
+
+            tracing::info!("an event inside the root span");
+            assert_eq!(
+                parse_buf()["fields"]["message"],
+                "an event inside the root span"
+            );
+        });
     }
 
     #[cfg(feature = "json")]
