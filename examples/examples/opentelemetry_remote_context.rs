@@ -1,15 +1,14 @@
-use opentelemetry::api::{HttpTextFormat, Provider};
-use opentelemetry::{api, global};
+use opentelemetry::{api, api::HttpTextFormat};
 use std::collections::HashMap;
 use tracing::span;
-use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;
 
-fn make_request(_span_context: api::SpanContext) {
+fn make_request(_cx: api::Context) {
     // perform external request after injecting context
     // e.g. if there are request headers that impl `opentelemetry::api::Carrier`
-    // then `propagator.inject(span_context, request.headers_mut())`
+    // then `propagator.inject_context(cx, request.headers_mut())`
 }
 
 fn build_example_carrier() -> HashMap<&'static str, String> {
@@ -23,9 +22,7 @@ fn build_example_carrier() -> HashMap<&'static str, String> {
 }
 
 fn main() {
-    let tracer = global::trace_provider().get_tracer("example");
-    let opentelemetry = OpenTelemetryLayer::with_tracer(tracer);
-    let subscriber = Registry::default().with(opentelemetry);
+    let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 
     // Propagator can be swapped with trace context propagator binary propagator, etc.
     let propagator = api::B3Propagator::new(true);
@@ -38,10 +35,10 @@ fn main() {
         let app_root = span!(tracing::Level::INFO, "app_start");
 
         // Assign parent trace from external context
-        app_root.set_parent(parent_context);
+        app_root.set_parent(&parent_context);
 
-        // To include tracing span context in client requests from _this_ app,
-        // use `context` to extract the current OpenTelemetry span context.
+        // To include tracing context in client requests from _this_ app,
+        // use `context` to extract the current OpenTelemetry context.
         make_request(app_root.context());
     });
 }

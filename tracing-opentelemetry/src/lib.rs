@@ -14,7 +14,6 @@
 //! ```
 //! use opentelemetry::{api::Provider, sdk};
 //! use tracing::{error, span};
-//! use tracing_opentelemetry::OpenTelemetryLayer;
 //! use tracing_subscriber::layer::SubscriberExt;
 //! use tracing_subscriber::Registry;
 //!
@@ -22,7 +21,7 @@
 //! let tracer = sdk::Provider::default().get_tracer("service_name");
 //!
 //! // Create a new OpenTelemetry tracing layer
-//! let telemetry = OpenTelemetryLayer::with_tracer(tracer);
+//! let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 //!
 //! let subscriber = Registry::default().with(telemetry);
 //!
@@ -39,8 +38,8 @@
 
 /// Implementation of the trace::Layer as a source of OpenTelemetry data.
 mod layer;
-/// Span extension which enables OpenTelemetry span context management.
+/// Span extension which enables OpenTelemetry context management.
 mod span_ext;
 
-pub use layer::OpenTelemetryLayer;
+pub use layer::{layer, OpenTelemetryLayer};
 pub use span_ext::OpenTelemetrySpanExt;

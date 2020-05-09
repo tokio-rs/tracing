@@ -19,13 +19,11 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-opentelemetry = { version = "0.4", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.5", default-features = false, features = ["trace"] }
 rand = "0.7"
 tracing = { path = "../tracing", version = "0.1" }
 tracing-core = { path = "../tracing-core", version = "0.1" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.2", default-features = false, features = ["registry"] }
 
 [dev-dependencies]
-opentelemetry-jaeger = "0.3.0"
-thrift = "0.13.0"
-tracing-attributes =  { path = "../tracing-attributes", version = "0.1.7"}
+opentelemetry-jaeger = "0.4"
