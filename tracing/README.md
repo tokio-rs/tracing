@@ -76,7 +76,7 @@ fn main() {
         .finish();
 
     tracing::subscriber::set_global_default(subscriber)
-        .expect("setting defualt subscriber failed");
+        .expect("setting default subscriber failed");
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.
