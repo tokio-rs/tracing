@@ -300,8 +300,8 @@ The crates included as part of Tracing are:
 
 * [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
-* [`tracing-appender`]: Utilities for file appenders and making non-blocking 
-  writers. ([crates.io][app-crates]|[docs][app-docs])
+* [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
+   and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
 [`tracing`]: tracing
 [`tracing-core`]: tracing
