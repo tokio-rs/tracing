@@ -218,7 +218,7 @@ where
             tracer,
             sampler: self.sampler,
             id_generator: self.id_generator,
-            get_context: self.get_context,
+            get_context: WithContext(OpenTelemetryLayer::<S, Tracer>::get_context),
             _registry: self._registry,
         }
     }
