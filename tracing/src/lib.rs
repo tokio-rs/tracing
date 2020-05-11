@@ -658,6 +658,8 @@
 //!    dependencies which use `log`. Note that if you're using
 //!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
 //!    `tracing-log` directly.
+//!  - [`tracing-appender`] provides utilities for outputting tracing data,
+//!     including a file appender and non blocking writer.
 //!
 //! Additionally, there are also several third-party crates which are not
 //! maintained by the `tokio` project. These include:
@@ -746,6 +748,7 @@
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
+//! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
 //! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
