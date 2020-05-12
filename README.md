@@ -300,6 +300,9 @@ The crates included as part of Tracing are:
 
 * [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
+* [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
+   and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
+
 [`tracing`]: tracing
 [`tracing-core`]: tracing
 [`tracing-futures`]: tracing-futures
@@ -310,6 +313,7 @@ The crates included as part of Tracing are:
 [`tracing-serde`]: tracing-serde
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
+[`tracing-appender`]: tracing-appender
 
 [fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
@@ -323,6 +327,9 @@ The crates included as part of Tracing are:
 [otel-crates]: https://crates.io/crates/tracing-opentelemetry
 [otel-docs]: https://docs.rs/tracing-opentelemetry
 [OpenTelemetry]: https://opentelemetry.io/
+
+[app-crates]: https://crates.io/crates/tracing-appender
+[app-docs]: https://docs.rs/tracing-appender
 
 ## Related Crates
 
