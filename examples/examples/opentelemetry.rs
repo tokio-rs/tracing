@@ -36,10 +36,9 @@ fn init_tracer() -> Result<(), Box<dyn std::error::Error>> {
     let tracer = provider.get_tracer("tracing");
 
     let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-    let subscriber = Registry::default().with(opentelemetry);
-    tracing::subscriber::set_global_default(subscriber)?;
-
-    Ok(())
+    tracing_subscriber::registry()
+        .with(opentelemetry)
+        .try_init()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
