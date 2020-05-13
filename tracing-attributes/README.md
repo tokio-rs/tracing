@@ -14,7 +14,7 @@ Macro attributes for application-level tracing.
 [crates-badge]: https://img.shields.io/crates/v/tracing-attributes.svg
 [crates-url]: https://crates.io/crates/tracing-attributes
 [docs-badge]: https://docs.rs/tracing-attributes/badge.svg
-[docs-url]: https://docs.rs/tracing-attributes/0.1.7
+[docs-url]: https://docs.rs/tracing-attributes/0.1.8
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_attributes
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -39,7 +39,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing-attributes = "0.1.7"
+tracing-attributes = "0.1.8"
 ```
 
 *Compiler support: requires rustc 1.39+*
@@ -58,7 +58,7 @@ pub fn my_function(my_arg: usize) {
 
 
 [`tracing`]: https://crates.io/crates/tracing
-[span]: https://docs.rs/tracing/0.1.7/tracing/span/index.html
+[span]: https://docs.rs/tracing/0.1.8/tracing/span/index.html
 
 ## License
 
