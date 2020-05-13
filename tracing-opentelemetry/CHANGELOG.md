@@ -7,7 +7,7 @@
   sampling behavior.
 - `OpenTelemetryLayer::new` method to configure both the tracer and sampler.
 
-### Changed
+### Breaking Changes
 
 - `OpenTelemetrySpanExt::set_parent` now accepts a reference to an extracted
   parent `Context` instead of a `SpanContext` to match propagators.
