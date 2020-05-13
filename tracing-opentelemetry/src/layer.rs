@@ -167,6 +167,67 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     T: api::Tracer + 'static,
 {
+    /// Set the [`Tracer`] and [`Sampler`] that this layer will use to produce and
+    /// track OpenTelemetry [`Span`]s.
+    ///
+    /// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
+    /// [`Sampler`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/sampler/trait.Sampler.html
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use opentelemetry::{api::Provider, sdk};
+    /// use tracing_opentelemetry::OpenTelemetryLayer;
+    /// use tracing_subscriber::layer::SubscriberExt;
+    /// use tracing_subscriber::Registry;
+    ///
+    /// // Create a jaeger exporter for a `trace-demo` service.
+    /// let exporter = opentelemetry_jaeger::Exporter::builder()
+    ///     .with_agent_endpoint("127.0.0.1:6831".parse().unwrap())
+    ///     .with_process(opentelemetry_jaeger::Process {
+    ///         service_name: "trace_demo".to_string(),
+    ///         tags: Vec::new(),
+    ///     })
+    ///     .init().expect("Error initializing Jaeger exporter");
+    ///
+    /// // Build a provider from the jaeger exporter that always samples.
+    /// let provider = sdk::Provider::builder()
+    ///     .with_simple_exporter(exporter)
+    ///     .with_config(sdk::Config {
+    ///         default_sampler: Box::new(sdk::Sampler::Always),
+    ///         ..Default::default()
+    ///     })
+    ///     .build();
+    ///
+    /// // Get a tracer from the provider for a component
+    /// let tracer = provider.get_tracer("component-name");
+    ///
+    /// // The probability sampler can be used to export a percentage of spans
+    /// let sampler = sdk::Sampler::Probability(0.33);
+    ///
+    /// // Create a layer with the configured tracer
+    /// let otel_layer = OpenTelemetryLayer::new(tracer, sampler);
+    ///
+    /// // Use the tracing subscriber `Registry`, or any other subscriber
+    /// // that impls `LookupSpan`
+    /// let subscriber = Registry::default()
+    ///     .with(otel_layer);
+    /// # drop(subscriber);
+    /// ```
+    pub fn new<Sampler>(tracer: T, sampler: Sampler) -> Self
+    where
+        Sampler: api::Sampler + 'static,
+    {
+        OpenTelemetryLayer {
+            tracer,
+            sampler: Box::new(sampler),
+            id_generator: sdk::IdGenerator::default(),
+            get_context: WithContext(Self::get_context),
+            _registry: marker::PhantomData,
+        }
+    }
+
     /// Set the [`Tracer`] that this layer will use to produce and track
     /// OpenTelemetry [`Span`]s.
     ///
@@ -258,23 +319,6 @@ where
         }
     }
 
-    /// Construct a new layer with the specified [`Tracer`] and [`Sampler`].
-    ///
-    /// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
-    /// [`Sampler`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/sampler/trait.Sampler.html
-    fn new<Sampler>(tracer: T, sampler: Sampler) -> Self
-    where
-        Sampler: api::Sampler + 'static,
-    {
-        OpenTelemetryLayer {
-            tracer,
-            sampler: Box::new(sampler),
-            id_generator: sdk::IdGenerator::default(),
-            get_context: WithContext(Self::get_context),
-            _registry: marker::PhantomData,
-        }
-    }
-
     /// Retrieve the parent OpenTelemetry [`SpanContext`] from the current
     /// tracing [`span`] through the [`Registry`]. This [`SpanContext`]
     /// links spans to their parent for proper hierarchical visualization.
@@ -296,8 +340,7 @@ where
                 .map(|builder| build_span_context(builder, self.sampler.as_ref()))
         // Else if the span is inferred from context, look up any available current span.
         } else if attrs.is_contextual() {
-            ctx.current_span().id().and_then(|span_id| {
-                let span = ctx.span(span_id).expect("Span not found, this is a bug");
+            ctx.lookup_current().and_then(|span| {
                 let mut extensions = span.extensions_mut();
                 extensions
                     .get_mut::<api::SpanBuilder>()
@@ -382,8 +425,7 @@ where
     /// [`Unknown`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/enum.StatusCode.html#variant.Unknown
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         // Ignore events that are not in the context of a span
-        if let Some(span_id) = ctx.current_span().id() {
-            let span = ctx.span(span_id).expect("Span not found, this is a bug");
+        if let Some(span) = ctx.lookup_current() {
             let mut extensions = span.extensions_mut();
             if let Some(builder) = extensions.get_mut::<api::SpanBuilder>() {
                 let mut otel_event = api::Event::new(

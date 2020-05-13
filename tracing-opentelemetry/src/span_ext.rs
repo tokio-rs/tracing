@@ -108,8 +108,10 @@ impl api::Span for CompatSpan {
         _timestamp: std::time::SystemTime,
         _attributes: Vec<api::KeyValue>,
     ) {
-        // OpenTelemetry and tracing APIs cannot be mixed, use `tracing::event!`
-        // macro instead.
+        debug_assert!(
+            false,
+            "OpenTelemetry and tracing APIs cannot be mixed, use `tracing::event!` macro instead."
+        );
     }
 
     /// This method is used by OpenTelemetry propagators to inject span context
@@ -121,27 +123,39 @@ impl api::Span for CompatSpan {
     }
 
     fn is_recording(&self) -> bool {
-        // cannot record via OpenTelemetry API when using extracted span in tracing
+        debug_assert!(
+            false,
+            "cannot record via OpenTelemetry API when using extracted span in tracing"
+        );
+
         false
     }
 
     fn set_attribute(&self, _attribute: api::KeyValue) {
-        // OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!`
-        // macro or `span.record()` instead.
+        debug_assert!(
+            false,
+            "OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead."
+        );
     }
 
     fn set_status(&self, _code: api::StatusCode, _message: String) {
-        // OpenTelemetry and tracing apis cannot be mixed, use `tracing::span!`
-        // macro or `span.record()` instead.
+        debug_assert!(
+            false,
+            "OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead."
+        );
     }
 
     fn update_name(&self, _new_name: String) {
-        // OpenTelemetry and tracing APIs cannot be mixed, span names are not
-        // mutable.
+        debug_assert!(
+            false,
+            "OpenTelemetry and tracing APIs cannot be mixed, span names are not  mutable."
+        );
     }
 
     fn end(&self) {
-        // OpenTelemetry and tracing APIs cannot be mixed, span end times are set
-        // when the underlying tracing span closes.
+        debug_assert!(
+            false,
+            "OpenTelemetry and tracing APIs cannot be mixed, span end times are set when the underlying tracing span closes."
+        );
     }
 }

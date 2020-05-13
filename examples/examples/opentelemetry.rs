@@ -1,10 +1,9 @@
 use opentelemetry::api::Provider;
 use opentelemetry::sdk;
-use std::{io, thread, time::Duration};
+use std::{thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::Registry;
+use tracing_subscriber::prelude::*;
 
 #[instrument]
 #[inline]
@@ -24,8 +23,7 @@ fn init_tracer() -> Result<(), Box<dyn std::error::Error>> {
             service_name: "report_example".to_string(),
             tags: Vec::new(),
         })
-        .init()
-        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        .init()?;
     let provider = sdk::Provider::builder()
         .with_simple_exporter(exporter)
         .with_config(sdk::Config {
@@ -38,7 +36,9 @@ fn init_tracer() -> Result<(), Box<dyn std::error::Error>> {
     let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
     tracing_subscriber::registry()
         .with(opentelemetry)
-        .try_init()
+        .try_init()?;
+
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
