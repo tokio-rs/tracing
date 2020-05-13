@@ -1,10 +1,9 @@
-use opentelemetry::{api::Provider, global, sdk};
-use std::{io, thread, time::Duration};
+use opentelemetry::api::Provider;
+use opentelemetry::sdk;
+use std::{thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
-use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::Registry;
+use tracing_subscriber::prelude::*;
 
 #[instrument]
 #[inline]
@@ -17,15 +16,14 @@ fn expensive_work() -> &'static str {
     "success"
 }
 
-fn init_tracer() -> io::Result<()> {
+fn init_tracer() -> Result<(), Box<dyn std::error::Error>> {
     let exporter = opentelemetry_jaeger::Exporter::builder()
         .with_agent_endpoint("127.0.0.1:6831".parse().unwrap())
         .with_process(opentelemetry_jaeger::Process {
             service_name: "report_example".to_string(),
             tags: Vec::new(),
         })
-        .init()
-        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        .init()?;
     let provider = sdk::Provider::builder()
         .with_simple_exporter(exporter)
         .with_config(sdk::Config {
@@ -33,29 +31,29 @@ fn init_tracer() -> io::Result<()> {
             ..Default::default()
         })
         .build();
-    global::set_provider(provider);
+    let tracer = provider.get_tracer("tracing");
+
+    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    tracing_subscriber::registry()
+        .with(opentelemetry)
+        .try_init()?;
 
     Ok(())
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_tracer()?;
-    let tracer = global::trace_provider().get_tracer("tracing");
-    let opentelemetry = OpenTelemetryLayer::with_tracer(tracer);
-    let subscriber = Registry::default().with(opentelemetry);
 
-    tracing::subscriber::with_default(subscriber, || {
-        let root = span!(tracing::Level::INFO, "app_start", work_units = 2);
-        let _enter = root.enter();
+    let root = span!(tracing::Level::INFO, "app_start", work_units = 2);
+    let _enter = root.enter();
 
-        let work_result = expensive_work();
+    let work_result = expensive_work();
 
-        span!(tracing::Level::INFO, "faster_work")
-            .in_scope(|| thread::sleep(Duration::from_millis(10)));
+    span!(tracing::Level::INFO, "faster_work")
+        .in_scope(|| thread::sleep(Duration::from_millis(10)));
 
-        warn!("About to exit!");
-        trace!("status: {}", work_result);
-    });
+    warn!("About to exit!");
+    trace!("status: {}", work_result);
 
     Ok(())
 }

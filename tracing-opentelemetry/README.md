@@ -53,7 +53,6 @@ The crate provides the following types:
 ```rust
 use opentelemetry::{api::Provider, sdk};
 use tracing::{error, span};
-use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;
 
@@ -62,7 +61,7 @@ fn main() {
     let tracer = sdk::Provider::default().get_tracer("component_name");
 
     // Create a new OpenTelemetry tracing layer
-    let telemetry = OpenTelemetryLayer::with_tracer(tracer);
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     let subscriber = Registry::default().with(telemetry);
 
