@@ -169,9 +169,10 @@ use syn::{
 /// }
 /// ```
 ///
-/// It also works with [async-trait](https://crates.io/crates/async-trait) (a crate that allows
-/// async functions on traits, something not currently possible in rust), and hopefully most
-/// libraries that exhibit similar behaviors:
+/// It also works with [async-trait](https://crates.io/crates/async-trait)
+/// (a crate that allows async functions on traits,
+/// something not currently possible with rustc alone),
+/// and hopefully most libraries that exhibit similar behaviors:
 ///
 /// ```
 /// # use tracing::instrument;
@@ -206,11 +207,11 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     if let Some(internal_fun_name) =
         get_async_trait_name(&input.block, input.sig.asyncness.is_some())
     {
-        // let's rewrite some statements !
+        // let's rewrite some statements!
         let mut stmts: Vec<Stmt> = input.block.stmts.to_vec();
         for stmt in &mut stmts {
             if let Stmt::Item(Item::Fn(fun)) = stmt {
-                // instrument the function if considered as the function we truly want to trace
+                // instrument the function if we considered it as the one we truly want to trace
                 if fun.sig.ident == internal_fun_name {
                     *stmt = syn::parse2(gen_body(fun, args, Some(input.sig.ident.to_string())))
                         .unwrap();
@@ -681,7 +682,7 @@ fn instrument_err(args: &[NestedMeta]) -> bool {
 // (this follows the approach suggested in
 // https://github.com/dtolnay/async-trait/issues/45#issuecomment-571245673)
 fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
-    // are we in an async context ? If yes, this isn't a async_trait-like pattern
+    // are we in an async context? If yes, this isn't a async_trait-like pattern
     if block_is_async {
         return None;
     }
@@ -696,7 +697,7 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
     // obtain the list of direct internal functions and the last expression of the block
     for stmt in &block.stmts {
         if let Stmt::Item(Item::Fn(fun)) = &stmt {
-            // is the function declared as async ? If so, this is a good candidate, let's keep it
+            // is the function declared as async? If so, this is a good candidate, let's keep it
             // in hand
             if fun.sig.asyncness.is_some() {
                 inside_funs.push(fun.sig.ident.to_string());
@@ -707,7 +708,7 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
     }
 
     // let's play with (too much) pattern matching
-    // is the last expression a function call ?
+    // is the last expression a function call?
     if let Some(Expr::Call(ExprCall {
         func: outside_func,
         args: outside_args,
@@ -715,33 +716,19 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
     })) = last_expr
     {
         if let Expr::Path(path) = outside_func.as_ref() {
-            // is it a call to `Box::pin()` ?
-            let mut merged_path = String::new();
-            for i in 0..path.path.segments.len() {
-                merged_path.push_str(&path.path.segments[i].ident.to_string());
-                if i < path.path.segments.len() - 1 {
-                    merged_path.push_str("::");
-                }
-            }
-
-            if "Box::pin" == merged_path {
-                // does it takes at least an argument ? (if it doesn't, it's not gonna compile anyway,
+            // is it a call to `Box::pin()`?
+            if "Box::pin" == path_to_string(&path.path) {
+                // does it takes at least an argument? (if it doesn't, it's not gonna compile anyway,
                 // but that's no reason to (try to) perform an out of bounds access)
                 if outside_args.is_empty() {
                     return None;
                 }
-                // is the argument to Box::pin a function call itself ?
+                // is the argument to Box::pin a function call itself?
                 if let Expr::Call(ExprCall { func, args, .. }) = &outside_args[0] {
                     if let Expr::Path(inside_path) = func.as_ref() {
                         // "stringify" the path of the function called
-                        let func_name = inside_path
-                            .path
-                            .segments
-                            .iter()
-                            .map(|x| x.ident.to_string())
-                            .collect::<Vec<String>>()
-                            .join("::");
-                        // is this function directly defined insided the current block ?
+                        let func_name = path_to_string(&inside_path.path);
+                        // is this function directly defined insided the current block?
                         if inside_funs.contains(&func_name) {
                             // we must hook this function now
                             return Some(func_name);
@@ -752,4 +739,19 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
         }
     }
     None
+}
+
+// Return a path as a String
+fn path_to_string(path: &Path) -> String {
+    use std::fmt::Write;
+    // some heuristic to prevent too many allocations
+    let mut res = String::with_capacity(path.segments.len() * 5);
+    for i in 0..path.segments.len() {
+        write!(&mut res, "{}", path.segments[i].ident)
+            .expect("writing to a String should never fail");
+        if i < path.segments.len() - 1 {
+            res.push_str("::");
+        }
+    }
+    res
 }
