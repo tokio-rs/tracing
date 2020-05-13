@@ -242,8 +242,6 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
-Note: the [`#[tracing::instrument]`](https://github.com/tokio-rs/tracing/issues/399)` macro does not work correctly with the [async-trait](https://github.com/dtolnay/async-trait) crate. This bug is tracked in [#399](https://github.com/tokio-rs/tracing/issues/399).
-
 ## Getting Help
 
 First, see if the answer to your question can be found in the API documentation.

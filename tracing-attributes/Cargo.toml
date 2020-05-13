@@ -40,6 +40,7 @@ async-await = []
 [dependencies]
 syn = { version = "1", features = ["full", "extra-traits"] }
 quote = "1"
+proc-macro2 = "1"
 
 
 [dev-dependencies]
@@ -47,6 +48,7 @@ tracing = { path = "../tracing", version = "0.1" }
 tracing-futures = { path = "../tracing-futures", version = "0.2" }
 tokio-test = { version = "0.2.0" }
 tracing-core = { path = "../tracing-core", version = "0.1"}
+async-trait = "0.1"
 
 [badges]
 maintenance = { status = "experimental" }
