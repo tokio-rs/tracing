@@ -14,16 +14,6 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
     future.await
 }
 
-#[instrument]
-async fn test_async_fns_nested() {
-    test_async_fns_nested_other().await
-}
-
-#[instrument]
-async fn test_async_fns_nested_other() {
-    tracing::trace!(nested = true);
-}
-
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (subscriber, handle) = subscriber::mock()
@@ -44,6 +34,16 @@ fn async_fn_only_enters_for_polls() {
 
 #[test]
 fn async_fn_nested() {
+    #[instrument]
+    async fn test_async_fns_nested() {
+        test_async_fns_nested_other().await
+    }
+
+    #[instrument]
+    async fn test_async_fns_nested_other() {
+        tracing::trace!(nested = true);
+    }
+
     let span = span::mock().named("test_async_fns_nested");
     let span2 = span::mock().named("test_async_fns_nested_other");
     let (subscriber, handle) = subscriber::mock()
@@ -69,14 +69,24 @@ fn async_fn_nested() {
 #[test]
 fn async_fn_with_async_trait() {
     use async_trait::async_trait;
+
+    // test the correctness of the metadata obtained by #[instrument]
+    // (function name, functions parameters) when async-trait is used
     #[async_trait]
     pub trait TestA {
         async fn foo(&mut self, v: usize);
     }
 
+    // test nesting of async fns with aync-trait
     #[async_trait]
     pub trait TestB {
         async fn bar(&self);
+    }
+
+    // test skip(self) with async-await
+    #[async_trait]
+    pub trait TestC {
+        async fn baz(&self);
     }
 
     #[derive(Debug)]
@@ -86,6 +96,7 @@ fn async_fn_with_async_trait() {
     impl TestA for TestImpl {
         #[instrument]
         async fn foo(&mut self, v: usize) {
+            self.baz().await;
             self.0 = v;
             self.bar().await
         }
@@ -93,18 +104,36 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestB for TestImpl {
-        #[instrument(skip(self))]
+        #[instrument]
         async fn bar(&self) {
+            tracing::trace!(val = self.0);
+        }
+    }
+
+    #[async_trait]
+    impl TestC for TestImpl {
+        #[instrument(skip(self))]
+        async fn baz(&self) {
             tracing::trace!(val = self.0);
         }
     }
 
     let span = span::mock().named("foo");
     let span2 = span::mock().named("bar");
+    let span3 = span::mock().named("baz");
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span.clone())
+        .new_span(
+            span.clone()
+                .with_field(field::mock("self"))
+                .with_field(field::mock("v")),
+        )
         .enter(span.clone())
-        .new_span(span2.clone())
+        .new_span(span3.clone())
+        .enter(span3.clone())
+        .event(event::mock().with_fields(field::mock("val").with_value(&2u64)))
+        .exit(span3.clone())
+        .drop_span(span3)
+        .new_span(span2.clone().with_field(field::mock("self")))
         .enter(span2.clone())
         .event(event::mock().with_fields(field::mock("val").with_value(&5u64)))
         .exit(span2.clone())
