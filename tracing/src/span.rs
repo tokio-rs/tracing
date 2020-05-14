@@ -161,7 +161,7 @@
 //! might want to have a span representing the listener, and instrument each
 //! spawned handler task with its own span. We would want our instrumentation to
 //! record that the handler tasks were spawned as a result of the listener task.
-//! However, we might  not consider the handler tasks to be _part_ of the time
+//! However, we might not consider the handler tasks to be _part_ of the time
 //! spent in the listener task, so we would not consider those spans children of
 //! the listener span. Instead, we would record that the handler tasks follow
 //! from the listener, recording the causal relationship but treating the spans
@@ -229,7 +229,7 @@
 //!
 //! However, if multiple handles exist, the span can still be re-entered even if
 //! one or more is dropped. For determining when _all_ handles to a span have
-//! been dropped, `Subscriber`s have a [`clone_span`]  method, which is called
+//! been dropped, `Subscriber`s have a [`clone_span`] method, which is called
 //! every time a span handle is cloned. Combined with `drop_span`, this may be
 //! used to track the number of handles to a given span — if `drop_span` has
 //! been called one more time than the number of calls to `clone_span` for a
@@ -734,7 +734,7 @@ impl Span {
     /// empty.
     ///
     /// If `is_none` returns `true` for a given span, then [`is_disabled`] will
-    /// also return `true`.  However, when a span is disabled by the subscriber
+    /// also return `true`. However, when a span is disabled by the subscriber
     /// rather than constructed by `Span::none`, this method will return
     /// `false`, while `is_disabled` will return `true`.
     ///

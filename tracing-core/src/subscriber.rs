@@ -352,12 +352,12 @@ pub trait Subscriber: 'static {
     /// It's guaranteed that if this function has been called once more than the
     /// number of times `clone_span` was called with the same `id`, then no more
     /// handles that can enter the span with that `id` exist. This means that it
-    /// can be used in  conjunction with [`clone_span`] to track the number of
+    /// can be used in conjunction with [`clone_span`] to track the number of
     /// handles capable of `enter`ing a span. When all the handles have been
     /// dropped (i.e., `try_close` has been called one more time than
     /// `clone_span` for a given ID), the subscriber may assume that the span
     /// will not be entered again, and should return `true`. It is then free to
-    /// deallocate storage for data associated with  that span, write data from
+    /// deallocate storage for data associated with that span, write data from
     /// that span to IO, and so on.
     ///
     /// **Note**: since this function is called when spans are dropped,
@@ -475,7 +475,7 @@ impl Interest {
         Interest(InterestKind::Never)
     }
 
-    /// Returns an `Interest` indicating  the subscriber is sometimes interested
+    /// Returns an `Interest` indicating the subscriber is sometimes interested
     /// in being notified about a callsite.
     ///
     /// If all active subscribers are `sometimes` or `never` interested in a
@@ -487,7 +487,7 @@ impl Interest {
         Interest(InterestKind::Sometimes)
     }
 
-    /// Returns an `Interest` indicating  the subscriber is always interested in
+    /// Returns an `Interest` indicating the subscriber is always interested in
     /// being notified about a callsite.
     ///
     /// If any subscriber expresses that it is `always()` interested in a given

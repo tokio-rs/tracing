@@ -70,7 +70,7 @@ impl Id {
 
     // Allow `into` by-ref since we don't want to impl Copy for Id
     #[allow(clippy::wrong_self_convention)]
-    /// Returns the span's ID as a  `u64`.
+    /// Returns the span's ID as a `u64`.
     pub fn into_u64(&self) -> u64 {
         self.0.get()
     }
