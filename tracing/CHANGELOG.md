@@ -1,3 +1,31 @@
+# 0.1.14 (May 14, 2020)
+
+### Added
+
+- **log**: When using the [`log`] compatibility feature alongside a `tracing`
+  `Subscriber`, log records for spans now include span IDs (#613)
+- **attributes**: Support for using `#[instrument]` on methods that are part of
+  [`async-trait`] trait implementations (#711)
+- **attributes**: Optional `#[instrument(err)]` argument to automatically emit
+  an event if an instrumented function returns `Err` (#637) 
+- Added `#[must_use]` attribute to the guard returned by
+  `subscriber::set_default` (#685)
+  
+### Changed
+
+- **log**: Made [`log`] records emitted by spans much less noisy when span IDs are
+ not available (#613)
+ 
+### Fixed
+
+- Several typos in the documentation (#656, #710, #715)
+
+Thanks to @FintanH, @shepmaster, @inanna-malick, @zekisharif, @bkchr, @majecty,
+@ilana and @nightmared for contributing to this release! 
+
+[`async-trait`]: https://crates.io/crates/async-trait 
+[`log`]: https://crates.io/crates/log
+
 # 0.1.13 (February 26, 2019)
 
 ### Added
