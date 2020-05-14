@@ -524,7 +524,7 @@ fn trace_root() {
     trace!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     trace!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     trace!(parent: None, { foo = 2, bar.baz = 78 }, "quux");
-    trace!(parent:None, { foo = ?2, bar.baz = %78 }, "quux");
+    trace!(parent: None, { foo = ?2, bar.baz = %78 }, "quux");
     trace!(target: "foo_events", parent: None, foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", parent: None, foo = 3, bar.baz = 3,);
     trace!(target: "foo_events", parent: None, "foo");
