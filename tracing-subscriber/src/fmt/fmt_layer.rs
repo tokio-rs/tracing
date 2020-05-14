@@ -40,7 +40,7 @@ use tracing_core::{
 /// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// Setting a custom  event formatter:
+/// Setting a custom event formatter:
 ///
 /// ```rust
 /// use tracing_subscriber::fmt::{self, format, time};

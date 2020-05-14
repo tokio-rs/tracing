@@ -1,6 +1,6 @@
 //! Span and `Event` key-value data.
 //!
-//! Spans and events  may be annotated with key-value data, referred to as known
+//! Spans and events may be annotated with key-value data, referred to as known
 //! as _fields_. These fields consist of a mapping from a key (corresponding to
 //! a `&str` but represented internally as an array index) to a [`Value`].
 //!

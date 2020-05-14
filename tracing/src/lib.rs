@@ -95,7 +95,7 @@
 //! or `Event`. If a call to `Subscriber::enabled` returns `false` for a given
 //! set of metadata, that `Subscriber` will *not* be notified about the
 //! corresponding `Span` or `Event`. For performance reasons, if no currently
-//! active subscribers express  interest in a given set of metadata by returning
+//! active subscribers express interest in a given set of metadata by returning
 //! `true`, then the corresponding `Span` or `Event` will never be constructed.
 //!
 //! # Usage
@@ -325,7 +325,7 @@
 //! #     field: "Hello world!"
 //! # };
 //! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
-//! event!(Level::TRACE,  %my_struct.field);
+//! event!(Level::TRACE, %my_struct.field);
 //! # }
 //! ```
 //!
