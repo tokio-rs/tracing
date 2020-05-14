@@ -1,3 +1,16 @@
+# 0.1.8 (May 13, 2020)
+
+### Added
+
+- Support for using `#[instrument]` on methods that are part of [`async-trait`]
+  trait implementations (#711)
+- Optional `#[instrument(err)]` argument to automatically emit an event if an
+  instrumented function returns `Err` (#637) 
+
+Thanks to @ilana and @nightmared for contributing to this release!
+
+[`async-trait`]: https://crates.io/crates/async-trait
+
 # 0.1.7 (February 26, 2020)
 
 ### Added
