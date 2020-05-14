@@ -23,7 +23,7 @@
 Thanks to @FintanH, @shepmaster, @inanna-malick, @zekisharif, @bkchr, @majecty,
 @ilana and @nightmared for contributing to this release! 
 
-[`async-trait`]: https://crates.io/crates/async-traite! 
+[`async-trait`]: https://crates.io/crates/async-trait 
 [`log`]: https://crates.io/crates/log
 
 # 0.1.13 (February 26, 2019)
