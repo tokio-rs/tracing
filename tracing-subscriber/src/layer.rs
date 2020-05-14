@@ -529,7 +529,7 @@ pub struct Identity {
 }
 
 /// An iterator over the [stored data] for all the spans in the
-/// current context, starting  the root of the trace tree and ending with
+/// current context, starting the root of the trace tree and ending with
 /// the current span.
 ///
 /// This is returned by [`Context::scope`].
@@ -672,7 +672,7 @@ where
         let outer = self.layer.register_callsite(metadata);
         if outer.is_never() {
             // if the outer layer has disabled the callsite, return now so that
-            // inner layers  don't get their hopes up.
+            // inner layers don't get their hopes up.
             return outer;
         }
 
@@ -949,7 +949,7 @@ impl<'a, S: Subscriber> Context<'a, S> {
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting  the root of the trace tree and ending with
+    /// current context, starting the root of the trace tree and ending with
     /// the current span.
     ///
     /// If this iterator is empty, then there are no spans in the current context

@@ -15,7 +15,7 @@ use tracing_core::dispatcher::{self, Dispatch};
 /// implementation of this trait.
 ///
 /// [default subscriber]: https://docs.rs/tracing/0.1.13/tracing/dispatcher/index.html#setting-the-default-subscriber
-/// [trace dispatcher]:  https://docs.rs/tracing/0.1.13/tracing/dispatcher/index.html
+/// [trace dispatcher]: https://docs.rs/tracing/0.1.13/tracing/dispatcher/index.html
 pub trait SubscriberInitExt
 where
     Self: Into<Dispatch>,

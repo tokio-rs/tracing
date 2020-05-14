@@ -27,7 +27,7 @@ use crate::stdlib::{fmt, str::FromStr};
 /// particular event or span is constructed statically and exists as a single
 /// static instance. Thus, the overhead of creating the metadata is
 /// _significantly_ lower than that of creating the actual span. Therefore,
-/// filtering is based on metadata, rather than  on the constructed span.
+/// filtering is based on metadata, rather than on the constructed span.
 ///
 /// **Note**: Although instances of `Metadata` cannot be compared directly, they
 /// provide a method [`id`] which returns an opaque [callsite identifier]

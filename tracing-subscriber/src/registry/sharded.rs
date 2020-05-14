@@ -26,7 +26,7 @@ use tracing_core::{
 /// instead, it collects and stores span data that is exposed to any `Layer`s
 /// wrapping it through implementations of the [`LookupSpan`] trait.
 /// The `Registry` is responsible for storing span metadata, recording
-/// relationships between spans, and tracking which spans  are active and whicb
+/// relationships between spans, and tracking which spans are active and whicb
 /// are closed. In addition, it provides a mechanism for `Layer`s to store
 /// user-defined per-span data, called [extensions], in the registry. This
 /// allows `Layer`-specific data to benefit from the `Registry`'s
@@ -216,7 +216,7 @@ impl Subscriber for Registry {
         // Like `std::sync::Arc`, adds to the ref count (on clone) don't require
         // a strong ordering; if we call` clone_span`, the reference count must
         // always at least 1. The only synchronization necessary is between
-        // calls to `try_close`:  we have to ensure that all threads have
+        // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
         assert!(refs != 0, "tried to clone a span that already closed");
