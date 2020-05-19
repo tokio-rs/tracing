@@ -825,6 +825,8 @@ pub mod span;
 pub(crate) mod stdlib;
 pub mod subscriber;
 
+pub mod prelude;
+
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
