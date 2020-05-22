@@ -353,8 +353,8 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`color-spantrace`] provides a formatter for rendering SpanTrace in the style
-  of `color-backtrace`
+- [`color-spantrace`] provides a formatter for rendering span traces in the
+  style of `color-backtrace`
 - [`color-eyre`] provides a customized version of `eyre::Report` for capturing
   span traces and backtraces with new errors and pretty printing them in error
   reports.
