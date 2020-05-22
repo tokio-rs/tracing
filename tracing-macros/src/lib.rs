@@ -1,19 +1,17 @@
-extern crate tracing;
-
 /// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
-#[macro_export(local_inner_macros)]
+#[macro_export]
 macro_rules! trace_dbg {
     (target: $target:expr, level: $level:expr, $ex:expr) => {
-        dbg!(target: $target, level: $level, $ex)
+        $crate::dbg!(target: $target, level: $level, $ex)
     };
     (level: $level:expr, $ex:expr) => {
-        dbg!(target: module_path!(), level: $level, $ex)
+        $crate::dbg!(target: module_path!(), level: $level, $ex)
     };
     (target: $target:expr, $ex:expr) => {
-        dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
-        dbg!(level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(level: tracing::Level::DEBUG, $ex)
     };
 }
 
@@ -31,7 +29,7 @@ macro_rules! dbg {
             field::{debug, Value},
             Event, Id, Subscriber,
         };
-        let callsite = callsite! {
+        let callsite = tracing::callsite! {
             name: concat!("event:trace_dbg(", stringify!($ex), ")"),
             kind: tracing::metadata::Kind::EVENT,
             target: $target,
@@ -39,7 +37,7 @@ macro_rules! dbg {
             fields: value,
         };
         let val = $ex;
-        if is_enabled!(callsite) {
+        if tracing::is_enabled!(callsite) {
             let meta = callsite.metadata();
             let fields = meta.fields();
             let key = meta
@@ -55,12 +53,12 @@ macro_rules! dbg {
         val
     }};
     (level: $level:expr, $ex:expr) => {
-        dbg!(target: module_path!(), level: $level, $ex)
+        $crate::dbg!(target: module_path!(), level: $level, $ex)
     };
     (target: $target:expr, $ex:expr) => {
-        dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
-        dbg!(level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(level: tracing::Level::DEBUG, $ex)
     };
 }
