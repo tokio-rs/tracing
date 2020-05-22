@@ -301,6 +301,12 @@ The crates included as part of Tracing are:
 * [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
    and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
+* [`tracing-error`]: Utilities for capturing span information and as SpanTraces
+  for instrumenting errors
+
+* [`tracing-flame`]; Provides a layer for generating flame graphs based on
+  tracing span entry / exit events.
+
 [`tracing`]: tracing
 [`tracing-core`]: tracing
 [`tracing-futures`]: tracing-futures
@@ -312,6 +318,8 @@ The crates included as part of Tracing are:
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
 [`tracing-appender`]: tracing-appender
+[`tracing-error`]: tracing-error
+[`tracing-flame`]: tracing-flame
 
 [fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
@@ -345,6 +353,11 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
+- [`color-spantrace`] provides a formatter for rendering SpanTrace in the style
+  of `color-backtrace`
+- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
+  span traces and backtraces with new errors and pretty printing them in error
+  reports.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -357,6 +370,9 @@ please let us know!)
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
+[`color-spantrace`]: https://github.com/yaahc/color-spantrace
+[`color-eyre`]: https://github.com/yaahc/color-eyre
+
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
