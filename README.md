@@ -301,8 +301,8 @@ The crates included as part of Tracing are:
 * [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
    and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
-* [`tracing-error`]: Utilities for capturing span information and as SpanTraces
-  for instrumenting errors
+* [`tracing-error`]: Provides `SpanTrace`, a type for instrumenting errors with
+  tracing spans
 
 * [`tracing-flame`]; Provides a layer for generating flame graphs based on
   tracing span entry / exit events.
