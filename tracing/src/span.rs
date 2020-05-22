@@ -679,7 +679,29 @@ impl Span {
     ///     }
     /// }
     /// ```
+    ///
+    /// Beware though!
+    /// The fields associated with a span are part of its [`Metadata`].
+    /// The [`Metadata`] describing a particular span is constructed statically when the span is
+    /// created and cannot be extended later to add new fields.
+    /// Hence you cannot record a value for a field that was not specified at the moment
+    /// of span creation:
+    /// ```
+    /// use tracing::{trace_span, field};
+    ///
+    /// // Create a span with two fields: `greeting`, with the value "hello world", and
+    /// // `parting`, without a value.
+    /// let span = trace_span!("my_span", greeting = "hello world", parting = field::Empty);
+    ///
+    /// // ...
+    ///
+    /// // Now, you try to record a value for a new field, `new_field`, which was not
+    /// // declared as `Empty` or populated when you created `span`.
+    /// // You won't get any error, but the assignment will have no effect!
+    /// span.record("new_field", &"interesting_value_you_really_need");
+    /// ```
     /// [`field::Empty`]: ../field/struct.Empty.html
+    /// [`Metadata`]: ../struct.Metadata.html
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
     where
         Q: field::AsField,
