@@ -680,8 +680,7 @@ impl Span {
     /// }
     /// ```
     ///
-    /// Beware though!
-    /// The fields associated with a span are part of its [`Metadata`].
+    /// **Note**: The fields associated with a span are part of its [`Metadata`].
     /// The [`Metadata`] describing a particular span is constructed statically when the span is
     /// created and cannot be extended later to add new fields.
     /// Therefore, you cannot record a value for a field that was not specified when the span
