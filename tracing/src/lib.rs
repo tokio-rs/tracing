@@ -95,7 +95,7 @@
 //! or `Event`. If a call to `Subscriber::enabled` returns `false` for a given
 //! set of metadata, that `Subscriber` will *not* be notified about the
 //! corresponding `Span` or `Event`. For performance reasons, if no currently
-//! active subscribers express  interest in a given set of metadata by returning
+//! active subscribers express interest in a given set of metadata by returning
 //! `true`, then the corresponding `Span` or `Event` will never be constructed.
 //!
 //! # Usage
@@ -325,7 +325,7 @@
 //! #     field: "Hello world!"
 //! # };
 //! // `my_struct.field` will be recorded using its `fmt::Display` implementation.
-//! event!(Level::TRACE,  %my_struct.field);
+//! event!(Level::TRACE, %my_struct.field);
 //! # }
 //! ```
 //!
@@ -658,6 +658,8 @@
 //!    dependencies which use `log`. Note that if you're using
 //!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
 //!    `tracing-log` directly.
+//!  - [`tracing-appender`] provides utilities for outputting tracing data,
+//!     including a file appender and non blocking writer.
 //!
 //! Additionally, there are also several third-party crates which are not
 //! maintained by the `tokio` project. These include:
@@ -667,8 +669,8 @@
 //!    `tracing` events and generates histograms.
 //!  - [`tracing-opentelemetry`] provides a subscriber for emitting traces to
 //!    [OpenTelemetry]-compatible distributed tracing systems.
-//!  - [`tracing-honeycomb`] implements a subscriber for reporting traces to
-//!    [honeycomb.io].
+//!  - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
+//!  - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 //!  - [`tracing-actix`] provides `tracing` integration for the `actix` actor
 //!    framework.
 //!  - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
@@ -681,7 +683,8 @@
 //!
 //! [`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
 //! [OpenTelemetry]: https://opentelemetry.io/
-//! [`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+//! [`tracing-honeycomb`]: https://crates.io/crates/tracing-honeycomb
+//! [`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 //! [honeycomb.io]: https://www.honeycomb.io/
 //! [`tracing-actix`]: https://crates.io/crates/tracing-actix
 //! [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
@@ -717,7 +720,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.13", default-features = false }
+//!   tracing = { version = "0.1.14", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -745,6 +748,7 @@
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
+//! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
 //! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //! [static verbosity level]: level_filters/index.html#compile-time-filters
@@ -752,7 +756,7 @@
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.13")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.14")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -781,11 +785,10 @@ extern crate alloc;
 
 #[macro_use]
 extern crate cfg_if;
-use tracing_core;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
-pub extern crate log;
+pub use log;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
@@ -793,22 +796,17 @@ pub extern crate log;
 #[doc(hidden)]
 use tracing_core::*;
 
-pub use self::{
-    dispatcher::Dispatch,
-    event::Event,
-    field::Value,
-    subscriber::Subscriber,
-    tracing_core::{event, Level, Metadata},
-};
+pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
 
 #[doc(hidden)]
-pub use self::{
-    span::Id,
-    tracing_core::{
-        callsite::{self, Callsite},
-        metadata,
-    },
+pub use self::span::Id;
+
+#[doc(hidden)]
+pub use tracing_core::{
+    callsite::{self, Callsite},
+    metadata,
 };
+pub use tracing_core::{event, Level, Metadata};
 
 #[doc(inline)]
 pub use self::span::Span;

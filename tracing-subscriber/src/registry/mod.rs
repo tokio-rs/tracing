@@ -5,7 +5,7 @@
 //! This module provides the [`Registry`] type, a [`Subscriber`] implementation
 //! which tracks per-span data and exposes it to [`Layer`]s. When a `Registry`
 //! is used as the base `Subscriber` of a `Layer` stack, the
-//! [`layer::Context`][ctx] type will  provide methods allowing `Layer`s to
+//! [`layer::Context`][ctx] type will provide methods allowing `Layer`s to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
 //! [`LookupSpan`] and [`Subscriber`] themselves (with [`SpanData`] implemented

@@ -5,11 +5,14 @@ members = [
     "tracing-core",
     "tracing-attributes",
     "tracing-error",
+    "tracing-flame",
     "tracing-futures",
     "tracing-tower",
     "tracing-log",
     "tracing-macros",
+    "tracing-opentelemetry",
     "tracing-subscriber",
     "tracing-serde",
+    "tracing-appender",
     "examples"
 ]

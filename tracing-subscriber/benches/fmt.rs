@@ -1,6 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::{io, time::Duration};
-use tracing_subscriber;
 
 mod support;
 use support::MultithreadedBench;

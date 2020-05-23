@@ -1,5 +1,4 @@
 use tracing::Level;
-use tracing_subscriber;
 
 fn main() {
     tracing_subscriber::fmt()

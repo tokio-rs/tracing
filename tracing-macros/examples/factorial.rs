@@ -1,12 +1,7 @@
 //! Compare to the example given in the documentation for the `std::dbg` macro.
 #![deny(rust_2018_idioms)]
 
-#[macro_use]
-extern crate tracing;
-#[macro_use]
-extern crate tracing_macros;
-use env_logger;
-use tracing_log;
+use tracing_macros::dbg;
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {

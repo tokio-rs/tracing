@@ -40,7 +40,7 @@ use tracing_core::{
 /// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// Setting a custom  event formatter:
+/// Setting a custom event formatter:
 ///
 /// ```rust
 /// use tracing_subscriber::fmt::{self, format, time};
@@ -445,10 +445,7 @@ where
         if let Some(FormattedFields { ref mut fields, .. }) =
             extensions.get_mut::<FormattedFields<N>>()
         {
-            if !values.is_empty() {
-                fields.push(' ');
-            }
-            let _ = self.fmt_fields.format_fields(fields, values);
+            let _ = self.fmt_fields.add_fields(fields, values);
         } else {
             let mut buf = String::new();
             if self.fmt_fields.format_fields(&mut buf, values).is_ok() {

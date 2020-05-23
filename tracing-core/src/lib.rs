@@ -177,7 +177,7 @@ macro_rules! metadata {
         callsite: $callsite:expr,
         kind: $kind:expr
     ) => {
-        metadata! {
+        $crate::metadata! {
             name: $name,
             target: $target,
             level: $level,

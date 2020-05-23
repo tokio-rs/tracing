@@ -27,7 +27,6 @@
 //! [builder]: struct.LogTracer.html#method.builder
 //! [ignore]: struct.Builder.html#method.ignore_crate
 use crate::{format_trace, AsTrace};
-use log;
 pub use log::SetLoggerError;
 use tracing_core::dispatcher;
 

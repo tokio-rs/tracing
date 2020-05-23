@@ -1,8 +1,4 @@
 //! Formatters for event timestamps.
-
-#[cfg(feature = "chrono")]
-use chrono;
-
 #[cfg(feature = "ansi")]
 use ansi_term::Style;
 
@@ -192,8 +188,8 @@ impl FormatTime for ChronoUtc {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let time = chrono::Utc::now();
         match self.format {
-            ChronoFmtType::Rfc3339 => write!(w, "{} ", time.to_rfc3339()),
-            ChronoFmtType::Custom(ref format_str) => write!(w, "{} ", time.format(format_str)),
+            ChronoFmtType::Rfc3339 => write!(w, "{}", time.to_rfc3339()),
+            ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
         }
     }
 }

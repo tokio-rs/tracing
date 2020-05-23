@@ -242,14 +242,12 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
-Note: the [`#[tracing::instrument]`](https://github.com/tokio-rs/tracing/issues/399)` macro does not work correctly with the [async-trait](https://github.com/dtolnay/async-trait) crate. This bug is tracked in [#399](https://github.com/tokio-rs/tracing/issues/399).
-
 ## Getting Help
 
 First, see if the answer to your question can be found in the API documentation.
 If the answer is not there, there is an active community in
 the [Tracing Discord channel][chat]. We would be happy to try to answer your
-question.  Last, if that doesn't work, try opening an [issue] with the question.
+question. Last, if that doesn't work, try opening an [issue] with the question.
 
 [chat]: https://discord.gg/EeF3cQw
 [issue]: https://github.com/tokio-rs/tracing/issues/new
@@ -286,6 +284,11 @@ The crates included as part of Tracing are:
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
+* [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
+  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
+  tracing systems for processing and visualization.
+  ([crates.io][otel-crates]|[docs][otel-docs])
+
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
@@ -295,15 +298,28 @@ The crates included as part of Tracing are:
 
 * [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
 
+* [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
+   and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
+
+* [`tracing-error`]: Provides `SpanTrace`, a type for instrumenting errors with
+  tracing spans
+
+* [`tracing-flame`]; Provides a layer for generating flame graphs based on
+  tracing span entry / exit events.
+
 [`tracing`]: tracing
 [`tracing-core`]: tracing
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
 [`tracing-log`]: tracing-log
+[`tracing-opentelemetry`]: tracing-opentelemetry
 [`tracing-serde`]: tracing-serde
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
+[`tracing-appender`]: tracing-appender
+[`tracing-error`]: tracing-error
+[`tracing-flame`]: tracing-flame
 
 [fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
@@ -314,6 +330,13 @@ The crates included as part of Tracing are:
 [sub-crates]: https://crates.io/crates/tracing-subscriber
 [sub-docs]: https://docs.rs/tracing-subscriber
 
+[otel-crates]: https://crates.io/crates/tracing-opentelemetry
+[otel-docs]: https://docs.rs/tracing-opentelemetry
+[OpenTelemetry]: https://opentelemetry.io/
+
+[app-crates]: https://crates.io/crates/tracing-appender
+[app-docs]: https://docs.rs/tracing-appender
+
 ## Related Crates
 
 In addition to this repository, here are also several third-party crates which
@@ -322,29 +345,34 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
   It provides a subscriber that records the time elapsed between pairs of
   `tracing` events and generates histograms.
-- [`tracing-opentelemetry`] provides a subscriber for emitting traces to
-  [OpenTelemetry]-compatible distributed tracing systems.
-- [`tracing-honeycomb`] implements a subscriber for reporting traces to
-  [honeycomb.io].
+- [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
+- [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
+- [`color-spantrace`] provides a formatter for rendering span traces in the
+  style of `color-backtrace`
+- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
+  span traces and backtraces with new errors and pretty printing them in error
+  reports.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
 
 [`tracing-timing`]: https://crates.io/crates/tracing-timing
-[`tracing-opentelemetry`]: https://crates.io/crates/tracing-opentelemetry
-[OpenTelemetry]: https://opentelemetry.io/
-[`tracing-honeycomb`]: https://crates.io/crates/honeycomb-tracing
+[`tracing-honeycomb`]: https://crates.io/crates/tracing-honeycomb
+[`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
+[`color-spantrace`]: https://github.com/yaahc/color-spantrace
+[`color-eyre`]: https://github.com/yaahc/color-eyre
+
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

@@ -10,7 +10,7 @@ use crate::{
 use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field, Visit},
-    Event, Level, Subscriber,
+    span, Event, Level, Subscriber,
 };
 
 #[cfg(feature = "tracing-log")]
@@ -80,6 +80,18 @@ pub trait FormatFields<'writer> {
         writer: &'writer mut dyn fmt::Write,
         fields: R,
     ) -> fmt::Result;
+
+    /// Record additional field(s) on an existing span.
+    ///
+    /// By default, this appends a space to the current set of fields if it is
+    /// non-empty, and then calls `self.format_fields`. If different behavior is
+    /// required, the default implementation of this method can be overridden.
+    fn add_fields(&self, current: &'writer mut String, fields: &span::Record<'_>) -> fmt::Result {
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        self.format_fields(current, fields)
+    }
 }
 
 /// Returns the default configuration for an [event formatter].
