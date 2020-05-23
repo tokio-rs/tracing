@@ -353,6 +353,7 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
+- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
 - [`color-eyre`] provides a customized version of `eyre::Report` for capturing
@@ -370,9 +371,10 @@ please let us know!)
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
+[`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+[bunyan]: https://github.com/trentm/node-bunyan
 [`color-spantrace`]: https://github.com/yaahc/color-spantrace
 [`color-eyre`]: https://github.com/yaahc/color-eyre
-
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
