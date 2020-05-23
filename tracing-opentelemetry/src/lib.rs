@@ -9,6 +9,15 @@
 //! [OpenTelemetry]: https://opentelemetry.io
 //! [`tracing`]: https://github.com/tokio-rs/tracing
 //!
+//! ### Special Fields
+//!
+//! These fields have specific meaning for `tracing-opentelemetry` and will be
+//! treated as ordinary fields by other layers:
+//!
+//! * `otel.name`: Override the span name sent to OpenTelemetry exporters.
+//! Setting this field is useful if you want to display non-static information
+//! in your span name.
+//!
 //! ## Examples
 //!
 //! ```
