@@ -684,8 +684,8 @@ impl Span {
     /// The fields associated with a span are part of its [`Metadata`].
     /// The [`Metadata`] describing a particular span is constructed statically when the span is
     /// created and cannot be extended later to add new fields.
-    /// Hence you cannot record a value for a field that was not specified at the moment
-    /// of span creation:
+    /// Therefore, you cannot record a value for a field that was not specified when the span
+    /// was created:
     /// ```
     /// use tracing::{trace_span, field};
     ///
