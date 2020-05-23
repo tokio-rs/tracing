@@ -301,6 +301,12 @@ The crates included as part of Tracing are:
 * [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
    and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
+* [`tracing-error`]: Provides `SpanTrace`, a type for instrumenting errors with
+  tracing spans
+
+* [`tracing-flame`]; Provides a layer for generating flame graphs based on
+  tracing span entry / exit events.
+
 [`tracing`]: tracing
 [`tracing-core`]: tracing
 [`tracing-futures`]: tracing-futures
@@ -312,6 +318,8 @@ The crates included as part of Tracing are:
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
 [`tracing-appender`]: tracing-appender
+[`tracing-error`]: tracing-error
+[`tracing-flame`]: tracing-flame
 
 [fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
@@ -346,6 +354,11 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
 - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
+- [`color-spantrace`] provides a formatter for rendering span traces in the
+  style of `color-backtrace`
+- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
+  span traces and backtraces with new errors and pretty printing them in error
+  reports.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -360,6 +373,8 @@ please let us know!)
 [coz]: https://github.com/plasma-umass/coz
 [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 [bunyan]: https://github.com/trentm/node-bunyan
+[`color-spantrace`]: https://github.com/yaahc/color-spantrace
+[`color-eyre`]: https://github.com/yaahc/color-eyre
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

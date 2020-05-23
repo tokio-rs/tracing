@@ -177,6 +177,20 @@ fn main() {
     - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
     behind `dyn Error` trait objects.
 
+## Related Crates
+
+In addition to this repository, here are also several third-party crates which
+are not maintained by the `tokio` project. These include:
+
+- [`color-spantrace`] provides a formatter for rendering SpanTrace in the style
+  of `color-backtrace`
+- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
+  span traces and backtraces with new errors and pretty printing them in error
+  reports.
+
+[`color-spantrace`]: https://github.com/yaahc/color-spantrace
+[`color-eyre`]: https://github.com/yaahc/color-eyre
+
 ## License
 
 This project is licensed under the [MIT license](LICENSE).
