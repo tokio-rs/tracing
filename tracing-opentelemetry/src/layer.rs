@@ -10,6 +10,8 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
+static SPAN_NAME_FIELD: &str = "otel.name";
+
 /// An [OpenTelemetry] propagation layer for use in a project that uses
 /// [tracing].
 ///
@@ -153,11 +155,37 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
-        let attribute = api::Key::new(field.name()).string(format!("{:?}", value));
-        if let Some(attributes) = &mut self.0.attributes {
-            attributes.push(attribute);
+        if field.name() == SPAN_NAME_FIELD {
+            self.0.name = format!("{:?}", value);
         } else {
-            self.0.attributes = Some(vec![attribute]);
+            let attribute = api::Key::new(field.name()).string(format!("{:?}", value));
+            if let Some(attributes) = &mut self.0.attributes {
+                attributes.push(attribute);
+            } else {
+                self.0.attributes = Some(vec![attribute]);
+            }
+        }
+    }
+}
+
+struct SpanNameVisitor<'a>(&'a mut Option<String>);
+
+impl<'a> field::Visit for SpanNameVisitor<'a> {
+    /// Set the OpenTelemetry [`Span`] name from a str.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        if field.name() == SPAN_NAME_FIELD {
+            *self.0 = Some(value.to_string())
+        }
+    }
+
+    /// Set the OpenTelemetry [`Span`] name from a value that implements Debug.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
+        if field.name() == SPAN_NAME_FIELD {
+            *self.0 = Some(format!("{:?}", value))
         }
     }
 }
@@ -387,12 +415,17 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        let mut builder = self
-            .tracer
-            .span_builder(attrs.metadata().name())
-            .with_start_time(SystemTime::now())
-            // Eagerly assign span id so children have stable parent id
-            .with_span_id(self.id_generator.new_span_id());
+        let mut span_name = None;
+        attrs.record(&mut SpanNameVisitor(&mut span_name));
+
+        let mut builder = api::SpanBuilder::from_name(
+            span_name.unwrap_or_else(|| attrs.metadata().name().to_string()),
+        )
+        .with_start_time(SystemTime::now())
+        // Eagerly assign span id so children have stable parent id
+        .with_span_id(self.id_generator.new_span_id());
+
+        // Set optional parent span context from attrs
         builder.parent_context = self.parent_span_context(attrs, &ctx);
 
         // Ensure trace id exists so children are matched properly.
