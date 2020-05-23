@@ -677,6 +677,8 @@
 //!    GELF format.
 //!  - [`tracing-coz`] provides integration with the [coz] causal profiler
 //!    (Linux-only).
+//!  - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans
+//!    in [bunyan] format, enriched with timing information.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -690,6 +692,8 @@
 //! [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 //! [`tracing-coz`]: https://crates.io/crates/tracing-coz
 //! [coz]: https://github.com/plasma-umass/coz
+//! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+//! [bunyan]: https://github.com/trentm/node-bunyan
 //!
 //! **Note:** that some of the ecosystem crates are currently unreleased and
 //! undergoing active development. They may be less stable than `tracing` and
