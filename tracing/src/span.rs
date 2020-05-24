@@ -698,6 +698,11 @@ impl Span {
     /// // declared as `Empty` or populated when you created `span`.
     /// // You won't get any error, but the assignment will have no effect!
     /// span.record("new_field", &"interesting_value_you_really_need");
+    ///
+    /// // Instead, all fields that may be recorded after span creation should be declared up front,
+    /// // using field::Empty when a value is not known, as we did for `parting`.
+    /// // This `record` call will indeed replace field::Empty with "you will be remembered".
+    /// span.record("parting", &"you will be remembered");
     /// ```
     /// [`field::Empty`]: ../field/struct.Empty.html
     /// [`Metadata`]: ../struct.Metadata.html
