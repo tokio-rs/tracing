@@ -314,6 +314,62 @@ pub trait AsId: crate::sealed::Sealed {
     fn as_id(&self) -> Option<&Id>;
 }
 
+pub trait Instrument<I: Instrumented> {
+    fn instrument(self, span: &Span) -> I::Output
+    where
+        Self: Sized,
+    {
+        self.make_instrumented(span).finish()
+    }
+
+    fn make_instrumented(self, span: &Span) -> I;
+
+    fn in_current_span(self) -> I::Output
+    where
+        Self: Sized,
+    {
+        self.instrument(&Span::current())
+    }
+}
+
+pub trait Instrumented {
+    type Output;
+    fn finish(self) -> Self::Output;
+}
+
+struct InstrumentedFn<F>(F, Span);
+impl<F: FnOnce() -> T, T> Instrumented for InstrumentedFn<F> {
+    type Output = T;
+    fn finish(self) -> Self::Output {
+        let _enter = self.1.enter();
+        (self.0)()
+    }
+}
+
+impl<F> Instrumented for InstrumentedFuture<F> {
+    type Output = Self;
+    fn finish(self) -> Self::Output {
+        self
+    }
+}
+
+impl<F, T> Instrument<InstrumentedFn<F>> for F
+where
+    F: FnOnce() -> T,
+{
+    fn make_instrumented(self, span: &Span) -> InstrumentedFn<F> {
+        InstrumentedFn(self, span.clone())
+    }
+}
+
+impl<F> Instrument<InstrumentedFuture<F>> for F
+where
+    F: std::future::Future,
+{
+    fn make_instrumented(self, span: &Span) -> InstrumentedFuture<F> {
+        unimplemented!()
+    }
+}
 /// A handle representing a span, with the capability to enter the span if it
 /// exists.
 ///
@@ -331,6 +387,11 @@ pub struct Span {
     /// This might be `Some` even if `inner` is `None`, in the case that the
     /// span is disabled but the metadata is needed for `log` support.
     meta: Option<&'static Metadata<'static>>,
+}
+
+pub struct InstrumentedFuture<F> {
+    inner: F,
+    span: Span,
 }
 
 /// A handle representing the capacity to enter a span which is known to exist.
@@ -617,10 +678,27 @@ impl Span {
     /// // the span will be entered for the duration of the call to
     /// // `hello_world`.
     /// let a_string = span.in_scope(hello_world);
+    /// ```
     ///
-    pub fn in_scope<F: FnOnce() -> T, T>(&self, f: F) -> T {
-        let _enter = self.enter();
-        f()
+    /// `async` blocks may also be instrumented using `in_scope`:
+    /// ```
+    /// # async fn docs() {
+    /// # use tracing::{Level, span};
+    /// let my_span = span!(Level::TRACE, "my_async_span");
+    ///
+    /// my_span.in_scope(async {
+    ///     // this event occurs within the span.
+    ///     trace!("i'm in the async span!");
+    ///     // ...
+    /// }).await;
+    /// # }
+    /// ```
+    pub fn in_scope<F, I>(&self, f: F) -> I::Output
+    where
+        F: Instrument<I>,
+        I: Instrumented,
+    {
+        f.instrument(self)
     }
 
     /// Returns a [`Field`](../field/struct.Field.html) for the field with the
