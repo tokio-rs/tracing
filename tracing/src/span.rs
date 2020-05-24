@@ -337,7 +337,7 @@ pub trait Instrumented {
     fn finish(self) -> Self::Output;
 }
 
-struct InstrumentedFn<F>(F, Span);
+pub struct InstrumentedFn<F>(F, Span);
 impl<F: FnOnce() -> T, T> Instrumented for InstrumentedFn<F> {
     type Output = T;
     fn finish(self) -> Self::Output {
