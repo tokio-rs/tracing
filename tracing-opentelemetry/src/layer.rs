@@ -134,7 +134,21 @@ pub(crate) fn build_span_context(
 struct SpanEventVisitor<'a>(&'a mut api::Event);
 
 impl<'a> field::Visit for SpanEventVisitor<'a> {
-    /// Record events on the underlying OpenTelemetry [`Span`].
+    /// Record events on the underlying OpenTelemetry [`Span`] from `&str` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        if field.name() == "message" {
+            self.0.name = value.to_string()
+        } else {
+            self.0
+                .attributes
+                .push(api::KeyValue::new(field.name(), value));
+        }
+    }
+
+    /// Record events on the underlying OpenTelemetry [`Span`] from values that
+    /// implement Debug.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
@@ -151,7 +165,24 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
 struct SpanAttributeVisitor<'a>(&'a mut api::SpanBuilder);
 
 impl<'a> field::Visit for SpanAttributeVisitor<'a> {
-    /// Set attributes on the underlying OpenTelemetry [`Span`].
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `&str` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        if field.name() == SPAN_NAME_FIELD {
+            self.0.name = value.to_string();
+        } else {
+            let attribute = api::KeyValue::new(field.name(), value);
+            if let Some(attributes) = &mut self.0.attributes {
+                attributes.push(attribute);
+            } else {
+                self.0.attributes = Some(vec![attribute]);
+            }
+        }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from values that
+    /// implement Debug.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
@@ -164,28 +195,6 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             } else {
                 self.0.attributes = Some(vec![attribute]);
             }
-        }
-    }
-}
-
-struct SpanNameVisitor<'a>(&'a mut Option<String>);
-
-impl<'a> field::Visit for SpanNameVisitor<'a> {
-    /// Set the OpenTelemetry [`Span`] name from a str.
-    ///
-    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
-    fn record_str(&mut self, field: &field::Field, value: &str) {
-        if field.name() == SPAN_NAME_FIELD {
-            *self.0 = Some(value.to_string())
-        }
-    }
-
-    /// Set the OpenTelemetry [`Span`] name from a value that implements Debug.
-    ///
-    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
-    fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
-        if field.name() == SPAN_NAME_FIELD {
-            *self.0 = Some(format!("{:?}", value))
         }
     }
 }
@@ -415,15 +424,12 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        let mut span_name = None;
-        attrs.record(&mut SpanNameVisitor(&mut span_name));
-
-        let mut builder = api::SpanBuilder::from_name(
-            span_name.unwrap_or_else(|| attrs.metadata().name().to_string()),
-        )
-        .with_start_time(SystemTime::now())
-        // Eagerly assign span id so children have stable parent id
-        .with_span_id(self.id_generator.new_span_id());
+        let mut builder = self
+            .tracer
+            .span_builder(attrs.metadata().name())
+            .with_start_time(SystemTime::now())
+            // Eagerly assign span id so children have stable parent id
+            .with_span_id(self.id_generator.new_span_id());
 
         // Set optional parent span context from attrs
         builder.parent_context = self.parent_span_context(attrs, &ctx);

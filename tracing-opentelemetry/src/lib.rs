@@ -11,8 +11,9 @@
 //!
 //! ### Special Fields
 //!
-//! These fields have specific meaning for `tracing-opentelemetry` and will be
-//! treated as ordinary fields by other layers:
+//! Fields with an `otel.` prefix are reserved for this crate and have specific
+//! meaning. They are treated as ordinary fields by other layers. The current
+//! special fields are:
 //!
 //! * `otel.name`: Override the span name sent to OpenTelemetry exporters.
 //! Setting this field is useful if you want to display non-static information
@@ -36,6 +37,7 @@
 //!
 //! // Trace executed code
 //! tracing::subscriber::with_default(subscriber, || {
+//!     // Spans will be sent to the configured OpenTelemetry exporter
 //!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
 //!     let _enter = root.enter();
 //!
