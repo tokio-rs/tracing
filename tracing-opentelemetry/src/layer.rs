@@ -415,6 +415,30 @@ where
         }
     }
 
+    fn on_follows_from(&self, id: &Id, follows: &Id, ctx: Context<S>) {
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut extensions = span.extensions_mut();
+        let builder = extensions
+            .get_mut::<api::SpanBuilder>()
+            .expect("Missing SpanBuilder span extensions");
+
+        let follows_span = ctx
+            .span(follows)
+            .expect("Span to follow not found, this is a bug");
+        let mut follows_extensions = follows_span.extensions_mut();
+        let follows_builder = follows_extensions
+            .get_mut::<api::SpanBuilder>()
+            .expect("Missing SpanBuilder span extensions");
+
+        let follows_context = build_span_context(follows_builder, self.sampler.as_ref());
+        let follows_link = api::Link::new(follows_context, Vec::new());
+        if let Some(ref mut links) = builder.links {
+            links.push(follows_link);
+        } else {
+            builder.links = Some(vec![follows_link]);
+        }
+    }
+
     /// Records OpenTelemetry [`Event`] data on event.
     ///
     /// Note: an [`ERROR`]-level event will also set the OpenTelemetry span status code to
