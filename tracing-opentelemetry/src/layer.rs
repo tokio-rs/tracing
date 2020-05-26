@@ -517,3 +517,44 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use opentelemetry::api;
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::prelude::*;
+
+    #[derive(Debug, Clone)]
+    struct TestTracer(Arc<Mutex<Option<api::SpanBuilder>>>);
+    impl api::Tracer for TestTracer {
+        type Span = api::NoopSpan;
+        fn invalid(&self) -> Self::Span {
+            api::NoopSpan::new()
+        }
+        fn start_from_context(&self, _name: &str, _context: &api::Context) -> Self::Span {
+            self.invalid()
+        }
+        fn span_builder(&self, name: &str) -> api::SpanBuilder {
+            api::SpanBuilder::from_name(name.to_string())
+        }
+        fn build_with_context(&self, builder: api::SpanBuilder, _cx: &api::Context) -> Self::Span {
+            *self.0.lock().unwrap() = Some(builder);
+            self.invalid()
+        }
+    }
+
+    #[test]
+    fn dynamic_span_names() {
+        let dynamic_name = "GET http://example.com".to_string();
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
+        });
+
+        let recorded_name = tracer.0.lock().unwrap().as_ref().map(|b| b.name.clone());
+        assert_eq!(recorded_name, Some(dynamic_name))
+    }
+}
