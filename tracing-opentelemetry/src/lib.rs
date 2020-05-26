@@ -41,10 +41,6 @@
 //!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
 //!     let _enter = root.enter();
 //!
-//!     // Optionally set a dynamic span name for otel to export
-//!     let operation = "GET http://example.com".to_string();
-//!     span!(tracing::Level::TRACE, "http_request", otel.name=operation.as_str());
-//!
 //!     error!("This event will be logged in the root span.");
 //! });
 //! ```
