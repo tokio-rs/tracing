@@ -416,9 +416,7 @@ where
     }
 
     fn on_follows_from(&self, id: &Id, follows: &Id, ctx: Context<S>) {
-        let span = ctx
-            .span(id)
-            .expect("Span to follow not found, this is a bug");
+        let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         let builder = extensions
             .get_mut::<api::SpanBuilder>()
