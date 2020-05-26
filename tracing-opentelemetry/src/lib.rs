@@ -9,6 +9,16 @@
 //! [OpenTelemetry]: https://opentelemetry.io
 //! [`tracing`]: https://github.com/tokio-rs/tracing
 //!
+//! ### Special Fields
+//!
+//! Fields with an `otel.` prefix are reserved for this crate and have specific
+//! meaning. They are treated as ordinary fields by other layers. The current
+//! special fields are:
+//!
+//! * `otel.name`: Override the span name sent to OpenTelemetry exporters.
+//! Setting this field is useful if you want to display non-static information
+//! in your span name.
+//!
 //! ## Examples
 //!
 //! ```
@@ -27,6 +37,7 @@
 //!
 //! // Trace executed code
 //! tracing::subscriber::with_default(subscriber, || {
+//!     // Spans will be sent to the configured OpenTelemetry exporter
 //!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
 //!     let _enter = root.enter();
 //!

@@ -10,6 +10,8 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
+static SPAN_NAME_FIELD: &str = "otel.name";
+
 /// An [OpenTelemetry] propagation layer for use in a project that uses
 /// [tracing].
 ///
@@ -132,7 +134,21 @@ pub(crate) fn build_span_context(
 struct SpanEventVisitor<'a>(&'a mut api::Event);
 
 impl<'a> field::Visit for SpanEventVisitor<'a> {
-    /// Record events on the underlying OpenTelemetry [`Span`].
+    /// Record events on the underlying OpenTelemetry [`Span`] from `&str` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        if field.name() == "message" {
+            self.0.name = value.to_string()
+        } else {
+            self.0
+                .attributes
+                .push(api::KeyValue::new(field.name(), value));
+        }
+    }
+
+    /// Record events on the underlying OpenTelemetry [`Span`] from values that
+    /// implement Debug.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
@@ -149,15 +165,36 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
 struct SpanAttributeVisitor<'a>(&'a mut api::SpanBuilder);
 
 impl<'a> field::Visit for SpanAttributeVisitor<'a> {
-    /// Set attributes on the underlying OpenTelemetry [`Span`].
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `&str` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        if field.name() == SPAN_NAME_FIELD {
+            self.0.name = value.to_string();
+        } else {
+            let attribute = api::KeyValue::new(field.name(), value);
+            if let Some(attributes) = &mut self.0.attributes {
+                attributes.push(attribute);
+            } else {
+                self.0.attributes = Some(vec![attribute]);
+            }
+        }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from values that
+    /// implement Debug.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
-        let attribute = api::Key::new(field.name()).string(format!("{:?}", value));
-        if let Some(attributes) = &mut self.0.attributes {
-            attributes.push(attribute);
+        if field.name() == SPAN_NAME_FIELD {
+            self.0.name = format!("{:?}", value);
         } else {
-            self.0.attributes = Some(vec![attribute]);
+            let attribute = api::Key::new(field.name()).string(format!("{:?}", value));
+            if let Some(attributes) = &mut self.0.attributes {
+                attributes.push(attribute);
+            } else {
+                self.0.attributes = Some(vec![attribute]);
+            }
         }
     }
 }
@@ -393,6 +430,8 @@ where
             .with_start_time(SystemTime::now())
             // Eagerly assign span id so children have stable parent id
             .with_span_id(self.id_generator.new_span_id());
+
+        // Set optional parent span context from attrs
         builder.parent_context = self.parent_span_context(attrs, &ctx);
 
         // Ensure trace id exists so children are matched properly.
@@ -500,5 +539,46 @@ where
             }
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use opentelemetry::api;
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::prelude::*;
+
+    #[derive(Debug, Clone)]
+    struct TestTracer(Arc<Mutex<Option<api::SpanBuilder>>>);
+    impl api::Tracer for TestTracer {
+        type Span = api::NoopSpan;
+        fn invalid(&self) -> Self::Span {
+            api::NoopSpan::new()
+        }
+        fn start_from_context(&self, _name: &str, _context: &api::Context) -> Self::Span {
+            self.invalid()
+        }
+        fn span_builder(&self, name: &str) -> api::SpanBuilder {
+            api::SpanBuilder::from_name(name.to_string())
+        }
+        fn build_with_context(&self, builder: api::SpanBuilder, _cx: &api::Context) -> Self::Span {
+            *self.0.lock().unwrap() = Some(builder);
+            self.invalid()
+        }
+    }
+
+    #[test]
+    fn dynamic_span_names() {
+        let dynamic_name = "GET http://example.com".to_string();
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
+        });
+
+        let recorded_name = tracer.0.lock().unwrap().as_ref().map(|b| b.name.clone());
+        assert_eq!(recorded_name, Some(dynamic_name))
     }
 }
