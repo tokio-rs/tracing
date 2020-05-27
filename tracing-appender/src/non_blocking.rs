@@ -355,7 +355,9 @@ mod test {
         write_non_blocking(&mut non_blocking, b"Hello");
         assert_eq!(0, error_count.load(Ordering::Acquire));
 
-        // Second write will not block as Worker will have called `recv` on channel. "Hello" not yet consumed. MockWriter call to write_all will block until "Hello" is consumed.
+        // Second write will not block as Worker will have called `recv` on channel.
+        // "Hello" is not yet consumed. MockWriter call to write_all will block until
+        // "Hello" is consumed.
         write_non_blocking(&mut non_blocking, b", World");
         assert_eq!(0, error_count.load(Ordering::Acquire));
 
@@ -363,7 +365,8 @@ mod test {
         write_non_blocking(&mut non_blocking, b"Test");
         assert_eq!(0, error_count.load(Ordering::Acquire));
 
-        // Allow a line to be written. "Hello" message will be consumed. ", World" will be able to write to MockWriter.
+        // Allow a line to be written. "Hello" message will be consumed.
+        // ", World" will be able to write to MockWriter.
         // "Test" will block on call to MockWriter's `write_all`
         let line = rx.recv().unwrap();
         assert_eq!(line, "Hello");
