@@ -6,6 +6,8 @@ use std::marker;
 use std::time::SystemTime;
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Event, Subscriber};
+#[cfg(feature = "tracing-log")]
+use tracing_log::NormalizeEvent;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
@@ -138,12 +140,14 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_str(&mut self, field: &field::Field, value: &str) {
-        if field.name() == "message" {
-            self.0.name = value.to_string()
-        } else {
-            self.0
-                .attributes
-                .push(api::KeyValue::new(field.name(), value));
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
         }
     }
 
@@ -152,12 +156,16 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
-        if field.name() == "message" {
-            self.0.name = format!("{:?}", value);
-        } else {
-            self.0
-                .attributes
-                .push(api::Key::new(field.name()).string(format!("{:?}", value)));
+        match field.name() {
+            "message" => self.0.name = format!("{:?}", value),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0
+                    .attributes
+                    .push(api::KeyValue::new(name, format!("{:?}", value)));
+            }
         }
     }
 }
@@ -491,18 +499,22 @@ where
         if let Some(span) = ctx.lookup_current() {
             let mut extensions = span.extensions_mut();
             if let Some(builder) = extensions.get_mut::<api::SpanBuilder>() {
+                #[cfg(feature = "tracing-log")]
+                let normalized_meta = event.normalized_metadata();
+                #[cfg(feature = "tracing-log")]
+                let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+                #[cfg(not(feature = "tracing-log"))]
+                let meta = event.metadata();
                 let mut otel_event = api::Event::new(
                     String::new(),
                     SystemTime::now(),
                     vec![
-                        api::Key::new("level").string(event.metadata().level().to_string()),
-                        api::Key::new("target").string(event.metadata().target()),
+                        api::Key::new("level").string(meta.level().to_string()),
+                        api::Key::new("target").string(meta.target()),
                     ],
                 );
 
-                if builder.status_code.is_none()
-                    && *event.metadata().level() == tracing_core::Level::ERROR
-                {
+                if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(api::StatusCode::Unknown);
                 }
 
