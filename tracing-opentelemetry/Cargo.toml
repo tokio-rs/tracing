@@ -7,7 +7,7 @@ authors = [
 ]
 description = "OpenTelemetry integration for tracing"
 homepage = "https://github.com/tokio-rs/tracing/tree/master/tracing-opentelemetry"
-repository = "https://github.com/tokio-rs/tracing/tree/master/tracing-opentelemetry"
+repository = "https://github.com/tokio-rs/tracing"
 readme = "README.md"
 categories = [
     "development-tools::debugging",
