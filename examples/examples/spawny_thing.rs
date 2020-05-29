@@ -5,7 +5,7 @@
 /// You can run this example by running the following command in a terminal
 ///
 /// ```
-/// cargo +nightly run --example spawny_thing
+/// cargo run --example spawny_thing
 /// ```
 use futures::future::join_all;
 use std::error::Error;
@@ -29,7 +29,6 @@ async fn parent_task(subtasks: usize) {
     info!(sum);
 }
 
-#[instrument]
 async fn subtask(number: usize) -> usize {
     info!("polling subtask...");
     number
