@@ -2193,36 +2193,36 @@ macro_rules! __mk_format_string {
     // === recursive case (more tts), ===
     // ====== shorthand field syntax ===
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
     // ====== kv field syntax ===
     (@ { $(,)* $($out:expr),* }, message = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
 
     // === rest is unparseable --- must be fmt args ===
     (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
-        tracing::__mk_format_string!(@ { "{} ", $($out),* }, )
+        $crate::__mk_format_string!(@ { "{} ", $($out),* }, )
     };
 
     // === entry ===
     ($($kvs:tt)+) => {
-        tracing::__mk_format_string!(@ { }, $($kvs)+,)
+        $crate::__mk_format_string!(@ { }, $($kvs)+,)
     };
     () => {
         ""
@@ -2289,7 +2289,7 @@ macro_rules! __mk_format_args {
     ($($kv:tt)*) => {
         {
             // use $crate::__mk_format_string;
-            $crate::__mk_format_args!(@ { }, tracing::__mk_format_string!($($kv)*), fields: $($kv)*)
+            $crate::__mk_format_args!(@ { }, $crate::__mk_format_string!($($kv)*), fields: $($kv)*)
         }
     };
 }
