@@ -77,6 +77,37 @@ where
 
         let flatten_event = self.format.flatten_event;
 
+        let visit_span = |span: &crate::registry::SpanRef<'_, S>| {
+            let ext = span.extensions();
+            let data = ext
+                .get::<FormattedFields<N>>()
+                .expect("Unable to find FormattedFields in extensions; this is a bug");
+            // TODO: let's _not_ do this, but this resolves
+            // https://github.com/tokio-rs/tracing/issues/391.
+            // We should probably rework this to use a `serde_json::Value` or something
+            // similar in a JSON-specific layer, but I'd (david)
+            // rather have a uglier fix now rather than shipping broken JSON.
+            let mut fields = match serde_json::from_str(&data) {
+                Ok(fields) => fields,
+                // We have previously recorded fields for this span
+                // should be valid JSON. However, they appear to *not*
+                // be valid JSON. This is almost certainly a bug, so
+                // panic if we're in debug mode
+                Err(e) if cfg!(debug_assertions) => panic!(
+                    "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
+                    span.metadata().name(),
+                    e,
+                    data
+                ),
+                // If we *aren't* in debug mode, it's probably best not
+                // crash the program, but let's at least make sure it's clear
+                // that the fields are not supposed to be missing.
+                Err(e) => json!({ "field_error": format!("{}", e) }),
+            };
+            fields["name"] = json!(span.metadata().name());
+            fields
+        };
+
         let mut visit = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(writer));
 
@@ -89,35 +120,19 @@ where
             let id = id.id();
             if let Some(id) = id {
                 if let Some(span) = ctx.ctx.span(id) {
-                    let ext = span.extensions();
-                    let data = ext
-                        .get::<FormattedFields<N>>()
-                        .expect("Unable to find FormattedFields in extensions; this is a bug");
-                    // TODO: let's _not_ do this, but this resolves
-                    // https://github.com/tokio-rs/tracing/issues/391.
-                    // We should probably rework this to use a `serde_json::Value` or something
-                    // similar in a JSON-specific layer, but I'd (david)
-                    // rather have a uglier fix now rather than shipping broken JSON.
-                    let mut fields = match serde_json::from_str(&data) {
-                        Ok(fields) => fields,
-                        // We have previously recorded fields for this span
-                        // should be valid JSON. However, they appear to *not*
-                        // be valid JSON. This is almost certainly a bug, so
-                        // panic if we're in debug mode
-                        Err(e) if cfg!(debug_assertions) => panic!(
-                            "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
-                            span.metadata().name(),
-                            e,
-                            data
-                        ),
-                        // If we *aren't* in debug mode, it's probably best not
-                        // crash the program, but let's at least make sure it's clear
-                        // that the fields are not supposed to be missing.
-                        Err(e) => json!({ "field_error": format!("{}", e) }),
-                    };
-                    fields["name"] = json!(span.metadata().name());
-                    serializer.serialize_entry("span", &fields).unwrap_or(());
+                    serializer
+                        .serialize_entry("span", &visit_span(&span))
+                        .unwrap_or(());
                 }
+            }
+
+            let mut spans = vec![];
+            ctx.visit_spans(|span| {
+                spans.push(visit_span(span));
+                Ok(())
+            })?;
+            if !spans.is_empty() {
+                serializer.serialize_entry("spans", &spans)?;
             }
 
             if self.display_target {
@@ -388,9 +403,13 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF, false);
+        test_json(make_writer, expected, &BUF, false, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
     }
 
     #[test]
@@ -402,9 +421,54 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"message\":\"some json test\"}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"message\":\"some json test\"}\n";
 
-        test_json(make_writer, expected, &BUF, true);
+        test_json(make_writer, expected, &BUF, true, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_nested_span() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3},{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+
+        test_json(make_writer, expected, &BUF, false, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            let span = tracing::span!(
+                tracing::Level::INFO,
+                "nested_json_span",
+                answer = 43,
+                number = 4
+            );
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_no_span() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+
+        test_json(make_writer, expected, &BUF, false, || {
+            tracing::info!("some json test");
+        });
     }
 
     #[test]
@@ -453,8 +517,13 @@ mod test {
     }
 
     #[cfg(feature = "json")]
-    fn test_json<T>(make_writer: T, expected: &str, buf: &Mutex<Vec<u8>>, flatten_event: bool)
-    where
+    fn test_json<T, U>(
+        make_writer: T,
+        expected: &str,
+        buf: &Mutex<Vec<u8>>,
+        flatten_event: bool,
+        producer: impl FnOnce() -> U,
+    ) where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
         let subscriber = crate::fmt::Subscriber::builder()
@@ -464,11 +533,7 @@ mod test {
             .with_timer(MockTime)
             .finish();
 
-        with_default(subscriber, || {
-            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
-            let _guard = span.enter();
-            tracing::info!("some json test");
-        });
+        with_default(subscriber, producer);
 
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert_eq!(expected, actual.as_str());
