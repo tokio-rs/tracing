@@ -90,6 +90,7 @@ pub(crate) fn build_span_context(
     let (trace_id, trace_flags) = builder
         .parent_context
         .as_ref()
+        .filter(|parent_context| parent_context.is_valid())
         .map(|parent_context| (parent_context.trace_id(), parent_context.trace_flags()))
         .unwrap_or_else(|| {
             let trace_id = builder.trace_id.expect("trace_id should exist");
