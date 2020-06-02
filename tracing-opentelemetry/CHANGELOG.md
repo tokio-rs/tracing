@@ -1,3 +1,19 @@
+# 0.5.0 (June 2, 2020)
+
+### Added
+
+- Support `tracing-log` special values (#735)
+- Support `Span::follows_from` creating otel span links (#723)
+- Dynamic otel span names via `otel.name` field (#732)
+
+### Breaking Changes
+
+- Upgrade to `v0.6.0` of `opentelemetry` (#745)
+
+### Fixed
+
+- Filter out invalid parent contexts when building span contexts (#743)
+
 # 0.4.0 (May 12, 2020)
 
 ### Added
