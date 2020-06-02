@@ -11,10 +11,10 @@ fn make_request(_cx: api::Context) {
     // then `propagator.inject_context(cx, request.headers_mut())`
 }
 
-fn build_example_carrier() -> HashMap<&'static str, String> {
+fn build_example_carrier() -> HashMap<String, String> {
     let mut carrier = HashMap::new();
     carrier.insert(
-        "X-B3",
+        "X-B3".to_string(),
         "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-1".to_string(),
     );
 
