@@ -102,7 +102,6 @@ pub(crate) fn build_span_context(
                 let mut result = sampler.should_sample(
                     builder.parent_context.as_ref(),
                     trace_id,
-                    span_id.clone(),
                     &builder.name,
                     builder
                         .span_kind
