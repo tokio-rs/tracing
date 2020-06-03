@@ -49,6 +49,103 @@ impl Json {
     }
 }
 
+struct SerializableContext<'a, 'b, Span, N>(
+    &'b crate::layer::Context<'a, Span>,
+    std::marker::PhantomData<N>,
+)
+where
+    Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static;
+
+impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
+where
+    Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeSeq;
+        let mut serializer = serializer_o.serialize_seq(None)?;
+
+        for span in self.0.scope() {
+            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+        }
+
+        serializer.end()
+    }
+}
+
+struct SerializableSpan<'a, 'b, Span, N>(
+    &'b crate::registry::SpanRef<'a, Span>,
+    std::marker::PhantomData<N>,
+)
+where
+    Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static;
+
+impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+where
+    Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::ser::Serializer,
+    {
+        let mut serializer = serializer.serialize_map(None)?;
+
+        let ext = self.0.extensions();
+        let data = ext
+            .get::<FormattedFields<N>>()
+            .expect("Unable to find FormattedFields in extensions; this is a bug");
+
+        // TODO: let's _not_ do this, but this resolves
+        // https://github.com/tokio-rs/tracing/issues/391.
+        // We should probably rework this to use a `serde_json::Value` or something
+        // similar in a JSON-specific layer, but I'd (david)
+        // rather have a uglier fix now rather than shipping broken JSON.
+        match serde_json::from_str::<serde_json::Value>(&data) {
+            Ok(serde_json::Value::Object(fields)) => {
+                for field in fields {
+                    serializer.serialize_entry(&field.0, &field.1)?;
+                }
+            }
+            // We have fields for this span which are valid JSON but not an object.
+            // This is probably a bug, so panic if we're in debug mode
+            Ok(_) if cfg!(debug_assertions) => panic!(
+                "span '{}' had malformed fields! this is a bug.\n  error: invalid JSON object\n  fields: {:?}",
+                self.0.metadata().name(),
+                data
+            ),
+            // If we *aren't* in debug mode, it's probably best not to
+            // crash the program, let's log the field found but also an
+            // message saying it's type  is invalid
+            Ok(value) => {
+                serializer.serialize_entry("field", &value)?;
+                serializer.serialize_entry("field_error", "field was no a valid object")?
+            }
+            // We have previously recorded fields for this span
+            // should be valid JSON. However, they appear to *not*
+            // be valid JSON. This is almost certainly a bug, so
+            // panic if we're in debug mode
+            Err(e) if cfg!(debug_assertions) => panic!(
+                "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
+                self.0.metadata().name(),
+                e,
+                data
+            ),
+            // If we *aren't* in debug mode, it's probably best not
+            // crash the program, but let's at least make sure it's clear
+            // that the fields are not supposed to be missing.
+            Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
+        };
+        serializer.serialize_entry("name", self.0.metadata().name())?;
+        serializer.end()
+    }
+}
+
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
@@ -64,7 +161,6 @@ where
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        use serde_json::json;
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
 
@@ -77,37 +173,6 @@ where
 
         let flatten_event = self.format.flatten_event;
 
-        let visit_span = |span: &crate::registry::SpanRef<'_, S>| {
-            let ext = span.extensions();
-            let data = ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            // TODO: let's _not_ do this, but this resolves
-            // https://github.com/tokio-rs/tracing/issues/391.
-            // We should probably rework this to use a `serde_json::Value` or something
-            // similar in a JSON-specific layer, but I'd (david)
-            // rather have a uglier fix now rather than shipping broken JSON.
-            let mut fields = match serde_json::from_str(&data) {
-                Ok(fields) => fields,
-                // We have previously recorded fields for this span
-                // should be valid JSON. However, they appear to *not*
-                // be valid JSON. This is almost certainly a bug, so
-                // panic if we're in debug mode
-                Err(e) if cfg!(debug_assertions) => panic!(
-                    "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
-                    span.metadata().name(),
-                    e,
-                    data
-                ),
-                // If we *aren't* in debug mode, it's probably best not
-                // crash the program, but let's at least make sure it's clear
-                // that the fields are not supposed to be missing.
-                Err(e) => json!({ "field_error": format!("{}", e) }),
-            };
-            fields["name"] = json!(span.metadata().name());
-            fields
-        };
-
         let mut visit = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(writer));
 
@@ -116,24 +181,20 @@ where
             serializer.serialize_entry("timestamp", &timestamp)?;
             serializer.serialize_entry("level", &meta.level().as_serde())?;
 
+            let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
+
             let id = ctx.ctx.current_span();
             let id = id.id();
             if let Some(id) = id {
                 if let Some(span) = ctx.ctx.span(id) {
                     serializer
-                        .serialize_entry("span", &visit_span(&span))
+                        .serialize_entry("span", &SerializableSpan(&span, format_field_marker))
                         .unwrap_or(());
                 }
             }
 
-            let mut spans = vec![];
-            ctx.visit_spans(|span| {
-                spans.push(visit_span(span));
-                Ok(())
-            })?;
-            if !spans.is_empty() {
-                serializer.serialize_entry("spans", &spans)?;
-            }
+            serializer
+                .serialize_entry("spans", &SerializableContext(&ctx.ctx, format_field_marker))?;
 
             if self.display_target {
                 serializer.serialize_entry("target", meta.target())?;
@@ -464,7 +525,7 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"spans\":[],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
         test_json(make_writer, expected, &BUF, false, || {
             tracing::info!("some json test");
@@ -536,6 +597,10 @@ mod test {
         with_default(subscriber, producer);
 
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(expected, actual.as_str());
+        assert_eq!(
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap(),
+            serde_json::from_str(actual.as_str()).unwrap()
+        );
     }
 }
