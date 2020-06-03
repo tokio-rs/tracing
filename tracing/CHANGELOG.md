@@ -1,3 +1,15 @@
+# 0.1.15 (June 2, 2020)
+
+### Changed
+
+- **macros**: Replaced use of legacy `local_inner_macros` with `$crate::` (#740)
+
+### Added
+
+- Docs fixes and improvements (#742, #731, #730)
+
+Thanks to @bnjjj, @blaenk, and @LukeMathWalker for contributing to this release!
+
 # 0.1.14 (May 14, 2020)
 
 ### Added
