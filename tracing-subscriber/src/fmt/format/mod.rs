@@ -306,6 +306,26 @@ impl<T> Format<Json, T> {
         self.format.flatten_event(flatten_event);
         self
     }
+
+    /// Use the full JSON format without the current span.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn disable_current_span(mut self, disable_current_span: bool) -> Format<Json, T> {
+        self.format.disable_current_span(disable_current_span);
+        self
+    }
+
+    /// Use the full JSON format without the span list.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn disable_span_list(mut self, disable_span_list: bool) -> Format<Json, T> {
+        self.format.disable_span_list(disable_span_list);
+        self
+    }
 }
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>

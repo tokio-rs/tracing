@@ -588,6 +588,32 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
             inner: self.inner.flatten_event(flatten_event),
         }
     }
+
+    /// Sets the json subscriber being built to not contain the current span.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn disable_current_span(
+        self,
+        disable_current_span: bool,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.disable_current_span(disable_current_span),
+        }
+    }
+
+    /// Sets the json subscriber being built to not contain the span list.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn disable_span_list(
+        self,
+        disable_span_list: bool,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.disable_span_list(disable_span_list),
+        }
+    }
 }
 
 #[cfg(feature = "env-filter")]
