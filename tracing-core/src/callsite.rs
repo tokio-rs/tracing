@@ -3,7 +3,6 @@
 use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
-    ptr,
     sync::Mutex,
     vec::Vec,
 };
@@ -121,7 +120,7 @@ pub(crate) fn register_dispatch(dispatch: &Dispatch) {
 
 impl PartialEq for Identifier {
     fn eq(&self, other: &Identifier) -> bool {
-        ptr::eq(self.0, other.0)
+        self.0 as *const _ as *const () == other.0 as *const _ as *const ()
     }
 }
 
