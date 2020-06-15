@@ -1121,13 +1121,15 @@ impl Display for TimingDisplay {
 
 #[cfg(test)]
 pub(super) mod test {
-
-    use crate::fmt::{test::MockWriter, time::FormatTime};
-    use lazy_static::lazy_static;
-    use tracing::{self, collect::with_default};
+    use crate::fmt::{test::MockMakeWriter, time::FormatTime};
+    use tracing::{
+        self,
+        collect::with_default,
+        dispatch::{set_default, Dispatch},
+    };
 
     use super::TimingDisplay;
-    use std::{fmt, sync::Mutex};
+    use std::fmt;
 
     pub(crate) struct MockTime;
     impl FormatTime for MockTime {
@@ -1139,139 +1141,87 @@ pub(super) mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: some ansi test\n";
-        test_ansi(make_writer, expected, true, &BUF);
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: hello\n";
+        test_ansi(true, expected);
     }
 
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_false() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
-        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: some ansi test\n";
-
-        test_ansi(make_writer, expected, false, &BUF);
+        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
+        test_ansi(false, expected);
     }
 
     #[cfg(not(feature = "ansi"))]
     #[test]
     fn without_ansi() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
-        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: some ansi test\n";
+        let make_writer = MockMakeWriter::default();
+        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
-            .with_timer(MockTime)
-            .finish();
-
-        with_default(subscriber, || {
-            tracing::info!("some ansi test");
-        });
-
-        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(expected, actual.as_str());
-    }
-
-    #[cfg(feature = "ansi")]
-    fn test_ansi<T>(make_writer: T, expected: &str, is_ansi: bool, buf: &Mutex<Vec<u8>>)
-    where
-        T: crate::fmt::MakeWriter + Send + Sync + 'static,
-    {
-        let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
-            .with_ansi(is_ansi)
-            .with_timer(MockTime)
-            .finish();
-
-        with_default(subscriber, || {
-            tracing::info!("some ansi test");
-        });
-
-        let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(expected, actual.as_str());
+            .with_timer(MockTime);
+        run_test(subscriber, make_writer, expected);
     }
 
     #[test]
     fn without_level() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
-            .finish();
+            .with_timer(MockTime);
+        let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
 
-        with_default(subscriber, || {
-            tracing::info!("hello");
-        });
-        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
-        assert_eq!(
-            "fake time tracing_subscriber::fmt::format::test: hello\n",
-            actual.as_str()
-        );
+        run_test(subscriber, make_writer, expected);
+    }
+
+    #[cfg(feature = "ansi")]
+    fn test_ansi(is_ansi: bool, expected: &str) {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_ansi(is_ansi)
+            .with_timer(MockTime);
+        run_test(subscriber, make_writer, expected)
+    }
+
+    fn run_test(subscriber: impl Into<Dispatch>, buf: MockMakeWriter, expected: &str) {
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+        assert_eq!(expected, buf.to_string())
     }
 
     #[test]
     fn overridden_parents() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+        let make_writer = MockMakeWriter::default();
+        let collector = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
             .finish();
 
-        with_default(subscriber, || {
+        with_default(collector, || {
             let span1 = tracing::info_span!("span1");
             let span2 = tracing::info_span!(parent: &span1, "span2");
             tracing::info!(parent: &span2, "hello");
         });
-        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
         assert_eq!(
             "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
-            actual.as_str()
+            make_writer.to_string()
         );
     }
 
     #[test]
     fn overridden_parents_in_scope() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
             .finish();
-
-        let actual = || {
-            let mut buf = BUF.try_lock().unwrap();
-            let val = String::from_utf8(buf.to_vec()).unwrap();
-            buf.clear();
-            val
-        };
 
         with_default(subscriber, || {
             let span1 = tracing::info_span!("span1");
@@ -1282,13 +1232,13 @@ pub(super) mod test {
             tracing::info!("hello");
             assert_eq!(
                 "fake time span3: tracing_subscriber::fmt::format::test: hello\n",
-                actual().as_str()
+                make_writer.to_string().as_str()
             );
 
             tracing::info!(parent: &span2, "hello");
             assert_eq!(
                 "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
-                actual().as_str()
+                make_writer.to_string().as_str()
             );
         });
     }

@@ -236,10 +236,10 @@ impl std::io::Write for NonBlocking {
     }
 }
 
-impl MakeWriter for NonBlocking {
+impl<'a> MakeWriter<'a> for NonBlocking {
     type Writer = NonBlocking;
 
-    fn make_writer(&self) -> Self::Writer {
+    fn make_writer(&'a self) -> Self::Writer {
         self.clone()
     }
 }
