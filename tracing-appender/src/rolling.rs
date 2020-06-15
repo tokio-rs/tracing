@@ -9,12 +9,15 @@
 //!
 //! The following helpers are available for creating a rolling file appender.
 //!
-//! - [`Rotation::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.YYYY-MM-DD-HH`
+//! - [`Rotation::minutely()`][minutely]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH-mm`
+//! will be created minutely (once per minute)
+//! - [`Rotation::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH`
 //! will be created hourly
-//! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.YYYY-MM-DD`
+//! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
 //! will be created daily
 //! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
 //!
+//! [minutely]: fn.minutely.html
 //! [hourly]: fn.hourly.html
 //! [daily]: fn.daily.html
 //! [never]: fn.never.html
@@ -65,10 +68,12 @@ impl RollingFileAppender {
     ///
     /// Alternatively, a `RollingFileAppender` can be constructed using one of the following helpers:
     ///
+    /// - [`Rotation::minutely()`][minutely],
     /// - [`Rotation::hourly()`][hourly],
     /// - [`Rotation::daily()`][daily],
     /// - [`Rotation::never()`][never]
     ///
+    /// [minutely]: fn.minutely.html
     /// [hourly]: fn.hourly.html
     /// [daily]: fn.daily.html
     /// [never]: fn.never.html
@@ -107,6 +112,41 @@ impl io::Write for RollingFileAppender {
     }
 }
 
+/// Creates a minutely, rolling file appender. This will rotate the log file once per minute.
+///
+/// The appender returned by `rolling::minutely` can be used with `non_blocking` to create
+/// a non-blocking, minutely file appender.
+///
+/// The directory of the log file is specified with the `directory` argument.
+/// `file_name_prefix` specifies the _prefix_ of the log file. `RollingFileAppender`
+/// adds the current date, hour, and minute to the log file in UTC.
+///
+/// # Examples
+///
+/// ``` rust
+/// # #[clippy::allow(needless_doctest_main)]
+/// fn main () {
+/// # fn doc() {
+///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log");
+///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
+///
+///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///
+///     tracing::subscriber::with_default(subscriber.finish(), || {
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
+/// # }
+/// }
+/// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH-mm`.
+pub fn minutely(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::MINUTELY, directory, file_name_prefix)
+}
+
 /// Creates an hourly, rolling file appender.
 ///
 /// The appender returned by `rolling::hourly` can be used with `non_blocking` to create
@@ -134,7 +174,7 @@ impl io::Write for RollingFileAppender {
 /// }
 /// ```
 ///
-/// This will result in a log file located at `/some/path/rolling.log.YYYY-MM-DD-HH`.
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH`.
 pub fn hourly(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
@@ -170,7 +210,7 @@ pub fn hourly(
 /// }
 /// ```
 ///
-/// This will result in a log file located at `/some/path/rolling.log.YYYY-MM-DD`.
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH`.
 pub fn daily(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
@@ -241,12 +281,15 @@ pub struct Rotation(RotationKind);
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 enum RotationKind {
+    Minutely,
     Hourly,
     Daily,
     Never,
 }
 
 impl Rotation {
+    /// Provides an minutely rotation
+    pub const MINUTELY: Self = Self(RotationKind::Minutely);
     /// Provides an hourly rotation
     pub const HOURLY: Self = Self(RotationKind::Hourly);
     /// Provides a daily rotation
@@ -256,6 +299,7 @@ impl Rotation {
 
     pub(crate) fn next_date(&self, current_date: &DateTime<Utc>) -> DateTime<Utc> {
         let unrounded_next_date = match *self {
+            Rotation::MINUTELY => *current_date + chrono::Duration::minutes(1),
             Rotation::HOURLY => *current_date + chrono::Duration::hours(1),
             Rotation::DAILY => *current_date + chrono::Duration::days(1),
             Rotation::NEVER => Utc.ymd(9999, 1, 1).and_hms(1, 0, 0),
@@ -265,6 +309,11 @@ impl Rotation {
 
     pub(crate) fn round_date(&self, date: &DateTime<Utc>) -> DateTime<Utc> {
         match *self {
+            Rotation::MINUTELY => Utc.ymd(date.year(), date.month(), date.day()).and_hms(
+                date.hour(),
+                date.minute(),
+                0,
+            ),
             Rotation::HOURLY => {
                 Utc.ymd(date.year(), date.month(), date.day())
                     .and_hms(date.hour(), 0, 0)
@@ -281,6 +330,7 @@ impl Rotation {
 
     pub(crate) fn join_date(&self, filename: &str, date: &DateTime<Utc>) -> String {
         match *self {
+            Rotation::MINUTELY => format!("{}.{}", filename, date.format("%F-%H-%M")),
             Rotation::HOURLY => format!("{}.{}", filename, date.format("%F-%H")),
             Rotation::DAILY => format!("{}.{}", filename, date.format("%F")),
             Rotation::NEVER => filename.to_string(),
@@ -330,6 +380,15 @@ mod test {
     }
 
     #[test]
+    fn write_minutely_log() {
+        test_appender(
+            Rotation::HOURLY,
+            TempDir::new("minutely").expect("Failed to create tempdir"),
+            "minutely.log",
+        );
+    }
+
+    #[test]
     fn write_hourly_log() {
         test_appender(
             Rotation::HOURLY,
@@ -354,6 +413,49 @@ mod test {
             TempDir::new("never").expect("Failed to create tempdir"),
             "never.log",
         );
+    }
+
+    #[test]
+    fn test_next_date_minutely() {
+        let r = Rotation::MINUTELY;
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_minute(1).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 20, 30);
+        let next = r.next_date(&mock_now);
+        assert_eq!(
+            mock_now
+                .with_hour(0)
+                .unwrap()
+                .with_minute(21)
+                .unwrap()
+                .with_second(0)
+                .unwrap(),
+            next
+        );
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 59, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(mock_now.with_hour(1).unwrap().with_minute(0).unwrap(), next);
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(23, 59, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(
+            mock_now
+                .with_day(2)
+                .unwrap()
+                .with_hour(0)
+                .unwrap()
+                .with_minute(0)
+                .unwrap(),
+            next
+        );
+
+        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 59, 0);
+        let next = r.next_date(&mock_now);
+        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
     }
 
     #[test]
@@ -403,6 +505,19 @@ mod test {
     }
 
     #[test]
+    fn test_round_date_minutely() {
+        let r = Rotation::MINUTELY;
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
+        assert_eq!(
+            Utc.ymd(2020, 2, 1).and_hms(10, 3, 0),
+            r.round_date(&mock_now)
+        );
+
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 0);
+        assert_eq!(mock_now, r.round_date(&mock_now));
+    }
+
+    #[test]
     fn test_round_date_hourly() {
         let r = Rotation::HOURLY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
@@ -413,6 +528,22 @@ mod test {
 
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 0, 0);
         assert_eq!(mock_now, r.round_date(&mock_now));
+    }
+
+    #[test]
+    fn test_rotation_path_minutely() {
+        let r = Rotation::MINUTELY;
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
+        let path = r.join_date("MyApplication.log", &mock_now);
+        assert_eq!("MyApplication.log.2020-02-01-10-03", path);
+    }
+
+    #[test]
+    fn test_rotation_path_hourly() {
+        let r = Rotation::HOURLY;
+        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
+        let path = r.join_date("MyApplication.log", &mock_now);
+        assert_eq!("MyApplication.log.2020-02-01-10", path);
     }
 
     #[test]
