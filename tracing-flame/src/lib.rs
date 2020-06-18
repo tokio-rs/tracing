@@ -193,7 +193,17 @@ thread_local! {
 #[derive(Debug)]
 pub struct FlameLayer<S, W> {
     out: Arc<Mutex<W>>,
+    config: Config,
     _inner: PhantomData<S>,
+}
+
+#[derive(Debug, Default)]
+struct Config {
+    /// Don't include samples where no spans are open
+    filter_empty: bool,
+
+    /// Don't include thread_id
+    collapse_threads: bool,
 }
 
 /// An RAII guard for managing flushing a global writer that is
@@ -224,6 +234,7 @@ where
         let _unused = *START;
         Self {
             out: Arc::new(Mutex::new(writer)),
+            config: Default::default(),
             _inner: PhantomData,
         }
     }
@@ -234,6 +245,16 @@ where
         FlushGuard {
             out: self.out.clone(),
         }
+    }
+
+    pub fn filter_empty(mut self) -> Self {
+        self.config.filter_empty = true;
+        self
+    }
+
+    pub fn collapse_threads(mut self) -> Self {
+        self.config.collapse_threads = true;
+        self
     }
 }
 
@@ -301,11 +322,20 @@ where
         let samples = self.time_since_last_event();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
+
+        if self.config.filter_empty && first.from_root().count() == 0 {
+            return;
+        }
+
         let parents = first.from_root();
 
         let mut stack = String::new();
 
-        THREAD_NAME.with(|name| stack += name.as_str());
+        if !self.config.collapse_threads {
+            THREAD_NAME.with(|name| stack += name.as_str());
+        } else {
+            stack += "all-threads";
+        }
 
         for parent in parents {
             stack += "; ";
@@ -342,7 +372,11 @@ where
         let parents = first.from_root();
 
         let mut stack = String::new();
-        THREAD_NAME.with(|name| stack += name.as_str());
+        if !self.config.collapse_threads {
+            THREAD_NAME.with(|name| stack += name.as_str());
+        } else {
+            stack += "all-threads";
+        }
         stack += "; ";
 
         for parent in parents {
