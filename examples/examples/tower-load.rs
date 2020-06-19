@@ -318,8 +318,8 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         .layer(request_span::layer(req_span))
         .timeout(Duration::from_millis(200))
         .service(Client::new());
-
-    while let Some(_) = time::interval(Duration::from_millis(50)).next().await {
+    let mut interval = time::interval(Duration::from_millis(50));
+    while interval.next().await.is_some() {
         let authority = format!("{}", addr);
         let mut svc = svc.clone().ready_oneshot().await?;
 
