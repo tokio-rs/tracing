@@ -366,7 +366,7 @@ pub struct Entered<'a> {
 
 /// `log` target for span lifecycle (creation/enter/exit/close) records.
 #[cfg(feature = "log")]
-const LIFECYCLE_LOG_TARGET: &'static str = "tracing::span";
+const LIFECYCLE_LOG_TARGET: &str = "tracing::span";
 
 // ===== impl Span =====
 
