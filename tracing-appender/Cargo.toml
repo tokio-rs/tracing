@@ -20,7 +20,7 @@ keywords = ["logging", "tracing", "file-appender", "non-blocking-writer"]
 edition = "2018"
 
 [dependencies]
-tracing-subscriber = {path = "../tracing-subscriber", version = "0.2.4"}
+tracing-subscriber = {path = "../tracing-subscriber", version = "0.2.6"}
 crossbeam-channel = "0.4.2"
 chrono = "0.4.11"
 
