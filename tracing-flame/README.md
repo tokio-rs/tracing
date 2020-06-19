@@ -115,7 +115,7 @@ terms or conditions.
 [crates-badge]: https://img.shields.io/crates/v/tracing-flame.svg
 [crates-url]: https://crates.io/crates/tracing-flame
 [docs-badge]: https://docs.rs/tracing-flame/badge.svg
-[docs-url]: https://docs.rs/tracing-flame/0.2.4
+[docs-url]: https://docs.rs/tracing-flame/0.2.6
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_flame
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg

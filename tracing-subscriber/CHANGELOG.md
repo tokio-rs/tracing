@@ -1,3 +1,10 @@
+# 0.2.6 (June 19, 2020)
+
+### Fixed
+
+- **fmt**: Fixed an issue in the JSON formatter where using `Span::record` would
+  result in malformed spans (#709)
+
 # 0.2.5 (April 21, 2020)
 
 ### Changed
