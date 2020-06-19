@@ -2141,13 +2141,13 @@ macro_rules! __tracing_mk_span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                $crate::if_log_enabled! {
+                $crate::if_log_enabled! {{
                     let span = $crate::Span::new_disabled(meta);
                     span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
                     span
                 } else {
                     $crate::Span::none()
-                }
+                }}
             }
         }
     };
@@ -2169,13 +2169,13 @@ macro_rules! __tracing_mk_span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                $crate::if_log_enabled! {
+                $crate::if_log_enabled! {{
                     let span = $crate::Span::new_disabled(meta);
                     span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
                     span
                 } else {
                     $crate::Span::none()
-                }
+                }}
             }
         }
     };
@@ -2299,7 +2299,7 @@ macro_rules! __mk_format_args {
 #[macro_export]
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
-        $crate::if_log_enabled! {
+        $crate::if_log_enabled! {{
             use $crate::log;
             let level = $crate::level_to_log!(&$level);
             if level <= log::STATIC_MAX_LEVEL {
@@ -2318,7 +2318,7 @@ macro_rules! __tracing_log {
                         .build());
                 }
             }
-        }
+        }}
     };
 }
 
