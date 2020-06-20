@@ -589,29 +589,29 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
         }
     }
 
-    /// Sets the json subscriber being built to not contain the current span.
+    /// Sets whether or not the JSON layer being built will include the current span.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
-    pub fn disable_current_span(
+    pub fn with_current_span(
         self,
-        disable_current_span: bool,
+        display_current_span: bool,
     ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
         SubscriberBuilder {
             filter: self.filter,
-            inner: self.inner.disable_current_span(disable_current_span),
+            inner: self.inner.with_current_span(display_current_span),
         }
     }
 
-    /// Sets the json subscriber being built to not contain the span list.
+    /// Sets whether or not the JSON layer being built will include a list.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
-    pub fn disable_span_list(
+    pub fn with_span_list(
         self,
-        disable_span_list: bool,
+        display_span_list: bool,
     ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
         SubscriberBuilder {
             filter: self.filter,
-            inner: self.inner.disable_span_list(disable_span_list),
+            inner: self.inner.with_span_list(display_span_list),
         }
     }
 }

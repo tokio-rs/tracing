@@ -34,18 +34,18 @@ use tracing_log::NormalizeEvent;
 /// # Options
 ///
 /// - [`Json::flatten_event`] can be used to enable flattening event fields into the root
-/// - [`Json::disable_current_span`] can be used to disable logging the current span
-/// - [`Json::disable_span_list`] can be used to disable logging the span list
+/// - [`Json::with_current_span`] can be used to control logging of the current span
+/// - [`Json::with_span_list`] can be used to control logging of the span list
 /// object.
 ///
 /// [`Json::flatten_event`]: #method.flatten_event
-/// [`Json::disable_current_span`]: #method.disable_current_span
-/// [`Json::disable_span_list`]: #method.disable_span_list
+/// [`Json::with_current_span`]: #method.with_current_span
+/// [`Json::with_span_list`]: #method.with_span_list
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
     pub(crate) flatten_event: bool,
-    pub(crate) disable_current_span: bool,
-    pub(crate) disable_span_list: bool,
+    pub(crate) display_current_span: bool,
+    pub(crate) display_span_list: bool,
 }
 
 impl Json {
@@ -54,14 +54,14 @@ impl Json {
         self.flatten_event = flatten_event;
     }
 
-    /// If set to `true` event won't contain current span.
-    pub fn disable_current_span(&mut self, disable_current_span: bool) {
-        self.disable_current_span = disable_current_span;
+    /// If set to `false` event won't contain current span.
+    pub fn with_current_span(&mut self, display_current_span: bool) {
+        self.display_current_span = display_current_span;
     }
 
-    /// If set to `true` event won't contain spans.
-    pub fn disable_span_list(&mut self, disable_span_list: bool) {
-        self.disable_span_list = disable_span_list;
+    /// If set to `false` event won't contain spans.
+    pub fn with_span_list(&mut self, display_span_list: bool) {
+        self.display_span_list = display_span_list;
     }
 }
 
@@ -187,10 +187,6 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        let flatten_event = self.format.flatten_event;
-        let disable_current_span = self.format.disable_current_span;
-        let disable_span_list = self.format.disable_span_list;
-
         let mut visit = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(writer));
 
@@ -201,30 +197,35 @@ where
 
             let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 
-            if !disable_current_span {
-                let id = ctx.ctx.current_span();
-                let id = id.id();
-                if let Some(id) = id {
-                    if let Some(span) = ctx.ctx.span(id) {
-                        serializer
-                            .serialize_entry("span", &SerializableSpan(&span, format_field_marker))
-                            .unwrap_or(());
-                    }
+            let current_span = if self.format.display_current_span || self.format.display_span_list
+            {
+                ctx.ctx.current_span().id().and_then(|id| ctx.ctx.span(id))
+            } else {
+                None
+            };
+
+            if self.format.display_span_list {
+                if current_span.is_some() {
+                    serializer.serialize_entry(
+                        "spans",
+                        &SerializableContext(&ctx.ctx, format_field_marker),
+                    )?;
                 }
             }
 
-            if !disable_span_list {
-                serializer.serialize_entry(
-                    "spans",
-                    &SerializableContext(&ctx.ctx, format_field_marker),
-                )?;
+            if self.format.display_current_span {
+                if let Some(span) = current_span {
+                    serializer
+                        .serialize_entry("span", &SerializableSpan(&span, format_field_marker))
+                        .unwrap_or(());
+                }
             }
 
             if self.display_target {
                 serializer.serialize_entry("target", meta.target())?;
             }
 
-            if !flatten_event {
+            if !self.format.flatten_event {
                 use tracing_serde::fields::AsMap;
                 serializer.serialize_entry("fields", &event.field_map())?;
                 serializer.end()
@@ -245,8 +246,8 @@ impl Default for Json {
     fn default() -> Json {
         Json {
             flatten_event: false,
-            disable_current_span: false,
-            disable_span_list: false,
+            display_current_span: true,
+            display_span_list: true,
         }
     }
 }
@@ -492,7 +493,7 @@ mod test {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF, false, false, false, || {
+        test_json(make_writer, expected, &BUF, false, true, true, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -510,7 +511,7 @@ mod test {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"message\":\"some json test\"}\n";
 
-        test_json(make_writer, expected, &BUF, true, false, false, || {
+        test_json(make_writer, expected, &BUF, true, true, true, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -528,7 +529,7 @@ mod test {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF, false, true, false, || {
+        test_json(make_writer, expected, &BUF, false, false, true, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -546,7 +547,7 @@ mod test {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF, false, false, true, || {
+        test_json(make_writer, expected, &BUF, false, true, false, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -564,7 +565,7 @@ mod test {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3},{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF, false, false, false, || {
+        test_json(make_writer, expected, &BUF, false, true, true, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             let span = tracing::span!(
@@ -587,9 +588,9 @@ mod test {
         let make_writer = || MockWriter::new(&BUF);
 
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"spans\":[],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
 
-        test_json(make_writer, expected, &BUF, false, false, false, || {
+        test_json(make_writer, expected, &BUF, false, true, true, || {
             tracing::info!("some json test");
         });
     }
@@ -645,8 +646,8 @@ mod test {
         expected: &str,
         buf: &Mutex<Vec<u8>>,
         flatten_event: bool,
-        disable_current_span: bool,
-        disable_span_list: bool,
+        display_current_span: bool,
+        display_span_list: bool,
         producer: impl FnOnce() -> U,
     ) where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
@@ -654,8 +655,8 @@ mod test {
         let subscriber = crate::fmt::Subscriber::builder()
             .json()
             .flatten_event(flatten_event)
-            .disable_current_span(disable_current_span)
-            .disable_span_list(disable_span_list)
+            .with_current_span(display_current_span)
+            .with_span_list(display_span_list)
             .with_writer(make_writer)
             .with_timer(MockTime)
             .finish();

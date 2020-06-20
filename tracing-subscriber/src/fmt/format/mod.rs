@@ -307,23 +307,23 @@ impl<T> Format<Json, T> {
         self
     }
 
-    /// Use the full JSON format without the current span.
+    /// Use the full JSON format and sets whether or not it will include the current span.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn disable_current_span(mut self, disable_current_span: bool) -> Format<Json, T> {
-        self.format.disable_current_span(disable_current_span);
+    pub fn with_current_span(mut self, display_current_span: bool) -> Format<Json, T> {
+        self.format.with_current_span(display_current_span);
         self
     }
 
-    /// Use the full JSON format without the span list.
+    /// Use the full JSON format sets whether or not it will include the span list.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn disable_span_list(mut self, disable_span_list: bool) -> Format<Json, T> {
-        self.format.disable_span_list(disable_span_list);
+    pub fn with_span_list(mut self, display_span_list: bool) -> Format<Json, T> {
+        self.format.with_span_list(display_span_list);
         self
     }
 }

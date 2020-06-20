@@ -352,30 +352,30 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         }
     }
 
-    /// Sets the JSON layer being built to not contain the current span.
+    /// Sets whether or not the JSON layer being built will include the current span in the `span` field.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
-    pub fn disable_current_span(
+    pub fn with_current_span(
         self,
-        disable_current_span: bool,
+        display_current_span: bool,
     ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Layer {
-            fmt_event: self.fmt_event.disable_current_span(disable_current_span),
+            fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
             make_writer: self.make_writer,
             _inner: self._inner,
         }
     }
 
-    /// Sets the JSON layer being built to not contain the span list.
+    /// Sets whether or not the JSON layer being built will include a span list in the `spans` field.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
-    pub fn disable_span_list(
+    pub fn with_span_list(
         self,
-        disable_span_list: bool,
+        display_span_list: bool,
     ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Layer {
-            fmt_event: self.fmt_event.disable_span_list(disable_span_list),
+            fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
             make_writer: self.make_writer,
             _inner: self._inner,
