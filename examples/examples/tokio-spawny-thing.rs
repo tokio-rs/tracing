@@ -8,15 +8,19 @@
 /// cargo run --example tokio-spawny-thing
 /// ```
 use futures::future::try_join_all;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
+use std::path::Path;
 use tracing::{debug, info, instrument, span, Level};
 use tracing_futures::Instrument;
+use tracing_subscriber::{fmt, prelude::*, registry::Registry};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 #[instrument]
 async fn parent_task(subtasks: usize) -> Result<(), Error> {
     info!("spawning subtasks...");
-    let mut subtasks = (1..=subtasks)
+    let subtasks = (1..=subtasks)
         .map(|number| {
             let span = span!(Level::INFO, "subtask", %number);
             debug!(message = "creating subtask;", number);
@@ -32,12 +36,6 @@ async fn parent_task(subtasks: usize) -> Result<(), Error> {
 
 async fn subtask(number: usize) -> usize {
     info!(%number, "polling subtask");
-    subsubtask(number).await
-}
-
-#[instrument]
-async fn subsubtask(number: usize) -> usize {
-    info!(%number, "polling subsubtask");
     number
 }
 
