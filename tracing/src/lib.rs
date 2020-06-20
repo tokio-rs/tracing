@@ -442,7 +442,7 @@
 //!
 //! // the `#[tracing::instrument]` attribute creates and enters a span
 //! // every time the instrumented function is called. The span is named after the
-//! // the function or method. Paramaters passed to the function are recorded as fields.
+//! // the function or method. Parameters passed to the function are recorded as fields.
 //! #[tracing::instrument]
 //! pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
 //!     // this creates an event at the DEBUG level with two fields:
@@ -677,6 +677,8 @@
 //!    GELF format.
 //!  - [`tracing-coz`] provides integration with the [coz] causal profiler
 //!    (Linux-only).
+//!  - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans
+//!    in [bunyan] format, enriched with timing information.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -690,6 +692,8 @@
 //! [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 //! [`tracing-coz`]: https://crates.io/crates/tracing-coz
 //! [coz]: https://github.com/plasma-umass/coz
+//! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+//! [bunyan]: https://github.com/trentm/node-bunyan
 //!
 //! **Note:** that some of the ecosystem crates are currently unreleased and
 //! undergoing active development. They may be less stable than `tracing` and
@@ -720,7 +724,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.13", default-features = false }
+//!   tracing = { version = "0.1.15", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -756,7 +760,7 @@
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.13")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.15")]
 #![warn(
     missing_debug_implementations,
     missing_docs,

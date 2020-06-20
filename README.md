@@ -42,7 +42,7 @@ idiomatic `tracing`.)
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
-[`fmt` module](https://docs.rs/tracing-subscriber/0.2.4/tracing_subscriber/fmt/index.html) provides reasonable defaults.
+[`fmt` module](https://docs.rs/tracing-subscriber/0.2.6/tracing_subscriber/fmt/index.html) provides reasonable defaults.
 Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
 
 The simplest way to use a subscriber is to call the `set_global_default` function.
@@ -75,7 +75,7 @@ fn main() {
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2.4"
+tracing-subscriber = "0.2.6"
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -301,6 +301,12 @@ The crates included as part of Tracing are:
 * [`tracing-appender`]: Utilities for outputting tracing data, including a file appender
    and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
+* [`tracing-error`]: Provides `SpanTrace`, a type for instrumenting errors with
+  tracing spans
+
+* [`tracing-flame`]; Provides a layer for generating flame graphs based on
+  tracing span entry / exit events.
+
 [`tracing`]: tracing
 [`tracing-core`]: tracing
 [`tracing-futures`]: tracing-futures
@@ -312,6 +318,8 @@ The crates included as part of Tracing are:
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
 [`tracing-appender`]: tracing-appender
+[`tracing-error`]: tracing-error
+[`tracing-flame`]: tracing-flame
 
 [fut-crates]: https://crates.io/crates/tracing-futures
 [fut-docs]: https://docs.rs/tracing-futures
@@ -345,6 +353,12 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
+- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
+- [`color-spantrace`] provides a formatter for rendering span traces in the
+  style of `color-backtrace`
+- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
+  span traces and backtraces with new errors and pretty printing them in error
+  reports.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -357,6 +371,10 @@ please let us know!)
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
+[`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+[bunyan]: https://github.com/trentm/node-bunyan
+[`color-spantrace`]: https://github.com/yaahc/color-spantrace
+[`color-eyre`]: https://github.com/yaahc/color-eyre
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

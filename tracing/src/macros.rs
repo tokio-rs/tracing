@@ -2034,11 +2034,11 @@ macro_rules! fieldset {
 #[macro_export]
 macro_rules! level_to_log {
     ($level:expr) => {
-        match $level {
-            &$crate::Level::ERROR => $crate::log::Level::Error,
-            &$crate::Level::WARN => $crate::log::Level::Warn,
-            &$crate::Level::INFO => $crate::log::Level::Info,
-            &$crate::Level::DEBUG => $crate::log::Level::Debug,
+        match *$level {
+            $crate::Level::ERROR => $crate::log::Level::Error,
+            $crate::Level::WARN => $crate::log::Level::Warn,
+            $crate::Level::INFO => $crate::log::Level::Info,
+            $crate::Level::DEBUG => $crate::log::Level::Debug,
             _ => $crate::log::Level::Trace,
         }
     };
@@ -2193,36 +2193,36 @@ macro_rules! __mk_format_string {
     // === recursive case (more tts), ===
     // ====== shorthand field syntax ===
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
     // ====== kv field syntax ===
     (@ { $(,)* $($out:expr),* }, message = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        tracing::__mk_format_string!(@ { $($out),*, tracing::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
+        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
     };
 
     // === rest is unparseable --- must be fmt args ===
     (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
-        tracing::__mk_format_string!(@ { "{} ", $($out),* }, )
+        $crate::__mk_format_string!(@ { "{} ", $($out),* }, )
     };
 
     // === entry ===
     ($($kvs:tt)+) => {
-        tracing::__mk_format_string!(@ { }, $($kvs)+,)
+        $crate::__mk_format_string!(@ { }, $($kvs)+,)
     };
     () => {
         ""
@@ -2289,7 +2289,7 @@ macro_rules! __mk_format_args {
     ($($kv:tt)*) => {
         {
             // use $crate::__mk_format_string;
-            $crate::__mk_format_args!(@ { }, tracing::__mk_format_string!($($kv)*), fields: $($kv)*)
+            $crate::__mk_format_args!(@ { }, $crate::__mk_format_string!($($kv)*), fields: $($kv)*)
         }
     };
 }
@@ -2327,7 +2327,7 @@ macro_rules! __tracing_log {
 #[macro_export]
 macro_rules! if_log_enabled {
     ($e:expr;) => {
-        $crate::if_log_enabled! {{ $e }}
+        $crate::if_log_enabled! { $e }
     };
     ($if_log:block) => {
         $crate::if_log_enabled! { $if_log else {} }
@@ -2342,7 +2342,7 @@ macro_rules! if_log_enabled {
 #[macro_export]
 macro_rules! if_log_enabled {
     ($e:expr;) => {
-        $crate::if_log_enabled! {{ $e }}
+        $crate::if_log_enabled! { $e }
     };
     ($if_log:block) => {
         $crate::if_log_enabled! { $if_log else {} }
@@ -2361,12 +2361,13 @@ macro_rules! if_log_enabled {
 #[macro_export]
 macro_rules! if_log_enabled {
     ($e:expr;) => {
-        $crate::if_log_enabled! {{ $e }}
+        $crate::if_log_enabled! { $e }
     };
     ($if_log:block) => {
         $crate::if_log_enabled! { $if_log else {} }
     };
     ($if_log:block else $else_block:block) => {
+        #[allow(unused_braces)]
         $if_log
     };
 }
