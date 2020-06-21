@@ -8,12 +8,8 @@
 /// cargo run --example tokio-spawny-thing
 /// ```
 use futures::future::try_join_all;
-use std::fs::File;
-use std::io::{BufReader, BufWriter};
-use std::path::Path;
 use tracing::{debug, info, instrument, span, Level};
 use tracing_futures::Instrument;
-use tracing_subscriber::{fmt, prelude::*, registry::Registry};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 

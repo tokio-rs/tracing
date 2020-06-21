@@ -29,6 +29,7 @@ async fn parent_task(subtasks: usize) {
     info!(sum);
 }
 
+#[instrument]
 async fn subtask(number: usize) -> usize {
     info!("polling subtask...");
     number
