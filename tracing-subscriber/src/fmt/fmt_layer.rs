@@ -4,10 +4,11 @@ use crate::{
     layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
-use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref};
+use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
 use tracing_core::{
+    field,
     span::{Attributes, Id, Record},
-    Event, Subscriber,
+    Event, Kind, Metadata, Subscriber,
 };
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
@@ -458,6 +459,81 @@ where
         }
     }
 
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut extensions = span.extensions_mut();
+        if let Some(timings) = extensions.get_mut::<Timings>() {
+            timings.entered = Some(Instant::now());
+        } else {
+            extensions.insert(Timings::new());
+        }
+    }
+
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut extensions = span.extensions_mut();
+        if let Some(timings) = extensions.get_mut::<Timings>() {
+            if let Some(started) = timings.entered.take() {
+                timings.accumulated += started.elapsed().as_nanos() as u64;
+            }
+        }
+    }
+
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        let span = ctx.span(&id).expect("Span not found, this is a bug");
+        let extensions = span.extensions();
+        if let Some(timing) = extensions.get::<Timings>() {
+            let t = field::display(timing.get_accumulated());
+            let meta = span.metadata();
+            let name = field::display(meta.name());
+            let cs = meta.callsite();
+            let meta = Metadata::new(
+                meta.name(),
+                meta.target(),
+                meta.level().clone(),
+                meta.file(),
+                meta.line(),
+                meta.module_path(),
+                field::FieldSet::new(&[], cs.clone()),
+                Kind::EVENT,
+            );
+            let fs = field::FieldSet::new(&["message", "timing"], cs);
+            let mut it = fs.iter();
+            let v = [
+                (&it.next().unwrap(), Some(&name as &dyn field::Value)),
+                (&it.next().unwrap(), Some(&t as &dyn field::Value)),
+            ];
+            let vs = fs.value_set(&v);
+            let event =
+                Event::new_child_of(id, unsafe { &*(&meta as *const Metadata<'static>) }, &vs);
+
+            let mut buf = String::new();
+            let ctx = self.make_ctx(ctx.clone());
+            if self.fmt_event.format_event(&ctx, &mut buf, &event).is_ok() {
+                let fields = extensions
+                    .get::<FormattedFields<N>>()
+                    .expect("Unable to find FormattedFields in extensions; this is a bug");
+                if !fields.is_empty() {
+                    use std::fmt::Write;
+                    loop {
+                        let last = buf.pop();
+                        match last {
+                            Some(x) if x.is_whitespace() => {}
+                            Some(x) => {
+                                buf.push(x);
+                                break;
+                            }
+                            None => break,
+                        }
+                    }
+                    let _ = writeln!(&mut buf, " {}", fields);
+                }
+                let mut writer = self.make_writer.make_writer();
+                let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+            }
+        }
+    }
+
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         thread_local! {
             static BUF: RefCell<String> = RefCell::new(String::new());
@@ -548,6 +624,37 @@ where
             f(&span)?;
         }
         Ok(())
+    }
+}
+
+struct Timings {
+    accumulated: u64,
+    entered: Option<Instant>,
+}
+
+impl Timings {
+    fn new() -> Self {
+        Self {
+            accumulated: 0,
+            entered: Some(Instant::now()),
+        }
+    }
+    fn get_accumulated(&self) -> String {
+        if self.accumulated >= 10_000_000_000 {
+            format!("{}s", self.accumulated)
+        } else if self.accumulated >= 1_000_000_000 {
+            format!("{:.1}s", self.accumulated as f64 / 1_000_000_000.0)
+        } else if self.accumulated >= 10_000_000 {
+            format!("{}ms", self.accumulated / 1_000_000)
+        } else if self.accumulated >= 1_000_000 {
+            format!("{:.1}ms", self.accumulated as f64 / 1_000_000.0)
+        } else if self.accumulated >= 10_000 {
+            format!("{}µs", self.accumulated / 1000)
+        } else if self.accumulated >= 1000 {
+            format!("{:.1}µs", self.accumulated as f64 / 1000.0)
+        } else {
+            format!("{}ns", self.accumulated)
+        }
     }
 }
 
