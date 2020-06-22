@@ -197,13 +197,13 @@ pub struct FlameLayer<S, W> {
     _inner: PhantomData<S>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Config {
     /// Don't include samples where no spans are open
-    filter_empty: bool,
+    empty_samples: bool,
 
     /// Don't include thread_id
-    collapse_threads: bool,
+    threads_collapsed: bool,
 }
 
 /// An RAII guard for managing flushing a global writer that is
@@ -247,13 +247,33 @@ where
         }
     }
 
-    pub fn filter_empty(mut self) -> Self {
-        self.config.filter_empty = true;
+    /// Configures whether or not periods of time where no spans are entered
+    /// should be included
+    ///
+    /// Defaults to true
+    ///
+    /// Setting this feature to false can help with situations where you have
+    /// large periods of time spent idling or otherwise doing uninteresting work
+    /// where no spans are active. These empty samples can pollute the final
+    /// flamegraph and squish the work you care about into a much smaller
+    /// percentage of the overall graph, making it harder to navigate and in some
+    /// cases even hiding spans.
+    pub fn with_empty_samples(mut self, enabled: bool) -> Self {
+        self.config.empty_samples = enabled;
         self
     }
 
-    pub fn collapse_threads(mut self) -> Self {
-        self.config.collapse_threads = true;
+    /// Configures whether or not spans from different threads should be
+    /// collapsed into one pool of events
+    ///
+    /// Defaults to false
+    ///
+    /// Setting this feature to true can help with applications that distribute
+    /// work evenly across many threads. In such cases it can be difficult to get
+    /// an overview of where your application spent most of its time because work
+    /// done in the same span can be split up across many threads.
+    pub fn with_threads_collapsed(mut self, enabled: bool) -> Self {
+        self.config.threads_collapsed = enabled;
         self
     }
 }
@@ -323,7 +343,7 @@ where
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
 
-        if self.config.filter_empty && first.from_root().count() == 0 {
+        if !self.config.empty_samples && first.from_root().count() == 0 {
             return;
         }
 
@@ -331,7 +351,7 @@ where
 
         let mut stack = String::new();
 
-        if !self.config.collapse_threads {
+        if !self.config.threads_collapsed {
             THREAD_NAME.with(|name| stack += name.as_str());
         } else {
             stack += "all-threads";
@@ -372,7 +392,7 @@ where
         let parents = first.from_root();
 
         let mut stack = String::new();
-        if !self.config.collapse_threads {
+        if !self.config.threads_collapsed {
             THREAD_NAME.with(|name| stack += name.as_str());
         } else {
             stack += "all-threads";
