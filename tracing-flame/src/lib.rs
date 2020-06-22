@@ -206,6 +206,15 @@ struct Config {
     threads_collapsed: bool,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            empty_samples: true,
+            threads_collapsed: false,
+        }
+    }
+}
+
 /// An RAII guard for managing flushing a global writer that is
 /// otherwise inaccessible.
 ///
