@@ -832,12 +832,7 @@ pub mod subscriber;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
-
-    #[cfg(feature = "std")]
-    pub use crate::stdlib::sync::Once;
-
-    #[cfg(not(feature = "std"))]
-    pub type Once = tracing_core::Once<()>;
+    pub type Once = tracing_core::Once;
 }
 
 mod sealed {
