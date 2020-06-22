@@ -281,7 +281,7 @@ where
     ///
     /// Setting this feature to true can help with applications that distribute
     /// work evenly across many threads, such as thread pools. In such
-    /// cases it can be difficult to get an overview of where the application 
+    /// cases it can be difficult to get an overview of where the application
     /// as a whole spent most of its time, because work done in the same
     /// span may be split up across many threads.
     pub fn with_threads_collapsed(mut self, enabled: bool) -> Self {
