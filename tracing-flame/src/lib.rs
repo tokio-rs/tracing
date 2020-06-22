@@ -257,30 +257,33 @@ where
     }
 
     /// Configures whether or not periods of time where no spans are entered
-    /// should be included
+    /// should be included in the output.
     ///
-    /// Defaults to true
+    /// Defaults to `true`.
     ///
-    /// Setting this feature to false can help with situations where you have
-    /// large periods of time spent idling or otherwise doing uninteresting work
-    /// where no spans are active. These empty samples can pollute the final
-    /// flamegraph and squish the work you care about into a much smaller
-    /// percentage of the overall graph, making it harder to navigate and in some
-    /// cases even hiding spans.
+    /// Setting this feature to false can help with situations where no span is
+    /// active for large periods of time. This can include time spent idling, or
+    /// doing uninteresting work that isn't being measured.
+    /// When a large number of empty samples are recorded, the flamegraph
+    /// may be harder to interpret and navigate, since the recorded spans will
+    /// take up a correspondingly smaller percentage of the graph. In some
+    /// cases, a large number of empty samples may even hide spans which
+    /// would otherwise appear in the flamegraph.
     pub fn with_empty_samples(mut self, enabled: bool) -> Self {
         self.config.empty_samples = enabled;
         self
     }
 
     /// Configures whether or not spans from different threads should be
-    /// collapsed into one pool of events
+    /// collapsed into one pool of events.
     ///
-    /// Defaults to false
+    /// Defaults to `false`.
     ///
     /// Setting this feature to true can help with applications that distribute
-    /// work evenly across many threads. In such cases it can be difficult to get
-    /// an overview of where your application spent most of its time because work
-    /// done in the same span can be split up across many threads.
+    /// work evenly across many threads, such as thread pools. In such
+    /// cases it can be difficult to get an overview of where the application 
+    /// as a whole spent most of its time, because work done in the same
+    /// span may be split up across many threads.
     pub fn with_threads_collapsed(mut self, enabled: bool) -> Self {
         self.config.threads_collapsed = enabled;
         self
