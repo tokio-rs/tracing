@@ -517,7 +517,6 @@ where
 
             let mut extensions = span.extensions_mut();
             if let Some(builder) = extensions.get_mut::<api::SpanBuilder>() {
-
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(api::StatusCode::Unknown);
                 }
