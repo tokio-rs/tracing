@@ -497,28 +497,29 @@ where
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         // Ignore events that are not in the context of a span
         if let Some(span) = ctx.lookup_current() {
+            // Performing read operations before getting a write lock to avoid a deadlock
+            // See https://github.com/tokio-rs/tracing/issues/763
+            #[cfg(feature = "tracing-log")]
+            let normalized_meta = event.normalized_metadata();
+            #[cfg(feature = "tracing-log")]
+            let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+            #[cfg(not(feature = "tracing-log"))]
+            let meta = event.metadata();
+            let mut otel_event = api::Event::new(
+                String::new(),
+                SystemTime::now(),
+                vec![
+                    api::Key::new("level").string(meta.level().to_string()),
+                    api::Key::new("target").string(meta.target()),
+                ],
+            );
+            event.record(&mut SpanEventVisitor(&mut otel_event));
+
             let mut extensions = span.extensions_mut();
             if let Some(builder) = extensions.get_mut::<api::SpanBuilder>() {
-                #[cfg(feature = "tracing-log")]
-                let normalized_meta = event.normalized_metadata();
-                #[cfg(feature = "tracing-log")]
-                let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-                #[cfg(not(feature = "tracing-log"))]
-                let meta = event.metadata();
-                let mut otel_event = api::Event::new(
-                    String::new(),
-                    SystemTime::now(),
-                    vec![
-                        api::Key::new("level").string(meta.level().to_string()),
-                        api::Key::new("target").string(meta.target()),
-                    ],
-                );
-
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(api::StatusCode::Unknown);
                 }
-
-                event.record(&mut SpanEventVisitor(&mut otel_event));
 
                 if let Some(ref mut events) = builder.message_events {
                     events.push(otel_event);
