@@ -118,7 +118,7 @@ impl FormatTime for SystemTime {
 
 #[cfg(not(feature = "chrono"))]
 impl FormatTime for SystemTime {
-    fn format_time(&self, w: &mut fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         write!(w, "{:?}", std::time::SystemTime::now())
     }
 }

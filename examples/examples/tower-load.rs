@@ -383,6 +383,11 @@ fn req_span<A>(req: &Request<A>) -> Span {
         req.method = ?req.method(),
         req.path = ?req.uri().path(),
     );
-    debug!(message = "received request.", req.headers = ?req.headers(), req.version = ?req.version());
+    debug!(
+        parent: &span,
+        message = "received request.",
+        req.headers = ?req.headers(),
+        req.version = ?req.version(),
+    );
     span
 }
