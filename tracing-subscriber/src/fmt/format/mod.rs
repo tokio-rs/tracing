@@ -7,7 +7,10 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::fmt::{self, Write};
+use std::{
+    fmt::{self, Write},
+    iter,
+};
 use tracing_core::{
     field::{self, Field, Visit},
     span, Event, Level, Subscriber,
@@ -344,7 +347,7 @@ where
         let full_ctx = {
             #[cfg(feature = "ansi")]
             {
-                FullCtx::new(ctx, self.ansi)
+                FullCtx::new(ctx, event.parent(), self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
@@ -401,11 +404,11 @@ where
         let fmt_ctx = {
             #[cfg(feature = "ansi")]
             {
-                FmtCtx::new(&ctx, self.ansi)
+                FmtCtx::new(&ctx, event.parent(), self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
-                FmtCtx::new(&ctx)
+                FmtCtx::new(&ctx, event.parent())
             }
         };
         write!(writer, "{}", fmt_ctx)?;
@@ -575,6 +578,7 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
 
 struct FmtCtx<'a, S, N> {
     ctx: &'a FmtContext<'a, S, N>,
+    span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
@@ -585,13 +589,17 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, ansi: bool) -> Self {
-        Self { ctx, ansi }
+    pub(crate) fn new(
+        ctx: &'a FmtContext<'_, S, N>,
+        span: Option<&'a span::Id>,
+        ansi: bool,
+    ) -> Self {
+        Self { ctx, ansi, span }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>) -> Self {
-        Self { ctx }
+    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, span: Option<&'a span::Id>) -> Self {
+        Self { ctx, span }
     }
 
     fn bold(&self) -> Style {
@@ -615,10 +623,19 @@ where
         let bold = self.bold();
         let mut seen = false;
 
-        self.ctx.visit_spans(|span| {
+        let span = self
+            .span
+            .and_then(|id| self.ctx.ctx.span(&id))
+            .or_else(|| self.ctx.ctx.lookup_current());
+
+        let scope = span
+            .into_iter()
+            .flat_map(|span| span.from_root().chain(iter::once(span)));
+
+        for span in scope {
             seen = true;
-            write!(f, "{}:", bold.paint(span.metadata().name()))
-        })?;
+            write!(f, "{}:", bold.paint(span.metadata().name()))?;
+        }
 
         if seen {
             f.write_char(' ')?;
@@ -633,6 +650,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     ctx: &'a FmtContext<'a, S, N>,
+    span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
@@ -643,13 +661,17 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, ansi: bool) -> Self {
-        Self { ctx, ansi }
+    pub(crate) fn new(
+        ctx: &'a FmtContext<'a, S, N>,
+        span: Option<&'a span::Id>,
+        ansi: bool,
+    ) -> Self {
+        Self { ctx, span, ansi }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>) -> Self {
-        Self { ctx }
+    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
+        Self { ctx, span }
     }
 
     fn bold(&self) -> Style {
@@ -673,7 +695,16 @@ where
         let bold = self.bold();
         let mut seen = false;
 
-        self.ctx.visit_spans(|span| {
+        let span = self
+            .span
+            .and_then(|id| self.ctx.ctx.span(&id))
+            .or_else(|| self.ctx.ctx.lookup_current());
+
+        let scope = span
+            .into_iter()
+            .flat_map(|span| span.from_root().chain(iter::once(span)));
+
+        for span in scope {
             write!(f, "{}", bold.paint(span.metadata().name()))?;
             seen = true;
 
@@ -684,8 +715,8 @@ where
             if !fields.is_empty() {
                 write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
             }
-            f.write_char(':')
-        })?;
+            f.write_char(':')?;
+        }
 
         if seen {
             f.write_char(' ')?;
@@ -994,6 +1025,5 @@ mod test {
                 actual().as_str()
             );
         });
-
     }
 }
