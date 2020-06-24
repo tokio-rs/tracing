@@ -351,7 +351,7 @@ where
             }
             #[cfg(not(feature = "ansi"))]
             {
-                FullCtx::new(&ctx)
+                FullCtx::new(ctx, event.parent())
             }
         };
 
