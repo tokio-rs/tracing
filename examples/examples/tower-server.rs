@@ -18,11 +18,7 @@ fn req_span<A>(req: &Request<A>) -> tracing::Span {
         req.version = ?req.version(),
         req.headers = ?req.headers()
     );
-    {
-        // TODO: this is a workaround because tracing_subscriber::fmt::Layer doesn't honor
-        // overridden span parents.
-        let _enter = span.enter();
-    }
+    tracing::info!(parent: &span, "received request");
     span
 }
 
