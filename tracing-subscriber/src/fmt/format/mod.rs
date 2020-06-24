@@ -928,4 +928,72 @@ mod test {
             actual.as_str()
         );
     }
+
+    #[test]
+    fn overridden_parents() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            tracing::info!(parent: &span2, "hello");
+        });
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(
+            "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn overridden_parents_in_scope() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        let actual = || {
+            let mut buf = BUF.try_lock().unwrap();
+            let val = String::from_utf8(buf.to_vec()).unwrap();
+            buf.clear();
+            val
+        };
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            let span3 = tracing::info_span!("span3");
+            let _e3 = span3.enter();
+
+            tracing::info!("hello");
+            assert_eq!(
+                "fake time span3: tracing_subscriber::fmt::format::test: hello\n",
+                actual().as_str()
+            );
+
+            tracing::info!(parent: &span2, "hello");
+            assert_eq!(
+                "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
+                actual().as_str()
+            );
+        });
+
+    }
 }
