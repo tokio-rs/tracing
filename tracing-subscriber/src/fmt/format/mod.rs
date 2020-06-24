@@ -7,7 +7,10 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::fmt::{self, Write};
+use std::{
+    fmt::{self, Write},
+    iter,
+};
 use tracing_core::{
     field::{self, Field, Visit},
     span, Event, Level, Subscriber,
@@ -344,11 +347,11 @@ where
         let full_ctx = {
             #[cfg(feature = "ansi")]
             {
-                FullCtx::new(ctx, self.ansi)
+                FullCtx::new(ctx, event.parent(), self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
-                FullCtx::new(&ctx)
+                FullCtx::new(ctx, event.parent())
             }
         };
 
@@ -401,11 +404,11 @@ where
         let fmt_ctx = {
             #[cfg(feature = "ansi")]
             {
-                FmtCtx::new(&ctx, self.ansi)
+                FmtCtx::new(&ctx, event.parent(), self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
-                FmtCtx::new(&ctx)
+                FmtCtx::new(&ctx, event.parent())
             }
         };
         write!(writer, "{}", fmt_ctx)?;
@@ -575,6 +578,7 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
 
 struct FmtCtx<'a, S, N> {
     ctx: &'a FmtContext<'a, S, N>,
+    span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
@@ -585,13 +589,17 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, ansi: bool) -> Self {
-        Self { ctx, ansi }
+    pub(crate) fn new(
+        ctx: &'a FmtContext<'_, S, N>,
+        span: Option<&'a span::Id>,
+        ansi: bool,
+    ) -> Self {
+        Self { ctx, ansi, span }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>) -> Self {
-        Self { ctx }
+    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, span: Option<&'a span::Id>) -> Self {
+        Self { ctx, span }
     }
 
     fn bold(&self) -> Style {
@@ -615,10 +623,19 @@ where
         let bold = self.bold();
         let mut seen = false;
 
-        self.ctx.visit_spans(|span| {
+        let span = self
+            .span
+            .and_then(|id| self.ctx.ctx.span(&id))
+            .or_else(|| self.ctx.ctx.lookup_current());
+
+        let scope = span
+            .into_iter()
+            .flat_map(|span| span.from_root().chain(iter::once(span)));
+
+        for span in scope {
             seen = true;
-            write!(f, "{}:", bold.paint(span.metadata().name()))
-        })?;
+            write!(f, "{}:", bold.paint(span.metadata().name()))?;
+        }
 
         if seen {
             f.write_char(' ')?;
@@ -633,6 +650,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     ctx: &'a FmtContext<'a, S, N>,
+    span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
@@ -643,13 +661,17 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, ansi: bool) -> Self {
-        Self { ctx, ansi }
+    pub(crate) fn new(
+        ctx: &'a FmtContext<'a, S, N>,
+        span: Option<&'a span::Id>,
+        ansi: bool,
+    ) -> Self {
+        Self { ctx, span, ansi }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>) -> Self {
-        Self { ctx }
+    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
+        Self { ctx, span }
     }
 
     fn bold(&self) -> Style {
@@ -673,7 +695,16 @@ where
         let bold = self.bold();
         let mut seen = false;
 
-        self.ctx.visit_spans(|span| {
+        let span = self
+            .span
+            .and_then(|id| self.ctx.ctx.span(&id))
+            .or_else(|| self.ctx.ctx.lookup_current());
+
+        let scope = span
+            .into_iter()
+            .flat_map(|span| span.from_root().chain(iter::once(span)));
+
+        for span in scope {
             write!(f, "{}", bold.paint(span.metadata().name()))?;
             seen = true;
 
@@ -684,8 +715,8 @@ where
             if !fields.is_empty() {
                 write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
             }
-            f.write_char(':')
-        })?;
+            f.write_char(':')?;
+        }
 
         if seen {
             f.write_char(' ')?;
@@ -927,5 +958,72 @@ mod test {
             "fake time tracing_subscriber::fmt::format::test: hello\n",
             actual.as_str()
         );
+    }
+
+    #[test]
+    fn overridden_parents() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            tracing::info!(parent: &span2, "hello");
+        });
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(
+            "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn overridden_parents_in_scope() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        let actual = || {
+            let mut buf = BUF.try_lock().unwrap();
+            let val = String::from_utf8(buf.to_vec()).unwrap();
+            buf.clear();
+            val
+        };
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1");
+            let span2 = tracing::info_span!(parent: &span1, "span2");
+            let span3 = tracing::info_span!("span3");
+            let _e3 = span3.enter();
+
+            tracing::info!("hello");
+            assert_eq!(
+                "fake time span3: tracing_subscriber::fmt::format::test: hello\n",
+                actual().as_str()
+            );
+
+            tracing::info!(parent: &span2, "hello");
+            assert_eq!(
+                "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
+                actual().as_str()
+            );
+        });
     }
 }
