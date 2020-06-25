@@ -54,7 +54,6 @@ impl Json {
         self.flatten_event = flatten_event;
     }
 
-    
     /// If set to `false`, formatted events won't contain a field for the current span.
     pub fn with_current_span(&mut self, display_current_span: bool) {
         self.display_current_span = display_current_span;
