@@ -54,12 +54,13 @@ impl Json {
         self.flatten_event = flatten_event;
     }
 
-    /// If set to `false` event won't contain current span.
+    
+    /// If set to `false`, formatted events won't contain a field for the current span.
     pub fn with_current_span(&mut self, display_current_span: bool) {
         self.display_current_span = display_current_span;
     }
 
-    /// If set to `false` event won't contain spans.
+    /// If set to `false`, formatted events won't contain a list of all currently entered spans.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
     }
@@ -204,13 +205,11 @@ where
                 None
             };
 
-            if self.format.display_span_list {
-                if current_span.is_some() {
-                    serializer.serialize_entry(
-                        "spans",
-                        &SerializableContext(&ctx.ctx, format_field_marker),
-                    )?;
-                }
+            if self.format.display_span_list && current_span.is_some() {
+                serializer.serialize_entry(
+                    "spans",
+                    &SerializableContext(&ctx.ctx, format_field_marker),
+                )?;
             }
 
             if self.format.display_current_span {

@@ -589,7 +589,8 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include the current span.
+    /// Sets whether or not the JSON layer being built will include the current span
+    /// in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_current_span(
@@ -602,7 +603,8 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include a list.
+    /// Sets whether or not the JSON layer being built will include a list of all
+    /// currently entered spans in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_span_list(

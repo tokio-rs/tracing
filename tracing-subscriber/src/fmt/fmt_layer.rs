@@ -352,7 +352,8 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include the current span in the `span` field.
+    /// Sets whether or not the formatter will include the current span in
+    /// formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_current_span(
@@ -367,7 +368,8 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include a span list in the `spans` field.
+    /// Sets whether or not the formatter will include a list of all currently
+    /// entered spans in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_span_list(
