@@ -76,6 +76,12 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
+//! > ⚠️ **Warning**: in asynchronous code that uses async/await syntax,
+//! > `Span::enter` may produce incorrect traces if the returned drop guard is
+//! > held across an await point. See [the method documentation][async] for
+//! > details.
+//! [async]: struct.Span.html#in-asynchronous-code
+//!
 //! `in_scope` takes a closure or function pointer and executes it inside the
 //! span.
 //! ```
@@ -505,7 +511,132 @@ impl Span {
     ///
     /// If this span is enabled by the current subscriber, then this function will
     /// call [`Subscriber::enter`] with the span's [`Id`], and dropping the guard
-    /// will call [`Subscriber::exit`]. If the span is disabled, this does nothing.
+    /// will call [`Subscriber::exit`]. If the span is disabled, this does
+    /// nothing.
+    ///
+    /// # In Asynchronous Code
+    ///
+    /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
+    /// `Span::enter` should be used very carefully or avoided entirely. Holding
+    /// the drop guard returned by `Span::enter` across `.await` points will
+    /// result in incorrect traces.
+    ///
+    /// For example,
+    ///
+    /// ```
+    /// # use tracing::info_span;
+    /// # async fn some_other_async_function() {}
+    /// async fn my_async_function() {
+    ///     let span = info_span!("my_async_function");
+    ///
+    ///     // THIS WILL RESULT IN INCORRECT TRACES
+    ///     let _enter = span.enter();
+    ///     some_other_async_function().await;
+    ///
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// The drop guard returned by `Span::enter` exits the span when it is
+    /// dropped. When an async function or async block yields at an `.await`
+    /// point, the current scope is _exited_, but values in that scope are
+    /// **not** dropped (because the async block will eventually resume
+    /// execution from that await point). This means that _another_ task will
+    /// begin executing while _remaining_ in the entered span. This results in
+    /// an incorrect trace.
+    ///
+    /// Instead of using `Span::enter` in asynchronous code, prefer the
+    /// following:
+    ///
+    /// * To enter a span for a synchronous section of code within an async
+    ///   block or function, prefer [`Span::in_scope`]. Since `in_scope` takes a
+    ///   synchronous closure and exits the span when the closure returns, the
+    ///   span will always be exited before the next await point. For example:
+    ///   ```
+    ///   # use tracing::info_span;
+    ///   # async fn some_other_async_function(_: ()) {}
+    ///   async fn my_async_function() {
+    ///       let span = info_span!("my_async_function");
+    ///
+    ///       let some_value = span.in_scope(|| {
+    ///           // run some synchronous code inside the span...
+    ///       });
+    ///
+    ///       // This is okay! The span has already been exited before we reach
+    ///       // the await point.
+    ///       some_other_async_function(some_value).await;
+    ///  
+    ///       // ...
+    ///   }
+    ///   ```
+    /// * For instrumenting asynchronous code, the [`tracing-futures` crate]
+    ///   provides the [`Future::instrument` combinator][instrument] for
+    ///   attaching a span to a future (async function or block). This will
+    ///   enter the span _every_ time the future is polled, and exit it whenever
+    ///   the future yields.
+    ///   
+    ///   `Instrument` can be used with an async block inside an async function:
+    ///   ```
+    ///   # use tracing::info_span;
+    ///   use tracing_futures::Instrument;
+    ///
+    ///   # async fn some_other_async_function() {}
+    ///   async fn my_async_function() {
+    ///       let span = info_span!("my_async_function");
+    ///       async move {
+    ///          // This is correct! If we yield here, the span will be exited,
+    ///          // and re-entered when we resume.
+    ///          some_other_async_function().await;
+    ///
+    ///          //more asynchronous code inside the span...
+    ///
+    ///       }
+    ///         // instrument the async block with the span...
+    ///         .instrument(span)
+    ///         // ...and await it.
+    ///         .await
+    ///   }
+    ///   ```
+    ///
+    ///   It can also be used to instrument calls to async functions at the
+    ///   callsite:
+    ///   ```
+    ///   # use tracing::debug_span;
+    ///   use tracing_futures::Instrument;
+    ///
+    ///   # async fn some_other_async_function() {}
+    ///   async fn my_async_function() {
+    ///       let some_value = some_other_async_function()
+    ///          .instrument(debug_span!("some_other_async_function"))
+    ///          .await;
+    ///
+    ///       // ...
+    ///   }
+    ///   ```
+    ///
+    /// * Finally, if your crate depends on the `tracing-futures` crate, the
+    ///   [`#[instrument]` attribute macro][attr] will automatically generate
+    ///   correct code when used on an async function:
+    ///
+    ///   ```
+    ///   # async fn some_other_async_function() {}
+    ///   #[tracing::instrument(level = "info")]
+    ///   async fn my_async_function() {
+    ///   
+    ///       // This is correct! If we yield here, the span will be exited,
+    ///       // and re-entered when we resume.
+    ///       some_other_async_function().await;
+    ///
+    ///       // ...
+    ///    
+    ///   }
+    ///   ```
+    ///
+    /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
+    /// [`Span::in_scope`]: #method.in_scope
+    /// [`tracing-futures` crate]: https://docs.rs/tracing-futures/
+    /// [instrument]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html
+    /// [attr]: ../../attr.instrument.html
     ///
     /// # Examples
     ///
