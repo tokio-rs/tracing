@@ -76,11 +76,17 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! > ⚠️ **Warning**: in asynchronous code that uses async/await syntax,
-//! > `Span::enter` may produce incorrect traces if the returned drop guard is
-//! > held across an await point. See [the method documentation][async] for
-//! > details.
-//! [async]: struct.Span.html#in-asynchronous-code
+//! <div class="information">
+//!     <div class="tooltip compile_fail" style="">⚠️<span class="tooltiptext">Warning</span></div>
+//! </div>
+//! <div class="example-wrap"><pre class="compile_fail" style="white-space:inherit;font:inherit;">
+//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
+//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
+//!     guard is held across an await point. See
+//!     <a href="struct.Span.html#in-asynchronous-code">the method documentation</a>
+//!     for details.
+//! </pre>
+//! </div>
 //!
 //! `in_scope` takes a closure or function pointer and executes it inside the
 //! span.

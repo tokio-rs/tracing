@@ -49,11 +49,23 @@
 //! The [`span` module][span]'s documentation provides further details on how to
 //! use spans.
 //!
+//! <div class="information">
+//!     <div class="tooltip compile_fail" style="">⚠️<span class="tooltiptext">Warning</span></div>
+//! </div>
+//! <div class="example-wrap"><pre class="compile_fail" style="white-space:inherit;font:inherit;">
+//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
+//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
+//!     guard is held across an await point. See
+//!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
+//!     for details.
+//! </pre>
+//! </div>
+//!
 //! ## Events
 //!
 //! An [`Event`] represents a _moment_ in time. It signifies something that
 //! happened while a trace was being recorded. `Event`s are comparable to the log
-//! records emitted by unstructured logging code, but unlike a typical log line,
+//! records emitted by unstructured logging code, but unlike a typical log line,``s
 //! an `Event` may occur within the context of a span.
 //!
 //! For example:
