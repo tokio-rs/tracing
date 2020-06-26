@@ -41,11 +41,20 @@ idiomatic `tracing`.)
 
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
-collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
-[`fmt` module](https://docs.rs/tracing-subscriber/0.2.6/tracing_subscriber/fmt/index.html) provides reasonable defaults.
-Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
+collecting trace data, such as by logging it to standard output.
+[`tracing_subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
+traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
+consume messages emitted by `log`-instrumented libraries and modules.
 
-The simplest way to use a subscriber is to call the `set_global_default` function.
+To use `tracing-subscriber`, first add the following to your `Cargo.toml`.-:
+
+```toml
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = "0.2"
+```
+
+To set a global subscriber for the entire program, use the `set_global_default` function.
 
 ```rust
 use tracing::{info, Level};
@@ -57,8 +66,11 @@ fn main() {
         // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
         // will be written to stdout.
         .with_max_level(Level::TRACE)
-        // completes the builder and sets the constructed `Subscriber` as the default.
-        .init();
+         // completes the builder
+        .finish();
+        // and sets the constructed `Subscriber` as the default.
+    tracing::subscriber::set_global_default(subscriber)
+      .expect("no global subscriber has been set")
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.
@@ -72,11 +84,9 @@ fn main() {
 }
 ```
 
-```toml
-[dependencies]
-tracing = "0.1"
-tracing-subscriber = "0.2.6"
-```
+[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
+[fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+[`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
 
 This subscriber will be used as the default in all threads for the remainder of the duration
 of the program, similar to how loggers work in the `log` crate.
