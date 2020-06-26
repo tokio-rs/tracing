@@ -107,10 +107,16 @@
 //!
 //! // `my_subscriber` is now the default
 //! ```
-//!
-//! **Note**: the thread-local scoped dispatcher (`with_default`) requires the
-//! Rust standard library. `no_std` users should use [`set_global_default`]
+//! <div class="information">
+//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+//! </div>
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="ignore" style="white-space:normal;font:inherit;">
+//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default
+//! </code>) requires the Rust standard library. <code>no_std</code> users should
+//! use <a href="fn.set_global_default.html"><code>set_global_default</code></a>
 //! instead.
+//! </pre></div>
 //!
 //! Finally, `tokio` users should note that versions of `tokio` >= 0.1.22
 //! support an `experimental-tracing` feature flag. When this flag is enabled,

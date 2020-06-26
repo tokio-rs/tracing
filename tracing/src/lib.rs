@@ -51,15 +51,13 @@
 //!
 //! <div class="information">
 //!     <div class="tooltip compile_fail" style="">⚠️<span class="tooltiptext">Warning</span></div>
-//! </div>
-//! <div class="example-wrap"><pre class="compile_fail" style="white-space:inherit;font:inherit;">
+//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
 //!     <code>Span::enter</code> may produce incorrect traces if the returned drop
 //!     guard is held across an await point. See
 //!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
 //!     for details.
-//! </pre>
-//! </div>
+//! </pre></div>
 //!
 //! ## Events
 //!
@@ -172,8 +170,15 @@
 //! # fn main() {}
 //! ```
 //!
-//! **Note**: using `#[instrument]` on `async fn`s requires the
-//! [`tracing-futures`] crate as a dependency, as well.
+//! <div class="information">
+//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+//! </div>
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="ignore" style="white-space:normal;font:inherit;">
+//!     <strong>Note</strong>: Using <code>#[instrument]</code> on
+//!     <code>async fn</code>s requires the <a href="https://crates.io/crates/tracing-futures">
+//!     <code>tracing-futures</code> crate</a> as a dependency as well.
+//! </pre></div>
 //!
 //! You can find more examples showing how to use this crate [here][examples].
 //!
@@ -549,8 +554,13 @@
 //! # }
 //! ```
 //!
-//! **Note:** Libraries should *NOT* call `set_global_default()`! That will
-//! cause conflicts when executables try to set the default later.
+//! <div class="information">
+//!     <div class="tooltip compile_fail" style="">⚠️<span class="tooltiptext">Warning</span></div>
+//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <strong>Warning</strong>: In general, libraries should <em>not</em> call
+//! <code>set_global_default()</code>! Doing so will cause conflicts when
+//! executables that depend on the library try to set the default later.
+//! </pre></div>
 //!
 //! This subscriber will be used as the default in all threads for the
 //! remainder of the duration of the program, similar to setting the logger
@@ -707,9 +717,15 @@
 //! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 //! [bunyan]: https://github.com/trentm/node-bunyan
 //!
-//! **Note:** that some of the ecosystem crates are currently unreleased and
-//! undergoing active development. They may be less stable than `tracing` and
-//! `tracing-core`.
+//! <div class="information">
+//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+//! </div>
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="ignore" style="white-space:normal;font:inherit;">
+//! <strong>Note</strong>: Some of these ecosystem crates are currently
+//! unreleased and/or in earlier stages of development. They may be less stable
+//! than <code>tracing</code> and <code>tracing-core</code>.
+//! </pre></div>
 //!
 //! ## Crate Feature Flags
 //!
@@ -720,8 +736,6 @@
 //!   as trace events, if a default `tracing` subscriber has not been set. This
 //!   is intended for use in libraries whose users may be using either `tracing`
 //!   or `log`.
-//!   **Note:** `log` support will not work when `tracing` is renamed in `Cargo.toml`,
-//!   due to oddities in macro expansion.
 //! * `log-always`: Emit `log` records from all `tracing` spans and events, even
 //!   a `tracing` subscriber has been set. This should be set only by
 //!   applications which intend to collect traces and logs separately; if an
@@ -741,7 +755,15 @@
 //!
 //!   *Compiler support: requires rustc 1.39+*
 //!
-//!   **Note**:`tracing`'s `no_std` support requires `liballoc`.
+//! <div class="information">
+//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+//! </div>
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="ignore" style="white-space:normal;font:inherit;">
+//! <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
+//! requires <code>liballoc</code>.
+//! </div>
+//! </pre></div>
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
 //! [span]: span/index.html

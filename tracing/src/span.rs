@@ -78,15 +78,13 @@
 //!
 //! <div class="information">
 //!     <div class="tooltip compile_fail" style="">⚠️<span class="tooltiptext">Warning</span></div>
-//! </div>
-//! <div class="example-wrap"><pre class="compile_fail" style="white-space:inherit;font:inherit;">
+//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
 //!     <code>Span::enter</code> may produce incorrect traces if the returned drop
 //!     guard is held across an await point. See
 //!     <a href="struct.Span.html#in-asynchronous-code">the method documentation</a>
 //!     for details.
-//! </pre>
-//! </div>
+//! </pre></div>
 //!
 //! `in_scope` takes a closure or function pointer and executes it inside the
 //! span.
@@ -107,9 +105,16 @@
 //! });
 //! ```
 //!
-//! **Note:** Since entering a span takes `&self`, and `Span`s are `Clone`,
-//! `Send`, and `Sync`, it is entirely valid for multiple threads to enter the
+//! <div class="information">
+//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+//! </div>
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="ignore" style="white-space:normal;font:inherit;">
+//! <strong>Note</strong>: Since entering a span takes <code>&self</code<, and
+//! <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
+//! <code>Sync</code>, it is entirely valid for multiple threads to enter the
 //! same span concurrently.
+//! </pre></div>
 //!
 //! ## Span Relationships
 //!
@@ -817,11 +822,17 @@ impl Span {
     /// }
     /// ```
     ///
-    /// **Note**: The fields associated with a span are part of its [`Metadata`].
-    /// The [`Metadata`] describing a particular span is constructed statically when the span is
-    /// created and cannot be extended later to add new fields.
-    /// Therefore, you cannot record a value for a field that was not specified when the span
-    /// was created:
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: The fields associated with a span are part of its
+    /// <a href="../struct.Metadata.html"><code>Metadata</code></a>.
+    /// The <a href="../struct.Metadata.html"><code>Metadata</code></a>. describing a particular
+    /// span is constructed statically when the span is created and cannot be extended later to
+    /// add new fields. Therefore, you cannot record a value for a field that was not specified
+    /// when the span was created:</pre></div>
     /// ```
     /// use tracing::{trace_span, field};
     ///
