@@ -77,7 +77,7 @@
 //!```
 //!
 //! <div class="information">
-//!     <div class="tooltip compile_fail" style="">⚠️<span class="tooltiptext">Warning</span></div>
+//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
 //!     <code>Span::enter</code> may produce incorrect traces if the returned drop
