@@ -46,7 +46,7 @@ collecting trace data, such as by logging it to standard output.
 traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
 consume messages emitted by `log`-instrumented libraries and modules.
 
-To use `tracing-subscriber`, first add the following to your `Cargo.toml`.-:
+To use `tracing-subscriber`add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -54,7 +54,7 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 ```
 
-To set a global subscriber for the entire program, use the `set_global_default` function.
+To set a global subscriber for the entire program, use the `set_global_default` function:
 
 ```rust
 use tracing::{info, Level};
