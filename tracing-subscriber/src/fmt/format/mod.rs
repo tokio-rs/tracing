@@ -9,7 +9,7 @@ use crate::{
 
 use std::{
     fmt::{self, Write},
-    io, iter,
+    iter,
 };
 use tracing_core::{
     field::{self, Field, Visit},
@@ -25,7 +25,7 @@ use ansi_term::{Colour, Style};
 #[cfg(feature = "json")]
 mod json;
 
-use fmt::Debug;
+use fmt::{Debug, Display};
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use json::*;
@@ -888,11 +888,6 @@ impl FmtSpanConfig {
             fmt_timing: self.fmt_timing,
         }
     }
-    pub(super) fn fmt_timing(&self, t: u64, buf: &mut impl io::Write) {
-        if self.fmt_timing {
-            fmt_nanos(t, buf)
-        }
-    }
     pub(super) fn trace_new(&self) -> bool {
         match self.kind {
             FmtSpan::None => false,
@@ -942,22 +937,27 @@ impl Default for FmtSpanConfig {
     }
 }
 
-fn fmt_nanos(t: u64, buf: &mut impl io::Write) {
+#[repr(transparent)]
+pub(super) struct TimingDisplay(pub(super) u64);
+impl Display for TimingDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_nanos(self.0, f)
+    }
+}
+
+fn fmt_nanos(t: u64, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut t = t as f64;
     for unit in ["ns", "µs", "ms", "s"].iter() {
         if t < 10.0 {
-            let _ = write!(buf, "{:.2}{}", t, unit);
-            return;
+            return write!(f, "{:.2}{}", t, unit);
         } else if t < 100.0 {
-            let _ = write!(buf, "{:.1}{}", t, unit);
-            return;
+            return write!(f, "{:.1}{}", t, unit);
         } else if t < 1000.0 {
-            let _ = write!(buf, "{:.0}{}", t, unit);
-            return;
+            return write!(f, "{:.0}{}", t, unit);
         }
         t /= 1000.0;
     }
-    let _ = write!(buf, "{:.0}s", t * 1000.0);
+    write!(f, "{:.0}s", t * 1000.0)
 }
 
 #[cfg(test)]
@@ -967,6 +967,7 @@ pub(super) mod test {
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
+    use super::TimingDisplay;
     use std::{fmt, sync::Mutex};
 
     pub(crate) struct MockTime;
@@ -1136,9 +1137,7 @@ pub(super) mod test {
     #[test]
     fn format_nanos() {
         fn fmt(t: u64) -> String {
-            let mut s = Vec::new();
-            super::fmt_nanos(t, &mut s);
-            String::from_utf8(s).unwrap()
+            TimingDisplay(t).to_string()
         }
 
         assert_eq!(fmt(1), "1.00ns");

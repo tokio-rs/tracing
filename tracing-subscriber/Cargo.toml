@@ -36,7 +36,7 @@ tracing-core = { path = "../tracing-core", version = "0.1.2" }
 # only required by the filter feature
 matchers = { optional = true, version = "0.0.1" }
 regex = { optional = true, version = "1" }
-smallvec = { optional = true, version = "1", features = ["write"] }
+smallvec = { optional = true, version = "1" }
 lazy_static = { optional = true, version = "1" }
 
 # fmt

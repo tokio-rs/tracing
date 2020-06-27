@@ -4,21 +4,13 @@ use crate::{
     layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
-use format::FmtSpan;
-use std::{
-    any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, str::from_utf8_unchecked,
-    time::Instant,
-};
+use format::{FmtSpan, TimingDisplay};
+use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
     Event, Subscriber,
 };
-
-#[cfg(feature = "smallvec")]
-type BufVec<T> = smallvec::SmallVec<[T; 24]>;
-#[cfg(not(feature = "smallvec"))]
-type BufVec<T> = Vec<T>;
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
 ///
@@ -567,17 +559,8 @@ where
                 } = *timing;
                 idle += (Instant::now() - last).as_nanos() as u64;
 
-                let mut s_idle = BufVec::new();
-                self.fmt_span.fmt_timing(idle, &mut s_idle);
-                // safe because we control the writers and they write strings
-                let s_idle = unsafe { from_utf8_unchecked(s_idle.as_ref()) };
-                let t_idle = field::display(s_idle);
-
-                let mut s_busy = BufVec::new();
-                self.fmt_span.fmt_timing(busy, &mut s_busy);
-                // safe because we control the writers and they write strings
-                let s_busy = unsafe { from_utf8_unchecked(s_busy.as_ref()) };
-                let t_busy = field::display(s_busy);
+                let t_idle = field::display(TimingDisplay(idle));
+                let t_busy = field::display(TimingDisplay(busy));
 
                 event_from_span!(
                     event = id,
