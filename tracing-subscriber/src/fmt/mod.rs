@@ -477,6 +477,14 @@ where
         }
     }
 
+    /// Select which span usage shall be logged as events
+    pub fn with_spans(self, kind: format::FmtSpan) -> Self {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_spans(kind),
+        }
+    }
+
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]

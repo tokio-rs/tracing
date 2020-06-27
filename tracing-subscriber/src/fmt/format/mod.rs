@@ -9,7 +9,7 @@ use crate::{
 
 use std::{
     fmt::{self, Write},
-    iter,
+    io, iter,
 };
 use tracing_core::{
     field::{self, Field, Visit},
@@ -25,6 +25,7 @@ use ansi_term::{Colour, Style};
 #[cfg(feature = "json")]
 mod json;
 
+use fmt::Debug;
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use json::*;
@@ -854,8 +855,113 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
     }
 }
 
+// === printing synthetic Span events ===
+
+/// Select the degree to which tracing spans are logged as events
+#[derive(Debug)]
+pub enum FmtSpan {
+    /// spans are ignored (this is the default)
+    None,
+    /// one event per enter/exit of a span
+    Active,
+    /// one event when the span is dropped
+    Close,
+    /// events at all points (new, enter, exit, drop)
+    Full,
+}
+
+pub(super) struct FmtSpanConfig {
+    pub(super) kind: FmtSpan,
+    pub(super) fmt_timing: bool,
+}
+
+impl FmtSpanConfig {
+    pub(super) fn without_time(self) -> Self {
+        Self {
+            kind: self.kind,
+            fmt_timing: false,
+        }
+    }
+    pub(super) fn with_kind(self, kind: FmtSpan) -> Self {
+        Self {
+            kind,
+            fmt_timing: self.fmt_timing,
+        }
+    }
+    pub(super) fn fmt_timing(&self, t: u64, buf: &mut impl io::Write) {
+        if self.fmt_timing {
+            fmt_nanos(t, buf)
+        }
+    }
+    pub(super) fn trace_new(&self) -> bool {
+        match self.kind {
+            FmtSpan::None => false,
+            FmtSpan::Active => false,
+            FmtSpan::Close => false,
+            FmtSpan::Full => true,
+        }
+    }
+    pub(super) fn trace_enter(&self) -> bool {
+        match self.kind {
+            FmtSpan::None => false,
+            FmtSpan::Active => true,
+            FmtSpan::Close => false,
+            FmtSpan::Full => true,
+        }
+    }
+    pub(super) fn trace_exit(&self) -> bool {
+        match self.kind {
+            FmtSpan::None => false,
+            FmtSpan::Active => true,
+            FmtSpan::Close => false,
+            FmtSpan::Full => true,
+        }
+    }
+    pub(super) fn trace_close(&self) -> bool {
+        match self.kind {
+            FmtSpan::None => false,
+            FmtSpan::Active => false,
+            FmtSpan::Close => true,
+            FmtSpan::Full => true,
+        }
+    }
+}
+
+impl Debug for FmtSpanConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(f)
+    }
+}
+
+impl Default for FmtSpanConfig {
+    fn default() -> Self {
+        Self {
+            kind: FmtSpan::None,
+            fmt_timing: true,
+        }
+    }
+}
+
+fn fmt_nanos(t: u64, buf: &mut impl io::Write) {
+    let mut t = t as f64;
+    for unit in ["ns", "µs", "ms", "s"].iter() {
+        if t < 10.0 {
+            let _ = write!(buf, "{:.2}{}", t, unit);
+            return;
+        } else if t < 100.0 {
+            let _ = write!(buf, "{:.1}{}", t, unit);
+            return;
+        } else if t < 1000.0 {
+            let _ = write!(buf, "{:.0}{}", t, unit);
+            return;
+        }
+        t /= 1000.0;
+    }
+    let _ = write!(buf, "{:.0}s", t * 1000.0);
+}
+
 #[cfg(test)]
-mod test {
+pub(super) mod test {
 
     use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
@@ -863,7 +969,7 @@ mod test {
 
     use std::{fmt, sync::Mutex};
 
-    struct MockTime;
+    pub(crate) struct MockTime;
     impl FormatTime for MockTime {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
             write!(w, "fake time")
@@ -1025,5 +1131,28 @@ mod test {
                 actual().as_str()
             );
         });
+    }
+
+    #[test]
+    fn format_nanos() {
+        fn fmt(t: u64) -> String {
+            let mut s = Vec::new();
+            super::fmt_nanos(t, &mut s);
+            String::from_utf8(s).unwrap()
+        }
+
+        assert_eq!(fmt(1), "1.00ns");
+        assert_eq!(fmt(12), "12.0ns");
+        assert_eq!(fmt(123), "123ns");
+        assert_eq!(fmt(1234), "1.23µs");
+        assert_eq!(fmt(12345), "12.3µs");
+        assert_eq!(fmt(123456), "123µs");
+        assert_eq!(fmt(1234567), "1.23ms");
+        assert_eq!(fmt(12345678), "12.3ms");
+        assert_eq!(fmt(123456789), "123ms");
+        assert_eq!(fmt(1234567890), "1.23s");
+        assert_eq!(fmt(12345678901), "12.3s");
+        assert_eq!(fmt(123456789012), "123s");
+        assert_eq!(fmt(1234567890123), "1235s");
     }
 }
