@@ -46,7 +46,7 @@ collecting trace data, such as by logging it to standard output.
 traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
 consume messages emitted by `log`-instrumented libraries and modules.
 
-To use `tracing-subscriber`add the following to your `Cargo.toml`:
+To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
