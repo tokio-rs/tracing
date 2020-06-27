@@ -941,23 +941,19 @@ impl Default for FmtSpanConfig {
 pub(super) struct TimingDisplay(pub(super) u64);
 impl Display for TimingDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_nanos(self.0, f)
-    }
-}
-
-fn fmt_nanos(t: u64, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let mut t = t as f64;
-    for unit in ["ns", "µs", "ms", "s"].iter() {
-        if t < 10.0 {
-            return write!(f, "{:.2}{}", t, unit);
-        } else if t < 100.0 {
-            return write!(f, "{:.1}{}", t, unit);
-        } else if t < 1000.0 {
-            return write!(f, "{:.0}{}", t, unit);
+        let mut t = self.0 as f64;
+        for unit in ["ns", "µs", "ms", "s"].iter() {
+            if t < 10.0 {
+                return write!(f, "{:.2}{}", t, unit);
+            } else if t < 100.0 {
+                return write!(f, "{:.1}{}", t, unit);
+            } else if t < 1000.0 {
+                return write!(f, "{:.0}{}", t, unit);
+            }
+            t /= 1000.0;
         }
-        t /= 1000.0;
+        write!(f, "{:.0}s", t * 1000.0)
     }
-    write!(f, "{:.0}s", t * 1000.0)
 }
 
 #[cfg(test)]
