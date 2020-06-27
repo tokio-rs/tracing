@@ -587,7 +587,7 @@ impl Span {
     ///   the future yields.
     ///   
     ///   `Instrument` can be used with an async block inside an async function:
-    ///   ```
+    ///   ```ignore
     ///   # use tracing::info_span;
     ///   use tracing_futures::Instrument;
     ///
@@ -611,7 +611,7 @@ impl Span {
     ///
     ///   It can also be used to instrument calls to async functions at the
     ///   callsite:
-    ///   ```
+    ///   ```ignore
     ///   # use tracing::debug_span;
     ///   use tracing_futures::Instrument;
     ///
@@ -629,7 +629,7 @@ impl Span {
     ///   [`#[instrument]` attribute macro][attr] will automatically generate
     ///   correct code when used on an async function:
     ///
-    ///   ```
+    ///   ```ignore
     ///   # async fn some_other_async_function() {}
     ///   #[tracing::instrument(level = "info")]
     ///   async fn my_async_function() {
@@ -833,6 +833,7 @@ impl Span {
     /// span is constructed statically when the span is created and cannot be extended later to
     /// add new fields. Therefore, you cannot record a value for a field that was not specified
     /// when the span was created:</pre></div>
+    ///
     /// ```
     /// use tracing::{trace_span, field};
     ///
@@ -852,6 +853,7 @@ impl Span {
     /// // This `record` call will indeed replace field::Empty with "you will be remembered".
     /// span.record("parting", &"you will be remembered");
     /// ```
+    ///
     /// [`field::Empty`]: ../field/struct.Empty.html
     /// [`Metadata`]: ../struct.Metadata.html
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
