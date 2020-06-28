@@ -770,7 +770,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            // check that FmtSpan::None is the default
+            // check that FmtSpan::NONE is the default
             .finish();
 
         with_default(subscriber, || {
@@ -793,7 +793,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_spans(FmtSpan::Active)
+            .with_spans(FmtSpan::ACTIVE)
             .finish();
 
         with_default(subscriber, || {
@@ -820,7 +820,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_spans(FmtSpan::Close)
+            .with_spans(FmtSpan::CLOSE)
             .finish();
 
         with_default(subscriber, || {
@@ -847,7 +847,7 @@ mod test {
             .with_ansi(false)
             .with_timer(MockTime)
             .without_time()
-            .with_spans(FmtSpan::Close)
+            .with_spans(FmtSpan::CLOSE)
             .finish();
 
         with_default(subscriber, || {
@@ -873,7 +873,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_spans(FmtSpan::Full)
+            .with_spans(FmtSpan::FULL)
             .finish();
 
         with_default(subscriber, || {

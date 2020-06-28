@@ -858,8 +858,33 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 // === printing synthetic Span events ===
 
 /// Select the degree to which tracing spans are logged as events
-#[derive(Debug)]
-pub enum FmtSpan {
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FmtSpan(FmtSpanInner);
+
+impl FmtSpan {
+    /// spans are ignored (this is the default)
+    pub const NONE: FmtSpan = FmtSpan(FmtSpanInner::None);
+    /// one event per enter/exit of a span
+    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpanInner::Active);
+    /// one event when the span is dropped
+    pub const CLOSE: FmtSpan = FmtSpan(FmtSpanInner::Close);
+    /// events at all points (new, enter, exit, drop)
+    pub const FULL: FmtSpan = FmtSpan(FmtSpanInner::Full);
+}
+
+impl Debug for FmtSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            FmtSpanInner::None => f.write_str("FmtSpan::NONE"),
+            FmtSpanInner::Active => f.write_str("FmtSpan::ACTIVE"),
+            FmtSpanInner::Close => f.write_str("FmtSpan::CLOSE"),
+            FmtSpanInner::Full => f.write_str("FmtSpan::FULL"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+enum FmtSpanInner {
     /// spans are ignored (this is the default)
     None,
     /// one event per enter/exit of a span
@@ -890,34 +915,34 @@ impl FmtSpanConfig {
     }
     pub(super) fn trace_new(&self) -> bool {
         match self.kind {
-            FmtSpan::None => false,
-            FmtSpan::Active => false,
-            FmtSpan::Close => false,
-            FmtSpan::Full => true,
+            FmtSpan::NONE => false,
+            FmtSpan::ACTIVE => false,
+            FmtSpan::CLOSE => false,
+            FmtSpan::FULL => true,
         }
     }
     pub(super) fn trace_enter(&self) -> bool {
         match self.kind {
-            FmtSpan::None => false,
-            FmtSpan::Active => true,
-            FmtSpan::Close => false,
-            FmtSpan::Full => true,
+            FmtSpan::NONE => false,
+            FmtSpan::ACTIVE => true,
+            FmtSpan::CLOSE => false,
+            FmtSpan::FULL => true,
         }
     }
     pub(super) fn trace_exit(&self) -> bool {
         match self.kind {
-            FmtSpan::None => false,
-            FmtSpan::Active => true,
-            FmtSpan::Close => false,
-            FmtSpan::Full => true,
+            FmtSpan::NONE => false,
+            FmtSpan::ACTIVE => true,
+            FmtSpan::CLOSE => false,
+            FmtSpan::FULL => true,
         }
     }
     pub(super) fn trace_close(&self) -> bool {
         match self.kind {
-            FmtSpan::None => false,
-            FmtSpan::Active => false,
-            FmtSpan::Close => true,
-            FmtSpan::Full => true,
+            FmtSpan::NONE => false,
+            FmtSpan::ACTIVE => false,
+            FmtSpan::CLOSE => true,
+            FmtSpan::FULL => true,
         }
     }
 }
@@ -931,7 +956,7 @@ impl Debug for FmtSpanConfig {
 impl Default for FmtSpanConfig {
     fn default() -> Self {
         Self {
-            kind: FmtSpan::None,
+            kind: FmtSpan::NONE,
             fmt_timing: true,
         }
     }
