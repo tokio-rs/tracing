@@ -5,13 +5,19 @@ use crate::Metadata;
 
 /// Trait implemented to allow a type to be used as a field key.
 ///
-/// **Note**: Although this is implemented for both the [`Field`] type *and* any
-/// type that can be borrowed as an `&str`, only `Field` allows _O_(1) access.
+/// <div class="information">
+///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+/// </div>
+/// <div class="example-wrap" style="display:inline-block">
+/// <pre class="ignore" style="white-space:normal;font:inherit;">
+/// <strong>Note</strong>: Although this is implemented for both the
+/// <a href="./struct.Field.html"><code>Field</code></a> type <em>and</em> any
+/// type that can be borrowed as an <code>&str</code>, only <code>Field</code>
+/// allows <em>O</em>(1) access.
 /// Indexing a field with a string results in an iterative search that performs
 /// string comparisons. Thus, if possible, once the key for a field is known, it
 /// should be used whenever possible.
-///
-/// [`Field`]: ./struct.Field.html
+/// </pre>
 pub trait AsField: crate::sealed::Sealed {
     /// Attempts to convert `&self` into a `Field` with the specified `metadata`.
     ///

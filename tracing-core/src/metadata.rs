@@ -29,11 +29,18 @@ use crate::stdlib::{fmt, str::FromStr};
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// **Note**: Although instances of `Metadata` cannot be compared directly, they
-/// provide a method [`id`] which returns an opaque [callsite identifier]
-/// which uniquely identifies the callsite where the metadata originated.
-/// This can be used for determining if two Metadata correspond to
+/// <div class="information">
+///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+/// </div>
+/// <div class="example-wrap" style="display:inline-block">
+/// <pre class="ignore" style="white-space:normal;font:inherit;">
+/// <strong>Note</strong>: Although instances of <code>Metadata</code> cannot
+/// be compared directly, they provide a method <a href="struct.Metadata.html#method.id">
+/// <code>id</code></a>, returning an opaque <a href="../callsite/struct.Identifier.html">
+/// callsite identifier</a>  which uniquely identifies the callsite where the metadata
+/// originated. This can be used to determine if two <code>Metadata</code> correspond to
 /// the same callsite.
+/// </pre></div>
 ///
 /// [span]: ../span/index.html
 /// [event]: ../event/index.html
