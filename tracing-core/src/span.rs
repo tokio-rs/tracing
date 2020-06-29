@@ -60,7 +60,13 @@ enum CurrentInner {
 impl Id {
     /// Constructs a new span ID from the given `u64`.
     ///
-    /// **Note**: Span IDs must be greater than zero.
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Span IDs must be greater than zero.</pre></div>
     ///
     /// # Panics
     /// - If the provided `u64` is 0
