@@ -98,15 +98,14 @@ pub trait LookupSpan<'a> {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: users of the <code>LookupSpan<code> trait should
     /// typically call the <a href="#method.span"><code>span</code> method rather
     /// than this method. The <code>span</code> method is implemented by
     /// <em>calling</em> <code>span_data</code>, but returns a reference which is
     /// capable of performing more sophisiticated queries.
-     /// </pre></div>
-     ///
+    /// </pre></div>
+    ///
     /// [`SpanData`]: trait.SpanData.html
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 

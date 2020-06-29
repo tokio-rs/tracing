@@ -216,7 +216,6 @@ where
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.enabled">
     /// <code>Layer::enabled</code></a>) determine whether a span or event is
@@ -229,8 +228,8 @@ where
     /// <a href="#method.on_enter"><code>on_enter</code></a>,
     /// <a href="#method.on_exit"><code>on_exit<code></a>, and other notification
     /// methods.
-     /// </pre></div>
-     ///
+    /// </pre></div>
+    ///
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
     ///
@@ -269,7 +268,6 @@ where
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.register_callsite">
     /// <code>Layer::register_callsite</code></a>) determine whether a span or event is
@@ -282,8 +280,8 @@ where
     /// <a href="#method.on_enter"><code>on_enter</code></a>,
     /// <a href="#method.on_exit"><code>on_exit<code></a>, and other notification
     /// methods.
-     /// </pre></div>
-     ///
+    /// </pre></div>
+    ///
     ///
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
@@ -874,14 +872,13 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// <code>Layer</code> implementations that wish to use this
     /// function can bound their <code>Subscriber</code> type parameter with:
-     /// </pre></div>
-     /// ```rust,ignore
+    /// </pre></div>
+    /// ```rust,ignore
     /// where S: Subscriber + for<'a> LookupSpan<'a>,`
     /// ```
     #[inline]
@@ -904,14 +901,13 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// <code>Layer</code> implementations that wish to use this
     /// function can bound their <code>Subscriber</code> type parameter with:
-     /// </pre></div>
-     /// ```rust,ignore
+    /// </pre></div>
+    /// ```rust,ignore
     /// where S: Subscriber + for<'a> LookupSpan<'a>,`
     /// ```
     ///
@@ -933,14 +929,13 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// <code>Layer</code> implementations that wish to use this
     /// function can bound their <code>Subscriber</code> type parameter with:
-     /// </pre></div>
-     /// ```rust,ignore
+    /// </pre></div>
+    /// ```rust,ignore
     /// where S: Subscriber + for<'a> LookupSpan<'a>,`
     /// ```
     ///
@@ -964,14 +959,13 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// <code>Layer</code> implementations that wish to use this
     /// function can bound their <code>Subscriber</code> type parameter with:
-     /// </pre></div>
-     /// ```rust,ignore
+    /// </pre></div>
+    /// ```rust,ignore
     /// where S: Subscriber + for<'a> LookupSpan<'a>,`
     /// ```
     ///
@@ -1006,14 +1000,13 @@ impl<'a, S: Subscriber> Context<'a, S> {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// <code>Layer</code> implementations that wish to use this
     /// function can bound their <code>Subscriber</code> type parameter with:
-     /// </pre></div>
-     /// ```rust,ignore
+    /// </pre></div>
+    /// ```rust,ignore
     /// where S: Subscriber + for<'a> LookupSpan<'a>,`
     /// ```
     ///

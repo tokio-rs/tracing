@@ -175,7 +175,7 @@ pub struct Iter {
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: The <code>record_error</code> trait method is only
-/// available when the Rust standard library is present, as it requires the `
+/// available when the Rust standard library is present, as it requires the
 /// <code>std::error::Error</code> trait.
 /// </pre></div>
 ///
@@ -212,7 +212,6 @@ pub trait Visit {
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This is only enabled when the Rust standard library is
@@ -622,7 +621,6 @@ impl FieldSet {
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: If <code>field</code> shares a name with a field
     /// in this <code>FieldSet</code>, but was created by a <code>FieldSet</code>
@@ -631,7 +629,6 @@ impl FieldSet {
     /// named "foo", the <code>Field</code> corresponding to "foo" for each
     /// of those callsites are not equivalent.
     /// </pre></div>
-    /// </div>
     pub fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite() && field.i <= self.len()
     }
