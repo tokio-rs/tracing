@@ -14,5 +14,6 @@ members = [
     "tracing-subscriber",
     "tracing-serde",
     "tracing-appender",
+    "tracing-journald",
     "examples"
 ]
