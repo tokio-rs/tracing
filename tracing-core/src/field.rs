@@ -630,7 +630,7 @@ impl FieldSet {
     /// contain it. This is so that if two separate span callsites define a field
     /// named "foo", the <code>Field</code> corresponding to "foo" for each
     /// of those callsites are not equivalent.
-    /// </pre>
+    /// </pre></div>
     /// </div>
     pub fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite() && field.i <= self.len()

@@ -559,7 +559,7 @@ impl Dispatch {
     /// <strong>Deprecated</strong>: The <a href="#method.try_close"><code>try_close</code></a>
     /// method is functionally identical, but returns <code>true</code> if the span is now closed.
     /// It should be used instead of this method.
-    /// </pre>
+    /// </pre></div>
     ///
     /// [span ID]: ../span/struct.Id.html
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html

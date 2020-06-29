@@ -105,8 +105,8 @@ pub trait LookupSpan<'a> {
     /// than this method. The <code>span</code> method is implemented by
     /// <em>calling</em> <code>span_data</code>, but returns a reference which is
     /// capable of performing more sophisiticated queries.
-    /// </pre>
-    ///
+     /// </pre></div>
+     ///
     /// [`SpanData`]: trait.SpanData.html
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
