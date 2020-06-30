@@ -859,7 +859,7 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 
 /// Configures what points in the span lifecycle are logged as events.
 ///
-/// see also [`with_span_events`](../struct.SubscriberBuilder.html#method.with_span_events)
+/// See also [`with_span_events`](../struct.SubscriberBuilder.html#method.with_span_events).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(FmtSpanInner);
 
