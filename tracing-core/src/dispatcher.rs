@@ -113,8 +113,9 @@
 //! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>:the thread-local scoped dispatcher <code>with_default</code>
-//! requires the Rust standard library. <code>no_std</code> users should use
+//! <strong>Note</strong>:the thread-local scoped dispatcher
+//! (<a href="#fn.with_default"><code>with_default</code></a>) requires the
+//! Rust standard library. <code>no_std</code> users should use
 //! <a href="#fn.set_global_default"><code>set_global_default</code></a>
 //! instead.
 //! </pre></div>
@@ -559,7 +560,7 @@ impl Dispatch {
     /// <strong>Deprecated</strong>: The <a href="#method.try_close"><code>try_close</code></a>
     /// method is functionally identical, but returns <code>true</code> if the span is now closed.
     /// It should be used instead of this method.
-    /// </pre>
+    /// </pre></div>
     ///
     /// [span ID]: ../span/struct.Id.html
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
