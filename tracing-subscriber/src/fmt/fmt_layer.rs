@@ -219,8 +219,33 @@ where
         }
     }
 
-    /// Select which span usage shall be logged as events
-    pub fn with_spans(self, kind: FmtSpan) -> Self {
+    /// Configures how synthesized events are emitted at points in the [span
+    /// lifecycle][lifecycle].
+    ///
+    /// The following options are available:
+    ///
+    /// - `FmtSpan::NONE`: No events will be synthesized when spans are
+    ///    created, entered, exited, or closed. Data from spans will still be
+    ///    included as the context for formatted events. This is the default.
+    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
+    ///    or exited.
+    /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
+    ///    [timestamps are enabled][time] for this formatter, the generated
+    ///    event will contain fields with the span's _busy time_ (the total
+    ///    time for which it was entered) and _idle time_ (the total time that
+    ///    the span existed but was not entered).
+    /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
+    ///    created, entered, exited, or closed. If timestamps are enabled, the
+    ///    close event will contain the span's busy and idle time, as
+    ///    described above.
+    ///
+    /// Note that the generated events will only be part of the log output by
+    /// this formatter; they will not be recorded by other `Subscriber`s or by
+    /// `Layer`s added to this subscriber.
+    ///
+    /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
+    /// [time]: #method.without_time
+    pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Layer {
             fmt_event: self.fmt_event,
             fmt_fields: self.fmt_fields,
@@ -442,11 +467,11 @@ impl<E> Deref for FormattedFields<E> {
 
 // === impl FmtLayer ===
 
-macro_rules! event_from_span {
-    ($event:ident = $id:ident, $span:ident, $($field:ident = $value:expr),*) => {
+macro_rules! with_event_from_span {
+    ($id:ident, $span:ident, $($field:literal = $value:expr),*, |$event:ident| $code:tt) => {
         let meta = $span.metadata();
         let cs = meta.callsite();
-        let fs = field::FieldSet::new(&[$(stringify!($field)),*], cs);
+        let fs = field::FieldSet::new(&[$($field),*], cs);
         #[allow(unused)]
         let mut iter = fs.iter();
         let v = [$(
@@ -454,6 +479,7 @@ macro_rules! event_from_span {
         )*];
         let vs = fs.value_set(&v);
         let $event = Event::new_child_of($id, meta, &vs);
+        $code
     };
 }
 
@@ -487,10 +513,11 @@ where
         }
 
         if self.fmt_span.trace_new() {
-            event_from_span!(event = id, span, message = "new");
-            drop(extensions);
-            drop(span);
-            self.on_event(&event, ctx);
+            with_event_from_span!(id, span, "message" = "new", |event| {
+                drop(extensions);
+                drop(span);
+                self.on_event(&event, ctx);
+            });
         }
     }
 
@@ -514,43 +541,49 @@ where
     }
 
     fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
-        if let Some(timings) = extensions.get_mut::<Timings>() {
-            let now = Instant::now();
-            timings.idle += (now - timings.last).as_nanos() as u64;
-            timings.last = now;
-        }
+        if self.fmt_span.trace_active() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.idle += (now - timings.last).as_nanos() as u64;
+                timings.last = now;
+            }
 
-        if self.fmt_span.trace_enter() {
-            event_from_span!(event = id, span, message = "enter");
-            drop(extensions);
-            drop(span);
-            self.on_event(&event, ctx);
+            if self.fmt_span.trace_active() {
+                with_event_from_span!(id, span, "message" = "enter", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
+            }
         }
     }
 
     fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
-        if let Some(timings) = extensions.get_mut::<Timings>() {
-            let now = Instant::now();
-            timings.busy += (now - timings.last).as_nanos() as u64;
-            timings.last = now;
-        }
+        if self.fmt_span.trace_active() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.busy += (now - timings.last).as_nanos() as u64;
+                timings.last = now;
+            }
 
-        if self.fmt_span.trace_exit() {
-            event_from_span!(event = id, span, message = "exit");
-            drop(extensions);
-            drop(span);
-            self.on_event(&event, ctx);
+            if self.fmt_span.trace_active() {
+                with_event_from_span!(id, span, "message" = "exit", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
+            }
         }
     }
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-        let span = ctx.span(&id).expect("Span not found, this is a bug");
-        let extensions = span.extensions();
         if self.fmt_span.trace_close() {
+            let span = ctx.span(&id).expect("Span not found, this is a bug");
+            let extensions = span.extensions();
             if let Some(timing) = extensions.get::<Timings>() {
                 let Timings {
                     busy,
@@ -562,21 +595,24 @@ where
                 let t_idle = field::display(TimingDisplay(idle));
                 let t_busy = field::display(TimingDisplay(busy));
 
-                event_from_span!(
-                    event = id,
+                with_event_from_span!(
+                    id,
                     span,
-                    message = "close",
-                    t_busy = t_busy,
-                    t_idle = t_idle
+                    "message" = "close",
+                    "time.busy" = t_busy,
+                    "time.idle" = t_idle,
+                    |event| {
+                        drop(extensions);
+                        drop(span);
+                        self.on_event(&event, ctx);
+                    }
                 );
-                drop(extensions);
-                drop(span);
-                self.on_event(&event, ctx);
             } else {
-                event_from_span!(event = id, span, message = "close");
-                drop(extensions);
-                drop(span);
-                self.on_event(&event, ctx);
+                with_event_from_span!(id, span, "message" = "close", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
             }
         }
     }
@@ -754,7 +790,7 @@ mod test {
     }
 
     fn sanitize_timings(s: String) -> String {
-        let re = Regex::new("t_(idle|busy)=([0-9.]+)[mµn]s").unwrap();
+        let re = Regex::new("time\\.(idle|busy)=([0-9.]+)[mµn]s").unwrap();
         re.replace_all(s.as_str(), "timing").to_string()
     }
 
@@ -793,7 +829,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_spans(FmtSpan::ACTIVE)
+            .with_span_events(FmtSpan::ACTIVE)
             .finish();
 
         with_default(subscriber, || {
@@ -820,7 +856,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_spans(FmtSpan::CLOSE)
+            .with_span_events(FmtSpan::CLOSE)
             .finish();
 
         with_default(subscriber, || {
@@ -847,7 +883,7 @@ mod test {
             .with_ansi(false)
             .with_timer(MockTime)
             .without_time()
-            .with_spans(FmtSpan::CLOSE)
+            .with_span_events(FmtSpan::CLOSE)
             .finish();
 
         with_default(subscriber, || {
@@ -873,7 +909,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_spans(FmtSpan::FULL)
+            .with_span_events(FmtSpan::FULL)
             .finish();
 
         with_default(subscriber, || {

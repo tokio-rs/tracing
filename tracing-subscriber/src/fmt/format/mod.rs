@@ -857,7 +857,9 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 
 // === printing synthetic Span events ===
 
-/// Select the degree to which tracing spans are logged as events
+/// Configures what points in the span lifecycle are logged as events.
+///
+/// see also [`with_span_events`](../struct.SubscriberBuilder.html#method.with_span_events)
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(FmtSpanInner);
 
@@ -915,34 +917,20 @@ impl FmtSpanConfig {
     }
     pub(super) fn trace_new(&self) -> bool {
         match self.kind {
-            FmtSpan::NONE => false,
-            FmtSpan::ACTIVE => false,
-            FmtSpan::CLOSE => false,
             FmtSpan::FULL => true,
+            _ => false,
         }
     }
-    pub(super) fn trace_enter(&self) -> bool {
+    pub(super) fn trace_active(&self) -> bool {
         match self.kind {
-            FmtSpan::NONE => false,
-            FmtSpan::ACTIVE => true,
-            FmtSpan::CLOSE => false,
-            FmtSpan::FULL => true,
-        }
-    }
-    pub(super) fn trace_exit(&self) -> bool {
-        match self.kind {
-            FmtSpan::NONE => false,
-            FmtSpan::ACTIVE => true,
-            FmtSpan::CLOSE => false,
-            FmtSpan::FULL => true,
+            FmtSpan::ACTIVE | FmtSpan::FULL => true,
+            _ => false,
         }
     }
     pub(super) fn trace_close(&self) -> bool {
         match self.kind {
-            FmtSpan::NONE => false,
-            FmtSpan::ACTIVE => false,
-            FmtSpan::CLOSE => true,
-            FmtSpan::FULL => true,
+            FmtSpan::CLOSE | FmtSpan::FULL => true,
+            _ => false,
         }
     }
 }
