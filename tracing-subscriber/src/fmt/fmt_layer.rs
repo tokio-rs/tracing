@@ -468,7 +468,7 @@ impl<E> Deref for FormattedFields<E> {
 // === impl FmtLayer ===
 
 macro_rules! with_event_from_span {
-    ($id:ident, $span:ident, $($field:literal = $value:expr),*, |$event:ident| $code:tt) => {
+    ($id:ident, $span:ident, $($field:literal = $value:expr),*, |$event:ident| $code:block) => {
         let meta = $span.metadata();
         let cs = meta.callsite();
         let fs = field::FieldSet::new(&[$($field),*], cs);
