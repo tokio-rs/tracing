@@ -1,3 +1,14 @@
+# 0.1.9 (June 30, 2020)
+
+### Added
+
+- Support for arbitrary expressions as fields in `#[instrument]` (#672)
+
+### Changed
+
+- `#[instrument]` now emits a helpful error for unrecognized input, rather than
+  ignoring it (#672)
+
 # 0.1.8 (May 13, 2020)
 
 ### Added

@@ -12,7 +12,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-attributes = "0.1.8"
+//! tracing-attributes = "0.1.9"
 //! ```
 //!
 //! *Compiler support: requires rustc 1.39+*
@@ -35,7 +35,7 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [instrument]: attr.instrument.html
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.8")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.9")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
