@@ -25,6 +25,7 @@ use ansi_term::{Colour, Style};
 #[cfg(feature = "json")]
 mod json;
 
+use fmt::{Debug, Display};
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use json::*;
@@ -854,16 +855,131 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
     }
 }
 
+// === printing synthetic Span events ===
+
+/// Configures what points in the span lifecycle are logged as events.
+///
+/// See also [`with_span_events`](../struct.SubscriberBuilder.html#method.with_span_events).
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FmtSpan(FmtSpanInner);
+
+impl FmtSpan {
+    /// spans are ignored (this is the default)
+    pub const NONE: FmtSpan = FmtSpan(FmtSpanInner::None);
+    /// one event per enter/exit of a span
+    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpanInner::Active);
+    /// one event when the span is dropped
+    pub const CLOSE: FmtSpan = FmtSpan(FmtSpanInner::Close);
+    /// events at all points (new, enter, exit, drop)
+    pub const FULL: FmtSpan = FmtSpan(FmtSpanInner::Full);
+}
+
+impl Debug for FmtSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            FmtSpanInner::None => f.write_str("FmtSpan::NONE"),
+            FmtSpanInner::Active => f.write_str("FmtSpan::ACTIVE"),
+            FmtSpanInner::Close => f.write_str("FmtSpan::CLOSE"),
+            FmtSpanInner::Full => f.write_str("FmtSpan::FULL"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+enum FmtSpanInner {
+    /// spans are ignored (this is the default)
+    None,
+    /// one event per enter/exit of a span
+    Active,
+    /// one event when the span is dropped
+    Close,
+    /// events at all points (new, enter, exit, drop)
+    Full,
+}
+
+pub(super) struct FmtSpanConfig {
+    pub(super) kind: FmtSpan,
+    pub(super) fmt_timing: bool,
+}
+
+impl FmtSpanConfig {
+    pub(super) fn without_time(self) -> Self {
+        Self {
+            kind: self.kind,
+            fmt_timing: false,
+        }
+    }
+    pub(super) fn with_kind(self, kind: FmtSpan) -> Self {
+        Self {
+            kind,
+            fmt_timing: self.fmt_timing,
+        }
+    }
+    pub(super) fn trace_new(&self) -> bool {
+        match self.kind {
+            FmtSpan::FULL => true,
+            _ => false,
+        }
+    }
+    pub(super) fn trace_active(&self) -> bool {
+        match self.kind {
+            FmtSpan::ACTIVE | FmtSpan::FULL => true,
+            _ => false,
+        }
+    }
+    pub(super) fn trace_close(&self) -> bool {
+        match self.kind {
+            FmtSpan::CLOSE | FmtSpan::FULL => true,
+            _ => false,
+        }
+    }
+}
+
+impl Debug for FmtSpanConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(f)
+    }
+}
+
+impl Default for FmtSpanConfig {
+    fn default() -> Self {
+        Self {
+            kind: FmtSpan::NONE,
+            fmt_timing: true,
+        }
+    }
+}
+
+#[repr(transparent)]
+pub(super) struct TimingDisplay(pub(super) u64);
+impl Display for TimingDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut t = self.0 as f64;
+        for unit in ["ns", "µs", "ms", "s"].iter() {
+            if t < 10.0 {
+                return write!(f, "{:.2}{}", t, unit);
+            } else if t < 100.0 {
+                return write!(f, "{:.1}{}", t, unit);
+            } else if t < 1000.0 {
+                return write!(f, "{:.0}{}", t, unit);
+            }
+            t /= 1000.0;
+        }
+        write!(f, "{:.0}s", t * 1000.0)
+    }
+}
+
 #[cfg(test)]
-mod test {
+pub(super) mod test {
 
     use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
+    use super::TimingDisplay;
     use std::{fmt, sync::Mutex};
 
-    struct MockTime;
+    pub(crate) struct MockTime;
     impl FormatTime for MockTime {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
             write!(w, "fake time")
@@ -1025,5 +1141,26 @@ mod test {
                 actual().as_str()
             );
         });
+    }
+
+    #[test]
+    fn format_nanos() {
+        fn fmt(t: u64) -> String {
+            TimingDisplay(t).to_string()
+        }
+
+        assert_eq!(fmt(1), "1.00ns");
+        assert_eq!(fmt(12), "12.0ns");
+        assert_eq!(fmt(123), "123ns");
+        assert_eq!(fmt(1234), "1.23µs");
+        assert_eq!(fmt(12345), "12.3µs");
+        assert_eq!(fmt(123456), "123µs");
+        assert_eq!(fmt(1234567), "1.23ms");
+        assert_eq!(fmt(12345678), "12.3ms");
+        assert_eq!(fmt(123456789), "123ms");
+        assert_eq!(fmt(1234567890), "1.23s");
+        assert_eq!(fmt(12345678901), "12.3s");
+        assert_eq!(fmt(123456789012), "123s");
+        assert_eq!(fmt(1234567890123), "1235s");
     }
 }

@@ -4,8 +4,10 @@ use crate::{
     layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
-use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref};
+use format::{FmtSpan, TimingDisplay};
+use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
 use tracing_core::{
+    field,
     span::{Attributes, Id, Record},
     Event, Subscriber,
 };
@@ -65,6 +67,7 @@ pub struct Layer<
     make_writer: W,
     fmt_fields: N,
     fmt_event: E,
+    fmt_span: format::FmtSpanConfig,
     _inner: PhantomData<S>,
 }
 
@@ -138,6 +141,7 @@ where
         Layer {
             fmt_fields: self.fmt_fields,
             fmt_event: e,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -172,6 +176,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         Layer {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
+            fmt_span: self.fmt_span,
             make_writer,
             _inner: self._inner,
         }
@@ -197,6 +202,7 @@ where
         Layer {
             fmt_event: self.fmt_event.with_timer(timer),
             fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -207,6 +213,43 @@ where
         Layer {
             fmt_event: self.fmt_event.without_time(),
             fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span.without_time(),
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Configures how synthesized events are emitted at points in the [span
+    /// lifecycle][lifecycle].
+    ///
+    /// The following options are available:
+    ///
+    /// - `FmtSpan::NONE`: No events will be synthesized when spans are
+    ///    created, entered, exited, or closed. Data from spans will still be
+    ///    included as the context for formatted events. This is the default.
+    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
+    ///    or exited.
+    /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
+    ///    [timestamps are enabled][time] for this formatter, the generated
+    ///    event will contain fields with the span's _busy time_ (the total
+    ///    time for which it was entered) and _idle time_ (the total time that
+    ///    the span existed but was not entered).
+    /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
+    ///    created, entered, exited, or closed. If timestamps are enabled, the
+    ///    close event will contain the span's busy and idle time, as
+    ///    described above.
+    ///
+    /// Note that the generated events will only be part of the log output by
+    /// this formatter; they will not be recorded by other `Subscriber`s or by
+    /// `Layer`s added to this subscriber.
+    ///
+    /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
+    /// [time]: #method.without_time
+    pub fn with_span_events(self, kind: FmtSpan) -> Self {
+        Layer {
+            fmt_event: self.fmt_event,
+            fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span.with_kind(kind),
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -219,6 +262,7 @@ where
         Layer {
             fmt_event: self.fmt_event.with_ansi(ansi),
             fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -229,6 +273,7 @@ where
         Layer {
             fmt_event: self.fmt_event.with_target(display_target),
             fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -239,6 +284,7 @@ where
         Layer {
             fmt_event: self.fmt_event.with_level(display_level),
             fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -252,6 +298,7 @@ where
         Layer {
             fmt_event: self.fmt_event.compact(),
             fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -279,6 +326,7 @@ where
         Layer {
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -298,6 +346,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Layer {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -314,6 +363,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         Layer {
             fmt_event: self.fmt_event,
             fmt_fields,
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -345,6 +395,7 @@ impl<S> Default for Layer<S> {
         Layer {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
+            fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
             _inner: PhantomData,
         }
@@ -416,6 +467,22 @@ impl<E> Deref for FormattedFields<E> {
 
 // === impl FmtLayer ===
 
+macro_rules! with_event_from_span {
+    ($id:ident, $span:ident, $($field:literal = $value:expr),*, |$event:ident| $code:block) => {
+        let meta = $span.metadata();
+        let cs = meta.callsite();
+        let fs = field::FieldSet::new(&[$($field),*], cs);
+        #[allow(unused)]
+        let mut iter = fs.iter();
+        let v = [$(
+            (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
+        )*];
+        let vs = fs.value_set(&v);
+        let $event = Event::new_child_of($id, meta, &vs);
+        $code
+    };
+}
+
 impl<S, N, E, W> layer::Layer<S> for Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -437,6 +504,21 @@ where
                 extensions.insert(fmt_fields);
             }
         }
+
+        if self.fmt_span.fmt_timing
+            && self.fmt_span.trace_close()
+            && extensions.get_mut::<Timings>().is_none()
+        {
+            extensions.insert(Timings::new());
+        }
+
+        if self.fmt_span.trace_new() {
+            with_event_from_span!(id, span, "message" = "new", |event| {
+                drop(extensions);
+                drop(span);
+                self.on_event(&event, ctx);
+            });
+        }
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
@@ -454,6 +536,83 @@ where
                     _format_event: PhantomData::<fn(N)>,
                 };
                 extensions.insert(fmt_fields);
+            }
+        }
+    }
+
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        if self.fmt_span.trace_active() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.idle += (now - timings.last).as_nanos() as u64;
+                timings.last = now;
+            }
+
+            if self.fmt_span.trace_active() {
+                with_event_from_span!(id, span, "message" = "enter", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
+            }
+        }
+    }
+
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+        if self.fmt_span.trace_active() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.busy += (now - timings.last).as_nanos() as u64;
+                timings.last = now;
+            }
+
+            if self.fmt_span.trace_active() {
+                with_event_from_span!(id, span, "message" = "exit", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
+            }
+        }
+    }
+
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        if self.fmt_span.trace_close() {
+            let span = ctx.span(&id).expect("Span not found, this is a bug");
+            let extensions = span.extensions();
+            if let Some(timing) = extensions.get::<Timings>() {
+                let Timings {
+                    busy,
+                    mut idle,
+                    last,
+                } = *timing;
+                idle += (Instant::now() - last).as_nanos() as u64;
+
+                let t_idle = field::display(TimingDisplay(idle));
+                let t_busy = field::display(TimingDisplay(busy));
+
+                with_event_from_span!(
+                    id,
+                    span,
+                    "message" = "close",
+                    "time.busy" = t_busy,
+                    "time.idle" = t_idle,
+                    |event| {
+                        drop(extensions);
+                        drop(span);
+                        self.on_event(&event, ctx);
+                    }
+                );
+            } else {
+                with_event_from_span!(id, span, "message" = "close", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
             }
         }
     }
@@ -551,15 +710,37 @@ where
     }
 }
 
+struct Timings {
+    idle: u64,
+    busy: u64,
+    last: Instant,
+}
+
+impl Timings {
+    fn new() -> Self {
+        Self {
+            idle: 0,
+            busy: 0,
+            last: Instant::now(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::fmt::{
         self,
-        format::{self, Format},
+        format::{self, test::MockTime, Format},
         layer::Layer as _,
+        test::MockWriter,
         time,
     };
     use crate::Registry;
+    use format::FmtSpan;
+    use lazy_static::lazy_static;
+    use regex::Regex;
+    use std::sync::Mutex;
+    use tracing::subscriber::with_default;
     use tracing_core::dispatcher::Dispatch;
 
     #[test]
@@ -606,5 +787,142 @@ mod test {
         let fmt = fmt::Layer::default();
         let subscriber = fmt.with_subscriber(Registry::default());
         assert_lookup_span(subscriber)
+    }
+
+    fn sanitize_timings(s: String) -> String {
+        let re = Regex::new("time\\.(idle|busy)=([0-9.]+)[mµn]s").unwrap();
+        re.replace_all(s.as_str(), "timing").to_string()
+    }
+
+    #[test]
+    fn synthesize_span_none() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            // check that FmtSpan::NONE is the default
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1", x = 42);
+            let _e = span1.enter();
+        });
+        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        assert_eq!("", actual.as_str());
+    }
+
+    #[test]
+    fn synthesize_span_active() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::ACTIVE)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1", x = 42);
+            let _e = span1.enter();
+        });
+        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        assert_eq!(
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn synthesize_span_close() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::CLOSE)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1", x = 42);
+            let _e = span1.enter();
+        });
+        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        assert_eq!(
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn synthesize_span_close_no_timing() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .without_time()
+            .with_span_events(FmtSpan::CLOSE)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1", x = 42);
+            let _e = span1.enter();
+        });
+        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        assert_eq!(
+            " span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn synthesize_span_full() {
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::FULL)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1", x = 42);
+            let _e = span1.enter();
+        });
+        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        assert_eq!(
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: new\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            actual.as_str()
+        );
     }
 }

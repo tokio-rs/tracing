@@ -477,6 +477,39 @@ where
         }
     }
 
+    /// Configures how synthesized events are emitted at points in the [span
+    /// lifecycle][lifecycle].
+    ///
+    /// The following options are available:
+    ///
+    /// - `FmtSpan::NONE`: No events will be synthesized when spans are
+    ///    created, entered, exited, or closed. Data from spans will still be
+    ///    included as the context for formatted events. This is the default.
+    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
+    ///    or exited.
+    /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
+    ///    [timestamps are enabled][time] for this formatter, the generated
+    ///    event will contain fields with the span's _busy time_ (the total
+    ///    time for which it was entered) and _idle time_ (the total time that
+    ///    the span existed but was not entered).
+    /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
+    ///    created, entered, exited, or closed. If timestamps are enabled, the
+    ///    close event will contain the span's busy and idle time, as
+    ///    described above.
+    ///
+    /// Note that the generated events will only be part of the log output by
+    /// this formatter; they will not be recorded by other `Subscriber`s or by
+    /// `Layer`s added to this subscriber.
+    ///
+    /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
+    /// [time]: #method.without_time
+    pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_span_events(kind),
+        }
+    }
+
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
