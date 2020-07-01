@@ -1,3 +1,23 @@
+# 0.2.7 (July 1, 2020)
+
+### Changed
+
+- **parking_lot**: Updated the optional `parking_lot` dependency to accept the
+  latest `parking_lot` version (#774)
+
+### Fixed
+
+- **fmt**: Fixed events with explicitly overridden parent spans being formatted
+  as though they were children of the current span (#767)
+
+### Added
+
+- **fmt**: Added the option to print synthesized events when spans are created,
+  entered, exited, and closed, including span durations (#761)
+- Documentation clarification and improvement (#762, #769)
+
+Thanks to @rkuhn, @greenwoodcm, and @Ralith for contributing to this release!
+
 # 0.2.6 (June 19, 2020)
 
 ### Fixed
