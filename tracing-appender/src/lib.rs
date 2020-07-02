@@ -139,6 +139,8 @@ pub mod rolling;
 
 mod worker;
 
+pub mod multi;
+
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
 /// See the [`non_blocking` module's docs][non_blocking]'s for more details.
