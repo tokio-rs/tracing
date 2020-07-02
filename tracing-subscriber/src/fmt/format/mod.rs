@@ -4,7 +4,8 @@ use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_layer::FmtContext,
     fmt::fmt_layer::FormattedFields,
-    registry::LookupSpan,
+    layer::Context,
+    registry::{Extensions, ExtensionsMut, LookupSpan},
 };
 
 use std::{
@@ -49,27 +50,27 @@ where
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &Context<'_, S>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<S, N> FormatEvent<S, N>
-    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
-{
-    fn format_event(
-        &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
-    ) -> fmt::Result {
-        (*self)(ctx, writer, event)
-    }
-}
+// impl<S, N> FormatEvent<S, N>
+//     for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+// where
+//     S: Subscriber + for<'a> LookupSpan<'a>,
+// {
+//     fn format_event(
+//         &self,
+//         ctx: &FmtContext<'_, S, N>,
+//         writer: &mut dyn fmt::Write,
+
+//         event: &Event<'_>,
+//     ) -> fmt::Result {
+//         (*self)(ctx, writer, event)
+//     }
+// }
 /// A type that can format a [set of fields] to a `fmt::Write`.
 ///
 /// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
@@ -80,11 +81,32 @@ where
 /// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided `writer`, returning a result.
-    fn format_fields<R: RecordFields>(
+    fn format_fields(
         &self,
         writer: &'writer mut dyn fmt::Write,
-        fields: R,
+        fields: &dyn RecordFields,
     ) -> fmt::Result;
+
+    /// Look up any fields that this formatter has previously formatted.
+    fn formatted<'fields>(&self, exts: &'fields Extensions<'fields>) -> Option<&'fields str>
+    where
+        Self: 'static,
+    {
+        exts.get::<FormattedFields<Self>>()
+            .map(|f| f.fields.as_ref())
+    }
+
+    /// Look up any fields that this formatter has previously formatted.
+    fn formatted_mut<'fields>(
+        &self,
+        exts: &'fields mut ExtensionsMut<'fields>,
+    ) -> Option<&'fields mut String>
+    where
+        Self: 'static,
+    {
+        exts.get_mut::<FormattedFields<Self>>()
+            .map(|f| &mut f.fields)
+    }
 
     /// Record additional field(s) on an existing span.
     ///
