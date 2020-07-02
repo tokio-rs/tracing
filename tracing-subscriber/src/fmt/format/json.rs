@@ -28,15 +28,27 @@ use tracing_log::NormalizeEvent;
 /// # Example Output
 ///
 /// ```ignore,json
-/// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate","fields":{"message":"some message", "key": "value"}}
+/// {
+///     "timestamp":"Feb 20 11:28:15.096",
+///     "level":"INFO",
+///     "spans":[{"name":"root"},{"name":"leaf"}],
+///     "span":{name":"leaf"},
+///     "target":"mycrate",
+///     "fields":{"message":"some message","key":"value"}
+/// }
 /// ```
 ///
 /// # Options
 ///
-/// - [`Json::flatten_event`] can be used to enable flattening event fields into the root
-/// - [`Json::with_current_span`] can be used to control logging of the current span
+/// - [`Json::flatten_event`] can be used to enable flattening event fields into
+/// the root
+/// - [`Json::with_current_span`] can be used to control logging of the current
+/// span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
 /// object.
+/// 
+/// By default, event fields are not flattened, and both current span and span
+/// list are logged.
 ///
 /// [`Json::flatten_event`]: #method.flatten_event
 /// [`Json::with_current_span`]: #method.with_current_span
@@ -59,7 +71,8 @@ impl Json {
         self.display_current_span = display_current_span;
     }
 
-    /// If set to `false`, formatted events won't contain a list of all currently entered spans.
+    /// If set to `false`, formatted events won't contain a list of all currently
+    /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
     }

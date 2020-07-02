@@ -318,8 +318,8 @@ impl<T> Format<Json, T> {
         self
     }
 
-    /// Sets whether or not the formatter will include a list of all currently
-    /// entered spans in formatted events.
+    /// Sets whether or not the formatter will include a list (from root to
+    /// leaf) of all currently entered spans in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]

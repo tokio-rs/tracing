@@ -603,8 +603,8 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include a list of all
-    /// currently entered spans in formatted events.
+    /// Sets whether or not the JSON layer being built will include a list (from
+    /// root to leaf) of all currently entered spans in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_span_list(
