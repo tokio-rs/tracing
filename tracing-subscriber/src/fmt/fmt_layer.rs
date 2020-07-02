@@ -428,7 +428,7 @@ where
 ///
 /// [extensions]: ../registry/extensions/index.html
 #[derive(Default)]
-pub struct FormattedFields<E> {
+pub struct FormattedFields<E: ?Sized> {
     _format_event: PhantomData<fn(E)>,
     /// The formatted fields of a span.
     pub fields: String,
