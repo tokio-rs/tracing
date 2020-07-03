@@ -363,6 +363,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Layer {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
@@ -379,6 +380,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Layer {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
         }
