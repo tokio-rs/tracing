@@ -42,7 +42,7 @@ idiomatic `tracing`.)
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
-[`tracing_subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
+[`tracing-subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
 traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
 consume messages emitted by `log`-instrumented libraries and modules.
 
