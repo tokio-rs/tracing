@@ -281,11 +281,16 @@ fn gen_body(
         .map(|err| {
             let msg = err.to_string();
             let msg = LitStr::new(&msg, err.span());
+            // TODO(eliza): This is a bit of a hack, but it's just about the
+            // only way to emit warnings from a proc macro on stable Rust.
+            // Eventually, when the `proc_macro::Diagnostic` API stabilizes, we
+            // should definitely use that instead.
             quote_spanned! {err.span()=>
                 #[warn(deprecated)]
-                {   #[deprecated(since="not actually deprecated", note=#msg)]
-                    const TRACING_ATTRIBUTES_WARNING: &str = "unrecognized input";
-                    let _ = TRACING_ATTRIBUTES_WARNING;
+                {
+                    #[deprecated(since = "not actually deprecated", note = #msg)]
+                    const UNRECOGNIZED_INPUT: () = ();
+                    let _ = UNRECOGNIZED_INPUT;
                 }
             }
         })
@@ -462,6 +467,7 @@ struct InstrumentArgs {
     skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
+    /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
 
@@ -563,10 +569,13 @@ impl Parse for InstrumentArgs {
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
+                // We found a token that we didn't expect!
+                // We want to emit warnings for these, rather than errors, so
+                // we'll add it to the list of unrecognized inputs we've seen so
+                // far and keep going.
                 args.parse_warnings.push(lookahead.error());
-                dbg!(&args.parse_warnings);
-                // Just parse whatever the unrecognized token was and throw it
-                // away so we can keep parsing.
+                // Parse the unrecognized token tree to advance the parse
+                // stream, and throw it away so we can keep parsing.
                 let _ = input.parse::<proc_macro2::TokenTree>();
             }
         }
