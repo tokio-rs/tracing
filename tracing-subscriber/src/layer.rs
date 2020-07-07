@@ -1186,7 +1186,7 @@ pub(crate) mod tests {
         assert_eq!(&layer.0, "layer_1");
         let layer = Subscriber::downcast_ref::<StringLayer2>(&s).expect("layer 2 should downcast");
         assert_eq!(&layer.0, "layer_2");
-        let layer = Subscriber::downcast_ref::<StringLayer3>(&s).expect("layer 13 should downcast");
+        let layer = Subscriber::downcast_ref::<StringLayer3>(&s).expect("layer 3 should downcast");
         assert_eq!(&layer.0, "layer_3");
     }
 }
