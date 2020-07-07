@@ -242,7 +242,7 @@ pub fn instrument(
 
 fn gen_body(
     input: &ItemFn,
-    mut args: InstrumentArgs,
+    args: InstrumentArgs,
     fun_name: Option<String>,
 ) -> proc_macro2::TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
@@ -274,27 +274,7 @@ fn gen_body(
     } = sig;
 
     let err = args.err;
-
-    let warnings = args
-        .parse_warnings
-        .drain(..)
-        .map(|err| {
-            let msg = err.to_string();
-            let msg = LitStr::new(&msg, err.span());
-            // TODO(eliza): This is a bit of a hack, but it's just about the
-            // only way to emit warnings from a proc macro on stable Rust.
-            // Eventually, when the `proc_macro::Diagnostic` API stabilizes, we
-            // should definitely use that instead.
-            quote_spanned! {err.span()=>
-                #[warn(deprecated)]
-                {
-                    #[deprecated(since = "not actually deprecated", note = #msg)]
-                    const UNRECOGNIZED_INPUT: () = ();
-                    let _ = UNRECOGNIZED_INPUT;
-                }
-            }
-        })
-        .collect::<Vec<_>>();
+    let warnings = args.warnings();
 
     // generate the span's name
     let span_name = args
@@ -451,9 +431,7 @@ fn gen_body(
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
         {
-            {
-                #(#warnings)*
-            }
+            #warnings
             #body
         }
     )
@@ -518,6 +496,34 @@ impl InstrumentArgs {
             quote!(#target)
         } else {
             quote!(module_path!())
+        }
+    }
+
+    /// Generate "deprecation" warnings for any unrecognized attribute inputs
+    /// that we skipped.
+    ///
+    /// For backwards compatibility, we need to emit compiler warnings rather
+    /// than errors for unrecognized inputs. Generating a fake deprecation is
+    /// the only way to do this on stable Rust right now.
+    fn warnings(&self) -> impl ToTokens {
+        let warnings = self.parse_warnings.iter().map(|err| {
+            let msg = err.to_string();
+            let msg = LitStr::new(&msg, err.span());
+            // TODO(eliza): This is a bit of a hack, but it's just about the
+            // only way to emit warnings from a proc macro on stable Rust.
+            // Eventually, when the `proc_macro::Diagnostic` API stabilizes, we
+            // should definitely use that instead.
+            quote_spanned! {err.span()=>
+                #[warn(deprecated)]
+                {
+                    #[deprecated(since = "not actually deprecated", note = #msg)]
+                    const UNRECOGNIZED_INPUT: () = ();
+                    let _ = UNRECOGNIZED_INPUT;
+                }
+            }
+        });
+        quote! {
+            { #(#warnings)* }
         }
     }
 }
