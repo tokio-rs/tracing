@@ -242,7 +242,7 @@ pub fn instrument(
 
 fn gen_body(
     input: &ItemFn,
-    args: InstrumentArgs,
+    mut args: InstrumentArgs,
     fun_name: Option<String>,
 ) -> proc_macro2::TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
@@ -274,6 +274,22 @@ fn gen_body(
     } = sig;
 
     let err = args.err;
+
+    let warnings = args
+        .parse_warnings
+        .drain(..)
+        .map(|err| {
+            let msg = err.to_string();
+            let msg = LitStr::new(&msg, err.span());
+            quote_spanned! {err.span()=>
+                #[warn(deprecated)]
+                {   #[deprecated(since="not actually deprecated", note=#msg)]
+                    const TRACING_ATTRIBUTES_WARNING: &str = "unrecognized input";
+                    let _ = TRACING_ATTRIBUTES_WARNING;
+                }
+            }
+        })
+        .collect::<Vec<_>>();
 
     // generate the span's name
     let span_name = args
@@ -430,6 +446,9 @@ fn gen_body(
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
         {
+            {
+                #(#warnings)*
+            }
             #body
         }
     )
@@ -443,6 +462,7 @@ struct InstrumentArgs {
     skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
+    parse_warnings: Vec<syn::Error>,
 }
 
 impl InstrumentArgs {
@@ -478,7 +498,8 @@ impl InstrumentArgs {
             Some(Level::Path(ref pat)) => quote!(#pat),
             Some(lit) => quote! {
                 compile_error!(
-                    "unknown verbosity level, expected one of \"trace\", \
+                    "unknown verbosity level, expected one of \"trace\",
+                    return Err( \
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
                 )
             },
@@ -542,7 +563,11 @@ impl Parse for InstrumentArgs {
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
-                return Err(lookahead.error());
+                args.parse_warnings.push(lookahead.error());
+                dbg!(&args.parse_warnings);
+                // Just parse whatever the unrecognized token was and throw it
+                // away so we can keep parsing.
+                let _ = input.parse::<proc_macro2::TokenTree>();
             }
         }
         Ok(args)
