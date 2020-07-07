@@ -1860,7 +1860,7 @@ macro_rules! is_enabled {
             true
         } else {
             let meta = $callsite.metadata();
-            $crate::dispatcher::get_default(|current| current.enabled(meta))
+            $crate::is_enabled(meta)
         }
     }};
 }
