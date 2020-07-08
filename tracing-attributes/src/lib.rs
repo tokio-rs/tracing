@@ -274,6 +274,7 @@ fn gen_body(
     } = sig;
 
     let err = args.err;
+    let warnings = args.warnings();
 
     // generate the span's name
     let span_name = args
@@ -430,6 +431,7 @@ fn gen_body(
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
         {
+            #warnings
             #body
         }
     )
@@ -443,6 +445,8 @@ struct InstrumentArgs {
     skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
+    /// Errors describing any unrecognized parse inputs that we skipped.
+    parse_warnings: Vec<syn::Error>,
 }
 
 impl InstrumentArgs {
@@ -491,6 +495,34 @@ impl InstrumentArgs {
             quote!(#target)
         } else {
             quote!(module_path!())
+        }
+    }
+
+    /// Generate "deprecation" warnings for any unrecognized attribute inputs
+    /// that we skipped.
+    ///
+    /// For backwards compatibility, we need to emit compiler warnings rather
+    /// than errors for unrecognized inputs. Generating a fake deprecation is
+    /// the only way to do this on stable Rust right now.
+    fn warnings(&self) -> impl ToTokens {
+        let warnings = self.parse_warnings.iter().map(|err| {
+            let msg = format!("found unrecognized input, {}", err);
+            let msg = LitStr::new(&msg, err.span());
+            // TODO(eliza): This is a bit of a hack, but it's just about the
+            // only way to emit warnings from a proc macro on stable Rust.
+            // Eventually, when the `proc_macro::Diagnostic` API stabilizes, we
+            // should definitely use that instead.
+            quote_spanned! {err.span()=>
+                #[warn(deprecated)]
+                {
+                    #[deprecated(since = "not actually deprecated", note = #msg)]
+                    const TRACING_INSTRUMENT_WARNING: () = ();
+                    let _ = TRACING_INSTRUMENT_WARNING;
+                }
+            }
+        });
+        quote! {
+            { #(#warnings)* }
         }
     }
 }
@@ -542,7 +574,14 @@ impl Parse for InstrumentArgs {
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
-                return Err(lookahead.error());
+                // We found a token that we didn't expect!
+                // We want to emit warnings for these, rather than errors, so
+                // we'll add it to the list of unrecognized inputs we've seen so
+                // far and keep going.
+                args.parse_warnings.push(lookahead.error());
+                // Parse the unrecognized token tree to advance the parse
+                // stream, and throw it away so we can keep parsing.
+                let _ = input.parse::<proc_macro2::TokenTree>();
             }
         }
         Ok(args)
