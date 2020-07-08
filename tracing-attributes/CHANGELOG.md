@@ -1,4 +1,4 @@
-# 0.1.9 (June 30, 2020)
+# 0.1.9 (July 8, 2020)
 
 ### Added
 
@@ -6,8 +6,8 @@
 
 ### Changed
 
-- `#[instrument]` now emits a helpful error for unrecognized input, rather than
-  ignoring it (#672)
+- `#[instrument]` now emits a compiler warning when ignoring unrecognized
+  input (#672, #786)
 
 # 0.1.8 (May 13, 2020)
 
