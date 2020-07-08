@@ -18,7 +18,7 @@
 - Clippy warning on vtable address comparison in `callsite::Identifier` (#749)
 - Documentation formatting issues (#715, #771)
 
-Thanks to @bkchr, @majecty, @taiki-e, @nagisa, and @nqvz for contributing to
+Thanks to @bkchr, @majecty, @taiki-e, @nagisa, and @nvzqz for contributing to
 this release!
 
 # 0.1.10 (January 24, 2020)
