@@ -506,7 +506,7 @@ impl InstrumentArgs {
     /// the only way to do this on stable Rust right now.
     fn warnings(&self) -> impl ToTokens {
         let warnings = self.parse_warnings.iter().map(|err| {
-            let msg = err.to_string();
+            let msg = format!("found unrecognized input, {}", err);
             let msg = LitStr::new(&msg, err.span());
             // TODO(eliza): This is a bit of a hack, but it's just about the
             // only way to emit warnings from a proc macro on stable Rust.
@@ -516,8 +516,8 @@ impl InstrumentArgs {
                 #[warn(deprecated)]
                 {
                     #[deprecated(since = "not actually deprecated", note = #msg)]
-                    const TRACING_INSTRUMENT_UNRECOGNIZED_INPUT: () = ();
-                    let _ = TRACING_INSTRUMENT_UNRECOGNIZED_INPUT;
+                    const TRACING_INSTRUMENT_WARNING: () = ();
+                    let _ = TRACING_INSTRUMENT_WARNING;
                 }
             }
         });
