@@ -1,3 +1,14 @@
+# 0.1.9 (July 8, 2020)
+
+### Added
+
+- Support for arbitrary expressions as fields in `#[instrument]` (#672)
+
+### Changed
+
+- `#[instrument]` now emits a compiler warning when ignoring unrecognized
+  input (#672, #786)
+
 # 0.1.8 (May 13, 2020)
 
 ### Added
