@@ -482,8 +482,7 @@ impl InstrumentArgs {
             Some(Level::Path(ref pat)) => quote!(#pat),
             Some(lit) => quote! {
                 compile_error!(
-                    "unknown verbosity level, expected one of \"trace\",
-                    return Err( \
+                    "unknown verbosity level, expected one of \"trace\", \
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
                 )
             },
