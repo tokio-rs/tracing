@@ -872,6 +872,7 @@ pub mod __macro_support {
 #[doc(hidden)]
 // resolves https://github.com/tokio-rs/tracing/issues/783 by forcing a monomorphization
 // in tracing, not downstream crates.
+#[inline]
 pub fn is_enabled(meta: &crate::Metadata<'_>) -> bool {
     crate::dispatcher::get_default(|current| current.enabled(meta))
 }
