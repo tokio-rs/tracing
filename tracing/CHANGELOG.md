@@ -1,3 +1,27 @@
+# 0.1.16 (July 8, 2020)
+
+### Added
+
+- **attributes**: Support for arbitrary expressions as fields in `#[instrument]` (#672)
+- **attributes**: `#[instrument]` now emits a compiler warning when ignoring unrecognized
+  input (#672, #786)
+- Improved documentation on using `tracing` in async code (#769)
+
+### Changed
+
+- Updated `tracing-core` dependency to 0.1.11
+
+### Fixed
+
+- **macros**: Excessive monomorphization in macros, which could lead to
+  longer compilation times (#787) 
+- **log**: Compiler warnings in macros when `log` or `log-always` features
+  are enabled (#753)
+- Compiler error when `tracing-core/std` feature is enabled but `tracing/std` is
+  not (#760)
+
+Thanks to @nagisa for contributing to this release!
+
 # 0.1.15 (June 2, 2020)
 
 ### Changed
