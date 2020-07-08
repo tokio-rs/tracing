@@ -539,7 +539,7 @@ macro_rules! event {
 
             if $crate::level_enabled!($lvl) {
                 #[allow(unused_imports)]
-                use $crate::{callsite, dispatcher, Event, field::{Value, ValueSet}};
+                use $crate::{callsite, Event, field::{Value, ValueSet}};
                 use $crate::callsite::Callsite;
                 let callsite = callsite! {
                     name: concat!(
@@ -584,7 +584,7 @@ macro_rules! event {
             );
             if $crate::level_enabled!($lvl) {
                 #[allow(unused_imports)]
-                use $crate::{callsite, dispatcher, Event, field::{Value, ValueSet}};
+                use $crate::{callsite, Event, field::{Value, ValueSet}};
                 use $crate::callsite::Callsite;
                 let callsite = callsite! {
                     name: concat!(
@@ -1860,7 +1860,7 @@ macro_rules! is_enabled {
             true
         } else {
             let meta = $callsite.metadata();
-            $crate::dispatcher::get_default(|current| current.enabled(meta))
+            $crate::is_enabled(meta)
         }
     }};
 }
