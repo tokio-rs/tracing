@@ -1,3 +1,26 @@
+# 0.1.11 (June 8, 2020)
+
+## Changed
+
+- Replaced use of `inner_local_macros` with `$crate::` (#729)
+
+## Added
+
+- `must_use` warning to guards returned by `dispatcher::set_default` (#686)
+- `fmt::Debug` impl to `dyn Value`s (#696) 
+- Functions to convert between `span::Id` and `NonZeroU64` (#770)
+- More obvious warnings in documentation (#769)
+
+## Fixed
+
+- Compiler error when `tracing-core/std` feature is enabled but `tracing/std` is
+  not (#760)
+- Clippy warning on vtable address comparison in `callsite::Identifier` (#749)
+- Documentation formatting issues (#715, #771)
+
+Thanks to @bkchr, @majecty, @taiki-e, @nagisa, and @nqvz for contributing to
+this release!
+
 # 0.1.10 (January 24, 2020)
 
 ### Added

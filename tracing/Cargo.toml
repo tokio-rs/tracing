@@ -27,7 +27,7 @@ keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.10", default-features = false }
+tracing-core = { path = "../tracing-core", version = "0.1.11", default-features = false }
 log = { version = "0.4", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.1.8", optional = true }
 cfg-if = "0.1.10"
