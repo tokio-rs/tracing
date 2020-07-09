@@ -46,7 +46,7 @@ use tracing_log::NormalizeEvent;
 /// span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
 /// object.
-/// 
+///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
 ///
