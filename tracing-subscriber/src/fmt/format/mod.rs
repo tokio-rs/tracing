@@ -306,6 +306,28 @@ impl<T> Format<Json, T> {
         self.format.flatten_event(flatten_event);
         self
     }
+
+    /// Sets whether or not the formatter will include the current span in
+    /// formatted events.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn with_current_span(mut self, display_current_span: bool) -> Format<Json, T> {
+        self.format.with_current_span(display_current_span);
+        self
+    }
+
+    /// Sets whether or not the formatter will include a list (from root to
+    /// leaf) of all currently entered spans in formatted events.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn with_span_list(mut self, display_span_list: bool) -> Format<Json, T> {
+        self.format.with_span_list(display_span_list);
+        self
+    }
 }
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>

@@ -588,6 +588,34 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
             inner: self.inner.flatten_event(flatten_event),
         }
     }
+
+    /// Sets whether or not the JSON layer being built will include the current span
+    /// in formatted events.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn with_current_span(
+        self,
+        display_current_span: bool,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_current_span(display_current_span),
+        }
+    }
+
+    /// Sets whether or not the JSON layer being built will include a list (from
+    /// root to leaf) of all currently entered spans in formatted events.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn with_span_list(
+        self,
+        display_span_list: bool,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_span_list(display_span_list),
+        }
+    }
 }
 
 #[cfg(feature = "env-filter")]
