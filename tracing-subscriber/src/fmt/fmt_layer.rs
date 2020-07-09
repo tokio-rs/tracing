@@ -351,6 +351,40 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
             _inner: self._inner,
         }
     }
+
+    /// Sets whether or not the formatter will include the current span in
+    /// formatted events.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn with_current_span(
+        self,
+        display_current_span: bool,
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_current_span(display_current_span),
+            fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets whether or not the formatter will include a list (from root to leaf)
+    /// of all currently entered spans in formatted events.
+    ///
+    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    pub fn with_span_list(
+        self,
+        display_span_list: bool,
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_span_list(display_span_list),
+            fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
 }
 
 impl<S, N, E, W> Layer<S, N, E, W> {
