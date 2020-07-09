@@ -263,6 +263,22 @@ fn error_span_with_parent() {
 }
 
 #[test]
+fn span_with_non_rust_symbol() {
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef", "more {}", 42);
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef", "more {}", 51);
+    span!(
+        Level::TRACE,
+        "non-rust",
+        "guid:x-request-id" = "abcdef",
+        "more {}",
+        60
+    );
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef");
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef");
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = "abcdef");
+}
+
+#[test]
 fn event() {
     event!(Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
     event!(Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
