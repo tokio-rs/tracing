@@ -8,15 +8,13 @@
 
 #[macro_use]
 extern crate tracing;
-mod support;
-
-use self::support::*;
 
 use tracing::{
     field::{debug, display},
     subscriber::with_default,
     Level,
 };
+use tracing_test::*;
 
 macro_rules! event_without_message {
     ($name:ident: $e:expr) => {

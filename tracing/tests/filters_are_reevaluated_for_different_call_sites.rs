@@ -8,10 +8,9 @@ extern crate std;
 
 #[macro_use]
 extern crate tracing;
-mod support;
 
-use self::support::*;
 use tracing::Level;
+use tracing_test::*;
 
 use std::sync::{
     atomic::{AtomicUsize, Ordering},

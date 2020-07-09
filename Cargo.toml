@@ -15,5 +15,6 @@ members = [
     "tracing-serde",
     "tracing-appender",
     "tracing-journald",
+    "tracing-test",
     "examples"
 ]

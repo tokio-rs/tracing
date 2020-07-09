@@ -61,6 +61,7 @@ log = "0.4"
 tracing-log = { path = "../tracing-log", version = "0.1" }
 criterion = { version = "0.3", default_features = false }
 regex = "1"
+tracing-test = { path = "../tracing-test", version = "0.1" }
 
 [badges]
 maintenance = { status = "experimental" }

@@ -36,6 +36,7 @@ cfg-if = "0.1.10"
 futures = "0.1"
 criterion = { version = "0.3", default_features = false }
 log = "0.4"
+tracing-test = { path = "../tracing-test", version = "0.1.0" }
 
 [features]
 default = ["std", "attributes"]

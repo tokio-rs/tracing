@@ -1,9 +1,7 @@
-mod support;
-use support::*;
-
 use tracing::subscriber::with_default;
 use tracing::Level;
 use tracing_attributes::instrument;
+use tracing_test::*;
 
 #[test]
 fn override_everything() {

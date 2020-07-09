@@ -477,16 +477,9 @@ impl<T> WithDispatch<T> {
 }
 
 #[cfg(test)]
-pub(crate) use self::support as test_support;
-// This has to have the same name as the module in `tracing`.
-#[path = "../../tracing/tests/support/mod.rs"]
-#[cfg(test)]
-#[allow(unreachable_pub)]
-pub(crate) mod support;
-
-#[cfg(test)]
 mod tests {
-    use super::{test_support::*, *};
+    use super::*;
+    use tracing_test::*;
 
     #[cfg(feature = "futures-01")]
     mod futures_01_tests {

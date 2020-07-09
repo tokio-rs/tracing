@@ -1,10 +1,9 @@
 // These tests include field filters with no targets, so they have to go in a
 // separate file.
 
-mod support;
-use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
 use tracing_subscriber::{filter::EnvFilter, prelude::*};
+use tracing_test::*;
 
 #[test]
 fn same_length_targets() {

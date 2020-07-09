@@ -1,6 +1,5 @@
-mod support;
-use self::support::*;
 use tracing_subscriber::prelude::*;
+use tracing_test::*;
 
 #[test]
 fn init_ext_works() {

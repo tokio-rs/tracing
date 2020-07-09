@@ -5,15 +5,14 @@
 
 #[macro_use]
 extern crate tracing;
-mod support;
 
-use self::support::*;
 use std::thread;
 use tracing::{
     field::{debug, display},
     subscriber::with_default,
     Level, Span,
 };
+use tracing_test::*;
 
 #[test]
 fn handles_to_the_same_span_are_equal() {

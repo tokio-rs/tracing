@@ -1,7 +1,6 @@
-mod support;
-use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
 use tracing_subscriber::{filter::EnvFilter, prelude::*};
+use tracing_test::*;
 
 #[test]
 fn field_filter_events() {

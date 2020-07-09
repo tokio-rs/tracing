@@ -1,8 +1,6 @@
-mod support;
-use support::*;
-
 use tracing::subscriber::with_default;
 use tracing_attributes::instrument;
+use tracing_test::*;
 
 #[instrument]
 fn default_target() {}

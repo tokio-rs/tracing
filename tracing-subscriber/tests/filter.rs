@@ -1,10 +1,9 @@
-mod support;
-use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
 };
+use tracing_test::*;
 
 #[test]
 fn level_filter_event() {

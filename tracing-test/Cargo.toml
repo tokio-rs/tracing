@@ -1,0 +1,33 @@
+[package]
+name = "tracing-test"
+version = "0.1.0"
+authors = ["Tokio Contributors <team@tokio.rs>"]
+edition = "2018"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+description = """
+Provides testing utilities for the tracing ecosystem.
+"""
+categories = [
+    "testing",
+    "asynchronous",
+    "no-std",
+]
+keywords = ["tracing", "testing"]
+license = "MIT"
+readme = "README.md"
+
+[features]
+default = ["std"]
+std = ["tracing/std"]
+
+[dependencies]
+tracing = { path = "../tracing", version = "0.1.2"}
+cfg-if = "0.1.10"
+
+[badges]
+maintenance = { status = "actively-maintained" }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
