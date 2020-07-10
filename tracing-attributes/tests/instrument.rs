@@ -11,12 +11,10 @@ fn override_everything() {
     #[instrument(level = "debug", target = "my_target")]
     fn my_other_fn() {}
 
-    let span = span::mock()
-        .named("my_fn")
+    let span = span::mock("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let span2 = span::mock()
-        .named("my_other_fn")
+    let span2 = span::mock("my_other_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
@@ -44,13 +42,11 @@ fn fields() {
     #[instrument(target = "my_target", level = "debug")]
     fn my_fn(arg1: usize, arg2: bool) {}
 
-    let span = span::mock()
-        .named("my_fn")
+    let span = span::mock("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span2 = span::mock()
-        .named("my_fn")
+    let span2 = span::mock("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
@@ -94,13 +90,11 @@ fn skip() {
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
-    let span = span::mock()
-        .named("my_fn")
+    let span = span::mock("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span2 = span::mock()
-        .named("my_fn")
+    let span2 = span::mock("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
@@ -142,7 +136,7 @@ fn generics() {
     {
     }
 
-    let span = span::mock().named("my_fn");
+    let span = span::mock("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -175,7 +169,7 @@ fn methods() {
         fn my_fn(&self, arg1: usize) {}
     }
 
-    let span = span::mock().named("my_fn");
+    let span = span::mock("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(

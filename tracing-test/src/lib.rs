@@ -53,6 +53,8 @@ pub mod metadata;
 pub mod span;
 pub mod subscriber;
 
+pub use span::mock as span;
+
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Parent {
     ContextualRoot,

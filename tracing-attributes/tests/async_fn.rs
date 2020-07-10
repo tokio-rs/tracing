@@ -17,13 +17,13 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock().named("test_async_fn"))
-        .enter(span::mock().named("test_async_fn"))
+        .new_span(span::mock("test_async_fn"))
+        .enter(span::mock("test_async_fn"))
         .event(event::mock().with_fields(field::mock("awaiting").with_value(&true)))
-        .exit(span::mock().named("test_async_fn"))
-        .enter(span::mock().named("test_async_fn"))
-        .exit(span::mock().named("test_async_fn"))
-        .drop_span(span::mock().named("test_async_fn"))
+        .exit(span::mock("test_async_fn"))
+        .enter(span::mock("test_async_fn"))
+        .exit(span::mock("test_async_fn"))
+        .drop_span(span::mock("test_async_fn"))
         .done()
         .run_with_handle();
     with_default(subscriber, || {
@@ -44,8 +44,8 @@ fn async_fn_nested() {
         tracing::trace!(nested = true);
     }
 
-    let span = span::mock().named("test_async_fns_nested");
-    let span2 = span::mock().named("test_async_fns_nested_other");
+    let span = span::mock("test_async_fns_nested");
+    let span2 = span::mock("test_async_fns_nested_other");
     let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
@@ -118,9 +118,9 @@ fn async_fn_with_async_trait() {
         }
     }
 
-    let span = span::mock().named("foo");
-    let span2 = span::mock().named("bar");
-    let span3 = span::mock().named("baz");
+    let span = span::mock("foo");
+    let span2 = span::mock("bar");
+    let span3 = span::mock("baz");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()

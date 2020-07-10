@@ -532,11 +532,11 @@ mod tests {
         #[test]
         fn future_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .drop_span(span::mock("foo"))
                 .done()
                 .run_with_handle();
             with_default(subscriber, || {
@@ -551,11 +551,11 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .drop_span(span::mock("foo"))
                 .done()
                 .run_with_handle();
             with_default(subscriber, || {
@@ -571,15 +571,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .drop_span(span::mock("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
@@ -594,14 +594,14 @@ mod tests {
         #[test]
         fn span_follows_future_onto_threadpool() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::mock().named("a"))
-                .enter(span::mock().named("b"))
-                .exit(span::mock().named("b"))
-                .enter(span::mock().named("b"))
-                .exit(span::mock().named("b"))
-                .drop_span(span::mock().named("b"))
-                .exit(span::mock().named("a"))
-                .drop_span(span::mock().named("a"))
+                .enter(span::mock("a"))
+                .enter(span::mock("b"))
+                .exit(span::mock("b"))
+                .enter(span::mock("b"))
+                .exit(span::mock("b"))
+                .drop_span(span::mock("b"))
+                .exit(span::mock("a"))
+                .drop_span(span::mock("a"))
                 .done()
                 .run_with_handle();
             let mut runtime = tokio::runtime::Runtime::new().unwrap();
@@ -632,15 +632,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .drop_span(span::mock("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
                 stream::iter(&[1, 2, 3])
@@ -655,13 +655,13 @@ mod tests {
         #[test]
         fn sink_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .enter(span::mock("foo"))
+                .exit(span::mock("foo"))
+                .drop_span(span::mock("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
                 sink::drain()

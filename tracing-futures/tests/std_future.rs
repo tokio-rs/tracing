@@ -7,11 +7,11 @@ use tracing_futures::Instrument;
 #[test]
 fn enter_exit_is_reasonable() {
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
+        .enter(span::mock("foo"))
+        .exit(span::mock("foo"))
+        .enter(span::mock("foo"))
+        .exit(span::mock("foo"))
+        .drop_span(span::mock("foo"))
         .done()
         .run_with_handle();
     with_default(subscriber, || {
@@ -24,11 +24,11 @@ fn enter_exit_is_reasonable() {
 #[test]
 fn error_ends_span() {
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
+        .enter(span::mock("foo"))
+        .exit(span::mock("foo"))
+        .enter(span::mock("foo"))
+        .exit(span::mock("foo"))
+        .drop_span(span::mock("foo"))
         .done()
         .run_with_handle();
     with_default(subscriber, || {

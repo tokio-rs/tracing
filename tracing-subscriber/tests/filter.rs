@@ -34,14 +34,12 @@ fn same_name_spans() {
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .new_span(
-            span::mock()
-                .named("foo")
+            span::mock("foo")
                 .at_level(Level::TRACE)
                 .with_field(field::mock("bar")),
         )
         .new_span(
-            span::mock()
-                .named("foo")
+            span::mock("foo")
                 .at_level(Level::TRACE)
                 .with_field(field::mock("baz")),
         )
@@ -144,17 +142,17 @@ fn span_name_filter_is_dynamic() {
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
-        .enter(span::mock().named("cool_span"))
+        .enter(span::mock("cool_span"))
         .event(event::mock().at_level(Level::DEBUG))
-        .enter(span::mock().named("uncool_span"))
+        .enter(span::mock("uncool_span"))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::DEBUG))
-        .exit(span::mock().named("uncool_span"))
-        .exit(span::mock().named("cool_span"))
-        .enter(span::mock().named("uncool_span"))
+        .exit(span::mock("uncool_span"))
+        .exit(span::mock("cool_span"))
+        .enter(span::mock("uncool_span"))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::ERROR))
-        .exit(span::mock().named("uncool_span"))
+        .exit(span::mock("uncool_span"))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

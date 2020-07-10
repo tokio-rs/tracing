@@ -23,36 +23,12 @@ mod my_mod {
 #[test]
 fn default_targets() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(
-            span::mock()
-                .named("default_target")
-                .with_target(module_path!()),
-        )
-        .enter(
-            span::mock()
-                .named("default_target")
-                .with_target(module_path!()),
-        )
-        .exit(
-            span::mock()
-                .named("default_target")
-                .with_target(module_path!()),
-        )
-        .new_span(
-            span::mock()
-                .named("default_target")
-                .with_target(my_mod::MODULE_PATH),
-        )
-        .enter(
-            span::mock()
-                .named("default_target")
-                .with_target(my_mod::MODULE_PATH),
-        )
-        .exit(
-            span::mock()
-                .named("default_target")
-                .with_target(my_mod::MODULE_PATH),
-        )
+        .new_span(span::mock("default_target").with_target(module_path!()))
+        .enter(span::mock("default_target").with_target(module_path!()))
+        .exit(span::mock("default_target").with_target(module_path!()))
+        .new_span(span::mock("default_target").with_target(my_mod::MODULE_PATH))
+        .enter(span::mock("default_target").with_target(my_mod::MODULE_PATH))
+        .exit(span::mock("default_target").with_target(my_mod::MODULE_PATH))
         .done()
         .run_with_handle();
 
@@ -67,24 +43,12 @@ fn default_targets() {
 #[test]
 fn custom_targets() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock().named("custom_target").with_target("my_target"))
-        .enter(span::mock().named("custom_target").with_target("my_target"))
-        .exit(span::mock().named("custom_target").with_target("my_target"))
-        .new_span(
-            span::mock()
-                .named("custom_target")
-                .with_target("my_other_target"),
-        )
-        .enter(
-            span::mock()
-                .named("custom_target")
-                .with_target("my_other_target"),
-        )
-        .exit(
-            span::mock()
-                .named("custom_target")
-                .with_target("my_other_target"),
-        )
+        .new_span(span::mock("custom_target").with_target("my_target"))
+        .enter(span::mock("custom_target").with_target("my_target"))
+        .exit(span::mock("custom_target").with_target("my_target"))
+        .new_span(span::mock("custom_target").with_target("my_other_target"))
+        .enter(span::mock("custom_target").with_target("my_other_target"))
+        .exit(span::mock("custom_target").with_target("my_other_target"))
         .done()
         .run_with_handle();
 

@@ -18,25 +18,20 @@ pub struct NewSpan {
     pub(crate) parent: Option<Parent>,
 }
 
-pub fn mock() -> MockSpan {
+pub fn mock<I>(name: I) -> MockSpan
+where
+    I: Into<String>,
+{
     MockSpan {
+        metadata: metadata::Expect {
+            name: Some(name.into()),
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
 
 impl MockSpan {
-    pub fn named<I>(self, name: I) -> Self
-    where
-        I: Into<String>,
-    {
-        Self {
-            metadata: metadata::Expect {
-                name: Some(name.into()),
-                ..self.metadata
-            },
-        }
-    }
-
     pub fn at_level(self, level: tracing::Level) -> Self {
         Self {
             metadata: metadata::Expect {
