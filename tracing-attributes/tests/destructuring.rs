@@ -7,7 +7,7 @@ fn destructure_tuples() {
     #[instrument]
     fn my_fn((arg1, arg2): (usize, usize)) {}
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -36,7 +36,7 @@ fn destructure_nested_tuples() {
     #[instrument]
     fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {}
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -67,7 +67,7 @@ fn destructure_refs() {
     #[instrument]
     fn my_fn(&arg1: &usize) {}
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -94,7 +94,7 @@ fn destructure_tuple_structs() {
     #[instrument]
     fn my_fn(Foo(arg1, arg2): Foo) {}
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -135,7 +135,7 @@ fn destructure_structs() {
         let _ = (arg1, arg2);
     }
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -180,7 +180,7 @@ fn destructure_everything() {
         let _ = (arg1, arg2, arg3, arg4);
     }
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(

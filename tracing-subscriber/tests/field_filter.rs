@@ -37,22 +37,22 @@ fn field_filter_spans() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .enter(span::mock("span1"))
+        .enter(span("span1"))
         .event(
             event::mock()
                 .at_level(Level::INFO)
                 .with_fields(field::mock("something")),
         )
-        .exit(span::mock("span1"))
-        .enter(span::mock("span2"))
-        .exit(span::mock("span2"))
-        .enter(span::mock("span3"))
+        .exit(span("span1"))
+        .enter(span("span2"))
+        .exit(span("span2"))
+        .enter(span("span3"))
         .event(
             event::mock()
                 .at_level(Level::DEBUG)
                 .with_fields(field::mock("something")),
         )
-        .exit(span::mock("span3"))
+        .exit(span("span3"))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -80,12 +80,12 @@ fn record_after_created() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .enter(span::mock("span"))
-        .exit(span::mock("span"))
-        .record(span::mock("span"), field::mock("enabled").with_value(&true))
-        .enter(span::mock("span"))
+        .enter(span("span"))
+        .exit(span("span"))
+        .record(span("span"), field::mock("enabled").with_value(&true))
+        .enter(span("span"))
         .event(event::mock().at_level(Level::DEBUG))
-        .exit(span::mock("span"))
+        .exit(span("span"))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

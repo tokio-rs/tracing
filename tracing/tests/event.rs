@@ -321,7 +321,7 @@ fn both_shorthands() {
 #[test]
 fn explicit_child() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock("foo"))
+        .new_span(span("foo"))
         .event(event::mock().with_explicit_parent(Some("foo")))
         .done()
         .run_with_handle();
@@ -337,7 +337,7 @@ fn explicit_child() {
 #[test]
 fn explicit_child_at_levels() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock("foo"))
+        .new_span(span("foo"))
         .event(event::mock().with_explicit_parent(Some("foo")))
         .event(event::mock().with_explicit_parent(Some("foo")))
         .event(event::mock().with_explicit_parent(Some("foo")))

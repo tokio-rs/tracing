@@ -57,12 +57,12 @@ fn same_num_fields_and_name_len() {
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .new_span(
-            span::mock("foo")
+            span("foo")
                 .at_level(Level::TRACE)
                 .with_field(field::mock("bar")),
         )
         .new_span(
-            span::mock("baz")
+            span("baz")
                 .at_level(Level::TRACE)
                 .with_field(field::mock("boz")),
         )

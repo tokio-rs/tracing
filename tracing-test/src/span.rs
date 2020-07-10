@@ -18,7 +18,7 @@ pub struct NewSpan {
     pub(crate) parent: Option<Parent>,
 }
 
-pub fn mock<I>(name: I) -> MockSpan
+pub fn span<I>(name: I) -> MockSpan
 where
     I: Into<String>,
 {

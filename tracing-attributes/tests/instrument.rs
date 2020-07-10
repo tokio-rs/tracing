@@ -11,17 +11,17 @@ fn override_everything() {
     #[instrument(level = "debug", target = "my_target")]
     fn my_other_fn() {}
 
-    let span = span::mock("my_fn")
+    let span1 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let span2 = span::mock("my_other_fn")
+    let span2 = span("my_other_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .exit(span.clone())
-        .drop_span(span)
+        .new_span(span1.clone())
+        .enter(span1.clone())
+        .exit(span1.clone())
+        .drop_span(span1)
         .new_span(span2.clone())
         .enter(span2.clone())
         .exit(span2.clone())
@@ -42,25 +42,25 @@ fn fields() {
     #[instrument(target = "my_target", level = "debug")]
     fn my_fn(arg1: usize, arg2: bool) {}
 
-    let span = span::mock("my_fn")
+    let span1 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span2 = span::mock("my_fn")
+    let span2 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span1.clone().with_field(
                 field::mock("arg1")
                     .with_value(&format_args!("2"))
                     .and(field::mock("arg2").with_value(&format_args!("false")))
                     .only(),
             ),
         )
-        .enter(span.clone())
-        .exit(span.clone())
-        .drop_span(span)
+        .enter(span1.clone())
+        .exit(span1.clone())
+        .drop_span(span1)
         .new_span(
             span2.clone().with_field(
                 field::mock("arg1")
@@ -90,21 +90,22 @@ fn skip() {
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
-    let span = span::mock("my_fn")
+    let span1 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span2 = span::mock("my_fn")
+    let span2 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone()
+            span1
+                .clone()
                 .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
         )
-        .enter(span.clone())
-        .exit(span.clone())
-        .drop_span(span)
+        .enter(span1.clone())
+        .exit(span1.clone())
+        .drop_span(span1)
         .new_span(
             span2
                 .clone()
@@ -136,7 +137,7 @@ fn generics() {
     {
     }
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
@@ -169,7 +170,7 @@ fn methods() {
         fn my_fn(&self, arg1: usize) {}
     }
 
-    let span = span::mock("my_fn");
+    let span = span("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(

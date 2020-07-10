@@ -53,7 +53,7 @@ pub mod metadata;
 pub mod span;
 pub mod subscriber;
 
-pub use span::mock as span;
+pub use span::span;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Parent {

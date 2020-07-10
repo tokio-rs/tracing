@@ -17,9 +17,9 @@ fn custom_name_no_equals() {}
 #[test]
 fn default_name_test() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock("default_name"))
-        .enter(span::mock("default_name"))
-        .exit(span::mock("default_name"))
+        .new_span(span("default_name"))
+        .enter(span("default_name"))
+        .exit(span("default_name"))
         .done()
         .run_with_handle();
 
@@ -33,9 +33,9 @@ fn default_name_test() {
 #[test]
 fn custom_name_test() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock("my_name"))
-        .enter(span::mock("my_name"))
-        .exit(span::mock("my_name"))
+        .new_span(span("my_name"))
+        .enter(span("my_name"))
+        .exit(span("my_name"))
         .done()
         .run_with_handle();
 
@@ -49,9 +49,9 @@ fn custom_name_test() {
 #[test]
 fn custom_name_no_equals_test() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::mock("my_other_name"))
-        .enter(span::mock("my_other_name"))
-        .exit(span::mock("my_other_name"))
+        .new_span(span("my_other_name"))
+        .enter(span("my_other_name"))
+        .exit(span("my_other_name"))
         .done()
         .run_with_handle();
 
