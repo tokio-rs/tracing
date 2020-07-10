@@ -52,9 +52,9 @@ fn fields() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span1.clone().with_field(
-                field::mock("arg1")
+                field("arg1")
                     .with_value(&format_args!("2"))
-                    .and(field::mock("arg2").with_value(&format_args!("false")))
+                    .and(field("arg2").with_value(&format_args!("false")))
                     .only(),
             ),
         )
@@ -63,9 +63,9 @@ fn fields() {
         .drop_span(span1)
         .new_span(
             span2.clone().with_field(
-                field::mock("arg1")
+                field("arg1")
                     .with_value(&format_args!("3"))
-                    .and(field::mock("arg2").with_value(&format_args!("true")))
+                    .and(field("arg2").with_value(&format_args!("true")))
                     .only(),
             ),
         )
@@ -101,7 +101,7 @@ fn skip() {
         .new_span(
             span1
                 .clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
+                .with_field(field("arg1").with_value(&format_args!("2")).only()),
         )
         .enter(span1.clone())
         .exit(span1.clone())
@@ -109,7 +109,7 @@ fn skip() {
         .new_span(
             span2
                 .clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("3")).only()),
+                .with_field(field("arg1").with_value(&format_args!("3")).only()),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -142,9 +142,9 @@ fn generics() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1")
+                field("arg1")
                     .with_value(&format_args!("Foo"))
-                    .and(field::mock("arg2").with_value(&format_args!("false"))),
+                    .and(field("arg2").with_value(&format_args!("false"))),
             ),
         )
         .enter(span.clone())
@@ -175,9 +175,9 @@ fn methods() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
-                field::mock("self")
+                field("self")
                     .with_value(&format_args!("Foo"))
-                    .and(field::mock("arg1").with_value(&format_args!("42"))),
+                    .and(field("arg1").with_value(&format_args!("42"))),
             ),
         )
         .enter(span.clone())

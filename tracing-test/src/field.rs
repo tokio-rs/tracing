@@ -29,7 +29,7 @@ pub enum MockValue {
     Any,
 }
 
-pub fn mock<K>(name: K) -> MockField
+pub fn field<K>(name: K) -> MockField
 where
     String: From<K>,
 {

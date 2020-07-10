@@ -53,6 +53,7 @@ pub mod metadata;
 pub mod span;
 pub mod subscriber;
 
+pub use field::field;
 pub use span::{anonymous_span, span};
 
 #[derive(Debug, Eq, PartialEq)]

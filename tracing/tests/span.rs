@@ -283,7 +283,7 @@ fn moved_field() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
-                field::mock("bar")
+                field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
@@ -309,7 +309,7 @@ fn moved_field() {
 #[test]
 fn dotted_field_name() {
     let (subscriber, handle) = subscriber::expect()
-        .new_span(span("foo").with_field(field::mock("fields.bar").with_value(&true).only()))
+        .new_span(span("foo").with_field(field("fields.bar").with_value(&true).only()))
         .done()
         .run_with_handle();
     with_default(subscriber, || {
@@ -324,7 +324,7 @@ fn borrowed_field() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
-                field::mock("bar")
+                field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
@@ -366,13 +366,13 @@ fn move_field_out_of_struct() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
-                field::mock("x")
+                field("x")
                     .with_value(&debug(3.234))
-                    .and(field::mock("y").with_value(&debug(-1.223)))
+                    .and(field("y").with_value(&debug(-1.223)))
                     .only(),
             ),
         )
-        .new_span(span("bar").with_field(field::mock("position").with_value(&debug(&pos)).only()))
+        .new_span(span("bar").with_field(field("position").with_value(&debug(&pos)).only()))
         .run_with_handle();
 
     with_default(subscriber, || {
@@ -397,12 +397,12 @@ fn add_field_after_new_span() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo")
-                .with_field(field::mock("bar").with_value(&5)
-                .and(field::mock("baz").with_value).only()),
+                .with_field(field("bar").with_value(&5)
+                .and(field("baz").with_value).only()),
         )
         .record(
             span("foo"),
-            field::mock("baz").with_value(&true).only(),
+            field("baz").with_value(&true).only(),
         )
         .enter(span("foo"))
         .exit(span("foo"))
@@ -425,11 +425,11 @@ fn add_fields_only_after_new_span() {
         .new_span(span("foo"))
         .record(
             span("foo"),
-            field::mock("bar").with_value(&5).only(),
+            field("bar").with_value(&5).only(),
         )
         .record(
             span("foo"),
-            field::mock("baz").with_value(&true).only(),
+            field("baz").with_value(&true).only(),
         )
         .enter(span("foo"))
         .exit(span("foo"))
@@ -453,13 +453,13 @@ fn record_new_value_for_field() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
-                field::mock("bar")
+                field("bar")
                     .with_value(&5)
-                    .and(field::mock("baz").with_value(&false))
+                    .and(field("baz").with_value(&false))
                     .only(),
             ),
         )
-        .record(span("foo"), field::mock("baz").with_value(&true).only())
+        .record(span("foo"), field("baz").with_value(&true).only())
         .enter(span("foo"))
         .exit(span("foo"))
         .drop_span(span("foo"))
@@ -480,14 +480,14 @@ fn record_new_values_for_fields() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
-                field::mock("bar")
+                field("bar")
                     .with_value(&4)
-                    .and(field::mock("baz").with_value(&false))
+                    .and(field("baz").with_value(&false))
                     .only(),
             ),
         )
-        .record(span("foo"), field::mock("bar").with_value(&5).only())
-        .record(span("foo"), field::mock("baz").with_value(&true).only())
+        .record(span("foo"), field("bar").with_value(&5).only())
+        .record(span("foo"), field("baz").with_value(&true).only())
         .enter(span("foo"))
         .exit(span("foo"))
         .drop_span(span("foo"))
@@ -647,11 +647,8 @@ fn contextual_child() {
 fn display_shorthand() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
-            span("my_span").with_field(
-                field::mock("my_field")
-                    .with_value(&display("hello world"))
-                    .only(),
-            ),
+            span("my_span")
+                .with_field(field("my_field").with_value(&display("hello world")).only()),
         )
         .done()
         .run_with_handle();
@@ -666,11 +663,7 @@ fn display_shorthand() {
 fn debug_shorthand() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
-            span("my_span").with_field(
-                field::mock("my_field")
-                    .with_value(&debug("hello world"))
-                    .only(),
-            ),
+            span("my_span").with_field(field("my_field").with_value(&debug("hello world")).only()),
         )
         .done()
         .run_with_handle();
@@ -686,9 +679,9 @@ fn both_shorthands() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("my_span").with_field(
-                field::mock("display_field")
+                field("display_field")
                     .with_value(&display("hello world"))
-                    .and(field::mock("debug_field").with_value(&debug("hello world")))
+                    .and(field("debug_field").with_value(&debug("hello world")))
                     .only(),
             ),
         )

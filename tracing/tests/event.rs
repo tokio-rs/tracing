@@ -23,10 +23,10 @@ macro_rules! event_without_message {
             let (subscriber, handle) = subscriber::expect()
                 .event(
                     event::mock().with_fields(
-                        field::mock("answer")
+                        field("answer")
                             .with_value(&42)
                             .and(
-                                field::mock("to_question")
+                                field("to_question")
                                     .with_value(&"life, the universe, and everything"),
                             )
                             .only(),
@@ -56,9 +56,11 @@ event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::
 #[test]
 fn event_with_message() {
     let (subscriber, handle) = subscriber::expect()
-        .event(event::mock().with_fields(field::mock("message").with_value(
-            &tracing::field::debug(format_args!("hello from my event! yak shaved = {:?}", true)),
-        )))
+        .event(
+            event::mock().with_fields(field("message").with_value(&tracing::field::debug(
+                format_args!("hello from my event! yak shaved = {:?}", true),
+            ))),
+        )
         .done()
         .run_with_handle();
 
@@ -74,11 +76,11 @@ fn message_without_delims() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("answer")
+                field("answer")
                     .with_value(&42)
-                    .and(field::mock("question").with_value(&"life, the universe, and everything"))
+                    .and(field("question").with_value(&"life, the universe, and everything"))
                     .and(
-                        field::mock("message").with_value(&tracing::field::debug(format_args!(
+                        field("message").with_value(&tracing::field::debug(format_args!(
                             "hello from my event! tricky? {:?}!",
                             true
                         ))),
@@ -102,11 +104,11 @@ fn string_message_without_delims() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("answer")
+                field("answer")
                     .with_value(&42)
-                    .and(field::mock("question").with_value(&"life, the universe, and everything"))
+                    .and(field("question").with_value(&"life, the universe, and everything"))
                     .and(
-                        field::mock("message").with_value(&tracing::field::debug(format_args!(
+                        field("message").with_value(&tracing::field::debug(format_args!(
                             "hello from my event"
                         ))),
                     )
@@ -130,14 +132,14 @@ fn one_with_everything() {
         .event(
             event::mock()
                 .with_fields(
-                    field::mock("message")
+                    field("message")
                         .with_value(&tracing::field::debug(format_args!(
                             "{:#x} make me one with{what:.>20}",
                             4_277_009_102u64,
                             what = "everything"
                         )))
-                        .and(field::mock("foo").with_value(&666))
-                        .and(field::mock("bar").with_value(&false))
+                        .and(field("foo").with_value(&666))
+                        .and(field("bar").with_value(&false))
                         .only(),
                 )
                 .at_level(Level::ERROR)
@@ -163,7 +165,7 @@ fn moved_field() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("foo")
+                field("foo")
                     .with_value(&display("hello from my event"))
                     .only(),
             ),
@@ -183,9 +185,9 @@ fn dotted_field_name() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("foo.bar")
+                field("foo.bar")
                     .with_value(&true)
-                    .and(field::mock("foo.baz").with_value(&false))
+                    .and(field("foo.baz").with_value(&false))
                     .only(),
             ),
         )
@@ -203,7 +205,7 @@ fn borrowed_field() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("foo")
+                field("foo")
                     .with_value(&display("hello from my event"))
                     .only(),
             ),
@@ -239,13 +241,13 @@ fn move_field_out_of_struct() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("x")
+                field("x")
                     .with_value(&debug(3.234))
-                    .and(field::mock("y").with_value(&debug(-1.223)))
+                    .and(field("y").with_value(&debug(-1.223)))
                     .only(),
             ),
         )
-        .event(event::mock().with_fields(field::mock("position").with_value(&debug(&pos))))
+        .event(event::mock().with_fields(field("position").with_value(&debug(&pos))))
         .done()
         .run_with_handle();
 
@@ -264,11 +266,7 @@ fn move_field_out_of_struct() {
 fn display_shorthand() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
-                field::mock("my_field")
-                    .with_value(&display("hello world"))
-                    .only(),
-            ),
+            event::mock().with_fields(field("my_field").with_value(&display("hello world")).only()),
         )
         .done()
         .run_with_handle();
@@ -283,11 +281,7 @@ fn display_shorthand() {
 fn debug_shorthand() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
-                field::mock("my_field")
-                    .with_value(&debug("hello world"))
-                    .only(),
-            ),
+            event::mock().with_fields(field("my_field").with_value(&debug("hello world")).only()),
         )
         .done()
         .run_with_handle();
@@ -303,9 +297,9 @@ fn both_shorthands() {
     let (subscriber, handle) = subscriber::expect()
         .event(
             event::mock().with_fields(
-                field::mock("display_field")
+                field("display_field")
                     .with_value(&display("hello world"))
-                    .and(field::mock("debug_field").with_value(&debug("hello world")))
+                    .and(field("debug_field").with_value(&debug("hello world")))
                     .only(),
             ),
         )

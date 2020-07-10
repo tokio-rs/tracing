@@ -32,12 +32,12 @@ fn same_num_fields_event() {
         .event(
             event::mock()
                 .at_level(Level::TRACE)
-                .with_fields(field::mock("foo")),
+                .with_fields(field("foo")),
         )
         .event(
             event::mock()
                 .at_level(Level::TRACE)
-                .with_fields(field::mock("bar")),
+                .with_fields(field("bar")),
         )
         .done()
         .run_with_handle();
@@ -56,16 +56,8 @@ fn same_num_fields_and_name_len() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::expect()
-        .new_span(
-            span("foo")
-                .at_level(Level::TRACE)
-                .with_field(field::mock("bar")),
-        )
-        .new_span(
-            span("baz")
-                .at_level(Level::TRACE)
-                .with_field(field::mock("boz")),
-        )
+        .new_span(span("foo").at_level(Level::TRACE).with_field(field("bar")))
+        .new_span(span("baz").at_level(Level::TRACE).with_field(field("boz")))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

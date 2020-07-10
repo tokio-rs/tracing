@@ -1,6 +1,5 @@
 use tracing::subscriber::with_default;
 use tracing_attributes::instrument;
-use tracing_test::field::mock;
 use tracing_test::span::NewSpan;
 use tracing_test::*;
 
@@ -44,10 +43,10 @@ impl HasField {
 #[test]
 fn fields() {
     let span = anonymous_span().with_field(
-        mock("foo")
+        field("foo")
             .with_value(&"bar")
-            .and(mock("dsa").with_value(&true))
-            .and(mock("num").with_value(&1))
+            .and(field("dsa").with_value(&true))
+            .and(field("num").with_value(&1))
             .only(),
     );
     run_test(span, || {
@@ -58,9 +57,9 @@ fn fields() {
 #[test]
 fn expr_field() {
     let span = anonymous_span().with_field(
-        mock("s")
+        field("s")
             .with_value(&tracing::field::debug("hello world"))
-            .and(mock("len").with_value(&"hello world".len()))
+            .and(field("len").with_value(&"hello world".len()))
             .only(),
     );
     run_test(span, || {
@@ -71,10 +70,10 @@ fn expr_field() {
 #[test]
 fn two_expr_fields() {
     let span = anonymous_span().with_field(
-        mock("s")
+        field("s")
             .with_value(&tracing::field::debug("hello world"))
-            .and(mock("s.len").with_value(&"hello world".len()))
-            .and(mock("s.is_empty").with_value(&false))
+            .and(field("s.len").with_value(&"hello world".len()))
+            .and(field("s.is_empty").with_value(&false))
             .only(),
     );
     run_test(span, || {
@@ -87,16 +86,16 @@ fn clashy_expr_field() {
     let span1 = anonymous_span().with_field(
         // Overriding the `s` field should record `s` as a `Display` value,
         // rather than as a `Debug` value.
-        mock("s")
+        field("s")
             .with_value(&tracing::field::display("hello world"))
-            .and(mock("s.len").with_value(&"hello world".len()))
+            .and(field("s.len").with_value(&"hello world".len()))
             .only(),
     );
     run_test(span1, || {
         fn_clashy_expr_field(&"hello world");
     });
 
-    let span1 = anonymous_span().with_field(mock("s").with_value(&"s").only());
+    let span1 = anonymous_span().with_field(field("s").with_value(&"s").only());
     run_test(span1, || {
         fn_clashy_expr_field2(&"hello world");
     });
@@ -104,7 +103,7 @@ fn clashy_expr_field() {
 
 #[test]
 fn self_expr_field() {
-    let span = anonymous_span().with_field(mock("my_field").with_value(&"hello world").only());
+    let span = anonymous_span().with_field(field("my_field").with_value(&"hello world").only());
     run_test(span, || {
         let has_field = HasField {
             my_field: "hello world",
@@ -116,9 +115,9 @@ fn self_expr_field() {
 #[test]
 fn parameters_with_fields() {
     let span = anonymous_span().with_field(
-        mock("foo")
+        field("foo")
             .with_value(&"bar")
-            .and(mock("param").with_value(&format_args!("1")))
+            .and(field("param").with_value(&format_args!("1")))
             .only(),
     );
     run_test(span, || {
@@ -128,7 +127,7 @@ fn parameters_with_fields() {
 
 #[test]
 fn empty_field() {
-    let span = anonymous_span().with_field(mock("foo").with_value(&"bar").only());
+    let span = anonymous_span().with_field(field("foo").with_value(&"bar").only());
     run_test(span, || {
         fn_empty_field();
     });

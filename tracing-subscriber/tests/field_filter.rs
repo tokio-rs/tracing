@@ -9,12 +9,12 @@ fn field_filter_events() {
         .event(
             event::mock()
                 .at_level(Level::INFO)
-                .with_fields(field::mock("thing")),
+                .with_fields(field("thing")),
         )
         .event(
             event::mock()
                 .at_level(Level::DEBUG)
-                .with_fields(field::mock("thing")),
+                .with_fields(field("thing")),
         )
         .done()
         .run_with_handle();
@@ -41,7 +41,7 @@ fn field_filter_spans() {
         .event(
             event::mock()
                 .at_level(Level::INFO)
-                .with_fields(field::mock("something")),
+                .with_fields(field("something")),
         )
         .exit(span("span1"))
         .enter(span("span2"))
@@ -50,7 +50,7 @@ fn field_filter_spans() {
         .event(
             event::mock()
                 .at_level(Level::DEBUG)
-                .with_fields(field::mock("something")),
+                .with_fields(field("something")),
         )
         .exit(span("span3"))
         .done()
@@ -82,7 +82,7 @@ fn record_after_created() {
     let (subscriber, finished) = subscriber::expect()
         .enter(span("span"))
         .exit(span("span"))
-        .record(span("span"), field::mock("enabled").with_value(&true))
+        .record(span("span"), field("enabled").with_value(&true))
         .enter(span("span"))
         .event(event::mock().at_level(Level::DEBUG))
         .exit(span("span"))

@@ -33,16 +33,8 @@ fn same_name_spans() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::expect()
-        .new_span(
-            span("foo")
-                .at_level(Level::TRACE)
-                .with_field(field::mock("bar")),
-        )
-        .new_span(
-            span("foo")
-                .at_level(Level::TRACE)
-                .with_field(field::mock("baz")),
-        )
+        .new_span(span("foo").at_level(Level::TRACE).with_field(field("bar")))
+        .new_span(span("foo").at_level(Level::TRACE).with_field(field("baz")))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
