@@ -57,6 +57,10 @@ pub fn expect() -> MockSubscriber<fn(&Metadata<'_>) -> bool> {
     }
 }
 
+pub fn expect_nothing() -> impl Subscriber {
+    expect().done().run()
+}
+
 impl<F> MockSubscriber<F>
 where
     F: Fn(&Metadata<'_>) -> bool + 'static,
