@@ -19,9 +19,9 @@ fn log_is_enabled() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::expect()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
+        .event(event().at_level(Level::INFO))
+        .event(event().at_level(Level::WARN))
+        .event(event().at_level(Level::ERROR))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

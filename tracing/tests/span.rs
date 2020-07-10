@@ -127,7 +127,7 @@ fn dropping_a_span_calls_drop_span() {
 fn span_closes_after_event() {
     let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
-        .event(event::mock())
+        .event(event())
         .exit(span("foo"))
         .drop_span(span("foo"))
         .done()
@@ -145,7 +145,7 @@ fn span_closes_after_event() {
 fn new_span_after_event() {
     let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
-        .event(event::mock())
+        .event(event())
         .exit(span("foo"))
         .drop_span(span("foo"))
         .enter(span("bar"))
@@ -166,7 +166,7 @@ fn new_span_after_event() {
 #[test]
 fn event_outside_of_span() {
     let (subscriber, handle) = subscriber::expect()
-        .event(event::mock())
+        .event(event())
         .enter(span("foo"))
         .exit(span("foo"))
         .drop_span(span("foo"))
@@ -264,7 +264,7 @@ fn span_closes_when_exited() {
 fn enter() {
     let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
-        .event(event::mock())
+        .event(event())
         .exit(span("foo"))
         .drop_span(span("foo"))
         .done()

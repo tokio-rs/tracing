@@ -6,16 +6,8 @@ use tracing_test::*;
 fn field_filter_events() {
     let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::expect()
-        .event(
-            event::mock()
-                .at_level(Level::INFO)
-                .with_fields(field("thing")),
-        )
-        .event(
-            event::mock()
-                .at_level(Level::DEBUG)
-                .with_fields(field("thing")),
-        )
+        .event(event().at_level(Level::INFO).with_fields(field("thing")))
+        .event(event().at_level(Level::DEBUG).with_fields(field("thing")))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -39,7 +31,7 @@ fn field_filter_spans() {
     let (subscriber, finished) = subscriber::expect()
         .enter(span("span1"))
         .event(
-            event::mock()
+            event()
                 .at_level(Level::INFO)
                 .with_fields(field("something")),
         )
@@ -48,7 +40,7 @@ fn field_filter_spans() {
         .exit(span("span2"))
         .enter(span("span3"))
         .event(
-            event::mock()
+            event()
                 .at_level(Level::DEBUG)
                 .with_fields(field("something")),
         )
@@ -84,7 +76,7 @@ fn record_after_created() {
         .exit(span("span"))
         .record(span("span"), field("enabled").with_value(&true))
         .enter(span("span"))
-        .event(event::mock().at_level(Level::DEBUG))
+        .event(event().at_level(Level::DEBUG))
         .exit(span("span"))
         .done()
         .run_with_handle();

@@ -9,8 +9,8 @@ use tracing_test::*;
 fn same_length_targets() {
     let filter: EnvFilter = "foo=trace,bar=trace".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::expect()
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::TRACE))
+        .event(event().at_level(Level::TRACE))
+        .event(event().at_level(Level::TRACE))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -29,16 +29,8 @@ fn same_num_fields_event() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::expect()
-        .event(
-            event::mock()
-                .at_level(Level::TRACE)
-                .with_fields(field("foo")),
-        )
-        .event(
-            event::mock()
-                .at_level(Level::TRACE)
-                .with_fields(field("bar")),
-        )
+        .event(event().at_level(Level::TRACE).with_fields(field("foo")))
+        .event(event().at_level(Level::TRACE).with_fields(field("bar")))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

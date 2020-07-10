@@ -22,7 +22,7 @@ macro_rules! event_without_message {
         fn $name() {
             let (subscriber, handle) = subscriber::expect()
                 .event(
-                    event::mock().with_fields(
+                    event().with_fields(
                         field("answer")
                             .with_value(&42)
                             .and(
@@ -55,14 +55,15 @@ event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::
 
 #[test]
 fn event_with_message() {
-    let (subscriber, handle) = subscriber::expect()
-        .event(
-            event::mock().with_fields(field("message").with_value(&tracing::field::debug(
-                format_args!("hello from my event! yak shaved = {:?}", true),
-            ))),
-        )
-        .done()
-        .run_with_handle();
+    let (subscriber, handle) =
+        subscriber::expect()
+            .event(
+                event().with_fields(field("message").with_value(&tracing::field::debug(
+                    format_args!("hello from my event! yak shaved = {:?}", true),
+                ))),
+            )
+            .done()
+            .run_with_handle();
 
     with_default(subscriber, || {
         debug!("hello from my event! yak shaved = {:?}", true);
@@ -75,7 +76,7 @@ fn event_with_message() {
 fn message_without_delims() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("answer")
                     .with_value(&42)
                     .and(field("question").with_value(&"life, the universe, and everything"))
@@ -103,7 +104,7 @@ fn message_without_delims() {
 fn string_message_without_delims() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("answer")
                     .with_value(&42)
                     .and(field("question").with_value(&"life, the universe, and everything"))
@@ -130,7 +131,7 @@ fn string_message_without_delims() {
 fn one_with_everything() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock()
+            event()
                 .with_fields(
                     field("message")
                         .with_value(&tracing::field::debug(format_args!(
@@ -164,7 +165,7 @@ fn one_with_everything() {
 fn moved_field() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("foo")
                     .with_value(&display("hello from my event"))
                     .only(),
@@ -184,7 +185,7 @@ fn moved_field() {
 fn dotted_field_name() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("foo.bar")
                     .with_value(&true)
                     .and(field("foo.baz").with_value(&false))
@@ -204,7 +205,7 @@ fn dotted_field_name() {
 fn borrowed_field() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("foo")
                     .with_value(&display("hello from my event"))
                     .only(),
@@ -240,14 +241,14 @@ fn move_field_out_of_struct() {
     };
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("x")
                     .with_value(&debug(3.234))
                     .and(field("y").with_value(&debug(-1.223)))
                     .only(),
             ),
         )
-        .event(event::mock().with_fields(field("position").with_value(&debug(&pos))))
+        .event(event().with_fields(field("position").with_value(&debug(&pos))))
         .done()
         .run_with_handle();
 
@@ -265,9 +266,7 @@ fn move_field_out_of_struct() {
 #[test]
 fn display_shorthand() {
     let (subscriber, handle) = subscriber::expect()
-        .event(
-            event::mock().with_fields(field("my_field").with_value(&display("hello world")).only()),
-        )
+        .event(event().with_fields(field("my_field").with_value(&display("hello world")).only()))
         .done()
         .run_with_handle();
     with_default(subscriber, || {
@@ -280,9 +279,7 @@ fn display_shorthand() {
 #[test]
 fn debug_shorthand() {
     let (subscriber, handle) = subscriber::expect()
-        .event(
-            event::mock().with_fields(field("my_field").with_value(&debug("hello world")).only()),
-        )
+        .event(event().with_fields(field("my_field").with_value(&debug("hello world")).only()))
         .done()
         .run_with_handle();
     with_default(subscriber, || {
@@ -296,7 +293,7 @@ fn debug_shorthand() {
 fn both_shorthands() {
     let (subscriber, handle) = subscriber::expect()
         .event(
-            event::mock().with_fields(
+            event().with_fields(
                 field("display_field")
                     .with_value(&display("hello world"))
                     .and(field("debug_field").with_value(&debug("hello world")))
@@ -316,7 +313,7 @@ fn both_shorthands() {
 fn explicit_child() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
-        .event(event::mock().with_explicit_parent(Some("foo")))
+        .event(event().with_explicit_parent(Some("foo")))
         .done()
         .run_with_handle();
 
@@ -332,11 +329,11 @@ fn explicit_child() {
 fn explicit_child_at_levels() {
     let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
-        .event(event::mock().with_explicit_parent(Some("foo")))
-        .event(event::mock().with_explicit_parent(Some("foo")))
-        .event(event::mock().with_explicit_parent(Some("foo")))
-        .event(event::mock().with_explicit_parent(Some("foo")))
-        .event(event::mock().with_explicit_parent(Some("foo")))
+        .event(event().with_explicit_parent(Some("foo")))
+        .event(event().with_explicit_parent(Some("foo")))
+        .event(event().with_explicit_parent(Some("foo")))
+        .event(event().with_explicit_parent(Some("foo")))
+        .event(event().with_explicit_parent(Some("foo")))
         .done()
         .run_with_handle();
 

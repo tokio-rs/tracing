@@ -14,7 +14,7 @@ pub struct MockEvent {
     metadata: metadata::Expect,
 }
 
-pub fn mock() -> MockEvent {
+pub fn event() -> MockEvent {
     MockEvent {
         ..Default::default()
     }

@@ -5,7 +5,7 @@ use tracing_test::*;
 fn init_ext_works() {
     let (subscriber, finished) = subscriber::expect()
         .event(
-            event::mock()
+            event()
                 .at_level(tracing::Level::INFO)
                 .with_target("init_works"),
         )
