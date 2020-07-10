@@ -12,7 +12,7 @@ fn factorial(n: u32) -> u32 {
 }
 
 fn main() {
-    env_logger::Builder::new().parse("trace").init();
+    env_logger::Builder::new().parse_filters("trace").init();
     #[allow(deprecated)]
     let subscriber = tracing_log::TraceLogger::new();
 
