@@ -53,7 +53,7 @@ pub mod metadata;
 pub mod span;
 pub mod subscriber;
 
-pub use span::span;
+pub use span::{anonymous_span, span};
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Parent {

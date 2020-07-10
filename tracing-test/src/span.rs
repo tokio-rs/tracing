@@ -27,8 +27,11 @@ where
             name: Some(name.into()),
             ..Default::default()
         },
-        ..Default::default()
     }
+}
+
+pub fn anonymous_span() -> MockSpan {
+    Default::default()
 }
 
 impl MockSpan {
