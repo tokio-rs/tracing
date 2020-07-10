@@ -59,7 +59,7 @@ fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
 
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them() {
-    let subscriber1 = subscriber::mock()
+    let subscriber1 = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .enter(span("foo"))
@@ -81,7 +81,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them() {
 
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
-    let subscriber1 = subscriber::mock()
+    let subscriber1 = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .enter(span("foo"))
@@ -108,7 +108,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
 
 #[test]
 fn dropping_a_span_calls_drop_span() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .drop_span(span("foo"))
@@ -125,7 +125,7 @@ fn dropping_a_span_calls_drop_span() {
 
 #[test]
 fn span_closes_after_event() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .event(event::mock())
         .exit(span("foo"))
@@ -143,7 +143,7 @@ fn span_closes_after_event() {
 
 #[test]
 fn new_span_after_event() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .event(event::mock())
         .exit(span("foo"))
@@ -165,7 +165,7 @@ fn new_span_after_event() {
 
 #[test]
 fn event_outside_of_span() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .event(event::mock())
         .enter(span("foo"))
         .exit(span("foo"))
@@ -182,7 +182,9 @@ fn event_outside_of_span() {
 
 #[test]
 fn cloning_a_span_calls_clone_span() {
-    let (subscriber, handle) = subscriber::mock().clone_span(span("foo")).run_with_handle();
+    let (subscriber, handle) = subscriber::expect()
+        .clone_span(span("foo"))
+        .run_with_handle();
     with_default(subscriber, || {
         let span = span!(Level::TRACE, "foo");
         // Allow the "redundant" `.clone` since it is used to call into the `.clone_span` hook.
@@ -195,7 +197,7 @@ fn cloning_a_span_calls_clone_span() {
 
 #[test]
 fn drop_span_when_exiting_dispatchers_context() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .clone_span(span("foo"))
         .drop_span(span("foo"))
         .drop_span(span("foo"))
@@ -211,7 +213,7 @@ fn drop_span_when_exiting_dispatchers_context() {
 
 #[test]
 fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
-    let (subscriber1, handle1) = subscriber::mock()
+    let (subscriber1, handle1) = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .clone_span(span("foo"))
@@ -220,7 +222,7 @@ fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
         .drop_span(span("foo"))
         .drop_span(span("foo"))
         .run_with_handle();
-    let subscriber2 = subscriber::mock().done().run();
+    let subscriber2 = subscriber::expect().done().run();
 
     let foo = with_default(subscriber1, || {
         let foo = span!(Level::TRACE, "foo");
@@ -241,7 +243,7 @@ fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
 
 #[test]
 fn span_closes_when_exited() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .drop_span(span("foo"))
@@ -260,7 +262,7 @@ fn span_closes_when_exited() {
 
 #[test]
 fn enter() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .event(event::mock())
         .exit(span("foo"))
@@ -278,7 +280,7 @@ fn enter() {
 
 #[test]
 fn moved_field() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
                 field::mock("bar")
@@ -306,7 +308,7 @@ fn moved_field() {
 
 #[test]
 fn dotted_field_name() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo").with_field(field::mock("fields.bar").with_value(&true).only()))
         .done()
         .run_with_handle();
@@ -319,7 +321,7 @@ fn dotted_field_name() {
 
 #[test]
 fn borrowed_field() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
                 field::mock("bar")
@@ -361,7 +363,7 @@ fn move_field_out_of_struct() {
         x: 3.234,
         y: -1.223,
     };
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
                 field::mock("x")
@@ -392,7 +394,7 @@ fn move_field_out_of_struct() {
 /*
 #[test]
 fn add_field_after_new_span() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo")
                 .with_field(field::mock("bar").with_value(&5)
@@ -419,7 +421,7 @@ fn add_field_after_new_span() {
 
 #[test]
 fn add_fields_only_after_new_span() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
         .record(
             span("foo"),
@@ -448,7 +450,7 @@ fn add_fields_only_after_new_span() {
 
 #[test]
 fn record_new_value_for_field() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
                 field::mock("bar")
@@ -475,7 +477,7 @@ fn record_new_value_for_field() {
 
 #[test]
 fn record_new_values_for_fields() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("foo").with_field(
                 field::mock("bar")
@@ -504,7 +506,7 @@ fn record_new_values_for_fields() {
 
 #[test]
 fn new_span_with_target_and_log_level() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo").with_target("app_span").at_level(Level::DEBUG))
         .done()
         .run_with_handle();
@@ -518,7 +520,7 @@ fn new_span_with_target_and_log_level() {
 
 #[test]
 fn explicit_root_span_is_root() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo").with_explicit_parent(None))
         .done()
         .run_with_handle();
@@ -532,7 +534,7 @@ fn explicit_root_span_is_root() {
 
 #[test]
 fn explicit_root_span_is_root_regardless_of_ctx() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
         .enter(span("foo"))
         .new_span(span("bar").with_explicit_parent(None))
@@ -551,7 +553,7 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
 
 #[test]
 fn explicit_child() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
         .new_span(span("bar").with_explicit_parent(Some("foo")))
         .done()
@@ -567,7 +569,7 @@ fn explicit_child() {
 
 #[test]
 fn explicit_child_at_levels() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
         .new_span(span("a").with_explicit_parent(Some("foo")))
         .new_span(span("b").with_explicit_parent(Some("foo")))
@@ -591,7 +593,7 @@ fn explicit_child_at_levels() {
 
 #[test]
 fn explicit_child_regardless_of_ctx() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
         .new_span(span("bar"))
         .enter(span("bar"))
@@ -610,7 +612,7 @@ fn explicit_child_regardless_of_ctx() {
 
 #[test]
 fn contextual_root() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo").with_contextual_parent(None))
         .done()
         .run_with_handle();
@@ -624,7 +626,7 @@ fn contextual_root() {
 
 #[test]
 fn contextual_child() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("foo"))
         .enter(span("foo"))
         .new_span(span("bar").with_contextual_parent(Some("foo")))
@@ -643,7 +645,7 @@ fn contextual_child() {
 
 #[test]
 fn display_shorthand() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("my_span").with_field(
                 field::mock("my_field")
@@ -662,7 +664,7 @@ fn display_shorthand() {
 
 #[test]
 fn debug_shorthand() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("my_span").with_field(
                 field::mock("my_field")
@@ -681,7 +683,7 @@ fn debug_shorthand() {
 
 #[test]
 fn both_shorthands() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span("my_span").with_field(
                 field::mock("display_field")

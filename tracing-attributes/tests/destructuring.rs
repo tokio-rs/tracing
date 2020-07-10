@@ -9,7 +9,7 @@ fn destructure_tuples() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -38,7 +38,7 @@ fn destructure_nested_tuples() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -69,7 +69,7 @@ fn destructure_refs() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone()
                 .with_field(field::mock("arg1").with_value(&format_args!("1")).only()),
@@ -96,7 +96,7 @@ fn destructure_tuple_structs() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -137,7 +137,7 @@ fn destructure_structs() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -182,7 +182,7 @@ fn destructure_everything() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")

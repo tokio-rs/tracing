@@ -50,7 +50,7 @@ pub struct MockSubscriber<F: Fn(&Metadata<'_>) -> bool> {
 
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>);
 
-pub fn mock() -> MockSubscriber<fn(&Metadata<'_>) -> bool> {
+pub fn expect() -> MockSubscriber<fn(&Metadata<'_>) -> bool> {
     MockSubscriber {
         expected: VecDeque::new(),
         filter: (|_: &Metadata<'_>| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,

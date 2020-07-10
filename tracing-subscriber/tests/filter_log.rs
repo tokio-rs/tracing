@@ -18,7 +18,7 @@ fn log_is_enabled() {
     let filter: EnvFilter = "filter_log::my_module=info"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::expect()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::ERROR))

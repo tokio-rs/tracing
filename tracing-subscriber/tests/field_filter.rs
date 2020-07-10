@@ -5,7 +5,7 @@ use tracing_test::*;
 #[test]
 fn field_filter_events() {
     let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::expect()
         .event(
             event::mock()
                 .at_level(Level::INFO)
@@ -36,7 +36,7 @@ fn field_filter_spans() {
     let filter: EnvFilter = "[{enabled=true}]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::expect()
         .enter(span("span1"))
         .event(
             event::mock()
@@ -79,7 +79,7 @@ fn record_after_created() {
     let filter: EnvFilter = "[{enabled=true}]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::expect()
         .enter(span("span"))
         .exit(span("span"))
         .record(span("span"), field::mock("enabled").with_value(&true))

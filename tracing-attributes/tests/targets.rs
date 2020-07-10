@@ -22,7 +22,7 @@ mod my_mod {
 
 #[test]
 fn default_targets() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("default_target").with_target(module_path!()))
         .enter(span("default_target").with_target(module_path!()))
         .exit(span("default_target").with_target(module_path!()))
@@ -42,7 +42,7 @@ fn default_targets() {
 
 #[test]
 fn custom_targets() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("custom_target").with_target("my_target"))
         .enter(span("custom_target").with_target("my_target"))
         .exit(span("custom_target").with_target("my_target"))

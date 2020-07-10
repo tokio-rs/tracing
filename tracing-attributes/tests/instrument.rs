@@ -17,7 +17,7 @@ fn override_everything() {
     let span2 = span("my_other_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span1.clone())
         .enter(span1.clone())
         .exit(span1.clone())
@@ -49,7 +49,7 @@ fn fields() {
     let span2 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span1.clone().with_field(
                 field::mock("arg1")
@@ -97,7 +97,7 @@ fn skip() {
     let span2 = span("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span1
                 .clone()
@@ -139,7 +139,7 @@ fn generics() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -172,7 +172,7 @@ fn methods() {
 
     let span = span("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span.clone().with_field(
                 field::mock("self")

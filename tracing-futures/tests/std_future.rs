@@ -6,7 +6,7 @@ use tracing_futures::Instrument;
 
 #[test]
 fn enter_exit_is_reasonable() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .enter(span("foo"))
@@ -23,7 +23,7 @@ fn enter_exit_is_reasonable() {
 
 #[test]
 fn error_ends_span() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .enter(span("foo"))
         .exit(span("foo"))
         .enter(span("foo"))

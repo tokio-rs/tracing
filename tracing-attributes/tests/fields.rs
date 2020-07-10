@@ -135,7 +135,7 @@ fn empty_field() {
 }
 
 fn run_test<F: FnOnce() -> T, T>(span1: NewSpan, fun: F) {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span1)
         .enter(anonymous_span())
         .exit(anonymous_span())

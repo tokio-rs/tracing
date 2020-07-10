@@ -3,7 +3,7 @@ use tracing_test::*;
 
 #[test]
 fn init_ext_works() {
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = subscriber::expect()
         .event(
             event::mock()
                 .at_level(tracing::Level::INFO)

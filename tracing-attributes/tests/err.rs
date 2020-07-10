@@ -19,7 +19,7 @@ fn err() -> Result<u8, TryFromIntError> {
 #[test]
 fn test() {
     let span = span("err");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span.clone())
         .enter(span.clone())
         .event(event::mock().at_level(Level::ERROR))
@@ -42,7 +42,7 @@ async fn err_async(polls: usize) -> Result<u8, TryFromIntError> {
 #[test]
 fn test_async() {
     let span = span("err_async");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span.clone())
         .enter(span.clone())
         .event(

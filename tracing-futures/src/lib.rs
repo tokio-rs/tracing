@@ -531,7 +531,7 @@ mod tests {
 
         #[test]
         fn future_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (subscriber, handle) = subscriber::expect()
                 .enter(span("foo"))
                 .exit(span("foo"))
                 .enter(span("foo"))
@@ -550,7 +550,7 @@ mod tests {
 
         #[test]
         fn future_error_ends_span() {
-            let (subscriber, handle) = subscriber::mock()
+            let (subscriber, handle) = subscriber::expect()
                 .enter(span("foo"))
                 .exit(span("foo"))
                 .enter(span("foo"))
@@ -570,7 +570,7 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (subscriber, handle) = subscriber::expect()
                 .enter(span("foo"))
                 .exit(span("foo"))
                 .enter(span("foo"))
@@ -593,7 +593,7 @@ mod tests {
 
         #[test]
         fn span_follows_future_onto_threadpool() {
-            let (subscriber, handle) = subscriber::mock()
+            let (subscriber, handle) = subscriber::expect()
                 .enter(span("a"))
                 .enter(span("b"))
                 .exit(span("b"))
@@ -631,7 +631,7 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (subscriber, handle) = subscriber::expect()
                 .enter(span("foo"))
                 .exit(span("foo"))
                 .enter(span("foo"))
@@ -654,7 +654,7 @@ mod tests {
 
         #[test]
         fn sink_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (subscriber, handle) = subscriber::expect()
                 .enter(span("foo"))
                 .exit(span("foo"))
                 .enter(span("foo"))

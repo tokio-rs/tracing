@@ -16,7 +16,7 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
 
 #[test]
 fn async_fn_only_enters_for_polls() {
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span("test_async_fn"))
         .enter(span("test_async_fn"))
         .event(event::mock().with_fields(field::mock("awaiting").with_value(&true)))
@@ -46,7 +46,7 @@ fn async_fn_nested() {
 
     let span1 = span("test_async_fns_nested");
     let span2 = span("test_async_fns_nested_other");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(span1.clone())
         .enter(span1.clone())
         .new_span(span2.clone())
@@ -121,7 +121,7 @@ fn async_fn_with_async_trait() {
     let span1 = span("foo");
     let span2 = span("bar");
     let span3 = span("baz");
-    let (subscriber, handle) = subscriber::mock()
+    let (subscriber, handle) = subscriber::expect()
         .new_span(
             span1
                 .clone()
