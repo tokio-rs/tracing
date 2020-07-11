@@ -21,7 +21,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 tracing-log = "0.1"
-env_logger = "0.5"
+env_logger = "0.7"
 
 [badges]
 maintenance = { status = "experimental" }
