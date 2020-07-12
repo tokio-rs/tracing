@@ -2,6 +2,7 @@ use crate::stdlib::pin::Pin;
 use crate::stdlib::task::{Context, Poll};
 use crate::stdlib::{future::Future, marker::Sized};
 use crate::{dispatcher, span::Span, Dispatch};
+use pin_project_lite::pin_project;
 
 /// Attaches spans to a `std::future::Future`.
 ///
@@ -127,23 +128,25 @@ pub trait WithSubscriber: Sized {
     }
 }
 
-/// A future, stream, sink, or executor that has been instrumented with a
-/// `tracing` subscriber.
-#[pin_project::pin_project]
-#[derive(Clone, Debug)]
-pub struct WithDispatch<T> {
-    #[pin]
-    inner: T,
-    dispatch: Dispatch,
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a
+    /// `tracing` subscriber.
+    #[derive(Clone, Debug)]
+    pub struct WithDispatch<T> {
+        #[pin]
+        inner: T,
+        dispatch: Dispatch,
+    }
 }
 
-/// A future that has been instrumented with a `tracing` span.
-#[pin_project::pin_project]
-#[derive(Debug, Clone)]
-pub struct Instrumented<T> {
-    #[pin]
-    inner: T,
-    span: Span,
+pin_project! {
+    /// A future that has been instrumented with a `tracing` span.
+    #[derive(Debug, Clone)]
+    pub struct Instrumented<T> {
+        #[pin]
+        inner: T,
+        span: Span,
+    }
 }
 
 impl<T: Future> Future for Instrumented<T> {
