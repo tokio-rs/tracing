@@ -156,7 +156,7 @@ impl<T: Future> Future for Instrumented<T> {
     }
 }
 
-impl<T: Sized> Instrument for T {}
+impl<T: Future + Sized> Instrument for T {}
 
 impl<T> Instrumented<T> {
     /// Borrows the `Span` that this type is instrumented by.
