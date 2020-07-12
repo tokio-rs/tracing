@@ -6,8 +6,7 @@ use hyper::{
     Body, Server,
 };
 use std::str;
-use tracing::{debug, info, span, Level};
-use tracing_futures::Instrument;
+use tracing::{debug, info, span, Instrument as _, Level};
 
 async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     let span = span!(
