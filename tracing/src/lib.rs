@@ -834,7 +834,10 @@ pub use log;
 #[doc(hidden)]
 use tracing_core::*;
 
-pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
+pub use self::{
+    dispatcher::Dispatch, event::Event, field::Value, instrument::Instrument,
+    subscriber::Subscriber,
+};
 
 #[doc(hidden)]
 pub use self::span::Id;
@@ -858,6 +861,8 @@ mod macros;
 
 pub mod dispatcher;
 pub mod field;
+/// Attach a span to a `std::future::Future`.
+pub mod instrument;
 pub mod level_filters;
 pub mod span;
 pub(crate) mod stdlib;
