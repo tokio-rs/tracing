@@ -87,6 +87,9 @@ pub(crate) mod stdlib;
 #[cfg(feature = "std-future")]
 use crate::stdlib::{pin::Pin, task::Context};
 
+#[cfg(feature = "std-future")]
+pub use tracing::Instrument as _;
+
 use tracing::dispatcher;
 use tracing::{Dispatch, Span};
 
@@ -246,18 +249,6 @@ pub struct WithDispatch<T> {
 }
 
 impl<T: Sized> Instrument for T {}
-
-#[cfg(feature = "std-future")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
-impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
-    type Output = T::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        this.inner.poll(cx)
-    }
-}
 
 #[cfg(feature = "futures-01")]
 #[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
