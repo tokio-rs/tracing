@@ -374,9 +374,11 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
-- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
-  span traces and backtraces with new errors and pretty printing them in error
-  reports.
+- [`color-eyre`] provides customized panic and eyre report handlers for
+  `eyre::Report` for capturing span traces and backtraces with new errors and
+  pretty printing them.
+- [`spandoc`] provides a proc macro for constructing spans from doc comments
+  _inside_ of functions.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -391,8 +393,9 @@ please let us know!)
 [coz]: https://github.com/plasma-umass/coz
 [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 [bunyan]: https://github.com/trentm/node-bunyan
-[`color-spantrace`]: https://github.com/yaahc/color-spantrace
-[`color-eyre`]: https://github.com/yaahc/color-eyre
+[`color-spantrace`]: https://docs.rs/color-spantrace
+[`color-eyre`]: https://docs.rs/color-eyre
+[`spandoc`]: https://docs.rs/spandoc
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
