@@ -33,7 +33,7 @@ tracing-attributes = { path = "../tracing-attributes", version = "0.1.9", option
 cfg-if = "0.1.10"
 
 [dev-dependencies]
-futures = "0.1"
+futures = "0.3"
 criterion = { version = "0.3", default_features = false }
 log = "0.4"
 
