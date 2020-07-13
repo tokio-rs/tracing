@@ -44,7 +44,7 @@ clap = "2.33"
 
 # sloggish example
 ansi_term = "0.12"
-humantime = "1.2"
+humantime = "2.0"
 log = "0.4"
 
 # infero example
