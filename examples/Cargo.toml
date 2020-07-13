@@ -48,7 +48,7 @@ humantime = "1.2"
 log = "0.4"
 
 # infero example
-inferno = "0.9.4"
+inferno = "0.10.0"
 tempdir = "0.3.7"
 
 # opentelemetry example
