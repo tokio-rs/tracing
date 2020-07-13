@@ -542,6 +542,28 @@ where
         }
     }
 
+    /// Sets whether or not an event's thread name is displayed.
+    pub fn with_thread_names(
+        self,
+        display_thread_names: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_thread_names(display_thread_names),
+        }
+    }
+
+    /// Sets whether or not an event's thread id is displayed.
+    pub fn with_thread_ids(
+        self,
+        display_thread_ids: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_thread_ids(display_thread_ids),
+        }
+    }
+
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`](../fmt/format/struct.Compact.html).

@@ -179,6 +179,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) ansi: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
+    pub(crate) display_thread_id: bool,
+    pub(crate) display_thread_name: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -189,6 +191,8 @@ impl Default for Format<Full, SystemTime> {
             ansi: true,
             display_target: true,
             display_level: true,
+            display_thread_id: false,
+            display_thread_name: false,
         }
     }
 }
@@ -204,6 +208,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -232,6 +238,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -253,6 +261,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -264,6 +274,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -284,6 +296,22 @@ impl<F, T> Format<F, T> {
     pub fn with_level(self, display_level: bool) -> Format<F, T> {
         Format {
             display_level,
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's thread id is displayed.
+    pub fn with_thread_id(self, display_thread_id: bool) -> Format<F, T> {
+        Format {
+            display_thread_id,
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's thread name is displayed.
+    pub fn with_thread_name(self, display_thread_name: bool) -> Format<F, T> {
+        Format {
+            display_thread_name,
             ..self
         }
     }
@@ -367,6 +395,24 @@ where
             write!(writer, "{} ", fmt_level)?;
         }
 
+        if self.display_thread_name {
+            match std::thread::current().name() {
+                Some(name) => {
+                    write!(writer, "{} ", FmtThreadName::new(name))?;
+                }
+                None => {
+                    // fall-back to thread id when name is absent and id's are not enabled
+                    if !self.display_thread_id {
+                        write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
+                    }
+                }
+            }
+        }
+
+        if self.display_thread_id {
+            write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
+        }
+
         let full_ctx = {
             #[cfg(feature = "ansi")]
             {
@@ -422,6 +468,24 @@ where
                 }
             };
             write!(writer, "{} ", fmt_level)?;
+        }
+
+        if self.display_thread_name {
+            match std::thread::current().name() {
+                Some(name) => {
+                    write!(writer, "{} ", FmtThreadName::new(name))?;
+                }
+                None => {
+                    // fall-back to thread id when name is absent and id's are not enabled
+                    if !self.display_thread_id {
+                        write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
+                    }
+                }
+            }
+        }
+
+        if self.display_thread_id {
+            write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
         }
 
         let fmt_ctx = {
@@ -758,6 +822,54 @@ impl Style {
     }
     fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
         d
+    }
+}
+
+struct FmtThreadName<'a> {
+    name: &'a str,
+}
+
+impl<'a> FmtThreadName<'a> {
+    pub(crate) fn new(name: &'a str) -> Self {
+        Self { name }
+    }
+}
+
+impl<'a> fmt::Display for FmtThreadName<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::sync::atomic::{
+            AtomicUsize,
+            Ordering::{AcqRel, Acquire, Relaxed},
+        };
+
+        static MAX_LEN: AtomicUsize = AtomicUsize::new(0);
+        let len = self.name.len();
+        let mut max_len = MAX_LEN.load(Relaxed);
+
+        while len > max_len {
+            match MAX_LEN.compare_exchange(max_len, len, AcqRel, Acquire) {
+                Ok(_) => break,
+                Err(actual) => max_len = actual,
+            }
+        }
+
+        write!(f, "{:>width$}", self.name, width = max_len)
+    }
+}
+
+struct FmtThreadId {
+    thread_id: std::thread::ThreadId,
+}
+
+impl FmtThreadId {
+    pub(crate) fn new(thread_id: std::thread::ThreadId) -> Self {
+        Self { thread_id }
+    }
+}
+
+impl fmt::Display for FmtThreadId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:>2?}", self.thread_id)
     }
 }
 
