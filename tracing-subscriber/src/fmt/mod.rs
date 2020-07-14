@@ -124,6 +124,8 @@
 use std::{any::TypeId, error::Error, io};
 use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
+#[cfg(not(feature = "chrono"))]
+mod datetime;
 mod fmt_layer;
 pub mod format;
 pub mod time;
