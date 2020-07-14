@@ -460,9 +460,16 @@ mod tests {
         case("2038-01-19T03:14:08.000000Z", i32::MAX as i64 + 1, 0);
         case("1901-12-13T20:45:52.000000Z", i32::MIN as i64, 0);
         case("1901-12-13T20:45:51.000000Z", i32::MIN as i64 - 1, 0);
-        case("+292277026596-12-04T15:30:07.000000Z", i64::MAX, 0);
-        case("+292277026596-12-04T15:30:06.000000Z", i64::MAX - 1, 0);
-        case("-292277022657-01-27T08:29:53.000000Z", i64::MIN + 1, 0);
+
+        // Skipping these tests on windows as std::time::SysteTime range is low
+        // on Windows compared with that of Unix which can cause the following
+        // high date value tests to panic
+        #[cfg(not(target_os = "windows"))]
+        {
+            case("+292277026596-12-04T15:30:07.000000Z", i64::MAX, 0);
+            case("+292277026596-12-04T15:30:06.000000Z", i64::MAX - 1, 0);
+            case("-292277022657-01-27T08:29:53.000000Z", i64::MIN + 1, 0);
+        }
 
         case("1900-01-01T00:00:00.000000Z", -2208988800, 0);
         case("1899-12-31T23:59:59.000000Z", -2208988801, 0);
