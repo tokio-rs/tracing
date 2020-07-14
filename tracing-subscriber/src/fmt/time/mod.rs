@@ -1,10 +1,11 @@
 //! Formatters for event timestamps.
-#[cfg(not(feature = "chrono"))]
-use crate::fmt::datetime::DateTime;
 #[cfg(feature = "ansi")]
 use ansi_term::Style;
 use std::fmt;
 use std::time::Instant;
+
+#[cfg(not(feature = "chrono"))]
+mod datetime;
 
 /// A type that can measure and format the current time.
 ///
@@ -120,7 +121,11 @@ impl FormatTime for SystemTime {
 #[cfg(not(feature = "chrono"))]
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        write!(w, "{}", DateTime::from(std::time::SystemTime::now()))
+        write!(
+            w,
+            "{}",
+            datetime::DateTime::from(std::time::SystemTime::now())
+        )
     }
 }
 
