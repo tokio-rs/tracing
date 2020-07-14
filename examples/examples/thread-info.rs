@@ -1,5 +1,5 @@
 #![deny(rust_2018_idioms)]
-/// This is a example showing how thread info can be enabled 
+/// This is a example showing how thread info can be enabled
 /// to be attached with events
 ///
 /// You can run this example by running the following command in a terminal
@@ -35,7 +35,9 @@ fn main() {
         .spawn(do_work)
         .expect("could not spawn a new thread");
 
-    thread_with_no_name.join().expect("could not wait for a thread");
+    thread_with_no_name
+        .join()
+        .expect("could not wait for a thread");
     thread_one.join().expect("could not wait for a thread");
     thread_two.join().expect("could not wait for a thread");
 }
