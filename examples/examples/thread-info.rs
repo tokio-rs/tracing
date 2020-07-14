@@ -5,7 +5,7 @@
 /// You can run this example by running the following command in a terminal
 ///
 /// ```
-/// cargo run --example tokio-spawny-thing
+/// cargo run --example thread-info
 /// ```
 use std::thread;
 use std::time::Duration;
