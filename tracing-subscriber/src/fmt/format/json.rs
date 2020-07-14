@@ -236,6 +236,28 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
+            if self.display_thread_name {
+                match std::thread::current().name() {
+                    Some(name) => {
+                        serializer.serialize_entry("threadName", name)?;
+                    }
+                    None => {
+                        // fall-back to thread id when name is absent and id's are not enabled
+                        if !self.display_thread_id {
+                            serializer.serialize_entry(
+                                "threadId",
+                                &format!("{:?}", std::thread::current().id()),
+                            )?;
+                        }
+                    }
+                }
+            }
+
+            if self.display_thread_id {
+                serializer
+                    .serialize_entry("threadId", &format!("{:?}", std::thread::current().id()))?;
+            }
+
             if !self.format.flatten_event {
                 use tracing_serde::fields::AsMap;
                 serializer.serialize_entry("fields", &event.field_map())?;
