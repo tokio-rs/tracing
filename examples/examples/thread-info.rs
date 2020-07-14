@@ -20,7 +20,7 @@ fn main() {
 
     let do_work = || {
         for i in 1..10 {
-            info!("number {}", i);
+            info!(i);
             thread::sleep(Duration::from_millis(1));
         }
     };
