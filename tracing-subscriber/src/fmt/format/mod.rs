@@ -402,14 +402,13 @@ where
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
-                }
+                    write!(writer, "{:>2?} ", std::thread::current().id())?;                }
                 _ => {}
             }
         }
 
         if self.display_thread_id {
-            write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
+            write!(writer, "{:>2?} ", std::thread::current().id())?;
         }
 
         let full_ctx = {
@@ -476,14 +475,14 @@ where
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
+                    write!(writer, "{:>2?} ", std::thread::current().id())?;
                 }
                 _ => {}
             }
         }
 
         if self.display_thread_id {
-            write!(writer, "{} ", FmtThreadId::new(std::thread::current().id()))?;
+            write!(writer, "{:>2?} ", std::thread::current().id())?;
         }
 
         let fmt_ctx = {
@@ -852,22 +851,6 @@ impl<'a> fmt::Display for FmtThreadName<'a> {
         }
 
         write!(f, "{:>width$}", self.name, width = max_len)
-    }
-}
-
-struct FmtThreadId {
-    thread_id: std::thread::ThreadId,
-}
-
-impl FmtThreadId {
-    pub(crate) fn new(thread_id: std::thread::ThreadId) -> Self {
-        Self { thread_id }
-    }
-}
-
-impl fmt::Display for FmtThreadId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:>2?}", self.thread_id)
     }
 }
 
