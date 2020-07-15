@@ -402,7 +402,8 @@ where
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{:>2?} ", std::thread::current().id())?;                }
+                    write!(writer, "{:>2?} ", std::thread::current().id())?;
+                }
                 _ => {}
             }
         }
