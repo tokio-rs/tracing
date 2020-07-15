@@ -244,7 +244,7 @@ where
                     // fall-back to thread id when name is absent and ids are not enabled
                     None if !self.display_thread_id => {
                         serializer.serialize_entry(
-                            "threadId",
+                            "threadName",
                             &format!("{:?}", std::thread::current().id()),
                         )?;
                     }
