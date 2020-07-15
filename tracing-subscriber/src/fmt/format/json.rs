@@ -241,15 +241,14 @@ where
                     Some(name) => {
                         serializer.serialize_entry("threadName", name)?;
                     }
-                    None => {
-                        // fall-back to thread id when name is absent and id's are not enabled
-                        if !self.display_thread_id {
-                            serializer.serialize_entry(
-                                "threadId",
-                                &format!("{:?}", std::thread::current().id()),
-                            )?;
-                        }
+                    // fall-back to thread id when name is absent and ids are not enabled
+                    None if !self.display_thread_id => {
+                        serializer.serialize_entry(
+                            "threadId",
+                            &format!("{:?}", std::thread::current().id()),
+                        )?;
                     }
+                    _ => {}
                 }
             }
 
