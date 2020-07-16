@@ -300,7 +300,10 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Sets whether or not an event's thread id is displayed.
+    /// Sets whether or not the [thread ID] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
     pub fn with_thread_id(self, display_thread_id: bool) -> Format<F, T> {
         Format {
             display_thread_id,
@@ -308,7 +311,10 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Sets whether or not an event's thread name is displayed.
+    /// Sets whether or not the [name] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
     pub fn with_thread_name(self, display_thread_name: bool) -> Format<F, T> {
         Format {
             display_thread_name,
