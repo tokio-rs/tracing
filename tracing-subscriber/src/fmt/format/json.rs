@@ -237,16 +237,15 @@ where
             }
 
             if self.display_thread_name {
-                match std::thread::current().name() {
+                let current_thread = std::thread::current();
+                match current_thread.name() {
                     Some(name) => {
                         serializer.serialize_entry("threadName", name)?;
                     }
                     // fall-back to thread id when name is absent and ids are not enabled
                     None if !self.display_thread_id => {
-                        serializer.serialize_entry(
-                            "threadName",
-                            &format!("{:?}", std::thread::current().id()),
-                        )?;
+                        serializer
+                            .serialize_entry("threadName", &format!("{:?}", current_thread.id()))?;
                     }
                     _ => {}
                 }

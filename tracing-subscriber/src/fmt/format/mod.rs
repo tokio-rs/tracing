@@ -402,13 +402,14 @@ where
         }
 
         if self.display_thread_name {
-            match std::thread::current().name() {
+            let current_thread = std::thread::current();
+            match current_thread.name() {
                 Some(name) => {
                     write!(writer, "{} ", FmtThreadName::new(name))?;
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{:>2?} ", std::thread::current().id())?;
+                    write!(writer, "{:>2?} ", current_thread.id())?;
                 }
                 _ => {}
             }
@@ -476,13 +477,14 @@ where
         }
 
         if self.display_thread_name {
-            match std::thread::current().name() {
+            let current_thread = std::thread::current();
+            match current_thread.name() {
                 Some(name) => {
                     write!(writer, "{} ", FmtThreadName::new(name))?;
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{:>2?} ", std::thread::current().id())?;
+                    write!(writer, "{:>2?} ", current_thread.id())?;
                 }
                 _ => {}
             }
