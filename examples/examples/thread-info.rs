@@ -1,6 +1,8 @@
 #![deny(rust_2018_idioms)]
 /// This is a example showing how thread info can be displayed when
-/// formatting events with `tracing_subscriber::fmt`.
+/// formatting events with `tracing_subscriber::fmt`. This is useful
+/// as `tracing` spans can be entered by multicple threads concurrently,
+/// or move across threads freely.
 ///
 /// You can run this example by running the following command in a terminal
 ///
@@ -22,7 +24,9 @@ use tracing::info;
 fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
+        // enable thread id to be emitted
         .with_thread_ids(true)
+        // enabled thread name to be emitted
         .with_thread_names(true)
         .init();
 
