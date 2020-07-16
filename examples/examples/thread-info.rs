@@ -1,11 +1,19 @@
 #![deny(rust_2018_idioms)]
-/// This is a example showing how thread info can be enabled
-/// to be attached with events
+/// This is a example showing how thread info can be displayed when
+/// formatting events with `tracing_subscriber::fmt`.
 ///
 /// You can run this example by running the following command in a terminal
 ///
 /// ```
 /// cargo run --example thread-info
+/// ```
+///
+/// Example output:
+///
+/// ```not_rust
+/// Jul 17 00:38:07.177  INFO ThreadId( 2) thread_info: i=9
+/// Jul 17 00:38:07.177  INFO            thread 1 ThreadId( 3) thread_info: i=9
+/// Jul 17 00:38:07.177  INFO large name thread 2 ThreadId( 4) thread_info: i=9
 /// ```
 use std::thread;
 use std::time::Duration;
