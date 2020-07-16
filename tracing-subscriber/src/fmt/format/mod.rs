@@ -848,6 +848,9 @@ impl<'a> fmt::Display for FmtThreadName<'a> {
             Ordering::{AcqRel, Acquire, Relaxed},
         };
 
+        // MAX_LEN stores the length of the longest thread name that we've seen
+        // so far and is persistent across fmt executions being a static field
+        // thread names are padded with this field to get formatted outputs.
         static MAX_LEN: AtomicUsize = AtomicUsize::new(0);
         let len = self.name.len();
         let mut max_len = MAX_LEN.load(Relaxed);
