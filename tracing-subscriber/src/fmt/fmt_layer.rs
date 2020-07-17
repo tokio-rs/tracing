@@ -296,7 +296,7 @@ where
     /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
     pub fn with_thread_ids(self, display_thread_ids: bool) -> Layer<S, N, format::Format<L, T>, W> {
         Layer {
-            fmt_event: self.fmt_event.with_thread_id(display_thread_ids),
+            fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
@@ -313,7 +313,7 @@ where
         display_thread_names: bool,
     ) -> Layer<S, N, format::Format<L, T>, W> {
         Layer {
-            fmt_event: self.fmt_event.with_thread_name(display_thread_names),
+            fmt_event: self.fmt_event.with_thread_names(display_thread_names),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,

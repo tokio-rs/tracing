@@ -304,7 +304,7 @@ impl<F, T> Format<F, T> {
     /// when formatting events
     ///
     /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
-    pub fn with_thread_id(self, display_thread_id: bool) -> Format<F, T> {
+    pub fn with_thread_ids(self, display_thread_id: bool) -> Format<F, T> {
         Format {
             display_thread_id,
             ..self
@@ -315,7 +315,7 @@ impl<F, T> Format<F, T> {
     /// when formatting events
     ///
     /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
-    pub fn with_thread_name(self, display_thread_name: bool) -> Format<F, T> {
+    pub fn with_thread_names(self, display_thread_name: bool) -> Format<F, T> {
         Format {
             display_thread_name,
             ..self
