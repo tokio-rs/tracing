@@ -13,9 +13,9 @@
 /// Example output:
 ///
 /// ```not_rust
-/// Jul 17 00:38:07.177  INFO ThreadId( 2) thread_info: i=9
-/// Jul 17 00:38:07.177  INFO            thread 1 ThreadId( 3) thread_info: i=9
-/// Jul 17 00:38:07.177  INFO large name thread 2 ThreadId( 4) thread_info: i=9
+/// Jul 17 00:38:07.177  INFO ThreadId(02) thread_info: i=9
+/// Jul 17 00:38:07.177  INFO            thread 1 ThreadId(03) thread_info: i=9
+/// Jul 17 00:38:07.177  INFO large name thread 2 ThreadId(04) thread_info: i=9
 /// ```
 use std::thread;
 use std::time::Duration;

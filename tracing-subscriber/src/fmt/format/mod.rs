@@ -409,14 +409,14 @@ where
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{:>2?} ", current_thread.id())?;
+                    write!(writer, "{:0>2?} ", current_thread.id())?;
                 }
                 _ => {}
             }
         }
 
         if self.display_thread_id {
-            write!(writer, "{:>2?} ", std::thread::current().id())?;
+            write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
         let full_ctx = {
@@ -484,14 +484,14 @@ where
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
-                    write!(writer, "{:>2?} ", current_thread.id())?;
+                    write!(writer, "{:0>2?} ", current_thread.id())?;
                 }
                 _ => {}
             }
         }
 
         if self.display_thread_id {
-            write!(writer, "{:>2?} ", std::thread::current().id())?;
+            write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
         let fmt_ctx = {
