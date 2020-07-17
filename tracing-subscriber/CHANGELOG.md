@@ -1,3 +1,28 @@
+# 0.2.8 (July 17, 2020)
+
+### Changed
+
+- **fmt**: When the `chrono` dependency is enabled, the `SystemTime` timestamp
+  formatter now emits human-readable timestamps rather than using `SystemTime`'s
+  `fmt::Debug`implementation (`chrono` is still required for customized
+  timestamp formatting) (#807)
+- **ansi**: Updated `ansi_term` dependency to 0.12 (#816)
+
+### Added
+
+- **json**: `with_span_list` method to configure the JSON formatter to include a
+  list of all spans in the current trace in formatting events (similarly to the
+  text formatter) (#741) 
+- **json**: `with_current_span` method to configure the JSON formatter to include
+  a field for the _current_ span (the leaf of the trace) in formatted events
+  (#741)
+- **fmt**: `with_thread_names` and `with_thread_ids` methods to configure
+  `fmt::Subscriber`s and `fmt::Layer`s to include the thread name and/or thread ID
+  of the current thread when formatting events (#818)
+  
+Thanks to new contributors @mockersf, @keetonian, and @Pothulapati for
+contributing to this release!
+
 # 0.2.7 (July 1, 2020)
 
 ### Changed
