@@ -33,10 +33,6 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ## Usage
 
-(The examples below are borrowed from the `log` crate's yak-shaving
-[example](https://docs.rs/log/0.4.10/log/index.html#examples), modified to
-idiomatic `tracing`.)
-
 ### In Applications
 
 In order to record trace events, executables have to use a `Subscriber`
@@ -54,23 +50,15 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 ```
 
-To set a global subscriber for the entire program, use the `set_global_default` function:
+Then create and install a `Subscriber`, for example using [`init()`]:
 
 ```rust
-use tracing::{info, Level};
+use tracing::info;
 use tracing_subscriber;
 
 fn main() {
-    // a builder for `FmtSubscriber`.
-    let subscriber = tracing_subscriber::fmt()
-        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-         // completes the builder
-        .finish();
-        // and sets the constructed `Subscriber` as the default.
-    tracing::subscriber::set_global_default(subscriber)
-      .expect("no global subscriber has been set")
+    // install global subscriber configured based on RUST_LOG envvar.
+    tracing_subscriber::init()
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.
@@ -86,7 +74,7 @@ fn main() {
 
 [`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
 [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
-[`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
+[`init()`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/fn.init.html
 
 This subscriber will be used as the default in all threads for the remainder of the duration
 of the program, similar to how loggers work in the `log` crate.
@@ -99,10 +87,9 @@ use tracing_subscriber;
 
 fn main() {
     let subscriber = tracing_subscriber::fmt()
-        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
-        // will be written to stdout.
+        // filter spans/events with level TRACE or higher.
         .with_max_level(Level::TRACE)
-        // builds the subscriber.
+        // build but do not install the subscriber.
         .finish();
 
     tracing::subscriber::with_default(subscriber, || {
@@ -190,15 +177,31 @@ pub fn shave_all(yaks: usize) -> usize {
 tracing = "0.1"
 ```
 
-Note: Libraries should *NOT* call `set_global_default()`, as this will cause
-conflicts when executables try to set the default later.
+Note: Libraries should *NOT* install a subscriber by using a method than calls
+`set_global_default()`, as this will cause conflicts when executables try to
+set the default later.
 
 ### In Asynchronous Code
 
-If you are instrumenting code that make use of
-[`std::future::Future`][std-future] or async/await, be sure to use the
-[`tracing-futures`] crate. This is needed because the following example _will
-not_ work:
+To trace asynchronous code, the preferred method is using the [`#[instrument]`] attribute:
+
+```rust
+use tracing::{info, instrument};
+use tokio::{io::AsyncWriteExt, net::TcpStream};
+use std::io;
+
+#[instrument]
+async fn write(stream: &mut TcpStream) -> io::Result<usize> {
+    let result = stream.write(b"hello world\n").await;
+    info!("wrote to stream; success={:?}", result.is_ok());
+    result
+}
+```
+
+This requires the [`tracing-futures`] crate to be specified as a dependency.
+
+Code that makes use of [`std::future::Future`][std-future] or `async`/`await` needs
+special handling, as the following example _will not_ work:
 
 ```rust
 async {
@@ -213,8 +216,7 @@ the span remains entered for as long as the future exists, rather than being ent
 it is polled, leading to very confusing and incorrect output.
 For more details, see [the documentation on closing spans][closing].
 
-There are two ways to instrument asynchronous code. The first is through the
-[`Future::instrument`] combinator:
+This problem can be solved using the [`Future::instrument`] combinator:
 
 ```rust
 use tracing_futures::Instrument;
@@ -230,21 +232,6 @@ my_future
 
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
-
-The second, and preferred, option is through the [`#[instrument]`] attribute:
-
-```rust
-use tracing::{info, instrument};
-use tokio::{io::AsyncWriteExt, net::TcpStream};
-use std::io;
-
-#[instrument]
-async fn write(stream: &mut TcpStream) -> io::Result<usize> {
-    let result = stream.write(b"hello world\n").await;
-    info!("wrote to stream; success={:?}", result.is_ok());
-    result
-}
-```
 
 Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
