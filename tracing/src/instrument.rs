@@ -51,8 +51,7 @@ pub trait Instrument: Sized {
     ///
     /// # Examples
     ///
-    // TODO: ignored until async-await is stable...
-    /// ```rust,ignore
+    /// ```rust
     /// use tracing::Instrument;
     ///
     /// # async fn doc() {
