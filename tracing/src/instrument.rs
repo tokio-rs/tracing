@@ -14,10 +14,7 @@ pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
     ///
-    /// If the instrumented type is a future, stream, or sink, the attached `Span`
-    /// will be [entered] every time it is polled. If the instrumented type
-    /// is a future executor, every future spawned on that executor will be
-    /// instrumented by the attached `Span`.
+    /// The attached `Span` will be [entered] every time the instrumented `Future` is polled.
     ///
     /// # Examples
     ///
