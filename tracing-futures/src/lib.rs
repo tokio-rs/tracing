@@ -87,11 +87,10 @@ pub(crate) mod stdlib;
 #[cfg(feature = "std-future")]
 use crate::stdlib::{pin::Pin, task::Context};
 
-#[cfg(feature = "std-future")]
-pub use tracing::Instrument as _;
+#[cfg(feature = "std")]
+use tracing::{dispatcher, Dispatch};
 
-use tracing::dispatcher;
-use tracing::{Dispatch, Span};
+use tracing::Span;
 
 /// Implementations for `Instrument`ed future executors.
 pub mod executor;
@@ -249,6 +248,18 @@ pub struct WithDispatch<T> {
 }
 
 impl<T: Sized> Instrument for T {}
+
+#[cfg(feature = "std-future")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
+impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
+    type Output = T::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
+        let this = self.project();
+        let _enter = this.span.enter();
+        this.inner.poll(cx)
+    }
+}
 
 #[cfg(feature = "futures-01")]
 #[cfg_attr(docsrs, doc(cfg(feature = "futures-01")))]
@@ -641,8 +652,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
-                stream::iter(&[1, 2, 3])
-                    .instrument(tracing::trace_span!("foo"))
+                Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
                     .for_each(|_| future::ready(()))
                     .now_or_never()
                     .unwrap();
@@ -662,8 +672,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
-                sink::drain()
-                    .instrument(tracing::trace_span!("foo"))
+                Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))
                     .send(1u8)
                     .now_or_never()
                     .unwrap()
