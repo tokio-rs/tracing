@@ -129,8 +129,7 @@ pub trait WithSubscriber: Sized {
 }
 
 pin_project! {
-    /// A future, stream, sink, or executor that has been instrumented with a
-    /// `tracing` subscriber.
+    /// A future that has been instrumented with a `tracing` subscriber.
     #[derive(Clone, Debug)]
     pub struct WithDispatch<T> {
         #[pin]
