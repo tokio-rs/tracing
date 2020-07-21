@@ -36,6 +36,10 @@
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [instrument]: attr.instrument.html
 #![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.9")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
+    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
+)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
