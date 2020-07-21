@@ -778,20 +778,6 @@ where
     ///
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
-    ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// <code>Layer</code> implementations that wish to use this
-    /// function can bound their <code>Subscriber</code> type parameter with:
-    /// </pre></div>
-    /// ```rust,ignore
-    /// where S: Subscriber + for<'a> LookupSpan<'a>,`
-    /// ```
     #[inline]
     pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
     where
@@ -805,22 +791,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// <code>Layer</code> implementations that wish to use this
-    /// function can bound their <code>Subscriber</code> type parameter with:
-    /// </pre></div>
-    /// ```rust,ignore
-    /// where S: Subscriber + for<'a> LookupSpan<'a>,`
-    /// ```
-    ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
     where
@@ -830,22 +801,6 @@ where
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
-    ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// <code>Layer</code> implementations that wish to use this
-    /// function can bound their <code>Subscriber</code> type parameter with:
-    /// </pre></div>
-    /// ```rust,ignore
-    /// where S: Subscriber + for<'a> LookupSpan<'a>,`
-    /// ```
-    ///
-    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     pub fn exists(&self, id: &Id) -> bool
     where
@@ -859,22 +814,7 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// <code>Layer</code> implementations that wish to use this
-    /// function can bound their <code>Subscriber</code> type parameter with:
-    /// </pre></div>
-    /// ```rust,ignore
-    /// where S: Subscriber + for<'a> LookupSpan<'a>,`
-    /// ```
-    ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     #[inline]
     pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
     where
@@ -887,24 +827,7 @@ where
     /// current context, starting the root of the trace tree and ending with
     /// the current span.
     ///
-    /// If this iterator is empty, then there are no spans in the current context
-    ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// <code>Layer</code> implementations that wish to use this
-    /// function can bound their <code>Subscriber</code> type parameter with:
-    /// </pre></div>
-    /// ```rust,ignore
-    /// where S: Subscriber + for<'a> LookupSpan<'a>,`
-    /// ```
-    ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    /// [`LookupSpan`]: ../registry/trait.LookupSpan.html
     pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> LookupSpan<'lookup>,
