@@ -9,4 +9,7 @@
 /tracing-subscriber/registry    @davidbarsky @hawkw @tokio-rs/tracing
 
 # Julian contributed the OpenTelemetry implementation.
-/tracing-opentelemetry/    @jtescher @tokio-rs/tracing
+/tracing-opentelemetry/         @jtescher @tokio-rs/tracing
+
+# Ralith contributed the tracing-journald crate.
+/tracing-journald/              @Ralith @tokio-rs/tracing
