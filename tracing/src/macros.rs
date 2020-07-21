@@ -2288,6 +2288,8 @@ macro_rules! __mk_format_args {
     // === entry ===
     ($($kv:tt)*) => {
         {
+            #[allow(unused_imports)]
+            use $crate::field::{debug, display};
             // use $crate::__mk_format_string;
             $crate::__mk_format_args!(@ { }, $crate::__mk_format_string!($($kv)*), fields: $($kv)*)
         }
