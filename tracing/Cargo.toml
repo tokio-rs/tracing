@@ -37,6 +37,7 @@ pin-project-lite = "0.1"
 futures = "0.1"
 criterion = { version = "0.3", default_features = false }
 log = "0.4"
+tokio = { version = "0.2.21", features = ["rt-core"] }
 
 [features]
 default = ["std", "attributes"]
