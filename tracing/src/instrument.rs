@@ -9,7 +9,7 @@ use pin_project_lite::pin_project;
 /// Extension trait allowing futures to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [span]:  ../struct.Span.html
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
@@ -34,7 +34,7 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
+    /// [entered]: ../struct.Span.html#method.enter
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
@@ -68,8 +68,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.current
-    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
+    /// [current]: ../struct.Span.html#method.current
+    /// [entered]: ../struct.Span.html#method.enter
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -79,7 +79,7 @@ pub trait Instrument: Sized {
 /// Extension trait allowing futures to be instrumented with
 /// a `tracing` [`Subscriber`].
 ///
-/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+/// [`Subscriber`]: ../trait.Subscriber.html
 pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a
     /// `WithDispatch` wrapper.
@@ -89,7 +89,7 @@ pub trait WithSubscriber: Sized {
     /// When the wrapped type is an executor, the subscriber will be set as the
     /// default for any futures spawned on that executor.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [`Subscriber`]: ../trait.Subscriber.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
@@ -112,7 +112,7 @@ pub trait WithSubscriber: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [`Subscriber`]: ../trait.Subscriber.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {

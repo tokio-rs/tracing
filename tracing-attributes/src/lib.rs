@@ -159,7 +159,6 @@ use syn::{
 /// }
 /// ```
 ///
-/// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
 /// `async fn`s may also be instrumented:
 ///
 /// ```

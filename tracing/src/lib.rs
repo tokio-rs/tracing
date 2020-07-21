@@ -825,10 +825,9 @@ pub use log;
 #[doc(hidden)]
 use tracing_core::*;
 
-pub use self::{
-    dispatcher::Dispatch, event::Event, field::Value, instrument::Instrument,
-    subscriber::Subscriber,
-};
+#[doc(inline)]
+pub use self::instrument::Instrument;
+pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
 
 #[doc(hidden)]
 pub use self::span::Id;
