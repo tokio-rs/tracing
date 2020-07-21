@@ -6,8 +6,11 @@ use test_log_support::Test;
 use tracing::Level;
 
 #[test]
-fn span_lifecycle_defaults_off() {
-    let test = Test::with_filters(&[(module_path!(), log::LevelFilter::Trace)]);
+fn span_lifecycle_is_trace() {
+    let test = Test::with_filters(&[
+        (module_path!(), log::LevelFilter::Trace),
+        ("", log::LevelFilter::Info),
+    ]);
 
     error!(foo = 5);
     test.assert_logged("foo=5");
@@ -19,6 +22,7 @@ fn span_lifecycle_defaults_off() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
+    // A span without fields should not be logged
     test.assert_not_logged();
 
     foo.in_scope(|| {
