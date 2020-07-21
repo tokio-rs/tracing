@@ -389,16 +389,97 @@ impl Prefixed {
 
 impl FilenameTemplate for Prefixed {
     fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
-        let timestamp = match *rotation {
-            Rotation::MINUTELY => date.format(".%F-%H-%M").to_string(),
-            Rotation::HOURLY => date.format(".%F-%H").to_string(),
-            Rotation::DAILY => date.format(".%F").to_string(),
-            Rotation::NEVER => String::new(),
-        };
-
         let mut last_segment = self.prefix.clone();
-        last_segment.push(&timestamp);
+
+        if let Some(timestamp) = format_date_for_rotation(date, rotation) {
+            last_segment.push(".");
+            last_segment.push(&timestamp);
+        }
+
         self.log_directory.join(last_segment)
+    }
+}
+
+/// Create a new [`FilenameTemplate`] which uses a common file name and
+/// extension.
+///
+/// # Examples
+///
+/// ```rust
+/// # use chrono::prelude::*;
+/// # use tracing_appender::rolling::{Rotation, FilenameTemplate};
+/// # use std::path::Path;
+/// let mut template = tracing_appender::rolling::with_name_and_extension(
+///     "/var/log",
+///     "MyApplication",
+///     "log",
+/// );
+///
+/// let date = Utc.ymd(2020, 2, 1).and_hms(12, 20, 15);
+/// let rotation = Rotation::DAILY;
+///
+/// let filename = template.next_log_file(&date, &rotation);
+/// assert_eq!(filename, Path::new("/var/log/MyApplication.2020-02-01.log"));
+/// ```
+pub fn with_name_and_extension<D, N, E>(
+    log_directory: D,
+    name: N,
+    extension: E,
+) -> WithNameAndExtension
+where
+    D: AsRef<Path>,
+    N: AsRef<OsStr>,
+    E: AsRef<OsStr>,
+{
+    WithNameAndExtension::new(log_directory, name, extension)
+}
+
+/// A [`FilenameTemplate`] with a timestamp appended to a common prefix.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WithNameAndExtension {
+    log_directory: PathBuf,
+    name: OsString,
+    extension: OsString,
+}
+
+impl WithNameAndExtension {
+    /// Create a new [`Prefixed`] `FileTemplate`.
+    pub fn new<D, N, E>(log_directory: D, name: N, extension: E) -> Self
+    where
+        D: AsRef<Path>,
+        N: AsRef<OsStr>,
+        E: AsRef<OsStr>,
+    {
+        WithNameAndExtension {
+            log_directory: log_directory.as_ref().to_owned(),
+            name: name.as_ref().to_owned(),
+            extension: extension.as_ref().to_owned(),
+        }
+    }
+}
+
+impl FilenameTemplate for WithNameAndExtension {
+    fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
+        let mut last_segment = self.name.clone();
+
+        if let Some(timestamp) = format_date_for_rotation(date, rotation) {
+            last_segment.push(".");
+            last_segment.push(&timestamp);
+        }
+
+        last_segment.push(".");
+        last_segment.push(&self.extension);
+
+        self.log_directory.join(last_segment)
+    }
+}
+
+fn format_date_for_rotation(date: &DateTime<Utc>, rotation: &Rotation) -> Option<String> {
+    match *rotation {
+        Rotation::MINUTELY => Some(date.format("%F-%H-%M").to_string()),
+        Rotation::HOURLY => Some(date.format("%F-%H").to_string()),
+        Rotation::DAILY => Some(date.format("%F").to_string()),
+        Rotation::NEVER => None,
     }
 }
 
