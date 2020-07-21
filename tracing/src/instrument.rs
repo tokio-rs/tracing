@@ -84,10 +84,7 @@ pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
-    /// When the wrapped type is a future, stream, or sink, the attached
-    /// subscriber will be set as the [default] while it is being polled.
-    /// When the wrapped type is an executor, the subscriber will be set as the
-    /// default for any futures spawned on that executor.
+    /// The attached subscriber will be set as the [default] when the returned `Future` is polled.
     ///
     /// [`Subscriber`]: ../trait.Subscriber.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
