@@ -12,4 +12,4 @@
 /tracing-opentelemetry/    @jtescher @tokio-rs/tracing
 
 # Zeki contributed the TracingAppender implementation
-/tracing-appender/              @zekisherif @hawkw  @tokio-rs/tracing
+/tracing-appender/              @zekisherif  @tokio-rs/tracing
