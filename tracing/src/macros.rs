@@ -1883,91 +1883,92 @@ macro_rules! valueset {
     // };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$($k).+ as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&$($k).+ as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$($k).+) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::display(&$($k).+) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$($k).+ as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&$($k).+ as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$($k).+) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$crate::field::display(&$($k).+) as &$crate::field::Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
             $next,
         )
     };
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
-        $crate::valueset!(@ { (&$next, Some(&format_args!($($rest)+) as &$crate::field::Value)), $($out),* }, $next, )
+        $crate::valueset!(@ { (&$next, Some(&format_args!($($rest)+) as &Value)), $($out),* }, $next, )
     };
 
     // === entry ===
     ($fields:expr, $($kvs:tt)+) => {
         {
             #[allow(unused_imports)]
+            use $crate::field::{debug, display, Value};
             let mut iter = $fields.iter();
             $fields.value_set($crate::valueset!(
                 @ { },
