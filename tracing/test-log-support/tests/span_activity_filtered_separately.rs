@@ -6,10 +6,11 @@ use test_log_support::Test;
 use tracing::Level;
 
 #[test]
-fn span_lifecycle_can_be_filtered() {
+fn span_activity_filtered_separately() {
     let test = Test::with_filters(&[
-        ("span_lifecycle_can_be_filtered", log::LevelFilter::Trace),
-        ("tracing::span", log::LevelFilter::Info),
+        (module_path!(), log::LevelFilter::Trace),
+        ("tracing::span::active", log::LevelFilter::Off), // Disable enter/exit events.
+        ("tracing::span", log::LevelFilter::Trace),       // Enable lifecycle events
     ]);
 
     error!(foo = 5);
@@ -22,7 +23,8 @@ fn span_lifecycle_can_be_filtered() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
-    test.assert_not_logged();
+    // Creating a span goes to the `tracing::span` target.
+    test.assert_logged("foo");
 
     foo.in_scope(|| {
         // enter should not be logged
@@ -35,8 +37,8 @@ fn span_lifecycle_can_be_filtered() {
     test.assert_not_logged();
 
     drop(foo);
-    // drop should not be logged
-    test.assert_not_logged();
+    // drop should be logged
+    test.assert_logged("-- foo");
 
     trace!(foo = 1, bar = 2, "hello world");
     test.assert_logged("hello world foo=1 bar=2");
@@ -61,15 +63,15 @@ fn span_lifecycle_can_be_filtered() {
     test.assert_logged("bar");
 
     bar.in_scope(|| {
-        // entering the INFO span should be logged
-        test.assert_logged("-> bar");
+        // entering the INFO span should not be logged
+        test.assert_not_logged();
     });
-    // exiting the INFO span should be logged
-    test.assert_logged("<- bar");
+    // exiting the INFO span should not be logged
+    test.assert_not_logged();
 
     drop(foo);
-    // drop should not be logged.
-    test.assert_not_logged();
+    // drop should be logged
+    test.assert_logged("-- foo");
 
     drop(bar);
     // dropping the INFO should be logged.
