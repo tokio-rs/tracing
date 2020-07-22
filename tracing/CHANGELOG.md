@@ -1,3 +1,19 @@
+# 0.1.17 (July 22, 2020)
+
+### Changed
+
+- **log**: Moved verbose span enter/exit log records to "tracing::span::active"
+  target, allowing them to be filtered separately (#833)
+- **log**: All span lifecycle log records without fields now have the `Trace`
+  log filter, to guard against `log` users enabling them by default with blanket
+  level filtering (#833)
+  
+### Fixed
+
+- **log**/**macros**: Fixed missing implicit imports of the
+  `tracing::field::debug` and `tracing::field::display` functions inside the
+  macros when the "log" feature is enabled (#835)
+
 # 0.1.16 (July 8, 2020)
 
 ### Added
