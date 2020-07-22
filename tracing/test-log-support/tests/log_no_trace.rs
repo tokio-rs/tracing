@@ -15,7 +15,11 @@ fn test_always_log() {
     warn!("hello {};", "world");
     test.assert_logged("hello world;");
 
-    info!(message = "hello world;", thingy = 42, other_thingy = 666);
+    info!(
+        message = "hello world;",
+        thingy = display(42),
+        other_thingy = debug(666)
+    );
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
