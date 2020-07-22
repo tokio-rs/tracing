@@ -426,7 +426,7 @@ pub struct WithNameAndExtension {
 }
 
 impl WithNameAndExtension {
-    /// Create a new [`Prefixed`] `FileTemplate`.
+    /// Create a new [`WithNameAndExtension`] `FileTemplate`.
     pub fn new<D, N, E>(log_directory: D, name: N, extension: E) -> Self
     where
         D: AsRef<Path>,
