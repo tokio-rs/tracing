@@ -403,24 +403,7 @@ impl FilenameTemplate for Prefixed {
 /// Create a new [`FilenameTemplate`] which uses a common file name and
 /// extension.
 ///
-/// # Examples
-///
-/// ```rust
-/// # use chrono::prelude::*;
-/// # use tracing_appender::rolling::{Rotation, FilenameTemplate};
-/// # use std::path::Path;
-/// let mut template = tracing_appender::rolling::with_name_and_extension(
-///     "/var/log",
-///     "MyApplication",
-///     "log",
-/// );
-///
-/// let date = Utc.ymd(2020, 2, 1).and_hms(12, 20, 15);
-/// let rotation = Rotation::DAILY;
-///
-/// let filename = template.next_log_file(&date, &rotation);
-/// assert_eq!(filename, Path::new("/var/log/MyApplication.2020-02-01.log"));
-/// ```
+/// This will generate a filename like `/var/log/MyApplication.2020-02-01.log`.
 pub fn with_name_and_extension<D, N, E>(
     log_directory: D,
     name: N,
@@ -732,5 +715,16 @@ mod test {
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
         let joined_date = template.next_log_file(&mock_now, &r);
         assert_eq!(joined_date, Path::new("Hello.log"));
+    }
+
+    #[test]
+    fn daily_with_name_with_extension() {
+        let mut template = with_name_and_extension("/var/log", "MyApplication", "log");
+
+        let date = Utc.ymd(2020, 2, 1).and_hms(12, 20, 15);
+        let rotation = Rotation::DAILY;
+
+        let filename = template.next_log_file(&date, &rotation);
+        assert_eq!(filename, Path::new("/var/log/MyApplication.2020-02-01.log"));
     }
 }
