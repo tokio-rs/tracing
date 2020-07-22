@@ -54,12 +54,14 @@ use tracing_log::NormalizeEvent;
 /// [`Json::with_current_span`]: #method.with_current_span
 /// [`Json::with_span_list`]: #method.with_span_list
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl Json {
     /// If set to `true` event metadata will be flattened into the root object.
     pub fn flatten_event(&mut self, flatten_event: bool) {
@@ -287,12 +289,14 @@ impl Default for Json {
 ///
 /// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub struct JsonFields {
     // reserve the ability to add fields to this without causing a breaking
     // change in the future.
     _private: (),
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl JsonFields {
     /// Returns a new JSON [`FormatFields`] implementation.
     ///
@@ -302,6 +306,7 @@ impl JsonFields {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl Default for JsonFields {
     fn default() -> Self {
         Self::new()
