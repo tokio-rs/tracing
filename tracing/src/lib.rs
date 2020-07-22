@@ -754,7 +754,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.16", default-features = false }
+//!   tracing = { version = "0.1.17", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -798,7 +798,7 @@
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.16")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.17")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
