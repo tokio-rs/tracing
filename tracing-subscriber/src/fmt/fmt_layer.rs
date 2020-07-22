@@ -347,10 +347,20 @@ where
     ///
     /// # Options
     ///
-    /// - [`Layer::flatten_event`] can be used to enable flattening event fields into the root
-    /// object.
+    /// - [`Layer::flatten_event`] enables flattening event fields into the
+    ///   root JSON object
+    /// - [`Layer::with_current_span`] controls whether a field containing the
+    ///   current span is included
+    /// - [`Json::with_span_list`] controls whether a field containing a list of
+    ///   all spans in the current trace (the current span and all its parents)
+    ///   is included
+    ///
+    /// By default, event fields are not flattened, and both current span and span
+    /// list are logged.
     ///
     /// [`Layer::flatten_event`]: #method.flatten_event
+    /// [`Layer::with_current_span`]: #method.with_current_span
+    /// [`Layer::with_span_list`]: #method.with_span_list
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {

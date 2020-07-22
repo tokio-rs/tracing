@@ -586,6 +586,29 @@ where
     /// Sets the subscriber being built to use a JSON formatter.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
+    ///
+    /// # Example Output
+    ///
+    /// ```ignore,json
+    /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate","fields":{"message":"some message", "key": "value"}}
+    /// ```
+    ///
+    /// # Options
+    ///
+    /// - [`SubscriberBuilder::flatten_event`] enables flattening event fields
+    ///   into the root JSON object
+    /// - [`SubscriberBuilder::with_current_span`] controls whether a field
+    ///   containing the current span is included
+    /// - [`SubscriberBuilder::with_span_list`] controls whether a field
+    ///   containing a list of _all_ spans in the current trace (the current
+    ///   span and all its parents) is included
+    ///
+    /// By default, event fields are not flattened, and both current span and span
+    /// list are logged.
+    ///
+    /// [`SubscriberBuilder::flatten_event`]: #method.flatten_event
+    /// [`SubscriberBuilder::with_current_span`]: #method.with_current_span
+    /// [`SubscriberBuilder::with_span_list`]: #method.with_span_list
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(
