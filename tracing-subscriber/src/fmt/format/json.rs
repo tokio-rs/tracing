@@ -23,7 +23,8 @@ use tracing_log::NormalizeEvent;
 
 /// Marker for `Format` that indicates that the verbose json log format should be used.
 ///
-/// The full format includes fields from all entered spans.
+/// The JSON event formatter **must** be used in conjunction with the [JSON
+/// field formatter][JsonFields];
 ///
 /// # Example Output
 ///
@@ -40,12 +41,13 @@ use tracing_log::NormalizeEvent;
 ///
 /// # Options
 ///
-/// - [`Json::flatten_event`] can be used to enable flattening event fields into
-/// the root
-/// - [`Json::with_current_span`] can be used to control logging of the current
-/// span
-/// - [`Json::with_span_list`] can be used to control logging of the span list
-/// object.
+/// - [`Json::flatten_event`] enables flattening event fields into the
+///   root JSON object
+/// - [`Json::with_current_span`] controls whether a field containing the
+///   current span is included
+/// - [`Json::with_span_list`] controls whether a field containing a list of
+///   all spans in the current trace (the current span and all its parents)
+///   is included
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
@@ -53,6 +55,7 @@ use tracing_log::NormalizeEvent;
 /// [`Json::flatten_event`]: #method.flatten_event
 /// [`Json::with_current_span`]: #method.with_current_span
 /// [`Json::with_span_list`]: #method.with_span_list
+/// [JsonFields]: ../struct.JsonFields.html
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub struct Json {
