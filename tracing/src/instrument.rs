@@ -123,6 +123,7 @@ pub trait WithSubscriber: Sized {
 pin_project! {
     /// A future that has been instrumented with a `tracing` subscriber.
     #[derive(Clone, Debug)]
+    #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct WithDispatch<T> {
         #[pin]
         inner: T,
@@ -133,6 +134,7 @@ pin_project! {
 pin_project! {
     /// A future that has been instrumented with a `tracing` span.
     #[derive(Debug, Clone)]
+    #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct Instrumented<T> {
         #[pin]
         inner: T,

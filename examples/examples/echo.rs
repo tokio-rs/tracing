@@ -116,6 +116,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
                 info!(message = "echo'd data", %peer_addr, size = n);
             }
         })
-        .instrument(info_span!("echo", %peer_addr));
+        .instrument(info_span!("echo", %peer_addr))
+        .await?;
     }
 }
