@@ -52,12 +52,12 @@ impl From<std::time::SystemTime> for DateTime {
     fn from(timestamp: std::time::SystemTime) -> DateTime {
         let (t, nanos) = match timestamp.duration_since(std::time::UNIX_EPOCH) {
             Ok(duration) => {
-                debug_assert!(duration.as_secs() <= i64::MAX as u64);
+                debug_assert!(duration.as_secs() <= std::i64::MAX as u64);
                 (duration.as_secs() as i64, duration.subsec_nanos())
             }
             Err(error) => {
                 let duration = error.duration();
-                debug_assert!(duration.as_secs() <= i64::MAX as u64);
+                debug_assert!(duration.as_secs() <= std::i64::MAX as u64);
                 let (secs, nanos) = (duration.as_secs() as i64, duration.subsec_nanos());
                 if nanos == 0 {
                     (-secs, 0)
@@ -187,8 +187,8 @@ mod tests {
             1,
         );
 
-        case("2038-01-19T03:14:07.000000Z", i32::MAX as i64, 0);
-        case("2038-01-19T03:14:08.000000Z", i32::MAX as i64 + 1, 0);
+        case("2038-01-19T03:14:07.000000Z", std::i32::MAX as i64, 0);
+        case("2038-01-19T03:14:08.000000Z", std::i32::MAX as i64 + 1, 0);
         case("1901-12-13T20:45:52.000000Z", i32::MIN as i64, 0);
         case("1901-12-13T20:45:51.000000Z", i32::MIN as i64 - 1, 0);
 
@@ -197,8 +197,8 @@ mod tests {
         // high date value tests to panic
         #[cfg(not(target_os = "windows"))]
         {
-            case("+292277026596-12-04T15:30:07.000000Z", i64::MAX, 0);
-            case("+292277026596-12-04T15:30:06.000000Z", i64::MAX - 1, 0);
+            case("+292277026596-12-04T15:30:07.000000Z", std::i64::MAX, 0);
+            case("+292277026596-12-04T15:30:06.000000Z", std::i64::MAX - 1, 0);
             case("-292277022657-01-27T08:29:53.000000Z", i64::MIN + 1, 0);
         }
 
