@@ -207,6 +207,11 @@ pub trait Visit {
         self.record_debug(field, &value)
     }
 
+    /// Visit a byte array value.
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.record_debug(field, &value)
+    }
+
     /// Records a type implementing `Error`.
     ///
     /// <div class="information">
@@ -408,6 +413,14 @@ impl crate::sealed::Sealed for str {}
 impl Value for str {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_str(key, &self)
+    }
+}
+
+impl crate::sealed::Sealed for [u8] {}
+
+impl Value for [u8] {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_bytes(key, &self)
     }
 }
 
