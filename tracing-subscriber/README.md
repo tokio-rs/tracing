@@ -17,7 +17,7 @@ Utilities for implementing and composing [`tracing`][tracing] subscribers.
 [crates-badge]: https://img.shields.io/crates/v/tracing-subscriber.svg
 [crates-url]: https://crates.io/crates/tracing-subscriber
 [docs-badge]: https://docs.rs/tracing-subscriber/badge.svg
-[docs-url]: https://docs.rs/tracing-subscriber/0.2.8
+[docs-url]: https://docs.rs/tracing-subscriber/0.2.9
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_subscriber
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg

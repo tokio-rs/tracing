@@ -1,4 +1,16 @@
-# 0.2.8 (July 17, 2020)
+# 0.2.9 (July 23, 2020)
+
+### Fixed
+
+- **fmt**: Fixed compilation failure on MSRV when the `chrono` feature is
+  disabled (#844)
+
+### Added
+
+- **fmt**: Span lookup methods defined by `layer::Context` are now also provided
+  by `FmtContext` (#834)
+
+# 0.2.9 (July 17, 2020)
 
 ### Changed
 
