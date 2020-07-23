@@ -72,14 +72,12 @@ fn main() {
 }
 ```
 
-[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
-[fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
-[`init()`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/fn.init.html
+Using `init()` calls [`set_global_default()`] so this subscriber will be used
+as the default in all threads for the remainder of the duration of the
+program, similar to how loggers work in the `log` crate.
 
-This subscriber will be used as the default in all threads for the remainder of the duration
-of the program, similar to how loggers work in the `log` crate.
-
-In addition, you can locally override the default subscriber. For example:
+For more control, a subscriber can be built in stages and not set globally,
+but instead used to locally override the default subscriber. For example:
 
 ```rust
 use tracing::{info, Level};
@@ -107,6 +105,11 @@ currently executing thread; other threads will not see the change from with_defa
 
 Once a subscriber has been set, instrumentation points may be added to the
 executable using the `tracing` crate's macros.
+
+[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
+[fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+[`init()`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/fn.init.html
+[`set_global_default()`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
 
 ### In Libraries
 
@@ -178,12 +181,12 @@ tracing = "0.1"
 ```
 
 Note: Libraries should *NOT* install a subscriber by using a method than calls
-`set_global_default()`, as this will cause conflicts when executables try to
+[`set_global_default()`], as this will cause conflicts when executables try to
 set the default later.
 
 ### In Asynchronous Code
 
-To trace asynchronous code, the preferred method is using the [`#[instrument]`] attribute:
+To trace `async fn`s, the preferred method is using the [`#[instrument]`] attribute:
 
 ```rust
 use tracing::{info, instrument};
@@ -198,10 +201,12 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-This requires the [`tracing-futures`] crate to be specified as a dependency.
+The [`tracing-futures`] crate must be specified as a dependency to enable
+`async` support.
 
-Code that makes use of [`std::future::Future`][std-future] or `async`/`await` needs
-special handling, as the following example _will not_ work:
+Special handling is needed for the general case of code using
+[`std::future::Future`][std-future] or blocks with `async`/`await`, as the
+following example _will not_ work:
 
 ```rust
 async {
@@ -240,7 +245,7 @@ attachment that `Future::instrument` does.
 [`tracing-futures`]: https://docs.rs/tracing-futures
 [closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[`#[instrument]`]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 
 
 ## Getting Help
