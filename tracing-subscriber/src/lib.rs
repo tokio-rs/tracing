@@ -49,7 +49,7 @@
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`registry`]: registry/index.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.8")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.9")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
