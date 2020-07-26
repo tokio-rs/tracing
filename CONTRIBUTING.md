@@ -64,7 +64,7 @@ PR that helps others avoid the problems that you encountered.
 ### Submitting a Bug Report
 
 When opening a new issue in the `tracing` issue tracker, users will
-be presented with a [basic template][template] that should be filled in. If you
+be presented with a [basic template][issue-template] that should be filled in. If you
 believe that you have uncovered a bug, please fill out this form, following the
 template to the best of your ability. Do not worry if you cannot answer every
 detail, just fill in what you can.
@@ -80,7 +80,7 @@ cases should be limited, as much as possible, to using only Tokio APIs.
 See [How to create a Minimal, Complete, and Verifiable example][mcve].
 
 [mcve]: https://stackoverflow.com/help/mcve
-[template]: .github/ISSUE_TEMPLATE/bug_report.md
+[issue-template]: .github/ISSUE_TEMPLATE/bug_report.md
 
 ### Triaging a Bug Report
 
@@ -275,10 +275,10 @@ Refs: #453, #154
 ### Opening the Pull Request
 
 From within GitHub, opening a new Pull Request will present you with a
-[template] that should be filled out. Please try to do your best at filling out
+[pull-request-template] that should be filled out. Please try to do your best at filling out
 the details, but feel free to skip parts if you're not sure what to put.
 
-[template]: .github/PULL_REQUEST_TEMPLATE.md
+[pull-request-template]: .github/PULL_REQUEST_TEMPLATE.md
 
 ### Discuss and update
 
