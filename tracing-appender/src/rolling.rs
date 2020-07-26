@@ -92,7 +92,7 @@ impl RollingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
         let path = file_name_prefix.as_ref();
-        let template = prefixed(directory, path.as_os_str());
+        let template = in_directory(directory).with_prefix(path.as_os_str());
         RollingFileAppender::with_custom_template(rotation, template)
     }
 
@@ -357,37 +357,39 @@ impl FilenameTemplate for Box<dyn FilenameTemplate + Send + Sync + 'static> {
     }
 }
 
-/// Get a [`FilenameTemplate`] with a timestamp appended to a common prefix.
-pub fn prefixed<D, P>(log_directory: D, prefix: P) -> Prefixed
-where
-    D: AsRef<Path>,
-    P: AsRef<OsStr>,
-{
-    Prefixed::new(log_directory, prefix)
+/// Create a new [`FilenameTemplate`] which will create log files like
+/// `log.2020-07-26` in the specified directory.
+pub fn in_directory(directory: impl AsRef<Path>) -> Template {
+    Template {
+        log_directory: directory.as_ref().to_owned(),
+        prefix: OsString::from("log."),
+        extension: None,
+    }
 }
 
-/// A [`FilenameTemplate`] with a timestamp appended to a common prefix.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Prefixed {
+pub struct Template {
     log_directory: PathBuf,
     prefix: OsString,
+    extension: Option<OsString>,
 }
 
-impl Prefixed {
-    /// Create a new [`Prefixed`] `FileTemplate`.
-    pub fn new<D, P>(log_directory: D, prefix: P) -> Self
-    where
-        D: AsRef<Path>,
-        P: AsRef<OsStr>,
-    {
-        Prefixed {
-            log_directory: log_directory.as_ref().to_owned(),
+impl Template {
+    pub fn with_prefix(self, prefix: impl AsRef<OsStr>) -> Self {
+        Template {
             prefix: prefix.as_ref().to_owned(),
+            ..self
+        }
+    }
+    pub fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
+        Template {
+            extension: Some(extension.as_ref().to_owned()),
+            ..self
         }
     }
 }
 
-impl FilenameTemplate for Prefixed {
+impl FilenameTemplate for Template {
     fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
         let mut last_segment = self.prefix.clone();
 
@@ -396,62 +398,10 @@ impl FilenameTemplate for Prefixed {
             last_segment.push(&timestamp);
         }
 
-        self.log_directory.join(last_segment)
-    }
-}
-
-/// Create a new [`FilenameTemplate`] which uses a common file name and
-/// extension.
-///
-/// This will generate a filename like `/var/log/MyApplication.2020-02-01.log`.
-pub fn with_name_and_extension<D, N, E>(
-    log_directory: D,
-    name: N,
-    extension: E,
-) -> WithNameAndExtension
-where
-    D: AsRef<Path>,
-    N: AsRef<OsStr>,
-    E: AsRef<OsStr>,
-{
-    WithNameAndExtension::new(log_directory, name, extension)
-}
-
-/// A [`FilenameTemplate`] with a timestamp appended to a common prefix.
-#[derive(Debug, Clone, PartialEq)]
-pub struct WithNameAndExtension {
-    log_directory: PathBuf,
-    name: OsString,
-    extension: OsString,
-}
-
-impl WithNameAndExtension {
-    /// Create a new [`WithNameAndExtension`] `FileTemplate`.
-    pub fn new<D, N, E>(log_directory: D, name: N, extension: E) -> Self
-    where
-        D: AsRef<Path>,
-        N: AsRef<OsStr>,
-        E: AsRef<OsStr>,
-    {
-        WithNameAndExtension {
-            log_directory: log_directory.as_ref().to_owned(),
-            name: name.as_ref().to_owned(),
-            extension: extension.as_ref().to_owned(),
-        }
-    }
-}
-
-impl FilenameTemplate for WithNameAndExtension {
-    fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
-        let mut last_segment = self.name.clone();
-
-        if let Some(timestamp) = format_date_for_rotation(date, rotation) {
+        if let Some(ext) = &self.extension {
             last_segment.push(".");
-            last_segment.push(&timestamp);
+            last_segment.push(&ext);
         }
-
-        last_segment.push(".");
-        last_segment.push(&self.extension);
 
         self.log_directory.join(last_segment)
     }
@@ -660,7 +610,7 @@ mod test {
 
     #[test]
     fn test_rotation_path_minutely() {
-        let mut template = prefixed("", "MyApplication.log");
+        let mut template = in_directory("").with_prefix("MyApplication.log");
         let r = Rotation::MINUTELY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
         let path = template.next_log_file(&mock_now, &r);
@@ -669,7 +619,7 @@ mod test {
 
     #[test]
     fn test_rotation_path_hourly() {
-        let mut template = prefixed("", "MyApplication.log");
+        let mut template = in_directory("").with_prefix("MyApplication.log");
         let r = Rotation::HOURLY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
         let path = template.next_log_file(&mock_now, &r);
@@ -678,7 +628,7 @@ mod test {
 
     #[test]
     fn test_rotation_path_daily() {
-        let mut template = prefixed("", "MyApplication.log");
+        let mut template = in_directory("").with_prefix("MyApplication.log");
         let r = Rotation::DAILY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
         let path = template.next_log_file(&mock_now, &r);
@@ -709,7 +659,7 @@ mod test {
 
     #[test]
     fn test_join_date_never() {
-        let mut template = prefixed("", "Hello.log");
+        let mut template = in_directory("").with_prefix("Hello.log");
         let r = Rotation::NEVER;
 
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
@@ -719,7 +669,9 @@ mod test {
 
     #[test]
     fn daily_with_name_with_extension() {
-        let mut template = with_name_and_extension("/var/log", "MyApplication", "log");
+        let mut template = in_directory("/var/log")
+            .with_prefix("MyApplication")
+            .with_extension("log");
 
         let date = Utc.ymd(2020, 2, 1).and_hms(12, 20, 15);
         let rotation = Rotation::DAILY;
