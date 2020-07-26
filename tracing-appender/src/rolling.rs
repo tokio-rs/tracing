@@ -367,6 +367,17 @@ pub fn in_directory(directory: impl AsRef<Path>) -> Template {
     }
 }
 
+/// A builder type that can be used as a [`FilenameTemplate`].
+///
+/// A [`Template`] will generate log files which look something like
+/// `/path/to/logs/Prefix.2020-07-26.log`, where the user can specify:
+///
+/// - the log directory (e.g. `/path/to/logs/`),
+/// - a prefix (e.g. `Prefix`), and
+/// - an optional extension (e.g. `log`)
+///
+/// If the [`Rotation`] is time-based (i.e. anything except [`Rotation::NEVER`]),
+/// a timestamp will be inserted between the prefix and extension.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Template {
     log_directory: PathBuf,
@@ -375,12 +386,15 @@ pub struct Template {
 }
 
 impl Template {
+    /// Override the [`Template`]'s prefix.
     pub fn with_prefix(self, prefix: impl AsRef<OsStr>) -> Self {
         Template {
             prefix: prefix.as_ref().to_owned(),
             ..self
         }
     }
+
+    /// Override the [`Template`]'s extension.
     pub fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
         Template {
             extension: Some(extension.as_ref().to_owned()),
