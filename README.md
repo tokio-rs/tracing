@@ -372,6 +372,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
 - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
+- [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses. 
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
 - [`color-eyre`] provides customized panic and eyre report handlers for
@@ -392,6 +393,8 @@ please let us know!)
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
 [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+[`tide-tracing`]: https://crates.io/crates/tide-tracing
+[tide]: https://crates.io/crates/tide
 [bunyan]: https://github.com/trentm/node-bunyan
 [`color-spantrace`]: https://docs.rs/color-spantrace
 [`color-eyre`]: https://docs.rs/color-eyre
