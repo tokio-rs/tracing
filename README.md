@@ -42,9 +42,10 @@ idiomatic `tracing`.)
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
-[`tracing-subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
-traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
-consume messages emitted by `log`-instrumented libraries and modules.
+[`tracing-subscriber`][tracing-subscriber-docs]'s [`fmt` module][fmt] provides
+a subscriber for logging traces with reasonable defaults. Additionally,
+`tracing-subscriber` is able to consume messages emitted by `log`-instrumented
+libraries and modules.
 
 To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 
@@ -84,7 +85,7 @@ fn main() {
 }
 ```
 
-[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
+[tracing-subscriber-docs]: https://docs.rs/tracing-subscriber/
 [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
 [`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
 
@@ -197,8 +198,8 @@ conflicts when executables try to set the default later.
 
 If you are instrumenting code that make use of
 [`std::future::Future`][std-future] or async/await, be sure to use the
-[`tracing-futures`] crate. This is needed because the following example _will
-not_ work:
+[tracing-futures][tracing-futures-docs] crate. This is needed because the
+following example _will not_ work:
 
 ```rust
 async {
@@ -231,7 +232,7 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-The second, and preferred, option is through the [`#[instrument]`] attribute:
+The second, and preferred, option is through the [`#[instrument]`][instrument] attribute:
 
 ```rust
 use tracing::{info, instrument};
@@ -250,10 +251,10 @@ Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[`tracing-futures`]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[tracing-futures-docs]: https://docs.rs/tracing-futures
+[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
 
 ## Getting Help
@@ -325,7 +326,7 @@ The crates included as part of Tracing are:
   Linux `journald` service, preserving structured data.
 
 [`tracing`]: tracing
-[`tracing-core`]: tracing
+[`tracing-core`]: tracing-core
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
