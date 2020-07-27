@@ -627,12 +627,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<Level> {
-        match (self.layer.max_level_hint(), self.inner.max_level_hint()) {
-            (Some(this), Some(that)) => Some(std::cmp::max(this, that)),
-            (Some(this), None) => Some(this),
-            (None, Some(that)) => Some(that),
-            (None, None) => None,
-        }
+        std::cmp::max(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
