@@ -705,8 +705,9 @@
 //!    (Linux-only).
 //!  - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans
 //!    in [bunyan] format, enriched with timing information.
-//!  - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports 
+//!  - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
+//!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -724,6 +725,8 @@
 //! [bunyan]: https://github.com/trentm/node-bunyan
 //! [`tracing-wasm`]: https://docs.rs/tracing-wasm
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
+//! [`tide-tracing`]: https://crates.io/crates/tide-tracing
+//! [tide]: https://crates.io/crates/tide
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
