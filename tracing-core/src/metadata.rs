@@ -112,7 +112,7 @@ pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
 #[derive(Clone, Debug)]
-pub struct ParseError(());
+pub struct ParseLevelFilterError(());
 
 static MAX_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::OFF_USIZE);
 
@@ -365,6 +365,13 @@ impl From<Level> for LevelFilter {
     }
 }
 
+impl Into<Option<Level>> for LevelFilter {
+    #[inline]
+    fn into(self) -> Option<Level> {
+        self.into_level()
+    }
+}
+
 impl LevelFilter {
     /// The "off" level.
     ///
@@ -530,7 +537,7 @@ impl fmt::Debug for LevelFilter {
 }
 
 impl FromStr for LevelFilter {
-    type Err = ParseError;
+    type Err = ParseLevelFilterError;
     fn from_str(from: &str) -> Result<Self, Self::Err> {
         from.parse::<usize>()
             .ok()
@@ -553,7 +560,7 @@ impl FromStr for LevelFilter {
                 s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
                 _ => None,
             })
-            .ok_or_else(|| ParseError(()))
+            .ok_or_else(|| ParseLevelFilterError(()))
     }
 }
 
@@ -571,6 +578,18 @@ impl fmt::Display for ParseLevelError {
         )
     }
 }
+
+impl fmt::Display for ParseLevelFilterError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(
+            "error parsing level filter: expected one of \"off\", \"error\", \
+            \"warn\", \"info\", \"debug\", \"trace\", or a number 0-5",
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ParseLevelFilterError {}
 
 #[cfg(test)]
 mod tests {

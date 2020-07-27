@@ -1,3 +1,10 @@
+# 0.1.12 (UNRELEASED)
+
+## Added
+
+- `LevelFilter` type and `LevelFilter::max()`
+- `Subscriber::max_level_hint` for setting the value returned by `LevelFilter::max()`
+
 # 0.1.11 (June 8, 2020)
 
 ## Changed
