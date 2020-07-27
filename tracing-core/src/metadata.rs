@@ -1,6 +1,10 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use crate::stdlib::{fmt, str::FromStr};
+use crate::stdlib::{
+    cmp, fmt,
+    str::FromStr,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 /// Metadata describing a [span] or [event].
 ///
@@ -92,6 +96,25 @@ pub struct Kind(KindInner);
 /// Describes the level of verbosity of a span or event.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Level(LevelInner);
+
+/// A filter comparable to a verbosity `Level`.
+///
+/// If a `Level` is considered less than a `LevelFilter`, it should be
+/// considered disabled; if greater than or equal to the `LevelFilter`, that
+/// level is enabled.
+///
+/// Note that this is essentially identical to the `Level` type, but with the
+/// addition of an `OFF` level that completely disables all trace
+/// instrumentation.
+#[repr(transparent)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct LevelFilter(Option<Level>);
+
+/// Indicates that a string could not be parsed to a valid level.
+#[derive(Clone, Debug)]
+pub struct ParseError(());
+
+static MAX_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::OFF_USIZE);
 
 // ===== impl Metadata =====
 
@@ -314,23 +337,224 @@ enum LevelInner {
     /// The "error" level.
     ///
     /// Designates very serious errors.
-    Error = 1,
+    Error = 0,
     /// The "warn" level.
     ///
     /// Designates hazardous situations.
-    Warn,
+    Warn = 1,
     /// The "info" level.
     ///
     /// Designates useful information.
-    Info,
+    Info = 2,
     /// The "debug" level.
     ///
     /// Designates lower priority information.
-    Debug,
+    Debug = 3,
     /// The "trace" level.
     ///
     /// Designates very low priority, often extremely verbose, information.
-    Trace,
+    Trace = 4,
+}
+
+// === impl LevelFilter ===
+
+impl From<Level> for LevelFilter {
+    #[inline]
+    fn from(level: Level) -> Self {
+        Self::from_level(level)
+    }
+}
+
+impl LevelFilter {
+    /// The "off" level.
+    ///
+    /// Designates that trace instrumentation should be completely disabled.
+    pub const OFF: LevelFilter = LevelFilter(None);
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    pub const ERROR: LevelFilter = LevelFilter::from_level(Level::ERROR);
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    pub const WARN: LevelFilter = LevelFilter::from_level(Level::WARN);
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    pub const INFO: LevelFilter = LevelFilter::from_level(Level::INFO);
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    pub const DEBUG: LevelFilter = LevelFilter::from_level(Level::DEBUG);
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    pub const TRACE: LevelFilter = LevelFilter(Some(Level::TRACE));
+
+    /// Returns a `LevelFilter` that enables spans and events with verbosity up
+    /// to and including `level`.
+    pub const fn from_level(level: Level) -> Self {
+        Self(Some(level))
+    }
+
+    /// Returns the most verbose [`Level`] that this filter accepts, or `None`
+    /// if it is [`OFF`].
+    ///
+    /// [`Level`]: ../struct.Level.html
+    /// [`OFF`]: #associatedconstant.OFF
+    pub const fn into_level(self) -> Option<Level> {
+        self.0
+    }
+
+    // These consts are necessary because `as` casts are not allowed as
+    // match patterns.
+    const ERROR_USIZE: usize = LevelInner::Error as usize;
+    const WARN_USIZE: usize = LevelInner::Warn as usize;
+    const INFO_USIZE: usize = LevelInner::Info as usize;
+    const DEBUG_USIZE: usize = LevelInner::Debug as usize;
+    const TRACE_USIZE: usize = LevelInner::Trace as usize;
+    // Using the value of the last variant + 1 ensures that we match the value
+    // for `Option::None` as selected by the niche optimization for
+    // `LevelFilter`. If this is the case, converting a `usize` value into a
+    // `LevelFilter` (in `LevelFilter::max`) will be an identity conversion,
+    // rather than generating a lookup table.
+    const OFF_USIZE: usize = LevelInner::Trace as usize + 1;
+
+    /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
+    /// currently active [`Subscriber`] will enable.
+    #[inline(always)]
+    pub fn max() -> Self {
+        match MAX_LEVEL.load(Ordering::Relaxed) {
+            Self::ERROR_USIZE => Self::ERROR,
+            Self::WARN_USIZE => Self::WARN,
+            Self::INFO_USIZE => Self::INFO,
+            Self::DEBUG_USIZE => Self::DEBUG,
+            Self::TRACE_USIZE => Self::TRACE,
+            Self::OFF_USIZE => Self::OFF,
+            _ => unsafe {
+                // Using `unreachable_unchecked` here (rather than
+                // `unreachable!()`) is necessary to ensure that rustc generates
+                // an identity conversion from integer -> discriminant, rather
+                // than generating a lookup table. We want to ensure this
+                // function is a single `mov` instruction (on x86) if at all
+                // possible, because it is called *every* time a span/event
+                // callsite is hit; and it is (potentially) the only code in the
+                // hottest path for skipping a majority of callsites when level
+                // filtering is in use.
+                //
+                // safety: This branch is only truly unreachable if we guarantee
+                // that no values other than the possible enum discriminants
+                // will *ever* be present. The `AtomicUsize` is initialized to
+                // the `OFF` value. It is only set by the `set_max` function,
+                // which takes a `LevelFilter` as a parameter. This restricts
+                // the inputs to `set_max` to the set of valid discriminants.
+                // Therefore, **as long as `MAX_VALUE` is only ever set by
+                // `set_max`**, this is safe.
+                core::hint::unreachable_unchecked()
+            },
+        }
+    }
+
+    pub(crate) fn set_max(LevelFilter(level): LevelFilter) {
+        let val = match level {
+            Some(Level(level)) => level as usize,
+            None => Self::OFF_USIZE,
+        };
+
+        // using an AcqRel swap ensures an ordered relationship of writes to the
+        // max level.
+        MAX_LEVEL.swap(val, Ordering::AcqRel);
+    }
+}
+
+impl PartialEq<LevelFilter> for Level {
+    fn eq(&self, other: &LevelFilter) -> bool {
+        match other.0 {
+            None => false,
+            Some(ref level) => self.eq(level),
+        }
+    }
+}
+
+impl PartialOrd<LevelFilter> for Level {
+    fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
+        match other.0 {
+            None => Some(cmp::Ordering::Less),
+            Some(ref level) => self.partial_cmp(level),
+        }
+    }
+}
+
+impl PartialOrd<Level> for LevelFilter {
+    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
+        match self.0 {
+            None => Some(cmp::Ordering::Greater),
+            Some(ref level) => level.partial_cmp(other),
+        }
+    }
+}
+
+impl PartialEq<Level> for LevelFilter {
+    fn eq(&self, other: &Level) -> bool {
+        match self.0 {
+            None => false,
+            Some(ref level) => level.eq(other),
+        }
+    }
+}
+
+impl fmt::Display for LevelFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            LevelFilter::OFF => f.pad("off"),
+            LevelFilter::ERROR => f.pad("error"),
+            LevelFilter::WARN => f.pad("warn"),
+            LevelFilter::INFO => f.pad("info"),
+            LevelFilter::DEBUG => f.pad("debug"),
+            LevelFilter::TRACE => f.pad("trace"),
+        }
+    }
+}
+
+impl fmt::Debug for LevelFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            LevelFilter::OFF => f.pad("LevelFilter::OFF"),
+            LevelFilter::ERROR => f.pad("LevelFilter::ERROR"),
+            LevelFilter::WARN => f.pad("LevelFilter::WARN"),
+            LevelFilter::INFO => f.pad("LevelFilter::INFO"),
+            LevelFilter::DEBUG => f.pad("LevelFilter::DEBUG"),
+            LevelFilter::TRACE => f.pad("LevelFilter::TRACE"),
+        }
+    }
+}
+
+impl FromStr for LevelFilter {
+    type Err = ParseError;
+    fn from_str(from: &str) -> Result<Self, Self::Err> {
+        from.parse::<usize>()
+            .ok()
+            .and_then(|num| match num {
+                0 => Some(LevelFilter::OFF),
+                1 => Some(LevelFilter::ERROR),
+                2 => Some(LevelFilter::WARN),
+                3 => Some(LevelFilter::INFO),
+                4 => Some(LevelFilter::DEBUG),
+                5 => Some(LevelFilter::TRACE),
+                _ => None,
+            })
+            .or_else(|| match from {
+                "" => Some(LevelFilter::ERROR),
+                s if s.eq_ignore_ascii_case("error") => Some(LevelFilter::ERROR),
+                s if s.eq_ignore_ascii_case("warn") => Some(LevelFilter::WARN),
+                s if s.eq_ignore_ascii_case("info") => Some(LevelFilter::INFO),
+                s if s.eq_ignore_ascii_case("debug") => Some(LevelFilter::DEBUG),
+                s if s.eq_ignore_ascii_case("trace") => Some(LevelFilter::TRACE),
+                s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
+                _ => None,
+            })
+            .ok_or_else(|| ParseError(()))
+    }
 }
 
 /// Returned if parsing a `Level` fails.

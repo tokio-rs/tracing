@@ -7,9 +7,9 @@ use crate::stdlib::{
     vec::Vec,
 };
 use crate::{
-    dispatcher::{self, Dispatch, Registrar},
+    dispatcher::{self, Dispatch},
+    metadata::{Level, LevelFilter, Metadata},
     subscriber::Interest,
-    Metadata,
 };
 
 lazy_static! {
@@ -40,11 +40,24 @@ impl Registry {
     }
 
     fn rebuild_interest(&mut self) {
-        self.dispatchers.retain(Registrar::is_alive);
+        let mut max_level = Level::TRACE;
+        self.dispatchers.retain(|registrar| {
+            if let Some(dispatch) = registrar.upgrade() {
+                if let Some(level) = dispatch.max_level_hint() {
+                    if level > max_level {
+                        max_level = level;
+                    }
+                }
+                true
+            } else {
+                false
+            }
+        });
 
         self.callsites.iter().for_each(|&callsite| {
             self.rebuild_callsite_interest(callsite);
         });
+        LevelFilter::set_max(LevelFilter::from_level(max_level));
     }
 }
 
@@ -90,6 +103,12 @@ pub struct Identifier(
 /// The alternative is to have the [`Subscriber`] that supports runtime
 /// reconfiguration of filters always return [`Interest::sometimes()`] so that
 /// [`enabled`] is evaluated for every event.
+///
+/// This function will also re-compute the global maximum level as determined by
+/// the [`Subscriber::max_level_hint`] method. If a [`Subscriber`]
+/// implementation changes the value returned by its `max_level_hint`
+/// implementation at runtime, then it **must** call this function after that
+/// value changes, in order for the change to be reflected.
 ///
 /// [`Callsite`]: ../callsite/trait.Callsite.html
 /// [`enabled`]: ../subscriber/trait.Subscriber.html#tymethod.enabled
