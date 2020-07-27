@@ -1840,11 +1840,15 @@ macro_rules! callsite {
 }
 
 #[macro_export]
-// TODO: determine if this ought to be public API?
+// TODO: determine if this ought to be public API?`
+// TODO(eliza): is the `has_been_set` check still necessary? the max
+// level check should be equivalent...
 #[doc(hidden)]
 macro_rules! level_enabled {
     ($lvl:expr) => {
-        $crate::dispatcher::has_been_set() && $lvl <= $crate::level_filters::STATIC_MAX_LEVEL
+        $crate::dispatcher::has_been_set()
+            && $lvl <= $crate::level_filters::STATIC_MAX_LEVEL
+            && $lvl <= $crate::level_filters::LevelFilter::max()
     };
 }
 
