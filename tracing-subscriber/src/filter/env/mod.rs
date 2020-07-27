@@ -22,7 +22,7 @@ use tracing_core::{
     field::Field,
     span,
     subscriber::{Interest, Subscriber},
-    Metadata,
+    Level, Metadata,
 };
 
 /// A [`Layer`] which filters spans and events based on a set of filter
@@ -275,6 +275,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         } else {
             self.base_interest()
         }
+    }
+
+    fn max_level_hint(&self) -> Option<Level> {
+        std::cmp::max(
+            self.statics.max_level.clone().into(),
+            self.dynamics.max_level.clone().into(),
+        )
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
