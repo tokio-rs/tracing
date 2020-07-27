@@ -135,7 +135,7 @@
 use crate::{
     callsite, span,
     subscriber::{self, Subscriber},
-    Event, Level, Metadata,
+    Event, LevelFilter, Metadata,
 };
 
 use crate::stdlib::{
@@ -440,7 +440,7 @@ impl Dispatch {
     /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
     // TODO(eliza): consider making this a public API?
     #[inline]
-    pub(crate) fn max_level_hint(&self) -> Option<Level> {
+    pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
         self.subscriber.max_level_hint()
     }
 

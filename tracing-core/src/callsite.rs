@@ -8,7 +8,7 @@ use crate::stdlib::{
 };
 use crate::{
     dispatcher::{self, Dispatch},
-    metadata::{Level, LevelFilter, Metadata},
+    metadata::{LevelFilter, Metadata},
     subscriber::Interest,
 };
 
@@ -40,7 +40,7 @@ impl Registry {
     }
 
     fn rebuild_interest(&mut self) {
-        let mut max_level = Level::TRACE;
+        let mut max_level = LevelFilter::TRACE;
         self.dispatchers.retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
                 if let Some(level) = dispatch.max_level_hint() {
@@ -57,7 +57,7 @@ impl Registry {
         self.callsites.iter().for_each(|&callsite| {
             self.rebuild_callsite_interest(callsite);
         });
-        LevelFilter::set_max(LevelFilter::from_level(max_level));
+        LevelFilter::set_max(max_level);
     }
 }
 

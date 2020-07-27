@@ -3,7 +3,7 @@ use tracing_core::{
     metadata::Metadata,
     span,
     subscriber::{Interest, Subscriber},
-    Event, Level,
+    Event, LevelFilter,
 };
 
 #[cfg(feature = "registry")]
@@ -309,7 +309,7 @@ where
     // filtering layers to a separate trait, we may no longer want `Layer`s to
     // be able to participate in max level hinting...
     #[doc(hidden)]
-    fn max_level_hint(&self) -> Option<Level> {
+    fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
 
@@ -626,7 +626,7 @@ where
         }
     }
 
-    fn max_level_hint(&self) -> Option<Level> {
+    fn max_level_hint(&self) -> Option<LevelFilter> {
         std::cmp::max(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 

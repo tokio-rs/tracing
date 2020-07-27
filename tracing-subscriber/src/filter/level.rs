@@ -1,6 +1,6 @@
 use tracing_core::{
     subscriber::{Interest, Subscriber},
-    Level, Metadata,
+    Metadata,
 };
 
 #[allow(unreachable_pub)] // https://github.com/rust-lang/rust/issues/57411
@@ -21,7 +21,7 @@ impl<S: Subscriber> crate::Layer<S> for LevelFilter {
         self >= metadata.level()
     }
 
-    fn max_level_hint(&self) -> Option<Level> {
+    fn max_level_hint(&self) -> Option<LevelFilter> {
         self.clone().into()
     }
 }

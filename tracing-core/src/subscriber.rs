@@ -1,5 +1,5 @@
 //! Subscribers collect and record trace data.
-use crate::{span, Event, Metadata, Level};
+use crate::{span, Event, LevelFilter, Metadata};
 
 use crate::stdlib::any::{Any, TypeId};
 
@@ -190,7 +190,7 @@ pub trait Subscriber: 'static {
     /// [level]: ../struct.Level.html
     /// [`Interest`]: struct.Interest.html
     /// [rebuild]: ../callsite/fn.rebuild_interest_cache.html
-    fn max_level_hint(&self) -> Option<Level> {
+    fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
 
