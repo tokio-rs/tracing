@@ -486,7 +486,7 @@ impl PartialEq<LevelFilter> for Level {
 impl PartialOrd<LevelFilter> for Level {
     fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
         match other.0 {
-            None => Some(cmp::Ordering::Less),
+            None => Some(cmp::Ordering::Greater),
             Some(ref level) => self.partial_cmp(level),
         }
     }
@@ -495,7 +495,7 @@ impl PartialOrd<LevelFilter> for Level {
 impl PartialOrd<Level> for LevelFilter {
     fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
         match self.0 {
-            None => Some(cmp::Ordering::Greater),
+            None => Some(cmp::Ordering::Less),
             Some(ref level) => level.partial_cmp(other),
         }
     }
