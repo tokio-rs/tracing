@@ -120,13 +120,6 @@
 //! instead.
 //! </pre></div>
 //!
-//! Finally, `tokio` users should note that versions of `tokio` >= 0.1.22
-//! support an `experimental-tracing` feature flag. When this flag is enabled,
-//! the `tokio` runtime's thread pool will automatically propagate the default
-//! subscriber. This means that if `tokio::runtime::Runtime::new()` or
-//! `tokio::run()` are invoked when a default subscriber is set, it will also be
-//! set by all worker threads created by that runtime.
-//!
 //! ## Accessing the Default Subscriber
 //!
 //! A thread's current default subscriber can be accessed using the
