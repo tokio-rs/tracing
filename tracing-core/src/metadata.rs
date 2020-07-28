@@ -466,7 +466,7 @@ impl LevelFilter {
                 // the inputs to `set_max` to the set of valid discriminants.
                 // Therefore, **as long as `MAX_VALUE` is only ever set by
                 // `set_max`**, this is safe.
-                core::hint::unreachable_unchecked()
+                crate::stdlib::hint::unreachable_unchecked()
             },
         }
     }
@@ -784,7 +784,7 @@ impl PartialOrd<Level> for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::mem;
+    use crate::stdlib::mem;
 
     #[test]
     fn level_from_str() {
