@@ -22,7 +22,7 @@ edition = "2018"
 default = ["tracing-log"]
 
 [dependencies]
-opentelemetry = { version = "0.6", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.7", default-features = false, features = ["trace"] }
 rand = "0.7"
 tracing = { path = "../tracing", version = "0.1" }
 tracing-core = { path = "../tracing-core", version = "0.1" }
