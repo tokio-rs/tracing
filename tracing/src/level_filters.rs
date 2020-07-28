@@ -79,27 +79,3 @@ cfg_if! {
         const MAX_LEVEL: LevelFilter = LevelFilter::TRACE;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Level;
-
-    #[test]
-    fn filter_level_conversion() {
-        let mapping = [
-            (LevelFilter::OFF, None),
-            (LevelFilter::ERROR, Some(Level::ERROR)),
-            (LevelFilter::WARN, Some(Level::WARN)),
-            (LevelFilter::INFO, Some(Level::INFO)),
-            (LevelFilter::DEBUG, Some(Level::DEBUG)),
-            (LevelFilter::TRACE, Some(Level::TRACE)),
-        ];
-        for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), *level);
-            if let Some(level) = level {
-                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
-            }
-        }
-    }
-}

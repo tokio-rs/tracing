@@ -775,11 +775,61 @@ impl PartialOrd<Level> for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::mem;
 
     #[test]
     fn level_from_str() {
         assert_eq!("error".parse::<Level>().unwrap(), Level::ERROR);
         assert_eq!("4".parse::<Level>().unwrap(), Level::DEBUG);
         assert!("0".parse::<Level>().is_err())
+    }
+
+    #[test]
+    fn filter_level_conversion() {
+        let mapping = [
+            (LevelFilter::OFF, None),
+            (LevelFilter::ERROR, Some(Level::ERROR)),
+            (LevelFilter::WARN, Some(Level::WARN)),
+            (LevelFilter::INFO, Some(Level::INFO)),
+            (LevelFilter::DEBUG, Some(Level::DEBUG)),
+            (LevelFilter::TRACE, Some(Level::TRACE)),
+        ];
+        for (filter, level) in mapping.iter() {
+            assert_eq!(filter.clone().into_level(), *level);
+            if let Some(level) = level {
+                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
+            }
+        }
+    }
+
+    #[test]
+    fn level_filter_is_usize_sized() {
+        assert_eq!(
+            mem::size_of::<LevelFilter>(),
+            mem::size_of::<usize>(),
+            "`LevelFilter` is no longer `usize`-sized! global MAX_LEVEL may now be invalid!"
+        )
+    }
+
+    #[test]
+    fn level_filter_reprs() {
+        let mapping = [
+            (LevelFilter::OFF, LevelInner::Error as usize + 1),
+            (LevelFilter::ERROR, LevelInner::Error as usize),
+            (LevelFilter::WARN, LevelInner::Warn as usize),
+            (LevelFilter::INFO, LevelInner::Info as usize),
+            (LevelFilter::DEBUG, LevelInner::Debug as usize),
+            (LevelFilter::TRACE, LevelInner::Trace as usize),
+        ];
+        for &(ref filter, expected) in &mapping {
+            let repr = unsafe {
+                // safety: The entire purpose of this test is to assert that the
+                // actual repr matches what we expect it to be --- we're testing
+                // that *other* unsafe code is sound using the transmuted value.
+                // We're not going to do anything with it that might be unsound.
+                mem::transmute::<_, usize>(filter.clone())
+            };
+            assert_eq!(expected, repr, "repr changed for {:?}", filter)
+        }
     }
 }
