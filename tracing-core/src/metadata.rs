@@ -438,6 +438,15 @@ impl LevelFilter {
             Self::DEBUG_USIZE => Self::DEBUG,
             Self::TRACE_USIZE => Self::TRACE,
             Self::OFF_USIZE => Self::OFF,
+            #[cfg(debug_assertions)]
+            unknown => unreachable!(
+                "/!\\ `LevelFilter` representation seems to have changed! /!\\ \n\
+                This is a bug (and it's pretty bad). Please contact the `tracing` \
+                maintainers. Thank you and I'm sorry.\n \
+                The offending repr was: {:?}",
+                unknown,
+            ),
+            #[cfg(not(debug_assertions))]
             _ => unsafe {
                 // Using `unreachable_unchecked` here (rather than
                 // `unreachable!()`) is necessary to ensure that rustc generates
