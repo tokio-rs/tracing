@@ -381,6 +381,8 @@ are not maintained by the `tokio` project. These include:
   pretty printing them.
 - [`spandoc`] provides a proc macro for constructing spans from doc comments
   _inside_ of functions.
+- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports 
+  events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -400,6 +402,8 @@ please let us know!)
 [`color-spantrace`]: https://docs.rs/color-spantrace
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
+[`tracing-wasm`]: https://docs.rs/tracing-wasm
+[User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
