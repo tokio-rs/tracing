@@ -606,7 +606,7 @@ impl std::error::Error for ParseLevelFilterError {}
 //    `Option<Level>`) compiles down to a single integer value. This is
 //    necessary for storing the global max in an `AtomicUsize`, and for ensuring
 //    that we use fast integer-integer comparisons, as mentioned previously. In
-//    order to ensure this, we exploint the niche optimization. The niche
+//    order to ensure this, we exploit the niche optimization. The niche
 //    optimization for `Option<{enum with a numeric repr}>` will choose
 //    `(HIGHEST_DISCRIMINANT_VALUE + 1)` as the representation for `None`.
 //    Therefore, the integer representation of `LevelFilter::OFF` (which is
