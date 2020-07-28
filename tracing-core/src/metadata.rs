@@ -768,7 +768,7 @@ impl PartialOrd<Level> for LevelFilter {
 
     #[inline(always)]
     fn ge(&self, other: &Level) -> bool {
-        (other.0 as usize) > filter_as_usize(&self.0)
+        (other.0 as usize) >= filter_as_usize(&self.0)
     }
 }
 
