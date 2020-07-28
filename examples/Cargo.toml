@@ -53,4 +53,4 @@ tempdir = "0.3.7"
 
 # opentelemetry example
 opentelemetry = "0.6"
-opentelemetry-jaeger = "0.5"
+opentelemetry-jaeger = "0.6"
