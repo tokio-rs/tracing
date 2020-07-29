@@ -48,7 +48,7 @@ impl tracing::Subscriber for EnabledSubscriber {
 const N_SPANS: usize = 100;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut c = c.benchmark_group("scoped/subscriber");
+    let mut c = c.benchmark_group("global/subscriber");
     let _ = tracing::subscriber::set_global_default(EnabledSubscriber);
     c.bench_function("span_no_fields", |b| b.iter(|| span!(Level::TRACE, "span")));
 
@@ -84,7 +84,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 fn bench_dispatch(c: &mut Criterion) {
     let _ = tracing::subscriber::set_global_default(EnabledSubscriber);
-    let mut group = c.benchmark_group("scoped/dispatch");
+    let mut group = c.benchmark_group("global/dispatch");
     group.bench_function("get_ref", |b| {
         tracing::subscriber::with_default(EnabledSubscriber, || {
             b.iter(|| {
