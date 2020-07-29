@@ -57,8 +57,8 @@ pub struct Registry {
 /// be stored in the [extensions] typemap.
 ///
 /// [`Registry`]: struct.Registry.html
-/// [`Layer`s]: ../trait.Layer.html
-/// [extensions]: extensions/index.html
+/// [`Layer`s]: ../layer/trait.Layer.html
+/// [extensions]: struct.Extensions.html
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
