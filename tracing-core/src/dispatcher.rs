@@ -171,6 +171,7 @@ thread_local! {
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+static NUM_SCOPED: AtomicUsize = AtomicUsize::new(0);
 
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
@@ -325,6 +326,13 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
+    if NUM_SCOPED.load(Ordering::Acquire) == 0 {
+        return if let Some(global) = get_global() {
+            f(global)
+        } else {
+            f(&Dispatch::none())
+        };
+    }
     // While this guard is active, additional calls to subscriber functions on
     // the default dispatcher will not be able to access the dispatch context.
     // Dropping the guard will allow the dispatch context to be re-entered.
@@ -372,6 +380,7 @@ where
     }
 }
 
+#[inline(always)]
 fn get_global() -> Option<&'static Dispatch> {
     if GLOBAL_INIT.load(Ordering::SeqCst) != INITIALIZED {
         return None;
@@ -693,6 +702,7 @@ impl State {
             })
             .ok();
         EXISTS.store(true, Ordering::Release);
+        NUM_SCOPED.fetch_add(1, Ordering::Release);
         DefaultGuard(prior)
     }
 }
@@ -703,6 +713,7 @@ impl State {
 impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
+        NUM_SCOPED.fetch_sub(1, Ordering::Release);
         if let Some(dispatch) = self.0.take() {
             // Replace the dispatcher and then drop the old one outside
             // of the thread-local context. Dropping the dispatch may
