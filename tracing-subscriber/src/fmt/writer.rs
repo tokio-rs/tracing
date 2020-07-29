@@ -6,14 +6,15 @@ use std::io;
 
 /// A type that can create [`io::Write`] instances.
 ///
-/// `MakeWriter` is used by [`FmtSubscriber`] to print formatted text representations of
+/// `MakeWriter` is used by [`fmt::Subscriber`] or [`fmt::Layer`] to print formatted text representations of
 /// [`Event`]s.
 ///
 /// This trait is already implemented for function pointers and immutably-borrowing closures that
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-/// [`FmtSubscriber`]: ../struct.Subscriber.html
+/// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
+/// [`fmt::Layer`]: ../../fmt/struct.Layer.html
 /// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
@@ -28,13 +29,14 @@ pub trait MakeWriter {
     ///
     /// # Implementer notes
     ///
-    /// [`FmtSubscriber`] will call this method each time an event is recorded. Ensure any state
+    /// [`fmt::Layer`] or [`fmt::Subscriber`] will call this method each time an event is recorded. Ensure any state
     /// that must be saved across writes is not lost when the [`Writer`] instance is dropped. If
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
     /// [`MakeWriter`] to improve performance.
     ///
     /// [`Writer`]: #associatedtype.Writer
-    /// [`FmtSubscriber`]: ../struct.Subscriber.html
+    /// [`fmt::Layer`]: ../../fmt/struct.Layer.html
+    /// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
     /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
     /// [`MakeWriter`]: trait.MakeWriter.html
     fn make_writer(&self) -> Self::Writer;

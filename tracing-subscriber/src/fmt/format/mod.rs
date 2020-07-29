@@ -32,14 +32,15 @@ pub use json::*;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`FmtSubscriber`]. Each time an event is
-/// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
-/// emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Subscriber`] or [`fmt::Layer`]. Each time an event is
+/// dispatched to [`fmt::Subscriber`] or [`fmt::Layer`], the subscriber or layer forwards it to
+/// its associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
-/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
+/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Layer`]: ../struct.Layer.html
 pub trait FormatEvent<S, N>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,

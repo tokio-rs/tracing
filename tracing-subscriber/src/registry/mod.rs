@@ -87,7 +87,7 @@ pub use sharded::Registry;
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`Context`]: ../layer/struct.Context.html
-/// [`span()`]: ../layer/struct.Context.html#method.metadata
+/// [`span()`]: ../layer/struct.Context.html#method.span
 pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;
@@ -99,8 +99,8 @@ pub trait LookupSpan<'a> {
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: users of the <code>LookupSpan<code> trait should
-    /// typically call the <a href="#method.span"><code>span</code> method rather
+    /// <strong>Note</strong>: users of the <code>LookupSpan</code> trait should
+    /// typically call the <a href="#method.span"><code>span</code></a> method rather
     /// than this method. The <code>span</code> method is implemented by
     /// <em>calling</em> <code>span_data</code>, but returns a reference which is
     /// capable of performing more sophisiticated queries.
