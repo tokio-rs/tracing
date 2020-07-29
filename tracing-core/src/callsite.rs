@@ -128,9 +128,11 @@ fn rebuild_callsite_interest(
 
     // Iterate over the subscribers in the registry, and — if they are
     // active — register the callsite with them.
-    let mut interests = dispatchers
-        .iter()
-        .filter_map(|registrar| registrar.try_register(meta));
+    let mut interests = dispatchers.iter().filter_map(|registrar| {
+        registrar
+            .upgrade()
+            .map(|dispatch| dispatch.register_callsite(meta))
+    });
 
     // Use the first subscriber's `Interest` as the base value.
     let interest = if let Some(interest) = interests.next() {
