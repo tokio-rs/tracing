@@ -52,6 +52,12 @@ fn criterion_benchmark(c: &mut Criterion) {
     let _ = tracing::subscriber::set_global_default(EnabledSubscriber);
     c.bench_function("span_no_fields", |b| b.iter(|| span!(Level::TRACE, "span")));
 
+    c.bench_function("event", |b| {
+        b.iter(|| {
+            tracing::event!(Level::TRACE, "hello");
+        })
+    });
+
     c.bench_function("enter_span", |b| {
         let span = span!(Level::TRACE, "span");
         #[allow(clippy::unit_arg)]
@@ -86,20 +92,16 @@ fn bench_dispatch(c: &mut Criterion) {
     let _ = tracing::subscriber::set_global_default(EnabledSubscriber);
     let mut group = c.benchmark_group("global/dispatch");
     group.bench_function("get_ref", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
-            b.iter(|| {
-                tracing::dispatcher::get_default(|current| {
-                    black_box(&current);
-                })
+        b.iter(|| {
+            tracing::dispatcher::get_default(|current| {
+                black_box(&current);
             })
         })
     });
     group.bench_function("get_clone", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
-            b.iter(|| {
-                let current = tracing::dispatcher::get_default(|current| current.clone());
-                black_box(current);
-            })
+        b.iter(|| {
+            let current = tracing::dispatcher::get_default(|current| current.clone());
+            black_box(current);
         })
     });
     group.finish();
