@@ -914,7 +914,7 @@ pub mod __macro_support {
             }
         }
 
-        #[inline]
+        #[inline(always)]
         fn interest(&self) -> Interest {
             match self.interest.load(Ordering::Relaxed) {
                 0 => Interest::never(),
@@ -923,7 +923,7 @@ pub mod __macro_support {
             }
         }
 
-        #[inline]
+        #[inline(always)]
         pub fn is_enabled(&self) -> bool {
             let interest = self.interest();
             if interest.is_always() {
@@ -953,7 +953,7 @@ pub mod __macro_support {
             self.interest.store(interest, Ordering::SeqCst);
         }
 
-        #[inline]
+        #[inline(always)]
         fn metadata(&self) -> &Metadata<'static> {
             &self.meta
         }
