@@ -1959,6 +1959,48 @@ macro_rules! valueset {
             $next,
         )
     };
+
+    // Handle literal names
+    (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            $next,
+            $($rest)*
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            $next,
+            $($rest)*
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = $val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&$val as &Value)) },
+            $next,
+            $($rest)*
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            $next,
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            $next,
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = $val:expr) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&$val as &Value)) },
+            $next,
+        )
+    };
+
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
         $crate::valueset!(@ { (&$next, Some(&format_args!($($rest)+) as &Value)), $($out),* }, $next, )
@@ -2015,6 +2057,17 @@ macro_rules! fieldset {
     };
     (@ { $(,)* $($out:expr),* } $($k:ident).+, $($rest:tt)*) => {
         $crate::fieldset!(@ { $($out),*, $crate::__tracing_stringify!($($k).+) } $($rest)*)
+    };
+
+    // Handle literal names
+    (@ { $(,)* $($out:expr),* } $k:literal = ?$val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* } $k:literal = %$val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* } $k:literal = $val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
     };
 
     // Remainder is unparseable, but exists --- must be format args!
