@@ -150,3 +150,107 @@ fn async_fn_with_async_trait() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn async_fn_with_async_trait_and_fields_expressions() {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Test {
+        async fn call(&mut self, v: usize);
+    }
+
+    #[derive(Clone, Debug)]
+    struct TestImpl;
+
+    impl TestImpl {
+        fn foo(&self) -> usize {
+            42
+        }
+    }
+
+    #[async_trait]
+    impl Test for TestImpl {
+        // check that self is correctly handled, even when using async_trait
+        #[instrument(fields(val=self.foo(), test=%v+5))]
+        async fn call(&mut self, v: usize) {}
+    }
+
+    let span = span::mock().named("call");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone()
+            .with_field(
+                field::mock("v").with_value(&tracing::field::debug(5))
+                .and(field::mock("test").with_value(&tracing::field::debug(10)))
+                .and(field::mock("val").with_value(&42u64))))
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        block_on_future(async { TestImpl.call(5).await });
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Test {
+        async fn call();
+        async fn call_with_self(&self);
+        async fn call_with_mut_self(&mut self);
+    }
+
+    #[derive(Clone, Debug)]
+    struct TestImpl;
+
+    #[async_trait]
+    impl Test for TestImpl {
+        // instrumenting this is currently not possible, see https://github.com/tokio-rs/tracing/issues/864#issuecomment-667508801
+        //#[instrument(fields(Self=std::any::type_name::<Self>()))]
+        async fn call() {}
+
+        #[instrument(fields(Self=std::any::type_name::<Self>()))]
+        async fn call_with_self(&self) {}
+
+        #[instrument(fields(Self=std::any::type_name::<Self>()))]
+        async fn call_with_mut_self(self: &mut Self) {}
+    }
+
+    //let span = span::mock().named("call");
+    let span2 = span::mock().named("call_with_self");
+    let span3 = span::mock().named("call_with_mut_self");
+    let (subscriber, handle) = subscriber::mock()
+        /*.new_span(span.clone()
+            .with_field(
+                field::mock("Self").with_value(&"TestImpler")))
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)*/
+        .new_span(span2.clone()
+            .with_field(
+                field::mock("Self").with_value(&std::any::type_name::<TestImpl>())))
+        .enter(span2.clone())
+        .exit(span2.clone())
+        .drop_span(span2)
+        .new_span(span3.clone()
+            .with_field(
+                field::mock("Self").with_value(&std::any::type_name::<TestImpl>())))
+        .enter(span3.clone())
+        .exit(span3.clone())
+        .drop_span(span3)
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        block_on_future(async { TestImpl::call().await; TestImpl.call_with_self().await; TestImpl.call_with_mut_self().await });
+    });
+
+    handle.assert_finished();
+}
