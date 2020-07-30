@@ -287,6 +287,19 @@
 //! # }
 //!```
 //!
+//! Fields with names that are not Rust identifiers, or with names that are Rust reserved words,
+//! may be created using quoted string literals. However, this may not be used with the local
+//! variable shorthand.
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! // records an event with fields whose names are not Rust identifiers
+//! //  - "guid:x-request-id", containing a `:`, with the value "abcdef"
+//! //  - "type", which is a reserved word, with the value "request"
+//! span!(Level::TRACE, "api", "guid:x-request-id" = "abcdef", "type" = "request");
+//! # }
+//!```
+//!
 //! The `?` sigil is shorthand that specifies a field should be recorded using
 //! its [`fmt::Debug`] implementation:
 //! ```
