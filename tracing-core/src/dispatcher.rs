@@ -135,7 +135,7 @@
 use crate::{
     callsite, span,
     subscriber::{self, Subscriber},
-    Event, Metadata,
+    Event, LevelFilter, Metadata,
 };
 
 use crate::stdlib::{
@@ -427,6 +427,22 @@ impl Dispatch {
         self.subscriber.register_callsite(metadata)
     }
 
+    /// Returns the highest [verbosity level][level] that this [`Subscriber`] will
+    /// enable, or `None`, if the subscriber does not implement level-based
+    /// filtering or chooses not to implement this method.
+    ///
+    /// This calls the [`max_level_hint`] function on the [`Subscriber`]
+    /// that this `Dispatch` forwards to.
+    ///
+    /// [level]: ../struct.Level.html
+    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+    /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
+    // TODO(eliza): consider making this a public API?
+    #[inline]
+    pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.subscriber.max_level_hint()
+    }
+
     /// Record the construction of a new span, returning a new [ID] for the
     /// span being constructed.
     ///
@@ -670,8 +686,8 @@ impl Registrar {
         self.0.upgrade().map(|s| s.register_callsite(metadata))
     }
 
-    pub(crate) fn is_alive(&self) -> bool {
-        self.0.upgrade().is_some()
+    pub(crate) fn upgrade(&self) -> Option<Dispatch> {
+        self.0.upgrade().map(|subscriber| Dispatch { subscriber })
     }
 }
 

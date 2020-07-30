@@ -251,7 +251,7 @@ pub use self::{
     dispatcher::Dispatch,
     event::Event,
     field::Field,
-    metadata::{Level, Metadata},
+    metadata::{Level, LevelFilter, Metadata},
     subscriber::Subscriber,
 };
 

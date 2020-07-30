@@ -277,6 +277,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        std::cmp::max(
+            self.statics.max_level.clone().into(),
+            self.dynamics.max_level.clone().into(),
+        )
+    }
+
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
 
