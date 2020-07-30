@@ -897,7 +897,7 @@ pub mod __macro_support {
     use crate::{subscriber::Interest, Callsite, Metadata};
     use tracing_core::Once;
 
-    #[derive()]
+    #[derive(Debug)]
     pub struct MacroCallsite {
         interest: AtomicUsize,
         meta: &'static Metadata<'static>,
