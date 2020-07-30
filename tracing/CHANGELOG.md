@@ -1,3 +1,10 @@
+# 0.1.18 (UNRELEASED)
+
+### Fixed
+
+- Fixed a bug where `LevelFilter::OFF` (and thus also the `static_max_level_off`
+  feature flag) would enable *all* traces, rather than *none* (#853)
+
 # 0.1.17 (July 22, 2020)
 
 ### Changed
