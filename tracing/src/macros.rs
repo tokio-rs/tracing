@@ -1848,7 +1848,7 @@ macro_rules! level_enabled {
     ($lvl:expr) => {
         $crate::dispatcher::has_been_set()
             && $lvl <= $crate::level_filters::STATIC_MAX_LEVEL
-            && $lvl <= $crate::level_filters::LevelFilter::max()
+            && $lvl <= $crate::level_filters::LevelFilter::current()
     };
 }
 

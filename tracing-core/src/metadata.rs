@@ -423,7 +423,7 @@ impl LevelFilter {
     // Using the value of the last variant + 1 ensures that we match the value
     // for `Option::None` as selected by the niche optimization for
     // `LevelFilter`. If this is the case, converting a `usize` value into a
-    // `LevelFilter` (in `LevelFilter::max`) will be an identity conversion,
+    // `LevelFilter` (in `LevelFilter::current`) will be an identity conversion,
     // rather than generating a lookup table.
     const OFF_USIZE: usize = LevelInner::Error as usize + 1;
 
@@ -444,7 +444,7 @@ impl LevelFilter {
     /// [`Level`]: ../struct.Level.html
     /// [`Subscriber`]: ../../trait.Subscriber.html
     #[inline(always)]
-    pub fn max() -> Self {
+    pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {
             Self::ERROR_USIZE => Self::ERROR,
             Self::WARN_USIZE => Self::WARN,

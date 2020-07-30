@@ -2,10 +2,10 @@
 
 ## Added
 
-- `LevelFilter` type and `LevelFilter::max()` for returning the highest level
+- `LevelFilter` type and `LevelFilter::current()` for returning the highest level
   that any subscriber will enable (#853)
 - `Subscriber::max_level_hint` optional trait method, for setting the value
-  returned by `LevelFilter::max()` (#853)
+  returned by `LevelFilter::current()` (#853)
 
 # 0.1.11 (June 8, 2020)
 
