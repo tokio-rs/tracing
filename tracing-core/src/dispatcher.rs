@@ -434,7 +434,6 @@ impl Dispatch {
     /// This calls the [`max_level_hint`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.
     ///
-    ///
     /// [level]: ../struct.Level.html
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
