@@ -894,15 +894,80 @@ pub mod subscriber;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
-    pub type Once = tracing_core::Once;
-}
+    use crate::{subscriber::Interest, Callsite, Metadata};
+    use tracing_core::Once;
 
-#[doc(hidden)]
-// resolves https://github.com/tokio-rs/tracing/issues/783 by forcing a monomorphization
-// in tracing, not downstream crates.
-#[inline]
-pub fn is_enabled(meta: &crate::Metadata<'_>) -> bool {
-    crate::dispatcher::get_default(|current| current.enabled(meta))
+    #[derive()]
+    pub struct MacroCallsite {
+        interest: AtomicUsize,
+        meta: &'static Metadata<'static>,
+        registration: Once,
+    }
+
+    impl MacroCallsite {
+        pub const fn new(meta: &'static Metadata<'static>) -> Self {
+            Self {
+                interest: AtomicUsize::new(0),
+                meta,
+                registration: Once::new(),
+            }
+        }
+
+        #[inline]
+        fn interest(&self) -> Interest {
+            match self.interest.load(Ordering::Relaxed) {
+                0 => Interest::never(),
+                2 => Interest::always(),
+                _ => Interest::sometimes(),
+            }
+        }
+
+        #[inline]
+        pub fn is_enabled(&self) -> bool {
+            let interest = self.interest();
+            if interest.is_always() {
+                return true;
+            }
+            if interest.is_never() {
+                return false;
+            }
+
+            crate::dispatcher::get_default(|current| current.enabled(self.meta))
+        }
+
+        #[inline(always)]
+        pub fn register(&'static self) {
+            self.registration
+                .call_once(|| crate::callsite::register(self))
+        }
+    }
+
+    impl Callsite for MacroCallsite {
+        fn set_interest(&self, interest: Interest) {
+            let interest = match () {
+                _ if interest.is_never() => 0,
+                _ if interest.is_always() => 2,
+                _ => 1,
+            };
+            self.interest.store(interest, Ordering::SeqCst);
+        }
+
+        #[inline]
+        fn metadata(&self) -> &Metadata<'static> {
+            &self.meta
+        }
+    }
+
+    #[inline]
+    pub fn dispatch_if_enabled(meta: &Metadata<'_>, f: impl Fn()) {
+        // resolves https://github.com/tokio-rs/tracing/issues/783 by forcing a monomorphization
+        // in tracing, not downstream crates.
+        crate::dispatcher::get_default(|current| {
+            if current.enabled(meta) {
+                f()
+            }
+        })
+    }
 }
 
 mod sealed {
