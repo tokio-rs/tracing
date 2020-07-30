@@ -37,87 +37,7 @@
 //! *Compiler support: requires rustc 1.39+*
 //!
 //! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters
-use crate::stdlib::cmp::Ordering;
-use tracing_core::Level;
-
-/// A filter comparable to trace verbosity `Level`.
-///
-/// If a `Level` is considered less than a `LevelFilter`, it should be
-/// considered disabled; if greater than or equal to the `LevelFilter`, that
-/// level is enabled.
-///
-/// Note that this is essentially identical to the `Level` type, but with the
-/// addition of an `OFF` level that completely disables all trace
-/// instrumentation.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct LevelFilter(Option<Level>);
-
-impl From<Level> for LevelFilter {
-    #[inline]
-    fn from(level: Level) -> Self {
-        Self::from_level(level)
-    }
-}
-
-impl LevelFilter {
-    /// The "off" level.
-    ///
-    /// Designates that trace instrumentation should be completely disabled.
-    pub const OFF: LevelFilter = LevelFilter(None);
-    /// The "error" level.
-    ///
-    /// Designates very serious errors.
-    pub const ERROR: LevelFilter = LevelFilter::from_level(Level::ERROR);
-    /// The "warn" level.
-    ///
-    /// Designates hazardous situations.
-    pub const WARN: LevelFilter = LevelFilter::from_level(Level::WARN);
-    /// The "info" level.
-    ///
-    /// Designates useful information.
-    pub const INFO: LevelFilter = LevelFilter::from_level(Level::INFO);
-    /// The "debug" level.
-    ///
-    /// Designates lower priority information.
-    pub const DEBUG: LevelFilter = LevelFilter::from_level(Level::DEBUG);
-    /// The "trace" level.
-    ///
-    /// Designates very low priority, often extremely verbose, information.
-    pub const TRACE: LevelFilter = LevelFilter(Some(Level::TRACE));
-
-    /// Returns a `LevelFilter` that enables spans and events with verbosity up
-    /// to and including `level`.
-    pub const fn from_level(level: Level) -> Self {
-        Self(Some(level))
-    }
-
-    /// Returns the most verbose [`Level`] that this filter accepts, or `None`
-    /// if it is [`OFF`].
-    ///
-    /// [`Level`]: ../struct.Level.html
-    /// [`OFF`]: #associatedconstant.OFF
-    pub const fn into_level(self) -> Option<Level> {
-        self.0
-    }
-}
-
-impl PartialEq<LevelFilter> for Level {
-    fn eq(&self, other: &LevelFilter) -> bool {
-        match other.0 {
-            None => false,
-            Some(ref level) => self.eq(level),
-        }
-    }
-}
-
-impl PartialOrd<LevelFilter> for Level {
-    fn partial_cmp(&self, other: &LevelFilter) -> Option<Ordering> {
-        match other.0 {
-            None => Some(Ordering::Less),
-            Some(ref level) => self.partial_cmp(level),
-        }
-    }
-}
+pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 
 /// The statically configured maximum trace level.
 ///
@@ -157,28 +77,5 @@ cfg_if! {
         const MAX_LEVEL: LevelFilter = LevelFilter::DEBUG;
     } else {
         const MAX_LEVEL: LevelFilter = LevelFilter::TRACE;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn filter_level_conversion() {
-        let mapping = [
-            (LevelFilter::OFF, None),
-            (LevelFilter::ERROR, Some(Level::ERROR)),
-            (LevelFilter::WARN, Some(Level::WARN)),
-            (LevelFilter::INFO, Some(Level::INFO)),
-            (LevelFilter::DEBUG, Some(Level::DEBUG)),
-            (LevelFilter::TRACE, Some(Level::TRACE)),
-        ];
-        for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), *level);
-            if let Some(level) = level {
-                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
-            }
-        }
     }
 }

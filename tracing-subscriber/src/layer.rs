@@ -3,7 +3,7 @@ use tracing_core::{
     metadata::Metadata,
     span,
     subscriber::{Interest, Subscriber},
-    Event,
+    Event, LevelFilter,
 };
 
 #[cfg(feature = "registry")]
@@ -303,6 +303,14 @@ where
     /// `Attributes` and `Id`.
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let _ = (attrs, id, ctx);
+    }
+
+    // TODO(eliza): do we want this to be a public API? If we end up moving
+    // filtering layers to a separate trait, we may no longer want `Layer`s to
+    // be able to participate in max level hinting...
+    #[doc(hidden)]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        None
     }
 
     /// Notifies this layer that a span with the given `Id` recorded the given
@@ -616,6 +624,10 @@ where
             // otherwise, the callsite is disabled by the layer
             false
         }
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        std::cmp::max(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
