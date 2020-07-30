@@ -191,12 +191,6 @@ jobs:
       run: (cd tracing-core && cargo test --no-default-features)
     - name: "Test tracing no-std support"
       run: (cd tracing && cargo test --no-default-features)
-    - name: "Test tracing all features"
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: -p tracing --all-features
-
   style:
     # Check style.
     needs: check
