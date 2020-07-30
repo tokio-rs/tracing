@@ -1,3 +1,4 @@
+// TODO (cfirt): add rotating (01/08/2020)
 //! Writers for logging events and spans
 //!
 //! # Overview
@@ -18,9 +19,11 @@
 //! ```
 //!
 //! This crate can be used in a few ways to record spans/events:
-//!  - Using a [`RollingFileAppender`][rolling_struct] to perform writes to a log file. This will block on writes.
+//!  - Using a [`RollingFileAppender`][rolling_struct] to perform writes to a log file, with time based roll. This will block on writes.
+//!  - Using a [`RotatingFileAppender`][rotating_struct] to perform writes to a log file, with size based rotation. This will block on writes.
 //!  - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
-//!  - Using a combination of [`NonBlocking`][non_blocking] and [`RollingFileAppender`][rolling_struct] to allow writes to a log file
+//!  - Using a combination of [`NonBlocking`][non_blocking] and one of the appenders( [`RollingFileAppender`][rolling_struct] or [`RotatingFileAppender`][rotating_struct])
+//! to allow writes to a log file
 //! without blocking.
 //!
 //! ## Rolling File Appender
@@ -37,6 +40,21 @@
 //! it must be combined with a [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
 //!
 //! The [`rolling` module][rolling]'s documentation provides more detail on how to use this file appender.
+//!
+//! ## Rotating File Appender
+//!
+//! ```rust
+//! # fn docs() {
+//! let file_appender = tracing_appender::rotating::mb_100("/some/directory", "prefix.log");
+//! # }
+//! ```
+//! This creates an rotating file appender that writes to `/some/directory/prefix.log`, with a maximum
+//! size of 100 MB for log file, and with 9 maximum backups log files.
+//!
+//! The file appender implements [`std::io::Write`][write]. To be used with [`tracing_subscriber::FmtSubscriber`][fmt_subscriber],
+//! it must be combined with a [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
+//!
+//! The [`rotating` module][rotating]'s documentation provides more detail on how to use this file appender.
 //!
 //! ## Non-Blocking Writer
 //!
@@ -89,8 +107,11 @@
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
 //! [guard]: ./non_blocking/struct.WorkerGuard.html
 //! [rolling]: ./rolling/index.html
+//! [rotating]: ./rotating/index.html
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 //! [rolling_struct]: ./rolling/struct.RollingFileAppender.html
+//! [rotating_struct]: ./rotating/struct.RotatingFileAppender.html
+
 //! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //!
 //! ## Non-Blocking Rolling File Appender
@@ -140,6 +161,8 @@ mod inner;
 pub mod non_blocking;
 
 pub mod rolling;
+
+pub mod rotating;
 
 mod worker;
 

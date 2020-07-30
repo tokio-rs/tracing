@@ -9,13 +9,13 @@
 //!
 //! The following helpers are available for creating a rolling file appender.
 //!
-//! - [`Rotation::minutely()`][minutely]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH-mm`
+//! - [`rolling::minutely()`][minutely]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH-mm`
 //! will be created minutely (once per minute)
-//! - [`Rotation::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH`
+//! - [`rolling::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH`
 //! will be created hourly
-//! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
+//! - [`rolling::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
 //! will be created daily
-//! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
+//! - [`rolling::never()`][never]: This will result in log file located at `some_directory/log_file_name`
 //!
 //! [minutely]: fn.minutely.html
 //! [hourly]: fn.hourly.html
@@ -30,7 +30,7 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::inner::InnerAppender;
+use crate::inner::InnerRollingAppender;
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
 use std::io;
@@ -54,7 +54,7 @@ use std::path::Path;
 /// ```
 #[derive(Debug)]
 pub struct RollingFileAppender {
-    inner: InnerAppender,
+    inner: InnerRollingAppender,
 }
 
 impl RollingFileAppender {
@@ -91,7 +91,7 @@ impl RollingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
         RollingFileAppender {
-            inner: InnerAppender::new(
+            inner: InnerRollingAppender::new(
                 directory.as_ref(),
                 file_name_prefix.as_ref(),
                 rotation,
