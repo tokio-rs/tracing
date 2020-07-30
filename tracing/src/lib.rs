@@ -893,7 +893,8 @@ pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
-    pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+    pub use crate::callsite::Callsite as _;
+    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{subscriber::Interest, Callsite, Metadata};
     use tracing_core::Once;
 
