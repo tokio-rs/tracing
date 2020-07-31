@@ -905,7 +905,7 @@ pub mod __macro_support {
     /// a *private* API of `tracing`. It is exposed publicly because it is used
     /// by the `tracing` macros, but it is not part of the stable versioned API.
     /// Breaking changes to this module may occur in small-numbered versions
-    /// warnings.
+    /// without warning.
     #[derive(Debug)]
     pub struct MacroCallsite {
         interest: AtomicUsize,
@@ -921,7 +921,7 @@ pub mod __macro_support {
         /// a *private* API of `tracing`. It is exposed publicly because it is used
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
-        /// warnings.
+        /// without warning.
         pub const fn new(meta: &'static Metadata<'static>) -> Self {
             Self {
                 interest: AtomicUsize::new(0),
@@ -939,7 +939,7 @@ pub mod __macro_support {
         /// a *private* API of `tracing`. It is exposed publicly because it is used
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
-        /// warnings.
+        /// without warning.
         #[inline(always)]
         pub fn is_enabled(&self) -> bool {
             let interest = self.interest();
@@ -962,7 +962,7 @@ pub mod __macro_support {
         /// a *private* API of `tracing`. It is exposed publicly because it is used
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
-        /// warnings.
+        /// without warning.
         #[inline(always)]
         pub fn register(&'static self) {
             self.registration
