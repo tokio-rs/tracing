@@ -2358,7 +2358,7 @@ macro_rules! __tracing_log {
         $crate::if_log_enabled! {{
             use $crate::log;
             let level = $crate::level_to_log!(&$level);
-            if level <= log::STATIC_MAX_LEVEL {
+            if level <= log::STATIC_MAX_LEVEL && level <= log::max_level() {
                 let log_meta = log::Metadata::builder()
                     .level(level)
                     .target($target)
