@@ -958,17 +958,6 @@ pub mod __macro_support {
             &self.meta
         }
     }
-
-    #[inline]
-    pub fn dispatch_if_enabled(meta: &Metadata<'_>, f: impl Fn()) {
-        // resolves https://github.com/tokio-rs/tracing/issues/783 by forcing a monomorphization
-        // in tracing, not downstream crates.
-        crate::dispatcher::get_default(|current| {
-            if current.enabled(meta) {
-                f()
-            }
-        })
-    }
 }
 
 mod sealed {
