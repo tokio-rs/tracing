@@ -898,6 +898,14 @@ pub mod __macro_support {
     use crate::{subscriber::Interest, Callsite, Metadata};
     use tracing_core::Once;
 
+    /// Callsite implementation used by macro-generated code.
+    ///
+    /// /!\ WARNING: This is *not* a stable API! /!\
+    /// This type, and all code contained in the `__macro_support` module, is
+    /// a *private* API of `tracing`. It is exposed publicly because it is used
+    /// by the `tracing` macros, but it is not part of the stable versioned API.
+    /// Breaking changes to this module may occur in small-numbered versions
+    /// warnings.
     #[derive(Debug)]
     pub struct MacroCallsite {
         interest: AtomicUsize,
@@ -906,6 +914,14 @@ pub mod __macro_support {
     }
 
     impl MacroCallsite {
+        /// Returns a new `MacroCallsite` with the specified `Metadata`.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// warnings.
         pub const fn new(meta: &'static Metadata<'static>) -> Self {
             Self {
                 interest: AtomicUsize::new(0),
@@ -914,15 +930,16 @@ pub mod __macro_support {
             }
         }
 
-        #[inline(always)]
-        fn interest(&self) -> Interest {
-            match self.interest.load(Ordering::Relaxed) {
-                0 => Interest::never(),
-                2 => Interest::always(),
-                _ => Interest::sometimes(),
-            }
-        }
-
+        /// Returns `true` if the callsite is enabled by a cached interest, or
+        /// by the current `Dispatch`'s `enabled` method if the cached
+        /// `Interest` is `sometimes`.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// warnings.
         #[inline(always)]
         pub fn is_enabled(&self) -> bool {
             let interest = self.interest();
@@ -936,10 +953,29 @@ pub mod __macro_support {
             crate::dispatcher::get_default(|current| current.enabled(self.meta))
         }
 
+        /// Registers this callsite with the global callsite registry.
+        ///
+        /// If the callsite is already registered, this does nothing.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// warnings.
         #[inline(always)]
         pub fn register(&'static self) {
             self.registration
                 .call_once(|| crate::callsite::register(self))
+        }
+
+        #[inline(always)]
+        fn interest(&self) -> Interest {
+            match self.interest.load(Ordering::Relaxed) {
+                0 => Interest::never(),
+                2 => Interest::always(),
+                _ => Interest::sometimes(),
+            }
         }
     }
 
