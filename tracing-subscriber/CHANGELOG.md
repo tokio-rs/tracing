@@ -1,3 +1,24 @@
+# 0.2.10 (July 31, 2020)
+
+### Fixed
+
+- **docs**: Incorrect formatting (#862)
+
+### Changed
+
+- **filter**: `LevelFilter` is now a re-export of the
+  `tracing_core::LevelFilter` type, it can now be used interchangably with the
+  versions in `tracing` and `tracing-core` (#853)
+- **filter**: Significant performance improvements when comparing `LevelFilter`s
+  and `Level`s (#853)
+- Updated the minimum `tracing-core` dependency to 0.1.12 (#853)
+
+### Added
+
+- **filter**: `LevelFilter` and `EnvFilter` now participate in `tracing-core`'s
+  max level hinting, improving performance significantly in some use cases where
+  levels are disabled globally (#853)
+
 # 0.2.9 (July 23, 2020)
 
 ### Fixed
@@ -10,7 +31,7 @@
 - **fmt**: Span lookup methods defined by `layer::Context` are now also provided
   by `FmtContext` (#834)
 
-# 0.2.9 (July 17, 2020)
+# 0.2.8 (July 17, 2020)
 
 ### Changed
 
