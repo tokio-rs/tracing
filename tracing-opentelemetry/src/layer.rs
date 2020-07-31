@@ -33,7 +33,7 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
-        OpenTelemetryLayer::new(api::NoopTracer {}, sdk::Sampler::Always)
+        OpenTelemetryLayer::new(api::NoopTracer {}, sdk::Sampler::AlwaysOn)
     }
 }
 
@@ -240,7 +240,7 @@ where
     /// let provider = sdk::Provider::builder()
     ///     .with_simple_exporter(exporter)
     ///     .with_config(sdk::Config {
-    ///         default_sampler: Box::new(sdk::Sampler::Always),
+    ///         default_sampler: Box::new(sdk::Sampler::AlwaysOn),
     ///         ..Default::default()
     ///     })
     ///     .build();
@@ -299,7 +299,7 @@ where
     /// let provider = sdk::Provider::builder()
     ///     .with_simple_exporter(exporter)
     ///     .with_config(sdk::Config {
-    ///         default_sampler: Box::new(sdk::Sampler::Always),
+    ///         default_sampler: Box::new(sdk::Sampler::AlwaysOn),
     ///         ..Default::default()
     ///     })
     ///     .build();

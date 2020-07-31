@@ -26,7 +26,7 @@ pub trait OpenTelemetrySpanExt {
     /// let mut carrier = HashMap::new();
     ///
     /// // Propagator can be swapped with trace context propagator binary propagator, etc.
-    /// let propagator = api::B3Propagator::new(true);
+    /// let propagator = api::B3Propagator::new();
     ///
     /// // Extract otel parent context via the chosen propagator
     /// let parent_context = propagator.extract(&carrier);
