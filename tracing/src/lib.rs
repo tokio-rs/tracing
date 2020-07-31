@@ -966,7 +966,7 @@ pub mod __macro_support {
         #[inline(always)]
         pub fn register(&'static self) {
             self.registration
-                .call_once(|| crate::callsite::register(self))
+                .call_once(|| crate::callsite::register(self));
         }
 
         #[inline(always)]
