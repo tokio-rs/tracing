@@ -254,7 +254,7 @@ attachment that `Future::instrument` does.
 [tracing-futures-docs]: https://docs.rs/tracing-futures
 [closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[instrument]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/0.1.12/tracing/attr.instrument.html
 
 
 ## Getting Help
