@@ -55,7 +55,7 @@ pub mod subscriber;
 
 pub use event::event;
 pub use field::field;
-pub use span::{anonymous_span, span};
+pub use span::span;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Parent {

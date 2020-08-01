@@ -30,7 +30,7 @@ where
     }
 }
 
-pub fn anonymous_span() -> MockSpan {
+pub fn new() -> MockSpan {
     Default::default()
 }
 
