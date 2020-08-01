@@ -2,8 +2,8 @@
 //!
 //! # Overview
 //!
-//! `tracing-test` offers mock implementations of useful `tracing` types to enable easier unit
-//! testing of `tracing`-based crates.
+//! `tracing-test` offers mock implementations of `tracing` types such as Spans, Events,
+//! and Subscribers. These mocks are intended to be used in testing `tracing`-based crates.
 //!
 //! # Usage
 //!
