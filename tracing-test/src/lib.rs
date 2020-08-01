@@ -16,7 +16,28 @@
 //!
 //! ```rust
 //! # fn docs() {
-//! // TODO
+//! use tracing_test::*;
+//! use tracing::{debug, span, Level};
+//!
+//! let (subscriber, handle) = subscriber::expect()
+//!         .enter(span("foo"))
+//!         .event(
+//!             event().with_fields(field("message").with_value(&tracing::field::debug(
+//!                 format_args!("hello from my event! yak shaved = {:?}", true),
+//!             ))),
+//!         )
+//!         .exit(span("foo"))
+//!         .drop_span(span("foo"))
+//!         .done()
+//!         .run_with_handle();
+//!
+//! tracing::subscriber::with_default(subscriber, || {
+//!     let foo = span!(Level::DEBUG, "foo");
+//!     foo.in_scope(|| {
+//!         debug!("hello from my event! yak shaved = {:?}", true);
+//!     });
+//! });
+//! handle.assert_finished();
 //! # }
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
