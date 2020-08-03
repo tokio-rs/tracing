@@ -178,11 +178,14 @@ fn async_fn_with_async_trait_and_fields_expressions() {
 
     let span = span::mock().named("call");
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span.clone()
-            .with_field(
-                field::mock("v").with_value(&tracing::field::debug(5))
-                .and(field::mock("test").with_value(&tracing::field::debug(10)))
-                .and(field::mock("val").with_value(&42u64))))
+        .new_span(
+            span.clone().with_field(
+                field::mock("v")
+                    .with_value(&tracing::field::debug(5))
+                    .and(field::mock("test").with_value(&tracing::field::debug(10)))
+                    .and(field::mock("val").with_value(&42u64)),
+            ),
+        )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
@@ -233,15 +236,19 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)*/
-        .new_span(span2.clone()
-            .with_field(
-                field::mock("Self").with_value(&std::any::type_name::<TestImpl>())))
+        .new_span(
+            span2
+                .clone()
+                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+        )
         .enter(span2.clone())
         .exit(span2.clone())
         .drop_span(span2)
-        .new_span(span3.clone()
-            .with_field(
-                field::mock("Self").with_value(&std::any::type_name::<TestImpl>())))
+        .new_span(
+            span3
+                .clone()
+                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+        )
         .enter(span3.clone())
         .exit(span3.clone())
         .drop_span(span3)
@@ -249,7 +256,11 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        block_on_future(async { TestImpl::call().await; TestImpl.call_with_self().await; TestImpl.call_with_mut_self().await });
+        block_on_future(async {
+            TestImpl::call().await;
+            TestImpl.call_with_self().await;
+            TestImpl.call_with_mut_self().await
+        });
     });
 
     handle.assert_finished();
