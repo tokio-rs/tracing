@@ -786,7 +786,6 @@
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //! <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
 //! requires <code>liballoc</code>.
-//! </div>
 //! </pre></div>
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
