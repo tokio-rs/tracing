@@ -37,7 +37,7 @@ macro_rules! dbg {
             fields: value,
         };
         let val = $ex;
-        if tracing::is_enabled!(callsite) {
+        if callsite.is_enabled() {
             let meta = callsite.metadata();
             let fields = meta.fields();
             let key = meta
