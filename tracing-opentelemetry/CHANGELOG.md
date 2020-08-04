@@ -3,6 +3,8 @@
 ### Breaking Changes
 
 - Upgrade to `v0.7.0` of `opentelemetry` (#867)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.7.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/master/CHANGELOG.md#v070).
 
 # 0.5.0 (June 2, 2020)
 
