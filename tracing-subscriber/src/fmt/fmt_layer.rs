@@ -587,6 +587,11 @@ where
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
+    fn on_layer(&mut self, &mut S) {
+        // This is where we would register our extension type(s) with the subscriber.
+        // self.key = s.register_extension::<FormattedFields<N>>();
+    }
+
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();

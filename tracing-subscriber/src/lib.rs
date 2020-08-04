@@ -100,6 +100,10 @@ use tracing_core::span::Id;
 #[macro_use]
 mod macros;
 
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+pub mod extensions;
+
 pub mod field;
 pub mod filter;
 pub mod layer;
