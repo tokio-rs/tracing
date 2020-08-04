@@ -1,3 +1,9 @@
+# 0.6.0 (August 4, 2020)
+
+### Breaking Changes
+
+- Upgrade to `v0.7.0` of `opentelemetry` (#867)
+
 # 0.5.0 (June 2, 2020)
 
 ### Added
