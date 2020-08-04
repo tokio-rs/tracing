@@ -131,8 +131,8 @@ where
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
-    /// [event formatter]: ../format/trait.FormatEvent.html
-    /// [`FmtContext`]: ../struct.FmtContext.html
+    /// [`FormatEvent`]: ./format/trait.FormatEvent.html
+    /// [`FmtContext`]: ./struct.FmtContext.html
     /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
     pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
     where
@@ -491,7 +491,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: ../registry/extensions/index.html
+/// [extensions]: ../registry/struct.Extensions.html
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,

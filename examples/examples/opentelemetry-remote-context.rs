@@ -25,7 +25,7 @@ fn main() {
     let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 
     // Propagator can be swapped with trace context propagator binary propagator, etc.
-    let propagator = api::B3Propagator::new(true);
+    let propagator = api::B3Propagator::new();
 
     tracing::subscriber::with_default(subscriber, || {
         // Extract from request headers, or any type that impls `opentelemetry::api::Carrier`

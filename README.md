@@ -42,9 +42,10 @@ idiomatic `tracing`.)
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
-[`tracing-subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
-traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
-consume messages emitted by `log`-instrumented libraries and modules.
+[`tracing-subscriber`][tracing-subscriber-docs]'s [`fmt` module][fmt] provides
+a subscriber for logging traces with reasonable defaults. Additionally,
+`tracing-subscriber` is able to consume messages emitted by `log`-instrumented
+libraries and modules.
 
 To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 
@@ -84,7 +85,7 @@ fn main() {
 }
 ```
 
-[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
+[tracing-subscriber-docs]: https://docs.rs/tracing-subscriber/
 [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
 [`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
 
@@ -132,7 +133,7 @@ use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
-// the function or method. Paramaters passed to the function are recorded as fields.
+// the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -197,8 +198,8 @@ conflicts when executables try to set the default later.
 
 If you are instrumenting code that make use of
 [`std::future::Future`][std-future] or async/await, be sure to use the
-[`tracing-futures`] crate. This is needed because the following example _will
-not_ work:
+[tracing-futures][tracing-futures-docs] crate. This is needed because the
+following example _will not_ work:
 
 ```rust
 async {
@@ -231,7 +232,7 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-The second, and preferred, option is through the [`#[instrument]`] attribute:
+The second, and preferred, option is through the [`#[instrument]`][instrument] attribute:
 
 ```rust
 use tracing::{info, instrument};
@@ -250,10 +251,10 @@ Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[`tracing-futures`]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[tracing-futures-docs]: https://docs.rs/tracing-futures
+[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/0.1.12/tracing/attr.instrument.html
 
 
 ## Getting Help
@@ -325,7 +326,7 @@ The crates included as part of Tracing are:
   Linux `journald` service, preserving structured data.
 
 [`tracing`]: tracing
-[`tracing-core`]: tracing
+[`tracing-core`]: tracing-core
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
@@ -372,6 +373,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
 - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
+- [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses. 
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
 - [`color-eyre`] provides customized panic and eyre report handlers for
@@ -379,6 +381,8 @@ are not maintained by the `tokio` project. These include:
   pretty printing them.
 - [`spandoc`] provides a proc macro for constructing spans from doc comments
   _inside_ of functions.
+- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports 
+  events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -392,10 +396,14 @@ please let us know!)
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
 [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+[`tide-tracing`]: https://crates.io/crates/tide-tracing
+[tide]: https://crates.io/crates/tide
 [bunyan]: https://github.com/trentm/node-bunyan
 [`color-spantrace`]: https://docs.rs/color-spantrace
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
+[`tracing-wasm`]: https://docs.rs/tracing-wasm
+[User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

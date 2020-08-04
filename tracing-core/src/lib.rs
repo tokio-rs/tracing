@@ -49,7 +49,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.11", default-features = false }
+//!   tracing-core = { version = "0.1.12", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -68,7 +68,7 @@
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.11")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
@@ -251,7 +251,7 @@ pub use self::{
     dispatcher::Dispatch,
     event::Event,
     field::Field,
-    metadata::{Level, Metadata},
+    metadata::{Level, LevelFilter, Metadata},
     subscriber::Subscriber,
 };
 
