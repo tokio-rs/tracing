@@ -13,9 +13,9 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-opentelemetry.svg
-[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.3.1
+[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.6.0
 [docs-badge]: https://docs.rs/tracing-opentelemetry/badge.svg
-[docs-url]: https://docs.rs/tracing-opentelemetry/0.3.1/tracing_opentelemetry
+[docs-url]: https://docs.rs/tracing-opentelemetry/0.6.0/tracing_opentelemetry
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_opentelemetry
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
