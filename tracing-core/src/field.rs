@@ -984,4 +984,21 @@ mod test {
         });
         assert_eq!(result, "123".to_owned());
     }
+
+    #[test]
+    fn record_bytes_fn() {
+        let fields = TEST_META_1.fields();
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&(b"1" as &[u8]) as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&(b"2" as &[u8]) as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&(b"3" as &[u8]) as &dyn Value)),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use crate::stdlib::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, "[49][50][51]".to_owned());
+    }
 }
