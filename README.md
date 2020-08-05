@@ -1,6 +1,4 @@
-# Tracing
-
-Application-level tracing for Rust.
+![Tracing](assets/splash.svg)
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
