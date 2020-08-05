@@ -227,9 +227,9 @@ pub trait Visit {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug);
 
     /// Visit an Option
-    fn record_option(&mut self, field: &Field, value: Option<&'static (dyn Value + 'static)>) {
+    fn record_option(&mut self, field: &Field, value: Option<&(dyn Value + 'static)>) {
         if let Some(inner_value) = value {
-            self.record_debug(field, &value)
+            self.record_debug(field, &inner_value)
         } else {
         }
     }
@@ -451,7 +451,7 @@ impl<'a> Value for fmt::Arguments<'a> {
 
 impl<T> Value for Option<T>
 where
-    T: Value,
+    T: Value + 'static,
 {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_option(key, self.as_ref().map(|v| v as &dyn Value))
