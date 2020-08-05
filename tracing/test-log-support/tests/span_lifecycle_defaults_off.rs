@@ -7,7 +7,7 @@ use tracing::Level;
 
 #[test]
 fn span_lifecycle_defaults_off() {
-    let test = Test::with_filters(&[("span_lifecycle_defaults_off", log::LevelFilter::Trace)]);
+    let test = Test::with_filters(&[(module_path!(), log::LevelFilter::Trace)]);
 
     error!(foo = 5);
     test.assert_logged("foo=5");

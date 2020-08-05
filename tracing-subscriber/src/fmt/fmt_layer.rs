@@ -1,7 +1,7 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter},
-    layer::{self, Context},
+    layer::{self, Context, Scope},
     registry::{LookupSpan, SpanRef},
 };
 use format::{FmtSpan, TimingDisplay};
@@ -9,7 +9,7 @@ use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, 
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
-    Event, Subscriber,
+    Event, Metadata, Subscriber,
 };
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
@@ -131,8 +131,8 @@ where
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
-    /// [event formatter]: ../format/trait.FormatEvent.html
-    /// [`FmtContext`]: ../struct.FmtContext.html
+    /// [`FormatEvent`]: ./format/trait.FormatEvent.html
+    /// [`FmtContext`]: ./struct.FmtContext.html
     /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
     pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
     where
@@ -491,7 +491,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: ../registry/extensions/index.html
+/// [extensions]: ../registry/struct.Extensions.html
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
@@ -772,6 +772,67 @@ where
             f(&span)?;
         }
         Ok(())
+    }
+
+    /// Returns metadata for the span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
+    #[inline]
+    pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.metadata(id)
+    }
+
+    /// Returns [stored data] for the span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[inline]
+    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.span(id)
+    }
+
+    /// Returns `true` if an active span exists for the given `Id`.
+    #[inline]
+    pub fn exists(&self, id: &Id) -> bool
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.exists(id)
+    }
+
+    /// Returns [stored data] for the span that the wrapped subscriber considers
+    /// to be the current.
+    ///
+    /// If this returns `None`, then we are not currently within a span.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[inline]
+    pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.lookup_current()
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting the root of the trace tree and ending with
+    /// the current span.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    pub fn scope(&self) -> Scope<'_, S>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.scope()
     }
 }
 

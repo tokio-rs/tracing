@@ -1,17 +1,42 @@
+# 0.1.13 (August 4, 2020)
+
+### Fixed
+
+- Missing `fmt::Display` impl for `field::DisplayValue` causing a compilation
+  failure when the "log" feature is enabled (#887)
+  
+Thanks to @d-e-s-o for contributing to this release!
+
+# 0.1.12 (July 31, 2020)
+
+### Added
+
+- `LevelFilter` type and `LevelFilter::current()` for returning the highest level
+  that any subscriber will enable (#853)
+- `Subscriber::max_level_hint` optional trait method, for setting the value
+  returned by `LevelFilter::current()` (#853)
+  
+### Fixed
+
+- **docs**: Removed outdated reference to a Tokio API that no longer exists
+  (#857)
+
+Thanks to new contributor @dignati for contributing to this release!
+
 # 0.1.11 (June 8, 2020)
 
-## Changed
+### Changed
 
 - Replaced use of `inner_local_macros` with `$crate::` (#729)
 
-## Added
+### Added
 
 - `must_use` warning to guards returned by `dispatcher::set_default` (#686)
 - `fmt::Debug` impl to `dyn Value`s (#696) 
 - Functions to convert between `span::Id` and `NonZeroU64` (#770)
 - More obvious warnings in documentation (#769)
 
-## Fixed
+### Fixed
 
 - Compiler error when `tracing-core/std` feature is enabled but `tracing/std` is
   not (#760)

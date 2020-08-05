@@ -10,6 +10,8 @@ This directory contains a collection of examples that demonstrate the use of the
     `slog-term`'s `Compact` formatter.
 - **tracing-attributes**:
   + `attrs-basic`: A simple example of the `#[instrument]` attribute.
+  + `attrs-literal-field-names`: Demonstrates using literal field names rather
+    than rust tokens..
   + `attrs-args`: An example implementing a simple recursive calculation of
     Fibonacci numbers, to demonstrate how the `#[instrument]` attribute can
     record function arguments.

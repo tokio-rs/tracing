@@ -38,9 +38,10 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
-[`tracing-subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
-traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
-consume messages emitted by `log`-instrumented libraries and modules.
+[`tracing-subscriber`][tracing-subscriber-docs]'s [`fmt` module][fmt] provides
+a subscriber for logging traces with reasonable defaults. Additionally,
+`tracing-subscriber` is able to consume messages emitted by `log`-instrumented
+libraries and modules.
 
 To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 
@@ -75,6 +76,11 @@ fn main() {
 Using `init()` calls [`set_global_default()`] so this subscriber will be used
 as the default in all threads for the remainder of the duration of the
 program, similar to how loggers work in the `log` crate.
+
+[tracing-subscriber-docs]: https://docs.rs/tracing-subscriber/
+[fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+[`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
+
 
 For more control, a subscriber can be built in stages and not set globally,
 but instead used to locally override the default subscriber. For example:
@@ -122,7 +128,7 @@ use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
-// the function or method. Paramaters passed to the function are recorded as fields.
+// the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -242,10 +248,10 @@ Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[`tracing-futures`]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[tracing-futures-docs]: https://docs.rs/tracing-futures
+[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/0.1.13/tracing/attr.instrument.html
 
 
 ## Getting Help
@@ -317,7 +323,7 @@ The crates included as part of Tracing are:
   Linux `journald` service, preserving structured data.
 
 [`tracing`]: tracing
-[`tracing-core`]: tracing
+[`tracing-core`]: tracing-core
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
@@ -363,7 +369,8 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
+- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information.
+- [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
 - [`color-eyre`] provides customized panic and eyre report handlers for
@@ -371,6 +378,8 @@ are not maintained by the `tokio` project. These include:
   pretty printing them.
 - [`spandoc`] provides a proc macro for constructing spans from doc comments
   _inside_ of functions.
+- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
+  events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -384,10 +393,14 @@ please let us know!)
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
 [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+[`tide-tracing`]: https://crates.io/crates/tide-tracing
+[tide]: https://crates.io/crates/tide
 [bunyan]: https://github.com/trentm/node-bunyan
 [`color-spantrace`]: https://docs.rs/color-spantrace
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
+[`tracing-wasm`]: https://docs.rs/tracing-wasm
+[User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -408,10 +421,13 @@ Tracing.
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
+* [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
+[rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
+[rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

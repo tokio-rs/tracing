@@ -381,9 +381,12 @@ pub struct Entered<'a> {
     span: &'a Span,
 }
 
-/// `log` target for span lifecycle (creation/enter/exit/close) records.
+/// `log` target for all span lifecycle (creation/enter/exit/close) records.
 #[cfg(feature = "log")]
 const LIFECYCLE_LOG_TARGET: &str = "tracing::span";
+/// `log` target for span activity (enter/exit) records.
+#[cfg(feature = "log")]
+const ACTIVITY_LOG_TARGET: &str = "tracing::span::active";
 
 // ===== impl Span =====
 
@@ -512,7 +515,7 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            span.log(target, level_to_log!(meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
         }}
 
         span
@@ -716,7 +719,7 @@ impl Span {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.meta {
-                self.log(LIFECYCLE_LOG_TARGET, format_args!("-> {}", meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
             }
         }}
 
@@ -888,7 +891,7 @@ impl Span {
                 } else {
                     meta.target()
                 };
-                self.log(target, format_args!("{}{}", meta.name(), FmtValues(&record)));
+                self.log(target, level_to_log!(meta.level()), format_args!("{}{}", meta.name(), FmtValues(&record)));
             }
         }}
 
@@ -989,34 +992,33 @@ impl Span {
 
     #[cfg(feature = "log")]
     #[inline]
-    fn log(&self, target: &str, message: fmt::Arguments<'_>) {
+    fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
-            let logger = log::logger();
-            let log_meta = log::Metadata::builder()
-                .level(level_to_log!(meta.level()))
-                .target(target)
-                .build();
-            if logger.enabled(&log_meta) {
-                if let Some(ref inner) = self.inner {
-                    logger.log(
-                        &log::Record::builder()
-                            .metadata(log_meta)
-                            .module_path(meta.module_path())
-                            .file(meta.file())
-                            .line(meta.line())
-                            .args(format_args!("{}; span={}", message, inner.id.into_u64()))
-                            .build(),
-                    );
-                } else {
-                    logger.log(
-                        &log::Record::builder()
-                            .metadata(log_meta)
-                            .module_path(meta.module_path())
-                            .file(meta.file())
-                            .line(meta.line())
-                            .args(message)
-                            .build(),
-                    );
+            if level_to_log!(meta.level()) <= log::max_level() {
+                let logger = log::logger();
+                let log_meta = log::Metadata::builder().level(level).target(target).build();
+                if logger.enabled(&log_meta) {
+                    if let Some(ref inner) = self.inner {
+                        logger.log(
+                            &log::Record::builder()
+                                .metadata(log_meta)
+                                .module_path(meta.module_path())
+                                .file(meta.file())
+                                .line(meta.line())
+                                .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                                .build(),
+                        );
+                    } else {
+                        logger.log(
+                            &log::Record::builder()
+                                .metadata(log_meta)
+                                .module_path(meta.module_path())
+                                .file(meta.file())
+                                .line(meta.line())
+                                .args(message)
+                                .build(),
+                        );
+                    }
                 }
             }
         }
@@ -1114,7 +1116,11 @@ impl Drop for Span {
 
         if_log_enabled!({
             if let Some(ref meta) = self.meta {
-                self.log(LIFECYCLE_LOG_TARGET, format_args!("-- {}", meta.name()));
+                self.log(
+                    LIFECYCLE_LOG_TARGET,
+                    log::Level::Trace,
+                    format_args!("-- {}", meta.name()),
+                );
             }
         })
     }
@@ -1195,7 +1201,7 @@ impl<'a> Drop for Entered<'a> {
 
         if_log_enabled! {{
             if let Some(ref meta) = self.span.meta {
-                self.span.log(LIFECYCLE_LOG_TARGET, format_args!("<- {}", meta.name()));
+                self.span.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", meta.name()));
             }
         }}
     }

@@ -287,6 +287,19 @@
 //! # }
 //!```
 //!
+//! Fields with names that are not Rust identifiers, or with names that are Rust reserved words,
+//! may be created using quoted string literals. However, this may not be used with the local
+//! variable shorthand.
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! // records an event with fields whose names are not Rust identifiers
+//! //  - "guid:x-request-id", containing a `:`, with the value "abcdef"
+//! //  - "type", which is a reserved word, with the value "request"
+//! span!(Level::TRACE, "api", "guid:x-request-id" = "abcdef", "type" = "request");
+//! # }
+//!```
+//!
 //! The `?` sigil is shorthand that specifies a field should be recorded using
 //! its [`fmt::Debug`] implementation:
 //! ```
@@ -644,8 +657,12 @@
 //! populated. Additionally, `log` records are also generated when spans are
 //! entered, exited, and closed. Since these additional span lifecycle logs have
 //! the potential to be very verbose, and don't include additional fields, they
-//! are categorized under a separate `log` target, "tracing::span", which may be
-//! enabled or disabled separately from other `log` records emitted by `tracing`.
+//! will always be emitted at the `Trace` level, rather than inheriting the
+//! level of the span that generated them. Furthermore, they are are categorized
+//! under a separate `log` target, "tracing::span" (and its sub-target,
+//! "tracing::span::active", for the logs on entering and exiting a span), which
+//! may be enabled or disabled separately from other `log` records emitted by
+//! `tracing`.
 //!
 //! ### Consuming `log` Records
 //!
@@ -701,6 +718,9 @@
 //!    (Linux-only).
 //!  - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans
 //!    in [bunyan] format, enriched with timing information.
+//!  - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
+//!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
+//!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -716,6 +736,10 @@
 //! [coz]: https://github.com/plasma-umass/coz
 //! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 //! [bunyan]: https://github.com/trentm/node-bunyan
+//! [`tracing-wasm`]: https://docs.rs/tracing-wasm
+//! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
+//! [`tide-tracing`]: https://crates.io/crates/tide-tracing
+//! [tide]: https://crates.io/crates/tide
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
@@ -750,7 +774,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.16", default-features = false }
+//!   tracing = { version = "0.1.18", default-features = false }
 //!   ```
 //!
 //!   *Compiler support: requires rustc 1.39+*
@@ -762,7 +786,6 @@
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //! <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
 //! requires <code>liballoc</code>.
-//! </div>
 //! </pre></div>
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
@@ -794,7 +817,11 @@
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.16")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.18")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
+    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
+)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -865,16 +892,107 @@ pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
-    pub use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
-    pub type Once = tracing_core::Once;
-}
+    pub use crate::callsite::Callsite as _;
+    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+    use crate::{subscriber::Interest, Callsite, Metadata};
+    use tracing_core::Once;
 
-#[doc(hidden)]
-// resolves https://github.com/tokio-rs/tracing/issues/783 by forcing a monomorphization
-// in tracing, not downstream crates.
-#[inline]
-pub fn is_enabled(meta: &crate::Metadata<'_>) -> bool {
-    crate::dispatcher::get_default(|current| current.enabled(meta))
+    /// Callsite implementation used by macro-generated code.
+    ///
+    /// /!\ WARNING: This is *not* a stable API! /!\
+    /// This type, and all code contained in the `__macro_support` module, is
+    /// a *private* API of `tracing`. It is exposed publicly because it is used
+    /// by the `tracing` macros, but it is not part of the stable versioned API.
+    /// Breaking changes to this module may occur in small-numbered versions
+    /// without warning.
+    #[derive(Debug)]
+    pub struct MacroCallsite {
+        interest: AtomicUsize,
+        meta: &'static Metadata<'static>,
+        registration: Once,
+    }
+
+    impl MacroCallsite {
+        /// Returns a new `MacroCallsite` with the specified `Metadata`.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// without warning.
+        pub const fn new(meta: &'static Metadata<'static>) -> Self {
+            Self {
+                interest: AtomicUsize::new(0),
+                meta,
+                registration: Once::new(),
+            }
+        }
+
+        /// Returns `true` if the callsite is enabled by a cached interest, or
+        /// by the current `Dispatch`'s `enabled` method if the cached
+        /// `Interest` is `sometimes`.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// without warning.
+        #[inline(always)]
+        pub fn is_enabled(&self) -> bool {
+            let interest = self.interest();
+            if interest.is_always() {
+                return true;
+            }
+            if interest.is_never() {
+                return false;
+            }
+
+            crate::dispatcher::get_default(|current| current.enabled(self.meta))
+        }
+
+        /// Registers this callsite with the global callsite registry.
+        ///
+        /// If the callsite is already registered, this does nothing.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// without warning.
+        #[inline(always)]
+        pub fn register(&'static self) {
+            self.registration
+                .call_once(|| crate::callsite::register(self));
+        }
+
+        #[inline(always)]
+        fn interest(&self) -> Interest {
+            match self.interest.load(Ordering::Relaxed) {
+                0 => Interest::never(),
+                2 => Interest::always(),
+                _ => Interest::sometimes(),
+            }
+        }
+    }
+
+    impl Callsite for MacroCallsite {
+        fn set_interest(&self, interest: Interest) {
+            let interest = match () {
+                _ if interest.is_never() => 0,
+                _ if interest.is_always() => 2,
+                _ => 1,
+            };
+            self.interest.store(interest, Ordering::SeqCst);
+        }
+
+        #[inline(always)]
+        fn metadata(&self) -> &Metadata<'static> {
+            &self.meta
+        }
+    }
 }
 
 mod sealed {

@@ -19,6 +19,25 @@
 //! Setting this field is useful if you want to display non-static information
 //! in your span name.
 //!
+//! ### Semantic Conventions
+//!
+//! OpenTelemetry defines conventional names for attributes of common
+//! operations. These names can be assigned directly as fields, e.g.
+//! `trace_span!("request", "span.kind" = "client", "http.url" = ..)`, and they
+//! will be passed through to your configured OpenTelemetry exporter. You can
+//! find the full list of the operations and their expected field names in the
+//! [semantic conventions] spec.
+//!
+//! [semantic conventions]: https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/trace/semantic_conventions
+//!
+//! ### Stability Status
+//!
+//! The OpenTelemetry specification is currently in beta so some breaking
+//! may still occur on the path to 1.0. You can follow the changes via the
+//! [spec repository] to track progress toward stabilization.
+//!
+//! [spec repository]: (https://github.com/open-telemetry/opentelemetry-specification)
+//!
 //! ## Examples
 //!
 //! ```
@@ -46,6 +65,11 @@
 //! ```
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.6.0")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
+    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
+)]
 
 /// Implementation of the trace::Layer as a source of OpenTelemetry data.
 mod layer;

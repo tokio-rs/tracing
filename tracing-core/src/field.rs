@@ -495,6 +495,12 @@ impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
     }
 }
 
+impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 // ===== impl DebugValue =====
 
 impl<T: fmt::Debug> crate::sealed::Sealed for DebugValue<T> {}
