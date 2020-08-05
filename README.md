@@ -372,8 +372,8 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
-- [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses. 
+- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information.
+- [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
 - [`color-eyre`] provides customized panic and eyre report handlers for
@@ -381,7 +381,7 @@ are not maintained by the `tokio` project. These include:
   pretty printing them.
 - [`spandoc`] provides a proc macro for constructing spans from doc comments
   _inside_ of functions.
-- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports 
+- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
@@ -424,10 +424,13 @@ Tracing.
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
+* [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
+[rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
+[rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.
