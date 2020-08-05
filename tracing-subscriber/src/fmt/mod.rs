@@ -130,7 +130,7 @@ pub mod time;
 pub mod writer;
 #[allow(deprecated)]
 pub use fmt_layer::LayerBuilder;
-pub use fmt_layer::{FmtContext, FormattedFields, Layer};
+pub use fmt_layer::{FormattedFields, Layer};
 
 use crate::layer::Layer as _;
 use crate::{

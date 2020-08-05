@@ -694,6 +694,7 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
 struct FmtCtx<'a, S, N> {
     ctx: &'a Context<'a, S>,
     span: Option<&'a span::Id>,
+    fields: &'a N,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
@@ -705,16 +706,26 @@ where
 {
     #[cfg(feature = "ansi")]
     pub(crate) fn new(
-        ctx: &'a FmtContext<'_, S, N>,
+        ctx: &'a Context<'_, S>,
         span: Option<&'a span::Id>,
+        fields: &'a N,
         ansi: bool,
     ) -> Self {
-        Self { ctx, ansi, span }
+        Self {
+            ctx,
+            ansi,
+            span,
+            fields,
+        }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
+    pub(crate) fn new(
+        ctx: &'a FmtContext<'_, S, N>,
+        span: Option<&'a span::Id>,
+        fields: &'a N,
+    ) -> Self {
+        Self { ctx, span, fields }
     }
 
     fn bold(&self) -> Style {
@@ -764,11 +775,11 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    ctx: &'a Context<'a, S, N>,
+    ctx: &'a Context<'a, S>,
     span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
-    fields: N,
+    fields: &'a N,
 }
 
 impl<'a, S, N: 'a> FullCtx<'a, S, N>
@@ -778,16 +789,22 @@ where
 {
     #[cfg(feature = "ansi")]
     pub(crate) fn new(
-        ctx: &'a FmtContext<'a, S, N>,
+        ctx: &'a Context<'a, S>,
         span: Option<&'a span::Id>,
+        fields: &'a N,
         ansi: bool,
     ) -> Self {
-        Self { ctx, span, ansi }
+        Self {
+            ctx,
+            span,
+            ansi,
+            fields,
+        }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
+    pub(crate) fn new(ctx: &'a Context<'a, S>, span: Option<&'a span::Id>, fields: &'a N) -> Self {
+        Self { ctx, span, fields }
     }
 
     fn bold(&self) -> Style {
