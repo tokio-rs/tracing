@@ -13,6 +13,7 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
 static SPAN_NAME_FIELD: &str = "otel.name";
+static SPAN_KIND_FIELD: &str = "otel.kind";
 
 /// An [OpenTelemetry] propagation layer for use in a project that uses
 /// [tracing].
@@ -133,6 +134,22 @@ pub(crate) fn build_span_context(
     api::SpanContext::new(trace_id, span_id, trace_flags, false)
 }
 
+fn str_to_span_kind(s: &str) -> Option<api::SpanKind> {
+    if s.eq_ignore_ascii_case("SERVER") {
+        Some(api::SpanKind::Server)
+    } else if s.eq_ignore_ascii_case("CLIENT") {
+        Some(api::SpanKind::Client)
+    } else if s.eq_ignore_ascii_case("PRODUCER") {
+        Some(api::SpanKind::Producer)
+    } else if s.eq_ignore_ascii_case("CONSUMER") {
+        Some(api::SpanKind::Consumer)
+    } else if s.eq_ignore_ascii_case("INTERNAL") {
+        Some(api::SpanKind::Internal)
+    } else {
+        None
+    }
+}
+
 struct SpanEventVisitor<'a>(&'a mut api::Event);
 
 impl<'a> field::Visit for SpanEventVisitor<'a> {
@@ -179,6 +196,8 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     fn record_str(&mut self, field: &field::Field, value: &str) {
         if field.name() == SPAN_NAME_FIELD {
             self.0.name = value.to_string();
+        } else if field.name() == SPAN_KIND_FIELD {
+            self.0.span_kind = str_to_span_kind(value);
         } else {
             let attribute = api::KeyValue::new(field.name(), value);
             if let Some(attributes) = &mut self.0.attributes {
@@ -196,6 +215,8 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         if field.name() == SPAN_NAME_FIELD {
             self.0.name = format!("{:?}", value);
+        } else if field.name() == SPAN_KIND_FIELD {
+            self.0.span_kind = str_to_span_kind(&format!("{:?}", value));
         } else {
             let attribute = api::Key::new(field.name()).string(format!("{:?}", value));
             if let Some(attributes) = &mut self.0.attributes {
@@ -593,5 +614,18 @@ mod tests {
 
         let recorded_name = tracer.0.lock().unwrap().as_ref().map(|b| b.name.clone());
         assert_eq!(recorded_name, Some(dynamic_name))
+    }
+
+    #[test]
+    fn span_kind() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.kind = "Server");
+        });
+
+        let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
+        assert_eq!(recorded_kind, Some(api::SpanKind::Server))
     }
 }
