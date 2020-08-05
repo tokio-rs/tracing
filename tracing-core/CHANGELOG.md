@@ -1,3 +1,12 @@
+# 0.1.13 (August 4, 2020)
+
+### Fixed
+
+- Missing `fmt::Display` impl for `field::DisplayValue` causing a compilation
+  failure when the "log" feature is enabled (#887)
+  
+Thanks to @d-e-s-o for contributing to this release!
+
 # 0.1.12 (July 31, 2020)
 
 ### Added
