@@ -1,7 +1,8 @@
 use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::{RecordFields, VisitOutput},
-    fmt::fmt_layer::{FmtContext, FormattedFields},
+    fmt::fmt_layer::FormattedFields,
+    layer::Context,
     registry::LookupSpan,
 };
 use serde::ser::{SerializeMap, Serializer as _};
@@ -183,7 +184,7 @@ where
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &Context<'_, S>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result
@@ -212,16 +213,14 @@ where
 
             let current_span = if self.format.display_current_span || self.format.display_span_list
             {
-                ctx.ctx.current_span().id().and_then(|id| ctx.ctx.span(id))
+                ctx.ctx.current_span().id().and_then(|id| ctx.span(id))
             } else {
                 None
             };
 
             if self.format.display_span_list && current_span.is_some() {
-                serializer.serialize_entry(
-                    "spans",
-                    &SerializableContext(&ctx.ctx, format_field_marker),
-                )?;
+                serializer
+                    .serialize_entry("spans", &SerializableContext(&ctx, format_field_marker))?;
             }
 
             if self.format.display_current_span {

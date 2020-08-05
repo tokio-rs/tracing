@@ -2,7 +2,6 @@
 use super::time::{self, FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    fmt::fmt_layer::FmtContext,
     fmt::fmt_layer::FormattedFields,
     layer::Context,
     registry::{Extensions, ExtensionsMut, LookupSpan},
@@ -395,7 +394,7 @@ where
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &Context<'_, S>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -470,7 +469,7 @@ where
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &Context<'_, S>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -693,7 +692,7 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
 }
 
 struct FmtCtx<'a, S, N> {
-    ctx: &'a FmtContext<'a, S, N>,
+    ctx: &'a Context<'a, S>,
     span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
@@ -765,10 +764,11 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    ctx: &'a FmtContext<'a, S, N>,
+    ctx: &'a Context<'a, S, N>,
     span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
+    fields: N,
 }
 
 impl<'a, S, N: 'a> FullCtx<'a, S, N>

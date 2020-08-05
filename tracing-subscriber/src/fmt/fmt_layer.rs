@@ -467,22 +467,6 @@ impl<S> Default for Layer<S> {
     }
 }
 
-impl<S, N, E, W> Layer<S, N, E, W>
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
-{
-    #[inline]
-    fn make_ctx<'a>(&'a self, ctx: Context<'a, S>) -> FmtContext<'a, S, N> {
-        FmtContext {
-            ctx,
-            fmt_fields: &self.fmt_fields,
-        }
-    }
-}
-
 /// A formatted representation of a span's fields stored in its [extensions].
 ///
 /// Because `FormattedFields` is generic over the type of the formatter that
@@ -702,7 +686,7 @@ where
                 }
             };
 
-            let ctx = self.make_ctx(ctx);
+            // let ctx = self.make_ctx(ctx);
             if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
                 let mut writer = self.make_writer.make_writer();
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
@@ -726,116 +710,6 @@ where
         }
     }
 }
-
-/// Provides the current span context to a formatter.
-pub struct FmtContext<'a, S, N> {
-    pub(crate) ctx: Context<'a, S>,
-    pub(crate) fmt_fields: &'a N,
-}
-
-impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FmtContext").finish()
-    }
-}
-
-impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn format_fields<R: RecordFields>(
-        &self,
-        writer: &'a mut dyn fmt::Write,
-        fields: R,
-    ) -> fmt::Result {
-        self.fmt_fields.format_fields(writer, fields)
-    }
-}
-
-impl<'a, S, N> FmtContext<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    /// Visits every span in the current context with a closure.
-    ///
-    /// The provided closure will be called first with the current span,
-    /// and then with that span's parent, and then that span's parent,
-    /// and so on until a root span is reached.
-    pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
-    where
-        F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
-    {
-        // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
-        }
-        Ok(())
-    }
-
-    /// Returns metadata for the span with the given `id`, if it exists.
-    ///
-    /// If this returns `None`, then no span exists for that ID (either it has
-    /// closed or the ID is invalid).
-    #[inline]
-    pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.metadata(id)
-    }
-
-    /// Returns [stored data] for the span with the given `id`, if it exists.
-    ///
-    /// If this returns `None`, then no span exists for that ID (either it has
-    /// closed or the ID is invalid).
-    ///
-    /// [stored data]: ../registry/struct.SpanRef.html
-    #[inline]
-    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.span(id)
-    }
-
-    /// Returns `true` if an active span exists for the given `Id`.
-    #[inline]
-    pub fn exists(&self, id: &Id) -> bool
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.exists(id)
-    }
-
-    /// Returns [stored data] for the span that the wrapped subscriber considers
-    /// to be the current.
-    ///
-    /// If this returns `None`, then we are not currently within a span.
-    ///
-    /// [stored data]: ../registry/struct.SpanRef.html
-    #[inline]
-    pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.lookup_current()
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// [stored data]: ../registry/struct.SpanRef.html
-    pub fn scope(&self) -> Scope<'_, S>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.scope()
-    }
-}
-
 struct Timings {
     idle: u64,
     busy: u64,
