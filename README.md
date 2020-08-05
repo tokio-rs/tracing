@@ -1,4 +1,4 @@
-<img src ="assets/splash.svg", width = "100%" />
+<img src="assets/splash.svg", width="100%">
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
