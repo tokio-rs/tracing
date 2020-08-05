@@ -176,8 +176,8 @@ use syn::{
 /// ```
 ///
 /// It also works with [async-trait](https://crates.io/crates/async-trait)
-/// (a crate that allows async functions on traits,
-/// something not currently possible with rustc alone),
+/// (a crate that allows to define async functions in traits,
+/// something not currently possible in Rust),
 /// and hopefully most libraries that exhibit similar behaviors:
 ///
 /// ```
@@ -186,18 +186,43 @@ use syn::{
 ///
 /// #[async_trait]
 /// pub trait Foo {
-///     async fn foo(&self, v: usize) -> ();
+///     async fn foo(&self, arg: usize);
 /// }
 ///
 /// #[derive(Debug)]
-/// struct FooImpl;
+/// struct FooImpl(usize);
 ///
 /// #[async_trait]
 /// impl Foo for FooImpl {
-///     #[instrument(skip(self))]
-///     async fn foo(&self, v: usize) {}
+///     #[instrument(fields(value=self.0, tmp=std::any::type_name::<Self>()))]
+///     async fn foo(&self, arg: usize) {}
 /// }
 /// ```
+///
+/// An interesting note on this subject is that references to the `Self`
+/// type inside the `fields` argument are only allowed when the instrumented
+/// function is a method aka. the function receives `self` as an argument.
+/// For example, this *will not work* because it doesn't receive `self`:
+/// ```compile_fail
+/// # use tracing::instrument;
+/// use async_trait::async_trait;
+///
+/// #[async_trait]
+/// pub trait Bar {
+///     async fn bar();
+/// }
+///
+/// #[derive(Debug)]
+/// struct BarImpl(usize);
+///
+/// #[async_trait]
+/// impl Bar for BarImpl {
+///     #[instrument(fields(tmp=std::any::type_name::<Self>()))]
+///     async fn bar() {}
+/// }
+/// ```
+/// Instead, you should rewrite manually `Self` as the type of the object for
+/// which you implement the trait: `#[instrument(fields(tmp=std::any::type_name::<Bar>()))]`.
 
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
