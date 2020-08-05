@@ -1,7 +1,4 @@
-<h1 style="color:#a674e5;font-size:1.8rem;font-weight:600;line-height:1.125;text-align:left;font-family:Roboto,sans-serif;">
-    <img src="https://tokio.rs/img/icons/tracing.svg" alt="Tracing" />
-    Tracing
-</h1>
+# Tracing
 
 Application-level tracing for Rust.
 
