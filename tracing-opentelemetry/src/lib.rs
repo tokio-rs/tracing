@@ -29,7 +29,7 @@
 //!
 //! OpenTelemetry defines conventional names for attributes of common
 //! operations. These names can be assigned directly as fields, e.g.
-//! `trace_span!("request", "otel.kind" = "CLIENT", "http.url" = ..)`, and they
+//! `trace_span!("request", "otel.kind" = "client", "http.url" = ..)`, and they
 //! will be passed through to your configured OpenTelemetry exporter. You can
 //! find the full list of the operations and their expected field names in the
 //! [semantic conventions] spec.

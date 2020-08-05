@@ -135,13 +135,18 @@ pub(crate) fn build_span_context(
 }
 
 fn str_to_span_kind(s: &str) -> Option<api::SpanKind> {
-    match s {
-        "SERVER" => Some(api::SpanKind::Server),
-        "CLIENT" => Some(api::SpanKind::Client),
-        "PRODUCER" => Some(api::SpanKind::Producer),
-        "CONSUMER" => Some(api::SpanKind::Consumer),
-        "INTERNAL" => Some(api::SpanKind::Internal),
-        _ => None,
+    if s.eq_ignore_ascii_case("SERVER") {
+        Some(api::SpanKind::Server)
+    } else if s.eq_ignore_ascii_case("CLIENT") {
+        Some(api::SpanKind::Client)
+    } else if s.eq_ignore_ascii_case("PRODUCER") {
+        Some(api::SpanKind::Producer)
+    } else if s.eq_ignore_ascii_case("CONSUMER") {
+        Some(api::SpanKind::Consumer)
+    } else if s.eq_ignore_ascii_case("INTERNAL") {
+        Some(api::SpanKind::Internal)
+    } else {
+        None
     }
 }
 
@@ -617,7 +622,7 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = "SERVER");
+            tracing::debug_span!("request", otel.kind = "Server");
         });
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
