@@ -456,7 +456,7 @@ where
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
-        ctx.format_fields(writer, event)?;
+        self.fields.format_fields(writer, event)?;
         writeln!(writer)
     }
 }
