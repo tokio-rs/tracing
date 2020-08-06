@@ -186,7 +186,7 @@ pub fn shave_all(yaks: usize) -> usize {
 tracing = "0.1"
 ```
 
-Note: Libraries should *NOT* install a subscriber by using a method than calls
+Note: Libraries should *NOT* install a subscriber by using a method that calls
 [`set_global_default()`], as this will cause conflicts when executables try to
 set the default later.
 
