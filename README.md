@@ -1,6 +1,4 @@
-<img
-src="https://github.com/tokio-rs/tracing/blob/eliza/readme-v2/assets/splash.svg"
-width="100%">
+![Tracing — Structured, application-level diagnostics](assets/splash.svg)
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
