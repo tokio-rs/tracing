@@ -1,4 +1,4 @@
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::{fs, io};
 
 use crate::rolling::Rotation as Roll;
@@ -7,7 +7,48 @@ use crate::rotating::Rotation;
 use chrono::prelude::*;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
+use std::marker::PhantomData;
 use std::path::Path;
+
+pub(crate) trait InnerAppenderTrait<R>: io::Write
+where
+    Self: Sized,
+{
+    fn new(rotation: R, log_directory: &Path, log_filename_prefix: &Path) -> io::Result<Self>;
+
+    fn refresh_writer(&mut self, size: &usize);
+}
+
+#[derive(Debug)]
+pub(crate) struct InnerAppenderWrapper<R, T: InnerAppenderTrait<R>> {
+    appender: T,
+    phantom: PhantomData<R>,
+}
+impl<R, T: InnerAppenderTrait<R>> InnerAppenderWrapper<R, T> {
+    pub(crate) fn new(
+        rotation: R,
+        log_directory: &Path,
+        log_filename_prefix: &Path,
+    ) -> io::Result<Self> {
+        let appender = T::new(rotation, log_directory, log_filename_prefix)?;
+        Ok(Self {
+            appender,
+            phantom: PhantomData,
+        })
+    }
+}
+
+impl<R, T: InnerAppenderTrait<R>> io::Write for InnerAppenderWrapper<R, T> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let buf_len = buf.len();
+        self.appender.refresh_writer(&buf_len);
+        self.appender.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.appender.flush()
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct InnerRollingAppender {
@@ -20,22 +61,17 @@ pub(crate) struct InnerRollingAppender {
 
 impl io::Write for InnerRollingAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let now = Utc::now();
-        self.write_timestamped(buf, now)
+        let buf_len = buf.len();
+        self.writer.write_all(buf).map(|_| buf_len)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         self.writer.flush()
     }
 }
-
-impl InnerRollingAppender {
-    pub(crate) fn new(
-        log_directory: &Path,
-        log_filename_prefix: &Path,
-        roll: Roll,
-        now: DateTime<Utc>,
-    ) -> io::Result<Self> {
+impl InnerAppenderTrait<Roll> for InnerRollingAppender {
+    fn new(roll: Roll, log_directory: &Path, log_filename_prefix: &Path) -> io::Result<Self> {
+        let now = Utc::now();
         let log_directory = log_directory.to_str().unwrap();
         let log_filename_prefix = log_filename_prefix.to_str().unwrap();
 
@@ -51,15 +87,9 @@ impl InnerRollingAppender {
         })
     }
 
-    fn write_timestamped(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
-        // Even if refresh_writer fails, we still have the original writer. Ignore errors
-        // and proceed with the write.
-        let buf_len = buf.len();
-        self.refresh_writer(date);
-        self.writer.write_all(buf).map(|_| buf_len)
-    }
+    fn refresh_writer(&mut self, _size: &usize) {
+        let now = Utc::now();
 
-    fn refresh_writer(&mut self, now: DateTime<Utc>) {
         if self.should_rollover(now) {
             let filename = self.roll.join_date(&self.log_filename_prefix, &now);
 
@@ -71,7 +101,9 @@ impl InnerRollingAppender {
             }
         }
     }
+}
 
+impl InnerRollingAppender {
     fn should_rollover(&self, date: DateTime<Utc>) -> bool {
         date >= self.next_date
     }
@@ -90,7 +122,6 @@ pub(crate) struct InnerRotatingAppender {
 impl io::Write for InnerRotatingAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let buf_len = buf.len();
-        self.refresh_writer(&buf_len);
         self.writer.write_all(buf).map(|_| buf_len)
     }
 
@@ -99,8 +130,8 @@ impl io::Write for InnerRotatingAppender {
     }
 }
 
-impl InnerRotatingAppender {
-    pub(crate) fn new(
+impl InnerAppenderTrait<Rotation> for InnerRotatingAppender {
+    fn new(
         rotation: Rotation,
         log_directory: &Path,
         log_filename_prefix: &Path,
@@ -118,6 +149,7 @@ impl InnerRotatingAppender {
             rotation,
         })
     }
+
     fn refresh_writer(&mut self, size: &usize) {
         if self.rotation.should_rollover(self.current_size + size) {
             self.current_size = 0;
@@ -132,6 +164,9 @@ impl InnerRotatingAppender {
         }
         self.current_size += size;
     }
+}
+
+impl InnerRotatingAppender {
     fn rotate_files(&self) {
         for x in (1..=self.last_backup).rev() {
             let from = self.rotation.join_backup(&self.log_filename_prefix, x - 1);
@@ -141,6 +176,7 @@ impl InnerRotatingAppender {
             }
         }
     }
+
     fn find_last_backup(
         rotation: &Rotation,
         log_directory: &str,
@@ -158,6 +194,7 @@ impl InnerRotatingAppender {
         last_backup
     }
 }
+
 fn create_writer(directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
     let file_path = Path::new(directory).join(filename);
     Ok(BufWriter::new(open_file_create_parent_dirs(&file_path)?))
@@ -177,6 +214,7 @@ fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
 
     new_file
 }
+
 fn get_file_size(directory: &str, filename: &str) -> io::Result<usize> {
     let file_path = Path::new(directory).join(filename);
     if file_path.exists() {
@@ -185,6 +223,7 @@ fn get_file_size(directory: &str, filename: &str) -> io::Result<usize> {
         Ok(0)
     }
 }
+
 fn file_exist(directory: &str, filename: &str) -> bool {
     let file_path = Path::new(directory).join(filename);
     file_path.as_path().exists()

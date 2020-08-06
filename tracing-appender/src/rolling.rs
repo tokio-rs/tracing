@@ -30,7 +30,7 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::inner::InnerRollingAppender;
+use crate::inner::{InnerAppenderWrapper, InnerRollingAppender};
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use std::fmt::Debug;
 use std::io;
@@ -54,7 +54,7 @@ use std::path::Path;
 /// ```
 #[derive(Debug)]
 pub struct RollingFileAppender {
-    inner: InnerRollingAppender,
+    inner: InnerAppenderWrapper<Rotation, InnerRollingAppender>,
 }
 
 impl RollingFileAppender {
@@ -91,11 +91,10 @@ impl RollingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
         RollingFileAppender {
-            inner: InnerRollingAppender::new(
+            inner: InnerAppenderWrapper::new(
+                rotation,
                 directory.as_ref(),
                 file_name_prefix.as_ref(),
-                rotation,
-                Utc::now(),
             )
             .expect("Failed to create appender"),
         }

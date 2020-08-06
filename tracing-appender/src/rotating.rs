@@ -24,7 +24,7 @@
 //! let file_appender = RotatingFileAppender::new(Rotation::mb_100(), "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::inner::InnerRotatingAppender;
+use crate::inner::{InnerAppenderWrapper, InnerRotatingAppender};
 use std::io;
 use std::path::Path;
 
@@ -46,7 +46,7 @@ use std::path::Path;
 /// ```
 #[derive(Debug)]
 pub struct RotatingFileAppender {
-    inner: InnerRotatingAppender,
+    inner: InnerAppenderWrapper<Rotation, InnerRotatingAppender>,
 }
 
 impl RotatingFileAppender {
@@ -78,7 +78,7 @@ impl RotatingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RotatingFileAppender {
         RotatingFileAppender {
-            inner: InnerRotatingAppender::new(
+            inner: InnerAppenderWrapper::new(
                 rotation,
                 directory.as_ref(),
                 file_name_prefix.as_ref(),
@@ -231,18 +231,22 @@ impl Rotation {
             max_backups,
         }
     }
+
     pub(crate) fn should_rollover(&self, size: usize) -> bool {
         size > self.max_bytes && self.max_bytes != 0
     }
+
     pub(crate) fn is_create_backup(&self, last_backup: usize) -> bool {
         last_backup < self.max_backups
     }
+
     pub(crate) fn join_backup(&self, filename: &str, backup_index: usize) -> String {
         match backup_index {
             0 => filename.to_string(),
             _ => format!("{}.{}", filename, self.backup_index_to_str(backup_index)),
         }
     }
+
     fn backup_index_to_str(&self, backup_index: usize) -> String {
         let backup_index_str = backup_index.to_string();
         let backup_index_len = backup_index_str.len();
@@ -296,6 +300,7 @@ mod test {
             .close()
             .expect("Failed to explicitly close TempDir. TempDir should delete once out of scope.")
     }
+
     #[test]
     fn rotating_write() {
         let r = Rotation::new(10, 2);
@@ -326,6 +331,7 @@ mod test {
         );
         assert_eq!(directory.path().join("rotating.log.3").exists(), false);
     }
+
     #[test]
     fn rotating_double_write() {
         let directory = TempDir::new("rotating").expect("Failed to create tempdir");
@@ -360,6 +366,7 @@ mod test {
         );
         assert_eq!(directory.path().join("rotating.log.3").exists(), false);
     }
+
     #[test]
     fn write_mb_100_log() {
         test_appender(
@@ -400,6 +407,7 @@ mod test {
         let r = Rotation::new(0, 0);
         assert_eq!(r.is_create_backup(999), false);
     }
+
     #[test]
     fn test_join_backup() {
         let r = Rotation::new(0, 999);
