@@ -725,4 +725,20 @@ mod tests {
             state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
     }
+
+    #[test]
+    fn close_with_no_layers() {
+        let d1 = dispatcher::Dispatch::new(Registry::default());
+        let _default = dispatcher::set_default(&d1);
+
+        let d2 = dispatcher::Dispatch::new(Registry::default());
+        dispatcher::with_default(&d2, || {
+            let span1 = tracing::info_span!("1");
+            let span2 = tracing::info_span!(parent: &span1, "2");
+            let _span3 = tracing::info_span!(parent: &span2, "3");
+        });
+
+        drop(d2);
+        drop(d1);
+    }
 }
