@@ -183,7 +183,9 @@ impl Subscriber for Registry {
             extensions: RwLock::new(ExtensionsInner::new()),
         };
         let id = self.insert(s).expect("Unable to allocate another span");
-        idx_to_id(id)
+        let id = idx_to_id(id);
+        println!("{:p}: new id {:?}", self, id);
+        id
     }
 
     /// This is intentionally not implemented, as recording fields
@@ -198,18 +200,21 @@ impl Subscriber for Registry {
     fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
+        println!("{:p}: enter {:?}", self, id);
         CURRENT_SPANS.with(|spans| {
             spans.borrow_mut().push(self.clone_span(id));
         })
     }
 
     fn exit(&self, id: &span::Id) {
+        println!("{:p}: exit {:?}", self, id);
         if let Some(id) = CURRENT_SPANS.with(|spans| spans.borrow_mut().pop(id)) {
             dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
         }
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
+        println!("{:p}: clone {:?}", self, id);
         let span = self
             .get(&id)
             .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
@@ -224,10 +229,12 @@ impl Subscriber for Registry {
     }
 
     fn current_span(&self) -> Current {
+        println!("{:p}: current", self);
         CURRENT_SPANS
             .with(|spans| {
                 let spans = spans.borrow();
                 let id = spans.current()?;
+                println!("{:p}: -> {:?}", self, id);
                 let span = self.get(id)?;
                 Some(Current::new(id.clone(), span.metadata))
             })
@@ -239,6 +246,7 @@ impl Subscriber for Registry {
     ///
     /// The allocated span slot will be reused when a new span is created.
     fn try_close(&self, id: span::Id) -> bool {
+        println!("{:p}: try_close {:?}", self, id);
         let span = match self.get(&id) {
             Some(span) => span,
             None if std::thread::panicking() => return false,

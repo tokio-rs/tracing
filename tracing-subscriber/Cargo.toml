@@ -61,6 +61,8 @@ log = "0.4"
 tracing-log = { path = "../tracing-log", version = "0.1" }
 criterion = { version = "0.3", default_features = false }
 regex = "1"
+tracing-futures = { path = "../tracing-futures", version ="0.2", default-features = false, features = ["std-future", "std"] }
+tokio = { version = "0.2", features = ["rt-core", "macros"]}
 
 [badges]
 maintenance = { status = "experimental" }
