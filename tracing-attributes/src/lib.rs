@@ -176,7 +176,7 @@ use syn::{
 /// ```
 ///
 /// It also works with [async-trait](https://crates.io/crates/async-trait)
-/// (a crate that allows to define async functions in traits,
+/// (a crate that allows defining async functions in traits,
 /// something not currently possible in Rust),
 /// and hopefully most libraries that exhibit similar behaviors:
 ///
@@ -194,7 +194,7 @@ use syn::{
 ///
 /// #[async_trait]
 /// impl Foo for FooImpl {
-///     #[instrument(fields(value=self.0, tmp=std::any::type_name::<Self>()))]
+///     #[instrument(fields(value = self.0, tmp = std::any::type_name::<Self>()))]
 ///     async fn foo(&self, arg: usize) {}
 /// }
 /// ```
@@ -217,12 +217,12 @@ use syn::{
 ///
 /// #[async_trait]
 /// impl Bar for BarImpl {
-///     #[instrument(fields(tmp=std::any::type_name::<Self>()))]
+///     #[instrument(fields(tmp = std::any::type_name::<Self>()))]
 ///     async fn bar() {}
 /// }
 /// ```
-/// Instead, you should rewrite manually `Self` as the type of the object for
-/// which you implement the trait: `#[instrument(fields(tmp=std::any::type_name::<Bar>()))]`.
+/// Instead, you should manually rewrite any `Self` types as the type for
+/// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`.
 
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
