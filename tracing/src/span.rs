@@ -1111,6 +1111,7 @@ impl Drop for Span {
             ref subscriber,
         }) = self.inner
         {
+            let _guard = crate::dispatcher::set_default(subscriber);
             subscriber.try_close(id.clone());
         }
 
