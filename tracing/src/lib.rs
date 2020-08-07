@@ -761,7 +761,7 @@
 //!   is intended for use in libraries whose users may be using either `tracing`
 //!   or `log`.
 //! * `log-always`: Emit `log` records from all `tracing` spans and events, even
-//!   a `tracing` subscriber has been set. This should be set only by
+//!   if a `tracing` subscriber has been set. This should be set only by
 //!   applications which intend to collect traces and logs separately; if an
 //!   adapter is used to convert `log` records into `tracing` events, this will
 //!   cause duplicate events to occur.
