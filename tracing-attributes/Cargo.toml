@@ -39,7 +39,7 @@ async-await = []
 
 [dependencies]
 proc-macro2 = "1"
-syn = { version = "1", features = ["full", "extra-traits"] }
+syn = { version = "1", features = ["full", "extra-traits", "visit-mut"] }
 quote = "1"
 
 
