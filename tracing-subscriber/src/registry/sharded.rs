@@ -284,7 +284,7 @@ impl Drop for DataInner {
         // closure, since it is a `FnMut`, but testing that there _is_ a value
         // here lets us avoid the thread-local access if we don't need the
         // dispatcher at all.
-        if self.parent.is_some() {
+        if self.parent.is_some() && self.ref_count.load(Ordering::Acquire) == 0 {
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
             // determine whether to call the `Layer`'s `on_close` callback ---
