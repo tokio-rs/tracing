@@ -1196,8 +1196,13 @@ impl<'a> Drop for Entered<'a> {
         //
         // Running this behaviour on drop rather than with an explicit function
         // call means that spans may still be exited when unwinding.
-        if let Some(inner) = self.span.inner.as_ref() {
-            inner.subscriber.exit(&inner.id);
+        if let Some(Inner {
+            ref id,
+            ref subscriber,
+        }) = self.span.inner.as_ref()
+        {
+            let _guard = dispatcher::set_default(subscriber);
+            subscriber.exit(&id);
         }
 
         if_log_enabled! {{
