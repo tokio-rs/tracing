@@ -172,6 +172,7 @@ impl Subscriber for Registry {
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+        eprintln!("{:p}: new", self);
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
@@ -180,6 +181,7 @@ impl Subscriber for Registry {
             attrs.parent().map(|id| self.clone_span(id))
         };
 
+        eprintln!("{:p}: -> parent={:?}", self, parent);
         let s = DataInner {
             metadata: attrs.metadata(),
             parent,
@@ -188,7 +190,7 @@ impl Subscriber for Registry {
         };
         let id = self.insert(s).expect("Unable to allocate another span");
         let id = idx_to_id(id);
-        println!("{:p}: new id {:?}", self, id);
+        eprintln!("{:p}: -> id {:?}", self, id);
         id
     }
 
@@ -204,24 +206,25 @@ impl Subscriber for Registry {
     fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
-        println!("{:p}: enter {:?}", self, id);
+        eprintln!("{:p}: enter {:?}", self, id);
         let spans = self.current_spans.get_or_default();
         spans.borrow_mut().push(self.clone_span(id));
     }
 
     fn exit(&self, id: &span::Id) {
-        println!("{:p}: exit {:?}", self, id);
+        eprintln!("{:p}: exit {:?}", self, id);
         if let Some(id) = self
             .current_spans
             .get()
             .and_then(|spans| spans.borrow_mut().pop(id))
         {
+            eprintln!("{:p}: exit -> try_close {:?}", id);
             dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
         }
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
-        println!("{:p}: clone {:?}", self, id);
+        eprintln!("{:p}: clone {:?}", self, id);
         let span = self
             .get(&id)
             .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
@@ -236,13 +239,13 @@ impl Subscriber for Registry {
     }
 
     fn current_span(&self) -> Current {
-        println!("{:p}: current", self,);
+        eprintln!("{:p}: current", self,);
         self.current_spans
             .get()
             .and_then(|spans| {
                 let spans = spans.borrow();
                 let id = spans.current()?;
-                println!("{:p}: -> {:?}", self, id);
+                eprintln!("{:p}: -> {:?}", self, id);
                 let span = self.get(id)?;
                 Some(Current::new(id.clone(), span.metadata))
             })
@@ -254,7 +257,7 @@ impl Subscriber for Registry {
     ///
     /// The allocated span slot will be reused when a new span is created.
     fn try_close(&self, id: span::Id) -> bool {
-        println!("{:p}: try_close {:?}", self, id);
+        eprintln!("{:p}: try_close {:?}", self, id);
         let span = match self.get(&id) {
             Some(span) => span,
             None if std::thread::panicking() => return false,
@@ -296,11 +299,13 @@ impl Drop for DataInner {
     // (potentially, allowing it to close, if this child is the last reference
     // to that span).
     fn drop(&mut self) {
+        eprintln!("drop inner:\n -> self={:?}", self);
         // We have to actually unpack the option inside the `get_default`
         // closure, since it is a `FnMut`, but testing that there _is_ a value
         // here lets us avoid the thread-local access if we don't need the
         // dispatcher at all.
         if self.parent.is_some() && self.ref_count.load(Ordering::Acquire) == 0 {
+            eprintln!("-> should drop parent");
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
             // determine whether to call the `Layer`'s `on_close` callback ---
@@ -308,7 +313,9 @@ impl Drop for DataInner {
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
             let subscriber = dispatcher::get_default(Dispatch::clone);
+
             if let Some(parent) = self.parent.take() {
+                eprintln!("-> dropping parent={:?}", parent);
                 let _ = subscriber.try_close(parent);
             }
         }
@@ -340,6 +347,7 @@ impl<'a> Drop for CloseGuard<'a> {
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
+                eprintln!("CloseGuard: close id={:?}", self.id);
                 self.registry.spans.remove(id_to_idx(&self.id));
             }
         });
@@ -456,14 +464,14 @@ mod tests {
             let span = if let Some(span) = ctx.span(&id) {
                 span
             } else {
-                println!(
+                eprintln!(
                     "span {:?} did not exist in `on_close`, are we panicking?",
                     id
                 );
                 return;
             };
             let name = span.name();
-            println!("close {} ({:?})", name, id);
+            eprintln!("close {} ({:?})", name, id);
             if let Ok(mut lock) = self.inner.lock() {
                 if let Some(is_removed) = lock.open.remove(name) {
                     assert!(is_removed.upgrade().is_some());
