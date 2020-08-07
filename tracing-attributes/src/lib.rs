@@ -121,6 +121,14 @@ use syn::{
 ///     // ...
 /// }
 /// ```
+/// Overriding the generated span's name:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(name = "my_name")]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// ```
 /// Overriding the generated span's target:
 /// ```
 /// # use tracing_attributes::instrument;
