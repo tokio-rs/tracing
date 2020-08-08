@@ -1,3 +1,4 @@
+#![cfg(feature = "std")]
 mod support;
 
 use self::support::*;

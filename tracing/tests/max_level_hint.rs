@@ -20,7 +20,8 @@ fn max_level_hints() {
         .done()
         .run_with_handle();
 
-    let _guard = tracing::subscriber::set_default(subscriber);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
     tracing::info!("doing a thing that you might care about");
     tracing::debug!("charging turboencabulator with interocitor");
     tracing::warn!("extremely serious warning, pay attention");
