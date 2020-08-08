@@ -134,7 +134,7 @@
 //! [`Dispatch`]: struct.Dispatch.html
 use crate::{
     callsite, span,
-    subscriber::{self, Subscriber},
+    subscriber::{self, Interest, Subscriber},
     Event, LevelFilter, Metadata,
 };
 
@@ -159,6 +159,87 @@ use crate::stdlib::{
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
+}
+
+struct Inner<S: Subscriber>(S);
+
+impl<S> Subscriber for Inner<S>
+where
+    S: Subscriber,
+{
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.0.register_callsite(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.0.enabled(metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.0.max_level_hint()
+    }
+
+    #[inline]
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        self.0.new_span(span)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.0.record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.0.record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.0.event(event)
+    }
+
+    #[inline]
+    fn enter(&self, span: &span::Id) {
+        self.0.enter(span)
+    }
+
+    #[inline]
+    fn exit(&self, span: &span::Id) {
+        self.0.exit(span)
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.0.clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.0.try_close(id)
+    }
+
+    #[inline]
+    fn current_span(&self) -> span::Current {
+        self.0.current_span()
+    }
+
+    #[inline]
+    unsafe fn downcast_raw(&self, id: core::any::TypeId) -> Option<*const ()> {
+        self.0.downcast_raw(id)
+    }
+}
+
+impl<S> Drop for Inner<S>
+where
+    S: Subscriber,
+{
+    fn drop(&mut self) {
+        callsite::rebuild_interest_cache();
+    }
 }
 
 #[cfg(feature = "std")]
@@ -392,7 +473,7 @@ impl Dispatch {
     #[inline]
     pub fn none() -> Self {
         Dispatch {
-            subscriber: Arc::new(NoSubscriber),
+            subscriber: Arc::new(Inner(NoSubscriber)),
         }
     }
 
@@ -404,7 +485,7 @@ impl Dispatch {
         S: Subscriber + Send + Sync + 'static,
     {
         let me = Dispatch {
-            subscriber: Arc::new(subscriber),
+            subscriber: Arc::new(Inner(subscriber)),
         };
         callsite::register_dispatch(&me);
         me
