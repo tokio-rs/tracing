@@ -57,7 +57,7 @@ use tracing_subscriber;
 
 fn main() {
     // install global subscriber configured based on RUST_LOG envvar.
-    tracing_subscriber::init()
+    tracing_subscriber::init();
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.
