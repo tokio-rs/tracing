@@ -218,6 +218,11 @@ where
     }
 
     #[inline]
+    fn drop_span(&self, id: span::Id) {
+        self.0.drop_span(id)
+    }
+
+    #[inline]
     fn try_close(&self, id: span::Id) -> bool {
         self.0.try_close(id)
     }
@@ -473,7 +478,7 @@ impl Dispatch {
     #[inline]
     pub fn none() -> Self {
         Dispatch {
-            subscriber: Arc::new(Inner(NoSubscriber)),
+            subscriber: Arc::new(NoSubscriber),
         }
     }
 
