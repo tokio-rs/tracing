@@ -4,7 +4,7 @@ version = "0.2.10"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "David Barsky <me@davidbarsky.com>",
-    "Tokio Contributors <team@tokio.rs>"
+    "Tokio Contributors <team@tokio.rs>",
 ]
 edition = "2018"
 license = "MIT"
@@ -57,11 +57,13 @@ sharded-slab = { version = "^0.0.9", optional = true }
 thread_local = "1.0.1"
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1"}
+tracing = { path = "../tracing", version = "0.1" }
 log = "0.4"
 tracing-log = { path = "../tracing-log", version = "0.1" }
 criterion = { version = "0.3", default_features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
+tracing-futures = { path = "../tracing-futures", version = "0.2", default-features = false, features = ["std-future", "std"] }
+tokio = { version = "0.2", features = ["rt-core", "macros"] }
 
 [badges]
 maintenance = { status = "experimental" }
