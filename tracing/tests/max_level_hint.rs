@@ -28,6 +28,3 @@ fn max_level_hints() {
     tracing::error!("everything is on fire");
     handle.assert_finished();
 }
-
-
-
