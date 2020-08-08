@@ -16,11 +16,12 @@ fn multiple_max_level_hints() {
     let (subscriber1, handle1) = subscriber::mock()
         .with_max_level_hint(Level::INFO)
         .with_filter(|meta| {
+            let level = dbg!(meta.level());
             assert!(
-                dbg!(meta).level() <= &Level::DEBUG,
-                "a TRACE event was dynamically filtered by subscriber1: "
+                level <= &Level::DEBUG,
+                "a TRACE event was dynamically filtered by subscriber1"
             );
-            true
+            level <= &Level::INFO
         })
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))
@@ -28,26 +29,28 @@ fn multiple_max_level_hints() {
         .done()
         .run_with_handle();
     let (subscriber2, handle2) = subscriber::mock()
-        .with_max_level_hint(Level::INFO)
+        .with_max_level_hint(Level::DEBUG)
         .with_filter(|meta| {
+            let level = dbg!(meta.level());
             assert!(
-                dbg!(meta).level() <= &Level::DEBUG,
-                "a TRACE event was dynamically filtered by subscriber2: "
+                level <= &Level::DEBUG,
+                "a TRACE event was dynamically filtered by subscriber2"
             );
-            true
+            level <= &Level::DEBUG
         })
-        .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::DEBUG))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::ERROR))
         .done()
         .run_with_handle();
 
     let dispatch1 = tracing::Dispatch::new(subscriber1);
-    let dispatch2 = tracing::Dispatch::new(subscriber2);
 
     tracing::dispatcher::with_default(&dispatch1, do_events);
     handle1.assert_finished();
+
+    let dispatch2 = tracing::Dispatch::new(subscriber2);
     tracing::dispatcher::with_default(&dispatch2, do_events);
     handle2.assert_finished();
 }
