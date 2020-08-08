@@ -480,7 +480,7 @@ impl Dynamics {
     pub(crate) fn has_value_filters(&self) -> bool {
         self.directives
             .iter()
-            .any(|d| !d.fields.iter().any(|f| f.value.is_some()))
+            .any(|d| d.fields.iter().any(|f| f.value.is_some()))
     }
 }
 
