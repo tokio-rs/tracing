@@ -820,12 +820,15 @@ where
         }
     }
 
+    #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         match self {
             Some(ref inner) => inner.register_callsite(metadata),
             None => Interest::always(),
         }
     }
+
+    #[inline]
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
         match self {
             Some(ref inner) => inner.enabled(metadata, ctx),
@@ -833,6 +836,7 @@ where
         }
     }
 
+    #[inline]
     fn max_level_hint(&self) -> Option<LevelFilter> {
         match self {
             Some(ref inner) => inner.max_level_hint(),
@@ -840,42 +844,49 @@ where
         }
     }
 
+    #[inline]
     fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_record(_span, _values, _ctx);
         }
     }
 
+    #[inline]
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_follows_from(_span, _follows, _ctx);
         }
     }
 
+    #[inline]
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_event(_event, _ctx);
         }
     }
 
+    #[inline]
     fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_enter(_id, _ctx);
         }
     }
 
+    #[inline]
     fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_exit(_id, _ctx);
         }
     }
 
+    #[inline]
     fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_close(_id, _ctx);
         }
     }
 
+    #[inline]
     fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_id_change(_old, _new, _ctx)
