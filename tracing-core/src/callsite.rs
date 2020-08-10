@@ -40,13 +40,14 @@ impl Registry {
     }
 
     fn rebuild_interest(&mut self) {
-        let mut max_level = LevelFilter::TRACE;
+        let mut max_level = LevelFilter::OFF;
         self.dispatchers.retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
-                if let Some(level) = dispatch.max_level_hint() {
-                    if level > max_level {
-                        max_level = level;
-                    }
+                // If the subscriber did not provide a max level hint, assume
+                // that it may enable every level.
+                let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
+                if level_hint > max_level {
+                    max_level = level_hint;
                 }
                 true
             } else {
