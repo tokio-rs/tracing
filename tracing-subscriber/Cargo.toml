@@ -27,7 +27,7 @@ default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log", "js
 env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
-registry = ["sharded-slab"]
+registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 [dependencies]
@@ -54,7 +54,7 @@ parking_lot = { version = ">= 0.7, <= 0.11", optional = true }
 
 # registry
 sharded-slab = { version = "^0.0.9", optional = true }
-thread_local = "1.0.1"
+thread_local = { version = "1.0.1", optional = true }
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.1" }
