@@ -202,8 +202,10 @@ impl Subscriber for Registry {
     fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
-        let spans = self.current_spans.get_or_default();
-        spans.borrow_mut().push(self.clone_span(id));
+        self.current_spans
+            .get_or_default()
+            .borrow_mut()
+            .push(self.clone_span(id));
     }
 
     fn exit(&self, id: &span::Id) {
