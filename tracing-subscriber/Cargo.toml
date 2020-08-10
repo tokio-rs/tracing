@@ -4,7 +4,7 @@ version = "0.2.10"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "David Barsky <me@davidbarsky.com>",
-    "Tokio Contributors <team@tokio.rs>"
+    "Tokio Contributors <team@tokio.rs>",
 ]
 edition = "2018"
 license = "MIT"
@@ -27,7 +27,7 @@ default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log", "js
 env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
-registry = ["sharded-slab"]
+registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 [dependencies]
@@ -54,13 +54,16 @@ parking_lot = { version = ">= 0.7, <= 0.11", optional = true }
 
 # registry
 sharded-slab = { version = "^0.0.9", optional = true }
+thread_local = { version = "1.0.1", optional = true }
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1"}
+tracing = { path = "../tracing", version = "0.1" }
 log = "0.4"
 tracing-log = { path = "../tracing-log", version = "0.1" }
 criterion = { version = "0.3", default_features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
+tracing-futures = { path = "../tracing-futures", version = "0.2", default-features = false, features = ["std-future", "std"] }
+tokio = { version = "0.2", features = ["rt-core", "macros"] }
 
 [badges]
 maintenance = { status = "experimental" }
