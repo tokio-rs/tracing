@@ -6,6 +6,16 @@ use tracing::Level;
 
 #[test]
 fn multiple_max_level_hints() {
+    // This test ensures that when multiple subscribers are active, their max
+    // level hints are handled correctly. The global max level should be the
+    // maximum of the level filters returned by the two `Subscriber`'s
+    // `max_level_hint` method.
+    //
+    // In this test, we create a subscriber whose max level is `INFO`, and
+    // another whose max level is `DEBUG`. We then add an assertion to both of
+    // those subscribers' `enabled` method that no metadata for `TRACE` spans or
+    // events are filtered, since they are disabled by the global max filter.
+
     fn do_events() {
         tracing::info!("doing a thing that you might care about");
         tracing::debug!("charging turboencabulator with interocitor");
