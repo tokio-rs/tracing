@@ -1,3 +1,10 @@
+# 0.1.14 (August 10, 2020)
+
+### Fixed
+
+- Incorrect calculation of global max level filter which could result in fast
+  filtering paths not being taken (#908)
+  
 # 0.1.13 (August 4, 2020)
 
 ### Fixed
