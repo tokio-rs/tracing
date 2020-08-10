@@ -278,6 +278,12 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
+        if self.dynamics.has_value_filters() {
+            // If we perform any filtering on span field *values*, we will
+            // enable *all* spans, because their field values are not known
+            // until recording.
+            return Some(LevelFilter::TRACE);
+        }
         std::cmp::max(
             self.statics.max_level.clone().into(),
             self.dynamics.max_level.clone().into(),
