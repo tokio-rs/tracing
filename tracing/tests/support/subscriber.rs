@@ -14,6 +14,7 @@ use std::{
     },
 };
 use tracing::{
+    level_filters::LevelFilter,
     span::{self, Attributes, Id},
     Event, Metadata, Subscriber,
 };
@@ -40,11 +41,13 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
     ids: AtomicUsize,
+    max_level: Option<LevelFilter>,
     filter: F,
 }
 
 pub struct MockSubscriber<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
+    max_level: Option<LevelFilter>,
     filter: F,
 }
 
@@ -54,6 +57,7 @@ pub fn mock() -> MockSubscriber<fn(&Metadata<'_>) -> bool> {
     MockSubscriber {
         expected: VecDeque::new(),
         filter: (|_: &Metadata<'_>| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
+        max_level: None,
     }
 }
 
@@ -113,8 +117,16 @@ where
         G: Fn(&Metadata<'_>) -> bool + 'static,
     {
         MockSubscriber {
-            filter,
             expected: self.expected,
+            filter,
+            max_level: self.max_level,
+        }
+    }
+
+    pub fn with_max_level_hint(self, hint: impl Into<LevelFilter>) -> Self {
+        Self {
+            max_level: Some(hint.into()),
+            ..self
         }
     }
 
@@ -132,6 +144,7 @@ where
             current: Mutex::new(Vec::new()),
             ids: AtomicUsize::new(1),
             filter: self.filter,
+            max_level: self.max_level,
         };
         (subscriber, handle)
     }
@@ -143,6 +156,10 @@ where
 {
     fn enabled(&self, meta: &Metadata<'_>) -> bool {
         (self.filter)(meta)
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.max_level.clone()
     }
 
     fn record(&self, id: &Id, values: &span::Record<'_>) {
