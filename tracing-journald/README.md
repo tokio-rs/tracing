@@ -1,3 +1,6 @@
+![Tracing — Structured, application-level diagnostics][splash]
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+
 # tracing-journald
 
 Support for logging [`tracing`][tracing] events natively to journald, preserving structured information.

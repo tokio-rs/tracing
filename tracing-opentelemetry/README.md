@@ -1,3 +1,6 @@
+![Tracing — Structured, application-level diagnostics][splash]
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+
 # Tracing OpenTelemetry
 
 Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
