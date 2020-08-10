@@ -17,7 +17,7 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 
 [dependencies]
-tracing = "0.1.18"
+tracing = "0.1.19"
 
 [dev-dependencies]
 tracing-log = "0.1"
