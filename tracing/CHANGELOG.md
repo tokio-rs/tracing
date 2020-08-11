@@ -1,4 +1,20 @@
-# 0.1.18 (July 31, 2020)
+# 0.1.19 (August 10, 2020)
+
+### Fixed
+
+- Updated `tracing-core` to fix incorrect calculation of the global max level
+  filter (#908)
+
+### Added
+
+- **attributes**: Support for using `self` in field expressions when
+  instrumenting `async-trait` functions (#875)
+- Several documentation improvements (#832, #881, #896, #897, #911, #913)
+
+Thanks to @anton-dutov, @nightmared, @mystor, and @toshokan for contributing to
+this release!
+  
+# 0.1.19 (July 31, 2020)
 
 ### Fixed
 
