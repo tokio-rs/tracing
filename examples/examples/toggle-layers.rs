@@ -1,6 +1,6 @@
 #![deny(rust_2018_idioms)]
 /// This is a example showing how `Layer` can be enabled or disabled by
-/// by wrapping them inside a `Option`. This example shows `fmt` and `json`
+/// by wrapping them with an `Option`. This example shows `fmt` and `json`
 /// being toggled based on the `json` command line flag.
 ///
 /// You can run this example by running the following command in a terminal

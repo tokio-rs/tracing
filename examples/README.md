@@ -31,6 +31,8 @@ This directory contains a collection of examples that demonstrate the use of the
     debug a server under load in production.
   + `journald`: Demonstrates how to use `fmt` and `journald` layers to output to
     both the terminal and the system journal.
+  + `toggle-layers` : Demonstrates how Layers can be wrapped with an `Option` allowing
+    them to be dynamically toggled.
 - **tracing-futures**:
   + `spawny-thing`: Demonstrates the use of the `#[instrument]` attribute macro
     asynchronous functions.
