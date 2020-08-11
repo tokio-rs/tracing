@@ -892,6 +892,18 @@ where
             inner.on_id_change(old, new, ctx)
         }
     }
+
+    #[doc(hidden)]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        if id == TypeId::of::<Self>() {
+            Some(self as *const _ as *const ())
+        } else {
+            match self {
+                Some(inner) => inner.downcast_raw(id),
+                None => None,
+            }
+        }
+    }
 }
 
 #[cfg(feature = "registry")]
