@@ -845,51 +845,51 @@ where
     }
 
     #[inline]
-    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, S>) {
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_record(_span, _values, _ctx);
+            inner.on_record(span, values, ctx);
         }
     }
 
     #[inline]
-    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_follows_from(_span, _follows, _ctx);
+            inner.on_follows_from(span, follows, ctx);
         }
     }
 
     #[inline]
-    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_event(_event, _ctx);
+            inner.on_event(event, ctx);
         }
     }
 
     #[inline]
-    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_enter(_id, _ctx);
+            inner.on_enter(id, ctx);
         }
     }
 
     #[inline]
-    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_exit(_id, _ctx);
+            inner.on_exit(id, ctx);
         }
     }
 
     #[inline]
-    fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_close(_id, _ctx);
+            inner.on_close(id, ctx);
         }
     }
 
     #[inline]
-    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, S>) {
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.on_id_change(_old, _new, _ctx)
+            inner.on_id_change(old, new, ctx)
         }
     }
 }
