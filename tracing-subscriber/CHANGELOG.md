@@ -1,3 +1,18 @@
+# 0.2.11 (August 10, 2020)
+
+### Fixed
+
+- **env-filter**: Incorrect max level hint when filters involving span field
+  values are in use (#907)
+- **registry**: Fixed inconsistent span stacks when multiple registries are in
+  use on the same thread (#901)
+
+### Changed
+
+- **env-filter**: `regex` dependency enables fewer unused feature flags (#899)
+
+Thanks to @bdonlan and @jeromegn for contributing to this release!
+
 # 0.2.10 (July 31, 2020)
 
 ### Fixed
