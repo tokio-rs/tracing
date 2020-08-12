@@ -560,19 +560,22 @@ impl Interest {
     /// interest is `never` and the other is `always` the common interest is
     /// `always`.
     pub(crate) fn and(self, rhs: Interest) -> Self {
-        match rhs.0 {
+        match (rhs.0, self.0) {
             // If the added interest is `never()`, don't change anything —
             // either a different subscriber added a higher interest, which we
             // want to preserve, or the interest is 0 anyway (as it's
             // initialized to 0).
-            InterestKind::Never => self,
+            (InterestKind::Never, _) => self,
             // If the interest is `sometimes()`, that overwrites a `never()`
             // interest, but doesn't downgrade an `always()` interest.
-            InterestKind::Sometimes if self.0 == InterestKind::Never => rhs,
-            // If the interest is `always()`, we overwrite the current interest,
-            // as always() is the highest interest level and should take
-            // precedent.
-            InterestKind::Always => rhs,
+            (InterestKind::Sometimes, InterestKind::Never) => rhs,
+            // If both `Interests` are always, then the interest is `Always`.
+            (InterestKind::Always, InterestKind::Always) => rhs,
+            // If either interest is `Always`, but the other is *not*, then the
+            // result is always `Sometimes` --- we will have to ask the current
+            // subscriber, since whether or not the callsite is enabled depends
+            // which subscriber is active.
+            (InterestKind::Always, _) | (_, InterestKind::Always) => Interest::sometimes(),
             _ => self,
         }
     }
