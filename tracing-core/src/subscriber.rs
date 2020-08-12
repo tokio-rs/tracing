@@ -556,27 +556,15 @@ impl Interest {
 
     /// Returns the common interest between these two Interests.
     ///
-    /// The common interest is defined as the least restrictive, so if one
-    /// interest is `never` and the other is `always` the common interest is
-    /// `always`.
+    /// If both interests are the same, this propagates that interest.
+    /// Otherwise, if they differ, the result must always be
+    /// `Interest::sometimes` --- if the two subscribers differ in opinion, we
+    /// will have to ask the current subscriber what it thinks, no matter what.
     pub(crate) fn and(self, rhs: Interest) -> Self {
-        match (rhs.0, self.0) {
-            // If the added interest is `never()`, don't change anything —
-            // either a different subscriber added a higher interest, which we
-            // want to preserve, or the interest is 0 anyway (as it's
-            // initialized to 0).
-            (InterestKind::Never, _) => self,
-            // If the interest is `sometimes()`, that overwrites a `never()`
-            // interest, but doesn't downgrade an `always()` interest.
-            (InterestKind::Sometimes, InterestKind::Never) => rhs,
-            // If both `Interests` are always, then the interest is `Always`.
-            (InterestKind::Always, InterestKind::Always) => rhs,
-            // If either interest is `Always`, but the other is *not*, then the
-            // result is always `Sometimes` --- we will have to ask the current
-            // subscriber, since whether or not the callsite is enabled depends
-            // which subscriber is active.
-            (InterestKind::Always, _) | (_, InterestKind::Always) => Interest::sometimes(),
-            _ => self,
+        if dbg!(self.0) == dbg!(rhs.0) {
+            self
+        } else {
+            Interest::sometimes()
         }
     }
 }
