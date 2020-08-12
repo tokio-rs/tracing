@@ -112,8 +112,8 @@
 //! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default
-//! </code>) requires the Rust standard library. <code>no_std</code> users should
+//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default</code>)
+//! requires the Rust standard library. <code>no_std</code> users should
 //! use <a href="fn.set_global_default.html"><code>set_global_default</code></a>
 //! instead.
 //! </pre></div>
