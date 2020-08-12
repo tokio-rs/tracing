@@ -6,10 +6,12 @@ use self::support::*;
 #[test]
 fn spans_dont_leak() {
     fn do_span() {
-        tracing::debug_span!("alice");
+        let span = tracing::debug_span!("alice");
+        let _e = span.enter();
     }
 
     let (subscriber, handle) = subscriber::mock()
+        .named("spans/subscriber1")
         .with_filter(|_| false)
         .done()
         .run_with_handle();
@@ -18,15 +20,23 @@ fn spans_dont_leak() {
 
     do_span();
 
+    let alice = span::mock().named("alice");
     let (subscriber2, handle2) = subscriber::mock()
+        .named("spans/subscriber2")
         .with_filter(|_| true)
-        .new_span(span::mock().named("alice"))
-        .drop_span(span::mock().named("alice"))
+        .new_span(alice.clone())
+        .enter(alice.clone())
+        .exit(alice.clone())
+        .drop_span(alice.clone())
         .done()
         .run_with_handle();
 
-    tracing::subscriber::with_default(subscriber2, do_span);
+    tracing::subscriber::with_default(subscriber2, || {
+        println!("--- subscriber 2 is default ---");
+        do_span()
+    });
 
+    println!("--- subscriber 1 is default ---");
     do_span();
 
     handle.assert_finished();
@@ -40,6 +50,7 @@ fn events_dont_leak() {
     }
 
     let (subscriber, handle) = subscriber::mock()
+        .named("events/subscriber1")
         .with_filter(|_| false)
         .done()
         .run_with_handle();
@@ -49,12 +60,18 @@ fn events_dont_leak() {
     do_event();
 
     let (subscriber2, handle2) = subscriber::mock()
+        .named("events/subscriber2")
         .with_filter(|_| true)
         .event(event::mock())
         .done()
         .run_with_handle();
 
-    tracing::subscriber::with_default(subscriber2, do_event);
+    tracing::subscriber::with_default(subscriber2, || {
+        println!("--- subscriber 2 is default ---");
+        do_event()
+    });
+
+    println!("--- subscriber 1 is default ---");
 
     do_event();
 
