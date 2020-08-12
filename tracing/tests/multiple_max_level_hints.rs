@@ -25,6 +25,7 @@ fn multiple_max_level_hints() {
     }
 
     let (subscriber1, handle1) = subscriber::mock()
+        .named("subscriber1")
         .with_max_level_hint(Level::INFO)
         .with_filter(|meta| {
             let level = dbg!(meta.level());
@@ -40,6 +41,7 @@ fn multiple_max_level_hints() {
         .done()
         .run_with_handle();
     let (subscriber2, handle2) = subscriber::mock()
+        .named("subscriber2")
         .with_max_level_hint(Level::DEBUG)
         .with_filter(|meta| {
             let level = dbg!(meta.level());
