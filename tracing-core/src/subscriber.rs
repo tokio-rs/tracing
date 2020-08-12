@@ -561,7 +561,7 @@ impl Interest {
     /// `Interest::sometimes` --- if the two subscribers differ in opinion, we
     /// will have to ask the current subscriber what it thinks, no matter what.
     pub(crate) fn and(self, rhs: Interest) -> Self {
-        if dbg!(self.0) == dbg!(rhs.0) {
+        if self.0 == rhs.0 {
             self
         } else {
             Interest::sometimes()
