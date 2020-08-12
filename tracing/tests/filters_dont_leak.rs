@@ -27,7 +27,7 @@ fn spans_dont_leak() {
         .new_span(alice.clone())
         .enter(alice.clone())
         .exit(alice.clone())
-        .drop_span(alice.clone())
+        .drop_span(alice)
         .done()
         .run_with_handle();
 
