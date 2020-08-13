@@ -28,13 +28,21 @@ impl Registry {
     fn rebuild_callsite_interest(&self, callsite: &'static dyn Callsite) {
         let meta = callsite.metadata();
 
-        let mut interest = Interest::never();
+        // Iterate over the subscribers in the registry, and — if they are
+        // active — register the callsite with them.
+        let mut interests = self
+            .dispatchers
+            .iter()
+            .filter_map(|registrar| registrar.try_register(meta));
 
-        for registrar in &self.dispatchers {
-            if let Some(sub_interest) = registrar.try_register(meta) {
-                interest = interest.and(sub_interest);
-            }
-        }
+        // Use the first subscriber's `Interest` as the base value.
+        let interest = if let Some(interest) = interests.next() {
+            // Combine all remaining `Interest`s.
+            interests.fold(interest, Interest::and)
+        } else {
+            // If nobody was interested in this thing, just return `never`.
+            Interest::never()
+        };
 
         callsite.set_interest(interest)
     }
