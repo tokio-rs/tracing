@@ -899,7 +899,7 @@ where
         if id == TypeId::of::<Self>() {
             Some(self as *const _ as *const ())
         } else {
-            self.and_then(|inner| inner.downcast_raw(id))
+            self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }
     }
 }
