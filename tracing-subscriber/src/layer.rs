@@ -894,14 +894,12 @@ where
     }
 
     #[doc(hidden)]
+    #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
             Some(self as *const _ as *const ())
         } else {
-            match self {
-                Some(inner) => inner.downcast_raw(id),
-                None => None,
-            }
+            self.and_then(|inner| inner.downcast_raw(id))
         }
     }
 }
