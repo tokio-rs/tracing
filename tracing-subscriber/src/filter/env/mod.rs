@@ -297,6 +297,19 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         // if not, we can avoid the thread local access + iterating over the
         // spans in the current scope.
         if self.has_dynamics && self.dynamics.max_level >= *level {
+            if metadata.is_span() {
+                // If the metadata is a span, see if we care about its callsite.
+                let enabled_by_cs = self
+                    .by_cs
+                    .read()
+                    .ok()
+                    .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
+                    .unwrap_or(false);
+                if enabled_by_cs {
+                    return true;
+                }
+            }
+
             let enabled_by_scope = SCOPE.with(|scope| {
                 for filter in scope.borrow().iter() {
                     if filter >= level {
@@ -314,9 +327,6 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         if self.statics.max_level >= *level {
             // Otherwise, fall back to checking if the callsite is
             // statically enabled.
-            // TODO(eliza): we *might* want to check this only if the `log`
-            // feature is enabled, since if this is a `tracing` event with a
-            // real callsite, it would already have been statically enabled...
             return self.statics.enabled(metadata);
         }
 
