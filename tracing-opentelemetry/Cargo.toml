@@ -30,4 +30,4 @@ tracing-subscriber = { path = "../tracing-subscriber", version = "0.2", default-
 tracing-log = { path = "../tracing-log", version = "0.1", default-features = false, optional = true }
 
 [dev-dependencies]
-opentelemetry-jaeger = "0.6"
+opentelemetry-jaeger = "0.7"
