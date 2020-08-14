@@ -22,7 +22,7 @@ static SPAN_KIND_FIELD: &str = "otel.kind";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetryLayer<S, T: api::Tracer> {
     tracer: T,
-    sampler: Box<dyn api::Sampler>,
+    sampler: Box<dyn sdk::ShouldSample>,
     id_generator: sdk::IdGenerator,
 
     get_context: WithContext,
@@ -67,7 +67,7 @@ where
 //
 // See https://github.com/tokio-rs/tracing/blob/4dad420ee1d4607bad79270c1520673fa6266a3d/tracing-error/src/layer.rs
 pub(crate) struct WithContext(
-    fn(&tracing::Dispatch, &span::Id, f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn api::Sampler)),
+    fn(&tracing::Dispatch, &span::Id, f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn sdk::ShouldSample)),
 );
 
 impl WithContext {
@@ -77,7 +77,7 @@ impl WithContext {
         &self,
         dispatch: &'a tracing::Dispatch,
         id: &span::Id,
-        mut f: impl FnMut(&mut api::SpanBuilder, &dyn api::Sampler),
+        mut f: impl FnMut(&mut api::SpanBuilder, &dyn sdk::ShouldSample),
     ) {
         (self.0)(dispatch, id, &mut f)
     }
@@ -85,7 +85,7 @@ impl WithContext {
 
 pub(crate) fn build_span_context(
     builder: &mut api::SpanBuilder,
-    sampler: &dyn api::Sampler,
+    sampler: &dyn sdk::ShouldSample,
 ) -> api::SpanContext {
     let span_id = builder.span_id.expect("Builders must have id");
     let (trace_id, trace_flags) = builder
@@ -122,7 +122,7 @@ pub(crate) fn build_span_context(
                 result.decision
             };
 
-            let trace_flags = if sampling_decision == api::SamplingDecision::RecordAndSampled {
+            let trace_flags = if sampling_decision == sdk::SamplingDecision::RecordAndSampled {
                 api::TRACE_FLAG_SAMPLED
             } else {
                 0
@@ -283,7 +283,7 @@ where
     /// ```
     pub fn new<Sampler>(tracer: T, sampler: Sampler) -> Self
     where
-        Sampler: api::Sampler + 'static,
+        Sampler: sdk::ShouldSample + 'static,
     {
         OpenTelemetryLayer {
             tracer,
@@ -377,7 +377,7 @@ where
     /// ```
     pub fn with_sampler<Sampler>(self, sampler: Sampler) -> Self
     where
-        Sampler: api::Sampler + 'static,
+        Sampler: sdk::ShouldSample + 'static,
     {
         OpenTelemetryLayer {
             sampler: Box::new(sampler),
@@ -421,7 +421,7 @@ where
     fn get_context(
         dispatch: &tracing::Dispatch,
         id: &span::Id,
-        f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn api::Sampler),
+        f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn sdk::ShouldSample),
     ) {
         let subscriber = dispatch
             .downcast_ref::<S>()
