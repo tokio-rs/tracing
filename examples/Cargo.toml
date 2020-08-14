@@ -52,5 +52,5 @@ inferno = "0.10.0"
 tempdir = "0.3.7"
 
 # opentelemetry example
-opentelemetry = "0.7"
+opentelemetry = "0.8"
 opentelemetry-jaeger = "0.6"
