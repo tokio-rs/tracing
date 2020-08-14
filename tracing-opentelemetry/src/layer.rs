@@ -67,7 +67,11 @@ where
 //
 // See https://github.com/tokio-rs/tracing/blob/4dad420ee1d4607bad79270c1520673fa6266a3d/tracing-error/src/layer.rs
 pub(crate) struct WithContext(
-    fn(&tracing::Dispatch, &span::Id, f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn sdk::ShouldSample)),
+    fn(
+        &tracing::Dispatch,
+        &span::Id,
+        f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn sdk::ShouldSample),
+    ),
 );
 
 impl WithContext {
