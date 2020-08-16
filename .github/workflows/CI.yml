@@ -14,7 +14,7 @@ jobs:
       matrix:
         rust: [stable, 1.44.0]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
@@ -67,7 +67,7 @@ jobs:
         #- tracing
         #- tracing-subscriber
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -104,7 +104,7 @@ jobs:
         - std log-always
         - std
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -129,7 +129,7 @@ jobs:
         - registry
         - env-filter
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -147,7 +147,7 @@ jobs:
       matrix:
         rust: [stable, beta, nightly, 1.44.0]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
@@ -167,7 +167,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -184,7 +184,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -203,7 +203,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -220,7 +220,7 @@ jobs:
     # Check for any warnings. This is informational and thus is allowed to fail.
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -235,7 +235,7 @@ jobs:
   cargo-audit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - name: Fetch latest release version of cargo-audit
       run: |
         mkdir -p .github/caching
