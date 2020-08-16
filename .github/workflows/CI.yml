@@ -12,13 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, 1.39.0]
+        rust: [stable, 1.44.0]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
+        override: true
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -71,6 +72,7 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: Fetch latest release version of cargo-hack
       run: |
         mkdir -p .github/caching
@@ -107,6 +109,7 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: cargo check
       working-directory: tracing
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -131,6 +134,7 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: cargo check
       working-directory: tracing-subscriber
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -141,13 +145,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.39.0]
+        rust: [stable, beta, nightly, 1.44.0]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
+        override: true
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -167,6 +172,7 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -183,6 +189,7 @@ jobs:
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
     - name: "Test static max level"
@@ -202,6 +209,7 @@ jobs:
         toolchain: stable
         components: rustfmt
         profile: minimal
+        override: true
     - name: rustfmt
       uses: actions-rs/cargo@v1
       with:
