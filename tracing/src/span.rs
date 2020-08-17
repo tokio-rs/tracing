@@ -906,18 +906,19 @@ impl Span {
     ///
     /// [`field::Empty`]: ../field/struct.Empty.html
     /// [`Metadata`]: ../struct.Metadata.html
-    pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
+    pub fn record<'a, Q: ?Sized, V>(&self, field: &Q, value: &'a V) -> &Self
     where
         Q: field::AsField,
-        V: field::Value,
+        V: Into<field::Value<'a>>,
     {
         if let Some(ref meta) = self.meta {
             if let Some(field) = field.as_field(meta) {
-                self.record_all(
-                    &meta
-                        .fields()
-                        .value_set(&[(&field, Some(value as &dyn field::Value))]),
-                );
+                // self.record_all(
+                //     &meta
+                //         .fields()
+                //         .value_set(&[(&field, Some(value as &dyn field::Value))]),
+                // );
+                unimplemented!()
             }
         }
 

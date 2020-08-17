@@ -44,14 +44,15 @@ use crate::stdlib::{
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
-    num,
+    iter, num,
     ops::Range,
+    slice,
 };
 
 #[cfg(feature = "std")]
 use std::error::Error;
 
-// use self::private::ValidLen;
+use self::private::ValidLen;
 
 /// An opaque key allowing _O_(1) access to a field in a `Span`'s key-value
 /// data.
@@ -96,6 +97,10 @@ pub struct Iter {
     idxs: Range<usize>,
     fields: FieldSet,
 }
+pub struct Values<'set, 'values> {
+    values: iter::Enumerate<slice::Iter<'set, Value<'values>>>,
+    fields: &'set FieldSet,
+}
 
 pub struct Value<'a> {
     inner: ValueKind<'a>,
@@ -111,6 +116,7 @@ enum ValueKind<'a> {
     Error(&'a (dyn Error + 'static), TypeId),
     Debug(&'a dyn fmt::Debug, TypeId),
     Display(&'a dyn fmt::Display, TypeId),
+    Args(&'a fmt::Arguments<'a>),
 }
 
 /// Visits typed values.
@@ -320,6 +326,12 @@ macro_rules! gen_primitives {
 }
 
 impl<'a> Value<'a> {
+    pub fn empty() -> Self {
+        Self {
+            inner: ValueKind::Empty,
+        }
+    }
+
     pub fn display<T: Any + fmt::Display>(val: &'a T) -> Self {
         Self {
             inner: ValueKind::Display(val as &'a dyn fmt::Display, TypeId::of::<T>()),
@@ -359,6 +371,7 @@ impl<'a> Value<'a> {
             ValueKind::U64(ref val) => Some(val as &dyn fmt::Display),
             ValueKind::I64(ref val) => Some(val as &dyn fmt::Display),
             ValueKind::Str(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::Args(ref val) => Some(val as &dyn fmt::Display),
             _ => None,
         }
     }
@@ -383,7 +396,9 @@ impl<'a> Value<'a> {
             ValueKind::Error(val, actual) if actual == target => {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
-            ValueKind::Debug(val, actual) => Some(unsafe { &*(val as *const _ as *const T) }),
+            ValueKind::Debug(val, actual) if actual == target => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
             ValueKind::Display(val, actual) if actual == target => {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
@@ -392,9 +407,25 @@ impl<'a> Value<'a> {
     }
 
     pub fn is<T: Any>(&self) -> bool {
+        let target = TypeId::of::<T>();
         match self.inner {
             ValueKind::Empty => false,
-            _ => todo!(),
+            ValueKind::Bool(_) => target == TypeId::of::<bool>(),
+            ValueKind::U64(_) => target == TypeId::of::<u64>(),
+            ValueKind::I64(_) => target == TypeId::of::<i64>(),
+            ValueKind::Str(_) => target == TypeId::of::<str>(),
+            #[cfg(feature = "std")]
+            ValueKind::Error(_, actual) => actual == target,
+            ValueKind::Debug(_, actual) => actual == target,
+            ValueKind::Display(_, actual) => actual == target,
+            _ => false,
+        }
+    }
+
+    fn is_some(&self) -> bool {
+        match self.inner {
+            ValueKind::Empty => false,
+            _ => true,
         }
     }
 }
@@ -411,6 +442,7 @@ impl fmt::Debug for Value<'_> {
             ValueKind::U64(ref val) => fmt::Debug::fmt(val, f),
             ValueKind::I64(ref val) => fmt::Debug::fmt(val, f),
             ValueKind::Str(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Args(ref val) => fmt::Debug::fmt(val, f),
         }
     }
 }
@@ -427,6 +459,7 @@ impl fmt::Display for Value<'_> {
             ValueKind::U64(ref val) => fmt::Display::fmt(val, f),
             ValueKind::I64(ref val) => fmt::Display::fmt(val, f),
             ValueKind::Str(val) => fmt::Display::fmt(val, f),
+            ValueKind::Args(ref val) => fmt::Display::fmt(val, f),
         }
     }
 }
@@ -519,50 +552,60 @@ macro_rules! ty_to_nonzero {
     };
 }
 
-macro_rules! impl_one_value {
-    (bool, $op:expr, $record:ident) => {
-        impl_one_value!(normal, bool, $op, $record);
-    };
-    ($value_ty:tt, $op:expr, $record:ident) => {
-        impl_one_value!(normal, $value_ty, $op, $record);
-        impl_one_value!(nonzero, $value_ty, $op, $record);
-    };
-    (normal, $value_ty:tt, $op:expr, $record:ident) => {
-        impl $crate::sealed::Sealed for $value_ty {}
-        impl $crate::field::Value for $value_ty {
-            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
-                visitor.$record(key, $op(*self))
+macro_rules! impl_one_into_value {
+    ($value_ty:tt, $op:expr) => {
+        impl<'a> From<$value_ty> for Value<'a> {
+            fn from(val: $value_ty) -> Self {
+                Self::from($op(val))
             }
         }
-    };
-    (nonzero, $value_ty:tt, $op:expr, $record:ident) => {
-        // This `use num::*;` is reported as unused because it gets emitted
-        // for every single invocation of this macro, so there are multiple `use`s.
-        // All but the first are useless indeed.
-        // We need this import because we can't write a path where one part is
-        // the `ty_to_nonzero!($value_ty)` invocation.
-        #[allow(clippy::useless_attribute, unused)]
-        use num::*;
-        impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
-        impl $crate::field::Value for ty_to_nonzero!($value_ty) {
-            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
-                visitor.$record(key, $op(self.get()))
-            }
-        }
-    };
+    }; // (nonzero, $value_ty:tt, $op:expr) => {
+       //     // This `use num::*;` is reported as unused because it gets emitted
+       //     // for every single invocation of this macro, so there are multiple `use`s.
+       //     // All but the first are useless indeed.
+       //     // We need this import because we can't write a path where one part is
+       //     // the `ty_to_nonzero!($value_ty)` invocation.
+       //     #[allow(clippy::useless_attribute, unused)]
+       //     use num::*;
+       //     impl<'a> From<$value_ty> for Value<'a> {
+       //         fn from(val: $value_ty) -> Self {
+       //             Self::from($op(val.get()))
+       //         }
+       //     }
+       // };
 }
 
 macro_rules! impl_value {
-    ( $record:ident( $( $value_ty:tt ),+ ) ) => {
+    ( $( $value_ty:tt  ),+ $op:expr ) => {
         $(
-            impl_one_value!($value_ty, |this: $value_ty| this, $record);
+            impl_one_into_value! { $value_ty, $op }
         )+
     };
-    ( $record:ident( $( $value_ty:tt ),+ as $as_ty:ty) ) => {
+    ( $( $value_ty:tt ),+ as $as_ty:ty ) => {
         $(
-            impl_one_value!($value_ty, |this: $value_ty| this as $as_ty, $record);
+            impl_one_into_value! { $value_ty, |this: $value_ty| this as $as_ty }
         )+
     };
+}
+
+impl_value! { usize, u32, u16, u8 as u64 }
+impl_value! { isize, i32, i16, i8 as i64 }
+
+impl<'a, T> From<Option<T>> for Value<'a>
+where
+    Self: From<T>,
+{
+    fn from(val: Option<T>) -> Self {
+        val.map(Value::from).unwrap_or_else(Value::empty)
+    }
+}
+
+impl<'a> From<&'a fmt::Arguments<'a>> for Value<'a> {
+    fn from(val: &'a fmt::Arguments<'a>) -> Self {
+        Value {
+            inner: ValueKind::Args(val),
+        }
+    }
 }
 
 // ===== impl Value =====
@@ -830,20 +873,20 @@ impl FieldSet {
         }
     }
 
-    // /// Returns a new `ValueSet` with entries for this `FieldSet`'s values.
-    // ///
-    // /// Note that a `ValueSet` may not be constructed with arrays of over 32
-    // /// elements.
-    // #[doc(hidden)]
-    // pub fn value_set<'v, V>(&'v self, values: &'v V) -> ValueSet<'v>
-    // where
-    //     V: ValidLen<'v>,
-    // {
-    //     ValueSet {
-    //         fields: self,
-    //         values: &values.borrow()[..],
-    //     }
-    // }
+    /// Returns a new `ValueSet` with entries for this `FieldSet`'s values.
+    ///
+    /// Note that a `ValueSet` may not be constructed with arrays of over 32
+    /// elements.
+    #[doc(hidden)]
+    pub fn value_set<'v, V>(&'v self, values: &'v V) -> ValueSet<'v>
+    where
+        V: ValidLen<'v>,
+    {
+        ValueSet {
+            fields: self,
+            values: &values.borrow()[..],
+        }
+    }
 
     /// Returns the number of fields in this `FieldSet`.
     #[inline]
@@ -918,12 +961,13 @@ impl<'a> ValueSet<'a> {
     /// [visitor]: ../trait.Visit.html
     pub(crate) fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
-        for (i, value) in self.values.iter().enumerate() {
+        for (i, value) in self {
             if let ValueKind::Empty = value.inner {
                 continue;
             }
 
-            value.record(visitor, self.fields.names[i], value)
+            // value.record(visitor, self.fields.names[i], value)
+            todo!()
         }
     }
 
@@ -932,80 +976,107 @@ impl<'a> ValueSet<'a> {
         field.callsite() == self.callsite()
             && self
                 .values
-                .iter()
-                .any(|(key, val)| *key == field && val.is_some())
+                .get(field.i)
+                .map(Value::is_some)
+                .unwrap_or(false)
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub(crate) fn is_empty(&self) -> bool {
-        let my_callsite = self.callsite();
-        self.values
-            .iter()
-            .all(|(key, val)| val.is_none() || key.callsite() != my_callsite)
+        !self.values.iter().any(Value::is_some)
     }
 
     pub(crate) fn field_set(&self) -> &FieldSet {
         self.fields
     }
+
+    pub fn iter<'b>(&'b self) -> Values<'b, 'a> {
+        Values {
+            values: self.values.iter().enumerate(),
+            fields: &self.fields,
+        }
+    }
 }
 
 impl<'a> fmt::Debug for ValueSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_struct("ValueSet"), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .field("callsite", &self.callsite())
-            .finish()
+        let mut dbg = f.debug_struct("ValueSet");
+        for (key, value) in self {
+            if let ValueKind::Empty = value.inner {
+                continue;
+            }
+            dbg.field(&key.name(), value);
+        }
+        dbg.finish()
     }
 }
 
 impl<'a> fmt::Display for ValueSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_map(), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .finish()
+        let mut dbg = f.debug_map();
+        for (key, value) in self {
+            if let ValueKind::Empty = value.inner {
+                continue;
+            }
+            dbg.entry(&format_args!("{}", key), value);
+        }
+        dbg.finish()
+    }
+}
+
+impl<'set, 'values> IntoIterator for &'set ValueSet<'values> {
+    type IntoIter = Values<'set, 'values>;
+    type Item = (Field, &'set Value<'values>);
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'set, 'values> Iterator for Values<'set, 'values>
+where
+    'values: 'set,
+{
+    type Item = (Field, &'set Value<'values>);
+    fn next(&mut self) -> Option<Self::Item> {
+        let (i, value) = self.values.next()?;
+        let field = Field {
+            i,
+            fields: FieldSet {
+                callsite: self.fields.callsite.clone(),
+                names: self.fields.names,
+            },
+        };
+        Some((field, value))
     }
 }
 
 // ===== impl ValidLen =====
 
-// mod private {
-//     use super::*;
+mod private {
+    use super::*;
 
-//     /// Marker trait implemented by arrays which are of valid length to
-//     /// construct a `ValueSet`.
-//     ///
-//     /// `ValueSet`s may only be constructed from arrays containing 32 or fewer
-//     /// elements, to ensure the array is small enough to always be allocated on the
-//     /// stack. This trait is only implemented by arrays of an appropriate length,
-//     /// ensuring that the correct size arrays are used at compile-time.
-//     pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (dyn Value + 'a)>)]> {}
-// }
+    /// Marker trait implemented by arrays which are of valid length to
+    /// construct a `ValueSet`.
+    ///
+    /// `ValueSet`s may only be constructed from arrays containing 32 or fewer
+    /// elements, to ensure the array is small enough to always be allocated on the
+    /// stack. This trait is only implemented by arrays of an appropriate length,
+    /// ensuring that the correct size arrays are used at compile-time.
+    pub trait ValidLen<'a>: Borrow<[Value<'a>]> {}
+}
 
-// macro_rules! impl_valid_len {
-//     ( $( $len:tt ),+ ) => {
-//         $(
-//             impl<'a> private::ValidLen<'a> for
-//                 [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
-//         )+
-//     }
-// }
+macro_rules! impl_valid_len {
+    ( $( $len:tt ),+ ) => {
+        $(
+            impl<'a> private::ValidLen<'a> for [Value<'a>; $len] {}
+        )+
+    }
+}
 
-// impl_valid_len! {
-//     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-//     21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
-// }
+impl_valid_len! {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+}
 
 // #[cfg(test)]
 // mod test {
