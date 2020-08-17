@@ -572,7 +572,7 @@ macro_rules! with_event_from_span {
         #[allow(unused)]
         let mut iter = fs.iter();
         let v = [$(
-            (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
+            field::Value::from(&$value)
         )*];
         let vs = fs.value_set(&v);
         let $event = Event::new_child_of($id, meta, &vs);

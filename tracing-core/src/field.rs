@@ -608,6 +608,14 @@ impl<'a> From<&'a fmt::Arguments<'a>> for Value<'a> {
     }
 }
 
+impl<'a> From<&'a &'a str> for Value<'a> {
+    fn from(val: &'a &'a str) -> Self {
+        Value {
+            inner: ValueKind::Str(*val),
+        }
+    }
+}
+
 // ===== impl Value =====
 
 // impl_values! {
