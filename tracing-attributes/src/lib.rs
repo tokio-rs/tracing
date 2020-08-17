@@ -929,8 +929,11 @@ fn get_async_trait_info(block: &Block, block_is_async: bool) -> Option<AsyncTrai
 
             None
         })
-        .next()
-        .flatten();
+        .next();
+    let self_type = match self_type {
+        Some(x) => x,
+        None => None,
+    };
 
     Some(AsyncTraitInfo {
         name: fun.sig.ident.to_string(),
