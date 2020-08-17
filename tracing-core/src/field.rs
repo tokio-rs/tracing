@@ -40,7 +40,7 @@
 //! [`Visit`]: trait.Visit.html
 use crate::callsite;
 use crate::stdlib::{
-    any::Any,
+    any::{Any, TypeId},
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
@@ -108,9 +108,9 @@ enum ValueKind<'a> {
     I64(i64),
     Str(&'a str),
     #[cfg(feature = "std")]
-    Error(&'a (dyn Error + 'static)),
-    Debug(&'a dyn fmt::Debug),
-    Display(&'a dyn fmt::Display),
+    Error(&'a (dyn Error + 'static), TypeId),
+    Debug(&'a dyn fmt::Debug, TypeId),
+    Display(&'a dyn fmt::Display, TypeId),
 }
 
 /// Visits typed values.
@@ -274,7 +274,7 @@ pub trait Visit {
 /// recorded using its `Display` implementation.
 pub fn display<T>(t: &T) -> Value<'_>
 where
-    T: fmt::Display,
+    T: Any + fmt::Display,
 {
     Value::display(t)
 }
@@ -283,7 +283,7 @@ where
 /// recorded using its `Debug` implementation.
 pub fn debug<T>(t: &T) -> Value<'_>
 where
-    T: fmt::Debug,
+    T: Any + fmt::Debug,
 {
     Value::debug(t)
 }
@@ -320,23 +320,23 @@ macro_rules! gen_primitives {
 }
 
 impl<'a> Value<'a> {
-    pub fn display<T: fmt::Display>(val: &'a T) -> Self {
+    pub fn display<T: Any + fmt::Display>(val: &'a T) -> Self {
         Self {
-            inner: ValueKind::Display(val as &'a dyn fmt::Display),
+            inner: ValueKind::Display(val as &'a dyn fmt::Display, TypeId::of::<T>()),
         }
     }
 
-    pub fn debug<T: fmt::Debug>(val: &'a T) -> Self {
+    pub fn debug<T: Any + fmt::Debug>(val: &'a T) -> Self {
         Self {
-            inner: ValueKind::Debug(val as &'a dyn fmt::Debug),
+            inner: ValueKind::Debug(val as &'a dyn fmt::Debug, TypeId::of::<T>()),
         }
     }
 
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn error<T: Error + 'static>(val: &'a T) -> Self {
+    pub fn error<T: Any + Error + 'static>(val: &'a T) -> Self {
         Self {
-            inner: ValueKind::Error(val as &'a (dyn Error + 'static)),
+            inner: ValueKind::Error(val as &'a (dyn Error + 'static), TypeId::of::<T>()),
         }
     }
 
@@ -344,7 +344,7 @@ impl<'a> Value<'a> {
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn as_error(&self) -> Option<&(dyn Error + 'static)> {
         match self.inner {
-            ValueKind::Error(val) => Some(val),
+            ValueKind::Error(val, _) => Some(val),
             _ => None,
         }
     }
@@ -352,9 +352,9 @@ impl<'a> Value<'a> {
     pub fn as_display(&self) -> Option<&dyn fmt::Display> {
         match self.inner {
             ValueKind::Empty => None,
-            ValueKind::Display(val) => Some(val),
+            ValueKind::Display(val, _) => Some(val),
             #[cfg(feature = "std")]
-            ValueKind::Error(val) => Some(self as &dyn fmt::Display),
+            ValueKind::Error(_, _) => Some(self as &dyn fmt::Display),
             ValueKind::Bool(ref val) => Some(val as &dyn fmt::Display),
             ValueKind::U64(ref val) => Some(val as &dyn fmt::Display),
             ValueKind::I64(ref val) => Some(val as &dyn fmt::Display),
@@ -363,12 +363,38 @@ impl<'a> Value<'a> {
         }
     }
 
-    pub fn downcast_ref<T: Any>(&self, t: T)
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        let target = TypeId::of::<T>();
+        match self.inner {
+            ValueKind::Empty => None,
+            ValueKind::Bool(ref val) if target == TypeId::of::<bool>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::U64(ref val) if target == TypeId::of::<u64>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::I64(ref val) if target == TypeId::of::<i64>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::Str(val) if target == TypeId::of::<str>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            #[cfg(feature = "std")]
+            ValueKind::Error(val, actual) if actual == target => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::Debug(val, actual) => Some(unsafe { &*(val as *const _ as *const T) }),
+            ValueKind::Display(val, actual) if actual == target => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            _ => None,
+        }
+    }
 
     pub fn is<T: Any>(&self) -> bool {
         match self.inner {
             ValueKind::Empty => false,
-            _ => false,
+            _ => todo!(),
         }
     }
 }
@@ -377,10 +403,10 @@ impl fmt::Debug for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
             ValueKind::Empty => Ok(()),
-            ValueKind::Display(val) => fmt::Display::fmt(val, f),
-            ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Display(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::Debug(val, _) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
-            ValueKind::Error(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Error(val, _) => fmt::Debug::fmt(val, f),
             ValueKind::Bool(ref val) => fmt::Debug::fmt(val, f),
             ValueKind::U64(ref val) => fmt::Debug::fmt(val, f),
             ValueKind::I64(ref val) => fmt::Debug::fmt(val, f),
@@ -393,10 +419,10 @@ impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
             ValueKind::Empty => Ok(()),
-            ValueKind::Display(val) => fmt::Display::fmt(val, f),
-            ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Display(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::Debug(val, _) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
-            ValueKind::Error(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Error(val, _) => fmt::Debug::fmt(val, f),
             ValueKind::Bool(ref val) => fmt::Display::fmt(val, f),
             ValueKind::U64(ref val) => fmt::Display::fmt(val, f),
             ValueKind::I64(ref val) => fmt::Display::fmt(val, f),
