@@ -227,9 +227,12 @@ pub trait Visit {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug);
 
     /// Visit an Option
-    fn record_option(&mut self, field: &Field, value: Option<&(dyn Value + 'static)>) {
+    fn record_option(&mut self, field: &Field, value: Option<&(dyn Value + 'static)>)
+    where
+        Self: std::marker::Sized,
+    {
         if let Some(inner_value) = value {
-            self.record_debug(field, &inner_value)
+            inner_value.record(field, self)
         } else {
         }
     }
