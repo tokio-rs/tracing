@@ -21,5 +21,8 @@ keywords = ["logging", "tracing", "serialization"]
 serde = "1"
 tracing-core = { path = "../tracing-core", version = "0.1.2"}
 
+[dev-dependencies]
+serde_json = "1"
+
 [badges]
 maintenance = { status = "experimental" }
