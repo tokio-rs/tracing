@@ -357,6 +357,58 @@ where
         .unwrap_or_else(|_| f(&Dispatch::none()))
 }
 
+/// Executes a closure with a reference to this thread's current [dispatcher].
+///
+/// Note that calls to `get_default` should not be nested; if this function is
+/// called while inside of another `get_default`, that closure will be provided
+/// with `Dispatch::none` rather than the previously set dispatcher.
+///
+/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+#[cfg(feature = "std")]
+#[doc(hidden)]
+pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    // While this guard is active, additional calls to subscriber functions on
+    // the default dispatcher will not be able to access the dispatch context.
+    // Dropping the guard will allow the dispatch context to be re-entered.
+    struct Entered<'a>(&'a Cell<bool>);
+    impl<'a> Drop for Entered<'a> {
+        #[inline]
+        fn drop(&mut self) {
+            self.0.set(true);
+        }
+    }
+
+    CURRENT_STATE
+        .try_with(|state| {
+            if state.can_enter.replace(false) {
+                let _guard = Entered(&state.can_enter);
+
+                let mut default = state.default.borrow_mut();
+
+                if default.is::<NoSubscriber>() {
+                    if let Some(global) = get_global() {
+                        // don't redo this call on the next check
+                        *default = global.clone();
+                    }
+                }
+                return Some(f(&*default));
+            }
+
+            None
+        })
+        .ok()?
+}
+
+/// Executes a closure with a reference to the current [dispatcher].
+///
+/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    let dispatch = get_global()?;
+    Some(f(&dispatch))
+}
+
 /// Executes a closure with a reference to the current [dispatcher].
 ///
 /// [dispatcher]: ../dispatcher/struct.Dispatch.html

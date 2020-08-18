@@ -15,5 +15,10 @@ members = [
     "tracing-serde",
     "tracing-appender",
     "tracing-journald",
-    "examples"
+    "examples",
+    "disas"
 ]
+
+
+[profile.release]
+debug = true 

@@ -954,8 +954,7 @@ pub mod __macro_support {
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
         /// without warning.
-        #[inline(always)]
-        pub fn is_enabled(&self) -> bool {
+        pub fn is_enabled(&'static self) -> bool {
             let interest = self.interest();
             if interest.is_always() {
                 return true;
@@ -977,19 +976,62 @@ pub mod __macro_support {
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
         /// without warning.
-        #[inline(always)]
-        pub fn register(&'static self) {
+        #[inline(never)]
+        #[cold]
+        pub fn register(&'static self) -> Interest {
             self.registration
                 .call_once(|| crate::callsite::register(self));
-        }
-
-        #[inline(always)]
-        fn interest(&self) -> Interest {
             match self.interest.load(Ordering::Relaxed) {
                 0 => Interest::never(),
                 2 => Interest::always(),
                 _ => Interest::sometimes(),
             }
+        }
+
+        #[inline]
+        pub fn interest(&'static self) -> Interest {
+            match self.interest.load(Ordering::Relaxed) {
+                0 => Interest::never(),
+                1 => Interest::sometimes(),
+                2 => Interest::always(),
+                _ => self.register(),
+            }
+        }
+
+        #[inline(never)]
+        pub fn dispatch_event(&'static self, interest: Interest, f: impl FnOnce(&crate::Dispatch)) {
+            tracing_core::dispatcher::get_current(|current| {
+                if interest.is_always() || current.enabled(self.meta) {
+                    f(current)
+                }
+            });
+        }
+
+        #[inline(always)]
+        #[cfg(feature = "log")]
+        fn disabled_span(&self) -> crate::Span {
+            crate::Span::new_disabled(self.meta)
+        }
+
+        #[inline(always)]
+        #[cfg(not(feature = "log"))]
+        fn disabled_span(&self) -> crate::Span {
+            crate::Span::none()
+        }
+
+        #[inline(never)]
+        pub fn dispatch_span(
+            &'static self,
+            interest: Interest,
+            f: impl FnOnce(&crate::Dispatch) -> crate::Span,
+        ) -> crate::Span {
+            tracing_core::dispatcher::get_current(|current| {
+                if interest.is_always() || current.enabled(self.meta) {
+                    return f(current);
+                }
+                self.disabled_span()
+            })
+            .unwrap_or_else(|| self.disabled_span())
         }
     }
 
