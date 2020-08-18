@@ -28,7 +28,6 @@ Application-level tracing for Rust.
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discord.gg/EeF3cQw
 
-
 ## Overview
 
 `tracing` is a framework for instrumenting Rust programs to collect
@@ -48,7 +47,9 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: requires `rustc` 1.39+*
+*Compiler support: [requires `rustc` 1.40+][msrv]*
+
+[msrv]: #supported-rust-versions
 
 ## Usage
 
@@ -323,9 +324,23 @@ be invoked with the same syntax as the similarly-named macros from the `log`
 crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
-### Ecosystem
+## Supported Rust Versions
 
-## Related Crates
+Tracing is built against the latest stable release. The minimum supported
+version is 1.40. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
+
+## Ecosystem
+
+### Related Crates
 
 In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 contains several additional crates designed to be used with the `tracing` ecosystem.
@@ -383,7 +398,6 @@ please let us know! We'd love to add your project to the list!
 undergoing active development. They may be less stable than `tracing` and
 `tracing-core`.
 
-
 [`log`]: https://docs.rs/log/0.4.6/log/
 [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 [`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
@@ -392,6 +406,20 @@ undergoing active development. They may be less stable than `tracing` and
 [`env_logger`]: https://crates.io/crates/env_logger
 [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 [`examples`]: https://github.com/tokio-rs/tracing/tree/master/examples
+
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.40. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## License
 

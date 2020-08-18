@@ -19,6 +19,9 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
+//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//!
+//! [msrv]: #supported-rust-versions
 //! # Core Concepts
 //!
 //! The core of `tracing`'s API is composed of _spans_, _events_ and
@@ -777,8 +780,6 @@
 //!   tracing = { version = "0.1.19", default-features = false }
 //!   ```
 //!
-//!   *Compiler support: requires rustc 1.39+*
-//!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
 //! </div>
@@ -787,6 +788,20 @@
 //! <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
 //! requires <code>liballoc</code>.
 //! </pre></div>
+//!
+//! ## Supported Rust Versions
+//!
+//! Tracing is built against the latest stable release. The minimum supported
+//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! Rust versions earlier than the minimum supported version.
+//!
+//! Tracing follows the same compiler support policies as the rest of the Tokio
+//! project. The current stable Rust compiler and the three most recent minor
+//! versions before it will always be supported. For example, if the current
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! supported compiler version is not considered a semver breaking change as
+//! long as doing so complies with this policy.
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
 //! [span]: span/index.html
