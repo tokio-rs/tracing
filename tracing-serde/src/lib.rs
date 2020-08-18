@@ -49,10 +49,6 @@
 //! Next, add this to your crate:
 //!
 //! ```rust
-//! #[macro_use]
-//! extern crate tracing;
-//! extern crate tracing_serde;
-//!
 //! use tracing_serde::AsSerde;
 //! ```
 //!
@@ -69,13 +65,19 @@
 //! types how you'd like.
 //!
 //! ```rust
+//! # use tracing_core::{Subscriber, Metadata, Event};
+//! # use tracing_core::span::{Attributes, Id, Record};
+//! # use std::sync::atomic::{AtomicUsize, Ordering};
+//! use tracing_serde::AsSerde;
+//! use serde_json::json;
+//!
 //! pub struct JsonSubscriber {
 //!     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 //! }
 //!
 //! impl Subscriber for JsonSubscriber {
 //!
-//!     fn new_span(&self, attrs: &Attributes) -> Id {
+//!     fn new_span(&self, attrs: &Attributes<'_>) -> Id {
 //!         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
 //!         let id = Id::from_u64(id as u64);
 //!         let json = json!({
@@ -86,7 +88,20 @@
 //!         println!("{}", json);
 //!         id
 //!     }
+//!
+//!     fn event(&self, event: &Event<'_>) {
+//!         let json = json!({
+//!            "event": event.as_serde(),
+//!         });
+//!         println!("{}", json);
+//!     }
+//!
 //!     // ...
+//!     # fn enabled(&self, _: &Metadata<'_>) -> bool { false }
+//!     # fn enter(&self, _: &Id) {}
+//!     # fn exit(&self, _: &Id) {}
+//!     # fn record(&self, _: &Id, _: &Record<'_>) {}
+//!     # fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! }
 //! ```
 //!
