@@ -1,8 +1,22 @@
+//! # tracing-journald
 //!
+//! Support for logging [`tracing`][tracing] events natively to [journald],
+//! preserving structured information.
 //!
+//! ## Overview
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
+//! scoped, structured, and async-aware diagnostics. `tracing-journald` provides a
+//! [`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
+//! and events to [`systemd-journald`][journald], on Linux distributions that
+//! use `systemd`.
+//!  
 //! *Compiler support: [requires `rustc` 1.40+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
+//! [`tracing`]: https://crates.io/crates/tracing
+//! [layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
+//! [journald]: https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html
 //!
 //! ## Supported Rust Versions
 //!

@@ -4,8 +4,7 @@
 
 # tracing-serde
 
-An adapter for serializing `tracing` types using `serde`.
-
+An adapter for serializing [`tracing`] types using [`serde`].
 
 [![Documentation][docs-badge]][docs-url]
 [![Documentation (master)][docs-master-badge]][docs-master-url]
@@ -17,9 +16,9 @@ An adapter for serializing `tracing` types using `serde`.
 
 ## Overview
 
-`tracing-serde` enables serializing `tracing` types using
-`serde`. `tracing` is a framework for instrumenting Rust programs
-to collect structured, event-based diagnostic information.
+[`tracing`] is a framework for instrumenting Rust programs to collect
+scoped, structured, and async-aware diagnostics.`tracing-serde` enables
+serializing `tracing` types using [`serde`]. 
 
 Traditional logging is based on human-readable text messages.
 `tracing` gives us machine-readable structured diagnostic
@@ -122,3 +121,6 @@ This project is licensed under the [MIT license](LICENSE).
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in Tokio by you, shall be licensed as MIT, without any additional
 terms or conditions.
+
+[`tracing`]: https://crates.io/crates/tracing
+[`serde`]: https://crates.io/crates/serde
