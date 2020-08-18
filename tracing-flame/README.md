@@ -26,6 +26,9 @@ flamegraph/flamechart. Flamegraphs/flamecharts are useful for identifying perfor
 bottlenecks in an application. For more details, see Brendan Gregg's [post]
 on flamegraphs.
 
+*Compiler support: [requires `rustc` 1.40+][msrv]*
+
+[msrv]: #supported-rust-versions
 [post]: http://www.brendangregg.com/flamegraphs.html
 
 ## Usage
@@ -100,6 +103,20 @@ as they were emitted by `tracing-flame`, so that it is clear when each
 span is entered relative to others and get an accurate visual trace of
 the execution of your program. This representation is best created with a
 _flamechart_, which _does not_ sort or collapse identical stack frames.
+
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.40. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## License
 
