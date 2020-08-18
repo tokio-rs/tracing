@@ -721,6 +721,8 @@
 //!  - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 //!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
+//!  - [`test-env-log`] takes care of initializing `tracing` for tests, based on
+//!    environment variables with an `env_logger` compatible syntax.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -740,6 +742,7 @@
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 //! [`tide-tracing`]: https://crates.io/crates/tide-tracing
 //! [tide]: https://crates.io/crates/tide
+//! [`test-env-log`]: https://crates.io/crates/test-env-log
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
