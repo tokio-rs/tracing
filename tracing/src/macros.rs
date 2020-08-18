@@ -2136,7 +2136,7 @@ macro_rules! __tracing_mk_span {
                         let meta = CALLSITE.metadata();
                         // span with parent
                         unimplemented!("span with parent")
-                    });
+                    })
                 } else {
                     $crate::Span::none()
                 }
@@ -2162,7 +2162,7 @@ macro_rules! __tracing_mk_span {
                         let meta = CALLSITE.metadata();
                         // span without parent
                         unimplemented!("span without parent")
-                    });
+                    })
                 } else {
                     $crate::Span::none()
                 }
