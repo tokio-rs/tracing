@@ -54,6 +54,31 @@ where
     }
 }
 
+/// Prints text using the standard library's macro `print!`. This writer allows stdout logs to be
+/// correctly captured by commands such as `cargo test`.
+#[derive(Debug)]
+pub struct TestWriter;
+
+impl io::Write for TestWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let out_str = String::from_utf8_lossy(buf);
+        print!("{}", out_str);
+        Ok(out_str.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl MakeWriter for TestWriter {
+    type Writer = Self;
+
+    fn make_writer(&self) -> Self::Writer {
+        Self
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::MakeWriter;

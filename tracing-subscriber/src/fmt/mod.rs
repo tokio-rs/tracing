@@ -143,7 +143,7 @@ use crate::{
 pub use self::{
     format::{format, FormatEvent, FormatFields},
     time::time,
-    writer::MakeWriter,
+    writer::{MakeWriter, TestWriter},
 };
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
@@ -871,6 +871,15 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(make_writer),
+        }
+    }
+
+    /// Prints text using the standard library's macro `print!`. This writer allows stdout logs to
+    /// be correctly captured by commands such as `cargo test`.
+    pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_writer(TestWriter),
         }
     }
 }
