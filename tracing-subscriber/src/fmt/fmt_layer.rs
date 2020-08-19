@@ -209,7 +209,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
-            make_writer: TestWriter,
+            make_writer: TestWriter::default(),
             _inner: self._inner,
         }
     }

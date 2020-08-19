@@ -901,7 +901,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
         SubscriberBuilder {
             filter: self.filter,
-            inner: self.inner.with_writer(TestWriter),
+            inner: self.inner.with_writer(TestWriter::default()),
         }
     }
 }

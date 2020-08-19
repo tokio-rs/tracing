@@ -71,8 +71,10 @@ where
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
 /// [`print!`]: https://doc.rust-lang.org/std/macro.print.html
-#[derive(Debug)]
-pub struct TestWriter;
+#[derive(Default, Debug)]
+pub struct TestWriter {
+    _p: (),
+}
 
 impl io::Write for TestWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -90,7 +92,7 @@ impl MakeWriter for TestWriter {
     type Writer = Self;
 
     fn make_writer(&self) -> Self::Writer {
-        Self
+        Self::default()
     }
 }
 
