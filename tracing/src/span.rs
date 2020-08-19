@@ -406,8 +406,18 @@ impl Span {
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     #[inline]
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
+        dispatcher::get_default(|dispatch| Self::new_with(meta, values, dispatch))
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    pub fn new_with(
+        meta: &'static Metadata<'static>,
+        values: &field::ValueSet<'_>,
+        dispatch: &Dispatch,
+    ) -> Span {
         let new_span = Attributes::new(meta, values);
-        Self::make(meta, new_span)
+        Self::make_with(meta, new_span, dispatch)
     }
 
     /// Constructs a new `Span` as the root of its own trace tree, with the
@@ -421,7 +431,18 @@ impl Span {
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     #[inline]
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
-        Self::make(meta, Attributes::new_root(meta, values))
+        dispatcher::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    pub fn new_root_with(
+        meta: &'static Metadata<'static>,
+        values: &field::ValueSet<'_>,
+        dispatch: &Dispatch,
+    ) -> Span {
+        let new_span = Attributes::new_root(meta, values);
+        Self::make_with(meta, new_span, dispatch)
     }
 
     /// Constructs a new `Span` as child of the given parent span, with the
@@ -438,11 +459,25 @@ impl Span {
         meta: &'static Metadata<'static>,
         values: &field::ValueSet<'_>,
     ) -> Span {
+        let mut parent = parent.into();
+        dispatcher::get_default(move |dispatch| {
+            Self::child_of_with(Option::take(&mut parent), meta, values, dispatch)
+        })
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    pub fn child_of_with(
+        parent: impl Into<Option<Id>>,
+        meta: &'static Metadata<'static>,
+        values: &field::ValueSet<'_>,
+        dispatch: &Dispatch,
+    ) -> Span {
         let new_span = match parent.into() {
             Some(parent) => Attributes::child_of(parent, meta, values),
             None => Attributes::new_root(meta, values),
         };
-        Self::make(meta, new_span)
+        Self::make_with(meta, new_span, dispatch)
     }
 
     /// Constructs a new disabled span with the given `Metadata`.
@@ -497,12 +532,14 @@ impl Span {
         })
     }
 
-    fn make(meta: &'static Metadata<'static>, new_span: Attributes<'_>) -> Span {
+    fn make_with(
+        meta: &'static Metadata<'static>,
+        new_span: Attributes<'_>,
+        dispatch: &Dispatch,
+    ) -> Span {
         let attrs = &new_span;
-        let inner = dispatcher::get_default(move |dispatch| {
-            let id = dispatch.new_span(attrs);
-            Some(Inner::new(id, dispatch))
-        });
+        let id = dispatch.new_span(attrs);
+        let inner = Some(Inner::new(id, dispatch));
 
         let span = Self {
             inner,
@@ -520,7 +557,6 @@ impl Span {
 
         span
     }
-
     /// Enters this span, returning a guard that will exit the span when dropped.
     ///
     /// If this span is enabled by the current subscriber, then this function will

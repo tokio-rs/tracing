@@ -2135,7 +2135,12 @@ macro_rules! __tracing_mk_span {
                     CALLSITE.dispatch_span(interest, |current| {
                         let meta = CALLSITE.metadata();
                         // span with parent
-                        unimplemented!("span with parent")
+                        $crate::Span::child_of_with(
+                            $parent,
+                            meta,
+                            &$crate::valueset!(meta.fields(), $($fields)*),
+                            current
+                        )
                     })
                 } else {
                     $crate::Span::none()
@@ -2161,7 +2166,11 @@ macro_rules! __tracing_mk_span {
                     CALLSITE.dispatch_span(interest, |current| {
                         let meta = CALLSITE.metadata();
                         // span without parent
-                        unimplemented!("span without parent")
+                        $crate::Span::new_with(
+                            meta,
+                            &$crate::valueset!(meta.fields(), $($fields)*),
+                            current,
+                        )
                     })
                 } else {
                     $crate::Span::none()
