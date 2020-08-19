@@ -366,6 +366,7 @@ where
 /// [dispatcher]: ../dispatcher/struct.Dispatch.html
 #[cfg(feature = "std")]
 #[doc(hidden)]
+#[inline(never)]
 pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
     // While this guard is active, additional calls to subscriber functions on
     // the default dispatcher will not be able to access the dispatch context.
