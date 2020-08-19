@@ -143,7 +143,7 @@ use crate::{
 pub use self::{
     format::{format, FormatEvent, FormatFields},
     time::time,
-    writer::MakeWriter,
+    writer::{MakeWriter, TestWriter},
 };
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
@@ -871,6 +871,37 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(make_writer),
+        }
+    }
+
+    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// unit tests.
+    ///
+    /// See [`TestWriter`] for additional details.
+    ///
+    /// # Examples
+    ///
+    /// Using [`TestWriter`] to let `cargo test` capture test output. Note that we do not install it
+    /// globally as it may cause conflicts.
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt;
+    /// use tracing::subscriber;
+    ///
+    /// subscriber::set_default(
+    ///     fmt()
+    ///         .with_test_writer()
+    ///         .finish()
+    /// );
+    /// ```
+    ///
+    /// [capturing]:
+    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+    /// [`TestWriter`]: writer/struct.TestWriter.html
+    pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_writer(TestWriter::default()),
         }
     }
 }
