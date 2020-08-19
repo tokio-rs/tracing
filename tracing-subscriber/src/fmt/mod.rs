@@ -874,8 +874,30 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         }
     }
 
-    /// Prints text using the standard library's macro `print!`. This writer allows stdout logs to
-    /// be correctly captured by commands such as `cargo test`.
+    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// unit tests.
+    ///
+    /// See [`TestWriter`] for additional details.
+    ///
+    /// # Examples
+    ///
+    /// Using [`TestWriter`] to let `cargo test` capture test output. Note that we do not install it
+    /// globally as it may cause conflicts.
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt;
+    /// use tracing::subscriber;
+    ///
+    /// subscriber::set_default(
+    ///     fmt()
+    ///         .with_test_writer()
+    ///         .finish()
+    /// );
+    /// ```
+    ///
+    /// [capturing]:
+    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+    /// [`TestWriter`]: writer/struct.TestWriter.html
     pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
         SubscriberBuilder {
             filter: self.filter,

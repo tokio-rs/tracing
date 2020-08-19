@@ -54,8 +54,23 @@ where
     }
 }
 
-/// Prints text using the standard library's macro `print!`. This writer allows stdout logs to be
-/// correctly captured by commands such as `cargo test`.
+/// A writer intended to support [`libtest`'s output capturing][capturing] for use in unit tests.
+///
+/// `TestWriter` is used by [`fmt::Subscriber`] or [`fmt::Layer`] to enable capturing support.
+///
+/// `cargo test` can only capture output from the standard library's [`print!`] macro. See
+/// [`libtest`'s output capturing][capturing] for more details about output capturing.
+///
+/// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
+/// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
+///
+/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Layer`]: ../struct.Layer.html
+/// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+/// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
+/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
+/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
+/// [`print!`]: https://doc.rust-lang.org/std/macro.print.html
 #[derive(Debug)]
 pub struct TestWriter;
 
