@@ -333,6 +333,22 @@ where
             state: Ok(()),
         }
     }
+
+    /// Completes serializing the visited object, returning `Ok(())` if all
+    /// fields were serialized correctly, or `Error(S::Error)` if a field could
+    /// not be serialized.
+    pub fn finish(self) -> Result<S::Ok, S::Error> {
+        self.state?;
+        self.serializer.end()
+    }
+
+    /// Completes serializing the visited object, returning ownership of the underlying serializer
+    /// if all fields were serialized correctly, or `Err(S::Error)` if a field could not be
+    /// serialized.
+    pub fn take_serializer(self) -> Result<S, S::Error> {
+        self.state?;
+        Ok(self.serializer)
+    }
 }
 
 impl<S> Visit for SerdeMapVisitor<S>
@@ -371,16 +387,6 @@ where
         if self.state.is_ok() {
             self.state = self.serializer.serialize_entry(field.name(), &value)
         }
-    }
-}
-
-impl<S: SerializeMap> SerdeMapVisitor<S> {
-    /// Completes serializing the visited object, returning `Ok(())` if all
-    /// fields were serialized correctly, or `Error(S::Error)` if a field could
-    /// not be serialized.
-    pub fn finish(self) -> Result<S::Ok, S::Error> {
-        self.state?;
-        self.serializer.end()
     }
 }
 
