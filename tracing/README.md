@@ -381,6 +381,7 @@ maintained by the `tokio` project. These include:
   (Linux-only).
 - [`test-env-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
+- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -396,6 +397,7 @@ please let us know! We'd love to add your project to the list!
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
 [`test-env-log`]: https://crates.io/crates/test-env-log
+[`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
