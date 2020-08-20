@@ -1933,7 +1933,7 @@ macro_rules! level_enabled {
 macro_rules! valueset {
 
     // === base case ===
-    (@ { $(,)* $($val:expr),* $(,)* }, $next:expr $(,)*) => {
+    (@ { $(,)* $($val:expr),* $(,)* } $(,)*) => {
         &[ $($val),* ]
     };
 
@@ -1964,19 +1964,19 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$val) },
+            @ { $($out),*, $crate::field::Value::from(&$($k).+) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::debug(&val) },
+            @ { $($out),*, $crate::field::Value::debug(&$($k).+) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&$val) },
+            @ { $($out),*, $crate::field::Value::display(&$($k).+) },
             $($rest)*
         )
     };
@@ -1998,17 +1998,17 @@ macro_rules! valueset {
 
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::debug(&$($k).+) },
+            @ { $($out),*, $crate::field::Value::debug(&$($k).+) }
         )
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&$($k).+) },
+            @ { $($out),*, $crate::field::Value::display(&$($k).+) }
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$($k).+) },
+            @ { $($out),*, $crate::field::Value::from(&$($k).+) }
         )
     };
 
