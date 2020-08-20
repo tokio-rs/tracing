@@ -576,12 +576,12 @@ macro_rules! impl_one_into_value {
 }
 
 macro_rules! impl_value {
-    ( $( $value_ty:tt  ),+ $op:expr ) => {
+    ( $( $value_ty:ty  ),+ |$this:ident| $op:expr ) => {
         $(
-            impl_one_into_value! { $value_ty, $op }
+            impl_one_into_value! { $value_ty, |$this: $value_ty| $op }
         )+
     };
-    ( $( $value_ty:tt ),+ as $as_ty:ty ) => {
+    ( $( $value_ty:ty ),+ as $as_ty:ty ) => {
         $(
             impl_one_into_value! { $value_ty, |this: $value_ty| this as $as_ty }
         )+
@@ -590,6 +590,9 @@ macro_rules! impl_value {
 
 impl_value! { usize, u32, u16, u8 as u64 }
 impl_value! { isize, i32, i16, i8 as i64 }
+impl_value! { &'a usize, &'a u32, &'a u16, &'a u8 |val| *val as u64 }
+impl_value! { &'a isize, &'a i32, &'a i16, &'a i8 |val| *val as i64 }
+impl_value! { &'a bool |val| *val }
 
 impl<'a, T> From<Option<T>> for Value<'a>
 where
