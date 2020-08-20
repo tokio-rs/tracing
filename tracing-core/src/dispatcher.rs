@@ -149,7 +149,7 @@ use crate::stdlib::{
 
 #[cfg(feature = "std")]
 use crate::stdlib::{
-    cell::{Cell, RefCell},
+    cell::{Cell, RefCell, RefMut},
     error,
 };
 
@@ -192,6 +192,11 @@ struct State {
     /// is set back to `true`.
     can_enter: Cell<bool>,
 }
+
+// While this guard is active, additional calls to subscriber functions on
+// the default dispatcher will not be able to access the dispatch context.
+// Dropping the guard will allow the dispatch context to be re-entered.
+struct Entered<'a>(&'a State);
 
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
@@ -325,34 +330,13 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
-    // While this guard is active, additional calls to subscriber functions on
-    // the default dispatcher will not be able to access the dispatch context.
-    // Dropping the guard will allow the dispatch context to be re-entered.
-    struct Entered<'a>(&'a Cell<bool>);
-    impl<'a> Drop for Entered<'a> {
-        #[inline]
-        fn drop(&mut self) {
-            self.0.set(true);
-        }
-    }
-
     CURRENT_STATE
         .try_with(|state| {
-            if state.can_enter.replace(false) {
-                let _guard = Entered(&state.can_enter);
-
-                let mut default = state.default.borrow_mut();
-
-                if default.is::<NoSubscriber>() {
-                    if let Some(global) = get_global() {
-                        // don't redo this call on the next check
-                        *default = global.clone();
-                    }
-                }
-                f(&*default)
-            } else {
-                f(&Dispatch::none())
+            if let Some(entered) = state.enter() {
+                return f(&*entered.current());
             }
+
+            f(&Dispatch::none())
         })
         .unwrap_or_else(|_| f(&Dispatch::none()))
 }
@@ -368,34 +352,10 @@ where
 #[doc(hidden)]
 #[inline(never)]
 pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
-    // While this guard is active, additional calls to subscriber functions on
-    // the default dispatcher will not be able to access the dispatch context.
-    // Dropping the guard will allow the dispatch context to be re-entered.
-    struct Entered<'a>(&'a Cell<bool>);
-    impl<'a> Drop for Entered<'a> {
-        #[inline]
-        fn drop(&mut self) {
-            self.0.set(true);
-        }
-    }
-
     CURRENT_STATE
         .try_with(|state| {
-            if state.can_enter.replace(false) {
-                let _guard = Entered(&state.can_enter);
-
-                let mut default = state.default.borrow_mut();
-
-                if default.is::<NoSubscriber>() {
-                    if let Some(global) = get_global() {
-                        // don't redo this call on the next check
-                        *default = global.clone();
-                    }
-                }
-                return Some(f(&*default));
-            }
-
-            None
+            let entered = state.enter()?;
+            Some(f(&*entered.current()))
         })
         .ok()?
 }
@@ -763,6 +723,38 @@ impl State {
             .ok();
         EXISTS.store(true, Ordering::Release);
         DefaultGuard(prior)
+    }
+
+    #[inline]
+    fn enter(&self) -> Option<Entered<'_>> {
+        if self.can_enter.replace(false) {
+            Some(Entered(&self))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> Entered<'a> {
+    #[inline]
+    fn current(&self) -> RefMut<'a, Dispatch> {
+        let mut default = self.0.default.borrow_mut();
+
+        if default.is::<NoSubscriber>() {
+            if let Some(global) = get_global() {
+                // don't redo this call on the next check
+                *default = global.clone();
+            }
+        }
+
+        default
+    }
+}
+
+impl<'a> Drop for Entered<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        self.0.can_enter.set(true);
     }
 }
 
