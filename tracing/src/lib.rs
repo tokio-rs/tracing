@@ -66,7 +66,7 @@
 //!
 //! An [`Event`] represents a _moment_ in time. It signifies something that
 //! happened while a trace was being recorded. `Event`s are comparable to the log
-//! records emitted by unstructured logging code, but unlike a typical log line,``s
+//! records emitted by unstructured logging code, but unlike a typical log line,
 //! an `Event` may occur within the context of a span.
 //!
 //! For example:
