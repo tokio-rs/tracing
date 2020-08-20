@@ -396,6 +396,7 @@ are not maintained by the `tokio` project. These include:
 - [`test-env-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
+- [`diesel-tracing`] provides integration with [`diesel`] database connections.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -419,6 +420,8 @@ please let us know!)
 [`test-env-log`]: https://crates.io/crates/test-env-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+[`diesel`]: https://crates.io/crates/diesel
+[`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
