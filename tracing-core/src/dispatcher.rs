@@ -193,9 +193,10 @@ struct State {
     can_enter: Cell<bool>,
 }
 
-// While this guard is active, additional calls to subscriber functions on
-// the default dispatcher will not be able to access the dispatch context.
-// Dropping the guard will allow the dispatch context to be re-entered.
+/// While this guard is active, additional calls to subscriber functions on
+/// the default dispatcher will not be able to access the dispatch context.
+/// Dropping the guard will allow the dispatch context to be re-entered.
+#[cfg(feature = "std")]
 struct Entered<'a>(&'a State);
 
 /// A guard that resets the current default dispatcher to the prior
@@ -735,6 +736,9 @@ impl State {
     }
 }
 
+// ===== impl Entered =====
+
+#[cfg(feature = "std")]
 impl<'a> Entered<'a> {
     #[inline]
     fn current(&self) -> RefMut<'a, Dispatch> {
@@ -751,6 +755,7 @@ impl<'a> Entered<'a> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a> Drop for Entered<'a> {
     #[inline]
     fn drop(&mut self) {
