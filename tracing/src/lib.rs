@@ -728,6 +728,7 @@
 //!    environment variables with an `env_logger` compatible syntax.
 //!  - [`tracing-unwrap`] provides convenience methods to report failed unwraps
 //!    on `Result` or `Option` types to a `Subscriber`.
+//!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -749,6 +750,8 @@
 //! [tide]: https://crates.io/crates/tide
 //! [`test-env-log`]: https://crates.io/crates/test-env-log
 //! [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+//! [`diesel`]: https://crates.io/crates/diesel
+//! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
