@@ -916,9 +916,9 @@ pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
-    pub use crate::callsite::Callsite as _;
+    pub use crate::callsite::Callsite;
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
-    use crate::{subscriber::Interest, Callsite, Metadata};
+    use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.
@@ -947,33 +947,10 @@ pub mod __macro_support {
         /// without warning.
         pub const fn new(meta: &'static Metadata<'static>) -> Self {
             Self {
-                interest: AtomicUsize::new(0),
+                interest: AtomicUsize::new(0xDEADFACED),
                 meta,
                 registration: Once::new(),
             }
-        }
-
-        /// Returns `true` if the callsite is enabled by a cached interest, or
-        /// by the current `Dispatch`'s `enabled` method if the cached
-        /// `Interest` is `sometimes`.
-        ///
-        /// /!\ WARNING: This is *not* a stable API! /!\
-        /// This method, and all code contained in the `__macro_support` module, is
-        /// a *private* API of `tracing`. It is exposed publicly because it is used
-        /// by the `tracing` macros, but it is not part of the stable versioned API.
-        /// Breaking changes to this module may occur in small-numbered versions
-        /// without warning.
-        #[inline(always)]
-        pub fn is_enabled(&self) -> bool {
-            let interest = self.interest();
-            if interest.is_always() {
-                return true;
-            }
-            if interest.is_never() {
-                return false;
-            }
-
-            crate::dispatcher::get_default(|current| current.enabled(self.meta))
         }
 
         /// Registers this callsite with the global callsite registry.
@@ -986,19 +963,74 @@ pub mod __macro_support {
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
         /// without warning.
-        #[inline(always)]
-        pub fn register(&'static self) {
+        #[inline(never)]
+        // This only happens once (or if the cached interest value was corrupted).
+        #[cold]
+        pub fn register(&'static self) -> Interest {
             self.registration
                 .call_once(|| crate::callsite::register(self));
-        }
-
-        #[inline(always)]
-        fn interest(&self) -> Interest {
             match self.interest.load(Ordering::Relaxed) {
                 0 => Interest::never(),
                 2 => Interest::always(),
                 _ => Interest::sometimes(),
             }
+        }
+
+        /// Returns the callsite's cached Interest, or registers it for the
+        /// first time if it has not yet been registered.
+        ///
+        /// /!\ WARNING: This is *not* a stable API! /!\
+        /// This method, and all code contained in the `__macro_support` module, is
+        /// a *private* API of `tracing`. It is exposed publicly because it is used
+        /// by the `tracing` macros, but it is not part of the stable versioned API.
+        /// Breaking changes to this module may occur in small-numbered versions
+        /// without warning.
+        #[inline]
+        pub fn interest(&'static self) -> Interest {
+            match self.interest.load(Ordering::Relaxed) {
+                0 => Interest::never(),
+                1 => Interest::sometimes(),
+                2 => Interest::always(),
+                _ => self.register(),
+            }
+        }
+
+        pub fn dispatch_event(&'static self, interest: Interest, f: impl FnOnce(&crate::Dispatch)) {
+            tracing_core::dispatcher::get_current(|current| {
+                if interest.is_always() || current.enabled(self.meta) {
+                    f(current)
+                }
+            });
+        }
+
+        #[inline]
+        #[cfg(feature = "log")]
+        pub fn disabled_span(&self) -> crate::Span {
+            crate::Span::new_disabled(self.meta)
+        }
+
+        #[inline]
+        #[cfg(not(feature = "log"))]
+        pub fn disabled_span(&self) -> crate::Span {
+            crate::Span::none()
+        }
+
+        pub fn dispatch_span(
+            &'static self,
+            interest: Interest,
+            f: impl FnOnce(&crate::Dispatch) -> crate::Span,
+        ) -> crate::Span {
+            if interest.is_never() {
+                return self.disabled_span();
+            }
+
+            tracing_core::dispatcher::get_current(|current| {
+                if interest.is_always() || current.enabled(self.meta) {
+                    return f(current);
+                }
+                self.disabled_span()
+            })
+            .unwrap_or_else(|| self.disabled_span())
         }
     }
 
