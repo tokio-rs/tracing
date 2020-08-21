@@ -1,3 +1,9 @@
+# Unreleased
+
+## Added
+
+- Internal API changes to support optimizations in the `tracing` crate (#943)
+
 # 0.1.14 (August 10, 2020)
 
 ### Fixed
