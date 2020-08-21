@@ -159,6 +159,39 @@ jobs:
         command: test
         args: --all
 
+  test-build-wasm:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # TODO(securityinsanity): slowly add wasm32 test runner to each crate, and move to seperate actions that run tests.
+        subcrate:
+        - tracing
+        - tracing-appender
+        - tracing-attributes
+        - tracing-core
+        - tracing-error
+        - tracing-flame
+        - tracing-journald
+        - tracing-log
+        - tracing-macros
+        - tracing-opentelemetry
+        - tracing-serde
+        - tracing-subscriber
+        - tracing-tower
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        target: wasm32-unknown-unknown
+        toolchain: stable
+        override: true
+    - name: build all tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --no-run -p ${{ matrix.subcrate }}
+
   test-os:
     # Test against stable Rust across macOS, Windows, and Linux.
     needs: check
