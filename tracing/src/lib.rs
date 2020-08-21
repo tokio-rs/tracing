@@ -966,6 +966,7 @@ pub mod __macro_support {
                 _ => Interest::sometimes(),
             }
         }
+
         /// Returns the callsite's cached Interest, or registers it for the
         /// first time if it has not yet been registered.
         ///
