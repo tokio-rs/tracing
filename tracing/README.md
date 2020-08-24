@@ -16,9 +16,9 @@ Application-level tracing for Rust.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.19
+[crates-url]: https://crates.io/crates/tracing/0.1.20
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.19
+[docs-url]: https://docs.rs/tracing/0.1.20
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -246,7 +246,7 @@ my_future
 is as long as the future's.
 
 The second, and preferred, option is through the
-[`#[instrument]`](https://docs.rs/tracing/0.1.19/tracing/attr.instrument.html)
+[`#[instrument]`](https://docs.rs/tracing/0.1.20/tracing/attr.instrument.html)
 attribute:
 
 ```rust
@@ -293,7 +293,7 @@ span.in_scope(|| {
 // Dropping the span will close it, indicating that it has ended.
 ```
 
-The [`#[instrument]`](https://docs.rs/tracing/0.1.19/tracing/attr.instrument.html) attribute macro
+The [`#[instrument]`](https://docs.rs/tracing/0.1.20/tracing/attr.instrument.html) attribute macro
 can reduce some of this boilerplate:
 
 ```rust
