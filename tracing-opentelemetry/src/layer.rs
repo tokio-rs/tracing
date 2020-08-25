@@ -1,4 +1,4 @@
-use opentelemetry::api::IdGenerator;
+use opentelemetry::api::{Context as OtelContext, IdGenerator, TraceContextExt};
 use opentelemetry::{api, sdk};
 use std::any::TypeId;
 use std::fmt;
@@ -469,7 +469,12 @@ where
 
         // Ensure trace id exists so children are matched properly.
         if builder.parent_context.is_none() {
-            builder.trace_id = Some(self.id_generator.new_trace_id());
+            let existing_otel_span_context = OtelContext::current().span().span_context();
+            if existing_otel_span_context.is_valid() {
+                builder.trace_id = Some(existing_otel_span_context.trace_id());
+            } else {
+                builder.trace_id = Some(self.id_generator.new_trace_id());
+            }
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -584,7 +589,9 @@ where
 mod tests {
     use super::*;
     use opentelemetry::api;
+    use opentelemetry::api::TraceContextExt;
     use std::sync::{Arc, Mutex};
+    use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
 
     #[derive(Debug, Clone)]
@@ -604,6 +611,22 @@ mod tests {
             *self.0.lock().unwrap() = Some(builder);
             self.invalid()
         }
+    }
+
+    #[derive(Debug, Clone)]
+    struct TestSpan(api::SpanContext);
+    impl api::Span for TestSpan {
+        fn add_event_with_timestamp(&self, _: String, _: SystemTime, _: Vec<api::KeyValue>) {}
+        fn span_context(&self) -> api::SpanContext {
+            self.0.clone()
+        }
+        fn is_recording(&self) -> bool {
+            false
+        }
+        fn set_attribute(&self, _attribute: api::KeyValue) {}
+        fn set_status(&self, _code: api::StatusCode, _message: String) {}
+        fn update_name(&self, _new_name: String) {}
+        fn end(&self) {}
     }
 
     #[test]
@@ -631,5 +654,26 @@ mod tests {
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
         assert_eq!(recorded_kind, Some(api::SpanKind::Server))
+    }
+
+    #[test]
+    fn trace_id_from_existing_context() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let trace_id = api::TraceId::from_u128(42);
+        let existing_cx = api::Context::current_with_span(TestSpan(api::SpanContext::new(
+            trace_id,
+            api::SpanId::from_u64(1),
+            0,
+            false,
+        )));
+        let _g = existing_cx.attach();
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.kind = "Server");
+        });
+
+        let recorded_trace_id = tracer.0.lock().unwrap().as_ref().unwrap().trace_id;
+        assert_eq!(recorded_trace_id, Some(trace_id))
     }
 }
