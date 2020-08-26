@@ -2,7 +2,8 @@
 //!
 //! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 
-use std::io;
+use io::Write;
+use std::{fmt::Debug, io};
 
 /// A type that can create [`io::Write`] instances.
 ///
@@ -100,6 +101,60 @@ impl MakeWriter for TestWriter {
 
     fn make_writer(&self) -> Self::Writer {
         Self::default()
+    }
+}
+
+/// A writer that erases the specific [`io::Write`] and [`Makewriter`] types being used.
+///
+/// This is useful in cases where the concrete type of the writer cannot be known
+/// until runtime.
+///
+/// [`MakeWriter`]: trait.MakeWriter.html
+/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+pub struct BoxMakeWriter {
+    inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,
+}
+
+impl BoxMakeWriter {
+    /// Accepts an instance of [`MakeWriter`] and returns a BoxMakeWriter that wraps it.
+    ///
+    /// [`MakeWriter`]: trait.MakeWriter.html
+    pub fn new<M>(make_writer: M) -> Self
+    where
+        M: MakeWriter + Send + Sync + 'static,
+        M::Writer: Write + 'static,
+    {
+        Self {
+            inner: Box::new(Boxed(make_writer)),
+        }
+    }
+}
+
+impl Debug for BoxMakeWriter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "BoxMakeWriter")
+    }
+}
+
+impl MakeWriter for BoxMakeWriter {
+    type Writer = Box<dyn Write>;
+
+    fn make_writer(&self) -> Self::Writer {
+        self.inner.make_writer()
+    }
+}
+
+struct Boxed<M>(M);
+
+impl<M> MakeWriter for Boxed<M>
+where
+    M: MakeWriter,
+    M::Writer: Write + 'static,
+{
+    type Writer = Box<dyn Write>;
+
+    fn make_writer(&self) -> Self::Writer {
+        Box::new(self.0.make_writer())
     }
 }
 
