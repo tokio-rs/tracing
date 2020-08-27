@@ -15,6 +15,7 @@ use tracing::{
     Level, Span,
 };
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn handles_to_the_same_span_are_equal() {
     // Create a mock subscriber that will return `true` on calls to
@@ -29,6 +30,7 @@ fn handles_to_the_same_span_are_equal() {
     });
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn handles_to_different_spans_are_not_equal() {
     with_default(subscriber::mock().run(), || {
@@ -41,6 +43,7 @@ fn handles_to_different_spans_are_not_equal() {
     });
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
     // Every time time this function is called, it will return a _new
@@ -58,6 +61,7 @@ fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
     });
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them() {
     let subscriber1 = subscriber::mock()
@@ -107,6 +111,7 @@ fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
     .unwrap();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn dropping_a_span_calls_drop_span() {
     let (subscriber, handle) = subscriber::mock()
@@ -124,6 +129,7 @@ fn dropping_a_span_calls_drop_span() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_closes_after_event() {
     let (subscriber, handle) = subscriber::mock()
@@ -142,6 +148,7 @@ fn span_closes_after_event() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn new_span_after_event() {
     let (subscriber, handle) = subscriber::mock()
@@ -164,6 +171,7 @@ fn new_span_after_event() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_outside_of_span() {
     let (subscriber, handle) = subscriber::mock()
@@ -181,6 +189,7 @@ fn event_outside_of_span() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn cloning_a_span_calls_clone_span() {
     let (subscriber, handle) = subscriber::mock()
@@ -196,6 +205,7 @@ fn cloning_a_span_calls_clone_span() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn drop_span_when_exiting_dispatchers_context() {
     let (subscriber, handle) = subscriber::mock()
@@ -212,6 +222,7 @@ fn drop_span_when_exiting_dispatchers_context() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
     let (subscriber1, handle1) = subscriber::mock()
@@ -242,6 +253,7 @@ fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
     handle1.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_closes_when_exited() {
     let (subscriber, handle) = subscriber::mock()
@@ -261,6 +273,7 @@ fn span_closes_when_exited() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn enter() {
     let (subscriber, handle) = subscriber::mock()
@@ -279,6 +292,7 @@ fn enter() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn moved_field() {
     let (subscriber, handle) = subscriber::mock()
@@ -307,6 +321,7 @@ fn moved_field() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn dotted_field_name() {
     let (subscriber, handle) = subscriber::mock()
@@ -324,6 +339,7 @@ fn dotted_field_name() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn borrowed_field() {
     let (subscriber, handle) = subscriber::mock()
@@ -352,6 +368,7 @@ fn borrowed_field() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 // If emitting log instrumentation, this gets moved anyway, breaking the test.
 #[cfg(not(feature = "log"))]
@@ -401,6 +418,7 @@ fn move_field_out_of_struct() {
 // TODO(#1138): determine a new syntax for uninitialized span fields, and
 // re-enable these.
 /*
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn add_field_after_new_span() {
     let (subscriber, handle) = subscriber::mock()
@@ -429,6 +447,7 @@ fn add_field_after_new_span() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn add_fields_only_after_new_span() {
     let (subscriber, handle) = subscriber::mock()
@@ -458,6 +477,7 @@ fn add_fields_only_after_new_span() {
 }
 */
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn record_new_value_for_field() {
     let (subscriber, handle) = subscriber::mock()
@@ -488,6 +508,7 @@ fn record_new_value_for_field() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn record_new_values_for_fields() {
     let (subscriber, handle) = subscriber::mock()
@@ -523,6 +544,7 @@ fn record_new_values_for_fields() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn new_span_with_target_and_log_level() {
     let (subscriber, handle) = subscriber::mock()
@@ -542,6 +564,7 @@ fn new_span_with_target_and_log_level() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_root_span_is_root() {
     let (subscriber, handle) = subscriber::mock()
@@ -556,6 +579,7 @@ fn explicit_root_span_is_root() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_root_span_is_root_regardless_of_ctx() {
     let (subscriber, handle) = subscriber::mock()
@@ -575,6 +599,7 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child() {
     let (subscriber, handle) = subscriber::mock()
@@ -591,6 +616,7 @@ fn explicit_child() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child_at_levels() {
     let (subscriber, handle) = subscriber::mock()
@@ -615,6 +641,7 @@ fn explicit_child_at_levels() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child_regardless_of_ctx() {
     let (subscriber, handle) = subscriber::mock()
@@ -634,6 +661,7 @@ fn explicit_child_regardless_of_ctx() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn contextual_root() {
     let (subscriber, handle) = subscriber::mock()
@@ -648,6 +676,7 @@ fn contextual_root() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn contextual_child() {
     let (subscriber, handle) = subscriber::mock()
@@ -671,6 +700,7 @@ fn contextual_child() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn display_shorthand() {
     let (subscriber, handle) = subscriber::mock()
@@ -690,6 +720,7 @@ fn display_shorthand() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_shorthand() {
     let (subscriber, handle) = subscriber::mock()
@@ -709,6 +740,7 @@ fn debug_shorthand() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn both_shorthands() {
     let (subscriber, handle) = subscriber::mock()

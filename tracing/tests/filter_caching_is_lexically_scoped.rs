@@ -19,6 +19,7 @@ use std::sync::{
     Arc,
 };
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn filter_caching_is_lexically_scoped() {
     pub fn my_great_function() -> bool {

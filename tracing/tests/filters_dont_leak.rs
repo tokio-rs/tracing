@@ -3,6 +3,7 @@
 mod support;
 use self::support::*;
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn spans_dont_leak() {
     fn do_span() {
@@ -43,6 +44,7 @@ fn spans_dont_leak() {
     handle2.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn events_dont_leak() {
     fn do_event() {

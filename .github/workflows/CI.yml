@@ -166,7 +166,6 @@ jobs:
       matrix:
         # TODO(securityinsanity): slowly add wasm32 test runner to each crate, and move to seperate actions that run tests.
         subcrate:
-        - tracing
         - tracing-appender
         - tracing-attributes
         - tracing-core
@@ -191,6 +190,25 @@ jobs:
       with:
         command: test
         args: --no-run -p ${{ matrix.subcrate }}
+
+  test-wasm:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        subcrate:
+        - tracing
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        target: wasm32-unknown-unknown
+        toolchain: stable
+        override: true
+    - name: install test runner for wasm
+      run:  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: run wasm tests
+      run: cd ${{ matrix.subcrate }} && wasm-pack test --node
 
   test-os:
     # Test against stable Rust across macOS, Windows, and Linux.
