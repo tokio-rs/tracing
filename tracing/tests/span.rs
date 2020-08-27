@@ -84,6 +84,11 @@ fn spans_always_go_to_the_subscriber_that_tagged_them() {
     with_default(subscriber2, move || foo.in_scope(|| {}));
 }
 
+// This gets exempt from testing in wasm because of: `thread::spawn` which is
+// not yet possible to do in WASM. There is work going on see:
+// <https://rustwasm.github.io/2018/10/24/multithreading-rust-and-wasm.html>
+//
+// But for now since it's not possible we don't need to test for it :)
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
     let subscriber1 = subscriber::mock()
