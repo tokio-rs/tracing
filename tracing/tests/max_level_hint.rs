@@ -3,6 +3,7 @@ mod support;
 use self::support::*;
 use tracing::Level;
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn max_level_hints() {
     // This test asserts that when a subscriber provides us with the global
