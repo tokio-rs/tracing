@@ -9,6 +9,7 @@ extern crate tracing;
 // they're compile-time tests, so I want to get line numbers etc out of
 // failures, and producing them with a macro would muddy the waters a bit.
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span() {
     span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = ?2, quux = %3, quuux = 4);
@@ -26,6 +27,7 @@ fn span() {
     span!(Level::DEBUG, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span() {
     trace_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
@@ -41,6 +43,7 @@ fn trace_span() {
     trace_span!("bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span() {
     debug_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
@@ -56,6 +59,7 @@ fn debug_span() {
     debug_span!("bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span() {
     info_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
@@ -71,6 +75,7 @@ fn info_span() {
     info_span!("bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span() {
     warn_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
@@ -86,6 +91,7 @@ fn warn_span() {
     warn_span!("bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span() {
     error_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
@@ -101,6 +107,7 @@ fn error_span() {
     error_span!("bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_root() {
     span!(target: "foo_events", parent: None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
@@ -114,6 +121,7 @@ fn span_root() {
     span!(parent: None, Level::DEBUG, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span_root() {
     trace_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
@@ -126,6 +134,7 @@ fn trace_span_root() {
     trace_span!(parent: None, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span_root() {
     debug_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
@@ -138,6 +147,7 @@ fn debug_span_root() {
     debug_span!(parent: None, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span_root() {
     info_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
@@ -150,6 +160,7 @@ fn info_span_root() {
     info_span!(parent: None, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span_root() {
     warn_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
@@ -162,6 +173,7 @@ fn warn_span_root() {
     warn_span!(parent: None, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span_root() {
     error_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
@@ -174,6 +186,7 @@ fn error_span_root() {
     error_span!(parent: None, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -187,6 +200,7 @@ fn span_with_parent() {
     span!(parent: &p, Level::DEBUG, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -202,6 +216,7 @@ fn trace_span_with_parent() {
     trace_span!(parent: &p, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -217,6 +232,7 @@ fn debug_span_with_parent() {
     debug_span!(parent: &p, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -232,6 +248,7 @@ fn info_span_with_parent() {
     info_span!(parent: &p, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -247,6 +264,7 @@ fn warn_span_with_parent() {
     warn_span!(parent: &p, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -262,6 +280,7 @@ fn error_span_with_parent() {
     error_span!(parent: &p, "bar",);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_with_non_rust_symbol() {
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef", "more {}", 42);
@@ -278,6 +297,7 @@ fn span_with_non_rust_symbol() {
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = "abcdef");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event() {
     event!(Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
@@ -313,6 +333,7 @@ fn event() {
     event!(Level::DEBUG, foo);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn locals_with_message() {
     let data = (42, "forty-two");
@@ -329,6 +350,7 @@ fn locals_with_message() {
     );
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn locals_no_message() {
     let data = (42, "forty-two");
@@ -357,6 +379,7 @@ fn locals_no_message() {
     event!(Level::WARN, private_data, ?data, error,);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace() {
     trace!(foo = ?3, bar.baz = %2, quux = false);
@@ -386,6 +409,7 @@ fn trace() {
     trace!(foo);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug() {
     debug!(foo = ?3, bar.baz = %2, quux = false);
@@ -415,6 +439,7 @@ fn debug() {
     debug!(foo);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info() {
     info!(foo = ?3, bar.baz = %2, quux = false);
@@ -444,6 +469,7 @@ fn info() {
     info!(foo);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn() {
     warn!(foo = ?3, bar.baz = %2, quux = false);
@@ -473,6 +499,7 @@ fn warn() {
     warn!(foo);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error() {
     error!(foo = ?3, bar.baz = %2, quux = false);
@@ -502,6 +529,7 @@ fn error() {
     error!(foo);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_root() {
     event!(parent: None, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
@@ -529,6 +557,7 @@ fn event_root() {
     event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_root() {
     trace!(parent: None, foo = ?3, bar.baz = %2, quux = false);
@@ -551,6 +580,7 @@ fn trace_root() {
     trace!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_root() {
     debug!(parent: None, foo = ?3, bar.baz = %2, quux = false);
@@ -573,6 +603,7 @@ fn debug_root() {
     debug!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_root() {
     info!(parent: None, foo = ?3, bar.baz = %2, quux = false);
@@ -595,6 +626,7 @@ fn info_root() {
     info!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_root() {
     warn!(parent: None, foo = ?3, bar.baz = %2, quux = false);
@@ -617,6 +649,7 @@ fn warn_root() {
     warn!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_root() {
     error!(parent: None, foo = ?3, bar.baz = %2, quux = false);
@@ -639,6 +672,7 @@ fn error_root() {
     error!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -661,6 +695,7 @@ fn event_with_parent() {
     event!(target: "foo_events", parent: &p, Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -684,6 +719,7 @@ fn trace_with_parent() {
     trace!(target: "foo_events", parent: &p, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -707,6 +743,7 @@ fn debug_with_parent() {
     debug!(target: "foo_events", parent: &p, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -730,6 +767,7 @@ fn info_with_parent() {
     info!(target: "foo_events", parent: &p, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -753,6 +791,7 @@ fn warn_with_parent() {
     warn!(target: "foo_events", parent: &p, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
@@ -776,6 +815,7 @@ fn error_with_parent() {
     error!(target: "foo_events", parent: &p, { foo = 2, bar.baz = 78, }, "quux");
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn field_shorthand_only() {
     #[derive(Debug)]
@@ -796,6 +836,7 @@ fn field_shorthand_only() {
     event!(Level::TRACE, ?pos.x, ?pos.y);
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn callsite_macro_api() {
     // This test should catch any inadvertent breaking changes
