@@ -109,7 +109,27 @@ impl MakeWriter for TestWriter {
 /// This is useful in cases where the concrete type of the writer cannot be known
 /// until runtime.
 ///
+/// # Examples
+///
+/// A function that returns a [`Subscriber`] that will write to either stdout or stderr:
+///
+/// ```rust
+/// # use tracing::Subscriber;
+/// # use tracing_subscriber::fmt::writer::BoxMakeWriter;
+///
+/// fn dynamic_writer(use_stderr: bool) -> impl Subscriber {
+///     let writer = if use_stderr {
+///         BoxMakeWriter::new(std::io::stderr)
+///     } else {
+///         BoxMakeWriter::new(std::io::stdout)
+///     };
+///
+///     tracing_subscriber::fmt().with_writer(writer).finish()
+/// }
+/// ```
+///
 /// [`MakeWriter`]: trait.MakeWriter.html
+/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 pub struct BoxMakeWriter {
     inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,
