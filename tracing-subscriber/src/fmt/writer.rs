@@ -116,7 +116,7 @@ pub struct BoxMakeWriter {
 }
 
 impl BoxMakeWriter {
-    /// Accepts an instance of [`MakeWriter`] and returns a BoxMakeWriter that wraps it.
+    /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
     /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn new<M>(make_writer: M) -> Self
@@ -132,7 +132,7 @@ impl BoxMakeWriter {
 
 impl Debug for BoxMakeWriter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BoxMakeWriter")
+        f.pad("BoxMakeWriter { ... }")
     }
 }
 
