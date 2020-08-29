@@ -17,9 +17,13 @@ categories = [
 ]
 keywords = ["logging", "tracing", "serialization"]
 
+[features]
+default = ["std"]
+std = ["serde/std", "tracing-core/std"]
+
 [dependencies]
-serde = "1"
-tracing-core = { path = "../tracing-core", version = "0.1.2"}
+serde = { version = "1", default-features = false, features = ["alloc"] }
+tracing-core = { path = "../tracing-core", version = "0.1.2", default-features = false }
 
 [badges]
 maintenance = { status = "experimental" }

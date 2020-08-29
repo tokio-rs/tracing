@@ -25,6 +25,13 @@
     unused_parens,
     while_true
 )]
+
+// Support using Serde without the standard library!
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+use core::fmt;
+#[cfg(feature = "std")]
 use std::fmt;
 
 use serde::{
