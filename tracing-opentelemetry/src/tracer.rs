@@ -1,14 +1,31 @@
 use opentelemetry::{api, sdk};
 
-/// A protocol for OpenTelemetry [`Tracer`]s that are capable of producing
-/// sampled span contexts _before_ starting their associated spans.
+/// An interface for authors of OpenTelemetry SDKs to build pre-sampled tracers.
 ///
-/// This enables interoperability between `tracing` and `opentelemetry` by
-/// allowing otel trace ids to be associated _after_ a `tracing` span has been
-/// created. See the [`OpenTelemetrySpanExt`] in this crate for usage examples.
+/// The OpenTelemetry spec does not allow trace ids to be updated after a span
+/// has been created. In order to associate extracted parent trace ids with
+/// existing `tracing` spans, `tracing-opentelemetry` builds up otel span data
+/// using a [`SpanBuilder`] instead, and creates / exports full otel spans only
+/// when the associated `tracing` span is closed. However, in order to properly
+/// inject otel [`SpanContext`] information to downstream requests, the sampling
+/// state must now be known _before_ the otel span has been created.
+///
+/// The logic for coming to a sampling decision and creating an injectable span
+/// context from a [`SpanBuilder`] is encapsulated in the
+/// [`PreSampledTracer::sampled_span_context`] method and has been implemented
+/// for the standard OpenTelemetry SDK, but this trait may be implemented by
+/// authors of alternate OpenTelemetry SDK implementations if they wish to have
+/// `tracing` compatibility.
+///
+/// See the [`OpenTelemetrySpanExt::set_parent`] and
+/// [`OpenTelemetrySpanExt::context`] methods for example usage.
 ///
 /// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
-/// [`OpenTelemetrySpanExt`]: trait.OpenTelemetrySpanExt.html
+/// [`SpanBuilder`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/struct.SpanBuilder.html
+/// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
+/// [`PreSampledTracer::sampled_span_context`]: trait.PreSampledTracer.html#tymethod.sampled_span_context
+/// [`OpenTelemetrySpanExt::set_parent`]: trait.OpenTelemetrySpanExt.html#tymethod.set_parent
+/// [`OpenTelemetrySpanExt::context`]: trait.OpenTelemetrySpanExt.html#tymethod.context
 pub trait PreSampledTracer {
     /// Produce a pre-sampled span context for the given span builder.
     fn sampled_span_context(&self, builder: &mut api::SpanBuilder) -> api::SpanContext;
