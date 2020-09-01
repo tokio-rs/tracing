@@ -100,6 +100,9 @@
 mod layer;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;
+/// Protocols for OpenTelemetry Tracers that are compatible with Tracing
+mod tracer;
 
 pub use layer::{layer, OpenTelemetryLayer};
 pub use span_ext::OpenTelemetrySpanExt;
+pub use tracer::PreSampledTracer;
