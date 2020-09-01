@@ -511,6 +511,7 @@ mod tests {
             self.invalid()
         }
     }
+    
     impl PreSampledTracer for TestTracer {
         fn sampled_span_context(&self, _builder: &mut api::SpanBuilder) -> api::SpanContext {
             api::SpanContext::empty_context()
