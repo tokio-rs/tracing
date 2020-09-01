@@ -46,7 +46,7 @@
 //! may still occur on the path to 1.0. You can follow the changes via the
 //! [spec repository] to track progress toward stabilization.
 //!
-//! [spec repository]: (https://github.com/open-telemetry/opentelemetry-specification)
+//! [spec repository]: https://github.com/open-telemetry/opentelemetry-specification
 //!
 //! ## Examples
 //!
@@ -100,6 +100,9 @@
 mod layer;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;
+/// Protocols for OpenTelemetry Tracers that are compatible with Tracing
+mod tracer;
 
 pub use layer::{layer, OpenTelemetryLayer};
 pub use span_ext::OpenTelemetrySpanExt;
+pub use tracer::PreSampledTracer;
