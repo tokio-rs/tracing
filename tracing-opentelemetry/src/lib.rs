@@ -46,7 +46,7 @@
 //! may still occur on the path to 1.0. You can follow the changes via the
 //! [spec repository] to track progress toward stabilization.
 //!
-//! [spec repository]: (https://github.com/open-telemetry/opentelemetry-specification)
+//! [spec repository]: https://github.com/open-telemetry/opentelemetry-specification
 //!
 //! ## Examples
 //!
