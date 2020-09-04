@@ -729,6 +729,8 @@
 //!  - [`tracing-unwrap`] provides convenience methods to report failed unwraps
 //!    on `Result` or `Option` types to a `Subscriber`.
 //!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
+//!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
+//!    applications.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -752,6 +754,8 @@
 //! [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 //! [`diesel`]: https://crates.io/crates/diesel
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
+//! [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
+//! [Tracy]: https://github.com/wolfpld/tracy
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
