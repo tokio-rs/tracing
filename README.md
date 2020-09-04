@@ -397,6 +397,8 @@ are not maintained by the `tokio` project. These include:
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
+- [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
+  applications.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -422,6 +424,8 @@ please let us know!)
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
+[`tracing-tracy`]: https://crates.io/crates/tracing-tracy
+[Tracy]: https://github.com/wolfpld/tracy
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
