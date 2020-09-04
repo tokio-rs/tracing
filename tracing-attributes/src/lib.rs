@@ -99,6 +99,7 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
+/// Unless overriden, a span with `info` level will be generated.
 /// The generated span's name will be the name of the function. Any arguments
 /// to that function will be recorded as fields using [`fmt::Debug`]. To skip
 /// recording a function's or method's argument, pass the argument's name
@@ -248,7 +249,6 @@ use syn::{
 /// ```
 /// Instead, you should manually rewrite any `Self` types as the type for
 /// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`.
-
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
