@@ -26,6 +26,10 @@ pub trait AsField: crate::sealed::Sealed {
     fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field>;
 }
 
+pub trait AsValue<'a> {
+    fn as_value(self) -> Value<'a>;
+}
+
 // ===== impl AsField =====
 
 impl AsField for Field {
@@ -60,3 +64,57 @@ impl AsField for str {
 impl crate::sealed::Sealed for Field {}
 impl<'a> crate::sealed::Sealed for &'a Field {}
 impl crate::sealed::Sealed for str {}
+
+pub(crate) mod convert {
+    use super::Value;
+    use std::{
+        any::Any,
+        fmt::{Debug, Display},
+    };
+
+    pub struct Specialize<'a, T: ?Sized>(pub &'a T);
+
+    #[doc(hidden)]
+    pub trait AsDebugValue<'a> {
+        fn as_debug_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T: ?Sized + Debug> AsDebugValue<'a> for &'a Specialize<'a, T> {
+        fn as_debug_value(&self) -> Value<'a> {
+            Value::debug(&self.0)
+        }
+    }
+
+    #[doc(hidden)]
+    pub trait AsDebugAnyValue<'a> {
+        fn as_debug_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T: Any + Debug> AsDebugAnyValue<'a> for Specialize<'a, T> {
+        fn as_debug_value(&self) -> Value<'a> {
+            Value::any(self.0)
+        }
+    }
+
+    #[doc(hidden)]
+    pub trait AsDisplayValue<'a> {
+        fn as_display_value(&'a self) -> Value<'a>;
+    }
+
+    impl<'a, T: ?Sized + Display> AsDisplayValue<'a> for &'a Specialize<'a, T> {
+        fn as_display_value(&'a self) -> Value<'a> {
+            Value::display(&self.0)
+        }
+    }
+
+    #[doc(hidden)]
+    pub trait AsDisplayAnyValue<'a> {
+        fn as_display_value(&'a self) -> Value<'a>;
+    }
+
+    impl<'a, T: Any + Display> AsDisplayAnyValue<'a> for Specialize<'a, T> {
+        fn as_display_value(&'a self) -> Value<'a> {
+            Value::any_display(self.0)
+        }
+    }
+}

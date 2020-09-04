@@ -1933,9 +1933,10 @@ macro_rules! level_enabled {
 macro_rules! valueset {
 
     // === base case ===
-    (@ { $(,)* $($val:expr),* $(,)* } $(,)*) => {
+    (@ { $(,)* $($val:expr),* $(,)* } $(,)*) => {{
+        use $crate::__macro_support::as_value::*;
         &[ $($val),* ]
-    };
+    }};
 
     // === recursive case (more tts) ===
 
@@ -1946,112 +1947,112 @@ macro_rules! valueset {
     // };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*,  $crate::field::Value::debug(&$val) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($val.borrow())).as_debug_value() },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*,  $crate::field::Value::display(&$val) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($val.borrow())).as_display_value() },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$val) },
+            @ { $($out),*, $crate::field::Value::from($val) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$($k).+) },
+            @ { $($out),*, $crate::field::Value::from($($k).+) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::debug(&$($k).+) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($($k).+.borrow())).as_debug_value() },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&$($k).+) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($($k).+.borrow())).as_display_value()  },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*,  $crate::field::Value::debug(&$val) },
+            @ { $($out),*,  (&$crate::__macro_support::Specialize($val.borrow())).as_debug_value()},
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&$val) },
+            @ { $($out),*,(&$crate::__macro_support::Specialize($val.borrow())).as_display_value() },
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$val) },
+            @ { $($out),*, $crate::field::Value::from($val.borrow()) },
         )
     };
 
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::debug(&$($k).+) }
+            @ { $($out),*, (&$crate::__macro_support::Specialize($($k).+.borrow())).as_debug_value()  }
         )
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&$($k).+) }
+            @ { $($out),*, (&$crate::__macro_support::Specialize($($k).+.borrow())).as_display_value()  }
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$($k).+) }
+            @ { $($out),*, $crate::field::Value::from($($k).+.borrow()) }
         )
     };
-
+`
     // Handle literal names
     (@ { $(,)* $($out:expr),* }, $k:literal = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::debug(&val)  },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($val.borrow())).as_debug_value() },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&val) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($val.borrow())).as_display_value()  },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&val) },
+            @ { $($out),*, $crate::field::Value::from($val.borrow()) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::debug(&$val) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($val.borrow())).as_debug_value()},
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::display(&$val) },
+            @ { $($out),*, (&$crate::__macro_support::Specialize($val.borrow())).as_display_value() },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* } $k:literal = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, $crate::field::Value::from(&$val) },
+            @ { $($out),*, $crate::field::Value::from($val) },
         )
     };
 
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
-        $crate::valueset!(@ { $crate::field::Value::from(&format_args!($($rest)+)) , $($out),* }, )
+        $crate::valueset!(@ { $crate::field::Value::from(format_args!($($rest)+)) , $($out),* }, )
     };
 
     // === entry ===

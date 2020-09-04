@@ -112,11 +112,13 @@ enum ValueKind<'a> {
     U64(u64),
     I64(i64),
     Str(&'a str),
+    Display(&'a dyn fmt::Display),
+    Debug(&'a dyn fmt::Debug),
     #[cfg(feature = "std")]
     Error(&'a (dyn Error + 'static), TypeId),
-    Debug(&'a dyn fmt::Debug, TypeId),
-    Display(&'a dyn fmt::Display, TypeId),
-    Args(&'a fmt::Arguments<'a>),
+    DebugAny(&'a dyn fmt::Debug, TypeId),
+    DisplayAny(&'a dyn fmt::Display, TypeId),
+    Args(fmt::Arguments<'a>),
 }
 
 /// Visits typed values.
@@ -282,7 +284,7 @@ pub fn display<T>(t: &T) -> Value<'_>
 where
     T: Any + fmt::Display,
 {
-    Value::display(t)
+    Value::any_display(t)
 }
 
 /// Wraps a type implementing `fmt::Debug` as a `Value` that can be
@@ -291,7 +293,7 @@ pub fn debug<T>(t: &T) -> Value<'_>
 where
     T: Any + fmt::Debug,
 {
-    Value::debug(t)
+    Value::any(t)
 }
 
 // ===== impl Value =====
@@ -332,15 +334,26 @@ impl<'a> Value<'a> {
         }
     }
 
-    pub fn display<T: Any + fmt::Display>(val: &'a T) -> Self {
+    pub fn any_display<T: Any + fmt::Display>(val: &'a T) -> Self {
         Self {
-            inner: ValueKind::Display(val as &'a dyn fmt::Display, TypeId::of::<T>()),
+            inner: ValueKind::DisplayAny(val as &'a dyn fmt::Display, TypeId::of::<T>()),
         }
     }
 
-    pub fn debug<T: Any + fmt::Debug>(val: &'a T) -> Self {
+    pub fn any<T: Any + fmt::Debug>(val: &'a T) -> Self {
         Self {
-            inner: ValueKind::Debug(val as &'a dyn fmt::Debug, TypeId::of::<T>()),
+            inner: ValueKind::DebugAny(val as &'a dyn fmt::Debug, TypeId::of::<T>()),
+        }
+    }
+    pub fn display<T: fmt::Display>(val: &'a T) -> Self {
+        Self {
+            inner: ValueKind::Display(val as &'a dyn fmt::Display),
+        }
+    }
+
+    pub fn debug<T: fmt::Debug>(val: &'a T) -> Self {
+        Self {
+            inner: ValueKind::Debug(val as &'a dyn fmt::Debug),
         }
     }
 
@@ -364,7 +377,8 @@ impl<'a> Value<'a> {
     pub fn as_display(&self) -> Option<&dyn fmt::Display> {
         match self.inner {
             ValueKind::Empty => None,
-            ValueKind::Display(val, _) => Some(val),
+            ValueKind::DisplayAny(val, _) => Some(val),
+            ValueKind::Display(val) => Some(val),
             #[cfg(feature = "std")]
             ValueKind::Error(_, _) => Some(self as &dyn fmt::Display),
             ValueKind::Bool(ref val) => Some(val as &dyn fmt::Display),
@@ -396,10 +410,10 @@ impl<'a> Value<'a> {
             ValueKind::Error(val, actual) if actual == target => {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
-            ValueKind::Debug(val, actual) if actual == target => {
+            ValueKind::DebugAny(val, actual) if actual == target => {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
-            ValueKind::Display(val, actual) if actual == target => {
+            ValueKind::DisplayAny(val, actual) if actual == target => {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
             _ => None,
@@ -416,8 +430,8 @@ impl<'a> Value<'a> {
             ValueKind::Str(_) => target == TypeId::of::<str>(),
             #[cfg(feature = "std")]
             ValueKind::Error(_, actual) => actual == target,
-            ValueKind::Debug(_, actual) => actual == target,
-            ValueKind::Display(_, actual) => actual == target,
+            ValueKind::DebugAny(_, actual) => actual == target,
+            ValueKind::DisplayAny(_, actual) => actual == target,
             _ => false,
         }
     }
@@ -434,8 +448,10 @@ impl fmt::Debug for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
             ValueKind::Empty => Ok(()),
-            ValueKind::Display(val, _) => fmt::Display::fmt(val, f),
-            ValueKind::Debug(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::DisplayAny(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::DebugAny(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Display(val) => fmt::Display::fmt(val, f),
+            ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
             ValueKind::Error(val, _) => fmt::Debug::fmt(val, f),
             ValueKind::Bool(ref val) => fmt::Debug::fmt(val, f),
@@ -451,8 +467,10 @@ impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.inner {
             ValueKind::Empty => Ok(()),
-            ValueKind::Display(val, _) => fmt::Display::fmt(val, f),
-            ValueKind::Debug(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::DisplayAny(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::DebugAny(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Display(val) => fmt::Display::fmt(val, f),
+            ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
             ValueKind::Error(val, _) => fmt::Debug::fmt(val, f),
             ValueKind::Bool(ref val) => fmt::Display::fmt(val, f),
@@ -603,8 +621,8 @@ where
     }
 }
 
-impl<'a> From<&'a fmt::Arguments<'a>> for Value<'a> {
-    fn from(val: &'a fmt::Arguments<'a>) -> Self {
+impl<'a> From<fmt::Arguments<'a>> for Value<'a> {
+    fn from(val: fmt::Arguments<'a>) -> Self {
         Value {
             inner: ValueKind::Args(val),
         }

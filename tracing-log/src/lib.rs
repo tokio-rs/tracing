@@ -140,7 +140,7 @@ use std::{fmt, io};
 use tracing_core::{
     callsite::{self, Callsite},
     dispatcher,
-    field::{self, Field, Visit},
+    field::{self, Field, Value, Visit},
     identify_callsite,
     metadata::{Kind, Level},
     subscriber, Event, Metadata,
@@ -188,7 +188,7 @@ pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     Event::dispatch(
         &meta,
         &meta.fields().value_set(&[
-            record.args().into(),
+            Value::debug(record.args()),
             record.target().into(),
             record.module_path().into(),
             record.file().into(),

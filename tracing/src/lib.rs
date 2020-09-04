@@ -920,6 +920,15 @@ pub mod __macro_support {
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
+    pub mod as_value {
+        pub use crate::field::convert::{
+            AsDebugAnyValue as _, AsDebugValue as _, AsDisplayAnyValue as _, AsDisplayValue as _,
+        };
+
+        pub use crate::stdlib::borrow::Borrow as _;
+    }
+
+    pub use crate::field::convert::Specialize;
 
     /// Callsite implementation used by macro-generated code.
     ///
