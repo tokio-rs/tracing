@@ -365,10 +365,13 @@ impl From<Level> for LevelFilter {
     }
 }
 
-impl Into<Option<Level>> for LevelFilter {
+impl From<Option<Level>> for LevelFilter {
     #[inline]
-    fn into(self) -> Option<Level> {
-        self.into_level()
+    fn from(level: Option<Level>) -> Self {
+        match level {
+            Some(level) => LevelFilter::from_level(level),
+            None => LevelFilter::OFF,
+        }
     }
 }
 
@@ -819,8 +822,15 @@ mod tests {
         ];
         for (filter, level) in mapping.iter() {
             assert_eq!(filter.clone().into_level(), *level);
-            if let Some(level) = level {
-                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
+            match level {
+                Some(level) => {
+                    let actual: LevelFilter = level.clone().into();
+                    assert_eq!(actual, *filter);
+                }
+                None => {
+                    let actual: LevelFilter = None.into();
+                    assert_eq!(actual, *filter);
+                }
             }
         }
     }
