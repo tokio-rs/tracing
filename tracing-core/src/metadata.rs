@@ -368,10 +368,14 @@ impl From<Level> for LevelFilter {
 impl From<Option<Level>> for LevelFilter {
     #[inline]
     fn from(level: Option<Level>) -> Self {
-        match level {
-            Some(level) => LevelFilter::from_level(level),
-            None => LevelFilter::OFF,
-        }
+        Self(level)
+    }
+}
+
+impl Into<Option<Level>> for LevelFilter {
+    #[inline]
+    fn into(self) -> Option<Level> {
+        self.into_level()
     }
 }
 
