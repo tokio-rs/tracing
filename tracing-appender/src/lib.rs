@@ -151,7 +151,7 @@
 )]
 use crate::non_blocking::{NonBlocking, WorkerGuard};
 
-use std::{fmt::Debug, io::Write};
+use std::io::Write;
 
 mod inner;
 
