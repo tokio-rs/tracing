@@ -1,3 +1,13 @@
+# 0.1.16 (September 7, 2020)
+
+### Fixed
+
+- Added a conversion from `Option<Level>` to `LevelFilter`. This PR resolves a
+  previously unreported regression where `Option<Level>` was no longer
+  a valid LevelFilter. ([#966](https://github.com/tokio-rs/tracing/pull/966))
+
+## Added
+
 # 0.1.15 (August 22, 2020)
 
 ### Fixed
