@@ -31,7 +31,7 @@ registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.12" }
+tracing-core = { path = "../tracing-core", version = "0.1.16" }
 
 # only required by the filter feature
 matchers = { optional = true, version = "0.0.1" }
