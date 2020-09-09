@@ -15,7 +15,7 @@ tracing-core = { path = "../tracing-core", version = "0.1"}
 tracing-error = { path = "../tracing-error" }
 tracing-flame = { path = "../tracing-flame" }
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.11", features = ["json", "chrono"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.12", features = ["json", "chrono"] }
 tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["futures-01"] }
 tracing-attributes =  { path = "../tracing-attributes", version = "0.1.2"}
 tracing-log = { path = "../tracing-log", version = "0.1.1", features = ["env_logger"] }
@@ -27,7 +27,7 @@ tracing-journald = { path = "../tracing-journald" }
 serde_json = "1.0"
 
 futures = "0.3"
-tokio = { version = "0.2.11", features = ["full"] }
+tokio = { version = "0.2.12", features = ["full"] }
 
 # env-logger example
 env_logger = "0.7"
