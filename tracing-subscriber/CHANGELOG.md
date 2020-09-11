@@ -1,4 +1,4 @@
-# 0.2.12 (September 8, 2020)
+# 0.2.12 (September 11, 2020)
 
 ### Fixed
 
