@@ -285,11 +285,12 @@ pub fn instrument(
             }
         }
 
+        let vis = &input.vis;
         let sig = &input.sig;
         let attrs = &input.attrs;
         quote!(
             #(#attrs) *
-            #sig {
+            #vis #sig {
                 #(#stmts) *
             }
         )
