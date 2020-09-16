@@ -422,6 +422,39 @@ impl Value for dyn std::error::Error + 'static {
     }
 }
 
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + Send + 'static {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl Value for dyn std::error::Error + Send + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_error(key, self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + Sync + 'static {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl Value for dyn std::error::Error + Sync + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_error(key, self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + Send + Sync + 'static {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl Value for dyn std::error::Error + Send + Sync + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_error(key, self)
+    }
+}
+
 impl<'a, T: ?Sized> crate::sealed::Sealed for &'a T where T: Value + crate::sealed::Sealed + 'a {}
 
 impl<'a, T: ?Sized> Value for &'a T
