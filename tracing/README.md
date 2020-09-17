@@ -262,7 +262,7 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-Under the hood, the `#[instrument]` macro performs same the explicit span
+Under the hood, the `#[instrument]` macro performs the same explicit span
 attachment that `Future::instrument` does.
 
 ### Concepts
