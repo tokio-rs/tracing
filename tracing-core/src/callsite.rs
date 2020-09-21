@@ -72,7 +72,7 @@ impl Registry {
 
 /// Trait implemented by callsites.
 ///
-/// These functions are only intended to be called by the [`Registry`] which
+/// These functions are only intended to be called by the `Registry` which
 /// correctly handles determining the common interest between all subscribers.
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
@@ -114,7 +114,7 @@ pub struct Identifier(
 /// [`enabled`] is evaluated for every event.
 ///
 /// This function will also re-compute the global maximum level as determined by
-/// the [`Subscriber::max_level_hint`] method. If a [`Subscriber`]
+/// the [`Subscriber::max_level_hint`](crate::Subscriber::max_level_hint) method. If a [`Subscriber`]
 /// implementation changes the value returned by its `max_level_hint`
 /// implementation at runtime, then it **must** call this function after that
 /// value changes, in order for the change to be reflected.
