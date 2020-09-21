@@ -79,7 +79,7 @@ where
 
 impl<T> SubscriberInitExt for T where T: Into<Dispatch> {}
 
-/// Error returned by [`try_init`] if a global default subscriber could not be initialized.
+/// Error returned by [`try_init`](SubscriberInitExt::try_init) if a global default subscriber could not be initialized.
 pub struct TryInitError {
     inner: Box<dyn Error + Send + Sync + 'static>,
 }
