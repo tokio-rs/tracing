@@ -636,7 +636,7 @@
 //! ### Emitting `log` Records
 //!
 //! This crate provides two feature flags, "log" and "log-always", which will
-//! cause [spans] and [events] to emit `log` records. When the "log" feature is
+//! cause [spans][span] and [events][event] to emit `log` records. When the "log" feature is
 //! enabled, if no `tracing` `Subscriber` is active, invoking an event macro or
 //! creating a span with fields will emit a `log` record. This is intended
 //! primarily for use in libraries which wish to emit diagnostics that can be
@@ -671,7 +671,7 @@
 //!
 //! The [`tracing-log`] crate provides a compatibility layer which
 //! allows a `tracing` [`Subscriber`] to consume `log` records as though they
-//! were `tracing` [events]. This allows applications using `tracing` to record
+//! were `tracing` [events][event]. This allows applications using `tracing` to record
 //! the logs emitted by dependencies using `log` as events within the context of
 //! the application's trace tree. See [that crate's documentation][log-tracer]
 //! for details.
