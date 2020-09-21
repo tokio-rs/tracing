@@ -72,7 +72,7 @@ impl Registry {
 
 /// Trait implemented by callsites.
 ///
-/// These functions are only intended to be called by the `Registry` which
+/// These functions are only intended to be called by the callsite registry, which
 /// correctly handles determining the common interest between all subscribers.
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
