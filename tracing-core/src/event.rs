@@ -87,9 +87,14 @@ impl<'a> Event<'a> {
         self.fields.record(visitor);
     }
 
-    /// Returns an iterator over the set of values on this `Event`.
+    /// Returns an iterator over the set of fields on this `Event`.
     pub fn fields(&self) -> field::Iter {
         self.fields.field_set().iter()
+    }
+
+    /// Returns an iterator over the set of field key-value pairs on this `Event`.
+    pub fn values(&self) -> field::Values<'_, 'a> {
+        self.fields.iter()
     }
 
     /// Returns [metadata] describing this `Event`.
@@ -124,5 +129,13 @@ impl<'a> Event<'a> {
             Parent::Explicit(ref p) => Some(p),
             _ => None,
         }
+    }
+}
+
+impl<'event, 'values> crate::stdlib::iter::IntoIterator for &'event Event<'values> {
+    type IntoIter = field::Values<'event, 'values>;
+    type Item = (field::Field, &'event field::Value<'values>);
+    fn into_iter(self) -> Self::IntoIter {
+        self.fields.iter()
     }
 }

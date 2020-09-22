@@ -15,8 +15,8 @@ fn destructure_tuples() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .with_value(format_args!("1"))
+                    .and(field::mock("arg2").with_value(format_args!("2")))
                     .only(),
             ),
         )
@@ -44,10 +44,10 @@ fn destructure_nested_tuples() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .and(field::mock("arg3").with_value(&format_args!("3")))
-                    .and(field::mock("arg4").with_value(&format_args!("4")))
+                    .with_value(format_args!("1"))
+                    .and(field::mock("arg2").with_value(format_args!("2")))
+                    .and(field::mock("arg3").with_value(format_args!("3")))
+                    .and(field::mock("arg4").with_value(format_args!("4")))
                     .only(),
             ),
         )
@@ -74,7 +74,7 @@ fn destructure_refs() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("1")).only()),
+                .with_field(field::mock("arg1").with_value(format_args!("1")).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -102,8 +102,8 @@ fn destructure_tuple_structs() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .with_value(format_args!("1"))
+                    .and(field::mock("arg2").with_value(format_args!("2")))
                     .only(),
             ),
         )
@@ -143,8 +143,8 @@ fn destructure_structs() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .with_value(format_args!("1"))
+                    .and(field::mock("arg2").with_value(format_args!("2")))
                     .only(),
             ),
         )
@@ -188,10 +188,10 @@ fn destructure_everything() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .and(field::mock("arg3").with_value(&format_args!("3")))
-                    .and(field::mock("arg4").with_value(&format_args!("4")))
+                    .with_value(format_args!("1"))
+                    .and(field::mock("arg2").with_value(format_args!("2")))
+                    .and(field::mock("arg3").with_value(format_args!("3")))
+                    .and(field::mock("arg4").with_value(format_args!("4")))
                     .only(),
             ),
         )

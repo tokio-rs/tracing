@@ -316,3 +316,19 @@ impl<'a> Into<Option<&'static Metadata<'static>>> for &'a Current {
         self.metadata()
     }
 }
+
+impl<'attrs, 'values> crate::stdlib::iter::IntoIterator for &'attrs Attributes<'values> {
+    type IntoIter = field::Values<'attrs, 'values>;
+    type Item = (field::Field, &'attrs field::Value<'values>);
+    fn into_iter(self) -> Self::IntoIter {
+        self.values.iter()
+    }
+}
+
+impl<'rec, 'values> crate::stdlib::iter::IntoIterator for &'rec Record<'values> {
+    type IntoIter = field::Values<'rec, 'values>;
+    type Item = (field::Field, &'rec field::Value<'values>);
+    fn into_iter(self) -> Self::IntoIter {
+        self.values.iter()
+    }
+}

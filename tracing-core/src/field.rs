@@ -629,6 +629,21 @@ impl_value! {
     |val| val.get() as i64
 }
 
+impl<'a, T> From<num::Wrapping<T>> for Value<'a>
+where
+    Self: From<T>,
+{
+    fn from(num::Wrapping(val): num::Wrapping<T>) -> Self {
+        Self::from(val)
+    }
+}
+
+impl From<&'_ Empty> for Value<'_> {
+    fn from(_: &Empty) -> Self {
+        Self::empty()
+    }
+}
+
 impl<'a, T> From<Option<T>> for Value<'a>
 where
     Self: From<T>,

@@ -47,7 +47,7 @@ fn test_async() {
         .enter(span.clone())
         .event(
             event::mock()
-                .with_fields(field::mock("awaiting").with_value(&true))
+                .with_fields(field::mock("awaiting").with_value(true))
                 .at_level(Level::TRACE),
         )
         .exit(span.clone())

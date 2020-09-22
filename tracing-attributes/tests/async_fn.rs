@@ -4,6 +4,7 @@
 mod support;
 use support::*;
 
+use std::fmt::Debug;
 use tracing::subscriber::with_default;
 use tracing_attributes::instrument;
 
@@ -19,7 +20,7 @@ fn async_fn_only_enters_for_polls() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(span::mock().named("test_async_fn"))
         .enter(span::mock().named("test_async_fn"))
-        .event(event::mock().with_fields(field::mock("awaiting").with_value(&true)))
+        .event(event::mock().with_fields(field::mock("awaiting").with_value(true)))
         .exit(span::mock().named("test_async_fn"))
         .enter(span::mock().named("test_async_fn"))
         .exit(span::mock().named("test_async_fn"))
@@ -51,7 +52,7 @@ fn async_fn_nested() {
         .enter(span.clone())
         .new_span(span2.clone())
         .enter(span2.clone())
-        .event(event::mock().with_fields(field::mock("nested").with_value(&true)))
+        .event(event::mock().with_fields(field::mock("nested").with_value(true)))
         .exit(span2.clone())
         .drop_span(span2)
         .exit(span.clone())
@@ -130,12 +131,12 @@ fn async_fn_with_async_trait() {
         .enter(span.clone())
         .new_span(span3.clone())
         .enter(span3.clone())
-        .event(event::mock().with_fields(field::mock("val").with_value(&2u64)))
+        .event(event::mock().with_fields(field::mock("val").with_value(2u64)))
         .exit(span3.clone())
         .drop_span(span3)
         .new_span(span2.clone().with_field(field::mock("self")))
         .enter(span2.clone())
-        .event(event::mock().with_fields(field::mock("val").with_value(&5u64)))
+        .event(event::mock().with_fields(field::mock("val").with_value(5u64)))
         .exit(span2.clone())
         .drop_span(span2)
         .exit(span.clone())
@@ -181,9 +182,9 @@ fn async_fn_with_async_trait_and_fields_expressions() {
         .new_span(
             span.clone().with_field(
                 field::mock("v")
-                    .with_value(&tracing::field::debug(5))
-                    .and(field::mock("test").with_value(&tracing::field::debug(10)))
-                    .and(field::mock("val").with_value(&42u64)),
+                    .with_value(&5 as &dyn Debug)
+                    .and(field::mock("test").with_value(&10 as &dyn Debug))
+                    .and(field::mock("val").with_value(42u64)),
             ),
         )
         .enter(span.clone())
@@ -239,7 +240,7 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .new_span(
             span2
                 .clone()
-                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+                .with_field(field::mock("Self").with_value(std::any::type_name::<TestImpl>())),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -247,7 +248,7 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .new_span(
             span3
                 .clone()
-                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+                .with_field(field::mock("Self").with_value(std::any::type_name::<TestImpl>())),
         )
         .enter(span3.clone())
         .exit(span3.clone())

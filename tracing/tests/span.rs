@@ -8,7 +8,7 @@ extern crate tracing;
 mod support;
 
 use self::support::*;
-use std::thread;
+use std::{fmt, thread};
 use tracing::{
     field::{debug, display},
     subscriber::with_default,
@@ -304,7 +304,7 @@ fn moved_field() {
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
-                    .with_value(&display("hello from my span"))
+                    .with_value(&"hello from my span" as &dyn std::fmt::Display)
                     .only(),
             ),
         )
@@ -318,7 +318,7 @@ fn moved_field() {
         let span = span!(
             Level::TRACE,
             "foo",
-            bar = display(format!("hello from {}", from))
+            bar = %format!("hello from {}", from)
         );
         span.in_scope(|| {});
     });
@@ -333,7 +333,7 @@ fn dotted_field_name() {
         .new_span(
             span::mock()
                 .named("foo")
-                .with_field(field::mock("fields.bar").with_value(&true).only()),
+                .with_field(field::mock("fields.bar").with_value(true).only()),
         )
         .done()
         .run_with_handle();
@@ -351,7 +351,7 @@ fn borrowed_field() {
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
-                    .with_value(&display("hello from my span"))
+                    .with_value(&"hello from my span" as &dyn fmt::Display)
                     .only(),
             ),
         )
@@ -394,15 +394,17 @@ fn move_field_out_of_struct() {
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("x")
-                    .with_value(&debug(3.234))
-                    .and(field::mock("y").with_value(&debug(-1.223)))
+                    .with_value(&3.234 as &dyn fmt::Debug)
+                    .and(field::mock("y").with_value(&-1.223 as &dyn fmt::Debug))
                     .only(),
             ),
         )
         .new_span(
-            span::mock()
-                .named("bar")
-                .with_field(field::mock("position").with_value(&debug(&pos)).only()),
+            span::mock().named("bar").with_field(
+                field::mock("position")
+                    .with_value(&pos as &dyn fmt::Debug)
+                    .only(),
+            ),
         )
         .run_with_handle();
 
@@ -411,8 +413,8 @@ fn move_field_out_of_struct() {
             x: 3.234,
             y: -1.223,
         };
-        let foo = span!(Level::TRACE, "foo", x = debug(pos.x), y = debug(pos.y));
-        let bar = span!(Level::TRACE, "bar", position = debug(pos));
+        let foo = span!(Level::TRACE, "foo", x = ?pos.x, y = ?pos.y);
+        let bar = span!(Level::TRACE, "bar", position = ?pos);
         foo.in_scope(|| {});
         bar.in_scope(|| {});
     });
@@ -430,12 +432,12 @@ fn add_field_after_new_span() {
         .new_span(
             span::mock()
                 .named("foo")
-                .with_field(field::mock("bar").with_value(&5)
+                .with_field(field::mock("bar").with_value(5)
                 .and(field::mock("baz").with_value).only()),
         )
         .record(
             span::mock().named("foo"),
-            field::mock("baz").with_value(&true).only(),
+            field::mock("baz").with_value(true).only(),
         )
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -459,11 +461,11 @@ fn add_fields_only_after_new_span() {
         .new_span(span::mock().named("foo"))
         .record(
             span::mock().named("foo"),
-            field::mock("bar").with_value(&5).only(),
+            field::mock("bar").with_value(5).only(),
         )
         .record(
             span::mock().named("foo"),
-            field::mock("baz").with_value(&true).only(),
+            field::mock("baz").with_value(true).only(),
         )
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -489,14 +491,14 @@ fn record_new_value_for_field() {
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
-                    .with_value(&5)
-                    .and(field::mock("baz").with_value(&false))
+                    .with_value(5)
+                    .and(field::mock("baz").with_value(false))
                     .only(),
             ),
         )
         .record(
             span::mock().named("foo"),
-            field::mock("baz").with_value(&true).only(),
+            field::mock("baz").with_value(true).only(),
         )
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -520,18 +522,18 @@ fn record_new_values_for_fields() {
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("bar")
-                    .with_value(&4)
-                    .and(field::mock("baz").with_value(&false))
+                    .with_value(4)
+                    .and(field::mock("baz").with_value(false))
                     .only(),
             ),
         )
         .record(
             span::mock().named("foo"),
-            field::mock("bar").with_value(&5).only(),
+            field::mock("bar").with_value(5).only(),
         )
         .record(
             span::mock().named("foo"),
-            field::mock("baz").with_value(&true).only(),
+            field::mock("baz").with_value(true).only(),
         )
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -712,7 +714,7 @@ fn display_shorthand() {
         .new_span(
             span::mock().named("my_span").with_field(
                 field::mock("my_field")
-                    .with_value(&display("hello world"))
+                    .with_value(&"hello world" as &dyn fmt::Display)
                     .only(),
             ),
         )
@@ -732,7 +734,7 @@ fn debug_shorthand() {
         .new_span(
             span::mock().named("my_span").with_field(
                 field::mock("my_field")
-                    .with_value(&debug("hello world"))
+                    .with_value(&"hello world" as &dyn fmt::Debug)
                     .only(),
             ),
         )
@@ -752,8 +754,8 @@ fn both_shorthands() {
         .new_span(
             span::mock().named("my_span").with_field(
                 field::mock("display_field")
-                    .with_value(&display("hello world"))
-                    .and(field::mock("debug_field").with_value(&debug("hello world")))
+                    .with_value(&"hello world" as &dyn fmt::Display)
+                    .and(field::mock("debug_field").with_value(&"hello world" as &dyn fmt::Debug))
                     .only(),
             ),
         )

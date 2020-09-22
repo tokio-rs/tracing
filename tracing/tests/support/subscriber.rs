@@ -220,9 +220,11 @@ where
                 if let Some(name) = expected_span.name() {
                     assert_eq!(name, span.name);
                 }
-                let mut checker = expected_values.checker(format!("span {}: ", span.name));
-                values.record(&mut checker);
-                checker.finish();
+                let ctx = format!("span {}: ", span.name);
+                for (field, value) in values {
+                    expected_values.compare_or_panic(field.name(), value, &ctx);
+                }
+                expected_values.assert_done(&ctx);
             }
         }
     }
@@ -324,9 +326,11 @@ where
                     .span
                     .metadata
                     .check(meta, format_args!("span `{}`", name));
-                let mut checker = expected.fields.checker(name.to_string());
-                span.record(&mut checker);
-                checker.finish();
+                let ctx = format!("span `{}`: ", name);
+                for (field, value) in span {
+                    expected.fields.compare_or_panic(field.name(), value, &ctx);
+                }
+                expected.fields.assert_done(&ctx);
                 match expected.parent {
                     Some(Parent::ExplicitRoot) => {
                         assert!(

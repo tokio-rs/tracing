@@ -85,9 +85,11 @@ impl MockEvent {
             .check(meta, format_args!("event \"{}\"", name));
         assert!(meta.is_event(), "expected {}, but got {:?}", self, event);
         if let Some(ref mut expected_fields) = self.fields {
-            let mut checker = expected_fields.checker(name.to_string());
-            event.record(&mut checker);
-            checker.finish();
+            let ctx = name.to_string();
+            for (field, value) in event {
+                expected_fields.compare_or_panic(field.name(), value, &ctx);
+            }
+            expected_fields.assert_done(&ctx);
         }
     }
 }
