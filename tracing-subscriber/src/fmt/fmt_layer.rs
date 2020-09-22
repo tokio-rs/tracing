@@ -573,7 +573,7 @@ macro_rules! with_event_from_span {
         let mut iter = fs.iter();
         let v = [$(
             field::Value::from(&$value)
-        )*];
+        ),*];
         let vs = fs.value_set(&v);
         let $event = Event::new_child_of($id, meta, &vs);
         $code
@@ -689,15 +689,15 @@ where
                 } = *timing;
                 idle += (Instant::now() - last).as_nanos() as u64;
 
-                let t_idle = field::display(TimingDisplay(idle));
-                let t_busy = field::display(TimingDisplay(busy));
+                let t_idle = TimingDisplay(idle);
+                let t_busy = TimingDisplay(busy);
 
                 with_event_from_span!(
                     id,
                     span,
                     "message" = "close",
-                    "time.busy" = t_busy,
-                    "time.idle" = t_idle,
+                    "time.busy" = field::display(&t_busy),
+                    "time.idle" = field::display(&t_idle),
                     |event| {
                         drop(extensions);
                         drop(span);
