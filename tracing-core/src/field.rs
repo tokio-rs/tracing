@@ -106,6 +106,7 @@ pub struct Value<'a> {
     inner: ValueKind<'a>,
 }
 
+#[derive(Copy, Clone)]
 enum ValueKind<'a> {
     Empty,
     Bool(bool),
@@ -571,10 +572,10 @@ macro_rules! ty_to_nonzero {
 }
 
 macro_rules! impl_one_into_value {
-    ($value_ty:tt, $op:expr) => {
+    ($value_ty:tt, |$this:ident| $op:expr) => {
         impl<'a> From<$value_ty> for Value<'a> {
-            fn from(val: $value_ty) -> Self {
-                Self::from($op(val))
+            fn from($this: $value_ty) -> Self {
+                Self::from($op)
             }
         }
     }; // (nonzero, $value_ty:tt, $op:expr) => {
@@ -596,12 +597,12 @@ macro_rules! impl_one_into_value {
 macro_rules! impl_value {
     ( $( $value_ty:ty  ),+ |$this:ident| $op:expr ) => {
         $(
-            impl_one_into_value! { $value_ty, |$this: $value_ty| $op }
+            impl_one_into_value! { $value_ty, |$this| $op }
         )+
     };
     ( $( $value_ty:ty ),+ as $as_ty:ty ) => {
         $(
-            impl_one_into_value! { $value_ty, |this: $value_ty| this as $as_ty }
+            impl_one_into_value! { $value_ty, |this| this as $as_ty }
         )+
     };
 }
@@ -611,6 +612,22 @@ impl_value! { isize, i32, i16, i8 as i64 }
 impl_value! { &'a usize, &'a u32, &'a u16, &'a u8 |val| *val as u64 }
 impl_value! { &'a isize, &'a i32, &'a i16, &'a i8 |val| *val as i64 }
 impl_value! { &'a bool |val| *val }
+impl_value! {
+    num::NonZeroUsize,
+    num::NonZeroU64,
+    num::NonZeroU32,
+    num::NonZeroU16,
+    num::NonZeroU8
+    |val| val.get() as u64
+}
+impl_value! {
+    num::NonZeroIsize,
+    num::NonZeroI64,
+    num::NonZeroI32,
+    num::NonZeroI16,
+    num::NonZeroI8
+    |val| val.get() as i64
+}
 
 impl<'a, T> From<Option<T>> for Value<'a>
 where
@@ -637,6 +654,11 @@ impl<'a> From<&'a &'a str> for Value<'a> {
     }
 }
 
+impl<'a> From<&'_ Value<'a>> for Value<'a> {
+    fn from(val: &Value<'a>) -> Self {
+        Value { inner: val.inner }
+    }
+}
 // ===== impl Value =====
 
 // impl_values! {
