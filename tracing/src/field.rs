@@ -108,7 +108,7 @@ pub(crate) mod convert {
 
     #[doc(hidden)]
     pub trait AsDisplayValue<'a> {
-        fn as_display_value(&'a self) -> Value<'a>;
+        fn as_display_value(&self) -> Value<'a>;
     }
 
     impl<'a, T: Display> AsDisplayValue<'a> for &'_ &'_ Specialize<'a, T> {
