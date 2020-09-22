@@ -821,7 +821,6 @@
 //! [spans]: mod@span
 //! [`Span`]: span::Span
 //! [`in_scope`]: span::Span::in_scope
-//! [`Event`]: Event
 //! [event]: Event
 //! [events]: Event
 //! [`Subscriber`]: subscriber::Subscriber
