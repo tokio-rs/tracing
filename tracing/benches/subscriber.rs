@@ -130,7 +130,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                     foo = "foo",
                     bar = "bar",
                     baz = 3,
-                    quuux = tracing::field::debug(0.99)
+                    quuux = ?0.99
                 )
             })
         });
@@ -146,7 +146,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                     foo = "foo",
                     bar = "bar",
                     baz = 3,
-                    quuux = tracing::field::debug(0.99)
+                    quuux = ?0.99
                 )
             })
         });
