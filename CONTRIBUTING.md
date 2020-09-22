@@ -213,7 +213,8 @@ be viewed by clicking the `details` link on the
 
 ### Building Documentation
 
-If you want to build docs locally, you should do like this.
+Since we use nightly-only features and lints like `doc(cfg)` and `broken_intra_doc_lints`,
+you should do like this to build docs locally.
 
 ```bash
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps
