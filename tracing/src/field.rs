@@ -79,7 +79,17 @@ pub(crate) mod convert {
         fn as_debug_value(&self) -> Value<'a>;
     }
 
-    impl<'a, T: ?Sized + Debug> AsDebugValue<'a> for &'a Specialize<'a, T> {
+    impl<'a, T: Debug> AsDebugValue<'a> for &'_ &'_ Specialize<'a, T> {
+        fn as_debug_value(&self) -> Value<'a> {
+            Value::debug(self.0)
+        }
+    }
+    #[doc(hidden)]
+    pub trait AsDebugUnsizedValue<'a> {
+        fn as_debug_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T: ?Sized + Debug> AsDebugUnsizedValue<'a> for &'a Specialize<'a, T> {
         fn as_debug_value(&self) -> Value<'a> {
             Value::debug(&self.0)
         }
@@ -101,8 +111,19 @@ pub(crate) mod convert {
         fn as_display_value(&'a self) -> Value<'a>;
     }
 
-    impl<'a, T: ?Sized + Display> AsDisplayValue<'a> for &'a Specialize<'a, T> {
-        fn as_display_value(&'a self) -> Value<'a> {
+    impl<'a, T: Display> AsDisplayValue<'a> for &'_ &'_ Specialize<'a, T> {
+        fn as_display_value(&self) -> Value<'a> {
+            Value::display(self.0)
+        }
+    }
+
+    #[doc(hidden)]
+    pub trait AsDisplayUnsizedValue<'a> {
+        fn as_display_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T: ?Sized + Display> AsDisplayUnsizedValue<'a> for &'a Specialize<'a, T> {
+        fn as_display_value(&self) -> Value<'a> {
             Value::display(&self.0)
         }
     }
