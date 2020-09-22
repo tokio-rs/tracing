@@ -931,6 +931,26 @@ pub mod __macro_support {
 
     pub use crate::field::convert::Specialize;
 
+    pub trait BorrowOnce {
+        fn borrow_once(&self) -> &Self;
+    }
+
+    impl<T> BorrowOnce for T {
+        fn borrow_once(&self) -> &Self {
+            self
+        }
+    }
+
+    pub trait BorrowOnceRef<'a, T: ?Sized> {
+        fn borrow_once(self) -> &'a T;
+    }
+
+    impl<'a, T: ?Sized> BorrowOnceRef<'a, T> for &'a T {
+        fn borrow_once(self) -> &'a T {
+            self
+        }
+    }
+
     /// Callsite implementation used by macro-generated code.
     ///
     /// /!\ WARNING: This is *not* a stable API! /!\
