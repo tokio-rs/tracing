@@ -213,8 +213,11 @@ be viewed by clicking the `details` link on the
 
 ### Building Documentation
 
-Since we use nightly-only features and lints like `doc(cfg)` and `broken_intra_doc_lints`,
-you should do like this to build docs locally.
+Tracing's documentation uses nightly-only RustDoc features and lints, like
+`doc(cfg)` and `broken_intra_doc_lints`. These features are enabled by 
+passing `--cfg docsrs` to RustDoc. Therefore, in order to build Tracing's
+documentation the same way it would be built by docs.rs, it's necessary to
+use the following command:
 
 ```bash
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps
