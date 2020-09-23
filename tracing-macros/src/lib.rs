@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
+
 /// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
 #[macro_export]
 macro_rules! trace_dbg {

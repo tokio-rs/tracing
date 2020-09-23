@@ -211,6 +211,18 @@ To reduce the effort required to review documentation-related changes,
 be viewed by clicking the `details` link on the
 `netlify/tracing-rs/deploy-preview check` on all pull requests.
 
+### Building Documentation
+
+Tracing's documentation uses nightly-only RustDoc features and lints, like
+`doc(cfg)` and `broken_intra_doc_lints`. These features are enabled by 
+passing `--cfg docsrs` to RustDoc. Therefore, in order to build Tracing's
+documentation the same way it would be built by docs.rs, it's necessary to
+use the following command:
+
+```bash
+RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps
+```
+
 ### Commits
 
 It is a recommended best practice to keep your changes as logically grouped as

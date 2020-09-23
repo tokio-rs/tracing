@@ -95,6 +95,7 @@
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 
 /// Implementation of the trace::Layer as a source of OpenTelemetry data.
 mod layer;

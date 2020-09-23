@@ -30,7 +30,7 @@
 //! ## Spans
 //!
 //! To record the flow of execution through a program, `tracing` introduces the
-//! concept of [spans][span]. Unlike a log line that represents a _moment in
+//! concept of [spans]. Unlike a log line that represents a _moment in
 //! time_, a span represents a _period of time_ with a beginning and an end. When a
 //! program begins executing in a context or performing a unit of work, it
 //! _enters_ that context's span, and when it stops executing in that context,
@@ -817,21 +817,22 @@
 //! long as doing so complies with this policy.
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
-//! [span]: span/index.html
-//! [`Span`]: span/struct.Span.html
-//! [`in_scope`]: span/struct.Span.html#method.in_scope
-//! [`Event`]: struct.Event.html
-//! [event]: struct.Event.html
-//! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [Subscriber::event]: subscriber/trait.Subscriber.html#tymethod.event
-//! [`enter`]: subscriber/trait.Subscriber.html#tymethod.enter
-//! [`exit`]: subscriber/trait.Subscriber.html#tymethod.exit
-//! [`enabled`]: subscriber/trait.Subscriber.html#tymethod.enabled
-//! [metadata]: struct.Metadata.html
-//! [`field::display`]: field/fn.display.html
-//! [`field::debug`]: field/fn.debug.html
-//! [`set_global_default`]: subscriber/fn.set_global_default.html
-//! [`with_default`]: subscriber/fn.with_default.html
+//! [span]: mod@span
+//! [spans]: mod@span
+//! [`Span`]: span::Span
+//! [`in_scope`]: span::Span::in_scope
+//! [event]: Event
+//! [events]: Event
+//! [`Subscriber`]: subscriber::Subscriber
+//! [Subscriber::event]: subscriber::Subscriber::event
+//! [`enter`]: subscriber::Subscriber::enter
+//! [`exit`]: subscriber::Subscriber::exit
+//! [`enabled`]: subscriber::Subscriber::enabled
+//! [metadata]: Metadata
+//! [`field::display`]: field::display
+//! [`field::debug`]: field::debug
+//! [`set_global_default`]: subscriber::set_global_default
+//! [`with_default`]: subscriber::with_default
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing-futures`]: https://crates.io/crates/tracing-futures
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
@@ -844,7 +845,7 @@
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
 #![doc(html_root_url = "https://docs.rs/tracing/0.1.20")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
