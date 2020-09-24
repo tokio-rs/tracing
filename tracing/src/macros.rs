@@ -606,9 +606,10 @@ macro_rules! event {
             };
             let interest = CALLSITE.interest();
             if !interest.is_never() {
-                CALLSITE.dispatch_event(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    current.event(&$crate::Event::new_child_of($parent, meta, &$crate::valueset!(meta.fields(), $($fields)*)))
+                let meta = CALLSITE.metadata();
+                let values = &$crate::valueset!(meta.fields(), $($fields)*);
+                CALLSITE.dispatch_event(interest, move |current| {
+                    current.event(&$crate::Event::new_child_of($parent, meta, values))
                 });
             }
         }
@@ -650,9 +651,10 @@ macro_rules! event {
             };
             let interest = CALLSITE.interest();
             if !interest.is_never() {
-                CALLSITE.dispatch_event(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    current.event(&$crate::Event::new(meta, &$crate::valueset!(meta.fields(), $($fields)*)));
+                let meta = CALLSITE.metadata();
+                let values = &$crate::valueset!(meta.fields(), $($fields)*);
+                CALLSITE.dispatch_event(interest, move |current| {
+                    current.event(&$crate::Event::new(meta, values));
                 });
             }
         }
