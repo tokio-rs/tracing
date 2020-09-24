@@ -22,64 +22,10 @@ macro_rules! span {
         $crate::span!(target: $target, parent: $parent, $lvl, $name,)
     };
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
-        {
-            use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: $name,
-                kind: $crate::metadata::Kind::SPAN,
-                target: $target,
-                level: $lvl,
-                fields: $($fields)*
-            };
-            let mut interest = $crate::subscriber::Interest::never();
-            if $crate::level_enabled!($lvl) && { interest = CALLSITE.interest(); !interest.is_never() }{
-                CALLSITE.dispatch_span(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    // span with parent
-                    $crate::Span::child_of_with(
-                        $parent,
-                        meta,
-                        &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*),
-                        current,
-                    )
-                })
-            } else {
-                let span = CALLSITE.disabled_span();
-                $crate::if_log_enabled! {{
-                    span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
-                }};
-                span
-            }
-        }
+        $crate::__tracing_mk_span!(target: $target, parent: $parent, $lvl, $name, $($fields)*)
     };
     (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
-        {
-            use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: $name,
-                kind: $crate::metadata::Kind::SPAN,
-                target: $target,
-                level: $lvl,
-                fields: $($fields)*
-            };
-            let mut interest = $crate::subscriber::Interest::never();
-            if $crate::level_enabled!($lvl) && { interest = CALLSITE.interest(); !interest.is_never() }{
-                CALLSITE.dispatch_span(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    $crate::Span::new_with(
-                        meta,
-                        &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*),
-                        current,
-                    )
-                })
-            } else {
-                let span = CALLSITE.disabled_span();
-                $crate::if_log_enabled! {{
-                    span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
-                }};
-                span
-            }
-        }
+        $crate::__tracing_mk_span!(target: $target, $lvl, $name, $($fields)*)
     };
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
         $crate::span!(target: $target, parent: $parent, $lvl, $name,)
@@ -592,7 +538,7 @@ macro_rules! event {
 
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::*;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+            let callsite = $crate::callsite! {
                 name: concat!(
                     "event ",
                     file!(),
@@ -604,12 +550,9 @@ macro_rules! event {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let interest = CALLSITE.interest();
-            if !interest.is_never() {
-                CALLSITE.dispatch_event(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    current.event(&$crate::Event::new_child_of($parent, meta, &$crate::valueset!(meta.fields(), $($fields)*)))
-                });
+            if callsite.is_enabled() {
+                let meta = callsite.metadata();
+                $crate::Event::child_of($parent, meta, &$crate::valueset!(meta.fields(), $($fields)*) );
             }
         }
     );
@@ -636,7 +579,7 @@ macro_rules! event {
         );
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::*;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+            let callsite = $crate::callsite! {
                 name: concat!(
                     "event ",
                     file!(),
@@ -648,12 +591,9 @@ macro_rules! event {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let interest = CALLSITE.interest();
-            if !interest.is_never() {
-                CALLSITE.dispatch_event(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    current.event(&$crate::Event::new(meta, &$crate::valueset!(meta.fields(), $($fields)*)));
-                });
+            if callsite.is_enabled() {
+                let meta = callsite.metadata();
+                $crate::Event::dispatch(meta, &$crate::valueset!(meta.fields(), $($fields)*) );
             }
         }
     });
@@ -1863,55 +1803,6 @@ macro_rules! callsite {
     }};
 }
 
-/// Constructs a new static callsite for a span or event.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! callsite2 {
-    (name: $name:expr, kind: $kind:expr, fields: $($fields:tt)*) => {{
-        $crate::callsite2! {
-            name: $name,
-            kind: $kind,
-            target: module_path!(),
-            level: $crate::Level::TRACE,
-            fields: $($fields)*
-        }
-    }};
-    (
-        name: $name:expr,
-        kind: $kind:expr,
-        level: $lvl:expr,
-        fields: $($fields:tt)*
-    ) => {{
-        $crate::callsite2! {
-            name: $name,
-            kind: $kind,
-            target: module_path!(),
-            level: $lvl,
-            fields: $($fields)*
-        }
-    }};
-    (
-        name: $name:expr,
-        kind: $kind:expr,
-        target: $target:expr,
-        level: $lvl:expr,
-        fields: $($fields:tt)*
-    ) => {{
-        use $crate::__macro_support::MacroCallsite;
-        static META: $crate::Metadata<'static> = {
-            $crate::metadata! {
-                name: $name,
-                target: $target,
-                level: $lvl,
-                fields: $crate::fieldset!( $($fields)* ),
-                callsite: &CALLSITE,
-                kind: $kind,
-            }
-        };
-        MacroCallsite::new(&META)
-    }};
-}
-
 #[macro_export]
 // TODO: determine if this ought to be public API?`
 #[doc(hidden)]
@@ -2167,6 +2058,124 @@ macro_rules! __tracing_stringify {
 #[macro_export]
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {};
+}
+
+#[cfg(not(feature = "log"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_mk_span {
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
+        {
+            if $crate::level_enabled!($lvl) {
+                use $crate::__macro_support::*;
+                let callsite = $crate::callsite! {
+                    name: $name,
+                    kind: $crate::metadata::Kind::SPAN,
+                    target: $target,
+                    level: $lvl,
+                    fields: $($fields)*
+                };
+                if callsite.is_enabled() {
+                    let meta = callsite.metadata();
+                    $crate::Span::child_of(
+                        $parent,
+                        meta,
+                        &$crate::valueset!(meta.fields(), $($fields)*),
+                    )
+                } else {
+                    $crate::Span::none()
+                }
+            } else {
+                $crate::Span::none()
+            }
+        }
+    };
+    (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
+        {
+            if $crate::level_enabled!($lvl) {
+                use $crate::__macro_support::*;
+                let callsite = $crate::callsite! {
+                    name: $name,
+                    kind: $crate::metadata::Kind::SPAN,
+                    target: $target,
+                    level: $lvl,
+                    fields: $($fields)*
+                };
+                if callsite.is_enabled() {
+                    let meta = callsite.metadata();
+                    $crate::Span::new(
+                        meta,
+                        &$crate::valueset!(meta.fields(), $($fields)*),
+                    )
+                } else {
+                    $crate::Span::none()
+                }
+            } else {
+                $crate::Span::none()
+            }
+        }
+    };
+}
+
+#[cfg(feature = "log")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_mk_span {
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
+        {
+            use $crate::callsite::Callsite;
+            let callsite = $crate::callsite! {
+                name: $name,
+                kind: $crate::metadata::Kind::SPAN,
+                target: $target,
+                level: $lvl,
+                fields: $($fields)*
+            };
+            let meta = callsite.metadata();
+            if $crate::level_enabled!($lvl) && callsite.is_enabled() {
+                $crate::Span::child_of(
+                    $parent,
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*),
+                )
+            } else {
+                $crate::if_log_enabled! {{
+                    let span = $crate::Span::new_disabled(meta);
+                    span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
+                    span
+                } else {
+                    $crate::Span::none()
+                }}
+            }
+        }
+    };
+    (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
+        {
+            use $crate::callsite::Callsite;
+            let callsite = $crate::callsite! {
+                name: $name,
+                kind: $crate::metadata::Kind::SPAN,
+                target: $target,
+                level: $lvl,
+                fields: $($fields)*
+            };
+            let meta = callsite.metadata();
+            if $crate::level_enabled!($lvl) && callsite.is_enabled() {
+                $crate::Span::new(
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*),
+                )
+            } else {
+                $crate::if_log_enabled! {{
+                    let span = $crate::Span::new_disabled(meta);
+                    span.record_all(&$crate::valueset!(meta.fields(), $($fields)*));
+                    span
+                } else {
+                    $crate::Span::none()
+                }}
+            }
+        }
+    };
 }
 
 #[cfg(feature = "log")]
