@@ -102,6 +102,7 @@ pub struct Values<'set, 'values> {
     fields: &'set FieldSet,
 }
 
+#[derive(Clone)]
 pub struct Value<'a> {
     inner: ValueKind<'a>,
 }
@@ -830,6 +831,11 @@ impl Field {
     /// Returns a string representing the name of the field.
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
+    }
+
+    #[doc(hidden)] // XXX(eliza): do we want to commit to this? i doubt it.
+    pub fn index(&self) -> usize {
+        self.i
     }
 }
 
