@@ -478,6 +478,7 @@ impl Error for FromEnvError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use callsite::Registration;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 
@@ -506,6 +507,10 @@ mod tests {
     impl Callsite for Cs {
         fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
+            unimplemented!()
+        }
+
+        fn registration(&'static self) -> &'static Registration {
             unimplemented!()
         }
     }

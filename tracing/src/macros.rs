@@ -54,7 +54,7 @@ macro_rules! span {
     };
     (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
-            use $crate::__macro_support::Callsite as _;
+            use $crate::__macro_support::{Callsite as _, Registration};
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
                 name: $name,
                 kind: $crate::metadata::Kind::SPAN,
@@ -62,6 +62,7 @@ macro_rules! span {
                 level: $lvl,
                 fields: $($fields)*
             };
+
             let mut interest = $crate::subscriber::Interest::never();
             if $crate::level_enabled!($lvl) && { interest = CALLSITE.interest(); !interest.is_never() }{
                 CALLSITE.dispatch_span(interest, |current| {
@@ -1846,7 +1847,7 @@ macro_rules! callsite {
         level: $lvl:expr,
         fields: $($fields:tt)*
     ) => {{
-        use $crate::__macro_support::MacroCallsite;
+        use $crate::__macro_support::{MacroCallsite, Registration};
         static META: $crate::Metadata<'static> = {
             $crate::metadata! {
                 name: $name,
@@ -1857,7 +1858,11 @@ macro_rules! callsite {
                 kind: $kind,
             }
         };
-        static CALLSITE: MacroCallsite = MacroCallsite::new(&META);
+        static REG: Registration = Registration {
+            callsite: &CALLSITE,
+            next: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
+        };
+        static CALLSITE: MacroCallsite = MacroCallsite::new(&META, &REG);
         CALLSITE.register();
         &CALLSITE
     }};
@@ -1897,7 +1902,7 @@ macro_rules! callsite2 {
         level: $lvl:expr,
         fields: $($fields:tt)*
     ) => {{
-        use $crate::__macro_support::MacroCallsite;
+        use $crate::__macro_support::{MacroCallsite, Registration};
         static META: $crate::Metadata<'static> = {
             $crate::metadata! {
                 name: $name,
@@ -1908,7 +1913,12 @@ macro_rules! callsite2 {
                 kind: $kind,
             }
         };
-        MacroCallsite::new(&META)
+        static REG: Registration = Registration {
+            callsite: &CALLSITE,
+            next: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
+        };
+
+        MacroCallsite::new(&META, &REG)
     }};
 }
 

@@ -921,7 +921,7 @@ pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
-    pub use crate::callsite::Callsite;
+    pub use crate::callsite::{Callsite, Registration};
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
@@ -938,7 +938,8 @@ pub mod __macro_support {
     pub struct MacroCallsite {
         interest: AtomicUsize,
         meta: &'static Metadata<'static>,
-        registration: Once,
+        register: Once,
+        registration: &'static Registration,
     }
 
     impl MacroCallsite {
@@ -950,11 +951,15 @@ pub mod __macro_support {
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
         /// without warning.
-        pub const fn new(meta: &'static Metadata<'static>) -> Self {
+        pub const fn new(
+            meta: &'static Metadata<'static>,
+            registration: &'static Registration,
+        ) -> Self {
             Self {
                 interest: AtomicUsize::new(0xDEADFACED),
                 meta,
-                registration: Once::new(),
+                register: Once::new(),
+                registration,
             }
         }
 
@@ -972,8 +977,7 @@ pub mod __macro_support {
         // This only happens once (or if the cached interest value was corrupted).
         #[cold]
         pub fn register(&'static self) -> Interest {
-            self.registration
-                .call_once(|| crate::callsite::register(self));
+            self.register.call_once(|| crate::callsite::register(self));
             match self.interest.load(Ordering::Relaxed) {
                 0 => Interest::never(),
                 2 => Interest::always(),
@@ -1052,6 +1056,11 @@ pub mod __macro_support {
         #[inline(always)]
         fn metadata(&self) -> &Metadata<'static> {
             &self.meta
+        }
+
+        #[inline(always)]
+        fn registration(&'static self) -> &'static Registration {
+            self.registration
         }
     }
 }
