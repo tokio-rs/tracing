@@ -8,6 +8,8 @@ pub use self::{
     directive::{Directive, ParseError},
     field::BadName as BadFieldName,
 };
+
+mod builder;
 mod directive;
 mod field;
 
