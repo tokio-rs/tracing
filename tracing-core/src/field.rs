@@ -436,7 +436,7 @@ impl<'a> Value<'a> {
     pub fn is<T: Any>(&self) -> bool {
         let target = TypeId::of::<T>();
         match self.inner {
-            ValueKind::Empty => false,
+            ValueKind::Empty => target == TypeId::of::<Empty>(),
             ValueKind::Bool(_) => target == TypeId::of::<bool>(),
             ValueKind::U64(_) => target == TypeId::of::<u64>(),
             ValueKind::I64(_) => target == TypeId::of::<i64>(),
@@ -449,7 +449,7 @@ impl<'a> Value<'a> {
         }
     }
 
-    fn is_some(&self) -> bool {
+    pub fn is_some(&self) -> bool {
         match self.inner {
             ValueKind::Empty => false,
             _ => true,
@@ -1154,15 +1154,20 @@ where
 {
     type Item = (Field, &'set Value<'values>);
     fn next(&mut self) -> Option<Self::Item> {
-        let (i, value) = self.values.next()?;
-        let field = Field {
-            i,
-            fields: FieldSet {
-                callsite: self.fields.callsite.clone(),
-                names: self.fields.names,
-            },
-        };
-        Some((field, value))
+        loop {
+            let (i, value) = self.values.next()?;
+            if !value.is_some() {
+                continue;
+            }
+            let field = Field {
+                i,
+                fields: FieldSet {
+                    callsite: self.fields.callsite.clone(),
+                    names: self.fields.names,
+                },
+            };
+            return Some((field, value));
+        }
     }
 }
 
