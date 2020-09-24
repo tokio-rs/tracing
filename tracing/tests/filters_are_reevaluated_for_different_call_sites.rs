@@ -18,6 +18,7 @@ use std::sync::{
     Arc,
 };
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn filters_are_reevaluated_for_different_call_sites() {
     // Asserts that the `span!` macro caches the result of calling

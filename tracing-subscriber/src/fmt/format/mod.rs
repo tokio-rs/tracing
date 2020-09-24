@@ -32,14 +32,15 @@ pub use json::*;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`FmtSubscriber`]. Each time an event is
-/// dispatched to [`FmtSubscriber`], the subscriber forwards it to its associated `FormatEvent` to
-/// emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Subscriber`] or [`fmt::Layer`]. Each time an event is
+/// dispatched to [`fmt::Subscriber`] or [`fmt::Layer`], the subscriber or layer forwards it to
+/// its associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
-/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
+/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Layer`]: ../struct.Layer.html
 pub trait FormatEvent<S, N>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -179,6 +180,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) ansi: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
+    pub(crate) display_thread_id: bool,
+    pub(crate) display_thread_name: bool,
 }
 
 impl Default for Format<Full, SystemTime> {
@@ -189,6 +192,8 @@ impl Default for Format<Full, SystemTime> {
             ansi: true,
             display_target: true,
             display_level: true,
+            display_thread_id: false,
+            display_thread_name: false,
         }
     }
 }
@@ -204,6 +209,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -232,6 +239,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -253,6 +262,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -264,6 +275,8 @@ impl<F, T> Format<F, T> {
             ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
         }
     }
 
@@ -284,6 +297,28 @@ impl<F, T> Format<F, T> {
     pub fn with_level(self, display_level: bool) -> Format<F, T> {
         Format {
             display_level,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [thread ID] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    pub fn with_thread_ids(self, display_thread_id: bool) -> Format<F, T> {
+        Format {
+            display_thread_id,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [name] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    pub fn with_thread_names(self, display_thread_name: bool) -> Format<F, T> {
+        Format {
+            display_thread_name,
             ..self
         }
     }
@@ -367,6 +402,24 @@ where
             write!(writer, "{} ", fmt_level)?;
         }
 
+        if self.display_thread_name {
+            let current_thread = std::thread::current();
+            match current_thread.name() {
+                Some(name) => {
+                    write!(writer, "{} ", FmtThreadName::new(name))?;
+                }
+                // fall-back to thread id when name is absent and ids are not enabled
+                None if !self.display_thread_id => {
+                    write!(writer, "{:0>2?} ", current_thread.id())?;
+                }
+                _ => {}
+            }
+        }
+
+        if self.display_thread_id {
+            write!(writer, "{:0>2?} ", std::thread::current().id())?;
+        }
+
         let full_ctx = {
             #[cfg(feature = "ansi")]
             {
@@ -422,6 +475,24 @@ where
                 }
             };
             write!(writer, "{} ", fmt_level)?;
+        }
+
+        if self.display_thread_name {
+            let current_thread = std::thread::current();
+            match current_thread.name() {
+                Some(name) => {
+                    write!(writer, "{} ", FmtThreadName::new(name))?;
+                }
+                // fall-back to thread id when name is absent and ids are not enabled
+                None if !self.display_thread_id => {
+                    write!(writer, "{:0>2?} ", current_thread.id())?;
+                }
+                _ => {}
+            }
+        }
+
+        if self.display_thread_id {
+            write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
         let fmt_ctx = {
@@ -758,6 +829,49 @@ impl Style {
     }
     fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
         d
+    }
+}
+
+struct FmtThreadName<'a> {
+    name: &'a str,
+}
+
+impl<'a> FmtThreadName<'a> {
+    pub(crate) fn new(name: &'a str) -> Self {
+        Self { name }
+    }
+}
+
+impl<'a> fmt::Display for FmtThreadName<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::sync::atomic::{
+            AtomicUsize,
+            Ordering::{AcqRel, Acquire, Relaxed},
+        };
+
+        // Track the longest thread name length we've seen so far in an atomic,
+        // so that it can be updated by any thread.
+        static MAX_LEN: AtomicUsize = AtomicUsize::new(0);
+        let len = self.name.len();
+        // Snapshot the current max thread name length.
+        let mut max_len = MAX_LEN.load(Relaxed);
+
+        while len > max_len {
+            // Try to set a new max length, if it is still the value we took a
+            // snapshot of.
+            match MAX_LEN.compare_exchange(max_len, len, AcqRel, Acquire) {
+                // We successfully set the new max value
+                Ok(_) => break,
+                // Another thread set a new max value since we last observed
+                // it! It's possible that the new length is actually longer than
+                // ours, so we'll loop again and check whether our length is
+                // still the longest. If not, we'll just use the newer value.
+                Err(actual) => max_len = actual,
+            }
+        }
+
+        // pad thread name using `max_len`
+        write!(f, "{:>width$}", self.name, width = max_len)
     }
 }
 

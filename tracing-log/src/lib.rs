@@ -16,6 +16,10 @@
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
+//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//!
+//! [msrv]: #supported-rust-versions
+//!
 //! # Usage
 //!
 //! ## Convert log records to tracing `Event`s
@@ -71,6 +75,20 @@
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
 //!
+//! ## Supported Rust Versions
+//!
+//! Tracing is built against the latest stable release. The minimum supported
+//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! Rust versions earlier than the minimum supported version.
+//!
+//! Tracing follows the same compiler support policies as the rest of the Tokio
+//! project. The current stable Rust compiler and the three most recent minor
+//! versions before it will always be supported. For example, if the current
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! supported compiler version is not considered a semver breaking change as
+//! long as doing so complies with this policy.
+//!
 //! [`init`]: struct.LogTracer.html#method.init
 //! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
 //! [`AsTrace`]: trait.AsTrace.html
@@ -88,6 +106,10 @@
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
+)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,

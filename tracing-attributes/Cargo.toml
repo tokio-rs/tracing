@@ -8,7 +8,7 @@ name = "tracing-attributes"
 #   - README.md
 # - Update CHANGELOG.md.
 # - Create "v0.1.x" git tag.
-version = "0.1.9"
+version = "0.1.11"
 authors = [
     "Tokio Contributors <team@tokio.rs>",
     "Eliza Weisman <eliza@buoyant.io>",
@@ -39,7 +39,7 @@ async-await = []
 
 [dependencies]
 proc-macro2 = "1"
-syn = { version = "1", features = ["full", "extra-traits"] }
+syn = { version = "1", default-features = false, features = ["full", "parsing", "printing", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
 quote = "1"
 
 

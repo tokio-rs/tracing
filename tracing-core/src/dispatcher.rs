@@ -120,13 +120,6 @@
 //! instead.
 //! </pre></div>
 //!
-//! Finally, `tokio` users should note that versions of `tokio` >= 0.1.22
-//! support an `experimental-tracing` feature flag. When this flag is enabled,
-//! the `tokio` runtime's thread pool will automatically propagate the default
-//! subscriber. This means that if `tokio::runtime::Runtime::new()` or
-//! `tokio::run()` are invoked when a default subscriber is set, it will also be
-//! set by all worker threads created by that runtime.
-//!
 //! ## Accessing the Default Subscriber
 //!
 //! A thread's current default subscriber can be accessed using the
@@ -142,7 +135,7 @@
 use crate::{
     callsite, span,
     subscriber::{self, Subscriber},
-    Event, Metadata,
+    Event, LevelFilter, Metadata,
 };
 
 use crate::stdlib::{
@@ -156,7 +149,7 @@ use crate::stdlib::{
 
 #[cfg(feature = "std")]
 use crate::stdlib::{
-    cell::{Cell, RefCell},
+    cell::{Cell, RefCell, RefMut},
     error,
 };
 
@@ -199,6 +192,12 @@ struct State {
     /// is set back to `true`.
     can_enter: Cell<bool>,
 }
+
+/// While this guard is active, additional calls to subscriber functions on
+/// the default dispatcher will not be able to access the dispatch context.
+/// Dropping the guard will allow the dispatch context to be re-entered.
+#[cfg(feature = "std")]
+struct Entered<'a>(&'a State);
 
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
@@ -332,36 +331,44 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
-    // While this guard is active, additional calls to subscriber functions on
-    // the default dispatcher will not be able to access the dispatch context.
-    // Dropping the guard will allow the dispatch context to be re-entered.
-    struct Entered<'a>(&'a Cell<bool>);
-    impl<'a> Drop for Entered<'a> {
-        #[inline]
-        fn drop(&mut self) {
-            self.0.set(true);
-        }
-    }
-
     CURRENT_STATE
         .try_with(|state| {
-            if state.can_enter.replace(false) {
-                let _guard = Entered(&state.can_enter);
-
-                let mut default = state.default.borrow_mut();
-
-                if default.is::<NoSubscriber>() {
-                    if let Some(global) = get_global() {
-                        // don't redo this call on the next check
-                        *default = global.clone();
-                    }
-                }
-                f(&*default)
-            } else {
-                f(&Dispatch::none())
+            if let Some(entered) = state.enter() {
+                return f(&*entered.current());
             }
+
+            f(&Dispatch::none())
         })
         .unwrap_or_else(|_| f(&Dispatch::none()))
+}
+
+/// Executes a closure with a reference to this thread's current [dispatcher].
+///
+/// Note that calls to `get_default` should not be nested; if this function is
+/// called while inside of another `get_default`, that closure will be provided
+/// with `Dispatch::none` rather than the previously set dispatcher.
+///
+/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+#[cfg(feature = "std")]
+#[doc(hidden)]
+#[inline(never)]
+pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    CURRENT_STATE
+        .try_with(|state| {
+            let entered = state.enter()?;
+            Some(f(&*entered.current()))
+        })
+        .ok()?
+}
+
+/// Executes a closure with a reference to the current [dispatcher].
+///
+/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    let dispatch = get_global()?;
+    Some(f(&dispatch))
 }
 
 /// Executes a closure with a reference to the current [dispatcher].
@@ -432,6 +439,22 @@ impl Dispatch {
     #[inline]
     pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> subscriber::Interest {
         self.subscriber.register_callsite(metadata)
+    }
+
+    /// Returns the highest [verbosity level][level] that this [`Subscriber`] will
+    /// enable, or `None`, if the subscriber does not implement level-based
+    /// filtering or chooses not to implement this method.
+    ///
+    /// This calls the [`max_level_hint`] function on the [`Subscriber`]
+    /// that this `Dispatch` forwards to.
+    ///
+    /// [level]: ../struct.Level.html
+    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+    /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
+    // TODO(eliza): consider making this a public API?
+    #[inline]
+    pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.subscriber.max_level_hint()
     }
 
     /// Record the construction of a new span, returning a new [ID] for the
@@ -677,8 +700,8 @@ impl Registrar {
         self.0.upgrade().map(|s| s.register_callsite(metadata))
     }
 
-    pub(crate) fn is_alive(&self) -> bool {
-        self.0.upgrade().is_some()
+    pub(crate) fn upgrade(&self) -> Option<Dispatch> {
+        self.0.upgrade().map(|subscriber| Dispatch { subscriber })
     }
 }
 
@@ -701,6 +724,42 @@ impl State {
             .ok();
         EXISTS.store(true, Ordering::Release);
         DefaultGuard(prior)
+    }
+
+    #[inline]
+    fn enter(&self) -> Option<Entered<'_>> {
+        if self.can_enter.replace(false) {
+            Some(Entered(&self))
+        } else {
+            None
+        }
+    }
+}
+
+// ===== impl Entered =====
+
+#[cfg(feature = "std")]
+impl<'a> Entered<'a> {
+    #[inline]
+    fn current(&self) -> RefMut<'a, Dispatch> {
+        let mut default = self.0.default.borrow_mut();
+
+        if default.is::<NoSubscriber>() {
+            if let Some(global) = get_global() {
+                // don't redo this call on the next check
+                *default = global.clone();
+            }
+        }
+
+        default
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> Drop for Entered<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        self.0.can_enter.set(true);
     }
 }
 

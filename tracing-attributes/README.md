@@ -1,3 +1,7 @@
+![Tracing — Structured, application-level diagnostics][splash]
+
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+
 # tracing-attributes
 
 Macro attributes for application-level tracing.
@@ -14,7 +18,7 @@ Macro attributes for application-level tracing.
 [crates-badge]: https://img.shields.io/crates/v/tracing-attributes.svg
 [crates-url]: https://crates.io/crates/tracing-attributes
 [docs-badge]: https://docs.rs/tracing-attributes/badge.svg
-[docs-url]: https://docs.rs/tracing-attributes/0.1.9
+[docs-url]: https://docs.rs/tracing-attributes/0.1.11
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_attributes
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -33,16 +37,19 @@ structured, event-based diagnostic information. This crate provides the
 
 Note that this macro is also re-exported by the main `tracing` crate.
 
+*Compiler support: [requires `rustc` 1.40+][msrv]*
+
+[msrv]: #supported-rust-versions
+
 ## Usage
 
 First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing-attributes = "0.1.9"
+tracing-attributes = "0.1.11"
 ```
 
-*Compiler support: requires rustc 1.39+*
 
 This crate provides the `#[instrument]` attribute for instrumenting a function
 with a `tracing` [span]. For example:
@@ -56,9 +63,22 @@ pub fn my_function(my_arg: usize) {
 }
 ```
 
-
 [`tracing`]: https://crates.io/crates/tracing
 [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.40. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## License
 

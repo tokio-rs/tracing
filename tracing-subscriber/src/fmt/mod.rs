@@ -143,7 +143,7 @@ use crate::{
 pub use self::{
     format::{format, FormatEvent, FormatFields},
     time::time,
-    writer::MakeWriter,
+    writer::{MakeWriter, TestWriter},
 };
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
@@ -542,6 +542,34 @@ where
         }
     }
 
+    /// Sets whether or not the [name] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    pub fn with_thread_names(
+        self,
+        display_thread_names: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_thread_names(display_thread_names),
+        }
+    }
+
+    /// Sets whether or not the [thread ID] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    pub fn with_thread_ids(
+        self,
+        display_thread_ids: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_thread_ids(display_thread_ids),
+        }
+    }
+
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`](../fmt/format/struct.Compact.html).
@@ -843,6 +871,37 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(make_writer),
+        }
+    }
+
+    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// unit tests.
+    ///
+    /// See [`TestWriter`] for additional details.
+    ///
+    /// # Examples
+    ///
+    /// Using [`TestWriter`] to let `cargo test` capture test output. Note that we do not install it
+    /// globally as it may cause conflicts.
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt;
+    /// use tracing::subscriber;
+    ///
+    /// subscriber::set_default(
+    ///     fmt()
+    ///         .with_test_writer()
+    ///         .finish()
+    /// );
+    /// ```
+    ///
+    /// [capturing]:
+    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+    /// [`TestWriter`]: writer/struct.TestWriter.html
+    pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_writer(TestWriter::default()),
         }
     }
 }

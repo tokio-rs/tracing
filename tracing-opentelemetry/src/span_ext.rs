@@ -1,4 +1,4 @@
-use crate::layer::{build_span_context, WithContext};
+use crate::layer::WithContext;
 use opentelemetry::api;
 use opentelemetry::api::TraceContextExt;
 
@@ -26,7 +26,7 @@ pub trait OpenTelemetrySpanExt {
     /// let mut carrier = HashMap::new();
     ///
     /// // Propagator can be swapped with trace context propagator binary propagator, etc.
-    /// let propagator = api::B3Propagator::new(true);
+    /// let propagator = api::B3Propagator::new();
     ///
     /// // Extract otel parent context via the chosen propagator
     /// let parent_context = propagator.extract(&carrier);
@@ -76,7 +76,7 @@ impl OpenTelemetrySpanExt for tracing::Span {
     fn set_parent(&self, parent_context: &api::Context) {
         self.with_subscriber(move |(id, subscriber)| {
             if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, move |builder, _sampler| {
+                get_context.with_context(subscriber, id, move |builder, _tracer| {
                     builder.parent_context = parent_context.remote_span_context().cloned()
                 });
             }
@@ -87,8 +87,8 @@ impl OpenTelemetrySpanExt for tracing::Span {
         let mut span_context = None;
         self.with_subscriber(|(id, subscriber)| {
             if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, |builder, sampler| {
-                    span_context = Some(build_span_context(builder, sampler));
+                get_context.with_context(subscriber, id, |builder, tracer| {
+                    span_context = Some(tracer.sampled_span_context(builder));
                 })
             }
         });

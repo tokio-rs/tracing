@@ -5,6 +5,7 @@ extern crate test_log_support;
 use test_log_support::Test;
 use tracing::Level;
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn test_always_log() {
     let test = Test::start();
@@ -15,7 +16,11 @@ fn test_always_log() {
     warn!("hello {};", "world");
     test.assert_logged("hello world;");
 
-    info!(message = "hello world;", thingy = 42, other_thingy = 666);
+    info!(
+        message = "hello world;",
+        thingy = display(42),
+        other_thingy = debug(666)
+    );
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");

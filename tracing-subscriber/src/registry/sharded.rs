@@ -1,4 +1,5 @@
 use sharded_slab::{Guard, Slab};
+use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
 use crate::{
@@ -47,6 +48,7 @@ use tracing_core::{
 #[derive(Debug)]
 pub struct Registry {
     spans: Slab<DataInner>,
+    current_spans: ThreadLocal<RefCell<SpanStack>>,
 }
 
 /// Span data stored in a [`Registry`].
@@ -57,8 +59,8 @@ pub struct Registry {
 /// be stored in the [extensions] typemap.
 ///
 /// [`Registry`]: struct.Registry.html
-/// [`Layer`s]: ../trait.Layer.html
-/// [extensions]: extensions/index.html
+/// [`Layer`s]: ../layer/trait.Layer.html
+/// [extensions]: struct.Extensions.html
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
@@ -78,7 +80,10 @@ struct DataInner {
 
 impl Default for Registry {
     fn default() -> Self {
-        Self { spans: Slab::new() }
+        Self {
+            spans: Slab::new(),
+            current_spans: ThreadLocal::new(),
+        }
     }
 }
 
@@ -154,7 +159,6 @@ thread_local! {
     ///
     /// [`CloseGuard`]: ./struct.CloseGuard.html
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
-    static CURRENT_SPANS: RefCell<SpanStack> = RefCell::new(SpanStack::new());
 }
 
 impl Subscriber for Registry {
@@ -198,13 +202,18 @@ impl Subscriber for Registry {
     fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
-        CURRENT_SPANS.with(|spans| {
-            spans.borrow_mut().push(self.clone_span(id));
-        })
+        self.current_spans
+            .get_or_default()
+            .borrow_mut()
+            .push(self.clone_span(id));
     }
 
     fn exit(&self, id: &span::Id) {
-        if let Some(id) = CURRENT_SPANS.with(|spans| spans.borrow_mut().pop(id)) {
+        if let Some(id) = self
+            .current_spans
+            .get()
+            .and_then(|spans| spans.borrow_mut().pop(id))
+        {
             dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
         }
     }
@@ -224,8 +233,9 @@ impl Subscriber for Registry {
     }
 
     fn current_span(&self) -> Current {
-        CURRENT_SPANS
-            .with(|spans| {
+        self.current_spans
+            .get()
+            .and_then(|spans| {
                 let spans = spans.borrow();
                 let id = spans.current()?;
                 let span = self.get(id)?;

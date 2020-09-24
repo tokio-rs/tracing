@@ -1,5 +1,5 @@
 //! Subscribers collect and record trace data.
-use crate::{span, Event, Metadata};
+use crate::{span, Event, LevelFilter, Metadata};
 
 use crate::stdlib::any::{Any, TypeId};
 
@@ -166,6 +166,33 @@ pub trait Subscriber: 'static {
     /// [`Interest::sometimes`]: struct.Interest.html#method.sometimes
     /// [`register_callsite`]: #method.register_callsite
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
+
+    /// Returns the highest [verbosity level][level] that this `Subscriber` will
+    /// enable, or `None`, if the subscriber does not implement level-based
+    /// filtering or chooses not to implement this method.
+    ///
+    /// If this method returns a [`Level`][level], it will be used as a hint to
+    /// determine the most verbose level that will be enabled. This will allow
+    /// spans and events which are more verbose than that level to be skipped
+    /// more efficiently. Subscribers which perform filtering are strongly
+    /// encouraged to provide an implementation of this method.
+    ///
+    /// If the maximum level the subscriber will enable can change over the
+    /// course of its lifetime, it is free to return a different value from
+    /// multiple invocations of this method. However, note that changes in the
+    /// maximum level will **only** be reflected after the callsite [`Interest`]
+    /// cache is rebuilt, by calling the [`callsite::rebuild_interest_cache`][rebuild]
+    /// function. Therefore, if the subscriber will change the value returned by
+    /// this method, it is responsible for ensuring that
+    /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+    /// level changes.
+    ///
+    /// [level]: ../struct.Level.html
+    /// [`Interest`]: struct.Interest.html
+    /// [rebuild]: ../callsite/fn.rebuild_interest_cache.html
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        None
+    }
 
     /// Visit the construction of a new span, returning a new [span ID] for the
     /// span being constructed.
@@ -529,24 +556,15 @@ impl Interest {
 
     /// Returns the common interest between these two Interests.
     ///
-    /// The common interest is defined as the least restrictive, so if one
-    /// interest is `never` and the other is `always` the common interest is
-    /// `always`.
+    /// If both interests are the same, this propagates that interest.
+    /// Otherwise, if they differ, the result must always be
+    /// `Interest::sometimes` --- if the two subscribers differ in opinion, we
+    /// will have to ask the current subscriber what it thinks, no matter what.
     pub(crate) fn and(self, rhs: Interest) -> Self {
-        match rhs.0 {
-            // If the added interest is `never()`, don't change anything —
-            // either a different subscriber added a higher interest, which we
-            // want to preserve, or the interest is 0 anyway (as it's
-            // initialized to 0).
-            InterestKind::Never => self,
-            // If the interest is `sometimes()`, that overwrites a `never()`
-            // interest, but doesn't downgrade an `always()` interest.
-            InterestKind::Sometimes if self.0 == InterestKind::Never => rhs,
-            // If the interest is `always()`, we overwrite the current interest,
-            // as always() is the highest interest level and should take
-            // precedent.
-            InterestKind::Always => rhs,
-            _ => self,
+        if self.0 == rhs.0 {
+            self
+        } else {
+            Interest::sometimes()
         }
     }
 }

@@ -6,16 +6,18 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
+//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//!
+//! [msrv]: #supported-rust-versions
+//!
 //! ## Usage
 //!
 //! First, add this to your `Cargo.toml`:
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-attributes = "0.1.9"
+//! tracing-attributes = "0.1.11"
 //! ```
-//!
-//! *Compiler support: requires rustc 1.39+*
 //!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
 //! to automatically create and enter `tracing` [span] when that function is
@@ -35,7 +37,26 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [instrument]: attr.instrument.html
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.9")]
+//!
+//! ## Supported Rust Versions
+//!
+//! Tracing is built against the latest stable release. The minimum supported
+//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! Rust versions earlier than the minimum supported version.
+//!
+//! Tracing follows the same compiler support policies as the rest of the Tokio
+//! project. The current stable Rust compiler and the three most recent minor
+//! versions before it will always be supported. For example, if the current
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! supported compiler version is not considered a semver breaking change as
+//! long as doing so complies with this policy.
+//!
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.11")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
+)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -78,6 +99,7 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
+/// Unless overriden, a span with `info` level will be generated.
 /// The generated span's name will be the name of the function. Any arguments
 /// to that function will be recorded as fields using [`fmt::Debug`]. To skip
 /// recording a function's or method's argument, pass the argument's name
@@ -113,6 +135,14 @@ use syn::{
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(level = "debug")]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// ```
+/// Overriding the generated span's name:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(name = "my_name")]
 /// pub fn my_function() {
 ///     // ...
 /// }
@@ -171,8 +201,8 @@ use syn::{
 /// ```
 ///
 /// It also works with [async-trait](https://crates.io/crates/async-trait)
-/// (a crate that allows async functions on traits,
-/// something not currently possible with rustc alone),
+/// (a crate that allows defining async functions in traits,
+/// something not currently possible in Rust),
 /// and hopefully most libraries that exhibit similar behaviors:
 ///
 /// ```
@@ -181,19 +211,43 @@ use syn::{
 ///
 /// #[async_trait]
 /// pub trait Foo {
-///     async fn foo(&self, v: usize) -> ();
+///     async fn foo(&self, arg: usize);
 /// }
 ///
 /// #[derive(Debug)]
-/// struct FooImpl;
+/// struct FooImpl(usize);
 ///
 /// #[async_trait]
 /// impl Foo for FooImpl {
-///     #[instrument(skip(self))]
-///     async fn foo(&self, v: usize) {}
+///     #[instrument(fields(value = self.0, tmp = std::any::type_name::<Self>()))]
+///     async fn foo(&self, arg: usize) {}
 /// }
 /// ```
-
+///
+/// An interesting note on this subject is that references to the `Self`
+/// type inside the `fields` argument are only allowed when the instrumented
+/// function is a method aka. the function receives `self` as an argument.
+/// For example, this *will not work* because it doesn't receive `self`:
+/// ```compile_fail
+/// # use tracing::instrument;
+/// use async_trait::async_trait;
+///
+/// #[async_trait]
+/// pub trait Bar {
+///     async fn bar();
+/// }
+///
+/// #[derive(Debug)]
+/// struct BarImpl(usize);
+///
+/// #[async_trait]
+/// impl Bar for BarImpl {
+///     #[instrument(fields(tmp = std::any::type_name::<Self>()))]
+///     async fn bar() {}
+/// }
+/// ```
+/// Instead, you should manually rewrite any `Self` types as the type for
+/// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`.
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
@@ -206,20 +260,25 @@ pub fn instrument(
     let input: ItemFn = syn::parse_macro_input!(item as ItemFn);
     let args = syn::parse_macro_input!(args as InstrumentArgs);
 
+    let instrumented_function_name = input.sig.ident.to_string();
+
     // check for async_trait-like patterns in the block and wrap the
     // internal function with Instrument instead of wrapping the
     // async_trait generated wrapper
-    if let Some(internal_fun_name) =
-        get_async_trait_name(&input.block, input.sig.asyncness.is_some())
-    {
+    if let Some(internal_fun) = get_async_trait_info(&input.block, input.sig.asyncness.is_some()) {
         // let's rewrite some statements!
         let mut stmts: Vec<Stmt> = input.block.stmts.to_vec();
         for stmt in &mut stmts {
             if let Stmt::Item(Item::Fn(fun)) = stmt {
                 // instrument the function if we considered it as the one we truly want to trace
-                if fun.sig.ident == internal_fun_name {
-                    *stmt = syn::parse2(gen_body(fun, args, Some(input.sig.ident.to_string())))
-                        .unwrap();
+                if fun.sig.ident == internal_fun.name {
+                    *stmt = syn::parse2(gen_body(
+                        fun,
+                        args,
+                        instrumented_function_name,
+                        Some(internal_fun),
+                    ))
+                    .unwrap();
                     break;
                 }
             }
@@ -235,14 +294,15 @@ pub fn instrument(
         )
         .into()
     } else {
-        gen_body(&input, args, None).into()
+        gen_body(&input, args, instrumented_function_name, None).into()
     }
 }
 
 fn gen_body(
     input: &ItemFn,
-    args: InstrumentArgs,
-    fun_name: Option<String>,
+    mut args: InstrumentArgs,
+    instrumented_function_name: String,
+    async_trait_fun: Option<AsyncTraitInfo>,
 ) -> proc_macro2::TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
@@ -281,14 +341,7 @@ fn gen_body(
         .name
         .as_ref()
         .map(|name| quote!(#name))
-        // are we overriding the name because the span is inside a function
-        // generated by `async-trait`?
-        .or_else(|| fun_name.as_ref().map(|name| quote!(#name)))
-        // if neither override is present, use the parsed function's name.
-        .unwrap_or_else(|| {
-            let name = ident.to_string();
-            quote!(#name)
-        });
+        .unwrap_or_else(|| quote!(#instrumented_function_name));
 
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
@@ -301,31 +354,27 @@ fn gen_body(
                 FnArg::Typed(PatType { pat, .. }) => param_names(*pat),
                 FnArg::Receiver(_) => Box::new(iter::once(Ident::new("self", param.span()))),
             })
-            // if we are inside a function generated by async-trait, we
-            // should take care to rewrite "_self" as "self" for
-            // 'user convenience'
+            // Little dance with new (user-exposed) names and old (internal)
+            // names of identifiers. That way, you can do the following
+            // even though async_trait rewrite "self" as "_self":
+            // ```
+            // #[async_trait]
+            // impl Foo for FooImpl {
+            //     #[instrument(skip(self))]
+            //     async fn foo(&self, v: usize) {}
+            // }
+            // ```
             .map(|x| {
-                if fun_name.is_some() && x == "_self" {
+                // if we are inside a function generated by async-trait, we
+                // should take care to rewrite "_self" as "self" for
+                // 'user convenience'
+                if async_trait_fun.is_some() && x == "_self" {
                     (Ident::new("self", x.span()), x)
                 } else {
                     (x.clone(), x)
                 }
             })
             .collect();
-
-        // TODO: allow the user to rename fields at will (all the
-        // machinery should be here)
-
-        // Little dance with new (user-exposed) names and old (internal)
-        // names of identifiers. That way, you can do the following
-        // even though async_trait rewrite "self" as "_self":
-        // ```
-        // #[async_trait]
-        // impl Foo for FooImpl {
-        //     #[instrument(skip(self))]
-        //     async fn foo(&self, v: usize) {}
-        // }
-        // ```
 
         for skip in &args.skips {
             if !param_names.iter().map(|(user, _)| user).any(|y| y == skip) {
@@ -359,18 +408,26 @@ fn gen_body(
             })
             .map(|(user_name, real_name)| quote!(#user_name = tracing::field::debug(&#real_name)))
             .collect();
+
+        // when async-trait is in use, replace instances of "self" with "_self" inside the fields values
+        if let (Some(ref async_trait_fun), Some(Fields(ref mut fields))) =
+            (async_trait_fun, &mut args.fields)
+        {
+            let mut replacer = SelfReplacer {
+                ty: async_trait_fun.self_type.clone(),
+            };
+            for e in fields.iter_mut().filter_map(|f| f.value.as_mut()) {
+                syn::visit_mut::visit_expr_mut(&mut replacer, e);
+            }
+        }
+
         let custom_fields = &args.fields;
-        let custom_fields = if quoted_fields.is_empty() {
-            quote! { #custom_fields }
-        } else {
-            quote! {, #custom_fields }
-        };
 
         quote!(tracing::span!(
             target: #target,
             #level,
             #span_name,
-            #(#quoted_fields),*
+            #(#quoted_fields,)*
             #custom_fields
 
         ))
@@ -777,20 +834,20 @@ mod kw {
     syn::custom_keyword!(err);
 }
 
-// Get the name of the inner function we need to hook, if the function
-// was generated by async-trait.
-// When we are given a function generated by async-trait, that function
-// is only a "temporary" one that returns a pinned future, and it is
-// that pinned future that needs to be instrumented, otherwise we will
-// only collect information on the moment the future was "built",
-// and not its true span of execution.
-// So we inspect the block of the function to find if we can find the
-// pattern `async fn foo<...>(...) {...}; Box::pin(foo<...>(...))` and
-// return the name `foo` if that is the case. Our caller will then be
-// able to use that information to instrument the proper function.
+// Get the AST of the inner function we need to hook, if it was generated
+// by async-trait.
+// When we are given a function annotated by async-trait, that function
+// is only a placeholder that returns a pinned future containing the
+// user logic, and it is that pinned future that needs to be instrumented.
+// Were we to instrument its parent, we would only collect information
+// regarding the allocation of that future, and not its own span of execution.
+// So we inspect the block of the function to find if it matches the pattern
+// `async fn foo<...>(...) {...}; Box::pin(foo<...>(...))` and we return
+// the name `foo` if that is the case. 'gen_body' will then be able
+// to use that information to instrument the proper function.
 // (this follows the approach suggested in
 // https://github.com/dtolnay/async-trait/issues/45#issuecomment-571245673)
-fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
+fn get_async_trait_function(block: &Block, block_is_async: bool) -> Option<&ItemFn> {
     // are we in an async context? If yes, this isn't a async_trait-like pattern
     if block_is_async {
         return None;
@@ -811,7 +868,7 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
             // is the function declared as async? If so, this is a good
             // candidate, let's keep it in hand
             if fun.sig.asyncness.is_some() {
-                inside_funs.push(fun.sig.ident.to_string());
+                inside_funs.push(fun);
             }
         } else if let Stmt::Expr(e) = &stmt {
             last_expr = Some(e);
@@ -841,9 +898,11 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
                         // "stringify" the path of the function called
                         let func_name = path_to_string(&inside_path.path);
                         // is this function directly defined insided the current block?
-                        if inside_funs.contains(&func_name) {
-                            // we must hook this function now
-                            return Some(func_name);
+                        for fun in inside_funs {
+                            if fun.sig.ident == func_name {
+                                // we must hook this function now
+                                return Some(fun);
+                            }
                         }
                     }
                 }
@@ -851,6 +910,51 @@ fn get_async_trait_name(block: &Block, block_is_async: bool) -> Option<String> {
         }
     }
     None
+}
+
+struct AsyncTraitInfo {
+    name: String,
+    self_type: Option<syn::TypePath>,
+}
+
+// Return the informations necessary to process a function annotated with async-trait.
+fn get_async_trait_info(block: &Block, block_is_async: bool) -> Option<AsyncTraitInfo> {
+    let fun = get_async_trait_function(block, block_is_async)?;
+
+    // if "_self" is present as an argument, we store its type to be able to rewrite "Self" (the
+    // parameter type) with the type of "_self"
+    let self_type = fun
+        .sig
+        .inputs
+        .iter()
+        .map(|arg| {
+            if let FnArg::Typed(ty) = arg {
+                if let Pat::Ident(PatIdent { ident, .. }) = &*ty.pat {
+                    if ident == "_self" {
+                        let mut ty = &*ty.ty;
+                        // extract the inner type if the argument is "&self" or "&mut self"
+                        if let syn::Type::Reference(syn::TypeReference { elem, .. }) = ty {
+                            ty = &*elem;
+                        }
+                        if let syn::Type::Path(tp) = ty {
+                            return Some(tp.clone());
+                        }
+                    }
+                }
+            }
+
+            None
+        })
+        .next();
+    let self_type = match self_type {
+        Some(x) => x,
+        None => None,
+    };
+
+    Some(AsyncTraitInfo {
+        name: fun.sig.ident.to_string(),
+        self_type,
+    })
 }
 
 // Return a path as a String
@@ -866,4 +970,28 @@ fn path_to_string(path: &Path) -> String {
         }
     }
     res
+}
+
+// A visitor struct replacing the "self" and "Self" tokens in user-supplied fields expressions when
+// the function is generated by async-trait.
+struct SelfReplacer {
+    ty: Option<syn::TypePath>,
+}
+
+impl syn::visit_mut::VisitMut for SelfReplacer {
+    fn visit_ident_mut(&mut self, id: &mut Ident) {
+        if id == "self" {
+            *id = Ident::new("_self", id.span())
+        }
+    }
+
+    fn visit_type_mut(&mut self, ty: &mut syn::Type) {
+        if let syn::Type::Path(syn::TypePath { ref mut path, .. }) = ty {
+            if path_to_string(path) == "Self" {
+                if let Some(ref true_type) = self.ty {
+                    *path = true_type.path.clone();
+                }
+            }
+        }
+    }
 }

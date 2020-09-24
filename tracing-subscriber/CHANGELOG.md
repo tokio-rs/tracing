@@ -1,3 +1,111 @@
+# 0.2.12 (September 8, 2020)
+
+### Fixed
+
+- **env-filter**: Fixed a regression where `Option<Level>` lost its
+  `Into<LevelFilter>` impl ([#966])
+- **env-filter**: Fixed `EnvFilter` enabling spans that should not be enabled
+  when multiple subscribers are in use ([#927])
+  
+### Changed
+
+- **json**: `format::Json` now outputs fields in a more readable order ([#892])
+- Updated `tracing-core` dependency to 0.1.16
+
+### Added
+
+- **fmt**: Add `BoxMakeWriter` for erasing the type of a `MakeWriter`
+  implementation ([#958])
+- **fmt**: Add `TestWriter` `MakeWriter` implementation to support libtest
+  output capturing ([#938])
+- **layer**: Add `Layer` impl for `Option<T> where T: Layer` ([#910])
+- **env-filter**: Add `From<Level>` impl for `Directive` ([#918])
+- Multiple documentation fixes and improvements
+
+Thanks to @Pothulapati, @samrg472, @bryanburgers, @keetonian, and @SriRamanujam
+for contributing to this release!
+
+[#927]: https://github.com/tokio-rs/tracing/pull/927
+[#966]: https://github.com/tokio-rs/tracing/pull/966
+[#958]: https://github.com/tokio-rs/tracing/pull/958
+[#892]: https://github.com/tokio-rs/tracing/pull/892
+[#938]: https://github.com/tokio-rs/tracing/pull/938
+[#910]: https://github.com/tokio-rs/tracing/pull/910
+[#918]: https://github.com/tokio-rs/tracing/pull/918
+
+# 0.2.12 (August 10, 2020)
+
+### Fixed
+
+- **env-filter**: Incorrect max level hint when filters involving span field
+  values are in use (#907)
+- **registry**: Fixed inconsistent span stacks when multiple registries are in
+  use on the same thread (#901)
+
+### Changed
+
+- **env-filter**: `regex` dependency enables fewer unused feature flags (#899)
+
+Thanks to @bdonlan and @jeromegn for contributing to this release!
+
+# 0.2.10 (July 31, 2020)
+
+### Fixed
+
+- **docs**: Incorrect formatting (#862)
+
+### Changed
+
+- **filter**: `LevelFilter` is now a re-export of the
+  `tracing_core::LevelFilter` type, it can now be used interchangably with the
+  versions in `tracing` and `tracing-core` (#853)
+- **filter**: Significant performance improvements when comparing `LevelFilter`s
+  and `Level`s (#853)
+- Updated the minimum `tracing-core` dependency to 0.1.12 (#853)
+
+### Added
+
+- **filter**: `LevelFilter` and `EnvFilter` now participate in `tracing-core`'s
+  max level hinting, improving performance significantly in some use cases where
+  levels are disabled globally (#853)
+
+# 0.2.9 (July 23, 2020)
+
+### Fixed
+
+- **fmt**: Fixed compilation failure on MSRV when the `chrono` feature is
+  disabled (#844)
+
+### Added
+
+- **fmt**: Span lookup methods defined by `layer::Context` are now also provided
+  by `FmtContext` (#834)
+
+# 0.2.8 (July 17, 2020)
+
+### Changed
+
+- **fmt**: When the `chrono` dependency is enabled, the `SystemTime` timestamp
+  formatter now emits human-readable timestamps rather than using `SystemTime`'s
+  `fmt::Debug`implementation (`chrono` is still required for customized
+  timestamp formatting) (#807)
+- **ansi**: Updated `ansi_term` dependency to 0.12 (#816)
+
+### Added
+
+- **json**: `with_span_list` method to configure the JSON formatter to include a
+  list of all spans in the current trace in formatting events (similarly to the
+  text formatter) (#741) 
+- **json**: `with_current_span` method to configure the JSON formatter to include
+  a field for the _current_ span (the leaf of the trace) in formatted events
+  (#741)
+- **fmt**: `with_thread_names` and `with_thread_ids` methods to configure
+  `fmt::Subscriber`s and `fmt::Layer`s to include the thread name and/or thread ID
+  of the current thread when formatting events (#818)
+  
+Thanks to new contributors @mockersf, @keetonian, and @Pothulapati for
+contributing to this release!
+
 # 0.2.7 (July 1, 2020)
 
 ### Changed

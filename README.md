@@ -1,6 +1,6 @@
-# tracing
+![Tracing — Structured, application-level diagnostics][splash]
 
-Application-level tracing for Rust.
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
@@ -33,18 +33,15 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ## Usage
 
-(The examples below are borrowed from the `log` crate's yak-shaving
-[example](https://docs.rs/log/0.4.10/log/index.html#examples), modified to
-idiomatic `tracing`.)
-
 ### In Applications
 
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output.
-[`tracing-subscriber`]'s [`fmt` module][fmt] provides a subscriber for logging
-traces with reasonable defaults. Additionally, `tracing-subscriber` is able to
-consume messages emitted by `log`-instrumented libraries and modules.
+[`tracing-subscriber`][tracing-subscriber-docs]'s [`fmt` module][fmt] provides
+a subscriber for logging traces with reasonable defaults. Additionally,
+`tracing-subscriber` is able to consume messages emitted by `log`-instrumented
+libraries and modules.
 
 To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 
@@ -54,23 +51,15 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 ```
 
-To set a global subscriber for the entire program, use the `set_global_default` function:
+Then create and install a `Subscriber`, for example using [`init()`]:
 
 ```rust
-use tracing::{info, Level};
+use tracing::info;
 use tracing_subscriber;
 
 fn main() {
-    // a builder for `FmtSubscriber`.
-    let subscriber = tracing_subscriber::fmt()
-        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-         // completes the builder
-        .finish();
-        // and sets the constructed `Subscriber` as the default.
-    tracing::subscriber::set_global_default(subscriber)
-      .expect("no global subscriber has been set")
+    // install global subscriber configured based on RUST_LOG envvar.
+    tracing_subscriber::fmt::init();
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.
@@ -84,14 +73,17 @@ fn main() {
 }
 ```
 
-[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
+Using `init()` calls [`set_global_default()`] so this subscriber will be used
+as the default in all threads for the remainder of the duration of the
+program, similar to how loggers work in the `log` crate.
+
+[tracing-subscriber-docs]: https://docs.rs/tracing-subscriber/
 [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
 [`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
 
-This subscriber will be used as the default in all threads for the remainder of the duration
-of the program, similar to how loggers work in the `log` crate.
 
-In addition, you can locally override the default subscriber. For example:
+For more control, a subscriber can be built in stages and not set globally,
+but instead used to locally override the default subscriber. For example:
 
 ```rust
 use tracing::{info, Level};
@@ -99,10 +91,9 @@ use tracing_subscriber;
 
 fn main() {
     let subscriber = tracing_subscriber::fmt()
-        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
-        // will be written to stdout.
+        // filter spans/events with level TRACE or higher.
         .with_max_level(Level::TRACE)
-        // builds the subscriber.
+        // build but do not install the subscriber.
         .finish();
 
     tracing::subscriber::with_default(subscriber, || {
@@ -121,6 +112,11 @@ currently executing thread; other threads will not see the change from with_defa
 Once a subscriber has been set, instrumentation points may be added to the
 executable using the `tracing` crate's macros.
 
+[`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
+[fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+[`init()`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/fn.init.html
+[`set_global_default()`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
+
 ### In Libraries
 
 Libraries should only rely on the `tracing` crate and use the provided macros
@@ -132,7 +128,7 @@ use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
-// the function or method. Paramaters passed to the function are recorded as fields.
+// the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -190,15 +186,33 @@ pub fn shave_all(yaks: usize) -> usize {
 tracing = "0.1"
 ```
 
-Note: Libraries should *NOT* call `set_global_default()`, as this will cause
-conflicts when executables try to set the default later.
+Note: Libraries should *NOT* install a subscriber by using a method that calls
+[`set_global_default()`], as this will cause conflicts when executables try to
+set the default later.
 
 ### In Asynchronous Code
 
-If you are instrumenting code that make use of
-[`std::future::Future`][std-future] or async/await, be sure to use the
-[`tracing-futures`] crate. This is needed because the following example _will
-not_ work:
+To trace `async fn`s, the preferred method is using the [`#[instrument]`] attribute:
+
+```rust
+use tracing::{info, instrument};
+use tokio::{io::AsyncWriteExt, net::TcpStream};
+use std::io;
+
+#[instrument]
+async fn write(stream: &mut TcpStream) -> io::Result<usize> {
+    let result = stream.write(b"hello world\n").await;
+    info!("wrote to stream; success={:?}", result.is_ok());
+    result
+}
+```
+
+The [`tracing-futures`] crate must be specified as a dependency to enable
+`async` support.
+
+Special handling is needed for the general case of code using
+[`std::future::Future`][std-future] or blocks with `async`/`await`, as the
+following example _will not_ work:
 
 ```rust
 async {
@@ -213,8 +227,7 @@ the span remains entered for as long as the future exists, rather than being ent
 it is polled, leading to very confusing and incorrect output.
 For more details, see [the documentation on closing spans][closing].
 
-There are two ways to instrument asynchronous code. The first is through the
-[`Future::instrument`] combinator:
+This problem can be solved using the [`Future::instrument`] combinator:
 
 ```rust
 use tracing::Instrument;
@@ -231,21 +244,6 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-The second, and preferred, option is through the [`#[instrument]`] attribute:
-
-```rust
-use tracing::{info, instrument};
-use tokio::{io::AsyncWriteExt, net::TcpStream};
-use std::io;
-
-#[instrument]
-async fn write(stream: &mut TcpStream) -> io::Result<usize> {
-    let result = stream.write(b"hello world\n").await;
-    info!("wrote to stream; success={:?}", result.is_ok());
-    result
-}
-```
-
 Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
@@ -255,6 +253,19 @@ attachment that `Future::instrument` does.
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
 [`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.40. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## Getting Help
 
@@ -325,7 +336,7 @@ The crates included as part of Tracing are:
   Linux `journald` service, preserving structured data.
 
 [`tracing`]: tracing
-[`tracing-core`]: tracing
+[`tracing-core`]: tracing-core
 [`tracing-futures`]: tracing-futures
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
@@ -371,12 +382,23 @@ are not maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information. 
+- [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans in [bunyan] format, enriched with timing information.
+- [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 - [`color-spantrace`] provides a formatter for rendering span traces in the
   style of `color-backtrace`
-- [`color-eyre`] provides a customized version of `eyre::Report` for capturing
-  span traces and backtraces with new errors and pretty printing them in error
-  reports.
+- [`color-eyre`] provides customized panic and eyre report handlers for
+  `eyre::Report` for capturing span traces and backtraces with new errors and
+  pretty printing them.
+- [`spandoc`] provides a proc macro for constructing spans from doc comments
+  _inside_ of functions.
+- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
+  events and spans via browser `console.log` and [User Timing API (`window.performance`)].
+- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+  environment variables with an `env_logger` compatible syntax.
+- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
+- [`diesel-tracing`] provides integration with [`diesel`] database connections.
+- [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
+  applications.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -390,9 +412,20 @@ please let us know!)
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
 [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
+[`tide-tracing`]: https://crates.io/crates/tide-tracing
+[tide]: https://crates.io/crates/tide
 [bunyan]: https://github.com/trentm/node-bunyan
-[`color-spantrace`]: https://github.com/yaahc/color-spantrace
-[`color-eyre`]: https://github.com/yaahc/color-eyre
+[`color-spantrace`]: https://docs.rs/color-spantrace
+[`color-eyre`]: https://docs.rs/color-eyre
+[`spandoc`]: https://docs.rs/spandoc
+[`tracing-wasm`]: https://docs.rs/tracing-wasm
+[`test-env-log`]: https://crates.io/crates/test-env-log
+[User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
+[`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+[`diesel`]: https://crates.io/crates/diesel
+[`diesel-tracing`]: https://crates.io/crates/diesel-tracing
+[`tracing-tracy`]: https://crates.io/crates/tracing-tracy
+[Tracy]: https://github.com/wolfpld/tracy
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -413,10 +446,13 @@ Tracing.
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
+* [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 
 [bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
+[rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
+[rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

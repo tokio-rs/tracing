@@ -112,18 +112,11 @@
 //! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default
-//! </code>) requires the Rust standard library. <code>no_std</code> users should
+//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default</code>)
+//! requires the Rust standard library. <code>no_std</code> users should
 //! use <a href="fn.set_global_default.html"><code>set_global_default</code></a>
 //! instead.
 //! </pre></div>
-//!
-//! Finally, `tokio` users should note that versions of `tokio` >= 0.1.22
-//! support an `experimental-tracing` feature flag. When this flag is enabled,
-//! the `tokio` runtime's thread pool will automatically propagate the default
-//! subscriber. This means that if `tokio::runtime::Runtime::new()` or
-//! `tokio::run()` are invoked when a default subscriber is set, it will also be
-//! set by all worker threads created by that runtime.
 //!
 //! ## Accessing the Default Subscriber
 //!

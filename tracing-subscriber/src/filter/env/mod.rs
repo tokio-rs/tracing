@@ -85,11 +85,11 @@ use tracing_core::{
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: ../../tracing_core/span/index.html
-/// [fields]: ../../tracing_core/struct.Field.html
-/// [`Event`]: ../../tracing_core/struct.Event.html
-/// [`level`]: ../../tracing_core/struct.Level.html
-/// [`Metadata`]: ../../tracing_core/struct.Metadata.html
+/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
+/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
+/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
+/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
@@ -189,7 +189,7 @@ impl EnvFilter {
     /// directives, either added using this method or provided when the filter
     /// is constructed.
     ///
-    /// Filters may be created from may be [`LevelFilter`]s, which will
+    /// Filters may be created from [`LevelFilter`] or [`Level`], which will
     /// enable all traces at or below a certain verbosity level, or
     /// parsed from a string specifying a directive.
     ///
@@ -197,14 +197,30 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`LevelFilter`]: struct.LevelFilter.html
+    /// [`LevelFilter`]: ../filter/struct.LevelFilter.html
+    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
     ///
     /// # Examples
+    ///
+    /// From [`LevelFilter`]:
+    ////
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(LevelFilter::INFO.into());
     /// ```
+    ///
+    /// Or from [`Level`]:
+    ///
+    /// ```rust
+    /// # use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    /// # use tracing::Level;
+    /// let mut filter = EnvFilter::from_default_env()
+    ///     .add_directive(Level::INFO.into());
+    /// ```
+    ////
+    /// Parsed from a string:
+    ////
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, Directive};
     ///
@@ -277,6 +293,19 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        if self.dynamics.has_value_filters() {
+            // If we perform any filtering on span field *values*, we will
+            // enable *all* spans, because their field values are not known
+            // until recording.
+            return Some(LevelFilter::TRACE);
+        }
+        std::cmp::max(
+            self.statics.max_level.clone().into(),
+            self.dynamics.max_level.clone().into(),
+        )
+    }
+
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
 
@@ -284,6 +313,19 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         // if not, we can avoid the thread local access + iterating over the
         // spans in the current scope.
         if self.has_dynamics && self.dynamics.max_level >= *level {
+            if metadata.is_span() {
+                // If the metadata is a span, see if we care about its callsite.
+                let enabled_by_cs = self
+                    .by_cs
+                    .read()
+                    .ok()
+                    .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
+                    .unwrap_or(false);
+                if enabled_by_cs {
+                    return true;
+                }
+            }
+
             let enabled_by_scope = SCOPE.with(|scope| {
                 for filter in scope.borrow().iter() {
                     if filter >= level {
@@ -301,9 +343,6 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         if self.statics.max_level >= *level {
             // Otherwise, fall back to checking if the callsite is
             // statically enabled.
-            // TODO(eliza): we *might* want to check this only if the `log`
-            // feature is enabled, since if this is a `tracing` event with a
-            // real callsite, it would already have been statically enabled...
             return self.statics.enabled(metadata);
         }
 

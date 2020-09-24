@@ -20,6 +20,7 @@ use tracing::{
 
 macro_rules! event_without_message {
     ($name:ident: $e:expr) => {
+        #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
         #[test]
         fn $name() {
             let (subscriber, handle) = subscriber::mock()
@@ -55,6 +56,7 @@ event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::
 // needs API breakage
 //event_without_message!{nonzerou128_event_without_message: std::num::NonZeroU128::new(42).unwrap()}
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_with_message() {
     let (subscriber, handle) = subscriber::mock()
@@ -71,6 +73,7 @@ fn event_with_message() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn message_without_delims() {
     let (subscriber, handle) = subscriber::mock()
@@ -99,6 +102,7 @@ fn message_without_delims() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn string_message_without_delims() {
     let (subscriber, handle) = subscriber::mock()
@@ -126,6 +130,7 @@ fn string_message_without_delims() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn one_with_everything() {
     let (subscriber, handle) = subscriber::mock()
@@ -160,6 +165,7 @@ fn one_with_everything() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn moved_field() {
     let (subscriber, handle) = subscriber::mock()
@@ -180,6 +186,7 @@ fn moved_field() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn dotted_field_name() {
     let (subscriber, handle) = subscriber::mock()
@@ -200,6 +207,7 @@ fn dotted_field_name() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn borrowed_field() {
     let (subscriber, handle) = subscriber::mock()
@@ -222,6 +230,7 @@ fn borrowed_field() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 // If emitting log instrumentation, this gets moved anyway, breaking the test.
 #[cfg(not(feature = "log"))]
@@ -262,6 +271,7 @@ fn move_field_out_of_struct() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn display_shorthand() {
     let (subscriber, handle) = subscriber::mock()
@@ -281,6 +291,7 @@ fn display_shorthand() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_shorthand() {
     let (subscriber, handle) = subscriber::mock()
@@ -300,6 +311,7 @@ fn debug_shorthand() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn both_shorthands() {
     let (subscriber, handle) = subscriber::mock()
@@ -320,6 +332,7 @@ fn both_shorthands() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child() {
     let (subscriber, handle) = subscriber::mock()
@@ -336,6 +349,7 @@ fn explicit_child() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child_at_levels() {
     let (subscriber, handle) = subscriber::mock()

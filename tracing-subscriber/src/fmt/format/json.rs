@@ -31,10 +31,10 @@ use tracing_log::NormalizeEvent;
 /// {
 ///     "timestamp":"Feb 20 11:28:15.096",
 ///     "level":"INFO",
-///     "spans":[{"name":"root"},{"name":"leaf"}],
-///     "span":{name":"leaf"},
-///     "target":"mycrate",
 ///     "fields":{"message":"some message","key":"value"}
+///     "target":"mycrate",
+///     "span":{name":"leaf"},
+///     "spans":[{"name":"root"},{"name":"leaf"}],
 /// }
 /// ```
 ///
@@ -217,6 +217,28 @@ where
                 None
             };
 
+            if self.format.flatten_event {
+                let mut visitor = tracing_serde::SerdeMapVisitor::new(serializer);
+                event.record(&mut visitor);
+
+                serializer = visitor.take_serializer()?;
+            } else {
+                use tracing_serde::fields::AsMap;
+                serializer.serialize_entry("fields", &event.field_map())?;
+            };
+
+            if self.display_target {
+                serializer.serialize_entry("target", meta.target())?;
+            }
+
+            if self.format.display_current_span {
+                if let Some(ref span) = current_span {
+                    serializer
+                        .serialize_entry("span", &SerializableSpan(span, format_field_marker))
+                        .unwrap_or(());
+                }
+            }
+
             if self.format.display_span_list && current_span.is_some() {
                 serializer.serialize_entry(
                     "spans",
@@ -224,28 +246,27 @@ where
                 )?;
             }
 
-            if self.format.display_current_span {
-                if let Some(span) = current_span {
-                    serializer
-                        .serialize_entry("span", &SerializableSpan(&span, format_field_marker))
-                        .unwrap_or(());
+            if self.display_thread_name {
+                let current_thread = std::thread::current();
+                match current_thread.name() {
+                    Some(name) => {
+                        serializer.serialize_entry("threadName", name)?;
+                    }
+                    // fall-back to thread id when name is absent and ids are not enabled
+                    None if !self.display_thread_id => {
+                        serializer
+                            .serialize_entry("threadName", &format!("{:?}", current_thread.id()))?;
+                    }
+                    _ => {}
                 }
             }
 
-            if self.display_target {
-                serializer.serialize_entry("target", meta.target())?;
+            if self.display_thread_id {
+                serializer
+                    .serialize_entry("threadId", &format!("{:?}", std::thread::current().id()))?;
             }
 
-            if !self.format.flatten_event {
-                use tracing_serde::fields::AsMap;
-                serializer.serialize_entry("fields", &event.field_map())?;
-                serializer.end()
-            } else {
-                let mut visitor = tracing_serde::SerdeMapVisitor::new(serializer);
-                event.record(&mut visitor);
-
-                visitor.finish()
-            }
+            serializer.end()
         };
 
         visit().map_err(|_| fmt::Error)?;

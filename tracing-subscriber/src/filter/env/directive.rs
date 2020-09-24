@@ -3,7 +3,7 @@ use super::{field, FieldMap, FilterVec};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
-use tracing_core::{span, Metadata};
+use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
 // TODO(eliza): add a builder for programmatically constructing directives?
@@ -377,6 +377,12 @@ impl From<LevelFilter> for Directive {
     }
 }
 
+impl From<Level> for Directive {
+    fn from(level: Level) -> Self {
+        LevelFilter::from_level(level).into()
+    }
+}
+
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
@@ -475,6 +481,12 @@ impl Dynamics {
         } else {
             None
         }
+    }
+
+    pub(crate) fn has_value_filters(&self) -> bool {
+        self.directives
+            .iter()
+            .any(|d| d.fields.iter().any(|f| f.value.is_some()))
     }
 }
 

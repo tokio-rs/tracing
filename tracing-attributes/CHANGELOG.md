@@ -1,3 +1,22 @@
+# 0.1.11 (August 18, 2020)
+
+### Fixed
+
+- Corrected wrong minimum supported Rust version note in docs (#941)
+- Removed unused `syn` features (#928)
+
+Thanks to new contributor @jhpratt for contributing to this release!`
+
+# 0.1.10 (August 10, 2020)
+
+### Added
+
+- Support for using `self` in field expressions when instrumenting `async-trait`
+  functions (#875)
+- Several documentation improvements (#832, #897, #911, #913)
+
+Thanks to @anton-dutov and @nightmared for contributing to this release!
+
 # 0.1.9 (July 8, 2020)
 
 ### Added

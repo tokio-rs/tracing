@@ -1,7 +1,7 @@
 use crate::{
     field::RecordFields,
-    fmt::{format, FormatEvent, FormatFields, MakeWriter},
-    layer::{self, Context},
+    fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
+    layer::{self, Context, Scope},
     registry::{LookupSpan, SpanRef},
 };
 use format::{FmtSpan, TimingDisplay};
@@ -9,7 +9,7 @@ use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, 
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
-    Event, Subscriber,
+    Event, Metadata, Subscriber,
 };
 
 /// A [`Layer`] that logs formatted representations of `tracing` events.
@@ -105,7 +105,7 @@ impl<S> Layer<S> {
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type paramaters.
+// This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -131,8 +131,8 @@ where
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
-    /// [event formatter]: ../format/trait.FormatEvent.html
-    /// [`FmtContext`]: ../struct.FmtContext.html
+    /// [`FormatEvent`]: ./format/trait.FormatEvent.html
+    /// [`FmtContext`]: ./struct.FmtContext.html
     /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
     pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
     where
@@ -148,7 +148,7 @@ where
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type paramaters.
+// This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W> {
     /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
     ///
@@ -178,6 +178,38 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// unit tests.
+    ///
+    /// See [`TestWriter`] for additional details.
+    ///
+    /// # Examples
+    ///
+    /// Using [`TestWriter`] to let `cargo test` capture test output:
+    ///
+    /// ```rust
+    /// use std::io;
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let layer = fmt::layer()
+    ///     .with_test_writer();
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// ```
+    /// [capturing]:
+    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+    /// [`TestWriter`]: writer/struct.TestWriter.html
+    pub fn with_test_writer(self) -> Layer<S, N, E, TestWriter> {
+        Layer {
+            fmt_fields: self.fmt_fields,
+            fmt_event: self.fmt_event,
+            fmt_span: self.fmt_span,
+            make_writer: TestWriter::default(),
             _inner: self._inner,
         }
     }
@@ -283,6 +315,37 @@ where
     pub fn with_level(self, display_level: bool) -> Layer<S, N, format::Format<L, T>, W> {
         Layer {
             fmt_event: self.fmt_event.with_level(display_level),
+            fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets whether or not the [thread ID] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    pub fn with_thread_ids(self, display_thread_ids: bool) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
+            fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Sets whether or not the [name] of the current thread is displayed
+    /// when formatting events
+    ///
+    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    pub fn with_thread_names(
+        self,
+        display_thread_names: bool,
+    ) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_thread_names(display_thread_names),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
@@ -460,7 +523,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: ../registry/extensions/index.html
+/// [extensions]: ../registry/struct.Extensions.html
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
@@ -741,6 +804,67 @@ where
             f(&span)?;
         }
         Ok(())
+    }
+
+    /// Returns metadata for the span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
+    #[inline]
+    pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.metadata(id)
+    }
+
+    /// Returns [stored data] for the span with the given `id`, if it exists.
+    ///
+    /// If this returns `None`, then no span exists for that ID (either it has
+    /// closed or the ID is invalid).
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[inline]
+    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.span(id)
+    }
+
+    /// Returns `true` if an active span exists for the given `Id`.
+    #[inline]
+    pub fn exists(&self, id: &Id) -> bool
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.exists(id)
+    }
+
+    /// Returns [stored data] for the span that the wrapped subscriber considers
+    /// to be the current.
+    ///
+    /// If this returns `None`, then we are not currently within a span.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[inline]
+    pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.lookup_current()
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting the root of the trace tree and ending with
+    /// the current span.
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    pub fn scope(&self) -> Scope<'_, S>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.scope()
     }
 }
 
