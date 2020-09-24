@@ -455,6 +455,10 @@ impl fmt::Debug for dyn Value {
             fn metadata(&self) -> &crate::Metadata<'_> {
                 unreachable!("you somehow managed to access the null callsite?")
             }
+
+            fn registration(&'static self) -> &'static crate::callsite::Registration {
+                unreachable!()
+            }
         }
 
         static FIELD: Field = Field {
@@ -854,6 +858,10 @@ mod test {
         fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_1
         }
+
+        fn registration(&'static self) -> &'static crate::callsite::Registration {
+            unimplemented!()
+        }
     }
 
     struct TestCallsite2;
@@ -874,6 +882,10 @@ mod test {
 
         fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_2
+        }
+
+        fn registration(&'static self) -> &'static crate::callsite::Registration {
+            unimplemented!()
         }
     }
 

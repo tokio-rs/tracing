@@ -3,7 +3,11 @@
 use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
-    sync::Mutex,
+    ptr,
+    sync::{
+        atomic::{AtomicPtr, Ordering},
+        Mutex,
+    },
     vec::Vec,
 };
 use crate::{
@@ -13,15 +17,15 @@ use crate::{
 };
 
 lazy_static! {
-    static ref REGISTRY: Mutex<Registry> = Mutex::new(Registry {
-        callsites: Vec::new(),
-        dispatchers: Vec::new(),
-    });
+    static ref REGISTRY: Registry = Registry {
+        callsites: LinkedList::new(),
+        dispatchers: Mutex::new(Vec::new()),
+    };
 }
 
 struct Registry {
-    callsites: Vec<&'static dyn Callsite>,
-    dispatchers: Vec<dispatcher::Registrar>,
+    callsites: LinkedList,
+    dispatchers: Mutex<Vec<dispatcher::Registrar>>,
 }
 
 impl Registry {
@@ -30,8 +34,8 @@ impl Registry {
 
         // Iterate over the subscribers in the registry, and — if they are
         // active — register the callsite with them.
-        let mut interests = self
-            .dispatchers
+        let lock = self.dispatchers.lock().unwrap();
+        let mut interests = lock
             .iter()
             .filter_map(|registrar| registrar.try_register(meta));
 
@@ -47,9 +51,9 @@ impl Registry {
         callsite.set_interest(interest)
     }
 
-    fn rebuild_interest(&mut self) {
+    fn rebuild_interest(&self) {
         let mut max_level = LevelFilter::OFF;
-        self.dispatchers.retain(|registrar| {
+        self.dispatchers.lock().unwrap().retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
                 // If the subscriber did not provide a max level hint, assume
                 // that it may enable every level.
@@ -63,9 +67,9 @@ impl Registry {
             }
         });
 
-        self.callsites.iter().for_each(|&callsite| {
-            self.rebuild_callsite_interest(callsite);
-        });
+        self.callsites
+            .for_each(|cs| self.rebuild_callsite_interest(cs));
+
         LevelFilter::set_max(max_level);
     }
 }
@@ -84,6 +88,9 @@ pub trait Callsite: Sync {
     ///
     /// [metadata]: ../metadata/struct.Metadata.html
     fn metadata(&self) -> &Metadata<'_>;
+
+    /// Retrive the callsites intrusive registration.
+    fn registration(&'static self) -> &'static Registration;
 }
 
 /// Uniquely identifies a [`Callsite`]
@@ -125,8 +132,7 @@ pub struct Identifier(
 /// [`Interest::sometimes()`]: ../subscriber/struct.Interest.html#method.sometimes
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 pub fn rebuild_interest_cache() {
-    let mut registry = REGISTRY.lock().unwrap();
-    registry.rebuild_interest();
+    REGISTRY.rebuild_interest();
 }
 
 /// Register a new `Callsite` with the global registry.
@@ -134,15 +140,17 @@ pub fn rebuild_interest_cache() {
 /// This should be called once per callsite after the callsite has been
 /// constructed.
 pub fn register(callsite: &'static dyn Callsite) {
-    let mut registry = REGISTRY.lock().unwrap();
-    registry.rebuild_callsite_interest(callsite);
-    registry.callsites.push(callsite);
+    REGISTRY.rebuild_callsite_interest(callsite);
+    REGISTRY.callsites.push(callsite);
 }
 
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
-    let mut registry = REGISTRY.lock().unwrap();
-    registry.dispatchers.push(dispatch.registrar());
-    registry.rebuild_interest();
+    REGISTRY
+        .dispatchers
+        .lock()
+        .unwrap()
+        .push(dispatch.registrar());
+    REGISTRY.rebuild_interest();
 }
 
 // ===== impl Identifier =====
@@ -167,5 +175,171 @@ impl Hash for Identifier {
         H: Hasher,
     {
         (self.0 as *const dyn Callsite).hash(state)
+    }
+}
+
+/// An intrusive atomic push only linked-list.
+struct LinkedList {
+    head: AtomicPtr<Registration>,
+}
+
+unsafe impl Send for LinkedList {}
+unsafe impl Sync for LinkedList {}
+
+/// Represents a registration within the callsite cache.
+///
+/// This type enables the intrusive aspect of the callsite cache by
+/// avoiding allocations and letting the callsite's themselves store
+/// the next callsite in the cache.
+pub struct Registration {
+    #[doc(hidden)]
+    pub callsite: &'static dyn Callsite,
+    #[doc(hidden)]
+    pub next: AtomicPtr<Registration>,
+}
+
+impl LinkedList {
+    fn new() -> Self {
+        LinkedList {
+            head: AtomicPtr::new(ptr::null_mut()),
+        }
+    }
+
+    fn for_each(&self, mut f: impl FnMut(&'static dyn Callsite)) {
+        let mut head = self.head.load(Ordering::SeqCst);
+
+        loop {
+            if !head.is_null() {
+                let reg = unsafe { &*head };
+                f(reg.callsite);
+
+                head = reg.next.load(Ordering::SeqCst);
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn push(&self, cs: &'static dyn Callsite) {
+        let mut head = self.head.load(Ordering::Acquire);
+
+        loop {
+            let registration = cs.registration() as *const _ as *mut _;
+
+            match self.head.compare_exchange(
+                head,
+                registration,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(old) => {
+                    assert_ne!(
+                        cs.registration() as *const _,
+                        old,
+                        "Attempting to push a `Callsite` that already exists. \
+                        This will cause an infinite loop when attempting to read from the \
+                        callsite cache. This is likely a bug! You should only need to push a \
+                        `Callsite` once."
+                    );
+                    cs.registration().next.store(old, Ordering::Release);
+                    break;
+                }
+                Err(current) => head = current,
+            }
+        }
+    }
+}
+
+impl fmt::Debug for Registration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Registration").finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Eq, PartialEq)]
+    struct Cs1;
+    static CS1: Cs1 = Cs1;
+    static REG1: Registration = Registration {
+        callsite: &CS1,
+        next: AtomicPtr::new(ptr::null_mut()),
+    };
+
+    impl Callsite for Cs1 {
+        fn set_interest(&self, _interest: Interest) {}
+        fn metadata(&self) -> &Metadata<'_> {
+            todo!()
+        }
+
+        fn registration(&'static self) -> &'static Registration {
+            &REG1
+        }
+    }
+
+    struct Cs2;
+    static CS2: Cs2 = Cs2;
+    static REG2: Registration = Registration {
+        callsite: &CS2,
+        next: AtomicPtr::new(ptr::null_mut()),
+    };
+
+    impl Callsite for Cs2 {
+        fn set_interest(&self, _interest: Interest) {}
+        fn metadata(&self) -> &Metadata<'_> {
+            todo!()
+        }
+
+        fn registration(&'static self) -> &'static Registration {
+            &REG2
+        }
+    }
+
+    #[test]
+    fn linked_list_push() {
+        let linked_list = LinkedList::new();
+
+        linked_list.push(&CS1);
+        linked_list.push(&CS2);
+
+        let mut i = 0;
+
+        linked_list.for_each(|cs| {
+            if i == 0 {
+                assert!(
+                    ptr::eq(cs.registration(), &REG2),
+                    "Registration pointers need to match REG2"
+                );
+            } else {
+                assert!(
+                    ptr::eq(cs.registration(), &REG1),
+                    "Registration pointers need to match REG1"
+                );
+            }
+
+            i += 1;
+        });
+    }
+
+    #[test]
+    #[should_panic]
+    fn linked_list_repeated() {
+        let linked_list = LinkedList::new();
+
+        linked_list.push(&CS1);
+        linked_list.push(&CS1);
+
+        linked_list.for_each(|_| {});
+    }
+
+    #[test]
+    fn linked_list_empty() {
+        let linked_list = LinkedList::new();
+
+        linked_list.for_each(|_| {
+            assert!(false, "List should be empty");
+        });
     }
 }

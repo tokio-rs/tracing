@@ -921,7 +921,7 @@ pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
-    pub use crate::callsite::Callsite;
+    pub use crate::callsite::{Callsite, Registration};
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
@@ -939,6 +939,7 @@ pub mod __macro_support {
         interest: AtomicUsize,
         meta: &'static Metadata<'static>,
         registration: Once,
+        pub reg: &'static Registration,
     }
 
     impl MacroCallsite {
@@ -950,11 +951,12 @@ pub mod __macro_support {
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
         /// without warning.
-        pub const fn new(meta: &'static Metadata<'static>) -> Self {
+        pub const fn new(meta: &'static Metadata<'static>, reg: &'static Registration) -> Self {
             Self {
                 interest: AtomicUsize::new(0xDEADFACED),
                 meta,
                 registration: Once::new(),
+                reg,
             }
         }
 
@@ -1052,6 +1054,10 @@ pub mod __macro_support {
         #[inline(always)]
         fn metadata(&self) -> &Metadata<'static> {
             &self.meta
+        }
+
+        fn registration(&'static self) -> &'static Registration {
+            self.reg
         }
     }
 }

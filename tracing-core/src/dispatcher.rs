@@ -783,11 +783,12 @@ impl Drop for DefaultGuard {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
     #[cfg(feature = "std")]
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{
-        callsite::Callsite,
+        callsite::{Callsite, Registration},
         metadata::{Kind, Level, Metadata},
         subscriber::Interest,
     };
@@ -819,6 +820,10 @@ mod test {
         fn set_interest(&self, _: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
             &TEST_META
+        }
+
+        fn registration(&'static self) -> &'static Registration {
+            todo!()
         }
     }
 

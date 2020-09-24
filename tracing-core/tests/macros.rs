@@ -1,5 +1,5 @@
 use tracing_core::{
-    callsite::Callsite,
+    callsite::{Callsite, Registration},
     metadata,
     metadata::{Kind, Level, Metadata},
     subscriber::Interest,
@@ -17,6 +17,10 @@ fn metadata_macro_api() {
         }
         fn metadata(&self) -> &Metadata<'_> {
             unimplemented!("test")
+        }
+
+        fn registration(&'static self) -> &'static Registration {
+            unimplemented!()
         }
     }
 

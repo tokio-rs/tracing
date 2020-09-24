@@ -127,7 +127,7 @@ extern crate alloc;
 /// # #[macro_use]
 /// # extern crate tracing_core;
 /// use tracing_core::callsite;
-/// # use tracing_core::{Metadata, subscriber::Interest};
+/// # use tracing_core::{Metadata, subscriber::Interest, callsite::Registration};
 /// # fn main() {
 /// pub struct MyCallsite {
 ///    // ...
@@ -135,6 +135,7 @@ extern crate alloc;
 /// impl callsite::Callsite for MyCallsite {
 /// # fn set_interest(&self, _: Interest) { unimplemented!() }
 /// # fn metadata(&self) -> &Metadata { unimplemented!() }
+/// # fn registration(&'static self) -> &'static Registration { unimplemented!() }
 ///     // ...
 /// }
 ///
@@ -162,13 +163,14 @@ macro_rules! identify_callsite {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing_core;
-/// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// # use tracing_core::{callsite::{Callsite, Registration}, subscriber::Interest};
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
 /// # impl Callsite for MyCallsite {
 /// # fn set_interest(&self, _: Interest) { unimplemented!() }
 /// # fn metadata(&self) -> &Metadata { unimplemented!() }
+/// # fn registration(&'static self) -> &'static Registration { unimplemented!() }
 /// # }
 /// #
 /// static FOO_CALLSITE: MyCallsite = MyCallsite {
