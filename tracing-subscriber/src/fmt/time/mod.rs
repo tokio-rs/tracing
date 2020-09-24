@@ -114,7 +114,11 @@ impl From<Instant> for Uptime {
 #[cfg(feature = "chrono")]
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        write!(w, "{}", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
+        write!(
+            w,
+            "{}",
+            chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Micros, true)
+        )
     }
 }
 
