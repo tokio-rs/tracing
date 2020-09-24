@@ -117,7 +117,9 @@ enum ValueKind<'a> {
     Display(&'a dyn fmt::Display),
     Debug(&'a dyn fmt::Debug),
     #[cfg(feature = "std")]
-    Error(&'a (dyn Error + 'static), TypeId),
+    Error(&'a (dyn Error + 'static)),
+    #[cfg(feature = "std")]
+    ErrorAny(&'a (dyn Error + 'static), TypeId),
     DebugAny(&'a dyn fmt::Debug, TypeId),
     DisplayAny(&'a dyn fmt::Display, TypeId),
     Args(fmt::Arguments<'a>),
@@ -361,9 +363,17 @@ impl<'a> Value<'a> {
 
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn error<T: Any + Error + 'static>(val: &'a T) -> Self {
+    pub fn any_error<T: Any + Error + 'static>(val: &'a T) -> Self {
         Self {
-            inner: ValueKind::Error(val as &'a (dyn Error + 'static), TypeId::of::<T>()),
+            inner: ValueKind::ErrorAny(val as &'a (dyn Error + 'static), TypeId::of::<T>()),
+        }
+    }
+
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub fn error(val: &'a (dyn Error + 'static)) -> Self {
+        Self {
+            inner: ValueKind::Error(val),
         }
     }
 
@@ -371,7 +381,8 @@ impl<'a> Value<'a> {
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn as_error(&self) -> Option<&(dyn Error + 'static)> {
         match self.inner {
-            ValueKind::Error(val, _) => Some(val),
+            ValueKind::Error(val) => Some(val),
+            ValueKind::ErrorAny(val, _) => Some(val),
             _ => None,
         }
     }
@@ -379,10 +390,10 @@ impl<'a> Value<'a> {
     pub fn as_display(&self) -> Option<&dyn fmt::Display> {
         match self.inner {
             ValueKind::Empty => None,
-            ValueKind::DisplayAny(val, _) => Some(val),
             ValueKind::Display(val) => Some(val),
+            ValueKind::DisplayAny(val, _) => Some(val),
             #[cfg(feature = "std")]
-            ValueKind::Error(_, _) => Some(self as &dyn fmt::Display),
+            ValueKind::ErrorAny(_, _) | ValueKind::Error(_) => Some(self as &dyn fmt::Display),
             ValueKind::Bool(ref val) => Some(val as &dyn fmt::Display),
             ValueKind::U64(ref val) => Some(val as &dyn fmt::Display),
             ValueKind::I64(ref val) => Some(val as &dyn fmt::Display),
@@ -409,7 +420,7 @@ impl<'a> Value<'a> {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
             #[cfg(feature = "std")]
-            ValueKind::Error(val, actual) if actual == target => {
+            ValueKind::ErrorAny(val, actual) if actual == target => {
                 Some(unsafe { &*(val as *const _ as *const T) })
             }
             ValueKind::DebugAny(val, actual) if actual == target => {
@@ -431,7 +442,7 @@ impl<'a> Value<'a> {
             ValueKind::I64(_) => target == TypeId::of::<i64>(),
             ValueKind::Str(_) => target == TypeId::of::<str>(),
             #[cfg(feature = "std")]
-            ValueKind::Error(_, actual) => actual == target,
+            ValueKind::ErrorAny(_, actual) => actual == target,
             ValueKind::DebugAny(_, actual) => actual == target,
             ValueKind::DisplayAny(_, actual) => actual == target,
             _ => false,
@@ -455,7 +466,9 @@ impl fmt::Debug for Value<'_> {
             ValueKind::Display(val) => fmt::Display::fmt(val, f),
             ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
-            ValueKind::Error(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Error(val) => fmt::Debug::fmt(val, f),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, _) => fmt::Debug::fmt(val, f),
             ValueKind::Bool(ref val) => fmt::Debug::fmt(val, f),
             ValueKind::U64(ref val) => fmt::Debug::fmt(val, f),
             ValueKind::I64(ref val) => fmt::Debug::fmt(val, f),
@@ -474,13 +487,21 @@ impl fmt::Display for Value<'_> {
             ValueKind::Display(val) => fmt::Display::fmt(val, f),
             ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
-            ValueKind::Error(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Error(val) => fmt::Display::fmt(val, f),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, _) => fmt::Display::fmt(val, f),
             ValueKind::Bool(ref val) => fmt::Display::fmt(val, f),
             ValueKind::U64(ref val) => fmt::Display::fmt(val, f),
             ValueKind::I64(ref val) => fmt::Display::fmt(val, f),
             ValueKind::Str(val) => fmt::Display::fmt(val, f),
             ValueKind::Args(ref val) => fmt::Display::fmt(val, f),
         }
+    }
+}
+
+impl Default for Value<'_> {
+    fn default() -> Self {
+        Self::empty()
     }
 }
 
@@ -610,9 +631,9 @@ macro_rules! impl_value {
 
 impl_value! { usize, u32, u16, u8 as u64 }
 impl_value! { isize, i32, i16, i8 as i64 }
-impl_value! { &'a usize, &'a u64, &'a u32, &'a u16, &'a u8 |val| *val as u64 }
-impl_value! { &'a isize, &'a i64, &'a i32, &'a i16, &'a i8 |val| *val as i64 }
-impl_value! { &'a bool |val| *val }
+// impl_value! { &'a usize, &'a u64, &'a u32, &'a u16, &'a u8 |val| *val as u64 }
+// impl_value! { &'a isize, &'a i64, &'a i32, &'a i16, &'a i8 |val| *val as i64 }
+// impl_value! { &'a bool |val| *val }
 impl_value! {
     num::NonZeroUsize,
     num::NonZeroU64,
@@ -662,17 +683,40 @@ impl<'a> From<fmt::Arguments<'a>> for Value<'a> {
     }
 }
 
-impl<'a> From<&'a &'a str> for Value<'a> {
-    fn from(val: &'a &'a str) -> Self {
-        Value {
-            inner: ValueKind::Str(*val),
-        }
+impl<'a, T> From<&'_ T> for Value<'a>
+where
+    Value<'a>: From<T>,
+    T: Copy,
+{
+    fn from(val: &T) -> Self {
+        Value::from(*val)
     }
 }
 
 impl<'a> From<&'_ Value<'a>> for Value<'a> {
     fn from(val: &Value<'a>) -> Self {
         Value { inner: val.inner }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> From<&'a Box<dyn Error + 'static>> for Value<'a> {
+    fn from(err: &'a Box<dyn Error + 'static>) -> Self {
+        Self::error(err.as_ref())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> From<&'a Box<dyn Error + Send + 'static>> for Value<'a> {
+    fn from(err: &'a Box<dyn Error + Send + 'static>) -> Self {
+        Self::error(err.as_ref())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> From<&'a Box<dyn Error + Send + Sync + 'static>> for Value<'a> {
+    fn from(err: &'a Box<dyn Error + Send + Sync + 'static>) -> Self {
+        Self::error(err.as_ref())
     }
 }
 // ===== impl Value =====

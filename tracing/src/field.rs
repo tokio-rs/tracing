@@ -138,4 +138,51 @@ pub(crate) mod convert {
             Value::any_display(self.0)
         }
     }
+
+    #[doc(hidden)]
+    pub trait AsValue<'a> {
+        fn as_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T: ?Sized> AsValue<'a> for &'_ &'_ Specialize<'a, T>
+    where
+        Value<'a>: From<&'a T>,
+    {
+        fn as_value(&self) -> Value<'a> {
+            Value::from(self.0)
+        }
+    }
+
+    #[doc(hidden)]
+    pub trait AsOptionValue<'a> {
+        fn as_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T> AsOptionValue<'a> for &'_ Specialize<'a, Option<T>>
+    where
+        Value<'a>: From<&'a T>,
+    {
+        fn as_value(&self) -> Value<'a> {
+            self.0
+                .as_ref()
+                .map(Value::from)
+                .unwrap_or_else(Value::empty)
+        }
+    }
+
+    #[doc(hidden)]
+    #[cfg(feature = "std")]
+    pub trait AsErrorValue<'a> {
+        fn as_value(&self) -> Value<'a>;
+    }
+
+    #[cfg(feature = "std")]
+    impl<'a, T> AsErrorValue<'a> for Specialize<'a, T>
+    where
+        T: Any + std::error::Error + 'static,
+    {
+        fn as_value(&self) -> Value<'a> {
+            Value::any_error(self.0)
+        }
+    }
 }

@@ -924,8 +924,11 @@ pub mod __macro_support {
         pub use crate::field::convert::{
             AsDebugAnyValue as _, AsDebugUnsizedValue as _, AsDebugValue as _,
             AsDisplayAnyValue as _, AsDisplayUnsizedValue as _, AsDisplayValue as _,
+            AsOptionValue as _, AsValue as _,
         };
 
+        #[cfg(feature = "std")]
+        pub use crate::field::convert::AsErrorValue as _;
         pub use crate::stdlib::borrow::Borrow as _;
     }
 

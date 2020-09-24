@@ -45,7 +45,7 @@ pub fn shave_all(yaks: usize) -> usize {
         if let Err(ref error) = res {
             // Like spans, events can also use the field initialization shorthand.
             // In this instance, `yak` is the field being initalized.
-            error!(yak, error = error.as_ref(), "failed to shave yak!");
+            error!(yak, error, "failed to shave yak!");
         } else {
             yaks_shaved += 1;
         }
