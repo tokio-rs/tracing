@@ -917,7 +917,6 @@ impl Span {
                 let mut value_array: [field::Value<'a>; 32] = Default::default();
                 value_array[idx] = value.into();
                 self.record_all(&meta.fields().value_set(&value_array));
-                unimplemented!()
             }
         }
 

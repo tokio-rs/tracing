@@ -107,7 +107,7 @@ impl Expect {
                 MockValueKind::Any => {}
                 expected => assert!(
                     expected == value,
-                    "\nexpected `{}` to contain:\n\t`{}{}`\nbut got:\n\t`{}{}`",
+                    "\nexpected {} to contain:\n\t`{}{}`\nbut got:\n\t`{}{}`",
                     ctx,
                     name,
                     mock,
@@ -116,7 +116,7 @@ impl Expect {
                 ),
             },
             None if self.only => panic!(
-                "\nexpected `{}` to contain only:\n\t`{}`\nbut got:\n\t`{}{}`",
+                "\nexpected {} to contain only:\n\t`{}`\nbut got:\n\t`{}{}`",
                 ctx, self, name, value
             ),
             _ => {}
