@@ -1005,14 +1005,6 @@ pub mod __macro_support {
                 || crate::dispatcher::get_default(|default| default.enabled(self.meta))
         }
 
-        pub fn dispatch_event(&'static self, interest: Interest, f: impl FnOnce(&crate::Dispatch)) {
-            tracing_core::dispatcher::get_current(|current| {
-                if interest.is_always() || current.enabled(self.meta) {
-                    f(current)
-                }
-            });
-        }
-
         #[inline]
         #[cfg(feature = "log")]
         pub fn disabled_span(&self) -> crate::Span {
@@ -1023,24 +1015,6 @@ pub mod __macro_support {
         #[cfg(not(feature = "log"))]
         pub fn disabled_span(&self) -> crate::Span {
             crate::Span::none()
-        }
-
-        pub fn dispatch_span(
-            &'static self,
-            interest: Interest,
-            f: impl FnOnce(&crate::Dispatch) -> crate::Span,
-        ) -> crate::Span {
-            if interest.is_never() {
-                return self.disabled_span();
-            }
-
-            tracing_core::dispatcher::get_current(|current| {
-                if interest.is_always() || current.enabled(self.meta) {
-                    return f(current);
-                }
-                self.disabled_span()
-            })
-            .unwrap_or_else(|| self.disabled_span())
         }
     }
 
