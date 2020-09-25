@@ -838,6 +838,34 @@ fn field_shorthand_only() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn borrow_val_events() {
+    // Reproduces https://github.com/tokio-rs/tracing/issues/954
+    let mut foo = (String::new(), String::new());
+    let zero = &mut foo.0;
+    trace!(one = ?foo.1);
+    debug!(one = ?foo.1);
+    info!(one = ?foo.1);
+    warn!(one = ?foo.1);
+    error!(one = ?foo.1);
+    zero.push_str("hello world");
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn borrow_val_spans() {
+    // Reproduces https://github.com/tokio-rs/tracing/issues/954
+    let mut foo = (String::new(), String::new());
+    let zero = &mut foo.0;
+    let _span = trace_span!("span", one = ?foo.1);
+    let _span = debug_span!("span", one = ?foo.1);
+    let _span = info_span!("span", one = ?foo.1);
+    let _span = warn_span!("span", one = ?foo.1);
+    let _span = error_span!("span", one = ?foo.1);
+    zero.push_str("hello world");
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn callsite_macro_api() {
     // This test should catch any inadvertent breaking changes
     // caused by changes to the macro.
