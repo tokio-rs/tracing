@@ -1000,6 +1000,11 @@ pub mod __macro_support {
             }
         }
 
+        pub fn is_enabled(&self, interest: Interest) -> bool {
+            interest.is_always()
+                || crate::dispatcher::get_default(|default| default.enabled(self.meta))
+        }
+
         pub fn dispatch_event(&'static self, interest: Interest, f: impl FnOnce(&crate::Dispatch)) {
             tracing_core::dispatcher::get_current(|current| {
                 if interest.is_always() || current.enabled(self.meta) {
