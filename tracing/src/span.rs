@@ -619,8 +619,8 @@ impl Span {
     ///       // ...
     ///   }
     ///   ```
-    /// * For instrumenting asynchronous code, the [`tracing-futures` crate]
-    ///   provides the [`Future::instrument` combinator][instrument] for
+    /// * For instrumenting asynchronous code, `tracing` provides the
+    ///   [`Future::instrument` combinator][instrument] for
     ///   attaching a span to a future (async function or block). This will
     ///   enter the span _every_ time the future is polled, and exit it whenever
     ///   the future yields.
@@ -628,7 +628,7 @@ impl Span {
     ///   `Instrument` can be used with an async block inside an async function:
     ///   ```ignore
     ///   # use tracing::info_span;
-    ///   use tracing_futures::Instrument;
+    ///   use tracing::Instrument;
     ///
     ///   # async fn some_other_async_function() {}
     ///   async fn my_async_function() {
@@ -652,7 +652,7 @@ impl Span {
     ///   callsite:
     ///   ```ignore
     ///   # use tracing::debug_span;
-    ///   use tracing_futures::Instrument;
+    ///   use tracing::Instrument;
     ///
     ///   # async fn some_other_async_function() {}
     ///   async fn my_async_function() {
@@ -664,8 +664,7 @@ impl Span {
     ///   }
     ///   ```
     ///
-    /// * Finally, if your crate depends on the `tracing-futures` crate, the
-    ///   [`#[instrument]` attribute macro][attr] will automatically generate
+    /// * The [`#[instrument]` attribute macro][attr] can automatically generate
     ///   correct code when used on an async function:
     ///
     ///   ```ignore
@@ -684,8 +683,7 @@ impl Span {
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: #method.in_scope
-    /// [`tracing-futures` crate]: https://docs.rs/tracing-futures/
-    /// [instrument]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html
+    /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
     /// [attr]: ../../attr.instrument.html
     ///
     /// # Examples

@@ -4,7 +4,7 @@ use futures::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 #[derive(Debug)]
 pub struct Service<S, R, G = fn(&R) -> tracing::Span>
@@ -236,7 +236,7 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = tracing_futures::Instrumented<S::Future>;
+    type Future = tracing::instrument::Instrumented<S::Future>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)

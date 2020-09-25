@@ -32,9 +32,7 @@ use tokio::{
     self, io,
     net::{TcpListener, TcpStream},
 };
-use tracing::{debug, debug_span, info, warn};
-use tracing_attributes::instrument;
-use tracing_futures::Instrument;
+use tracing::{debug, debug_span, info, instrument, warn, Instrument as _};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 

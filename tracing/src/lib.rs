@@ -173,15 +173,6 @@
 //! # fn main() {}
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
-//! <div class="example-wrap" style="display:inline-block">
-//! <pre class="ignore" style="white-space:normal;font:inherit;">
-//!     <strong>Note</strong>: Using <code>#[instrument]</code> on
-//!     <code>async fn</code>s requires the <a href="https://crates.io/crates/tracing-futures">
-//!     <code>tracing-futures</code> crate</a> as a dependency as well.
-//! </pre></div>
 //!
 //! You can find more examples showing how to use this crate [here][examples].
 //!
@@ -890,6 +881,8 @@ pub use log;
 #[doc(hidden)]
 use tracing_core::*;
 
+#[doc(inline)]
+pub use self::instrument::Instrument;
 pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
 
 #[doc(hidden)]
@@ -914,6 +907,8 @@ mod macros;
 
 pub mod dispatcher;
 pub mod field;
+/// Attach a span to a `std::future::Future`.
+pub mod instrument;
 pub mod level_filters;
 pub mod span;
 pub(crate) mod stdlib;
