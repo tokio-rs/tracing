@@ -455,6 +455,25 @@ impl<'a> Value<'a> {
             _ => true,
         }
     }
+
+    pub(crate) fn record(&self, field: &Field, visitor: &mut dyn Visit) {
+        match self.inner {
+            ValueKind::Empty => return,
+            ValueKind::Bool(val) => visitor.record_bool(field, val),
+            ValueKind::U64(val) => visitor.record_u64(field, val),
+            ValueKind::I64(val) => visitor.record_i64(field, val),
+            ValueKind::Str(val) => visitor.record_str(field, val),
+            ValueKind::Display(val) => visitor.record_debug(field, &format_args!("{}", val)),
+            ValueKind::Debug(val) => visitor.record_debug(field, val),
+            #[cfg(feature = "std")]
+            ValueKind::Error(val) => visitor.record_error(field, val),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, _) => visitor.record_error(field, val),
+            ValueKind::DisplayAny(val, _) => visitor.record_debug(field, &format_args!("{}", val)),
+            ValueKind::DebugAny(val, _) => visitor.record_debug(field, val),
+            ValueKind::Args(val) => visitor.record_debug(field, &val),
+        }
+    }
 }
 
 impl fmt::Debug for Value<'_> {
@@ -1076,14 +1095,12 @@ impl<'a> ValueSet<'a> {
     ///
     /// [visitor]: ../trait.Visit.html
     pub(crate) fn record(&self, visitor: &mut dyn Visit) {
-        let my_callsite = self.callsite();
-        for (i, value) in self {
+        for (field, value) in self {
             if let ValueKind::Empty = value.inner {
                 continue;
             }
 
-            // value.record(visitor, self.fields.names[i], value)
-            todo!()
+            value.record(&field, visitor)
         }
     }
 
