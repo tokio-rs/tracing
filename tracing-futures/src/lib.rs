@@ -110,8 +110,10 @@ pub(crate) mod stdlib;
 #[cfg(feature = "std-future")]
 use crate::stdlib::{pin::Pin, task::Context};
 
-use tracing::dispatcher;
-use tracing::{Dispatch, Span};
+#[cfg(feature = "std")]
+use tracing::{dispatcher, Dispatch};
+
+use tracing::Span;
 
 /// Implementations for `Instrument`ed future executors.
 pub mod executor;
@@ -673,8 +675,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
-                stream::iter(&[1, 2, 3])
-                    .instrument(tracing::trace_span!("foo"))
+                Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
                     .for_each(|_| future::ready(()))
                     .now_or_never()
                     .unwrap();
@@ -694,8 +695,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
-                sink::drain()
-                    .instrument(tracing::trace_span!("foo"))
+                Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))
                     .send(1u8)
                     .now_or_never()
                     .unwrap()

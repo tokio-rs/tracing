@@ -42,8 +42,7 @@ use std::{
 };
 use tokio::{time, try_join};
 use tower::{Service, ServiceBuilder, ServiceExt};
-use tracing::{self, debug, error, info, span, trace, warn, Level, Span};
-use tracing_futures::Instrument;
+use tracing::{self, debug, error, info, span, trace, warn, Instrument as _, Level, Span};
 use tracing_subscriber::{filter::EnvFilter, reload::Handle};
 use tracing_tower::{request_span, request_span::make};
 
