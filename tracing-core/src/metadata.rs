@@ -94,7 +94,7 @@ pub struct Metadata<'a> {
 pub struct Kind(KindInner);
 
 /// Describes the level of verbosity of a span or event.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity `Level`.
@@ -107,7 +107,7 @@ pub struct Level(LevelInner);
 /// addition of an `OFF` level that completely disables all trace
 /// instrumentation.
 #[repr(transparent)]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
@@ -864,7 +864,7 @@ mod tests {
                 // actual repr matches what we expect it to be --- we're testing
                 // that *other* unsafe code is sound using the transmuted value.
                 // We're not going to do anything with it that might be unsound.
-                mem::transmute::<_, usize>(filter.clone())
+                mem::transmute::<_, usize>(filter)
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }

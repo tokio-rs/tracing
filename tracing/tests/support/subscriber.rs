@@ -200,7 +200,7 @@ where
         }
     }
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.max_level.clone()
+        self.max_level
     }
 
     fn record(&self, id: &Id, values: &span::Record<'_>) {
