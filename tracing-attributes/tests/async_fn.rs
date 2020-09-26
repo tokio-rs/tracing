@@ -94,7 +94,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestA for TestImpl {
-        #[instrument]
+        #[instrument(fields(self, ?v))]
         async fn foo(&mut self, v: usize) {
             self.baz().await;
             self.0 = v;
@@ -104,7 +104,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestB for TestImpl {
-        #[instrument]
+        #[instrument(fields(self))]
         async fn bar(&self) {
             tracing::trace!(val = self.0);
         }
@@ -112,7 +112,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestC for TestImpl {
-        #[instrument(skip(self))]
+        #[instrument(fields(self))]
         async fn baz(&self) {
             tracing::trace!(val = self.0);
         }

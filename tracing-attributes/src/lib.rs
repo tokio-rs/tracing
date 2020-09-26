@@ -301,6 +301,7 @@ pub fn instrument(
     }
 }
 
+#[allow(clippy::redundant_closure_call)]
 fn gen_body(
     input: &ItemFn,
     mut args: InstrumentArgs,
@@ -379,38 +380,8 @@ fn gen_body(
             })
             .collect();
 
-        for skip in &args.skips {
-            if !param_names.iter().map(|(user, _)| user).any(|y| y == skip) {
-                return quote_spanned! {skip.span()=>
-                    compile_error!("attempting to skip non-existent parameter")
-                };
-            }
-        }
-
         let level = args.level();
         let target = args.target();
-
-        // filter out skipped fields
-        let mut quoted_fields: Vec<_> = param_names
-            .into_iter()
-            .filter(|(param, _)| {
-                if args.skips.contains(param) {
-                    return false;
-                }
-
-                // If any parameters have the same name as a custom field, skip
-                // and allow them to be formatted by the custom field.
-                if let Some(ref fields) = args.fields {
-                    fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
-                    })
-                } else {
-                    true
-                }
-            })
-            .map(|(user_name, real_name)| quote!(#user_name = tracing::field::debug(&#real_name)))
-            .collect();
 
         // when async-trait is in use, replace instances of "self" with "_self" inside the fields values
         if let (Some(ref async_trait_fun), Some(Fields(ref mut fields))) =
@@ -430,7 +401,6 @@ fn gen_body(
             target: #target,
             #level,
             #span_name,
-            #(#quoted_fields,)*
             #custom_fields
 
         ))
@@ -501,7 +471,6 @@ struct InstrumentArgs {
     level: Option<Level>,
     name: Option<LitStr>,
     target: Option<LitStr>,
-    skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
     /// Errors describing any unrecognized parse inputs that we skipped.
@@ -616,12 +585,6 @@ impl Parse for InstrumentArgs {
                     return Err(input.error("expected only a single `level` argument"));
                 }
                 args.level = Some(input.parse()?);
-            } else if lookahead.peek(kw::skip) {
-                if !args.skips.is_empty() {
-                    return Err(input.error("expected only a single `skip` argument"));
-                }
-                let Skips(skips) = input.parse()?;
-                args.skips = skips;
             } else if lookahead.peek(kw::fields) {
                 if args.fields.is_some() {
                     return Err(input.error("expected only a single `fields` argument"));
@@ -661,29 +624,6 @@ impl<T: Parse> Parse for StrArg<T> {
             value,
             _p: std::marker::PhantomData,
         })
-    }
-}
-
-struct Skips(HashSet<Ident>);
-
-impl Parse for Skips {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let _ = input.parse::<kw::skip>();
-        let content;
-        let _ = syn::parenthesized!(content in input);
-        let names: Punctuated<Ident, Token![,]> = content.parse_terminated(Ident::parse_any)?;
-        let mut skips = HashSet::new();
-        for name in names {
-            if skips.contains(&name) {
-                return Err(syn::Error::new(
-                    name.span(),
-                    "tried to skip the same field twice",
-                ));
-            } else {
-                skips.insert(name);
-            }
-        }
-        Ok(Self(skips))
     }
 }
 
