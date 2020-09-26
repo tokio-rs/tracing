@@ -332,35 +332,42 @@ macro_rules! gen_primitives {
 }
 
 impl<'a> Value<'a> {
+    #[inline]
     pub fn empty() -> Self {
         Self {
             inner: ValueKind::Empty,
         }
     }
 
+    #[inline]
     pub fn any_display<T: Any + fmt::Display>(val: &'a T) -> Self {
         Self {
             inner: ValueKind::DisplayAny(val as &'a dyn fmt::Display, TypeId::of::<T>()),
         }
     }
 
+    #[inline]
     pub fn any<T: Any + fmt::Debug>(val: &'a T) -> Self {
         Self {
             inner: ValueKind::DebugAny(val as &'a dyn fmt::Debug, TypeId::of::<T>()),
         }
     }
+
+    #[inline]
     pub fn display<T: fmt::Display>(val: &'a T) -> Self {
         Self {
             inner: ValueKind::Display(val as &'a dyn fmt::Display),
         }
     }
 
+    #[inline]
     pub fn debug<T: fmt::Debug>(val: &'a T) -> Self {
         Self {
             inner: ValueKind::Debug(val as &'a dyn fmt::Debug),
         }
     }
 
+    #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn any_error<T: Any + Error + 'static>(val: &'a T) -> Self {
@@ -369,6 +376,7 @@ impl<'a> Value<'a> {
         }
     }
 
+    #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn error(val: &'a (dyn Error + 'static)) -> Self {
@@ -377,6 +385,7 @@ impl<'a> Value<'a> {
         }
     }
 
+    #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn as_error(&self) -> Option<&(dyn Error + 'static)> {
@@ -615,6 +624,7 @@ macro_rules! ty_to_nonzero {
 macro_rules! impl_one_into_value {
     ($value_ty:tt, |$this:ident| $op:expr) => {
         impl<'a> From<$value_ty> for Value<'a> {
+            #[inline]
             fn from($this: $value_ty) -> Self {
                 Self::from($op)
             }
@@ -674,12 +684,14 @@ impl<'a, T> From<num::Wrapping<T>> for Value<'a>
 where
     Self: From<T>,
 {
+    #[inline]
     fn from(num::Wrapping(val): num::Wrapping<T>) -> Self {
         Self::from(val)
     }
 }
 
 impl From<&'_ Empty> for Value<'_> {
+    #[inline]
     fn from(_: &Empty) -> Self {
         Self::empty()
     }
@@ -689,12 +701,14 @@ impl<'a, T> From<Option<T>> for Value<'a>
 where
     Self: From<T>,
 {
+    #[inline]
     fn from(val: Option<T>) -> Self {
         val.map(Value::from).unwrap_or_else(Value::empty)
     }
 }
 
 impl<'a> From<fmt::Arguments<'a>> for Value<'a> {
+    #[inline]
     fn from(val: fmt::Arguments<'a>) -> Self {
         Value {
             inner: ValueKind::Args(val),
@@ -707,12 +721,14 @@ where
     Value<'a>: From<T>,
     T: Copy,
 {
+    #[inline]
     fn from(val: &T) -> Self {
         Value::from(*val)
     }
 }
 
 impl<'a> From<&'_ Value<'a>> for Value<'a> {
+    #[inline]
     fn from(val: &Value<'a>) -> Self {
         Value { inner: val.inner }
     }
@@ -720,6 +736,7 @@ impl<'a> From<&'_ Value<'a>> for Value<'a> {
 
 #[cfg(feature = "std")]
 impl<'a> From<&'a Box<dyn Error + 'static>> for Value<'a> {
+    #[inline]
     fn from(err: &'a Box<dyn Error + 'static>) -> Self {
         Self::error(err.as_ref())
     }
@@ -727,6 +744,7 @@ impl<'a> From<&'a Box<dyn Error + 'static>> for Value<'a> {
 
 #[cfg(feature = "std")]
 impl<'a> From<&'a Box<dyn Error + Send + 'static>> for Value<'a> {
+    #[inline]
     fn from(err: &'a Box<dyn Error + Send + 'static>) -> Self {
         Self::error(err.as_ref())
     }
@@ -734,6 +752,7 @@ impl<'a> From<&'a Box<dyn Error + Send + 'static>> for Value<'a> {
 
 #[cfg(feature = "std")]
 impl<'a> From<&'a Box<dyn Error + Send + Sync + 'static>> for Value<'a> {
+    #[inline]
     fn from(err: &'a Box<dyn Error + Send + Sync + 'static>) -> Self {
         Self::error(err.as_ref())
     }
