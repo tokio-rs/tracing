@@ -247,6 +247,55 @@ impl EnvFilter {
     }
 
     fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
+        use tracing::level_filters::STATIC_MAX_LEVEL;
+        use tracing::Level;
+
+        let directives: Vec<_> = directives.into_iter().collect();
+
+        let disabled: Vec<_> = directives
+            .iter()
+            .filter(|directive| directive.level > STATIC_MAX_LEVEL)
+            .collect();
+
+        if !disabled.is_empty() {
+            eprintln!("warning: some trace filter directives would enable traces that are disabled statically");
+            for directive in disabled {
+                let target = if let Some(target) = &directive.target {
+                    format!("the `{}` target", target)
+                } else {
+                    "all targets".into()
+                };
+                let level = directive
+                    .level
+                    .clone()
+                    .into_level()
+                    .expect("=off would not have enabled any filters");
+                eprintln!(
+                    " | `{}` would enable the {} level for {}",
+                    directive, level, target
+                );
+            }
+            eprintln!(" | the static max level is {}", STATIC_MAX_LEVEL);
+            let help_msg = || {
+                let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
+                    Some(Level::TRACE) => unreachable!(
+                        "if the max level is trace, no static filtering features are enabled"
+                    ),
+                    Some(Level::DEBUG) => ("max_level_debug", Level::TRACE),
+                    Some(Level::INFO) => ("max_level_info", Level::DEBUG),
+                    Some(Level::WARN) => ("max_level_warn", Level::INFO),
+                    Some(Level::ERROR) => ("max_level_error", Level::WARN),
+                    None => return ("max_level_off", String::new()),
+                };
+                (feature, format!("{} ", filter))
+            };
+            let (feature, earlier_level) = help_msg();
+            eprintln!(
+                "note: to enable {}logging, remove the `{}` feature",
+                earlier_level, feature
+            );
+        }
+
         let (dynamics, mut statics) = Directive::make_tables(directives);
         let has_dynamics = !dynamics.is_empty();
 

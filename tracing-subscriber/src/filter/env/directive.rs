@@ -9,10 +9,10 @@ use tracing_core::{span, Level, Metadata};
 // TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
 pub struct Directive {
-    target: Option<String>,
+    pub(crate) target: Option<String>,
     in_span: Option<String>,
     fields: FilterVec<field::Match>,
-    level: LevelFilter,
+    pub(crate) level: LevelFilter,
 }
 
 /// A directive which will statically enable or disable a given callsite.
