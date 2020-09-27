@@ -547,7 +547,8 @@ impl FromStr for LevelFilter {
                 s if s.eq_ignore_ascii_case("trace") => Some(LevelFilter::TRACE),
                 s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
                 _ => None,
-            }).ok_or(ParseLevelFilterError(()))
+            })
+            .ok_or(ParseLevelFilterError(()))
     }
 }
 
