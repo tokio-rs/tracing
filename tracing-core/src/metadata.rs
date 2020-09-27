@@ -858,13 +858,13 @@ mod tests {
             (LevelFilter::DEBUG, LevelInner::Debug as usize),
             (LevelFilter::TRACE, LevelInner::Trace as usize),
         ];
-        for &(ref filter, expected) in &mapping {
+        for &(filter, expected) in &mapping {
             let repr = unsafe {
                 // safety: The entire purpose of this test is to assert that the
                 // actual repr matches what we expect it to be --- we're testing
                 // that *other* unsafe code is sound using the transmuted value.
                 // We're not going to do anything with it that might be unsound.
-                mem::transmute::<_, usize>(filter)
+                mem::transmute::<LevelFilter, usize>(filter)
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }
