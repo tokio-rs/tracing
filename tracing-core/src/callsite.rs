@@ -6,7 +6,7 @@ use crate::stdlib::{
     ptr,
     sync::{
         atomic::{AtomicPtr, Ordering},
-        Mutex,
+        Mutex, MutexGuard,
     },
     vec::Vec,
 };
@@ -23,55 +23,12 @@ lazy_static! {
     };
 }
 
+type Dispatchers = Vec<dispatcher::Registrar>;
+type Callsites = LinkedList;
+
 struct Registry {
-    callsites: LinkedList,
-    dispatchers: Mutex<Vec<dispatcher::Registrar>>,
-}
-
-impl Registry {
-    fn rebuild_callsite_interest(&self, callsite: &'static dyn Callsite) {
-        let meta = callsite.metadata();
-
-        // Iterate over the subscribers in the registry, and — if they are
-        // active — register the callsite with them.
-        let lock = self.dispatchers.lock().unwrap();
-        let mut interests = lock
-            .iter()
-            .filter_map(|registrar| registrar.try_register(meta));
-
-        // Use the first subscriber's `Interest` as the base value.
-        let interest = if let Some(interest) = interests.next() {
-            // Combine all remaining `Interest`s.
-            interests.fold(interest, Interest::and)
-        } else {
-            // If nobody was interested in this thing, just return `never`.
-            Interest::never()
-        };
-
-        callsite.set_interest(interest)
-    }
-
-    fn rebuild_interest(&self) {
-        let mut max_level = LevelFilter::OFF;
-        self.dispatchers.lock().unwrap().retain(|registrar| {
-            if let Some(dispatch) = registrar.upgrade() {
-                // If the subscriber did not provide a max level hint, assume
-                // that it may enable every level.
-                let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
-                if level_hint > max_level {
-                    max_level = level_hint;
-                }
-                true
-            } else {
-                false
-            }
-        });
-
-        self.callsites
-            .for_each(|cs| self.rebuild_callsite_interest(cs));
-
-        LevelFilter::set_max(max_level);
-    }
+    callsites: Callsites,
+    dispatchers: Mutex<Dispatchers>,
 }
 
 /// Trait implemented by callsites.
@@ -92,7 +49,7 @@ pub trait Callsite: Sync {
     /// Returns the callsite's [`Registration`] in the global callsite registry.
     ///
     /// Every type implementing `Callsite` must own a single [`Registration`] which
-    /// is constructed with a static reference to that callsite. The `Registration` is 
+    /// is constructed with a static reference to that callsite. The `Registration` is
     /// used to store the callsite in the global list of callsites. `Registration`s must be
     /// unique per callsite; a callsite's `Registration` method must always return the
     /// same `Registration`.
@@ -148,7 +105,9 @@ pub struct Registration<T = &'static dyn Callsite> {
 /// [`Interest::sometimes()`]: ../subscriber/struct.Interest.html#method.sometimes
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 pub fn rebuild_interest_cache() {
-    REGISTRY.rebuild_interest();
+    let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
+    let callsites = &REGISTRY.callsites;
+    rebuild_interest(callsites, &mut dispatchers);
 }
 
 /// Register a new `Callsite` with the global registry.
@@ -156,17 +115,66 @@ pub fn rebuild_interest_cache() {
 /// This should be called once per callsite after the callsite has been
 /// constructed.
 pub fn register(callsite: &'static dyn Callsite) {
-    REGISTRY.rebuild_callsite_interest(callsite);
+    let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
+    rebuild_callsite_interest(&mut dispatchers, callsite);
     REGISTRY.callsites.push(callsite);
 }
 
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
-    REGISTRY
-        .dispatchers
-        .lock()
-        .unwrap()
-        .push(dispatch.registrar());
-    REGISTRY.rebuild_interest();
+    let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
+    let callsites = &REGISTRY.callsites;
+
+    dispatchers.push(dispatch.registrar());
+
+    rebuild_interest(callsites, &mut dispatchers);
+}
+
+fn rebuild_callsite_interest(
+    dispatchers: &mut MutexGuard<'_, Vec<dispatcher::Registrar>>,
+    callsite: &'static dyn Callsite,
+) {
+    let meta = callsite.metadata();
+
+    // Iterate over the subscribers in the registry, and — if they are
+    // active — register the callsite with them.
+    let mut interests = dispatchers
+        .iter()
+        .filter_map(|registrar| registrar.try_register(meta));
+
+    // Use the first subscriber's `Interest` as the base value.
+    let interest = if let Some(interest) = interests.next() {
+        // Combine all remaining `Interest`s.
+        interests.fold(interest, Interest::and)
+    } else {
+        // If nobody was interested in this thing, just return `never`.
+        Interest::never()
+    };
+
+    callsite.set_interest(interest)
+}
+
+fn rebuild_interest(
+    callsites: &Callsites,
+    dispatchers: &mut MutexGuard<'_, Vec<dispatcher::Registrar>>,
+) {
+    let mut max_level = LevelFilter::OFF;
+    dispatchers.retain(|registrar| {
+        if let Some(dispatch) = registrar.upgrade() {
+            // If the subscriber did not provide a max level hint, assume
+            // that it may enable every level.
+            let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
+            if level_hint > max_level {
+                max_level = level_hint;
+            }
+            true
+        } else {
+            false
+        }
+    });
+
+    callsites.for_each(|cs| rebuild_callsite_interest(dispatchers, cs));
+
+    LevelFilter::set_max(max_level);
 }
 
 // ===== impl Identifier =====
@@ -210,7 +218,10 @@ impl fmt::Debug for Registration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Registration")
             .field("callsite", &format_args!("{:p}", self.callsite))
-            .field("next", &format_args!("{:p}", self.next.load(Ordering::Acquire))
+            .field(
+                "next",
+                &format_args!("{:p}", self.next.load(Ordering::Acquire)),
+            )
             .finish()
     }
 }
@@ -247,21 +258,22 @@ impl LinkedList {
 
             cs.registration().next.store(head, Ordering::Release);
 
+            assert_ne!(
+                cs.registration() as *const _,
+                head,
+                "Attempting to push a `Callsite` that already exists. \
+                        This will cause an infinite loop when attempting to read from the \
+                        callsite cache. This is likely a bug! You should only need to push a \
+                        `Callsite` once."
+            );
+
             match self.head.compare_exchange(
                 head,
                 registration,
                 Ordering::AcqRel,
                 Ordering::Acquire,
             ) {
-                Ok(old) => {
-                    assert_ne!(
-                        cs.registration() as *const _,
-                        old,
-                        "Attempting to push a `Callsite` that already exists. \
-                        This will cause an infinite loop when attempting to read from the \
-                        callsite cache. This is likely a bug! You should only need to push a \
-                        `Callsite` once."
-                    );
+                Ok(_) => {
                     break;
                 }
                 Err(current) => head = current,

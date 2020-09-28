@@ -860,7 +860,7 @@ mod test {
         }
 
         fn registration(&'static self) -> &'static crate::callsite::Registration {
-            unimplemented!()
+            unimplemented!("registration never happens in field tests")
         }
     }
 
@@ -885,7 +885,7 @@ mod test {
         }
 
         fn registration(&'static self) -> &'static crate::callsite::Registration {
-            unimplemented!()
+            unimplemented!("registration never happens in field tests")
         }
     }
 
