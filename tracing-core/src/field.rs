@@ -457,7 +457,7 @@ impl fmt::Debug for dyn Value {
             }
 
             fn registration(&'static self) -> &'static crate::callsite::Registration {
-                unreachable!()
+                unreachable!("you somehow managed to access the null callsite?")
             }
         }
 

@@ -823,7 +823,7 @@ mod test {
         }
 
         fn registration(&'static self) -> &'static Registration {
-            todo!()
+            unimplemented!("not needed for this test")
         }
     }
 

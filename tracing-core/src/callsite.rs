@@ -297,7 +297,7 @@ mod tests {
     impl Callsite for Cs2 {
         fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
-            todo!()
+            unimplemented!("not needed for this test")
         }
 
         fn registration(&'static self) -> &'static Registration {
