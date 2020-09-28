@@ -29,7 +29,7 @@ fn filters_are_not_reevaluated_for_the_same_span() {
     let bob_count2 = bob_count.clone();
 
     let (subscriber, handle) = subscriber::mock()
-        .with_filter(move |meta| match meta.name() {
+        .with_filter(move |meta| match meta.name().as_ref() {
             "alice" => {
                 alice_count2.fetch_add(1, Ordering::Relaxed);
                 false

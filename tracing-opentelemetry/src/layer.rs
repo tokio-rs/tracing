@@ -489,6 +489,7 @@ mod tests {
     use super::*;
     use opentelemetry::api;
     use opentelemetry::api::TraceContextExt;
+    use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
@@ -500,11 +501,17 @@ mod tests {
         fn invalid(&self) -> Self::Span {
             api::NoopSpan::new()
         }
-        fn start_from_context(&self, _name: &str, _context: &api::Context) -> Self::Span {
+        fn start_from_context<'a, S>(&self, _name: S, _context: &api::Context) -> Self::Span
+        where
+            S: Into<Cow<'a, str>>
+        {
             self.invalid()
         }
-        fn span_builder(&self, name: &str) -> api::SpanBuilder {
-            api::SpanBuilder::from_name(name.to_string())
+        fn span_builder<'a, S>(&self, name: S) -> api::SpanBuilder
+        where
+            S: Into<Cow<'a, str>>
+        {
+            api::SpanBuilder::from_name(name.into().into_owned())
         }
         fn build_with_context(&self, builder: api::SpanBuilder, _cx: &api::Context) -> Self::Span {
             *self.0.lock().unwrap() = Some(builder);

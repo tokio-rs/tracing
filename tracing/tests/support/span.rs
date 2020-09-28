@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 use super::{field, metadata, Parent};
+use std::borrow::Cow;
 use std::fmt;
 
 /// A mock span.
@@ -60,7 +61,7 @@ impl MockSpan {
 
     pub fn with_explicit_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Explicit(name.into()),
+            Some(name) => Parent::Explicit(name.to_string()),
             None => Parent::ExplicitRoot,
         };
         NewSpan {
@@ -72,7 +73,7 @@ impl MockSpan {
 
     pub fn with_contextual_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Contextual(name.into()),
+            Some(name) => Parent::Contextual(name.to_string()),
             None => Parent::ContextualRoot,
         };
         NewSpan {
@@ -82,8 +83,10 @@ impl MockSpan {
         }
     }
 
-    pub fn name(&self) -> Option<&str> {
-        self.metadata.name.as_ref().map(String::as_ref)
+    pub fn name(&self) -> Option<Cow<'static, str>> {
+        // TODO: can do better than this I think, I hope.
+        // Was: self.metadata.name.as_ref().map(String::as_ref)
+        self.metadata.name.as_ref().map(|s| s.clone().into())
     }
 
     pub fn with_field<I>(self, fields: I) -> NewSpan
@@ -125,7 +128,7 @@ impl Into<NewSpan> for MockSpan {
 impl NewSpan {
     pub fn with_explicit_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Explicit(name.into()),
+            Some(name) => Parent::Explicit(name.to_string()),
             None => Parent::ExplicitRoot,
         };
         NewSpan {
@@ -136,7 +139,7 @@ impl NewSpan {
 
     pub fn with_contextual_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Contextual(name.into()),
+            Some(name) => Parent::Contextual(name.to_string()),
             None => Parent::ContextualRoot,
         };
         NewSpan {

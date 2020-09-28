@@ -1,6 +1,7 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
 use crate::stdlib::{
+    borrow::Cow,
     cmp, fmt,
     str::FromStr,
     sync::atomic::{AtomicUsize, Ordering},
@@ -60,7 +61,7 @@ use crate::stdlib::{
 /// [callsite identifier]: ../callsite/struct.Identifier.html
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
-    name: &'static str,
+    name: Cow<'static, str>,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
@@ -132,7 +133,7 @@ impl<'a> Metadata<'a> {
         kind: Kind,
     ) -> Self {
         Metadata {
-            name,
+            name: Cow::Borrowed(name),
             target,
             level,
             module_path,
@@ -154,8 +155,9 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the name of the span.
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> Cow<'static, str> {
+        // TODO: do better than this.
+        self.name.clone()
     }
 
     /// Returns a string describing the part of the system where the span or

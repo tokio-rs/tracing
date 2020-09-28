@@ -369,6 +369,7 @@ mod tests {
     use super::Registry;
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::{
+        borrow::Cow,
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
     };
@@ -422,8 +423,8 @@ mod tests {
 
     #[derive(Default)]
     struct CloseState {
-        open: HashMap<&'static str, Weak<()>>,
-        closed: Vec<(&'static str, Weak<()>)>,
+        open: HashMap<Cow<'static, str>, Weak<()>>,
+        closed: Vec<(Cow<'static, str>, Weak<()>)>,
     }
 
     struct SetRemoved(Arc<()>);
@@ -459,7 +460,7 @@ mod tests {
             let name = span.name();
             println!("close {} ({:?})", name, id);
             if let Ok(mut lock) = self.inner.lock() {
-                if let Some(is_removed) = lock.open.remove(name) {
+                if let Some(is_removed) = lock.open.remove(name.as_ref()) {
                     assert!(is_removed.upgrade().is_some());
                     lock.closed.push((name, is_removed));
                 }
@@ -554,24 +555,26 @@ mod tests {
         }
 
         #[allow(unused)] // may want this for future tests
+        // TODO: take an `Option<Cow<'a, str>>` instead?
         fn assert_last_closed(&self, span: Option<&str>) {
             let lock = self.state.lock().unwrap();
-            let last = lock.closed.last().map(|(span, _)| span);
+            let last = lock.closed.last().map(|(span, _)| span.as_ref());
             assert_eq!(
                 last,
-                span.as_ref(),
+                span,
                 "expected {:?} to have closed last",
                 span
             );
         }
 
+        // TODO: take an `AsRef[Cow<'a, str>]` instead?
         fn assert_closed_in_order(&self, order: impl AsRef<[&'static str]>) {
             let lock = self.state.lock().unwrap();
             let order = order.as_ref();
             for (i, name) in order.iter().enumerate() {
                 assert_eq!(
-                    lock.closed.get(i).map(|(span, _)| span),
-                    Some(name),
+                    lock.closed.get(i).map(|(span, _)| span.as_ref()),
+                    Some(*name),
                     "expected close order: {:?}, actual: {:?}",
                     order,
                     lock.closed.iter().map(|(name, _)| name).collect::<Vec<_>>()

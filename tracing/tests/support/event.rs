@@ -69,7 +69,7 @@ impl MockEvent {
 
     pub fn with_explicit_parent(self, parent: Option<&str>) -> MockEvent {
         let parent = match parent {
-            Some(name) => Parent::Explicit(name.into()),
+            Some(name) => Parent::Explicit(name.to_string()),
             None => Parent::ExplicitRoot,
         };
         Self {

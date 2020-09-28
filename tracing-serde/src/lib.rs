@@ -244,7 +244,7 @@ impl<'a> Serialize for SerializeMetadata<'a> {
         S: Serializer,
     {
         let mut state = serializer.serialize_struct("Metadata", 9)?;
-        state.serialize_field("name", self.0.name())?;
+        state.serialize_field("name", &self.0.name())?;
         state.serialize_field("target", self.0.target())?;
         state.serialize_field("level", &SerializeLevel(self.0.level()))?;
         state.serialize_field("module_path", &self.0.module_path())?;

@@ -19,6 +19,7 @@
 )]
 use crate::AsLog;
 use std::{
+    borrow::Cow,
     cell::RefCell,
     collections::HashMap,
     fmt::{self, Write},
@@ -190,7 +191,7 @@ struct SpanLineBuilder {
     module_path: Option<String>,
     target: String,
     level: log::Level,
-    name: &'static str,
+    name: Cow<'static, str>,
 }
 
 impl SpanLineBuilder {
@@ -373,7 +374,7 @@ impl Subscriber for TraceLogger {
                 .map(|span| {
                     let fields = span.fields.as_ref();
                     let parent = if self.settings.log_parent {
-                        Some(span.name)
+                        Some(span.name.as_ref())
                     } else {
                         None
                     };
