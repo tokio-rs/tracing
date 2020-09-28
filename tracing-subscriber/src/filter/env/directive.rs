@@ -275,6 +275,12 @@ impl Default for Directive {
 
 impl PartialOrd for Directive {
     fn partial_cmp(&self, other: &Directive) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Directive {
+    fn cmp(&self, other: &Directive) -> Ordering {
         // We attempt to order directives by how "specific" they are. This
         // ensures that we try the most specific directives first when
         // attempting to match a piece of metadata.
@@ -321,14 +327,7 @@ impl PartialOrd for Directive {
             }
         }
 
-        Some(ordering)
-    }
-}
-
-impl Ord for Directive {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("Directive::partial_cmp should define a total order")
+        ordering
     }
 }
 
@@ -502,8 +501,8 @@ impl Statics {
     }
 }
 
-impl PartialOrd for StaticDirective {
-    fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
+impl Ord for StaticDirective {
+    fn cmp(&self, other: &StaticDirective) -> Ordering {
         // We attempt to order directives by how "specific" they are. This
         // ensures that we try the most specific directives first when
         // attempting to match a piece of metadata.
@@ -542,14 +541,13 @@ impl PartialOrd for StaticDirective {
             }
         }
 
-        Some(ordering)
+        ordering
     }
 }
 
-impl Ord for StaticDirective {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("StaticDirective::partial_cmp should define a total order")
+impl PartialOrd for StaticDirective {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
