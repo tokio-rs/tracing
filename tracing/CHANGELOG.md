@@ -1,3 +1,35 @@
+# 0.1.21 (September 28, 2020)
+
+### Fixed
+
+- Incorrect inlining of `Span::new`, `Span::new_root`, and `Span::new_child_of`,
+  which could result in  `dispatcher::get_default` being inlined at the callsite
+  ([#994])
+- Regression where using a struct field as a span or event field when other
+  fields on that struct are borrowed mutably would fail to compile ([#987])
+
+### Changed
+
+- Updated `tracing-core` to 0.1.17 ([#992])
+
+### Added
+
+- `Instrument` trait and `Instrumented` type for attaching a `Span` to a
+  `Future` ([#808])
+- `Copy` implementations for `Level` and `LevelFilter` ([#992])
+- Multiple documentation fixes and improvements ([#964], [#980], [#981])
+
+Thanks to @nagisa, and new contributors @SecurityInsanity, @froydnj, @jyn514 and
+@TaKO8Ki for contributing to this release!
+
+[#994]: https://github.com/tokio-rs/tracing/pull/994
+[#992]: https://github.com/tokio-rs/tracing/pull/992
+[#987]: https://github.com/tokio-rs/tracing/pull/987 
+[#980]: https://github.com/tokio-rs/tracing/pull/980
+[#981]: https://github.com/tokio-rs/tracing/pull/981
+[#964]: https://github.com/tokio-rs/tracing/pull/964
+[#808]: https://github.com/tokio-rs/tracing/pull/808
+
 # 0.1.20 (August 24, 2020)
 
 ### Changed
