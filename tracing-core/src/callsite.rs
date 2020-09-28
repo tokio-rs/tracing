@@ -112,6 +112,16 @@ pub struct Identifier(
     pub &'static dyn Callsite,
 );
 
+/// A registration within the callsite cache.
+///
+/// Every callsite implementation must store this type internally to the
+/// callsite and provide a `&'static Registration` reference via the
+/// `Callsite` trait.
+pub struct Registration<T = &'static dyn Callsite> {
+    callsite: T,
+    next: AtomicPtr<Registration<T>>,
+}
+
 /// Clear and reregister interest on every [`Callsite`]
 ///
 /// This function is intended for runtime reconfiguration of filters on traces
@@ -178,24 +188,29 @@ impl Hash for Identifier {
     }
 }
 
+// ===== impl Registration =====
+
+impl<T> Registration<T> {
+    /// Construct a new `Registration` from some `&'static dyn Callsite`
+    pub const fn new(callsite: T) -> Self {
+        Self {
+            callsite,
+            next: AtomicPtr::new(ptr::null_mut()),
+        }
+    }
+}
+
+impl fmt::Debug for Registration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Registration").finish()
+    }
+}
+
+// ===== impl LinkedList =====
+
 /// An intrusive atomic push only linked-list.
 struct LinkedList {
     head: AtomicPtr<Registration>,
-}
-
-unsafe impl Send for LinkedList {}
-unsafe impl Sync for LinkedList {}
-
-/// Represents a registration within the callsite cache.
-///
-/// This type enables the intrusive aspect of the callsite cache by
-/// avoiding allocations and letting the callsite's themselves store
-/// the next callsite in the cache.
-pub struct Registration {
-    #[doc(hidden)]
-    pub callsite: &'static dyn Callsite,
-    #[doc(hidden)]
-    pub next: AtomicPtr<Registration>,
 }
 
 impl LinkedList {
@@ -206,17 +221,13 @@ impl LinkedList {
     }
 
     fn for_each(&self, mut f: impl FnMut(&'static dyn Callsite)) {
-        let mut head = self.head.load(Ordering::SeqCst);
+        let mut head = self.head.load(Ordering::Acquire);
 
-        loop {
-            if !head.is_null() {
-                let reg = unsafe { &*head };
-                f(reg.callsite);
+        while !head.is_null() {
+            let reg = unsafe { &*head };
+            f(reg.callsite);
 
-                head = reg.next.load(Ordering::SeqCst);
-            } else {
-                break;
-            }
+            head = reg.next.load(Ordering::Acquire);
         }
     }
 
@@ -225,6 +236,8 @@ impl LinkedList {
 
         loop {
             let registration = cs.registration() as *const _ as *mut _;
+
+            cs.registration().next.store(head, Ordering::Release);
 
             match self.head.compare_exchange(
                 head,
@@ -241,18 +254,11 @@ impl LinkedList {
                         callsite cache. This is likely a bug! You should only need to push a \
                         `Callsite` once."
                     );
-                    cs.registration().next.store(old, Ordering::Release);
                     break;
                 }
                 Err(current) => head = current,
             }
         }
-    }
-}
-
-impl fmt::Debug for Registration {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Registration").finish()
     }
 }
 
@@ -263,10 +269,7 @@ mod tests {
     #[derive(Eq, PartialEq)]
     struct Cs1;
     static CS1: Cs1 = Cs1;
-    static REG1: Registration = Registration {
-        callsite: &CS1,
-        next: AtomicPtr::new(ptr::null_mut()),
-    };
+    static REG1: Registration = Registration::new(&CS1);
 
     impl Callsite for Cs1 {
         fn set_interest(&self, _interest: Interest) {}
@@ -281,10 +284,7 @@ mod tests {
 
     struct Cs2;
     static CS2: Cs2 = Cs2;
-    static REG2: Registration = Registration {
-        callsite: &CS2,
-        next: AtomicPtr::new(ptr::null_mut()),
-    };
+    static REG2: Registration = Registration::new(&CS2);
 
     impl Callsite for Cs2 {
         fn set_interest(&self, _interest: Interest) {}

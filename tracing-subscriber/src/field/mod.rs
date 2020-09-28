@@ -300,10 +300,7 @@ pub(in crate::field) mod test_util {
 
     struct TestCallsite1;
     static TEST_CALLSITE_1: &'static dyn Callsite = &TestCallsite1;
-    static TEST_REGISTRATION: Registration = Registration {
-        callsite: TEST_CALLSITE_1,
-        next: std::sync::atomic::AtomicPtr::new(std::ptr::null_mut()),
-    };
+    static TEST_REGISTRATION: Registration = Registration::new(TEST_CALLSITE_1);
     static TEST_META_1: Metadata<'static> = tracing_core::metadata! {
         name: "field_test1",
         target: module_path!(),

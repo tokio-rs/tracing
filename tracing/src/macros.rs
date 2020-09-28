@@ -1858,10 +1858,7 @@ macro_rules! callsite {
                 kind: $kind,
             }
         };
-        static REG: Registration = Registration {
-            callsite: &CALLSITE,
-            next: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
-        };
+        static REG: Registration = Registration::new(&CALLSITE);
         static CALLSITE: MacroCallsite = MacroCallsite::new(&META, &REG);
         CALLSITE.register();
         &CALLSITE
@@ -1913,10 +1910,7 @@ macro_rules! callsite2 {
                 kind: $kind,
             }
         };
-        static REG: Registration = Registration {
-            callsite: &CALLSITE,
-            next: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
-        };
+        static REG: Registration = Registration::new(&CALLSITE);
 
         MacroCallsite::new(&META, &REG)
     }};

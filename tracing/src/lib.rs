@@ -922,7 +922,10 @@ pub mod subscriber;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
-    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+    use crate::stdlib::{
+        fmt,
+        sync::atomic::{AtomicUsize, Ordering},
+    };
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
 
@@ -934,15 +937,17 @@ pub mod __macro_support {
     /// by the `tracing` macros, but it is not part of the stable versioned API.
     /// Breaking changes to this module may occur in small-numbered versions
     /// without warning.
-    #[derive(Debug)]
-    pub struct MacroCallsite {
+    pub struct MacroCallsite<T = &'static dyn Callsite>
+    where
+        T: 'static,
+    {
         interest: AtomicUsize,
         meta: &'static Metadata<'static>,
         register: Once,
-        registration: &'static Registration,
+        registration: &'static Registration<T>,
     }
 
-    impl MacroCallsite {
+    impl<T: 'static> MacroCallsite<T> {
         /// Returns a new `MacroCallsite` with the specified `Metadata`.
         ///
         /// /!\ WARNING: This is *not* a stable API! /!\
@@ -953,7 +958,7 @@ pub mod __macro_support {
         /// without warning.
         pub const fn new(
             meta: &'static Metadata<'static>,
-            registration: &'static Registration,
+            registration: &'static Registration<T>,
         ) -> Self {
             Self {
                 interest: AtomicUsize::new(0xDEADFACED),
@@ -962,7 +967,9 @@ pub mod __macro_support {
                 registration,
             }
         }
+    }
 
+    impl MacroCallsite<&'static dyn Callsite> {
         /// Registers this callsite with the global callsite registry.
         ///
         /// If the callsite is already registered, this does nothing.
@@ -1061,6 +1068,17 @@ pub mod __macro_support {
         #[inline(always)]
         fn registration(&'static self) -> &'static Registration {
             self.registration
+        }
+    }
+
+    impl fmt::Debug for MacroCallsite {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("MacroCallsite")
+                .field("interest", &self.interest)
+                .field("meta", &self.meta)
+                .field("register", &self.register)
+                .field("registration", &self.registration)
+                .finish()
         }
     }
 }

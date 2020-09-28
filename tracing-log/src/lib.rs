@@ -274,10 +274,7 @@ macro_rules! log_cs {
     ($level:expr) => {{
         struct Callsite;
         static CALLSITE: Callsite = Callsite;
-        static REGISTRATION: callsite::Registration = callsite::Registration {
-            callsite: &CALLSITE,
-            next: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
-        };
+        static REGISTRATION: callsite::Registration = callsite::Registration::new(&CALLSITE);
         static META: Metadata<'static> = Metadata::new(
             "log event",
             "log",
