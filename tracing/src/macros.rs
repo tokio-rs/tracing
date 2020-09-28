@@ -2150,7 +2150,7 @@ macro_rules! fieldset {
 #[macro_export]
 macro_rules! level_to_log {
     ($level:expr) => {
-        match *$level {
+        match $level {
             $crate::Level::ERROR => $crate::log::Level::Error,
             $crate::Level::WARN => $crate::log::Level::Warn,
             $crate::Level::INFO => $crate::log::Level::Info,
@@ -2297,7 +2297,7 @@ macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
         $crate::if_log_enabled! {{
             use $crate::log;
-            let level = $crate::level_to_log!(&$level);
+            let level = $crate::level_to_log!($level);
             if level <= log::STATIC_MAX_LEVEL && level <= log::max_level() {
                 let log_meta = log::Metadata::builder()
                     .level(level)
