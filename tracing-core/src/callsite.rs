@@ -89,7 +89,13 @@ pub trait Callsite: Sync {
     /// [metadata]: ../metadata/struct.Metadata.html
     fn metadata(&self) -> &Metadata<'_>;
 
-    /// Retrive the callsites intrusive registration.
+    /// Returns the callsite's [`Registration`] in the global callsite registry.
+    ///
+    /// Every type implementing `Callsite` must own a single [`Registration`] which
+    /// is constructed with a static reference to that callsite. The `Registration` is 
+    /// used to store the callsite in the global list of callsites. `Registration`s must be
+    /// unique per callsite; a callsite's `Registration` method must always return the
+    /// same `Registration`.
     fn registration(&'static self) -> &'static Registration;
 }
 
@@ -202,7 +208,10 @@ impl<T> Registration<T> {
 
 impl fmt::Debug for Registration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Registration").finish()
+        f.debug_struct("Registration")
+            .field("callsite", &format_args!("{:p}", self.callsite))
+            .field("next", &format_args!("{:p}", self.next.load(Ordering::Acquire))
+            .finish()
     }
 }
 
@@ -223,8 +232,7 @@ impl LinkedList {
     fn for_each(&self, mut f: impl FnMut(&'static dyn Callsite)) {
         let mut head = self.head.load(Ordering::Acquire);
 
-        while !head.is_null() {
-            let reg = unsafe { &*head };
+        while let Some(reg) = unsafe { head.as_ref() } {
             f(reg.callsite);
 
             head = reg.next.load(Ordering::Acquire);
@@ -274,7 +282,7 @@ mod tests {
     impl Callsite for Cs1 {
         fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
-            todo!()
+            unimplemented!("not needed for this test")
         }
 
         fn registration(&'static self) -> &'static Registration {
