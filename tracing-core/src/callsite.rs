@@ -339,7 +339,7 @@ mod tests {
         let linked_list = LinkedList::new();
 
         linked_list.for_each(|_| {
-            assert!(false, "List should be empty");
+            panic!("List should be empty");
         });
     }
 }
