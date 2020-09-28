@@ -552,7 +552,7 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
         }}
 
         span
@@ -925,7 +925,7 @@ impl Span {
                 } else {
                     meta.target()
                 };
-                self.log(target, level_to_log!(meta.level()), format_args!("{}{}", meta.name(), FmtValues(&record)));
+                self.log(target, level_to_log!(*meta.level()), format_args!("{}{}", meta.name(), FmtValues(&record)));
             }
         }}
 
@@ -1028,7 +1028,7 @@ impl Span {
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
-            if level_to_log!(meta.level()) <= log::max_level() {
+            if level_to_log!(*meta.level()) <= log::max_level() {
                 let logger = log::logger();
                 let log_meta = log::Metadata::builder().level(level).target(target).build();
                 if logger.enabled(&log_meta) {

@@ -229,7 +229,7 @@ impl CallsiteMatch {
             .collect();
         SpanMatch {
             fields,
-            level: self.level.clone(),
+            level: self.level,
             has_matched: AtomicBool::new(false),
         }
     }
@@ -263,7 +263,7 @@ impl SpanMatch {
     #[inline]
     pub(crate) fn filter(&self) -> Option<LevelFilter> {
         if self.is_matched() {
-            Some(self.level.clone())
+            Some(self.level)
         } else {
             None
         }

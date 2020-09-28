@@ -85,7 +85,7 @@ impl Directive {
         Some(StaticDirective {
             target: self.target.clone(),
             field_names,
-            level: self.level.clone(),
+            level: self.level,
         })
     }
 
@@ -119,7 +119,7 @@ impl Directive {
             .ok()?;
         Some(field::CallsiteMatch {
             fields,
-            level: self.level.clone(),
+            level: self.level,
         })
     }
 
@@ -417,9 +417,9 @@ impl<T: Match + Ord> DirectiveSet<T> {
     pub(crate) fn add(&mut self, directive: T) {
         // does this directive enable a more verbose level than the current
         // max? if so, update the max level.
-        let level = directive.level();
-        if *level > self.max_level {
-            self.max_level = level.clone();
+        let level = *directive.level();
+        if level > self.max_level {
+            self.max_level = level;
         }
         // insert the directive into the vec of directives, ordered by
         // specificity (length of target + number of field filters). this
@@ -460,8 +460,8 @@ impl Dynamics {
                     return Some(f);
                 }
                 match base_level {
-                    Some(ref b) if d.level > *b => base_level = Some(d.level.clone()),
-                    None => base_level = Some(d.level.clone()),
+                    Some(ref b) if d.level > *b => base_level = Some(d.level),
+                    None => base_level = Some(d.level),
                     _ => {}
                 }
                 None
@@ -690,7 +690,7 @@ impl CallsiteMatcher {
             .collect();
         SpanMatcher {
             field_matches,
-            base_level: self.base_level.clone(),
+            base_level: self.base_level,
         }
     }
 }
@@ -702,7 +702,7 @@ impl SpanMatcher {
             .iter()
             .filter_map(field::SpanMatch::filter)
             .max()
-            .unwrap_or_else(|| self.base_level.clone())
+            .unwrap_or(self.base_level)
     }
 
     pub(crate) fn record_update(&self, record: &span::Record<'_>) {
