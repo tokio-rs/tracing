@@ -331,13 +331,6 @@ impl Ord for Directive {
     }
 }
 
-impl Ord for Directive {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("Directive::partial_cmp should define a total order")
-    }
-}
-
 impl fmt::Display for Directive {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut wrote_any = false;

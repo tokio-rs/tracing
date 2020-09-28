@@ -115,12 +115,12 @@ impl Ord for Match {
         // order.
         has_value
             .then_with(|| self.name.cmp(&other.name))
-            .then_with(|| self.value.cmp(&other.value)),
+            .then_with(|| self.value.cmp(&other.value))
     }
 }
 
 impl PartialOrd for Match {
-    fn partial_cmp(&self, other: &Self) -> Ordering {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
