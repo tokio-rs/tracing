@@ -13,7 +13,7 @@ use std::{
 use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
 
-#[derive(Debug, Eq, PartialEq, Ord)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) struct Match {
     pub(crate) name: String, // TODO: allow match patterns for names?
     pub(crate) value: Option<ValueMatch>,
@@ -95,8 +95,8 @@ impl fmt::Display for Match {
     }
 }
 
-impl PartialOrd for Match {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+impl Ord for Match {
+    fn cmp(&self, other: &Self) -> Ordering {
         // Ordering for `Match` directives is based first on _whether_ a value
         // is matched or not. This is semantically meaningful --- we would
         // prefer to check directives that match values first as they are more
@@ -113,11 +113,15 @@ impl PartialOrd for Match {
         // This ordering is no longer semantically meaningful but is necessary
         // so that the directives can be stored in the `BTreeMap` in a defined
         // order.
-        Some(
-            has_value
-                .then_with(|| self.name.cmp(&other.name))
-                .then_with(|| self.value.cmp(&other.value)),
-        )
+        has_value
+            .then_with(|| self.name.cmp(&other.name))
+            .then_with(|| self.value.cmp(&other.value)),
+    }
+}
+
+impl PartialOrd for Match {
+    fn partial_cmp(&self, other: &Self) -> Ordering {
+        Some(self.cmp(other))
     }
 }
 
