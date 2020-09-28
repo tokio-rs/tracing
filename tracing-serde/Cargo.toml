@@ -1,6 +1,6 @@
 [package]
 name = "tracing-serde"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
 edition = "2018"
@@ -19,7 +19,7 @@ keywords = ["logging", "tracing", "serialization"]
 
 [dependencies]
 serde = "1"
-tracing-core = { path = "../tracing-core", version = "0.1.2"}
+tracing-core = { path = "../tracing-core", version = "0.2"}
 
 [dev-dependencies]
 serde_json = "1"
