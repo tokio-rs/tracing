@@ -11,7 +11,7 @@
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!  
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing

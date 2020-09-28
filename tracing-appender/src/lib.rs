@@ -7,7 +7,7 @@
 //! a dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] that can
 //! be used with _or_ without the non-blocking writer.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [file_appender]: ./rolling/struct.RollingFileAppender.html

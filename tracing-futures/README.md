@@ -51,7 +51,7 @@ The crate provides the following traits:
 [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
 [`tracing`]: https://crates.io/tracing
 
-*Compiler support: [requires `rustc` 1.40+][msrv]*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
 

@@ -10,7 +10,7 @@
 //! issues bottlenecks in an application. For more details, see Brendan Gregg's [post]
 //! on flamegraphs.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [post]: http://www.brendangregg.com/flamegraphs.html

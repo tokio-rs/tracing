@@ -15,7 +15,7 @@
 //! * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
 //!   future, sink, stream, or executor.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!

@@ -56,7 +56,7 @@ This crate provides:
 [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 
-*Compiler support: [requires `rustc` 1.40+][msrv]*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
 

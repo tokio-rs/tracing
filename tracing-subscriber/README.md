@@ -32,7 +32,7 @@ Utilities for implementing and composing [`tracing`][tracing] subscribers.
 [discord-url]: https://discord.gg/EeF3cQw
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg
 
-*Compiler support: [requires `rustc` 1.40+][msrv]*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
 
