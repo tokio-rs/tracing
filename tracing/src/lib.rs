@@ -984,7 +984,8 @@ pub mod __macro_support {
         // This only happens once (or if the cached interest value was corrupted).
         #[cold]
         pub fn register(&'static self) -> Interest {
-            self.register.call_once(|| crate::callsite::register(self));
+            self.register
+                .call_once(|| crate::callsite::register(self.registration));
             match self.interest.load(Ordering::Relaxed) {
                 0 => Interest::never(),
                 2 => Interest::always(),
@@ -1063,11 +1064,6 @@ pub mod __macro_support {
         #[inline(always)]
         fn metadata(&self) -> &Metadata<'static> {
             &self.meta
-        }
-
-        #[inline(always)]
-        fn registration(&'static self) -> &'static Registration {
-            self.registration
         }
     }
 

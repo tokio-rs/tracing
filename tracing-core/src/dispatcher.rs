@@ -788,7 +788,7 @@ mod test {
     #[cfg(feature = "std")]
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{
-        callsite::{Callsite, Registration},
+        callsite::Callsite,
         metadata::{Kind, Level, Metadata},
         subscriber::Interest,
     };
@@ -820,10 +820,6 @@ mod test {
         fn set_interest(&self, _: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
             &TEST_META
-        }
-
-        fn registration(&'static self) -> &'static Registration {
-            unimplemented!("not needed for this test")
         }
     }
 

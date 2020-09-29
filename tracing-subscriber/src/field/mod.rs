@@ -236,7 +236,6 @@ pub struct RecordFieldsMarker {
 #[macro_use]
 pub(in crate::field) mod test_util {
     use super::*;
-    use tracing::callsite::Registration;
     use tracing_core::{
         callsite::Callsite,
         field::{Field, Value},
@@ -300,7 +299,6 @@ pub(in crate::field) mod test_util {
 
     struct TestCallsite1;
     static TEST_CALLSITE_1: &'static dyn Callsite = &TestCallsite1;
-    static TEST_REGISTRATION: Registration = Registration::new(TEST_CALLSITE_1);
     static TEST_META_1: Metadata<'static> = tracing_core::metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -317,10 +315,6 @@ pub(in crate::field) mod test_util {
 
         fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_1
-        }
-
-        fn registration(&'static self) -> &'static Registration {
-            &TEST_REGISTRATION
         }
     }
 

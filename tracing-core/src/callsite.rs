@@ -45,15 +45,6 @@ pub trait Callsite: Sync {
     ///
     /// [metadata]: ../metadata/struct.Metadata.html
     fn metadata(&self) -> &Metadata<'_>;
-
-    /// Returns the callsite's [`Registration`] in the global callsite registry.
-    ///
-    /// Every type implementing `Callsite` must own a single [`Registration`] which
-    /// is constructed with a static reference to that callsite. The `Registration` is
-    /// used to store the callsite in the global list of callsites. `Registration`s must be
-    /// unique per callsite; a callsite's `Registration` method must always return the
-    /// same `Registration`.
-    fn registration(&'static self) -> &'static Registration;
 }
 
 /// Uniquely identifies a [`Callsite`]
@@ -114,10 +105,10 @@ pub fn rebuild_interest_cache() {
 ///
 /// This should be called once per callsite after the callsite has been
 /// constructed.
-pub fn register(callsite: &'static dyn Callsite) {
+pub fn register(registration: &'static Registration) {
     let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
-    rebuild_callsite_interest(&mut dispatchers, callsite);
-    REGISTRY.callsites.push(callsite);
+    rebuild_callsite_interest(&mut dispatchers, registration.callsite);
+    REGISTRY.callsites.push(registration);
 }
 
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
@@ -172,7 +163,7 @@ fn rebuild_interest(
         }
     });
 
-    callsites.for_each(|cs| rebuild_callsite_interest(dispatchers, cs));
+    callsites.for_each(|reg| rebuild_callsite_interest(dispatchers, reg.callsite));
 
     LevelFilter::set_max(max_level);
 }
@@ -240,27 +231,24 @@ impl LinkedList {
         }
     }
 
-    fn for_each(&self, mut f: impl FnMut(&'static dyn Callsite)) {
+    fn for_each(&self, mut f: impl FnMut(&'static Registration)) {
         let mut head = self.head.load(Ordering::Acquire);
 
         while let Some(reg) = unsafe { head.as_ref() } {
-            f(reg.callsite);
+            f(reg);
 
             head = reg.next.load(Ordering::Acquire);
         }
     }
 
-    fn push(&self, cs: &'static dyn Callsite) {
+    fn push(&self, registration: &'static Registration) {
         let mut head = self.head.load(Ordering::Acquire);
 
         loop {
-            let registration = cs.registration() as *const _ as *mut _;
-
-            cs.registration().next.store(head, Ordering::Release);
+            registration.next.store(head, Ordering::Release);
 
             assert_ne!(
-                cs.registration() as *const _,
-                head,
+                registration as *const _, head,
                 "Attempting to push a `Callsite` that already exists. \
                         This will cause an infinite loop when attempting to read from the \
                         callsite cache. This is likely a bug! You should only need to push a \
@@ -269,7 +257,7 @@ impl LinkedList {
 
             match self.head.compare_exchange(
                 head,
-                registration,
+                registration as *const _ as *mut _,
                 Ordering::AcqRel,
                 Ordering::Acquire,
             ) {
@@ -296,10 +284,6 @@ mod tests {
         fn metadata(&self) -> &Metadata<'_> {
             unimplemented!("not needed for this test")
         }
-
-        fn registration(&'static self) -> &'static Registration {
-            &REG1
-        }
     }
 
     struct Cs2;
@@ -311,30 +295,26 @@ mod tests {
         fn metadata(&self) -> &Metadata<'_> {
             unimplemented!("not needed for this test")
         }
-
-        fn registration(&'static self) -> &'static Registration {
-            &REG2
-        }
     }
 
     #[test]
     fn linked_list_push() {
         let linked_list = LinkedList::new();
 
-        linked_list.push(&CS1);
-        linked_list.push(&CS2);
+        linked_list.push(&REG1);
+        linked_list.push(&REG2);
 
         let mut i = 0;
 
-        linked_list.for_each(|cs| {
+        linked_list.for_each(|reg| {
             if i == 0 {
                 assert!(
-                    ptr::eq(cs.registration(), &REG2),
+                    ptr::eq(reg, &REG2),
                     "Registration pointers need to match REG2"
                 );
             } else {
                 assert!(
-                    ptr::eq(cs.registration(), &REG1),
+                    ptr::eq(reg, &REG1),
                     "Registration pointers need to match REG1"
                 );
             }
@@ -348,8 +328,9 @@ mod tests {
     fn linked_list_repeated() {
         let linked_list = LinkedList::new();
 
-        linked_list.push(&CS1);
-        linked_list.push(&CS1);
+        linked_list.push(&REG1);
+        // Pass in same reg and we should panic...
+        linked_list.push(&REG1);
 
         linked_list.for_each(|_| {});
     }
