@@ -84,9 +84,7 @@ impl MockSpan {
     }
 
     pub fn name(&self) -> Option<Cow<'static, str>> {
-        // TODO: can do better than this I think, I hope.
-        // Was: self.metadata.name.as_ref().map(String::as_ref)
-        self.metadata.name.as_ref().map(|s| s.clone().into())
+        self.metadata.name.as_ref().map(|s| Cow::Owned(s.clone()))
     }
 
     pub fn with_field<I>(self, fields: I) -> NewSpan
@@ -100,7 +98,7 @@ impl MockSpan {
         }
     }
 
-    pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata<'_>) {
+    pub(in crate::support) fn check_metadata(&self, actual: &'static tracing::Metadata<'_>) {
         self.metadata.check(actual, format_args!("span {}", self));
         assert!(actual.is_span(), "expected a span but got {:?}", actual);
     }
