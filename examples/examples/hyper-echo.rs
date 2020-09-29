@@ -64,7 +64,7 @@ async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
                         "reversed request body"
                     );
                     *response.body_mut() = Body::from(reversed);
-                    info!( body = ?(&response.body()), "response");
+                    info!(body = ?(&response.body()), "response");
                     Ok(response)
                 }
                 .instrument(span!(Level::TRACE, "response", response_kind = %"reversed"))
