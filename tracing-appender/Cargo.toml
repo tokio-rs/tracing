@@ -1,6 +1,6 @@
 [package]
 name = "tracing-appender"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
     "Zeki Sherif <zekshi@amazon.com>",
     "Tokio Contributors <team@tokio.rs>"
@@ -25,10 +25,10 @@ chrono = "0.4.11"
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
-version = "0.2.7"
+version = "0.3"
 default-features = false
 features = ["fmt"]
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1" }
+tracing = { path = "../tracing", version = "0.2" }
 tempdir = "0.3"
