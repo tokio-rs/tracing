@@ -19,4 +19,4 @@ members = [
 ]
 
 [patch.crates-io]
-opentelemetry = { path = "../opentelemetry-rust" }
+opentelemetry = { git = "https://github.com/dvdplm/opentelemetry-rust", branch = "dp-use-cow" }
