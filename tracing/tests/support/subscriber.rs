@@ -37,7 +37,6 @@ enum Expect {
 
 struct SpanState {
     name: Cow<'static, str>,
-    // name: &'static str,
     refs: usize,
 }
 
@@ -458,8 +457,6 @@ where
 
     fn clone_span(&self, id: &Id) -> Id {
         let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
-            // let name = span.name.into_owned();
-            // let name = Cow::Owned(span.name.into_owned());
             let name = span.name.to_string();
             println!(
                 "[{}] clone_span: {}; id={:?}; refs={:?};",
