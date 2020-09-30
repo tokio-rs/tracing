@@ -155,9 +155,8 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the name of the span.
-    pub fn name(&self) -> Cow<'static, str> {
-        // TODO: do better than this.
-        self.name.clone()
+    pub fn name(&'a self) -> Cow<'a, str> {
+        self.name.as_ref().into()
     }
 
     /// Returns a string describing the part of the system where the span or

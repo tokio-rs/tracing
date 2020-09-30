@@ -43,9 +43,9 @@ use tracing_core::{
 ///
 /// [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 /// [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
-pub struct TraceLogger {
+pub struct TraceLogger<'a> {
     settings: Builder,
-    spans: Mutex<HashMap<Id, SpanLineBuilder>>,
+    spans: Mutex<HashMap<Id, SpanLineBuilder<'a>>>,
     next_id: AtomicUsize,
 }
 
@@ -67,7 +67,7 @@ pub struct Builder {
 
 // ===== impl TraceLogger =====
 
-impl TraceLogger {
+impl TraceLogger<'static> {
     /// Returns a new `TraceLogger` with the default configuration.
     pub fn new() -> Self {
         Self::builder().finish()
@@ -153,7 +153,7 @@ impl Builder {
     /// Complete the builder, returning a configured [`TraceLogger`].
     ///
     /// [`TraceLogger`]: struct.TraceLogger.html
-    pub fn finish(self) -> TraceLogger {
+    pub fn finish(self) -> TraceLogger<'static> {
         TraceLogger::from_builder(self)
     }
 }
@@ -171,7 +171,7 @@ impl Default for Builder {
     }
 }
 
-impl Default for TraceLogger {
+impl Default for TraceLogger<'_> {
     fn default() -> Self {
         TraceLogger {
             settings: Default::default(),
@@ -182,7 +182,7 @@ impl Default for TraceLogger {
 }
 
 #[derive(Debug)]
-struct SpanLineBuilder {
+struct SpanLineBuilder<'a> {
     parent: Option<Id>,
     ref_count: usize,
     fields: String,
@@ -191,11 +191,11 @@ struct SpanLineBuilder {
     module_path: Option<String>,
     target: String,
     level: log::Level,
-    name: Cow<'static, str>,
+    name: Cow<'a, str>,
 }
 
-impl SpanLineBuilder {
-    fn new(parent: Option<Id>, meta: &Metadata<'_>, fields: String) -> Self {
+impl<'a> SpanLineBuilder<'a> {
+    fn new(parent: Option<Id>, meta: &'a Metadata<'_>, fields: String) -> Self {
         Self {
             parent,
             ref_count: 1,
@@ -234,14 +234,14 @@ impl SpanLineBuilder {
     }
 }
 
-impl field::Visit for SpanLineBuilder {
+impl field::Visit for SpanLineBuilder<'_> {
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         write!(self.fields, " {}={:?};", field.name(), value)
             .expect("write to string should never fail")
     }
 }
 
-impl Subscriber for TraceLogger {
+impl Subscriber for TraceLogger<'static> {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         log::logger().enabled(&metadata.as_log())
     }
@@ -425,7 +425,7 @@ impl Subscriber for TraceLogger {
     }
 }
 
-impl TraceLogger {
+impl TraceLogger<'static> {
     #[inline]
     fn current_id(&self) -> Option<Id> {
         CURRENT
@@ -456,7 +456,7 @@ impl<'a> fmt::Display for LogEvent<'a> {
     }
 }
 
-impl fmt::Debug for TraceLogger {
+impl fmt::Debug for TraceLogger<'static> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TraceLogger")
             .field("settings", &self.settings)
