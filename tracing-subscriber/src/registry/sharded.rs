@@ -555,19 +555,17 @@ mod tests {
         }
 
         #[allow(unused)] // may want this for future tests
-        // TODO: take an `Option<Cow<'a, str>>` instead?
-        fn assert_last_closed(&self, span: Option<&str>) {
+        fn assert_last_closed(&self, span: Option<Cow<'static, str>>) {
             let lock = self.state.lock().unwrap();
-            let last = lock.closed.last().map(|(span, _)| span.as_ref());
+            let last = lock.closed.last().map(|(span, _)| span);
             assert_eq!(
                 last,
-                span,
+                span.as_ref(),
                 "expected {:?} to have closed last",
-                span
+                span.as_ref()
             );
         }
 
-        // TODO: take an `AsRef[Cow<'a, str>]` instead?
         fn assert_closed_in_order(&self, order: impl AsRef<[&'static str]>) {
             let lock = self.state.lock().unwrap();
             let order = order.as_ref();
