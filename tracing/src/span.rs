@@ -380,7 +380,7 @@ pub(crate) struct Inner {
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
     span: &'a Span,
-    _not_send: PhantomData<crate::stdlib::sync::MutexGuard<'static, ()>>,
+    _not_send: PhantomData<*mut ()>,
 }
 
 /// `log` target for all span lifecycle (creation/enter/exit/close) records.
@@ -1235,6 +1235,24 @@ impl Clone for Inner {
 
 // ===== impl Entered =====
 
+/// # Safety
+///
+/// Technically, `Entered` _can_ implement both `Send` *and* `Sync` safely. It
+/// doesn't, because it has a `PhantomData<*mut ()>` field, specifically added
+/// in order to make it `!Send`.
+///
+/// Sending an `Entered` guard between threads cannot cause memory unsafety.
+/// However, it *would* result in incorrect behavior, so we add a
+/// `PhantomData<*mut ()>` to prevent it from being sent between threads. This
+/// is because it must be *dropped* on the same thread that it was created;
+/// otherwise, the span will never be exited on the thread where it was entered,
+/// and it will attempt to exit the span on a thread that may never have entered
+/// it. However, we still want them to be `Sync` so that a struct holding an
+/// `Entered` guard can be `Sync`.
+///
+/// Thus, this is totally safe.
+unsafe impl<'a> Sync for Entered<'a> {}
+
 impl<'a> Drop for Entered<'a> {
     #[inline]
     fn drop(&mut self) {
@@ -1295,5 +1313,4 @@ mod test {
 
     trait AssertSync: Sync {}
     impl AssertSync for Span {}
-    impl<'a> AssertSync for Entered<'a> {}
 }
