@@ -1145,12 +1145,6 @@ impl<'a> Into<Option<Id>> for &'a Span {
     }
 }
 
-impl Into<Option<Id>> for Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
-    }
-}
-
 impl Drop for Span {
     fn drop(&mut self) {
         if let Some(Inner {
