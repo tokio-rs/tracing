@@ -528,30 +528,21 @@ impl Interest {
     /// about this callsite.
     #[inline]
     pub fn is_never(&self) -> bool {
-        match self.0 {
-            InterestKind::Never => true,
-            _ => false,
-        }
+        matches!(self.0, InterestKind::Never)
     }
 
     /// Returns `true` if the subscriber is sometimes interested in being notified
     /// about this callsite.
     #[inline]
     pub fn is_sometimes(&self) -> bool {
-        match self.0 {
-            InterestKind::Sometimes => true,
-            _ => false,
-        }
+        matches!(self.0, InterestKind::Sometimes)
     }
 
     /// Returns `true` if the subscriber is always interested in being notified
     /// about this callsite.
     #[inline]
     pub fn is_always(&self) -> bool {
-        match self.0 {
-            InterestKind::Always => true,
-            _ => false,
-        }
+        matches!(self.0, InterestKind::Always)
     }
 
     /// Returns the common interest between these two Interests.

@@ -153,10 +153,7 @@ impl<'a> Attributes<'a> {
 
     /// Returns true if the new span should be a root.
     pub fn is_root(&self) -> bool {
-        match self.parent {
-            Parent::Root => true,
-            _ => false,
-        }
+        matches!(self.parent, Parent::Root)
     }
 
     /// Returns true if the new span's parent should be determined based on the
@@ -167,10 +164,7 @@ impl<'a> Attributes<'a> {
     /// thread is _not_ inside a span, then the new span will be the root of its
     /// own trace tree.
     pub fn is_contextual(&self) -> bool {
-        match self.parent {
-            Parent::Current => true,
-            _ => false,
-        }
+        matches!(self.parent, Parent::Current)
     }
 
     /// Returns the new span's explicitly-specified parent, if there is one.
@@ -270,10 +264,7 @@ impl Current {
     /// [`metadata`]: #method.metadata
     /// [`into_inner`]: #method.into_inner
     pub fn is_known(&self) -> bool {
-        match self.inner {
-            CurrentInner::Unknown => false,
-            _ => true,
-        }
+        !matches!(self.inner, CurrentInner::Unknown)
     }
 
     /// Consumes `self` and returns the span `Id` and `Metadata` of the current
