@@ -61,7 +61,7 @@ use crate::stdlib::{
 /// [callsite identifier]: ../callsite/struct.Identifier.html
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
-    name: Cow<'static, str>,
+    name: Cow<'a, str>,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
@@ -156,7 +156,7 @@ impl<'a> Metadata<'a> {
 
     /// Returns the name of the span.
     pub fn name(&'a self) -> Cow<'a, str> {
-        self.name.as_ref().into()
+        Cow::Borrowed(&self.name)
     }
 
     /// Returns a string describing the part of the system where the span or
