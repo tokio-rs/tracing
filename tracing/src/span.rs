@@ -318,6 +318,7 @@ pub use tracing_core::span::{Attributes, Id, Record};
 use crate::stdlib::{
     cmp, fmt,
     hash::{Hash, Hasher},
+    marker::PhantomData,
 };
 use crate::{
     dispatcher::{self, Dispatch},
@@ -379,6 +380,7 @@ pub(crate) struct Inner {
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
     span: &'a Span,
+    _not_send: PhantomData<*mut ()>,
 }
 
 /// `log` target for all span lifecycle (creation/enter/exit/close) records.
@@ -562,7 +564,17 @@ impl Span {
     /// will call [`Subscriber::exit`]. If the span is disabled, this does
     /// nothing.
     ///
-    /// # In Asynchronous Code
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: The returned
+    /// <a href="../struct.Entered.html"><code>Entered</code></a> guard does not
+    /// implement <code>Send</code>. Dropping the guard will exit <em>this</em> span,
+    /// and if the guard is sent to another thread and dropped there, that thread may
+    /// never have entered this span. Thus, <code>Entered</code> should not be sent
+    /// between threads.</pre></div>
     ///
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
     /// `Span::enter` should be used very carefully or avoided entirely. Holding
@@ -755,7 +767,10 @@ impl Span {
             }
         }}
 
-        Entered { span: self }
+        Entered {
+            span: self,
+            _not_send: PhantomData,
+        }
     }
 
     /// Executes the given function in the context of this span.
@@ -1219,6 +1234,24 @@ impl Clone for Inner {
 }
 
 // ===== impl Entered =====
+
+/// # Safety
+///
+/// Technically, `Entered` _can_ implement both `Send` *and* `Sync` safely. It
+/// doesn't, because it has a `PhantomData<*mut ()>` field, specifically added
+/// in order to make it `!Send`.
+///
+/// Sending an `Entered` guard between threads cannot cause memory unsafety.
+/// However, it *would* result in incorrect behavior, so we add a
+/// `PhantomData<*mut ()>` to prevent it from being sent between threads. This
+/// is because it must be *dropped* on the same thread that it was created;
+/// otherwise, the span will never be exited on the thread where it was entered,
+/// and it will attempt to exit the span on a thread that may never have entered
+/// it. However, we still want them to be `Sync` so that a struct holding an
+/// `Entered` guard can be `Sync`.
+///
+/// Thus, this is totally safe.
+unsafe impl<'a> Sync for Entered<'a> {}
 
 impl<'a> Drop for Entered<'a> {
     #[inline]
