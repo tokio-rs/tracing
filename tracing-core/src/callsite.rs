@@ -251,10 +251,10 @@ impl LinkedList {
 
             assert_ne!(
                 registration as *const _, head,
-                "Attempting to push a `Callsite` that already exists. \
+                "Attempted to register a `Callsite` that already exists! \
                 This will cause an infinite loop when attempting to read from the \
-                callsite cache. This is likely a bug! You should only need to push a \
-                `Callsite` once."
+                callsite cache. This is likely a bug! You should only need to call \
+                `tracing-core::callsite::register` once per `Callsite`."
             );
 
             match self.head.compare_exchange(
