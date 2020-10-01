@@ -6,7 +6,7 @@ use tracing::{
 };
 
 use std::{
-    any::{Any, TypeId},
+    any::{self, Any, TypeId},
     collections::HashMap,
     fmt,
 };
@@ -26,7 +26,12 @@ pub struct MockField {
 #[derive(Debug, Eq, PartialEq)]
 pub struct MockValue {
     value: MockValueKind,
-    downcasts_to: Option<TypeId>,
+    downcasts_to: Option<Downcasts>,
+}
+
+struct Downcasts {
+    check: Box<dyn for<'a> Fn(&'a Value<'a>) -> bool + Send + Sync>,
+    name: &'static str,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -103,18 +108,23 @@ impl Expect {
 
     pub(crate) fn compare_or_panic(&mut self, name: &str, value: &Value<'_>, ctx: &str) {
         match self.fields.remove(name) {
-            Some(mock) => match &mock.value {
-                MockValueKind::Any => {}
-                expected => assert!(
-                    expected == value,
-                    "\nexpected {} to contain:\n\t`{}{}`\nbut got:\n\t`{}{}`",
-                    ctx,
-                    name,
-                    mock,
-                    name,
-                    value
-                ),
-            },
+            Some(mock) => {
+                match &mock.value {
+                    MockValueKind::Any => {}
+                    expected => assert!(
+                        expected == value,
+                        "\nexpected {} to contain:\n\t`{}{}`\nbut got:\n\t`{}{}`",
+                        ctx,
+                        name,
+                        mock,
+                        name,
+                        value
+                    ),
+                };
+                if let Some(downcasts) = mock.downcasts_to {
+                    downcasts.check(value, ctx)
+                }
+            }
             None if self.only => panic!(
                 "\nexpected {} to contain only:\n\t`{}`\nbut got:\n\t`{}{}`",
                 ctx, self, name, value
@@ -173,7 +183,7 @@ impl From<i64> for MockValue {
     fn from(v: i64) -> Self {
         Self {
             value: MockValueKind::I64(v),
-            downcasts_to: Some(TypeId::of::<i64>()),
+            downcasts_to: Some(Downcasts::to::<i64>()),
         }
     }
 }
@@ -182,7 +192,7 @@ impl From<i32> for MockValue {
     fn from(v: i32) -> Self {
         Self {
             value: MockValueKind::I64(v as i64),
-            downcasts_to: Some(TypeId::of::<i64>()),
+            downcasts_to: Some(Downcasts::to::<i64>()),
         }
     }
 }
@@ -191,7 +201,7 @@ impl From<u64> for MockValue {
     fn from(v: u64) -> Self {
         Self {
             value: MockValueKind::U64(v),
-            downcasts_to: Some(TypeId::of::<u64>()),
+            downcasts_to: Some(Downcasts::to::<u64>()),
         }
     }
 }
@@ -200,7 +210,7 @@ impl From<usize> for MockValue {
     fn from(v: usize) -> Self {
         Self {
             value: MockValueKind::U64(v as u64),
-            downcasts_to: Some(TypeId::of::<u64>()),
+            downcasts_to: Some(Downcasts::to::<u64>()),
         }
     }
 }
@@ -209,7 +219,7 @@ impl From<bool> for MockValue {
     fn from(v: bool) -> Self {
         Self {
             value: MockValueKind::Bool(v),
-            downcasts_to: Some(TypeId::of::<bool>()),
+            downcasts_to: Some(Downcasts::to::<bool>()),
         }
     }
 }
@@ -342,3 +352,38 @@ impl fmt::Display for Expect {
         f.debug_map().entries(entries).finish()
     }
 }
+
+impl Downcasts {
+    fn to<T: Any>() -> Self {
+        Self {
+            check: Box::new(|value| value.downcast_ref::<T>().is_some()),
+            name: any::type_name::<T>(),
+        }
+    }
+
+    fn check(&self, value: &Value<'_>, ctx: &str) {
+        assert!(
+            (self.check)(value),
+            "expected {} to downcast to {}, but got {:?}",
+            ctx,
+            self.name,
+            value,
+        )
+    }
+}
+
+impl fmt::Debug for Downcasts {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Downcasts")
+            .field("to", &format_args!("{}", self.name))
+            .finish()
+    }
+}
+
+impl PartialEq for Downcasts {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for Downcasts {}
