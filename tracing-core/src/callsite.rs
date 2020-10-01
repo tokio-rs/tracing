@@ -28,25 +28,34 @@ impl Registry {
     fn rebuild_callsite_interest(&self, callsite: &'static dyn Callsite) {
         let meta = callsite.metadata();
 
-        let mut interest = Interest::never();
+        // Iterate over the subscribers in the registry, and — if they are
+        // active — register the callsite with them.
+        let mut interests = self
+            .dispatchers
+            .iter()
+            .filter_map(|registrar| registrar.try_register(meta));
 
-        for registrar in &self.dispatchers {
-            if let Some(sub_interest) = registrar.try_register(meta) {
-                interest = interest.and(sub_interest);
-            }
-        }
+        // Use the first subscriber's `Interest` as the base value.
+        let interest = if let Some(interest) = interests.next() {
+            // Combine all remaining `Interest`s.
+            interests.fold(interest, Interest::and)
+        } else {
+            // If nobody was interested in this thing, just return `never`.
+            Interest::never()
+        };
 
         callsite.set_interest(interest)
     }
 
     fn rebuild_interest(&mut self) {
-        let mut max_level = LevelFilter::TRACE;
+        let mut max_level = LevelFilter::OFF;
         self.dispatchers.retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
-                if let Some(level) = dispatch.max_level_hint() {
-                    if level > max_level {
-                        max_level = level;
-                    }
+                // If the subscriber did not provide a max level hint, assume
+                // that it may enable every level.
+                let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
+                if level_hint > max_level {
+                    max_level = level_hint;
                 }
                 true
             } else {
@@ -63,7 +72,7 @@ impl Registry {
 
 /// Trait implemented by callsites.
 ///
-/// These functions are only intended to be called by the [`Registry`] which
+/// These functions are only intended to be called by the callsite registry, which
 /// correctly handles determining the common interest between all subscribers.
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
@@ -105,11 +114,12 @@ pub struct Identifier(
 /// [`enabled`] is evaluated for every event.
 ///
 /// This function will also re-compute the global maximum level as determined by
-/// the [`Subscriber::max_level_hint`] method. If a [`Subscriber`]
+/// the [`max_level_hint`] method. If a [`Subscriber`]
 /// implementation changes the value returned by its `max_level_hint`
 /// implementation at runtime, then it **must** call this function after that
 /// value changes, in order for the change to be reflected.
 ///
+/// [`max_level_hint`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
 /// [`Callsite`]: ../callsite/trait.Callsite.html
 /// [`enabled`]: ../subscriber/trait.Subscriber.html#tymethod.enabled
 /// [`Interest::sometimes()`]: ../subscriber/struct.Interest.html#method.sometimes

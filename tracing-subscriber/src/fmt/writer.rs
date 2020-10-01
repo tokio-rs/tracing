@@ -2,7 +2,8 @@
 //!
 //! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 
-use std::io;
+use io::Write;
+use std::{fmt::Debug, io};
 
 /// A type that can create [`io::Write`] instances.
 ///
@@ -51,6 +52,129 @@ where
 
     fn make_writer(&self) -> Self::Writer {
         (self)()
+    }
+}
+
+/// A writer intended to support [`libtest`'s output capturing][capturing] for use in unit tests.
+///
+/// `TestWriter` is used by [`fmt::Subscriber`] or [`fmt::Layer`] to enable capturing support.
+///
+/// `cargo test` can only capture output from the standard library's [`print!`] macro. See
+/// [`libtest`'s output capturing][capturing] for more details about output capturing.
+///
+/// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
+/// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
+///
+/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Layer`]: ../struct.Layer.html
+/// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+/// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
+/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
+/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
+/// [`print!`]: https://doc.rust-lang.org/std/macro.print.html
+#[derive(Default, Debug)]
+pub struct TestWriter {
+    _p: (),
+}
+
+impl TestWriter {
+    /// Returns a new `TestWriter` with the default configuration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl io::Write for TestWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let out_str = String::from_utf8_lossy(buf);
+        print!("{}", out_str);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl MakeWriter for TestWriter {
+    type Writer = Self;
+
+    fn make_writer(&self) -> Self::Writer {
+        Self::default()
+    }
+}
+
+/// A writer that erases the specific [`io::Write`] and [`Makewriter`] types being used.
+///
+/// This is useful in cases where the concrete type of the writer cannot be known
+/// until runtime.
+///
+/// # Examples
+///
+/// A function that returns a [`Subscriber`] that will write to either stdout or stderr:
+///
+/// ```rust
+/// # use tracing::Subscriber;
+/// # use tracing_subscriber::fmt::writer::BoxMakeWriter;
+///
+/// fn dynamic_writer(use_stderr: bool) -> impl Subscriber {
+///     let writer = if use_stderr {
+///         BoxMakeWriter::new(std::io::stderr)
+///     } else {
+///         BoxMakeWriter::new(std::io::stdout)
+///     };
+///
+///     tracing_subscriber::fmt().with_writer(writer).finish()
+/// }
+/// ```
+///
+/// [`MakeWriter`]: trait.MakeWriter.html
+/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+pub struct BoxMakeWriter {
+    inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,
+}
+
+impl BoxMakeWriter {
+    /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
+    ///
+    /// [`MakeWriter`]: trait.MakeWriter.html
+    pub fn new<M>(make_writer: M) -> Self
+    where
+        M: MakeWriter + Send + Sync + 'static,
+        M::Writer: Write + 'static,
+    {
+        Self {
+            inner: Box::new(Boxed(make_writer)),
+        }
+    }
+}
+
+impl Debug for BoxMakeWriter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.pad("BoxMakeWriter { ... }")
+    }
+}
+
+impl MakeWriter for BoxMakeWriter {
+    type Writer = Box<dyn Write>;
+
+    fn make_writer(&self) -> Self::Writer {
+        self.inner.make_writer()
+    }
+}
+
+struct Boxed<M>(M);
+
+impl<M> MakeWriter for Boxed<M>
+where
+    M: MakeWriter,
+    M::Writer: Write + 'static,
+{
+    type Writer = Box<dyn Write>;
+
+    fn make_writer(&self) -> Self::Writer {
+        Box::new(self.0.make_writer())
     }
 }
 

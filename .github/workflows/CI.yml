@@ -12,13 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, 1.39.0]
+        rust: [stable, 1.42.0]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
+        override: true
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -66,11 +67,12 @@ jobs:
         #- tracing
         #- tracing-subscriber
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: Fetch latest release version of cargo-hack
       run: |
         mkdir -p .github/caching
@@ -102,11 +104,12 @@ jobs:
         - std log-always
         - std
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: cargo check
       working-directory: tracing
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -126,11 +129,12 @@ jobs:
         - registry
         - env-filter
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: cargo check
       working-directory: tracing-subscriber
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -141,18 +145,70 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.39.0]
+        rust: [stable, beta, nightly, 1.42.0]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
+        override: true
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --all
+
+  test-build-wasm:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # TODO(securityinsanity): slowly add wasm32 test runner to each crate, and move to seperate actions that run tests.
+        subcrate:
+        - tracing-appender
+        - tracing-attributes
+        - tracing-core
+        - tracing-error
+        - tracing-flame
+        - tracing-journald
+        - tracing-log
+        - tracing-macros
+        - tracing-opentelemetry
+        - tracing-serde
+        - tracing-subscriber
+        - tracing-tower
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        target: wasm32-unknown-unknown
+        toolchain: stable
+        override: true
+    - name: build all tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --no-run -p ${{ matrix.subcrate }}
+
+  test-wasm:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        subcrate:
+        - tracing
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        target: wasm32-unknown-unknown
+        toolchain: stable
+        override: true
+    - name: install test runner for wasm
+      run:  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: run wasm tests
+      run: cd ${{ matrix.subcrate }} && wasm-pack test --node
 
   test-os:
     # Test against stable Rust across macOS, Windows, and Linux.
@@ -162,11 +218,12 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -178,11 +235,12 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
+        override: true
     - name: "Test log support"
       run: (cd tracing/test-log-support && cargo test)
     - name: "Test static max level"
@@ -196,12 +254,13 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         components: rustfmt
         profile: minimal
+        override: true
     - name: rustfmt
       uses: actions-rs/cargo@v1
       with:
@@ -212,7 +271,7 @@ jobs:
     # Check for any warnings. This is informational and thus is allowed to fail.
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -227,7 +286,7 @@ jobs:
   cargo-audit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - name: Fetch latest release version of cargo-audit
       run: |
         mkdir -p .github/caching

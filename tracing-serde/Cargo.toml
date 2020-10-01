@@ -1,6 +1,6 @@
 [package]
 name = "tracing-serde"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
 edition = "2018"
@@ -23,7 +23,10 @@ std = ["serde/std", "tracing-core/std"]
 
 [dependencies]
 serde = { version = "1", default-features = false, features = ["alloc"] }
-tracing-core = { path = "../tracing-core", version = "0.1.2", default-features = false }
+tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
+
+[dev-dependencies]
+serde_json = "1"
 
 [badges]
 maintenance = { status = "experimental" }

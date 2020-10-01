@@ -9,6 +9,10 @@
 //! [OpenTelemetry]: https://opentelemetry.io
 //! [`tracing`]: https://github.com/tokio-rs/tracing
 //!
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//!
+//! [msrv]: #supported-rust-versions
+//!
 //! ### Special Fields
 //!
 //! Fields with an `otel.` prefix are reserved for this crate and have specific
@@ -42,7 +46,7 @@
 //! may still occur on the path to 1.0. You can follow the changes via the
 //! [spec repository] to track progress toward stabilization.
 //!
-//! [spec repository]: (https://github.com/open-telemetry/opentelemetry-specification)
+//! [spec repository]: https://github.com/open-telemetry/opentelemetry-specification
 //!
 //! ## Examples
 //!
@@ -69,18 +73,37 @@
 //!     error!("This event will be logged in the root span.");
 //! });
 //! ```
+//!
+//! ## Supported Rust Versions
+//!
+//! Tracing is built against the latest stable release. The minimum supported
+//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! Rust versions earlier than the minimum supported version.
+//!
+//! Tracing follows the same compiler support policies as the rest of the Tokio
+//! project. The current stable Rust compiler and the three most recent minor
+//! versions before it will always be supported. For example, if the current
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! supported compiler version is not considered a semver breaking change as
+//! long as doing so complies with this policy.
+//!
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.6.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.7.0")]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 
 /// Implementation of the trace::Layer as a source of OpenTelemetry data.
 mod layer;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;
+/// Protocols for OpenTelemetry Tracers that are compatible with Tracing
+mod tracer;
 
 pub use layer::{layer, OpenTelemetryLayer};
 pub use span_ext::OpenTelemetrySpanExt;
+pub use tracer::PreSampledTracer;

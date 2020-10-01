@@ -1,3 +1,48 @@
+# 0.1.17 (September 28, 2020)
+
+### Fixed
+
+- Incorrect inlining of `Event::dispatch` and `Event::child_of`, which could
+  result in `dispatcher::get_default` being inlined at the callsite ([#994])
+
+### Added
+
+- `Copy` implementations for `Level` and `LevelFilter` ([#992])
+
+Thanks to new contributors @jyn514 and @TaKO8Ki for contributing to this 
+release!
+
+[#994]: https://github.com/tokio-rs/tracing/pull/994
+[#992]: https://github.com/tokio-rs/tracing/pull/992
+
+# 0.1.16 (September 8, 2020)
+
+### Fixed
+
+- Added a conversion from `Option<Level>` to `LevelFilter`. This resolves a
+  previously unreported regression where `Option<Level>` was no longer
+  a valid LevelFilter. ([#966](https://github.com/tokio-rs/tracing/pull/966))
+
+# 0.1.15 (August 22, 2020)
+
+### Fixed
+
+- When combining `Interest` from multiple subscribers, if the interests differ,
+  the current subscriber is now always asked if a callsite should be enabled
+  (#927)
+
+## Added
+
+- Internal API changes to support optimizations in the `tracing` crate (#943)
+- **docs**: Multiple fixes and improvements (#913, #941)
+
+# 0.1.14 (August 10, 2020)
+
+### Fixed
+
+- Incorrect calculation of global max level filter which could result in fast
+  filtering paths not being taken (#908)
+  
 # 0.1.13 (August 4, 2020)
 
 ### Fixed

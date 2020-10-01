@@ -1,3 +1,53 @@
+# 0.2.12 (September 11, 2020)
+
+### Fixed
+
+- **env-filter**: Fixed a regression where `Option<Level>` lost its
+  `Into<LevelFilter>` impl ([#966])
+- **env-filter**: Fixed `EnvFilter` enabling spans that should not be enabled
+  when multiple subscribers are in use ([#927])
+  
+### Changed
+
+- **json**: `format::Json` now outputs fields in a more readable order ([#892])
+- Updated `tracing-core` dependency to 0.1.16
+
+### Added
+
+- **fmt**: Add `BoxMakeWriter` for erasing the type of a `MakeWriter`
+  implementation ([#958])
+- **fmt**: Add `TestWriter` `MakeWriter` implementation to support libtest
+  output capturing ([#938])
+- **layer**: Add `Layer` impl for `Option<T> where T: Layer` ([#910])
+- **env-filter**: Add `From<Level>` impl for `Directive` ([#918])
+- Multiple documentation fixes and improvements
+
+Thanks to @Pothulapati, @samrg472, @bryanburgers, @keetonian, and @SriRamanujam
+for contributing to this release!
+
+[#927]: https://github.com/tokio-rs/tracing/pull/927
+[#966]: https://github.com/tokio-rs/tracing/pull/966
+[#958]: https://github.com/tokio-rs/tracing/pull/958
+[#892]: https://github.com/tokio-rs/tracing/pull/892
+[#938]: https://github.com/tokio-rs/tracing/pull/938
+[#910]: https://github.com/tokio-rs/tracing/pull/910
+[#918]: https://github.com/tokio-rs/tracing/pull/918
+
+# 0.2.12 (August 10, 2020)
+
+### Fixed
+
+- **env-filter**: Incorrect max level hint when filters involving span field
+  values are in use (#907)
+- **registry**: Fixed inconsistent span stacks when multiple registries are in
+  use on the same thread (#901)
+
+### Changed
+
+- **env-filter**: `regex` dependency enables fewer unused feature flags (#899)
+
+Thanks to @bdonlan and @jeromegn for contributing to this release!
+
 # 0.2.10 (July 31, 2020)
 
 ### Fixed

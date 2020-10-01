@@ -3,7 +3,7 @@ use super::{field, FieldMap, FilterVec};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
-use tracing_core::{span, Metadata};
+use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
 // TODO(eliza): add a builder for programmatically constructing directives?
@@ -85,7 +85,7 @@ impl Directive {
         Some(StaticDirective {
             target: self.target.clone(),
             field_names,
-            level: self.level.clone(),
+            level: self.level,
         })
     }
 
@@ -119,7 +119,7 @@ impl Directive {
             .ok()?;
         Some(field::CallsiteMatch {
             fields,
-            level: self.level.clone(),
+            level: self.level,
         })
     }
 
@@ -275,6 +275,12 @@ impl Default for Directive {
 
 impl PartialOrd for Directive {
     fn partial_cmp(&self, other: &Directive) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Directive {
+    fn cmp(&self, other: &Directive) -> Ordering {
         // We attempt to order directives by how "specific" they are. This
         // ensures that we try the most specific directives first when
         // attempting to match a piece of metadata.
@@ -321,14 +327,7 @@ impl PartialOrd for Directive {
             }
         }
 
-        Some(ordering)
-    }
-}
-
-impl Ord for Directive {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("Directive::partial_cmp should define a total order")
+        ordering
     }
 }
 
@@ -377,6 +376,12 @@ impl From<LevelFilter> for Directive {
     }
 }
 
+impl From<Level> for Directive {
+    fn from(level: Level) -> Self {
+        LevelFilter::from_level(level).into()
+    }
+}
+
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
@@ -411,9 +416,9 @@ impl<T: Match + Ord> DirectiveSet<T> {
     pub(crate) fn add(&mut self, directive: T) {
         // does this directive enable a more verbose level than the current
         // max? if so, update the max level.
-        let level = directive.level();
-        if *level > self.max_level {
-            self.max_level = level.clone();
+        let level = *directive.level();
+        if level > self.max_level {
+            self.max_level = level;
         }
         // insert the directive into the vec of directives, ordered by
         // specificity (length of target + number of field filters). this
@@ -454,8 +459,8 @@ impl Dynamics {
                     return Some(f);
                 }
                 match base_level {
-                    Some(ref b) if d.level > *b => base_level = Some(d.level.clone()),
-                    None => base_level = Some(d.level.clone()),
+                    Some(ref b) if d.level > *b => base_level = Some(d.level),
+                    None => base_level = Some(d.level),
                     _ => {}
                 }
                 None
@@ -476,6 +481,12 @@ impl Dynamics {
             None
         }
     }
+
+    pub(crate) fn has_value_filters(&self) -> bool {
+        self.directives
+            .iter()
+            .any(|d| d.fields.iter().any(|f| f.value.is_some()))
+    }
 }
 
 // === impl Statics ===
@@ -490,8 +501,8 @@ impl Statics {
     }
 }
 
-impl PartialOrd for StaticDirective {
-    fn partial_cmp(&self, other: &StaticDirective) -> Option<Ordering> {
+impl Ord for StaticDirective {
+    fn cmp(&self, other: &StaticDirective) -> Ordering {
         // We attempt to order directives by how "specific" they are. This
         // ensures that we try the most specific directives first when
         // attempting to match a piece of metadata.
@@ -530,14 +541,13 @@ impl PartialOrd for StaticDirective {
             }
         }
 
-        Some(ordering)
+        ordering
     }
 }
 
-impl Ord for StaticDirective {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("StaticDirective::partial_cmp should define a total order")
+impl PartialOrd for StaticDirective {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -678,7 +688,7 @@ impl CallsiteMatcher {
             .collect();
         SpanMatcher {
             field_matches,
-            base_level: self.base_level.clone(),
+            base_level: self.base_level,
         }
     }
 }
@@ -690,7 +700,7 @@ impl SpanMatcher {
             .iter()
             .filter_map(field::SpanMatch::filter)
             .max()
-            .unwrap_or_else(|| self.base_level.clone())
+            .unwrap_or(self.base_level)
     }
 
     pub(crate) fn record_update(&self, record: &span::Record<'_>) {

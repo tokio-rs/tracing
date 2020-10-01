@@ -1,4 +1,6 @@
-![Tracing — Structured, application-level diagnostics](assets/splash.svg)
+![Tracing — Structured, application-level diagnostics][splash]
+
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
@@ -57,7 +59,7 @@ use tracing_subscriber;
 
 fn main() {
     // install global subscriber configured based on RUST_LOG envvar.
-    tracing_subscriber::init();
+    tracing_subscriber::fmt::init();
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.
@@ -228,7 +230,7 @@ For more details, see [the documentation on closing spans][closing].
 This problem can be solved using the [`Future::instrument`] combinator:
 
 ```rust
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 let my_future = async {
     // ...
@@ -246,11 +248,24 @@ Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[tracing-futures-docs]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
-[`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[instrument]: https://docs.rs/tracing/0.1.13/tracing/attr.instrument.html
+[`tracing-futures`]: https://docs.rs/tracing-futures
+[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
+[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## Getting Help
 
@@ -378,6 +393,12 @@ are not maintained by the `tokio` project. These include:
   _inside_ of functions.
 - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
+- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+  environment variables with an `env_logger` compatible syntax.
+- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
+- [`diesel-tracing`] provides integration with [`diesel`] database connections.
+- [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
+  applications.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -398,7 +419,13 @@ please let us know!)
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
 [`tracing-wasm`]: https://docs.rs/tracing-wasm
+[`test-env-log`]: https://crates.io/crates/test-env-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
+[`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+[`diesel`]: https://crates.io/crates/diesel
+[`diesel-tracing`]: https://crates.io/crates/diesel-tracing
+[`tracing-tracy`]: https://crates.io/crates/tracing-tracy
+[Tracy]: https://github.com/wolfpld/tracy
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

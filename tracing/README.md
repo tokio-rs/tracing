@@ -1,3 +1,7 @@
+![Tracing — Structured, application-level diagnostics][splash]
+
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+
 # tracing
 
 Application-level tracing for Rust.
@@ -12,9 +16,9 @@ Application-level tracing for Rust.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.18
+[crates-url]: https://crates.io/crates/tracing/0.1.21
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.18
+[docs-url]: https://docs.rs/tracing/0.1.21
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -23,7 +27,6 @@ Application-level tracing for Rust.
 [actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discord.gg/EeF3cQw
-
 
 ## Overview
 
@@ -44,7 +47,9 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: requires `rustc` 1.39+*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
+
+[msrv]: #supported-rust-versions
 
 ## Usage
 
@@ -223,10 +228,10 @@ it is polled, leading to very confusing and incorrect output.
 For more details, see [the documentation on closing spans](https://tracing.rs/tracing/span/index.html#closing-spans).
 
 There are two ways to instrument asynchronous code. The first is through the
-[`Future::instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+[`Future::instrument`](https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument) combinator:
 
 ```rust
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 let my_future = async {
     // ...
@@ -241,7 +246,7 @@ my_future
 is as long as the future's.
 
 The second, and preferred, option is through the
-[`#[instrument]`](https://docs.rs/tracing/0.1.18/tracing/attr.instrument.html)
+[`#[instrument]`](https://docs.rs/tracing/0.1.21/tracing/attr.instrument.html)
 attribute:
 
 ```rust
@@ -257,7 +262,7 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-Under the hood, the `#[instrument]` macro performs same the explicit span
+Under the hood, the `#[instrument]` macro performs the same explicit span
 attachment that `Future::instrument` does.
 
 ### Concepts
@@ -288,7 +293,7 @@ span.in_scope(|| {
 // Dropping the span will close it, indicating that it has ended.
 ```
 
-The [`#[instrument]`](https://docs.rs/tracing/0.1.18/tracing/attr.instrument.html) attribute macro
+The [`#[instrument]`](https://docs.rs/tracing/0.1.21/tracing/attr.instrument.html) attribute macro
 can reduce some of this boilerplate:
 
 ```rust
@@ -319,9 +324,23 @@ be invoked with the same syntax as the similarly-named macros from the `log`
 crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
-### Ecosystem
+## Supported Rust Versions
 
-## Related Crates
+Tracing is built against the latest stable release. The minimum supported
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
+
+## Ecosystem
+
+### Related Crates
 
 In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 contains several additional crates designed to be used with the `tracing` ecosystem.
@@ -360,6 +379,12 @@ maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
+- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+  environment variables with an `env_logger` compatible syntax.
+- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
+- [`diesel-tracing`] provides integration with [`diesel`] database connections.
+- [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
+  applications.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -374,11 +399,16 @@ please let us know! We'd love to add your project to the list!
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
+[`test-env-log`]: https://crates.io/crates/test-env-log
+[`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+[`diesel`]: https://crates.io/crates/diesel
+[`diesel-tracing`]: https://crates.io/crates/diesel-tracing
+[`tracing-tracy`]: https://crates.io/crates/tracing-tracy
+[Tracy]: https://github.com/wolfpld/tracy
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
 `tracing-core`.
-
 
 [`log`]: https://docs.rs/log/0.4.6/log/
 [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
@@ -388,6 +418,20 @@ undergoing active development. They may be less stable than `tracing` and
 [`env_logger`]: https://crates.io/crates/env_logger
 [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 [`examples`]: https://github.com/tokio-rs/tracing/tree/master/examples
+
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## License
 

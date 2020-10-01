@@ -1,6 +1,6 @@
 use crate::{
     field::RecordFields,
-    fmt::{format, FormatEvent, FormatFields, MakeWriter},
+    fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     layer::{self, Context, Scope},
     registry::{LookupSpan, SpanRef},
 };
@@ -105,7 +105,7 @@ impl<S> Layer<S> {
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type paramaters.
+// This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -148,7 +148,7 @@ where
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type paramaters.
+// This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W> {
     /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
     ///
@@ -178,6 +178,38 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             make_writer,
+            _inner: self._inner,
+        }
+    }
+
+    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// unit tests.
+    ///
+    /// See [`TestWriter`] for additional details.
+    ///
+    /// # Examples
+    ///
+    /// Using [`TestWriter`] to let `cargo test` capture test output:
+    ///
+    /// ```rust
+    /// use std::io;
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let layer = fmt::layer()
+    ///     .with_test_writer();
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// ```
+    /// [capturing]:
+    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+    /// [`TestWriter`]: writer/struct.TestWriter.html
+    pub fn with_test_writer(self) -> Layer<S, N, E, TestWriter> {
+        Layer {
+            fmt_fields: self.fmt_fields,
+            fmt_event: self.fmt_event,
+            fmt_span: self.fmt_span,
+            make_writer: TestWriter::default(),
             _inner: self._inner,
         }
     }

@@ -1,5 +1,5 @@
-use opentelemetry::api::IdGenerator;
-use opentelemetry::{api, sdk};
+use crate::PreSampledTracer;
+use opentelemetry::api::{self, Context as OtelContext, TraceContextExt};
 use std::any::TypeId;
 use std::fmt;
 use std::marker;
@@ -20,10 +20,8 @@ static SPAN_KIND_FIELD: &str = "otel.kind";
 ///
 /// [OpenTelemetry]: https://opentelemetry.io
 /// [tracing]: https://github.com/tokio-rs/tracing
-pub struct OpenTelemetryLayer<S, T: api::Tracer> {
+pub struct OpenTelemetryLayer<S, T> {
     tracer: T,
-    sampler: Box<dyn api::Sampler>,
-    id_generator: sdk::IdGenerator,
 
     get_context: WithContext,
     _registry: marker::PhantomData<S>,
@@ -34,7 +32,7 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
-        OpenTelemetryLayer::new(api::NoopTracer {}, sdk::Sampler::AlwaysOn)
+        OpenTelemetryLayer::new(api::NoopTracer {})
     }
 }
 
@@ -50,8 +48,7 @@ where
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
 /// // that impls `LookupSpan`
-/// let subscriber = Registry::default()
-///     .with(tracing_opentelemetry::layer());
+/// let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 /// # drop(subscriber);
 /// ```
 pub fn layer<S>() -> OpenTelemetryLayer<S, api::NoopTracer>
@@ -67,7 +64,11 @@ where
 //
 // See https://github.com/tokio-rs/tracing/blob/4dad420ee1d4607bad79270c1520673fa6266a3d/tracing-error/src/layer.rs
 pub(crate) struct WithContext(
-    fn(&tracing::Dispatch, &span::Id, f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn api::Sampler)),
+    fn(
+        &tracing::Dispatch,
+        &span::Id,
+        f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn PreSampledTracer),
+    ),
 );
 
 impl WithContext {
@@ -77,61 +78,10 @@ impl WithContext {
         &self,
         dispatch: &'a tracing::Dispatch,
         id: &span::Id,
-        mut f: impl FnMut(&mut api::SpanBuilder, &dyn api::Sampler),
+        mut f: impl FnMut(&mut api::SpanBuilder, &dyn PreSampledTracer),
     ) {
         (self.0)(dispatch, id, &mut f)
     }
-}
-
-pub(crate) fn build_span_context(
-    builder: &mut api::SpanBuilder,
-    sampler: &dyn api::Sampler,
-) -> api::SpanContext {
-    let span_id = builder.span_id.expect("Builders must have id");
-    let (trace_id, trace_flags) = builder
-        .parent_context
-        .as_ref()
-        .filter(|parent_context| parent_context.is_valid())
-        .map(|parent_context| (parent_context.trace_id(), parent_context.trace_flags()))
-        .unwrap_or_else(|| {
-            let trace_id = builder.trace_id.expect("trace_id should exist");
-
-            // ensure sampling decision is recorded so all span contexts have consistent flags
-            let sampling_decision = if let Some(result) = builder.sampling_result.as_ref() {
-                result.decision.clone()
-            } else {
-                let mut result = sampler.should_sample(
-                    builder.parent_context.as_ref(),
-                    trace_id,
-                    &builder.name,
-                    builder
-                        .span_kind
-                        .as_ref()
-                        .unwrap_or(&api::SpanKind::Internal),
-                    builder.attributes.as_ref().unwrap_or(&Vec::new()),
-                    builder.links.as_ref().unwrap_or(&Vec::new()),
-                );
-
-                // Record additional attributes resulting from sampling
-                if let Some(attributes) = &mut builder.attributes {
-                    attributes.append(&mut result.attributes)
-                } else {
-                    builder.attributes = Some(result.attributes);
-                }
-
-                result.decision
-            };
-
-            let trace_flags = if sampling_decision == api::SamplingDecision::RecordAndSampled {
-                api::TRACE_FLAG_SAMPLED
-            } else {
-                0
-            };
-
-            (trace_id, trace_flags)
-        });
-
-    api::SpanContext::new(trace_id, span_id, trace_flags, false)
 }
 
 fn str_to_span_kind(s: &str) -> Option<api::SpanKind> {
@@ -231,13 +181,12 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
 impl<S, T> OpenTelemetryLayer<S, T>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
-    T: api::Tracer + 'static,
+    T: api::Tracer + PreSampledTracer + 'static,
 {
-    /// Set the [`Tracer`] and [`Sampler`] that this layer will use to produce and
-    /// track OpenTelemetry [`Span`]s.
+    /// Set the [`Tracer`] that this layer will use to produce and track
+    /// OpenTelemetry [`Span`]s.
     ///
     /// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
-    /// [`Sampler`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/sampler/trait.Sampler.html
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
     ///
     /// # Examples
@@ -269,26 +218,17 @@ where
     /// // Get a tracer from the provider for a component
     /// let tracer = provider.get_tracer("component-name");
     ///
-    /// // The probability sampler can be used to export a percentage of spans
-    /// let sampler = sdk::Sampler::Probability(0.33);
-    ///
     /// // Create a layer with the configured tracer
-    /// let otel_layer = OpenTelemetryLayer::new(tracer, sampler);
+    /// let otel_layer = OpenTelemetryLayer::new(tracer);
     ///
     /// // Use the tracing subscriber `Registry`, or any other subscriber
     /// // that impls `LookupSpan`
-    /// let subscriber = Registry::default()
-    ///     .with(otel_layer);
+    /// let subscriber = Registry::default().with(otel_layer);
     /// # drop(subscriber);
     /// ```
-    pub fn new<Sampler>(tracer: T, sampler: Sampler) -> Self
-    where
-        Sampler: api::Sampler + 'static,
-    {
+    pub fn new(tracer: T) -> Self {
         OpenTelemetryLayer {
             tracer,
-            sampler: Box::new(sampler),
-            id_generator: sdk::IdGenerator::default(),
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
         }
@@ -339,49 +279,12 @@ where
     /// ```
     pub fn with_tracer<Tracer>(self, tracer: Tracer) -> OpenTelemetryLayer<S, Tracer>
     where
-        Tracer: api::Tracer + 'static,
+        Tracer: api::Tracer + PreSampledTracer + 'static,
     {
         OpenTelemetryLayer {
             tracer,
-            sampler: self.sampler,
-            id_generator: self.id_generator,
             get_context: WithContext(OpenTelemetryLayer::<S, Tracer>::get_context),
             _registry: self._registry,
-        }
-    }
-
-    /// Set the [`Sampler`] to configure the logic around which [`Span`]s are
-    /// exported.
-    ///
-    /// [`Sampler`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/sampler/trait.Sampler.html
-    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use opentelemetry::sdk;
-    /// use tracing_subscriber::layer::SubscriberExt;
-    /// use tracing_subscriber::Registry;
-    ///
-    /// // The probability sampler can be used to export a percentage of spans
-    /// let sampler = sdk::Sampler::Probability(0.33);
-    ///
-    /// // Create a layer with the configured sampler
-    /// let otel_layer = tracing_opentelemetry::layer().with_sampler(sampler);
-    ///
-    /// // Use the tracing subscriber `Registry`, or any other subscriber
-    /// // that impls `LookupSpan`
-    /// let subscriber = Registry::default()
-    ///     .with(otel_layer);
-    /// # drop(subscriber);
-    /// ```
-    pub fn with_sampler<Sampler>(self, sampler: Sampler) -> Self
-    where
-        Sampler: api::Sampler + 'static,
-    {
-        OpenTelemetryLayer {
-            sampler: Box::new(sampler),
-            ..self
         }
     }
 
@@ -403,14 +306,14 @@ where
             let mut extensions = span.extensions_mut();
             extensions
                 .get_mut::<api::SpanBuilder>()
-                .map(|builder| build_span_context(builder, self.sampler.as_ref()))
+                .map(|builder| self.tracer.sampled_span_context(builder))
         // Else if the span is inferred from context, look up any available current span.
         } else if attrs.is_contextual() {
             ctx.lookup_current().and_then(|span| {
                 let mut extensions = span.extensions_mut();
                 extensions
                     .get_mut::<api::SpanBuilder>()
-                    .map(|builder| build_span_context(builder, self.sampler.as_ref()))
+                    .map(|builder| self.tracer.sampled_span_context(builder))
             })
         // Explicit root spans should have no parent context.
         } else {
@@ -421,7 +324,7 @@ where
     fn get_context(
         dispatch: &tracing::Dispatch,
         id: &span::Id,
-        f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn api::Sampler),
+        f: &mut dyn FnMut(&mut api::SpanBuilder, &dyn PreSampledTracer),
     ) {
         let subscriber = dispatch
             .downcast_ref::<S>()
@@ -435,7 +338,7 @@ where
 
         let mut extensions = span.extensions_mut();
         if let Some(builder) = extensions.get_mut::<api::SpanBuilder>() {
-            f(builder, layer.sampler.as_ref());
+            f(builder, &layer.tracer);
         }
     }
 }
@@ -443,7 +346,7 @@ where
 impl<S, T> Layer<S> for OpenTelemetryLayer<S, T>
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
-    T: api::Tracer + 'static,
+    T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`].
     ///
@@ -458,14 +361,19 @@ where
             .span_builder(attrs.metadata().name())
             .with_start_time(SystemTime::now())
             // Eagerly assign span id so children have stable parent id
-            .with_span_id(self.id_generator.new_span_id());
+            .with_span_id(self.tracer.new_span_id());
 
         // Set optional parent span context from attrs
         builder.parent_context = self.parent_span_context(attrs, &ctx);
 
         // Ensure trace id exists so children are matched properly.
         if builder.parent_context.is_none() {
-            builder.trace_id = Some(self.id_generator.new_trace_id());
+            let existing_otel_span_context = OtelContext::current().span().span_context();
+            if existing_otel_span_context.is_valid() {
+                builder.trace_id = Some(existing_otel_span_context.trace_id());
+            } else {
+                builder.trace_id = Some(self.tracer.new_trace_id());
+            }
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -498,7 +406,7 @@ where
             .get_mut::<api::SpanBuilder>()
             .expect("Missing SpanBuilder span extensions");
 
-        let follows_context = build_span_context(follows_builder, self.sampler.as_ref());
+        let follows_context = self.tracer.sampled_span_context(follows_builder);
         let follows_link = api::Link::new(follows_context, Vec::new());
         if let Some(ref mut links) = builder.links {
             links.push(follows_link);
@@ -580,7 +488,9 @@ where
 mod tests {
     use super::*;
     use opentelemetry::api;
+    use opentelemetry::api::TraceContextExt;
     use std::sync::{Arc, Mutex};
+    use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
 
     #[derive(Debug, Clone)]
@@ -600,6 +510,34 @@ mod tests {
             *self.0.lock().unwrap() = Some(builder);
             self.invalid()
         }
+    }
+
+    impl PreSampledTracer for TestTracer {
+        fn sampled_span_context(&self, _builder: &mut api::SpanBuilder) -> api::SpanContext {
+            api::SpanContext::empty_context()
+        }
+        fn new_trace_id(&self) -> api::TraceId {
+            api::TraceId::invalid()
+        }
+        fn new_span_id(&self) -> api::SpanId {
+            api::SpanId::invalid()
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    struct TestSpan(api::SpanContext);
+    impl api::Span for TestSpan {
+        fn add_event_with_timestamp(&self, _: String, _: SystemTime, _: Vec<api::KeyValue>) {}
+        fn span_context(&self) -> api::SpanContext {
+            self.0.clone()
+        }
+        fn is_recording(&self) -> bool {
+            false
+        }
+        fn set_attribute(&self, _attribute: api::KeyValue) {}
+        fn set_status(&self, _code: api::StatusCode, _message: String) {}
+        fn update_name(&self, _new_name: String) {}
+        fn end(&self) {}
     }
 
     #[test]
@@ -627,5 +565,26 @@ mod tests {
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
         assert_eq!(recorded_kind, Some(api::SpanKind::Server))
+    }
+
+    #[test]
+    fn trace_id_from_existing_context() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let trace_id = api::TraceId::from_u128(42);
+        let existing_cx = api::Context::current_with_span(TestSpan(api::SpanContext::new(
+            trace_id,
+            api::SpanId::from_u64(1),
+            0,
+            false,
+        )));
+        let _g = existing_cx.attach();
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.kind = "Server");
+        });
+
+        let recorded_trace_id = tracer.0.lock().unwrap().as_ref().unwrap().trace_id;
+        assert_eq!(recorded_trace_id, Some(trace_id))
     }
 }

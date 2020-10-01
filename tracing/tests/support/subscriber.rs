@@ -12,9 +12,12 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
     },
+    thread,
 };
 use tracing::{
+    level_filters::LevelFilter,
     span::{self, Attributes, Id},
+    subscriber::Interest,
     Event, Metadata, Subscriber,
 };
 
@@ -40,20 +43,29 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
     ids: AtomicUsize,
+    max_level: Option<LevelFilter>,
     filter: F,
+    name: String,
 }
 
 pub struct MockSubscriber<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
+    max_level: Option<LevelFilter>,
     filter: F,
+    name: String,
 }
 
-pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>);
+pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 
 pub fn mock() -> MockSubscriber<fn(&Metadata<'_>) -> bool> {
     MockSubscriber {
         expected: VecDeque::new(),
         filter: (|_: &Metadata<'_>| true) as for<'r, 's> fn(&'r Metadata<'s>) -> _,
+        max_level: None,
+        name: thread::current()
+            .name()
+            .unwrap_or("mock_subscriber")
+            .to_string(),
     }
 }
 
@@ -61,6 +73,26 @@ impl<F> MockSubscriber<F>
 where
     F: Fn(&Metadata<'_>) -> bool + 'static,
 {
+    /// Overrides the name printed by the mock subscriber's debugging output.
+    ///
+    /// The debugging output is displayed if the test panics, or if the test is
+    /// run with `--nocapture`.
+    ///
+    /// By default, the mock subscriber's name is the  name of the test
+    /// (*technically*, the name of the thread where it was created, which is
+    /// the name of the test unless tests are run with `--test-threads=1`).
+    /// When a test has only one mock subscriber, this is sufficient. However,
+    /// some tests may include multiple subscribers, in order to test
+    /// interactions between multiple subscribers. In that case, it can be
+    /// helpful to give each subscriber a separate name to distinguish where the
+    /// debugging output comes from.
+    pub fn named(self, name: impl ToString) -> Self {
+        Self {
+            name: name.to_string(),
+            ..self
+        }
+    }
+
     pub fn enter(mut self, span: MockSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
         self
@@ -113,8 +145,17 @@ where
         G: Fn(&Metadata<'_>) -> bool + 'static,
     {
         MockSubscriber {
-            filter,
             expected: self.expected,
+            filter,
+            max_level: self.max_level,
+            name: self.name,
+        }
+    }
+
+    pub fn with_max_level_hint(self, hint: impl Into<LevelFilter>) -> Self {
+        Self {
+            max_level: Some(hint.into()),
+            ..self
         }
     }
 
@@ -125,13 +166,15 @@ where
 
     pub fn run_with_handle(self) -> (impl Subscriber, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
-        let handle = MockHandle(expected.clone());
+        let handle = MockHandle(expected.clone(), self.name.clone());
         let subscriber = Running {
             spans: Mutex::new(HashMap::new()),
             expected,
             current: Mutex::new(Vec::new()),
             ids: AtomicUsize::new(1),
             filter: self.filter,
+            max_level: self.max_level,
+            name: self.name,
         };
         (subscriber, handle)
     }
@@ -142,7 +185,22 @@ where
     F: Fn(&Metadata<'_>) -> bool + 'static,
 {
     fn enabled(&self, meta: &Metadata<'_>) -> bool {
-        (self.filter)(meta)
+        println!("[{}] enabled: {:#?}", self.name, meta);
+        let enabled = (self.filter)(meta);
+        println!("[{}] enabled -> {}", self.name, enabled);
+        enabled
+    }
+
+    fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
+        println!("[{}] register_callsite: {:#?}", self.name, meta);
+        if self.enabled(meta) {
+            Interest::always()
+        } else {
+            Interest::never()
+        }
+    }
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.max_level
     }
 
     fn record(&self, id: &Id, values: &span::Record<'_>) {
@@ -150,13 +208,12 @@ where
         let mut expected = self.expected.lock().unwrap();
         let span = spans
             .get(id)
-            .unwrap_or_else(|| panic!("no span for ID {:?}", id));
-        println!("record: {}; id={:?}; values={:?};", span.name, id, values);
-        let was_expected = if let Some(Expect::Visit(_, _)) = expected.front() {
-            true
-        } else {
-            false
-        };
+            .unwrap_or_else(|| panic!("[{}] no span for ID {:?}", self.name, id));
+        println!(
+            "[{}] record: {}; id={:?}; values={:?};",
+            self.name, span.name, id, values
+        );
+        let was_expected = matches!(expected.front(), Some(Expect::Visit(_, _)));
         if was_expected {
             if let Expect::Visit(expected_span, mut expected_values) = expected.pop_front().unwrap()
             {
@@ -172,7 +229,7 @@ where
 
     fn event(&self, event: &Event<'_>) {
         let name = event.metadata().name();
-        println!("event: {};", name);
+        println!("[{}] event: {};", self.name, name);
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
@@ -182,7 +239,8 @@ where
                     Some(Parent::ExplicitRoot) => {
                         assert!(
                             event.is_root(),
-                            "expected {:?} to be an explicit root event",
+                            "[{}] expected {:?} to be an explicit root event",
+                            self.name,
                             name
                         );
                     }
@@ -192,7 +250,8 @@ where
                         assert_eq!(
                             Some(expected_parent.as_ref()),
                             actual_parent,
-                            "expected {:?} to have explicit parent {:?}",
+                            "[{}] expected {:?} to have explicit parent {:?}",
+                            self.name,
                             name,
                             expected_parent,
                         );
@@ -200,19 +259,22 @@ where
                     Some(Parent::ContextualRoot) => {
                         assert!(
                             event.is_contextual(),
-                            "expected {:?} to have a contextual parent",
+                            "[{}] expected {:?} to have a contextual parent",
+                            self.name,
                             name
                         );
                         assert!(
                             self.current.lock().unwrap().last().is_none(),
-                            "expected {:?} to be a root, but we were inside a span",
+                            "[{}] expected {:?} to be a root, but we were inside a span",
+                            self.name,
                             name
                         );
                     }
                     Some(Parent::Contextual(expected_parent)) => {
                         assert!(
                             event.is_contextual(),
-                            "expected {:?} to have a contextual parent",
+                            "[{}] expected {:?} to have a contextual parent",
+                            self.name,
                             name
                         );
                         let stack = self.current.lock().unwrap();
@@ -221,7 +283,8 @@ where
                         assert_eq!(
                             Some(expected_parent.as_ref()),
                             actual_parent,
-                            "expected {:?} to have contextual parent {:?}",
+                            "[{}] expected {:?} to have contextual parent {:?}",
+                            self.name,
                             name,
                             expected_parent,
                         );
@@ -229,7 +292,10 @@ where
                     None => {}
                 }
             }
-            Some(ex) => ex.bad(format_args!("observed event {:?}", event)),
+            Some(ex) => ex.bad(
+                &self.name,
+                format_args!("[{}] observed event {:?}", self.name, event),
+            ),
         }
     }
 
@@ -242,16 +308,14 @@ where
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
         let id = Id::from_u64(id as u64);
         println!(
-            "new_span: name={:?}; target={:?}; id={:?};",
+            "[{}] new_span: name={:?}; target={:?}; id={:?};",
+            self.name,
             meta.name(),
             meta.target(),
             id
         );
         let mut expected = self.expected.lock().unwrap();
-        let was_expected = match expected.front() {
-            Some(Expect::NewSpan(_)) => true,
-            _ => false,
-        };
+        let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
@@ -267,7 +331,8 @@ where
                     Some(Parent::ExplicitRoot) => {
                         assert!(
                             span.is_root(),
-                            "expected {:?} to be an explicit root span",
+                            "[{}] expected {:?} to be an explicit root span",
+                            self.name,
                             name
                         );
                     }
@@ -277,7 +342,8 @@ where
                         assert_eq!(
                             Some(expected_parent.as_ref()),
                             actual_parent,
-                            "expected {:?} to have explicit parent {:?}",
+                            "[{}] expected {:?} to have explicit parent {:?}",
+                            self.name,
                             name,
                             expected_parent,
                         );
@@ -285,19 +351,22 @@ where
                     Some(Parent::ContextualRoot) => {
                         assert!(
                             span.is_contextual(),
-                            "expected {:?} to have a contextual parent",
+                            "[{}] expected {:?} to have a contextual parent",
+                            self.name,
                             name
                         );
                         assert!(
                             self.current.lock().unwrap().last().is_none(),
-                            "expected {:?} to be a root, but we were inside a span",
+                            "[{}] expected {:?} to be a root, but we were inside a span",
+                            self.name,
                             name
                         );
                     }
                     Some(Parent::Contextual(expected_parent)) => {
                         assert!(
                             span.is_contextual(),
-                            "expected {:?} to have a contextual parent",
+                            "[{}] expected {:?} to have a contextual parent",
+                            self.name,
                             name
                         );
                         let stack = self.current.lock().unwrap();
@@ -306,7 +375,8 @@ where
                         assert_eq!(
                             Some(expected_parent.as_ref()),
                             actual_parent,
-                            "expected {:?} to have contextual parent {:?}",
+                            "[{}] expected {:?} to have contextual parent {:?}",
+                            self.name,
                             name,
                             expected_parent,
                         );
@@ -328,7 +398,7 @@ where
     fn enter(&self, id: &Id) {
         let spans = self.spans.lock().unwrap();
         if let Some(span) = spans.get(id) {
-            println!("enter: {}; id={:?};", span.name, id);
+            println!("[{}] enter: {}; id={:?};", self.name, span.name, id);
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Enter(ref expected_span)) => {
@@ -336,7 +406,7 @@ where
                         assert_eq!(name, span.name);
                     }
                 }
-                Some(ex) => ex.bad(format_args!("entered span {:?}", span.name)),
+                Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name)),
             }
         };
         self.current.lock().unwrap().push(id.clone());
@@ -346,14 +416,14 @@ where
         if std::thread::panicking() {
             // `exit()` can be called in `drop` impls, so we must guard against
             // double panics.
-            println!("exit {:?} while panicking", id);
+            println!("[{}] exit {:?} while panicking", self.name, id);
             return;
         }
         let spans = self.spans.lock().unwrap();
         let span = spans
             .get(id)
-            .unwrap_or_else(|| panic!("no span for ID {:?}", id));
-        println!("exit: {}; id={:?};", span.name, id);
+            .unwrap_or_else(|| panic!("[{}] no span for ID {:?}", self.name, id));
+        println!("[{}] exit: {}; id={:?};", self.name, span.name, id);
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
@@ -364,28 +434,38 @@ where
                 assert_eq!(
                     Some(id),
                     curr.as_ref(),
-                    "exited span {:?}, but the current span was {:?}",
+                    "[{}] exited span {:?}, but the current span was {:?}",
+                    self.name,
                     span.name,
                     curr.as_ref().and_then(|id| spans.get(id)).map(|s| s.name)
                 );
             }
-            Some(ex) => ex.bad(format_args!("exited span {:?}", span.name)),
+            Some(ex) => ex.bad(&self.name, format_args!("exited span {:?}", span.name)),
         };
     }
 
     fn clone_span(&self, id: &Id) -> Id {
         let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
             let name = span.name;
-            println!("clone_span: {}; id={:?}; refs={:?};", name, id, span.refs);
+            println!(
+                "[{}] clone_span: {}; id={:?}; refs={:?};",
+                self.name, name, id, span.refs
+            );
             span.refs += 1;
             name
         });
         if name.is_none() {
-            println!("clone_span: id={:?};", id);
+            println!("[{}] clone_span: id={:?};", self.name, id);
         }
         let mut expected = self.expected.lock().unwrap();
         let was_expected = if let Some(Expect::CloneSpan(ref span)) = expected.front() {
-            assert_eq!(name, span.name());
+            assert_eq!(
+                name,
+                span.name(),
+                "[{}] expected to clone a span named {:?}",
+                self.name,
+                span.name()
+            );
             true
         } else {
             false
@@ -404,7 +484,10 @@ where
                 if name.contains("event") {
                     is_event = true;
                 }
-                println!("drop_span: {}; id={:?}; refs={:?};", name, id, span.refs);
+                println!(
+                    "[{}] drop_span: {}; id={:?}; refs={:?};",
+                    self.name, name, id, span.refs
+                );
                 span.refs -= 1;
                 name
             })
@@ -412,7 +495,7 @@ where
             None
         };
         if name.is_none() {
-            println!("drop_span: id={:?}", id);
+            println!("[{}] drop_span: id={:?}", self.name, id);
         }
         if let Ok(mut expected) = self.expected.try_lock() {
             let was_expected = match expected.front() {
@@ -426,7 +509,7 @@ where
                 }
                 Some(Expect::Event(_)) => {
                     if !::std::thread::panicking() {
-                        assert!(is_event);
+                        assert!(is_event, "[{}] expected an event", self.name);
                     }
                     true
                 }
@@ -444,7 +527,8 @@ impl MockHandle {
         if let Ok(ref expected) = self.0.lock() {
             assert!(
                 !expected.iter().any(|thing| thing != &Expect::Nothing),
-                "more notifications expected: {:?}",
+                "[{}] more notifications expected: {:?}",
+                self.1,
                 **expected
             );
         }
@@ -452,18 +536,27 @@ impl MockHandle {
 }
 
 impl Expect {
-    fn bad<'a>(&self, what: fmt::Arguments<'a>) {
+    fn bad<'a>(&self, name: impl AsRef<str>, what: fmt::Arguments<'a>) {
+        let name = name.as_ref();
         match self {
-            Expect::Event(e) => panic!("expected event {}, but {} instead", e, what,),
-            Expect::Enter(e) => panic!("expected to enter {} but {} instead", e, what,),
-            Expect::Exit(e) => panic!("expected to exit {} but {} instead", e, what,),
-            Expect::CloneSpan(e) => panic!("expected to clone {} but {} instead", e, what,),
-            Expect::DropSpan(e) => panic!("expected to drop {} but {} instead", e, what,),
-            Expect::Visit(e, fields) => {
-                panic!("expected {} to record {} but {} instead", e, fields, what,)
+            Expect::Event(e) => panic!("[{}] expected event {}, but {} instead", name, e, what,),
+            Expect::Enter(e) => panic!("[{}] expected to enter {} but {} instead", name, e, what,),
+            Expect::Exit(e) => panic!("[{}] expected to exit {} but {} instead", name, e, what,),
+            Expect::CloneSpan(e) => {
+                panic!("[{}] expected to clone {} but {} instead", name, e, what,)
             }
-            Expect::NewSpan(e) => panic!("expected {} but {} instead", e, what),
-            Expect::Nothing => panic!("expected nothing else to happen, but {} instead", what,),
+            Expect::DropSpan(e) => {
+                panic!("[{}] expected to drop {} but {} instead", name, e, what,)
+            }
+            Expect::Visit(e, fields) => panic!(
+                "[{}] expected {} to record {} but {} instead",
+                name, e, fields, what,
+            ),
+            Expect::NewSpan(e) => panic!("[{}] expected {} but {} instead", name, e, what),
+            Expect::Nothing => panic!(
+                "[{}] expected nothing else to happen, but {} instead",
+                name, what,
+            ),
         }
     }
 }

@@ -5,6 +5,7 @@ extern crate test_log_support;
 use test_log_support::Test;
 use tracing::Level;
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_activity_filtered_separately() {
     let test = Test::with_filters(&[

@@ -33,6 +33,7 @@ impl Subscriber for TestSubscriber {
     fn exit(&self, _span: &Id) {}
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn test_static_max_level_features() {
     let me = Arc::new(State {

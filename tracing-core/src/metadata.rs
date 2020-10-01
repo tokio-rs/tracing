@@ -94,7 +94,7 @@ pub struct Metadata<'a> {
 pub struct Kind(KindInner);
 
 /// Describes the level of verbosity of a span or event.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity `Level`.
@@ -107,7 +107,7 @@ pub struct Level(LevelInner);
 /// addition of an `OFF` level that completely disables all trace
 /// instrumentation.
 #[repr(transparent)]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
@@ -251,18 +251,12 @@ impl Kind {
 
     /// Return true if the callsite kind is `Span`
     pub fn is_span(&self) -> bool {
-        match self {
-            Kind(KindInner::Span) => true,
-            _ => false,
-        }
+        matches!(self, Kind(KindInner::Span))
     }
 
     /// Return true if the callsite kind is `Event`
     pub fn is_event(&self) -> bool {
-        match self {
-            Kind(KindInner::Event) => true,
-            _ => false,
-        }
+        matches!(self, Kind(KindInner::Event))
     }
 }
 
@@ -362,6 +356,13 @@ impl From<Level> for LevelFilter {
     #[inline]
     fn from(level: Level) -> Self {
         Self::from_level(level)
+    }
+}
+
+impl From<Option<Level>> for LevelFilter {
+    #[inline]
+    fn from(level: Option<Level>) -> Self {
+        Self(level)
     }
 }
 
@@ -547,7 +548,7 @@ impl FromStr for LevelFilter {
                 s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
                 _ => None,
             })
-            .ok_or_else(|| ParseLevelFilterError(()))
+            .ok_or(ParseLevelFilterError(()))
     }
 }
 
@@ -819,8 +820,15 @@ mod tests {
         ];
         for (filter, level) in mapping.iter() {
             assert_eq!(filter.clone().into_level(), *level);
-            if let Some(level) = level {
-                assert_eq!(LevelFilter::from_level(level.clone()), *filter);
+            match level {
+                Some(level) => {
+                    let actual: LevelFilter = level.clone().into();
+                    assert_eq!(actual, *filter);
+                }
+                None => {
+                    let actual: LevelFilter = None.into();
+                    assert_eq!(actual, *filter);
+                }
             }
         }
     }
@@ -844,13 +852,13 @@ mod tests {
             (LevelFilter::DEBUG, LevelInner::Debug as usize),
             (LevelFilter::TRACE, LevelInner::Trace as usize),
         ];
-        for &(ref filter, expected) in &mapping {
+        for &(filter, expected) in &mapping {
             let repr = unsafe {
                 // safety: The entire purpose of this test is to assert that the
                 // actual repr matches what we expect it to be --- we're testing
                 // that *other* unsafe code is sound using the transmuted value.
                 // We're not going to do anything with it that might be unsound.
-                mem::transmute::<_, usize>(filter.clone())
+                mem::transmute::<LevelFilter, usize>(filter)
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }

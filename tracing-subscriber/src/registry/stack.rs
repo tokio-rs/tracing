@@ -1,8 +1,8 @@
-use std::cell::RefCell;
 use std::collections::HashSet;
 
 pub(crate) use tracing_core::span::Id;
 
+#[derive(Debug)]
 struct ContextId {
     id: Id,
     duplicate: bool,
@@ -12,19 +12,13 @@ struct ContextId {
 ///
 /// A "separate current span" for each thread is a semantic choice, as each span
 /// can be executing in a different thread.
+#[derive(Debug, Default)]
 pub(crate) struct SpanStack {
     stack: Vec<ContextId>,
     ids: HashSet<Id>,
 }
 
 impl SpanStack {
-    pub(crate) fn new() -> Self {
-        SpanStack {
-            stack: vec![],
-            ids: HashSet::new(),
-        }
-    }
-
     pub(crate) fn push(&mut self, id: Id) {
         let duplicate = self.ids.contains(&id);
         if !duplicate {
@@ -61,17 +55,13 @@ impl SpanStack {
     }
 }
 
-thread_local! {
-    static CONTEXT: RefCell<SpanStack> = RefCell::new(SpanStack::new());
-}
-
 #[cfg(test)]
 mod tests {
     use super::{Id, SpanStack};
 
     #[test]
     fn pop_last_span() {
-        let mut stack = SpanStack::new();
+        let mut stack = SpanStack::default();
         let id = Id::from_u64(1);
         stack.push(id.clone());
 
@@ -80,7 +70,7 @@ mod tests {
 
     #[test]
     fn pop_first_span() {
-        let mut stack = SpanStack::new();
+        let mut stack = SpanStack::default();
         stack.push(Id::from_u64(1));
         stack.push(Id::from_u64(2));
 
