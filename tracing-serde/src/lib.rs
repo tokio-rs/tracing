@@ -109,6 +109,21 @@
 //! subscriber (`JsonSubscriber` in the above example) to record serialized
 //! trace data.
 //!
+//! ##  Crate Feature Flags
+//!
+//! The following crate feature flags are available:
+//!
+//! * `std`: Depend on the Rust standard library (enabled by default).
+//!
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing-serde = { version = "0.2", default-features = false }
+//!   ```
+//
+//!   **Note**:`tracing-serde`'s `no_std` support requires `liballoc`.
+//!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
@@ -153,7 +168,10 @@
     unused_parens,
     while_true
 )]
-use std::fmt;
+// Support using tracing-serde without the standard library!
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::fmt;
 
 use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},
