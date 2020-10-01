@@ -1,4 +1,6 @@
 #![cfg_attr(docsrs, deny(broken_intra_doc_links))]
+#[doc(hidden)]
+pub use tracing;
 
 /// Alias of `dbg!` for avoiding conflicts with the `std::dbg!` macro.
 #[macro_export]
@@ -10,10 +12,10 @@ macro_rules! trace_dbg {
         $crate::dbg!(target: module_path!(), level: $level, $ex)
     };
     (target: $target:expr, $ex:expr) => {
-        $crate::dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(target: $target, level: $crate::tracing::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
-        $crate::dbg!(level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(level: $crate::tracing::Level::DEBUG, $ex)
     };
 }
 
@@ -25,42 +27,20 @@ macro_rules! trace_dbg {
 #[macro_export]
 macro_rules! dbg {
     (target: $target:expr, level: $level:expr, $ex:expr) => {{
-        use tracing::callsite::Callsite;
-        use tracing::{
-            callsite,
-            field::{debug, Value},
-            Event, Id, Subscriber,
-        };
-        let callsite = tracing::callsite! {
-            name: concat!("event:trace_dbg(", stringify!($ex), ")"),
-            kind: tracing::metadata::Kind::EVENT,
-            target: $target,
-            level: $level,
-            fields: value,
-        };
-        let val = $ex;
-        if callsite.is_enabled() {
-            let meta = callsite.metadata();
-            let fields = meta.fields();
-            let key = meta
-                .fields()
-                .into_iter()
-                .next()
-                .expect("trace_dbg event must have one field");
-            Event::dispatch(
-                meta,
-                &fields.value_set(&[(&key, Some(&debug(&val) as &Value))]),
-            );
+        match $ex {
+            value => {
+                $crate::tracing::event!(target: $target, $level, ?value, stringify!($ex));
+                value
+            }
         }
-        val
     }};
     (level: $level:expr, $ex:expr) => {
         $crate::dbg!(target: module_path!(), level: $level, $ex)
     };
     (target: $target:expr, $ex:expr) => {
-        $crate::dbg!(target: $target, level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(target: $target, level: $crate::tracing::Level::DEBUG, $ex)
     };
     ($ex:expr) => {
-        $crate::dbg!(level: tracing::Level::DEBUG, $ex)
+        $crate::dbg!(level: $crate::tracing::Level::DEBUG, $ex)
     };
 }

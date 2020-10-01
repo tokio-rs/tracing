@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -190,7 +190,6 @@ use syn::{
 /// }
 /// ```
 ///
-/// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
 /// `async fn`s may also be instrumented:
 ///
 /// ```
@@ -415,7 +414,7 @@ fn gen_body(
         if err {
             quote_spanned! {block.span()=>
                 let __tracing_attr_span = #span;
-                tracing_futures::Instrument::instrument(async move {
+                tracing::Instrument::instrument(async move {
                     match async move { #block }.await {
                         Ok(x) => Ok(x),
                         Err(e) => {
@@ -428,7 +427,7 @@ fn gen_body(
         } else {
             quote_spanned!(block.span()=>
                 let __tracing_attr_span = #span;
-                    tracing_futures::Instrument::instrument(
+                    tracing::Instrument::instrument(
                         async move { #block },
                         __tracing_attr_span
                     )

@@ -1,6 +1,6 @@
 [package]
 name = "tracing-opentelemetry"
-version = "0.7.0"
+version = "0.8.0"
 authors = [
     "Julian Tescher <julian@tescher.me>",
     "Tokio Contributors <team@tokio.rs>"
@@ -24,10 +24,10 @@ default = ["tracing-log"]
 [dependencies]
 opentelemetry = { version = "0.8", default-features = false, features = ["trace"] }
 rand = "0.7"
-tracing = { path = "../tracing", version = "0.1" }
-tracing-core = { path = "../tracing-core", version = "0.1" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.2", default-features = false, features = ["registry"] }
-tracing-log = { path = "../tracing-log", version = "0.1", default-features = false, optional = true }
+tracing = { path = "../tracing", version = "0.2" }
+tracing-core = { path = "../tracing-core", version = "0.2" }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
+tracing-log = { path = "../tracing-log", version = "0.2", default-features = false, optional = true }
 
 [dev-dependencies]
 opentelemetry-jaeger = "0.7"

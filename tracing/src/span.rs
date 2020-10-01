@@ -318,6 +318,7 @@ pub use tracing_core::span::{Attributes, Id, Record};
 use crate::stdlib::{
     cmp, fmt,
     hash::{Hash, Hasher},
+    marker::PhantomData,
 };
 use crate::{
     dispatcher::{self, Dispatch},
@@ -379,6 +380,7 @@ pub(crate) struct Inner {
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
     span: &'a Span,
+    _not_send: PhantomData<*mut ()>,
 }
 
 /// `log` target for all span lifecycle (creation/enter/exit/close) records.
@@ -404,7 +406,6 @@ impl Span {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
-    #[inline]
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_with(meta, values, dispatch))
     }
@@ -429,7 +430,6 @@ impl Span {
     /// [metadata]: ../metadata
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
-    #[inline]
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
     }
@@ -552,7 +552,7 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
         }}
 
         span
@@ -564,7 +564,17 @@ impl Span {
     /// will call [`Subscriber::exit`]. If the span is disabled, this does
     /// nothing.
     ///
-    /// # In Asynchronous Code
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: The returned
+    /// <a href="../struct.Entered.html"><code>Entered</code></a> guard does not
+    /// implement <code>Send</code>. Dropping the guard will exit <em>this</em> span,
+    /// and if the guard is sent to another thread and dropped there, that thread may
+    /// never have entered this span. Thus, <code>Entered</code> should not be sent
+    /// between threads.</pre></div>
     ///
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
     /// `Span::enter` should be used very carefully or avoided entirely. Holding
@@ -619,8 +629,8 @@ impl Span {
     ///       // ...
     ///   }
     ///   ```
-    /// * For instrumenting asynchronous code, the [`tracing-futures` crate]
-    ///   provides the [`Future::instrument` combinator][instrument] for
+    /// * For instrumenting asynchronous code, `tracing` provides the
+    ///   [`Future::instrument` combinator][instrument] for
     ///   attaching a span to a future (async function or block). This will
     ///   enter the span _every_ time the future is polled, and exit it whenever
     ///   the future yields.
@@ -628,7 +638,7 @@ impl Span {
     ///   `Instrument` can be used with an async block inside an async function:
     ///   ```ignore
     ///   # use tracing::info_span;
-    ///   use tracing_futures::Instrument;
+    ///   use tracing::Instrument;
     ///
     ///   # async fn some_other_async_function() {}
     ///   async fn my_async_function() {
@@ -652,7 +662,7 @@ impl Span {
     ///   callsite:
     ///   ```ignore
     ///   # use tracing::debug_span;
-    ///   use tracing_futures::Instrument;
+    ///   use tracing::Instrument;
     ///
     ///   # async fn some_other_async_function() {}
     ///   async fn my_async_function() {
@@ -664,8 +674,7 @@ impl Span {
     ///   }
     ///   ```
     ///
-    /// * Finally, if your crate depends on the `tracing-futures` crate, the
-    ///   [`#[instrument]` attribute macro][attr] will automatically generate
+    /// * The [`#[instrument]` attribute macro][attr] can automatically generate
     ///   correct code when used on an async function:
     ///
     ///   ```ignore
@@ -684,8 +693,7 @@ impl Span {
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: #method.in_scope
-    /// [`tracing-futures` crate]: https://docs.rs/tracing-futures/
-    /// [instrument]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html
+    /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
     /// [attr]: ../../attr.instrument.html
     ///
     /// # Examples
@@ -759,7 +767,10 @@ impl Span {
             }
         }}
 
-        Entered { span: self }
+        Entered {
+            span: self,
+            _not_send: PhantomData,
+        }
     }
 
     /// Executes the given function in the context of this span.
@@ -927,7 +938,7 @@ impl Span {
                 } else {
                     meta.target()
                 };
-                self.log(target, level_to_log!(meta.level()), format_args!("{}{}", meta.name(), FmtValues(&record)));
+                self.log(target, level_to_log!(*meta.level()), format_args!("{}{}", meta.name(), FmtValues(&record)));
             }
         }}
 
@@ -982,22 +993,14 @@ impl Span {
     /// # use tracing::{span, Id, Level, Span};
     /// let span1 = span!(Level::INFO, "span_1");
     /// let span2 = span!(Level::DEBUG, "span_2");
-    /// span2.follows_from(span1);
+    /// span2.follows_from(&span1);
     /// ```
     ///
     /// Setting a `follows_from` relationship with the current span:
     /// ```
     /// # use tracing::{span, Id, Level, Span};
     /// let span = span!(Level::INFO, "hello!");
-    /// span.follows_from(Span::current());
-    /// ```
-    ///
-    /// Setting a `follows_from` relationship with a `Span` reference:
-    /// ```
-    /// # use tracing::{span, Id, Level, Span};
-    /// let span = span!(Level::INFO, "hello!");
-    /// let curr = Span::current();
-    /// span.follows_from(&curr);
+    /// span.follows_from(&Span::current());
     /// ```
     ///
     /// Setting a `follows_from` relationship with an `Id`:
@@ -1030,7 +1033,7 @@ impl Span {
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
-            if level_to_log!(meta.level()) <= log::max_level() {
+            if level_to_log!(*meta.level()) <= log::max_level() {
                 let logger = log::logger();
                 let log_meta = log::Metadata::builder().level(level).target(target).build();
                 if logger.enabled(&log_meta) {
@@ -1134,12 +1137,6 @@ impl<'a> Into<Option<Id>> for &'a Span {
     }
 }
 
-impl Into<Option<Id>> for Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
-    }
-}
-
 impl Drop for Span {
     fn drop(&mut self) {
         if let Some(Inner {
@@ -1223,6 +1220,24 @@ impl Clone for Inner {
 }
 
 // ===== impl Entered =====
+
+/// # Safety
+///
+/// Technically, `Entered` _can_ implement both `Send` *and* `Sync` safely. It
+/// doesn't, because it has a `PhantomData<*mut ()>` field, specifically added
+/// in order to make it `!Send`.
+///
+/// Sending an `Entered` guard between threads cannot cause memory unsafety.
+/// However, it *would* result in incorrect behavior, so we add a
+/// `PhantomData<*mut ()>` to prevent it from being sent between threads. This
+/// is because it must be *dropped* on the same thread that it was created;
+/// otherwise, the span will never be exited on the thread where it was entered,
+/// and it will attempt to exit the span on a thread that may never have entered
+/// it. However, we still want them to be `Sync` so that a struct holding an
+/// `Entered` guard can be `Sync`.
+///
+/// Thus, this is totally safe.
+unsafe impl<'a> Sync for Entered<'a> {}
 
 impl<'a> Drop for Entered<'a> {
     #[inline]

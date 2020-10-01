@@ -19,7 +19,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! # Core Concepts
@@ -173,15 +173,6 @@
 //! # fn main() {}
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
-//! <div class="example-wrap" style="display:inline-block">
-//! <pre class="ignore" style="white-space:normal;font:inherit;">
-//!     <strong>Note</strong>: Using <code>#[instrument]</code> on
-//!     <code>async fn</code>s requires the <a href="https://crates.io/crates/tracing-futures">
-//!     <code>tracing-futures</code> crate</a> as a dependency as well.
-//! </pre></div>
 //!
 //! You can find more examples showing how to use this crate [here][examples].
 //!
@@ -790,7 +781,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.20", default-features = false }
+//!   tracing = { version = "0.1.21", default-features = false }
 //!   ```
 //!
 //! <div class="information">
@@ -805,7 +796,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -846,7 +837,7 @@
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.20")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.21")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
@@ -890,6 +881,8 @@ pub use log;
 #[doc(hidden)]
 use tracing_core::*;
 
+#[doc(inline)]
+pub use self::instrument::Instrument;
 pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
 
 #[doc(hidden)]
@@ -914,6 +907,8 @@ mod macros;
 
 pub mod dispatcher;
 pub mod field;
+/// Attach a span to a `std::future::Future`.
+pub mod instrument;
 pub mod level_filters;
 pub mod span;
 pub(crate) mod stdlib;
@@ -1000,12 +995,9 @@ pub mod __macro_support {
             }
         }
 
-        pub fn dispatch_event(&'static self, interest: Interest, f: impl FnOnce(&crate::Dispatch)) {
-            tracing_core::dispatcher::get_current(|current| {
-                if interest.is_always() || current.enabled(self.meta) {
-                    f(current)
-                }
-            });
+        pub fn is_enabled(&self, interest: Interest) -> bool {
+            interest.is_always()
+                || crate::dispatcher::get_default(|default| default.enabled(self.meta))
         }
 
         #[inline]
@@ -1018,24 +1010,6 @@ pub mod __macro_support {
         #[cfg(not(feature = "log"))]
         pub fn disabled_span(&self) -> crate::Span {
             crate::Span::none()
-        }
-
-        pub fn dispatch_span(
-            &'static self,
-            interest: Interest,
-            f: impl FnOnce(&crate::Dispatch) -> crate::Span,
-        ) -> crate::Span {
-            if interest.is_never() {
-                return self.disabled_span();
-            }
-
-            tracing_core::dispatcher::get_current(|current| {
-                if interest.is_always() || current.enabled(self.meta) {
-                    return f(current);
-                }
-                self.disabled_span()
-            })
-            .unwrap_or_else(|| self.disabled_span())
         }
     }
 

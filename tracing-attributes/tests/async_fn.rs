@@ -223,7 +223,7 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         async fn call_with_self(&self) {}
 
         #[instrument(fields(Self=std::any::type_name::<Self>()))]
-        async fn call_with_mut_self(self: &mut Self) {}
+        async fn call_with_mut_self(&mut self) {}
     }
 
     //let span = span::mock().named("call");

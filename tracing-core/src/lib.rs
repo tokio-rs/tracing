@@ -23,7 +23,7 @@
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -53,7 +53,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.16", default-features = false }
+//!   tracing-core = { version = "0.1.17", default-features = false }
 //!   ```
 //!
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
@@ -61,7 +61,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -85,7 +85,7 @@
 //! [`Dispatch`]: dispatcher/struct.Dispatch.html
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.16")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"

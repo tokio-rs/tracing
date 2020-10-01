@@ -16,9 +16,9 @@ Application-level tracing for Rust.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.20
+[crates-url]: https://crates.io/crates/tracing/0.1.21
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.20
+[docs-url]: https://docs.rs/tracing/0.1.21
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -47,7 +47,7 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.40+][msrv]*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -228,10 +228,10 @@ it is polled, leading to very confusing and incorrect output.
 For more details, see [the documentation on closing spans](https://tracing.rs/tracing/span/index.html#closing-spans).
 
 There are two ways to instrument asynchronous code. The first is through the
-[`Future::instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+[`Future::instrument`](https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument) combinator:
 
 ```rust
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 let my_future = async {
     // ...
@@ -246,7 +246,7 @@ my_future
 is as long as the future's.
 
 The second, and preferred, option is through the
-[`#[instrument]`](https://docs.rs/tracing/0.1.20/tracing/attr.instrument.html)
+[`#[instrument]`](https://docs.rs/tracing/0.1.21/tracing/attr.instrument.html)
 attribute:
 
 ```rust
@@ -293,7 +293,7 @@ span.in_scope(|| {
 // Dropping the span will close it, indicating that it has ended.
 ```
 
-The [`#[instrument]`](https://docs.rs/tracing/0.1.20/tracing/attr.instrument.html) attribute macro
+The [`#[instrument]`](https://docs.rs/tracing/0.1.21/tracing/attr.instrument.html) attribute macro
 can reduce some of this boilerplate:
 
 ```rust
@@ -327,7 +327,7 @@ with a simple drop-in replacement.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.40. The current Tracing version is not guaranteed to build on Rust
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -422,7 +422,7 @@ undergoing active development. They may be less stable than `tracing` and
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.40. The current Tracing version is not guaranteed to build on Rust
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

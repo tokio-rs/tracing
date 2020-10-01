@@ -230,7 +230,7 @@ For more details, see [the documentation on closing spans][closing].
 This problem can be solved using the [`Future::instrument`] combinator:
 
 ```rust
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 let my_future = async {
     // ...
@@ -248,15 +248,15 @@ Under the hood, the `#[instrument]` macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[tracing-futures-docs]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
-[`Future::instrument`]: https://docs.rs/tracing-futures/latest/tracing_futures/trait.Instrument.html#method.instrument
-[instrument]: https://docs.rs/tracing/0.1.14/tracing/attr.instrument.html
+[`tracing-futures`]: https://docs.rs/tracing-futures
+[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
+[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.40. The current Tracing version is not guaranteed to build on Rust
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

@@ -1,3 +1,20 @@
+# 0.1.17 (September 28, 2020)
+
+### Fixed
+
+- Incorrect inlining of `Event::dispatch` and `Event::child_of`, which could
+  result in `dispatcher::get_default` being inlined at the callsite ([#994])
+
+### Added
+
+- `Copy` implementations for `Level` and `LevelFilter` ([#992])
+
+Thanks to new contributors @jyn514 and @TaKO8Ki for contributing to this 
+release!
+
+[#994]: https://github.com/tokio-rs/tracing/pull/994
+[#992]: https://github.com/tokio-rs/tracing/pull/992
+
 # 0.1.16 (September 8, 2020)
 
 ### Fixed
