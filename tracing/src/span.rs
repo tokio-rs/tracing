@@ -993,22 +993,14 @@ impl Span {
     /// # use tracing::{span, Id, Level, Span};
     /// let span1 = span!(Level::INFO, "span_1");
     /// let span2 = span!(Level::DEBUG, "span_2");
-    /// span2.follows_from(span1);
+    /// span2.follows_from(&span1);
     /// ```
     ///
     /// Setting a `follows_from` relationship with the current span:
     /// ```
     /// # use tracing::{span, Id, Level, Span};
     /// let span = span!(Level::INFO, "hello!");
-    /// span.follows_from(Span::current());
-    /// ```
-    ///
-    /// Setting a `follows_from` relationship with a `Span` reference:
-    /// ```
-    /// # use tracing::{span, Id, Level, Span};
-    /// let span = span!(Level::INFO, "hello!");
-    /// let curr = Span::current();
-    /// span.follows_from(&curr);
+    /// span.follows_from(&Span::current());
     /// ```
     ///
     /// Setting a `follows_from` relationship with an `Id`:
@@ -1140,12 +1132,6 @@ impl<'a> Into<Option<&'a Id>> for &'a Span {
 }
 
 impl<'a> Into<Option<Id>> for &'a Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
-    }
-}
-
-impl Into<Option<Id>> for Span {
     fn into(self) -> Option<Id> {
         self.inner.as_ref().map(Inner::id)
     }
