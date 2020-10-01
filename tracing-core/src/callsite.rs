@@ -66,11 +66,13 @@ pub struct Identifier(
     pub &'static dyn Callsite,
 );
 
-/// A registration within the callsite cache.
+/// A registration with the callsite registry.
 ///
-/// Every callsite implementation must store this type internally to the
-/// callsite and provide a `&'static Registration` reference via the
-/// `Callsite` trait.
+/// Every [`Callsite`] implementation must provide a `&'static Registration`
+/// when calling [`register`] to add itself to the global callsite registry.
+///
+/// [`Callsite`]: crate::callsite::Callsite
+/// [`register`]: crate::callsite::register
 pub struct Registration<T = &'static dyn Callsite> {
     callsite: T,
     next: AtomicPtr<Registration<T>>,
@@ -219,7 +221,7 @@ impl fmt::Debug for Registration {
 
 // ===== impl LinkedList =====
 
-/// An intrusive atomic push only linked-list.
+/// An intrusive atomic push-only linked list.
 struct LinkedList {
     head: AtomicPtr<Registration>,
 }
@@ -250,9 +252,9 @@ impl LinkedList {
             assert_ne!(
                 registration as *const _, head,
                 "Attempting to push a `Callsite` that already exists. \
-                        This will cause an infinite loop when attempting to read from the \
-                        callsite cache. This is likely a bug! You should only need to push a \
-                        `Callsite` once."
+                This will cause an infinite loop when attempting to read from the \
+                callsite cache. This is likely a bug! You should only need to push a \
+                `Callsite` once."
             );
 
             match self.head.compare_exchange(
