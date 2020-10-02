@@ -27,17 +27,14 @@
 //! we might record integers by incrementing counters for their field names,
 //! rather than printing them.
 //!
-//! [`Value`]: trait.Value.html
-//! [span]: ../span/
-//! [`Event`]: ../event/struct.Event.html
-//! [`Metadata`]: ../metadata/struct.Metadata.html
-//! [`Attributes`]:  ../span/struct.Attributes.html
-//! [`Record`]: ../span/struct.Record.html
-//! [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
-//! [`record`]: ../subscriber/trait.Subscriber.html#method.record
-//! [`event`]:  ../subscriber/trait.Subscriber.html#method.event
-//! [`Value::record`]: trait.Value.html#method.record
-//! [`Visit`]: trait.Visit.html
+//! [span]: super::span
+//! [`Event`]: super::event::Event
+//! [`Metadata`]: super::metadata::Metadata
+//! [`Attributes`]:  super::span::Attributes
+//! [`Record`]: super::span::Record
+//! [`new_span`]: super::subscriber::Subscriber::new_span
+//! [`record`]: super::subscriber::Subscriber::record
+//! [`event`]:  super::subscriber::Subscriber::event
 use crate::callsite;
 use crate::stdlib::{
     borrow::Borrow,
@@ -179,13 +176,11 @@ pub struct Iter {
 /// <code>std::error::Error</code> trait.
 /// </pre></div>
 ///
-/// [`Value`]: trait.Value.html
-/// [recorded]: trait.Value.html#method.record
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [records an `Event`]: ../subscriber/trait.Subscriber.html#method.event
-/// [set of `Value`s added to a `Span`]: ../subscriber/trait.Subscriber.html#method.record
-/// [`Event`]: ../event/struct.Event.html
-/// [`ValueSet`]: struct.ValueSet.html
+/// [recorded]: Value::record
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [records an `Event`]: super::subscriber::Subscriber::event
+/// [set of `Value`s added to a `Span`]: super::subscriber::Subscriber::record
+/// [`Event`]: super::event::Event
 pub trait Visit {
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
@@ -233,7 +228,7 @@ pub trait Visit {
 /// the [visitor] passed to their `record` method in order to indicate how
 /// their data should be recorded.
 ///
-/// [visitor]: trait.Visit.html
+/// [visitor]: Visit
 pub trait Value: crate::sealed::Sealed {
     /// Visits this value with the given `Visitor`.
     fn record(&self, key: &Field, visitor: &mut dyn Visit);
@@ -532,8 +527,8 @@ impl Field {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// which defines this field.
     ///
-    /// [`Identifier`]: ../callsite/struct.Identifier.html
-    /// [`Callsite`]: ../callsite/trait.Callsite.html
+    /// [`Identifier`]: super::callsite::Identifier
+    /// [`Callsite`]: super::callsite::Callsite
     #[inline]
     pub fn callsite(&self) -> callsite::Identifier {
         self.fields.callsite()
@@ -598,15 +593,15 @@ impl FieldSet {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// which defines this set of fields..
     ///
-    /// [`Identifier`]: ../callsite/struct.Identifier.html
-    /// [`Callsite`]: ../callsite/trait.Callsite.html
+    /// [`Identifier`]: super::callsite::Identifier
+    /// [`Callsite`]: super::callsite::Callsite
     pub(crate) fn callsite(&self) -> callsite::Identifier {
         callsite::Identifier(self.callsite.0)
     }
 
     /// Returns the [`Field`] named `name`, or `None` if no such field exists.
     ///
-    /// [`Field`]: ../struct.Field.html
+    /// [`Field`]: super::Field
     pub fn field<Q: ?Sized>(&self, name: &Q) -> Option<Field>
     where
         Q: Borrow<str>,
@@ -727,8 +722,8 @@ impl<'a> ValueSet<'a> {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// defining the fields this `ValueSet` refers to.
     ///
-    /// [`Identifier`]: ../callsite/struct.Identifier.html
-    /// [`Callsite`]: ../callsite/trait.Callsite.html
+    /// [`Identifier`]: super::callsite::Identifier
+    /// [`Callsite`]: super::callsite::Callsite
     #[inline]
     pub fn callsite(&self) -> callsite::Identifier {
         self.fields.callsite()
@@ -736,7 +731,7 @@ impl<'a> ValueSet<'a> {
 
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
-    /// [visitor]: ../trait.Visit.html
+    /// [visitor]: super::Visit
     pub(crate) fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {

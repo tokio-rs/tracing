@@ -38,26 +38,26 @@ use crate::stdlib::{
 /// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: Although instances of <code>Metadata</code> cannot
-/// be compared directly, they provide a method <a href="struct.Metadata.html#method.id">
-/// <code>id</code></a>, returning an opaque <a href="../callsite/struct.Identifier.html">
-/// callsite identifier</a>  which uniquely identifies the callsite where the metadata
-/// originated. This can be used to determine if two <code>Metadata</code> correspond to
-/// the same callsite.
+///
+/// **Note**: Although instances of `Metadata` cannot
+/// be compared directly, they provide a method [`callsite`][Metadata::callsite],
+/// returning an opaque [callsite identifier] which uniquely identifies the
+/// callsite where the metadata originated. This can be used to determine if two
+/// `Metadata` correspond to the same callsite.
+///
 /// </pre></div>
 ///
-/// [span]: ../span/index.html
-/// [event]: ../event/index.html
-/// [name]: #method.name
-/// [target]: #method.target
-/// [fields]: #method.fields
-/// [verbosity level]: #method.level
-/// [file name]: #method.file
-/// [line number]: #method.line
-/// [module path]: #method.module
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`id`]: struct.Metadata.html#method.id
-/// [callsite identifier]: ../callsite/struct.Identifier.html
+/// [span]: super::span
+/// [event]: super::event
+/// [name]: Self::name
+/// [target]: Self::target
+/// [fields]: Self::fields
+/// [verbosity level]: Self::level
+/// [file name]: Self::file
+/// [line number]: Self::line
+/// [module path]: Self::module_path
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: &'static str,
@@ -408,7 +408,7 @@ impl LevelFilter {
     /// Returns the most verbose [`Level`] that this filter accepts, or `None`
     /// if it is [`OFF`].
     ///
-    /// [`Level`]: ../struct.Level.html
+    /// [`Level`]: super::Level
     /// [`OFF`]: #associatedconstant.OFF
     pub const fn into_level(self) -> Option<Level> {
         self.0
@@ -442,8 +442,8 @@ impl LevelFilter {
     /// *disabled*, but **should not** be used for determining if something is
     /// *enabled*.`
     ///
-    /// [`Level`]: ../struct.Level.html
-    /// [`Subscriber`]: ../../trait.Subscriber.html
+    /// [`Level`]: super::Level
+    /// [`Subscriber`]: super::Subscriber
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {
