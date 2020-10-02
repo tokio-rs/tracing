@@ -38,12 +38,13 @@ use crate::stdlib::{
 /// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: Although instances of <code>Metadata</code> cannot
-/// be compared directly, they provide a method <a href="Metadata::id">
-/// <code>id</code></a>, returning an opaque <a href="super::callsite::Identifier">
-/// callsite identifier</a>  which uniquely identifies the callsite where the metadata
-/// originated. This can be used to determine if two <code>Metadata</code> correspond to
-/// the same callsite.
+///
+/// **Note**: Although instances of `Metadata` cannot
+/// be compared directly, they provide a method [`callsite`][Metadata::callsite],
+/// returning an opaque [callsite identifier] which uniquely identifies the
+/// callsite where the metadata originated. This can be used to determine if two
+/// `Metadata` correspond to the same callsite.
+///
 /// </pre></div>
 ///
 /// [span]: super::span
@@ -56,7 +57,6 @@ use crate::stdlib::{
 /// [line number]: Self::line
 /// [module path]: Self::module_path
 /// [`Subscriber`]: super::subscriber::Subscriber
-/// [`id`]: Metadata::id
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.

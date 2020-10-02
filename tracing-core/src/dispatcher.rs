@@ -113,11 +113,10 @@
 //! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>:the thread-local scoped dispatcher
-//! (<a href="#fn.with_default"><code>with_default</code></a>) requires the
-//! Rust standard library. <code>no_std</code> users should use
-//! <a href="#fn.set_global_default"><code>set_global_default</code></a>
-//! instead.
+//!
+//! **Note**: the thread-local scoped dispatcher ([`with_default`]) requires the
+//! Rust standard library. `no_std` users should use [`set_global_default`] instead.
+//!
 //! </pre></div>
 //!
 //! ## Accessing the Default Subscriber
@@ -128,9 +127,6 @@
 //! instrumentation.
 //!
 //! [`Subscriber`]: Subscriber
-//! [`with_default`]: fn.with_default.html
-//! [`set_global_default`]: fn.set_global_default.html
-//! [`get_default`]: fn.get_default.html
 //! [`Dispatch`]: Dispatch
 use crate::{
     callsite, span,
@@ -217,14 +213,16 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: This function required the Rust standard library.
-/// <code>no_std</code> users should use <a href="super::fn.set_global_default.html">
-/// <code>set_global_default</code></a> instead.
+/// <!-- hack: this whitespace makes rustdoc interpret the next line as markdown again -->
+///
+/// `no_std` users should use [`set_global_default`] instead.
+///
 /// </pre></div>
 ///
 /// [span]: super::span::index.html
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [`Event`]: super::event::Event
-/// [`set_global_default`]: super::fn.set_global_default.html
+/// [`set_global_default`]: set_global_default
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
@@ -244,12 +242,11 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: This function required the Rust standard library.
-/// <code>no_std</code> users should use <a href="super::fn.set_global_default.html">
-/// <code>set_global_default</code></a> instead.
-/// </pre></div>
 ///
-/// [`set_global_default`]: super::fn.set_global_default.html
+/// **Note**: This function required the Rust standard library.
+/// `no_std` users should use [`set_global_default`] instead.
+///
+/// </pre></div>
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the dispatcher."]
@@ -580,9 +577,10 @@ impl Dispatch {
     ///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-    /// <strong>Deprecated</strong>: The <a href="Self::try_close"><code>try_close</code></a>
-    /// method is functionally identical, but returns <code>true</code> if the span is now closed.
+    ///
+    /// **Deprecated**: The [`try_close`] method is functionally identical, but returns `true` if the span is now closed.
     /// It should be used instead of this method.
+    ///
     /// </pre></div>
     ///
     /// [span ID]: super::span::Id
