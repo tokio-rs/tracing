@@ -116,20 +116,20 @@ pub use filter::EnvFilter;
 
 pub use layer::Layer;
 
-cfg_fmt! {
+cfg_feature!("fmt", {
     pub mod fmt;
-    pub use fmt::Subscriber as FmtSubscriber;
     pub use fmt::fmt;
-}
+    pub use fmt::Subscriber as FmtSubscriber;
+});
 
-cfg_registry! {
+cfg_feature!("registry", {
     pub use registry::Registry;
 
     ///
     pub fn registry() -> Registry {
         Registry::default()
     }
-}
+});
 
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.

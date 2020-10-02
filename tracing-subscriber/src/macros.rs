@@ -13,25 +13,11 @@ macro_rules! try_lock {
     };
 }
 
-/// Declares fmt items.
-#[doc(hidden)]
-macro_rules! cfg_fmt {
-    ($($item:item)*) => {
+macro_rules! cfg_feature {
+    ($name:expr, { $($item:item)* }) => {
         $(
-            #[cfg(feature = "fmt")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-            $item
-        )*
-    }
-}
-
-/// Declares registry items.
-#[doc(hidden)]
-macro_rules! cfg_registry {
-    ($($item:item)*) => {
-        $(
-            #[cfg(feature = "registry")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+            #[cfg(feature = $name)]
+            #[cfg_attr(docsrs, doc(cfg(feature = $name)))]
             $item
         )*
     }
