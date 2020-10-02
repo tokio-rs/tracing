@@ -204,8 +204,9 @@ impl fmt::Display for SpanTrace {
             }
 
             if let Some((file, line)) = metadata
+                .location()
                 .file()
-                .and_then(|file| metadata.line().map(|line| (file, line)))
+                .and_then(|file| metadata.location().line().map(|line| (file, line)))
             {
                 try_bool!(write!(f, "\n             at {}:{}", file, line), err);
             }
@@ -240,8 +241,9 @@ impl fmt::Debug for SpanTrace {
 
                 if let Some((file, line)) = self
                     .metadata
+                    .location()
                     .file()
-                    .and_then(|file| self.metadata.line().map(|line| (file, line)))
+                    .and_then(|file| self.metadata.location().line().map(|line| (file, line)))
                 {
                     write!(f, ", file: {:?}, line: {:?}", file, line)?;
                 }

@@ -69,21 +69,8 @@ pub struct Metadata<'a> {
     /// The level of verbosity of the described span.
     level: Level,
 
-    /// The name of the Rust module where the span occurred, or `None` if this
-    /// could not be determined.
-    module_path: Option<&'a str>,
-
-    /// The name of the source code file where the span occurred, or `None` if
-    /// this could not be determined.
-    file: Option<&'a str>,
-
-    /// The line number in the source code file where the span occurred, or
-    /// `None` if this could not be determined.
-    line: Option<u32>,
-
-    /// The column number in the source code file where the span occurred, or
-    /// `None` if this could not be determined.
-    column: Option<u32>,
+    /// The position in source code
+    location: Location<'a>,
 
     /// The names of the key-value fields attached to the described span or
     /// event.
@@ -91,6 +78,15 @@ pub struct Metadata<'a> {
 
     /// The kind of the callsite.
     kind: Kind,
+}
+
+/// Describe the source code location
+#[derive(Eq, PartialEq, Clone, Default)]
+pub struct Location<'a> {
+    file: Option<&'a str>,
+    line: Option<u32>,
+    column: Option<u32>,
+    module_path: Option<&'a str>,
 }
 
 /// Indicates whether the callsite is a span or event.
@@ -125,15 +121,11 @@ static MAX_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::OFF_USIZE);
 impl<'a> Metadata<'a> {
     /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
-    #[allow(clippy::too_many_arguments)]
     pub const fn new(
         name: &'static str,
         target: &'a str,
         level: Level,
-        file: Option<&'a str>,
-        line: Option<u32>,
-        column: Option<u32>,
-        module_path: Option<&'a str>,
+        location: Location<'a>,
         fields: field::FieldSet,
         kind: Kind,
     ) -> Self {
@@ -141,10 +133,7 @@ impl<'a> Metadata<'a> {
             name,
             target,
             level,
-            module_path,
-            file,
-            column,
-            line,
+            location,
             fields,
             kind,
         }
@@ -174,28 +163,9 @@ impl<'a> Metadata<'a> {
         self.target
     }
 
-    /// Returns the path to the Rust module where the span occurred, or
-    /// `None` if the module path is unknown.
-    pub fn module_path(&self) -> Option<&'a str> {
-        self.module_path
-    }
-
-    /// Returns the name of the source code file where the span
-    /// occurred, or `None` if the file is unknown
-    pub fn file(&self) -> Option<&'a str> {
-        self.file
-    }
-
-    /// Returns the line number in the source code file where the span
-    /// occurred, or `None` if the line number is unknown.
-    pub fn line(&self) -> Option<u32> {
-        self.line
-    }
-
-    /// Returns the column number in the source code file where the span
-    /// occurred, or `None` if the column number is unknown.
-    pub fn column(&self) -> Option<u32> {
-        self.column
+    /// Return position in the source code where this `Metadata` originated from
+    pub fn location(&self) -> &Location<'a> {
+        &self.location
     }
 
     /// Returns an opaque `Identifier` that uniquely identifies the callsite
@@ -221,10 +191,67 @@ impl<'a> fmt::Debug for Metadata<'a> {
         let mut meta = f.debug_struct("Metadata");
         meta.field("name", &self.name)
             .field("target", &self.target)
-            .field("level", &self.level);
+            .field("level", &self.level)
+            .field("location", &self.location)
+            .field("fields", &format_args!("{}", self.fields))
+            .field("callsite", &self.callsite())
+            .field("kind", &self.kind)
+            .finish()
+    }
+}
+
+// ===== impl Location =====
+impl<'a> Location<'a> {
+    /// Construct new source code location where the `Metadata` originated from with a file, line, column, module_path
+    pub const fn new(
+        file: Option<&'a str>,
+        line: Option<u32>,
+        column: Option<u32>,
+        module_path: Option<&'a str>,
+    ) -> Self {
+        Self {
+            file,
+            line,
+            column,
+            module_path,
+        }
+    }
+
+    /// Returns the column number in the source code file where this
+    /// `Metadata` originated from, or `None` if the column number is unknown.
+    pub fn column(&self) -> Option<u32> {
+        self.column
+    }
+
+    /// Returns the path to the Rust module where this
+    /// `Metadata` originated from, or `None` if the module path is unknown.
+    pub fn module_path(&self) -> Option<&'a str> {
+        self.module_path
+    }
+
+    /// Returns the name of the source code file where this
+    /// `Metadata` originated from, or `None` if the file is unknown
+    pub fn file(&self) -> Option<&'a str> {
+        self.file
+    }
+
+    /// Returns the line number in the source code file where this
+    /// `Metadata` originated from, or `None` if the line number is unknown.
+    pub fn line(&self) -> Option<u32> {
+        self.line
+    }
+}
+
+impl<'a> fmt::Debug for Location<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut meta = f.debug_struct("Location");
 
         if let Some(path) = self.module_path() {
             meta.field("module_path", &path);
+        }
+
+        if let Some(column) = self.column() {
+            meta.field("column", &column);
         }
 
         match (self.file(), self.line()) {
@@ -242,10 +269,7 @@ impl<'a> fmt::Debug for Metadata<'a> {
             (None, None) => {}
         };
 
-        meta.field("fields", &format_args!("{}", self.fields))
-            .field("callsite", &self.callsite())
-            .field("kind", &self.kind)
-            .finish()
+        meta.finish()
     }
 }
 

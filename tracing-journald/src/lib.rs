@@ -238,13 +238,13 @@ fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
         write!(buf, "S{}_", n).unwrap();
     }
     put_field(buf, "TARGET", meta.target().as_bytes());
-    if let Some(file) = meta.file() {
+    if let Some(file) = meta.location().file() {
         if let Some(n) = span {
             write!(buf, "S{}_", n).unwrap();
         }
         put_field(buf, "CODE_FILE", file.as_bytes());
     }
-    if let Some(line) = meta.line() {
+    if let Some(line) = meta.location().line() {
         if let Some(n) = span {
             write!(buf, "S{}_", n).unwrap();
         }
