@@ -1,6 +1,6 @@
-use crate::stdlib::pin::Pin;
-use crate::stdlib::task::{Context, Poll};
-use crate::stdlib::{future::Future, marker::Sized};
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::{future::Future, marker::Sized};
 use crate::{dispatcher, span::Span, Dispatch};
 use pin_project_lite::pin_project;
 

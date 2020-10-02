@@ -114,7 +114,7 @@
     unused_parens,
     while_true
 )]
-#[cfg(not(feature = "std"))]
+
 extern crate alloc;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
@@ -240,17 +240,27 @@ extern crate lazy_static;
 #[macro_use]
 mod lazy_static;
 
+// Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
+#[cfg(not(feature = "std"))]
+mod sync {
+    #[doc(hidden)]
+    pub type Once = crate::spin::Once<()>;
+    pub(crate) use crate::spin::*;
+}
+
+#[cfg(not(feature = "std"))]
 // Trimmed-down vendored version of spin 0.5.2 (0387621)
 // Dependency of no_std lazy_static, not required in a std build
-#[cfg(not(feature = "std"))]
 pub(crate) mod spin;
 
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub type Once = self::spin::Once<()>;
-
 #[cfg(feature = "std")]
-pub use stdlib::sync::Once;
+mod sync {
+    pub(crate) use std::sync::{Mutex, MutexGuard};
+    pub use std::sync::Once;
+}
+
+#[doc(hidden)]
+pub use self::sync::Once;
 
 pub mod callsite;
 pub mod dispatcher;
@@ -259,7 +269,6 @@ pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
 
 #[doc(inline)]

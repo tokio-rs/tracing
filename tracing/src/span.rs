@@ -315,7 +315,7 @@
 //! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 
-use crate::stdlib::{
+use core::{
     cmp, fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,

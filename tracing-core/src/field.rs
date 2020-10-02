@@ -36,7 +36,7 @@
 //! [`record`]: super::subscriber::Subscriber::record
 //! [`event`]:  super::subscriber::Subscriber::event
 use crate::callsite;
-use crate::stdlib::{
+use core::{
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
@@ -828,7 +828,7 @@ impl_valid_len! {
 mod test {
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
-    use crate::stdlib::{borrow::ToOwned, string::String};
+    use alloc::{borrow::ToOwned, string::String};
 
     struct TestCallsite1;
     static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
@@ -929,7 +929,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -948,7 +948,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
                 assert_eq!(field.name(), "bar")
             }
         }
@@ -967,7 +967,7 @@ mod test {
         let valueset = fields.value_set(values);
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use crate::stdlib::fmt::Write;
+            use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, "123".to_owned());

@@ -865,9 +865,6 @@
     while_true
 )]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
 #[macro_use]
 extern crate cfg_if;
 
@@ -911,16 +908,13 @@ pub mod field;
 pub mod instrument;
 pub mod level_filters;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
-    use crate::stdlib::{
-        fmt,
-        sync::atomic::{AtomicUsize, Ordering},
-    };
+    use core::sync::atomic::{AtomicUsize, Ordering};
+    use core::fmt;
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
 

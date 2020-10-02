@@ -131,17 +131,15 @@ use crate::{
     Event, LevelFilter, Metadata,
 };
 
-use crate::stdlib::{
+use alloc::sync::{Arc, Weak};
+use core::{
     any::Any,
     fmt,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Weak,
-    },
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 #[cfg(feature = "std")]
-use crate::stdlib::{
+use std::{
     cell::{Cell, RefCell, RefMut},
     error,
 };
@@ -777,8 +775,6 @@ impl Drop for DefaultGuard {
 mod test {
 
     use super::*;
-    #[cfg(feature = "std")]
-    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},

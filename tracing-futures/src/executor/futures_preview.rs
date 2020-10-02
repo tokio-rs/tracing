@@ -1,4 +1,4 @@
-use crate::stdlib::future::Future;
+use core::future::Future;
 use crate::{Instrument, Instrumented, WithDispatch};
 use futures_core_preview::{
     future::FutureObj,

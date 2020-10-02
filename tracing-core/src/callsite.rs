@@ -1,19 +1,17 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
-use crate::stdlib::{
-    fmt,
-    hash::{Hash, Hasher},
-    ptr,
-    sync::{
-        atomic::{AtomicPtr, Ordering},
-        Mutex, MutexGuard,
-    },
-    vec::Vec,
-};
 use crate::{
     dispatcher::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
+    sync::{Mutex, MutexGuard},
+};
+use alloc::vec::Vec;
+use core::{
+    fmt,
+    hash::{Hash, Hasher},
+    ptr,
+    sync::atomic::{AtomicPtr, Ordering},
 };
 
 lazy_static! {
