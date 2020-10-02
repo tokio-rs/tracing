@@ -81,6 +81,10 @@ pub struct Metadata<'a> {
     /// `None` if this could not be determined.
     line: Option<u32>,
 
+    /// The column number in the source code file where the span occurred, or
+    /// `None` if this could not be determined.
+    column: Option<u32>,
+
     /// The names of the key-value fields attached to the described span or
     /// event.
     fields: field::FieldSet,
@@ -121,12 +125,14 @@ static MAX_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::OFF_USIZE);
 impl<'a> Metadata<'a> {
     /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
+    #[allow(clippy::too_many_arguments)]
     pub const fn new(
         name: &'static str,
         target: &'a str,
         level: Level,
         file: Option<&'a str>,
         line: Option<u32>,
+        column: Option<u32>,
         module_path: Option<&'a str>,
         fields: field::FieldSet,
         kind: Kind,
@@ -137,6 +143,7 @@ impl<'a> Metadata<'a> {
             level,
             module_path,
             file,
+            column,
             line,
             fields,
             kind,
@@ -183,6 +190,12 @@ impl<'a> Metadata<'a> {
     /// occurred, or `None` if the line number is unknown.
     pub fn line(&self) -> Option<u32> {
         self.line
+    }
+
+    /// Returns the column number in the source code file where the span
+    /// occurred, or `None` if the column number is unknown.
+    pub fn column(&self) -> Option<u32> {
+        self.column
     }
 
     /// Returns an opaque `Identifier` that uniquely identifies the callsite

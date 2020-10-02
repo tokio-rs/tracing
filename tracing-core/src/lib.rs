@@ -221,6 +221,7 @@ macro_rules! metadata {
             $level,
             Some(file!()),
             Some(line!()),
+            Some(column!()),
             Some(module_path!()),
             $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
             $kind,

@@ -520,6 +520,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             FieldSet::new(&[], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
@@ -538,6 +539,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             FieldSet::new(&[], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
@@ -553,6 +555,7 @@ mod tests {
             "mySpan",
             "app",
             Level::TRACE,
+            None,
             None,
             None,
             None,
@@ -575,6 +578,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             FieldSet::new(&["field"], identify_callsite!(&Cs)),
             Kind::SPAN,
         );
@@ -591,6 +595,7 @@ mod tests {
             "mySpan",
             "app",
             Level::TRACE,
+            None,
             None,
             None,
             None,
