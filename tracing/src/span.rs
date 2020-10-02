@@ -1410,6 +1410,10 @@ impl fmt::Debug for Span {
                 span.field("line", &line);
             }
 
+            if let Some(ref column) = meta.column() {
+                span.field("column", &column);
+            }
+
             if let Some(ref file) = meta.file() {
                 span.field("file", &file);
             }
