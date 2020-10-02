@@ -76,33 +76,42 @@ pub(crate) mod convert {
 
     #[doc(hidden)]
     pub trait AsDebugValue<'a> {
-        fn as_debug_value(&self) -> Value<'a>;
+        fn as_debug_value(&'a self) -> Value<'a>;
     }
 
-    impl<'a, T: Debug> AsDebugValue<'a> for &'_ &'_ Specialize<'a, T> {
-        fn as_debug_value(&self) -> Value<'a> {
-            Value::debug(self.0)
+    // impl<'a, T: Debug> AsDebugValue<'a> for &'_ &'_ Specialize<'a, T> {
+    //     fn as_debug_value(&self) -> Value<'a> {
+    //         dbg!("as debug value");
+    //         Value::debug(self.0)
+    //     }
+    // // }
+    // // #[doc(hidden)]
+    // pub trait AsDebugUnsizedValue<'a> {
+    //     fn as_debug_value(&'a self) -> Value<'a>;
+    // }
+    impl<'a, T: ?Sized + Debug> AsDebugValue<'a> for &T {
+        fn as_debug_value(&'a self) -> Value<'a> {
+            dbg!(("as debug unsized value", std::any::type_name::<T>()));
+            Value::debug(self)
         }
-    }
-    #[doc(hidden)]
-    pub trait AsDebugUnsizedValue<'a> {
-        fn as_debug_value(&self) -> Value<'a>;
     }
 
-    impl<'a, T: ?Sized + Debug> AsDebugUnsizedValue<'a> for &'a Specialize<'a, T> {
-        fn as_debug_value(&self) -> Value<'a> {
-            Value::debug(&self.0)
-        }
-    }
+    // impl<T: ?Sized + Debug> AsDebugValue for &T {
+    //     fn as_debug_value(&self) -> Value<'_> {
+    //         dbg!(("as debug unsized value", std::any::type_name::<T>()));
+    //         Value::debug(self)
+    //     }
+    // }
 
     #[doc(hidden)]
     pub trait AsDebugAnyValue<'a> {
-        fn as_debug_value(&self) -> Value<'a>;
+        fn as_debug_value(&'a self) -> Value<'a>;
     }
 
-    impl<'a, T: Any + Debug> AsDebugAnyValue<'a> for Specialize<'a, T> {
-        fn as_debug_value(&self) -> Value<'a> {
-            Value::any(self.0)
+    impl<'a, T: Any + Debug> AsDebugAnyValue<'a> for T {
+        fn as_debug_value(&'a self) -> Value<'a> {
+            dbg!("as debug any value");
+            Value::any(self)
         }
     }
 

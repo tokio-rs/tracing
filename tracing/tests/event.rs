@@ -331,6 +331,40 @@ fn both_shorthands() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn debug_downcasts() {
+    #[derive(Debug)]
+    pub struct DebugTy(&'static str);
+
+    let (subscriber, handle) = subscriber::mock()
+        .event(
+            event::mock().with_fields(
+                field::mock("field")
+                    .with_value(&DebugTy("hello world") as &dyn fmt::Debug)
+                    .downcasts_to::<DebugTy>()
+                    .only(),
+            ),
+        )
+        // .event(
+        //     event::mock().with_fields(
+        //         field::mock("field")
+        //             .with_value(&DebugTy("goodbye world") as &dyn fmt::Debug)
+        //             .downcasts_to::<DebugTy>()
+        //             .only(),
+        //     ),
+        // )
+        .done()
+        .run_with_handle();
+    with_default(subscriber, || {
+        event!(Level::TRACE, field = ?DebugTy("hello world"));
+        let field = DebugTy("goodbye world");
+        // event!(Level::TRACE, field = ?&field);
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn explicit_child() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(span::mock().named("foo"))

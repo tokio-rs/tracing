@@ -67,6 +67,11 @@ impl MockField {
         }
     }
 
+    pub fn downcasts_to<T: Any>(mut self) -> Self {
+        self.value.downcasts_to = Some(Downcasts::to::<T>());
+        self
+    }
+
     pub fn and(self, other: MockField) -> Expect {
         Expect {
             fields: HashMap::new(),

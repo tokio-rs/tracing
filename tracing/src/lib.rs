@@ -922,9 +922,8 @@ pub mod __macro_support {
     use tracing_core::Once;
     pub mod as_value {
         pub use crate::field::convert::{
-            AsDebugAnyValue as _, AsDebugUnsizedValue as _, AsDebugValue as _,
-            AsDisplayAnyValue as _, AsDisplayUnsizedValue as _, AsDisplayValue as _,
-            AsOptionValue as _, AsValue as _,
+            AsDebugAnyValue as _, AsDebugValue as _, AsDisplayAnyValue as _,
+            AsDisplayUnsizedValue as _, AsDisplayValue as _, AsOptionValue as _, AsValue as _,
         };
 
         #[cfg(feature = "std")]
