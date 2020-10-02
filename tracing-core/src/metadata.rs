@@ -443,7 +443,7 @@ impl LevelFilter {
     /// *enabled*.`
     ///
     /// [`Level`]: super::Level
-    /// [`Subscriber`]: super::../Subscriber
+    /// [`Subscriber`]: super::Subscriber
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {
@@ -468,7 +468,7 @@ impl LevelFilter {
                 // an identity conversion from integer -> discriminant, rather
                 // than generating a lookup table. We want to ensure this
                 // function is a single `mov` instruction (on x86) if at all
-                // possible, because it is called *every* time a span::event
+                // possible, because it is called *every* time a span/event
                 // callsite is hit; and it is (potentially) the only code in the
                 // hottest path for skipping a majority of callsites when level
                 // filtering is in use.

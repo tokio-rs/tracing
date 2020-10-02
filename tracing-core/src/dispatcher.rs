@@ -125,9 +125,6 @@
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
-//!
-//! [`Subscriber`]: Subscriber
-//! [`Dispatch`]: Dispatch
 use crate::{
     callsite, span,
     subscriber::{self, Subscriber},
@@ -150,8 +147,6 @@ use crate::stdlib::{
 };
 
 /// `Dispatch` trace data to a [`Subscriber`].
-///
-/// [`Subscriber`]: Subscriber
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
@@ -219,10 +214,9 @@ pub struct DefaultGuard(Option<Dispatch>);
 ///
 /// </pre></div>
 ///
-/// [span]: super::span::index.html
+/// [span]: super::span
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [`Event`]: super::event::Event
-/// [`set_global_default`]: set_global_default
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
@@ -273,7 +267,7 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// executables that depend on the library try to set the default later.
 /// </pre></div>
 ///
-/// [span]: super::span::index.html
+/// [span]: super::span
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {

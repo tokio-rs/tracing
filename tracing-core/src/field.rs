@@ -27,8 +27,7 @@
 //! we might record integers by incrementing counters for their field names,
 //! rather than printing them.
 //!
-//! [`Value`]: Value
-//! [span]: ../span/
+//! [span]: super::span
 //! [`Event`]: super::event::Event
 //! [`Metadata`]: super::metadata::Metadata
 //! [`Attributes`]:  super::span::Attributes
@@ -36,8 +35,6 @@
 //! [`new_span`]: super::subscriber::Subscriber::new_span
 //! [`record`]: super::subscriber::Subscriber::record
 //! [`event`]:  super::subscriber::Subscriber::event
-//! [`Value::record`]: Value::record
-//! [`Visit`]: Visit
 use crate::callsite;
 use crate::stdlib::{
     borrow::Borrow,
@@ -166,7 +163,7 @@ pub struct Iter {
 /// This visitor (which is probably not particularly useful) keeps a running
 /// sum of all the numeric values it records, and ignores all other values. A
 /// more practical example of recording typed values is presented in
-/// `examples::counters.rs`, which demonstrates a very simple metrics system
+/// `examples/counters.rs`, which demonstrates a very simple metrics system
 /// implemented using `tracing`.
 ///
 /// <div class="information">
@@ -179,13 +176,11 @@ pub struct Iter {
 /// <code>std::error::Error</code> trait.
 /// </pre></div>
 ///
-/// [`Value`]: Value
 /// [recorded]: Value::record
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [records an `Event`]: super::subscriber::Subscriber::event
 /// [set of `Value`s added to a `Span`]: super::subscriber::Subscriber::record
 /// [`Event`]: super::event::Event
-/// [`ValueSet`]: ValueSet
 pub trait Visit {
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {

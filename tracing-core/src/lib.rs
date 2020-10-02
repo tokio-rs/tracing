@@ -39,7 +39,7 @@
 //! for instrumenting libraries and applications, and are generally not
 //! necessary for `Subscriber` implementations.
 //!
-//! The [`tokio-rs::tracing`] repository contains less stable crates designed to
+//! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
 //! `Subscriber` implementations, as well as utility and adapter crates.
 //!
@@ -83,12 +83,12 @@
 //! [`Value`]: field::Value
 //! [`ValueSet`]: field::ValueSet
 //! [`Dispatch`]: dispatcher::Dispatch
-//! [`tokio-rs::tracing`]: https://github.com::tokio-rs::tracing
-//! [`tracing`]: https://crates.io::crates::tracing
-#![doc(html_root_url = "https://docs.rs::tracing-core/0.1.17")]
+//! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
+//! [`tracing`]: https://crates.io/crates/tracing
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com::tokio-rs::tracing::master::assets::logo-type.png",
-    issue_tracker_base_url = "https://github.com::tokio-rs::tracing::issues/"
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
