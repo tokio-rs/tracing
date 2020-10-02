@@ -68,6 +68,11 @@ use tracing_core::{
 /// - If only a level is provided, it will set the maximum level for all `Span`s and `Event`s
 ///   that are not enabled by other filters.
 /// - A directive without a level will enable anything that it matches. This is equivalent to `=trace`.
+/// - When a crate has a dash in its name, the default target for events will be the
+///   crate's module path as it appears in Rust. This means every dash will be replaced
+///   with an underscore.
+/// - A dash in a target will only appear when being specified explicitly:
+///   `tracing::info!(target: "target-name", ...);`
 ///
 /// ## Examples
 ///
