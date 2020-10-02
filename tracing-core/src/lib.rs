@@ -39,7 +39,7 @@
 //! for instrumenting libraries and applications, and are generally not
 //! necessary for `Subscriber` implementations.
 //!
-//! The [`tokio-rs/tracing`] repository contains less stable crates designed to
+//! The [`tokio-rs::tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
 //! `Subscriber` implementations, as well as utility and adapter crates.
 //!
@@ -73,22 +73,22 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: span/struct.Id.html
-//! [`Event`]: event/struct.Event.html
-//! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`Metadata`]: metadata/struct.Metadata.html
-//! [`Callsite`]: callsite/trait.Callsite.html
-//! [`Field`]: field/struct.Field.html
-//! [`FieldSet`]: field/struct.FieldSet.html
-//! [`Value`]: field/trait.Value.html
-//! [`ValueSet`]: field/struct.ValueSet.html
-//! [`Dispatch`]: dispatcher/struct.Dispatch.html
-//! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
-//! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
+//! [`span::Id`]: span::Id
+//! [`Event`]: event::Event
+//! [`Subscriber`]: subscriber::Subscriber
+//! [`Metadata`]: metadata::Metadata
+//! [`Callsite`]: callsite::Callsite
+//! [`Field`]: field::Field
+//! [`FieldSet`]: field::FieldSet
+//! [`Value`]: field::Value
+//! [`ValueSet`]: field::ValueSet
+//! [`Dispatch`]: dispatcher::Dispatch
+//! [`tokio-rs::tracing`]: https://github.com::tokio-rs::tracing
+//! [`tracing`]: https://crates.io::crates::tracing
+#![doc(html_root_url = "https://docs.rs::tracing-core/0.1.17")]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
-    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
+    html_logo_url = "https://raw.githubusercontent.com::tokio-rs::tracing::master::assets::logo-type.png",
+    issue_tracker_base_url = "https://github.com::tokio-rs::tracing::issues/"
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
@@ -120,7 +120,7 @@ extern crate alloc;
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
 /// This may be used in contexts, such as static initializers, where the
-/// [`Callsite::id`] function is not currently usable.
+/// [`Metadata::callsite`] function is not currently usable.
 ///
 /// For example:
 /// ```rust
@@ -146,9 +146,9 @@ extern crate alloc;
 /// # }
 /// ```
 ///
-/// [`Identifier`]: callsite/struct.Identifier.html
-/// [`Callsite`]: callsite/trait.Callsite.html
-/// [`Callsite::id`]: callsite/trait.Callsite.html#method.id
+/// [`Identifier`]: callsite::Identifier
+/// [`Callsite`]: callsite::Callsite
+/// [`Metadata::callsite`]: metadata::Metadata::callsite
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
@@ -186,8 +186,8 @@ macro_rules! identify_callsite {
 /// # }
 /// ```
 ///
-/// [metadata]: metadata/struct.Metadata.html
-/// [`Metadata::new`]: metadata/struct.Metadata.html#method.new
+/// [metadata]: metadata::Metadata
+/// [`Metadata::new`]: metadata::Metadata::new
 #[macro_export]
 macro_rules! metadata {
     (

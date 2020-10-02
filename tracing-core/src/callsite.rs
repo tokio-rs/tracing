@@ -77,12 +77,12 @@ impl Registry {
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
-    /// [`Interest`]: ../subscriber/struct.Interest.html
+    /// [`Interest`]: super::subscriber::Interest
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
     ///
-    /// [metadata]: ../metadata/struct.Metadata.html
+    /// [metadata]: super::metadata::Metadata
     fn metadata(&self) -> &Metadata<'_>;
 }
 
@@ -90,7 +90,7 @@ pub trait Callsite: Sync {
 ///
 /// Two `Identifier`s are equal if they both refer to the same callsite.
 ///
-/// [`Callsite`]: ../callsite/trait.Callsite.html
+/// [`Callsite`]: super::callsite::Callsite
 #[derive(Clone)]
 pub struct Identifier(
     /// **Warning**: The fields on this type are currently `pub` because it must
@@ -119,11 +119,11 @@ pub struct Identifier(
 /// implementation at runtime, then it **must** call this function after that
 /// value changes, in order for the change to be reflected.
 ///
-/// [`max_level_hint`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
-/// [`Callsite`]: ../callsite/trait.Callsite.html
-/// [`enabled`]: ../subscriber/trait.Subscriber.html#tymethod.enabled
-/// [`Interest::sometimes()`]: ../subscriber/struct.Interest.html#method.sometimes
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+/// [`max_level_hint`]: super::subscriber::Subscriber::max_level_hint
+/// [`Callsite`]: super::callsite::Callsite
+/// [`enabled`]: super::subscriber::Subscriber::enabled
+/// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
+/// [`Subscriber`]: super::subscriber::Subscriber
 pub fn rebuild_interest_cache() {
     let mut registry = REGISTRY.lock().unwrap();
     registry.rebuild_interest();

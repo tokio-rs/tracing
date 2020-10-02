@@ -9,8 +9,8 @@ use crate::{field, Metadata};
 /// the [`new_span`] trait method. See the documentation for that method for
 /// more information on span ID generation.
 ///
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`new_span`]: super::subscriber::Subscriber::new_span
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(NonZeroU64);
 
@@ -37,9 +37,9 @@ pub struct Record<'a> {
 /// - "none", indicating that the current context is known to not be in a span,
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
-/// [the `Subscriber` considers]: ../subscriber/trait.Subscriber.html#method.current_span
-/// [`Id`]: struct.Id.html
-/// [`Metadata`]: ../metadata/struct.Metadata.html
+/// [the `Subscriber` considers]: super::subscriber::Subscriber::current_span
+/// [`Id`]: Id
+/// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]
 pub struct Current {
     inner: CurrentInner,
@@ -75,7 +75,7 @@ impl Id {
 
     /// Constructs a new span ID from the given `NonZeroU64`.
     ///
-    /// Unlike [`Id::from_u64`](#method.from_u64), this will never panic.
+    /// Unlike [`Id::from_u64`](Self::from_u64), this will never panic.
     #[inline]
     pub const fn from_non_zero_u64(id: NonZeroU64) -> Self {
         Id(id)
@@ -181,7 +181,7 @@ impl<'a> Attributes<'a> {
     /// Records all the fields in this set of `Attributes` with the provided
     /// [Visitor].
     ///
-    /// [visitor]: ../field/trait.Visit.html
+    /// [visitor]: super::field::Visit
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.values.record(visitor)
     }
@@ -208,7 +208,7 @@ impl<'a> Record<'a> {
 
     /// Records all the fields in this `Record` with the provided [Visitor].
     ///
-    /// [visitor]: ../field/trait.Visit.html
+    /// [visitor]: super::field::Visit
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.values.record(visitor)
     }
@@ -260,9 +260,9 @@ impl Current {
     /// `None`, but in this case, that is because the subscriber does not keep
     /// track of the currently-entered span.
     ///
-    /// [`id`]: #method.id
-    /// [`metadata`]: #method.metadata
-    /// [`into_inner`]: #method.into_inner
+    /// [`id`]: Self::id
+    /// [`metadata`]: Self::metadata
+    /// [`into_inner`]: Self::into_inner
     pub fn is_known(&self) -> bool {
         !matches!(self.inner, CurrentInner::Unknown)
     }
