@@ -255,8 +255,8 @@ pub(crate) mod spin;
 
 #[cfg(feature = "std")]
 mod sync {
-    pub(crate) use std::sync::{Mutex, MutexGuard};
     pub use std::sync::Once;
+    pub(crate) use std::sync::{Mutex, MutexGuard};
 }
 
 #[doc(hidden)]

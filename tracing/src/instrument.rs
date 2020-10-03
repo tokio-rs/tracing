@@ -1,7 +1,7 @@
+use crate::{dispatcher, span::Span, Dispatch};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::{future::Future, marker::Sized};
-use crate::{dispatcher, span::Span, Dispatch};
 use pin_project_lite::pin_project;
 
 /// Attaches spans to a `std::future::Future`.

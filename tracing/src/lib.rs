@@ -913,9 +913,9 @@ pub mod subscriber;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
-    use core::sync::atomic::{AtomicUsize, Ordering};
-    use core::fmt;
     use crate::{subscriber::Interest, Metadata};
+    use core::fmt;
+    use core::sync::atomic::{AtomicUsize, Ordering};
     use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.

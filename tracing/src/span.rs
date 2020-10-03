@@ -315,14 +315,14 @@
 //! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 
+use crate::{
+    dispatcher::{self, Dispatch},
+    field, Metadata,
+};
 use core::{
     cmp, fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,
-};
-use crate::{
-    dispatcher::{self, Dispatch},
-    field, Metadata,
 };
 
 /// Trait implemented by types which have a span `Id`.
