@@ -1041,9 +1041,9 @@ impl Span {
                         logger.log(
                             &log::Record::builder()
                                 .metadata(log_meta)
-                                .module_path(meta.location().module_path())
-                                .file(meta.location().file())
-                                .line(meta.location().line())
+                                .module_path(meta.module_path())
+                                .file(meta.file())
+                                .line(meta.line())
                                 .args(format_args!("{}; span={}", message, inner.id.into_u64()))
                                 .build(),
                         );
@@ -1051,9 +1051,9 @@ impl Span {
                         logger.log(
                             &log::Record::builder()
                                 .metadata(log_meta)
-                                .module_path(meta.location().module_path())
-                                .file(meta.location().file())
-                                .line(meta.location().line())
+                                .module_path(meta.module_path())
+                                .file(meta.file())
+                                .line(meta.line())
                                 .args(message)
                                 .build(),
                         );
@@ -1106,19 +1106,19 @@ impl fmt::Debug for Span {
                 span.field("disabled", &true);
             }
 
-            if let Some(ref path) = meta.location().module_path() {
+            if let Some(ref path) = meta.module_path() {
                 span.field("module_path", &path);
             }
 
-            if let Some(ref line) = meta.location().line() {
+            if let Some(ref line) = meta.line() {
                 span.field("line", &line);
             }
 
-            if let Some(ref column) = meta.location().column() {
+            if let Some(ref column) = meta.column() {
                 span.field("column", &column);
             }
 
-            if let Some(ref file) = meta.location().file() {
+            if let Some(ref file) = meta.file() {
                 span.field("file", &file);
             }
         } else {

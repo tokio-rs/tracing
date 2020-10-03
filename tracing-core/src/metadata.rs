@@ -163,9 +163,28 @@ impl<'a> Metadata<'a> {
         self.target
     }
 
-    /// Return position in the source code where this `Metadata` originated from
-    pub fn location(&self) -> &Location<'a> {
-        &self.location
+    /// Returns the name of the source code file where this `Metadata`
+    /// originated from, or `None` if the file is unknown
+    pub fn file(&self) -> Option<&'a str> {
+        self.location.file()
+    }
+
+    /// Returns the path to the Rust module where this `Metadata`
+    /// originated from, or `None` if the module path is unknown.
+    pub fn module_path(&self) -> Option<&'a str> {
+        self.location.module_path()
+    }
+
+    /// Returns the line number in the source code file where this `Metadata`
+    /// originated from, or `None` if the line number is unknown.
+    pub fn line(&self) -> Option<u32> {
+        self.location.line()
+    }
+
+    /// Returns the column in the source code file where this `Metadata`
+    /// originated from, or `None` if the line number is unknown.
+    pub fn column(&self) -> Option<u32> {
+        self.location.column()
     }
 
     /// Returns an opaque `Identifier` that uniquely identifies the callsite

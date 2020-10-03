@@ -199,9 +199,9 @@ impl SpanLineBuilder {
             parent,
             ref_count: 1,
             fields,
-            file: meta.location().file().map(String::from),
-            line: meta.location().line(),
-            module_path: meta.location().module_path().map(String::from),
+            file: meta.file().map(String::from),
+            line: meta.line(),
+            module_path: meta.module_path().map(String::from),
             target: String::from(meta.target()),
             level: meta.level().as_log(),
             name: meta.name(),
@@ -384,9 +384,9 @@ impl Subscriber for TraceLogger {
                 &log::Record::builder()
                     .metadata(log_meta)
                     .target(meta.target())
-                    .module_path(meta.location().module_path().as_ref().cloned())
-                    .file(meta.location().file().as_ref().cloned())
-                    .line(meta.location().line())
+                    .module_path(meta.module_path().as_ref().cloned())
+                    .file(meta.file().as_ref().cloned())
+                    .line(meta.line())
                     .args(format_args!(
                         "{}{}{}{}",
                         parent.unwrap_or(""),

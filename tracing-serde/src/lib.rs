@@ -265,10 +265,10 @@ impl<'a> Serialize for SerializeMetadata<'a> {
         state.serialize_field("name", self.0.name())?;
         state.serialize_field("target", self.0.target())?;
         state.serialize_field("level", &SerializeLevel(self.0.level()))?;
-        state.serialize_field("module_path", &self.0.location().module_path())?;
-        state.serialize_field("file", &self.0.location().file())?;
-        state.serialize_field("line", &self.0.location().line())?;
-        state.serialize_field("column", &self.0.location().column())?;
+        state.serialize_field("module_path", &self.0.module_path())?;
+        state.serialize_field("file", &self.0.file())?;
+        state.serialize_field("line", &self.0.line())?;
+        state.serialize_field("column", &self.0.column())?;
         state.serialize_field("fields", &SerializeFieldSet(self.0.fields()))?;
         state.serialize_field("is_span", &self.0.is_span())?;
         state.serialize_field("is_event", &self.0.is_event())?;
