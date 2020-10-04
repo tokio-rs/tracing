@@ -883,7 +883,7 @@ use tracing_core::*;
 
 #[doc(inline)]
 pub use self::instrument::Instrument;
-pub use self::{dispatcher::Dispatch, event::Event, field::Value, collector::Collector};
+pub use self::{collector::Collector, dispatcher::Dispatch, event::Event, field::Value};
 
 #[doc(hidden)]
 pub use self::span::Id;
@@ -905,6 +905,7 @@ pub use tracing_attributes::instrument;
 #[macro_use]
 mod macros;
 
+pub mod collector;
 pub mod dispatcher;
 pub mod field;
 /// Attach a span to a `std::future::Future`.
@@ -912,7 +913,6 @@ pub mod instrument;
 pub mod level_filters;
 pub mod span;
 pub(crate) mod stdlib;
-pub mod collector;
 
 #[doc(hidden)]
 pub mod __macro_support {

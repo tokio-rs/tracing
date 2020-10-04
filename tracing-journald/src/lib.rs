@@ -45,7 +45,7 @@ use tracing_core::{
     event::Event,
     field::Visit,
     span::{Attributes, Id, Record},
-    Field, Level, Metadata, Collector,
+    Collector, Field, Level, Metadata,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan};
 

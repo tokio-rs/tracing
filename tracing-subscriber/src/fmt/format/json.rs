@@ -14,7 +14,7 @@ use std::{
 use tracing_core::{
     field::{self, Field},
     span::Record,
-    Event, Collector,
+    Collector, Event,
 };
 use tracing_serde::AsSerde;
 

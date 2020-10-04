@@ -5,7 +5,7 @@ use std::fmt;
 use std::marker;
 use std::time::SystemTime;
 use tracing_core::span::{self, Attributes, Id, Record};
-use tracing_core::{field, Event, Collector};
+use tracing_core::{field, Collector, Event};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 use tracing_subscriber::layer::Context;

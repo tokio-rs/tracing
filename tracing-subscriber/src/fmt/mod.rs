@@ -122,7 +122,7 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, error::Error, io};
-use tracing_core::{span, collector::Interest, Event, Metadata};
+use tracing_core::{collector::Interest, span, Event, Metadata};
 
 mod fmt_layer;
 pub mod format;
@@ -588,9 +588,7 @@ where
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(
-        self,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
+    pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -656,8 +654,7 @@ where
     /// runtime.
     pub fn with_filter_reloading(
         self,
-    ) -> CollectorBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
-    {
+    ) -> CollectorBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W> {
         let (filter, _) = crate::reload::Layer::new(self.filter);
         CollectorBuilder {
             filter,

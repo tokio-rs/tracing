@@ -13,7 +13,7 @@
 use ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
-    Id, Level, Collector,
+    Collector, Id, Level,
 };
 
 use std::{

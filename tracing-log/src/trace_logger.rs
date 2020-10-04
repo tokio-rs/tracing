@@ -30,7 +30,7 @@ use std::{
 use tracing_core::{
     field,
     span::{self, Id},
-    Event, Metadata, Collector,
+    Collector, Event, Metadata,
 };
 
 /// A `tracing` [`Collector`] implementation that logs all recorded

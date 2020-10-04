@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
-    span::{Attributes, Id, Record},
     collector::Interest,
-    Event, Metadata, Collector,
+    span::{Attributes, Id, Record},
+    Collector, Event, Metadata,
 };
 use tracing_subscriber::{layer, prelude::*, reload::*};
 

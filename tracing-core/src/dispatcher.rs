@@ -126,9 +126,9 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
-    callsite, span,
+    callsite,
     collector::{self, Collector},
-    Event, LevelFilter, Metadata,
+    span, Event, LevelFilter, Metadata,
 };
 
 use crate::stdlib::{
@@ -781,8 +781,8 @@ mod test {
     use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
     use crate::{
         callsite::Callsite,
-        metadata::{Kind, Level, Metadata},
         collector::Interest,
+        metadata::{Kind, Level, Metadata},
     };
 
     #[test]

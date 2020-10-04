@@ -20,9 +20,9 @@ use std::{
     sync::{Arc, Weak},
 };
 use tracing_core::{
-    callsite, span,
-    collector::{Interest, Collector},
-    Event, Metadata,
+    callsite,
+    collector::{Collector, Interest},
+    span, Event, Metadata,
 };
 
 /// Wraps a `Subscriber`, allowing it to be reloaded dynamically at runtime.

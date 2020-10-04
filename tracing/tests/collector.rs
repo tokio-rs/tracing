@@ -9,9 +9,8 @@
 #[macro_use]
 extern crate tracing;
 use tracing::{
-    span,
-    collector::{with_default, Interest, Collector},
-    Event, Level, Metadata,
+    collector::{with_default, Collector, Interest},
+    span, Event, Level, Metadata,
 };
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

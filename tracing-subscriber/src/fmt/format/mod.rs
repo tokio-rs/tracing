@@ -13,7 +13,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field, Visit},
-    span, Event, Level, Collector,
+    span, Collector, Event, Level,
 };
 
 #[cfg(feature = "tracing-log")]

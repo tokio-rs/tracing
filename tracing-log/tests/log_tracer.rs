@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use tracing::collector::with_default;
 use tracing_core::span::{Attributes, Record};
-use tracing_core::{span, Event, Level, Metadata, Collector};
+use tracing_core::{span, Collector, Event, Level, Metadata};
 use tracing_log::{LogTracer, NormalizeEvent};
 
 struct State {

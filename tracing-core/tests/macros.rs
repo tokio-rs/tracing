@@ -1,8 +1,8 @@
 use tracing_core::{
     callsite::Callsite,
+    collector::Interest,
     metadata,
     metadata::{Kind, Level, Metadata},
-    collector::Interest,
 };
 
 #[test]

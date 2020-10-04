@@ -19,10 +19,9 @@ use crate::{
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
+    collector::{Collector, Interest},
     field::Field,
-    span,
-    collector::{Interest, Collector},
-    Metadata,
+    span, Metadata,
 };
 
 /// A [`Subscriber`] which filters spans and events based on a set of filter

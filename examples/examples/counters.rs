@@ -1,10 +1,9 @@
 #![deny(rust_2018_idioms)]
 
 use tracing::{
-    field::{Field, Visit},
-    info, span,
     collector::{self, Collector},
-    warn, Event, Id, Level, Metadata,
+    field::{Field, Visit},
+    info, span, warn, Event, Id, Level, Metadata,
 };
 
 use std::{

@@ -11,9 +11,9 @@ use crate::stdlib::{
     vec::Vec,
 };
 use crate::{
+    collector::Interest,
     dispatcher::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
-    collector::Interest,
 };
 
 lazy_static! {

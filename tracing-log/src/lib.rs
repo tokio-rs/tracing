@@ -139,11 +139,11 @@ use std::{fmt, io};
 
 use tracing_core::{
     callsite::{self, Callsite},
-    dispatcher,
+    collector, dispatcher,
     field::{self, Field, Visit},
     identify_callsite,
     metadata::{Kind, Level},
-    collector, Event, Metadata,
+    Event, Metadata,
 };
 
 #[cfg(feature = "log-tracer")]

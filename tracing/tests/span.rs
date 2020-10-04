@@ -10,8 +10,8 @@ mod support;
 use self::support::*;
 use std::thread;
 use tracing::{
-    field::{debug, display},
     collector::with_default,
+    field::{debug, display},
     Level, Span,
 };
 

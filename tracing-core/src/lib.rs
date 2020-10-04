@@ -253,6 +253,7 @@ pub type Once = self::spin::Once<()>;
 pub use stdlib::sync::Once;
 
 pub mod callsite;
+pub mod collector;
 pub mod dispatcher;
 pub mod event;
 pub mod field;
@@ -260,19 +261,18 @@ pub mod metadata;
 mod parent;
 pub mod span;
 pub(crate) mod stdlib;
-pub mod collector;
 
 #[doc(inline)]
 pub use self::{
     callsite::Callsite,
+    collector::Collector,
     dispatcher::Dispatch,
     event::Event,
     field::Field,
     metadata::{Level, LevelFilter, Metadata},
-    collector::Collector,
 };
 
-pub use self::{metadata::Kind, collector::Interest};
+pub use self::{collector::Interest, metadata::Kind};
 
 mod sealed {
     pub trait Sealed {}

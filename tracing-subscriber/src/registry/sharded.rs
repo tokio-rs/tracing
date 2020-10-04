@@ -16,7 +16,7 @@ use std::{
 use tracing_core::{
     dispatcher::{self, Dispatch},
     span::{self, Current, Id},
-    Event, Interest, Metadata, Collector,
+    Collector, Event, Interest, Metadata,
 };
 
 /// A shared, reusable store for spans.

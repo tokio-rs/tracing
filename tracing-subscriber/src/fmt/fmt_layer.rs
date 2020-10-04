@@ -9,7 +9,7 @@ use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, 
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
-    Event, Metadata, Collector,
+    Collector, Event, Metadata,
 };
 
 /// A [`Subscriber`] that logs formatted representations of `tracing` events.

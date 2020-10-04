@@ -2,10 +2,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tracing::debug;
 use tracing_core::{
+    collector::Collector,
     event::Event,
     metadata::Metadata,
     span::{Attributes, Id, Record},
-    collector::Collector,
 };
 use tracing_serde::AsSerde;
 

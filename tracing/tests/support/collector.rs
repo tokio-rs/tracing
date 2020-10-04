@@ -15,10 +15,10 @@ use std::{
     thread,
 };
 use tracing::{
+    collector::Interest,
     level_filters::LevelFilter,
     span::{self, Attributes, Id},
-    collector::Interest,
-    Event, Metadata, Collector,
+    Collector, Event, Metadata,
 };
 
 #[derive(Debug, Eq, PartialEq)]

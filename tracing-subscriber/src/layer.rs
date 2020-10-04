@@ -1,9 +1,8 @@
 //! A composable abstraction for building `Collector`s.
 use tracing_core::{
+    collector::{Collector, Interest},
     metadata::Metadata,
-    span,
-    collector::{Interest, Collector},
-    Event, LevelFilter,
+    span, Event, LevelFilter,
 };
 
 #[cfg(feature = "registry")]

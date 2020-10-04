@@ -1,4 +1,4 @@
-use tracing_core::{metadata::Metadata, span, collector::Collector, Event};
+use tracing_core::{collector::Collector, metadata::Metadata, span, Event};
 
 pub struct TestSubscriberA;
 impl Collector for TestSubscriberA {
