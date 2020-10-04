@@ -5,7 +5,7 @@ use tracing_core::{
     event::Event,
     metadata::Metadata,
     span::{Attributes, Id, Record},
-    subscriber::Subscriber,
+    collector::Collector,
 };
 use tracing_serde::AsSerde;
 
@@ -18,7 +18,7 @@ pub struct JsonSubscriber {
     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 }
 
-impl Subscriber for JsonSubscriber {
+impl Collector for JsonSubscriber {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let json = json!({
         "enabled": {
@@ -85,7 +85,7 @@ fn main() {
         next_id: AtomicUsize::new(1),
     };
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collector::with_default(subscriber, || {
         let number_of_yaks = 3;
         debug!("preparing to shave {} yaks", number_of_yaks);
 

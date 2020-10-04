@@ -5,17 +5,17 @@ use std::thread::sleep;
 use std::time::Duration;
 use tempdir::TempDir;
 use tracing::{span, Level};
-use tracing_flame::FlameLayer;
+use tracing_flame::FlameSubscriber;
 use tracing_subscriber::{prelude::*, registry::Registry};
 
 static PATH: &str = "flame.folded";
 
 fn setup_global_subscriber(dir: &Path) -> impl Drop {
-    let (flame_layer, _guard) = FlameLayer::with_file(dir.join(PATH)).unwrap();
+    let (flame_layer, _guard) = FlameSubscriber::with_file(dir.join(PATH)).unwrap();
 
     let subscriber = Registry::default().with(flame_layer);
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::collector::set_global_default(subscriber).unwrap();
 
     _guard
 }

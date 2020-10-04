@@ -1,24 +1,24 @@
-//! Storage for span data shared by multiple [`Layer`]s.
+//! Storage for span data shared by multiple [`Subscriber`]s.
 //!
 //! ## Using the Span Registry
 //!
-//! This module provides the [`Registry`] type, a [`Subscriber`] implementation
-//! which tracks per-span data and exposes it to [`Layer`]s. When a `Registry`
-//! is used as the base `Subscriber` of a `Layer` stack, the
-//! [`layer::Context`][ctx] type will provide methods allowing `Layer`s to
+//! This module provides the [`Registry`] type, a [`Collector`] implementation
+//! which tracks per-span data and exposes it to [`Subscriber`]s. When a `Registry`
+//! is used as the base `Collector` of a `Subscriber` stack, the
+//! [`layer::Context`][ctx] type will provide methods allowing `Subscriber`s to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
-//! [`LookupSpan`] and [`Subscriber`] themselves (with [`SpanData`] implemented
+//! [`LookupSpan`] and [`Collector`] themselves (with [`SpanData`] implemented
 //! by the per-span data they store) can be used as a drop-in replacement.
 //!
-//! For example, we might create a `Registry` and add multiple `Layer`s like so:
+//! For example, we might create a `Registry` and add multiple `Subscriber`s like so:
 //! ```rust
-//! use tracing_subscriber::{registry::Registry, Layer, prelude::*};
-//! # use tracing_core::Subscriber;
+//! use tracing_subscriber::{registry::Registry, Subscriber, prelude::*};
+//! # use tracing_core::Collector;
 //! # pub struct FooLayer {}
 //! # pub struct BarLayer {}
-//! # impl<S: Subscriber> Layer<S> for FooLayer {}
-//! # impl<S: Subscriber> Layer<S> for BarLayer {}
+//! # impl<S: Collector> Subscriber<S> for FooLayer {}
+//! # impl<S: Collector> Subscriber<S> for BarLayer {}
 //! # impl FooLayer {
 //! # fn new() -> Self { Self {} }
 //! # }
@@ -31,31 +31,31 @@
 //!     .with(BarLayer::new());
 //! ```
 //!
-//! If a type implementing `Layer` depends on the functionality of a `Registry`
-//! implementation, it should bound its `Subscriber` type parameter with the
+//! If a type implementing `Subscriber` depends on the functionality of a `Registry`
+//! implementation, it should bound its `Collector` type parameter with the
 //! [`LookupSpan`] trait, like so:
 //!
 //! ```rust
-//! use tracing_subscriber::{registry, Layer};
-//! use tracing_core::Subscriber;
+//! use tracing_subscriber::{registry, Subscriber};
+//! use tracing_core::Collector;
 //!
 //! pub struct MyLayer {
 //!     // ...
 //! }
 //!
-//! impl<S> Layer<S> for MyLayer
+//! impl<S> Subscriber<S> for MyLayer
 //! where
-//!     S: Subscriber + for<'a> registry::LookupSpan<'a>,
+//!     S: Collector + for<'a> registry::LookupSpan<'a>,
 //! {
 //!     // ...
 //! }
 //! ```
-//! When this bound is added, the `Layer` implementation will be guaranteed
+//! When this bound is added, the `Subscriber` implementation will be guaranteed
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
 //! require the root subscriber to be a registry.
 //!
-//! [`Layer`]: ../layer/trait.Layer.html
-//! [`Subscriber`]:
+//! [`Subscriber`]: ../layer/trait.Subscriber.html
+//! [`Collector`]:
 //!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [`Registry`]: struct.Registry.html
 //! [ctx]: ../layer/struct.Context.html
@@ -82,10 +82,10 @@ pub use sharded::Registry;
 /// Provides access to stored span data.
 ///
 /// Subscribers which store span data and associate it with span IDs should
-/// implement this trait; if they do, any [`Layer`]s wrapping them can look up
+/// implement this trait; if they do, any [`Subscriber`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`span()`] method.
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Subscriber`]: ../layer/trait.Subscriber.html
 /// [`Context`]: ../layer/struct.Context.html
 /// [`span()`]: ../layer/struct.Context.html#method.span
 pub trait LookupSpan<'a> {
@@ -146,13 +146,13 @@ pub trait SpanData<'a> {
 
     /// Returns a reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
     fn extensions(&self) -> Extensions<'_>;
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
 }
@@ -279,7 +279,7 @@ where
 
     /// Returns a reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
     pub fn extensions(&self) -> Extensions<'_> {
         self.data.extensions()
@@ -287,7 +287,7 @@ where
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()

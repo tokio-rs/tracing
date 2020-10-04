@@ -7,7 +7,7 @@
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
 //! scoped, structured, and async-aware diagnostics. `tracing-journald` provides a
-//! [`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
+//! [`tracing-subscriber::Subscriber`][layer] implementation for logging `tracing` spans
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!  
@@ -45,7 +45,7 @@ use tracing_core::{
     event::Event,
     field::Visit,
     span::{Attributes, Id, Record},
-    Field, Level, Metadata, Subscriber,
+    Field, Level, Metadata, Collector,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan};
 
@@ -118,9 +118,9 @@ pub fn layer() -> io::Result<Layer> {
     Layer::new()
 }
 
-impl<S> tracing_subscriber::Layer<S> for Layer
+impl<S> tracing_subscriber::Subscriber<S> for Layer
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
 {
     fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<S>) {
         let span = ctx.span(id).expect("unknown span");

@@ -65,7 +65,7 @@
 //! let subscriber = Registry::default().with(telemetry);
 //!
 //! // Trace executed code
-//! tracing::subscriber::with_default(subscriber, || {
+//! tracing::collector::with_default(subscriber, || {
 //!     // Spans will be sent to the configured OpenTelemetry exporter
 //!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
 //!     let _enter = root.enter();
@@ -97,7 +97,7 @@
 )]
 #![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 
-/// Implementation of the trace::Layer as a source of OpenTelemetry data.
+/// Implementation of the trace::Subscriber as a source of OpenTelemetry data.
 mod layer;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;

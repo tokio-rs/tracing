@@ -58,9 +58,9 @@
 //! ## Caution: Mixing both conversions
 //!
 //! Note that logger implementations that convert log records to trace events
-//! should not be used with `Subscriber`s that convert trace events _back_ into
+//! should not be used with `Collector`s that convert trace events _back_ into
 //! log records (such as the `TraceLogger`), as doing so will result in the
-//! event recursing between the subscriber and the logger forever (or, in real
+//! event recursing between the collector and the logger forever (or, in real
 //! life, probably overflowing the call stack).
 //!
 //! If the logging of trace events generated from log records produced by the
@@ -69,7 +69,7 @@
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
 //! # Feature Flags
-//! * `trace-logger`: enables an experimental `log` subscriber, deprecated since
+//! * `trace-logger`: enables an experimental `log` collector, deprecated since
 //!   version 0.1.1.
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
@@ -101,8 +101,8 @@
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
 //! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
 //! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
-//! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`Collector`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
@@ -143,7 +143,7 @@ use tracing_core::{
     field::{self, Field, Visit},
     identify_callsite,
     metadata::{Kind, Level},
-    subscriber, Event, Metadata,
+    collector, Event, Metadata,
 };
 
 #[cfg(feature = "log-tracer")]
@@ -286,7 +286,7 @@ macro_rules! log_cs {
         );
 
         impl callsite::Callsite for Callsite {
-            fn set_interest(&self, _: subscriber::Interest) {}
+            fn set_interest(&self, _: collector::Interest) {}
             fn metadata(&self) -> &'static Metadata<'static> {
                 &META
             }
@@ -391,7 +391,7 @@ impl AsTrace for log::Level {
 /// that only lives as long as its source `Event`, but provides complete
 /// data.
 ///
-/// It can typically be used by `Subscriber`s when processing an `Event`,
+/// It can typically be used by `Collector`s when processing an `Event`,
 /// to allow accessing its complete metadata in a consistent way,
 /// regardless of the source of its source.
 ///

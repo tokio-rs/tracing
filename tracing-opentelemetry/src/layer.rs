@@ -5,12 +5,12 @@ use std::fmt;
 use std::marker;
 use std::time::SystemTime;
 use tracing_core::span::{self, Attributes, Id, Record};
-use tracing_core::{field, Event, Subscriber};
+use tracing_core::{field, Event, Collector};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::Layer;
+use tracing_subscriber::Subscriber;
 
 static SPAN_NAME_FIELD: &str = "otel.name";
 static SPAN_KIND_FIELD: &str = "otel.kind";
@@ -29,7 +29,7 @@ pub struct OpenTelemetryLayer<S, T> {
 
 impl<S> Default for OpenTelemetryLayer<S, api::NoopTracer>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         OpenTelemetryLayer::new(api::NoopTracer {})
@@ -53,7 +53,7 @@ where
 /// ```
 pub fn layer<S>() -> OpenTelemetryLayer<S, api::NoopTracer>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
 {
     OpenTelemetryLayer::default()
 }
@@ -261,7 +261,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
 
 impl<S, T> OpenTelemetryLayer<S, T>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
     T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Set the [`Tracer`] that this layer will use to produce and track
@@ -424,9 +424,9 @@ where
     }
 }
 
-impl<S, T> Layer<S> for OpenTelemetryLayer<S, T>
+impl<S, T> Subscriber<S> for OpenTelemetryLayer<S, T>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
     T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`].
@@ -627,7 +627,7 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collector::with_default(subscriber, || {
             tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
         });
 
@@ -640,7 +640,7 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collector::with_default(subscriber, || {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 
@@ -661,7 +661,7 @@ mod tests {
         )));
         let _g = existing_cx.attach();
 
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collector::with_default(subscriber, || {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 

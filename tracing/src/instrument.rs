@@ -77,16 +77,16 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures to be instrumented with
-/// a `tracing` [`Subscriber`].
+/// a `tracing` [`Collector`].
 ///
-/// [`Subscriber`]: ../trait.Subscriber.html
+/// [`Collector`]: ../trait.Collector.html
 pub trait WithSubscriber: Sized {
-    /// Attaches the provided [`Subscriber`] to this type, returning a
+    /// Attaches the provided [`Collector`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// The attached subscriber will be set as the [default] when the returned `Future` is polled.
     ///
-    /// [`Subscriber`]: ../trait.Subscriber.html
+    /// [`Collector`]: ../trait.Collector.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
@@ -98,7 +98,7 @@ pub trait WithSubscriber: Sized {
         }
     }
 
-    /// Attaches the current [default] [`Subscriber`] to this type, returning a
+    /// Attaches the current [default] [`Collector`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
@@ -109,7 +109,7 @@ pub trait WithSubscriber: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Subscriber`]: ../trait.Subscriber.html
+    /// [`Collector`]: ../trait.Collector.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {

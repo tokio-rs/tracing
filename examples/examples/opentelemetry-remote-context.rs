@@ -27,7 +27,7 @@ fn main() {
     // Propagator can be swapped with trace context propagator binary propagator, etc.
     let propagator = api::B3Propagator::new();
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collector::with_default(subscriber, || {
         // Extract from request headers, or any type that impls `opentelemetry::api::Carrier`
         let parent_context = propagator.extract(&build_example_carrier());
 

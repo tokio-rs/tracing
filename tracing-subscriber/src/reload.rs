@@ -1,16 +1,16 @@
-//! Wrapper for a `Layer` to allow it to be dynamically reloaded.
+//! Wrapper for a `Subscriber` to allow it to be dynamically reloaded.
 //!
-//! This module provides a [`Layer` type] which wraps another type implementing
-//! the [`Layer` trait], allowing the wrapped type to be replaced with another
+//! This module provides a [`Subscriber` type] which wraps another type implementing
+//! the [`Subscriber` trait], allowing the wrapped type to be replaced with another
 //! instance of that type at runtime.
 //!
-//! This can be used in cases where a subset of `Subscriber` functionality
+//! This can be used in cases where a subset of `Collector` functionality
 //! should be dynamically reconfigured, such as when filtering directives may
 //! change at runtime. Note that this layer introduces a (relatively small)
 //! amount of overhead, and should thus only be used as needed.
 //!
-//! [`Layer` type]: struct.Layer.html
-//! [`Layer` trait]: ../layer/trait.Layer.html
+//! [`Subscriber` type]: struct.Subscriber.html
+//! [`Subscriber` trait]: ../layer/trait.Subscriber.html
 use crate::layer;
 use crate::sync::RwLock;
 
@@ -21,11 +21,11 @@ use std::{
 };
 use tracing_core::{
     callsite, span,
-    subscriber::{Interest, Subscriber},
+    collector::{Interest, Collector},
     Event, Metadata,
 };
 
-/// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
+/// Wraps a `Subscriber`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
     // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
@@ -36,7 +36,7 @@ pub struct Layer<L, S> {
     _s: PhantomData<fn(S)>,
 }
 
-/// Allows reloading the state of an associated `Layer`.
+/// Allows reloading the state of an associated `Subscriber`.
 #[derive(Debug)]
 pub struct Handle<L, S> {
     inner: Weak<RwLock<L>>,
@@ -55,12 +55,12 @@ enum ErrorKind {
     Poisoned,
 }
 
-// ===== impl Layer =====
+// ===== impl Subscriber =====
 
-impl<L, S> crate::Layer<S> for Layer<L, S>
+impl<L, S> crate::Subscriber<S> for Layer<L, S>
 where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
+    L: crate::Subscriber<S> + 'static,
+    S: Collector,
 {
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -115,10 +115,10 @@ where
 
 impl<L, S> Layer<L, S>
 where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
+    L: crate::Subscriber<S> + 'static,
+    S: Collector,
 {
-    /// Wraps the given `Layer`, returning a `Layer` and a `Handle` that allows
+    /// Wraps the given `Subscriber`, returning a `Subscriber` and a `Handle` that allows
     /// the inner type to be modified at runtime.
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
@@ -129,7 +129,7 @@ where
         (this, handle)
     }
 
-    /// Returns a `Handle` that can be used to reload the wrapped `Layer`.
+    /// Returns a `Handle` that can be used to reload the wrapped `Subscriber`.
     pub fn handle(&self) -> Handle<L, S> {
         Handle {
             inner: Arc::downgrade(&self.inner),
@@ -142,8 +142,8 @@ where
 
 impl<L, S> Handle<L, S>
 where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
+    L: crate::Subscriber<S> + 'static,
+    S: Collector,
 {
     /// Replace the current layer with the provided `new_layer`.
     pub fn reload(&self, new_layer: impl Into<L>) -> Result<(), Error> {
@@ -213,7 +213,7 @@ impl Error {
         matches!(self.kind, ErrorKind::Poisoned)
     }
 
-    /// Returns `true` if this error occurred because the `Subscriber`
+    /// Returns `true` if this error occurred because the `Collector`
     /// containing the reloadable layer was dropped.
     pub fn is_dropped(&self) -> bool {
         matches!(self.kind, ErrorKind::SubscriberGone)

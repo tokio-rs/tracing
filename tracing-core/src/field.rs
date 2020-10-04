@@ -4,20 +4,20 @@
 //! as _fields_. These fields consist of a mapping from a key (corresponding to
 //! a `&str` but represented internally as an array index) to a [`Value`].
 //!
-//! # `Value`s and `Subscriber`s
+//! # `Value`s and `Collector`s
 //!
-//! `Subscriber`s consume `Value`s as fields attached to [span]s or [`Event`]s.
+//! `Collector`s consume `Value`s as fields attached to [span]s or [`Event`]s.
 //! The set of field keys on a given span or is defined on its [`Metadata`].
-//! When a span is created, it provides [`Attributes`] to the `Subscriber`'s
+//! When a span is created, it provides [`Attributes`] to the `Collector`'s
 //! [`new_span`] method, containing any fields whose values were provided when
-//! the span was created; and may call the `Subscriber`'s [`record`] method
+//! the span was created; and may call the `Collector`'s [`record`] method
 //! with additional [`Record`]s if values are added for more of its fields.
 //! Similarly, the [`Event`] type passed to the subscriber's [`event`] method
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
 //! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
-//! implementation. `Subscriber`s are provided these primitive value types as
+//! implementation. `Collector`s are provided these primitive value types as
 //! `dyn Value` trait objects.
 //!
 //! These trait objects can be formatted using `fmt::Debug`, but may also be
@@ -32,9 +32,9 @@
 //! [`Metadata`]: super::metadata::Metadata
 //! [`Attributes`]:  super::span::Attributes
 //! [`Record`]: super::span::Record
-//! [`new_span`]: super::subscriber::Subscriber::new_span
-//! [`record`]: super::subscriber::Subscriber::record
-//! [`event`]:  super::subscriber::Subscriber::event
+//! [`new_span`]: super::subscriber::Collector::new_span
+//! [`record`]: super::subscriber::Collector::record
+//! [`event`]:  super::subscriber::Collector::event
 use crate::callsite;
 use crate::stdlib::{
     borrow::Borrow,
@@ -97,7 +97,7 @@ pub struct Iter {
 /// [recorded], it calls the appropriate method on the provided visitor to
 /// indicate the type that value should be recorded as.
 ///
-/// When a [`Subscriber`] implementation [records an `Event`] or a
+/// When a [`Collector`] implementation [records an `Event`] or a
 /// [set of `Value`s added to a `Span`], it can pass an `&mut Visit` to the
 /// `record` method on the provided [`ValueSet`] or [`Event`]. This visitor
 /// will then be used to record all the field-value pairs present on that
@@ -177,9 +177,9 @@ pub struct Iter {
 /// </pre></div>
 ///
 /// [recorded]: Value::record
-/// [`Subscriber`]: super::subscriber::Subscriber
-/// [records an `Event`]: super::subscriber::Subscriber::event
-/// [set of `Value`s added to a `Span`]: super::subscriber::Subscriber::record
+/// [`Collector`]: super::subscriber::Collector
+/// [records an `Event`]: super::subscriber::Collector::event
+/// [set of `Value`s added to a `Span`]: super::subscriber::Collector::record
 /// [`Event`]: super::event::Event
 pub trait Visit {
     /// Visit a signed 64-bit integer value.
@@ -443,7 +443,7 @@ impl fmt::Debug for dyn Value {
         struct NullCallsite;
         static NULL_CALLSITE: NullCallsite = NullCallsite;
         impl crate::callsite::Callsite for NullCallsite {
-            fn set_interest(&self, _: crate::subscriber::Interest) {
+            fn set_interest(&self, _: crate::collector::Interest) {
                 unreachable!("you somehow managed to register the null callsite?")
             }
 
@@ -842,7 +842,7 @@ mod test {
     };
 
     impl crate::callsite::Callsite for TestCallsite1 {
-        fn set_interest(&self, _: crate::subscriber::Interest) {
+        fn set_interest(&self, _: crate::collector::Interest) {
             unimplemented!()
         }
 
@@ -863,7 +863,7 @@ mod test {
     };
 
     impl crate::callsite::Callsite for TestCallsite2 {
-        fn set_interest(&self, _: crate::subscriber::Interest) {
+        fn set_interest(&self, _: crate::collector::Interest) {
             unimplemented!()
         }
 

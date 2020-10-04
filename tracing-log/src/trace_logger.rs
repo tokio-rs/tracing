@@ -1,7 +1,7 @@
-//! A `tracing` [`Subscriber`] that uses the [`log`] crate as a backend for
+//! A `tracing` [`Collector`] that uses the [`log`] crate as a backend for
 //! formatting `tracing` spans and events.
 //!
-//! When a [`TraceLogger`] is set as the current subscriber, it will record
+//! When a [`TraceLogger`] is set as the current collector, it will record
 //! traces by emitting [`log::Record`]s that can be collected by a logger.
 //!
 //! **Note**: This API has been deprecated since version 0.1.1. In order to emit
@@ -9,7 +9,7 @@
 //! flags][flags] on the `tracing` crate should be used instead.
 //!
 //! [`log`]: https://docs.rs/log/0.4.8/log/index.html
-//! [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
+//! [`Collector`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 //! [`TraceLogger`]: struct.TraceLogger.html
 //! [`log::Record`]: https://docs.rs/log/0.4.8/log/struct.Record.html
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
@@ -30,17 +30,17 @@ use std::{
 use tracing_core::{
     field,
     span::{self, Id},
-    Event, Metadata, Subscriber,
+    Event, Metadata, Collector,
 };
 
-/// A `tracing` [`Subscriber`] implementation that logs all recorded
+/// A `tracing` [`Collector`] implementation that logs all recorded
 /// trace events.
 ///
 /// **Note**: This API has been deprecated since version 0.1.1. In order to emit
 /// `tracing` events as `log` records, the ["log" and "log-always" feature
 /// flags][flags] on the `tracing` crate should be used instead.
 ///
-/// [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
+/// [`Collector`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
 /// [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 pub struct TraceLogger {
     settings: Builder,
@@ -240,7 +240,7 @@ impl field::Visit for SpanLineBuilder {
     }
 }
 
-impl Subscriber for TraceLogger {
+impl Collector for TraceLogger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         log::logger().enabled(&metadata.as_log())
     }

@@ -1,4 +1,4 @@
-//! Dispatches trace events to [`Subscriber`]s.
+//! Dispatches trace events to [`Collector`]s.
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
@@ -10,7 +10,7 @@
 //! events occur, or spans are created, they are dispatched to the thread's
 //! current subscriber.
 //!
-//! ## Setting the Default Subscriber
+//! ## Setting the Default Collector
 //!
 //! By default, the current subscriber is an empty implementation that does
 //! nothing. To use a subscriber implementation, it must be set as the default.
@@ -28,7 +28,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -51,7 +51,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -86,7 +86,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -118,14 +118,14 @@
 //! instead.
 //! </pre></div>
 //!
-//! ## Accessing the Default Subscriber
+//! ## Accessing the Default Collector
 //!
 //! A thread's current default subscriber can be accessed using the
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: struct.Subscriber.html
+//! [`Collector`]: struct.Collector.html
 //! [`with_default`]: fn.with_default.html
 //! [`set_global_default`]: fn.set_global_default.html
 //! [`get_default`]: fn.get_default.html

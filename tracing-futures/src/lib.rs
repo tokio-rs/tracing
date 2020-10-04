@@ -12,7 +12,7 @@
 //! * [`Instrument`] allows a `tracing` [span] to be attached to a future, sink,
 //!   stream, or executor.
 //!
-//! * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
+//! * [`WithSubscriber`] allows a `tracing` [`Collector`] to be attached to a
 //!   future, sink, stream, or executor.
 //!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
@@ -54,7 +54,7 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
+//! [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
@@ -194,13 +194,13 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures, streams, and sinks to be instrumented with
-/// a `tracing` [`Subscriber`].
+/// a `tracing` [`Collector`].
 ///
-/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+/// [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
-    /// Attaches the provided [`Subscriber`] to this type, returning a
+    /// Attaches the provided [`Collector`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
@@ -208,7 +208,7 @@ pub trait WithSubscriber: Sized {
     /// When the wrapped type is an executor, the subscriber will be set as the
     /// default for any futures spawned on that executor.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
@@ -220,7 +220,7 @@ pub trait WithSubscriber: Sized {
         }
     }
 
-    /// Attaches the current [default] [`Subscriber`] to this type, returning a
+    /// Attaches the current [default] [`Collector`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
@@ -231,7 +231,7 @@ pub trait WithSubscriber: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {
@@ -516,7 +516,7 @@ mod tests {
     #[cfg(feature = "futures-01")]
     mod futures_01_tests {
         use futures_01::{future, stream, task, Async, Future, Stream};
-        use tracing::subscriber::with_default;
+        use tracing::collector::with_default;
 
         use super::*;
 
@@ -563,7 +563,7 @@ mod tests {
 
         #[test]
         fn future_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -571,7 +571,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .done()
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 PollN::new_ok(2)
                     .instrument(tracing::trace_span!("foo"))
                     .wait()
@@ -582,7 +582,7 @@ mod tests {
 
         #[test]
         fn future_error_ends_span() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -590,7 +590,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .done()
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 PollN::new_err(2)
                     .instrument(tracing::trace_span!("foo"))
                     .wait()
@@ -602,7 +602,7 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -613,7 +613,7 @@ mod tests {
                 .exit(span::mock().named("foo"))
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
                     .instrument(tracing::trace_span!("foo"))
                     .for_each(|_| future::ok(()))
@@ -625,7 +625,7 @@ mod tests {
 
         #[test]
         fn span_follows_future_onto_threadpool() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("a"))
                 .enter(span::mock().named("b"))
                 .exit(span::mock().named("b"))
@@ -637,7 +637,7 @@ mod tests {
                 .done()
                 .run_with_handle();
             let mut runtime = tokio::runtime::Runtime::new().unwrap();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 tracing::trace_span!("a").in_scope(|| {
                     let future = PollN::new_ok(2)
                         .instrument(tracing::trace_span!("b"))
@@ -657,13 +657,13 @@ mod tests {
     #[cfg(all(feature = "futures-03", feature = "std-future"))]
     mod futures_03_tests {
         use futures::{future, sink, stream, FutureExt, SinkExt, StreamExt};
-        use tracing::subscriber::with_default;
+        use tracing::collector::with_default;
 
         use super::*;
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -674,7 +674,7 @@ mod tests {
                 .exit(span::mock().named("foo"))
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
                     .for_each(|_| future::ready(()))
                     .now_or_never()
@@ -685,7 +685,7 @@ mod tests {
 
         #[test]
         fn sink_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -694,7 +694,7 @@ mod tests {
                 .exit(span::mock().named("foo"))
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))
                     .send(1u8)
                     .now_or_never()

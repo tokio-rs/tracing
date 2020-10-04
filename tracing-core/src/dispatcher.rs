@@ -1,4 +1,4 @@
-//! Dispatches trace events to [`Subscriber`]s.
+//! Dispatches trace events to [`Collector`]s.
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
@@ -10,7 +10,7 @@
 //! events occur, or spans are created, they are dispatched to the thread's
 //! current subscriber.
 //!
-//! ## Setting the Default Subscriber
+//! ## Setting the Default Collector
 //!
 //! By default, the current subscriber is an empty implementation that does
 //! nothing. To use a subscriber implementation, it must be set as the default.
@@ -28,7 +28,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -51,7 +51,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -86,7 +86,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooSubscriber {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -119,7 +119,7 @@
 //!
 //! </pre></div>
 //!
-//! ## Accessing the Default Subscriber
+//! ## Accessing the Default Collector
 //!
 //! A thread's current default subscriber can be accessed using the
 //! [`get_default`] function, which executes a closure with a reference to the
@@ -127,7 +127,7 @@
 //! instrumentation.
 use crate::{
     callsite, span,
-    subscriber::{self, Subscriber},
+    collector::{self, Collector},
     Event, LevelFilter, Metadata,
 };
 
@@ -146,10 +146,10 @@ use crate::stdlib::{
     error,
 };
 
-/// `Dispatch` trace data to a [`Subscriber`].
+/// `Dispatch` trace data to a [`Collector`].
 #[derive(Clone)]
 pub struct Dispatch {
-    subscriber: Arc<dyn Subscriber + Send + Sync>,
+    subscriber: Arc<dyn Collector + Send + Sync>,
 }
 
 #[cfg(feature = "std")]
@@ -215,7 +215,7 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// </pre></div>
 ///
 /// [span]: super::span
-/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Collector`]: super::subscriber::Collector
 /// [`Event`]: super::event::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -268,7 +268,7 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// </pre></div>
 ///
 /// [span]: super::span
-/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Collector`]: super::subscriber::Collector
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
@@ -390,7 +390,7 @@ fn get_global() -> Option<&'static Dispatch> {
     }
 }
 
-pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
+pub(crate) struct Registrar(Weak<dyn Collector + Send + Sync>);
 
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
@@ -401,12 +401,12 @@ impl Dispatch {
         }
     }
 
-    /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
+    /// Returns a `Dispatch` that forwards to the given [`Collector`].
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`Collector`]: super::subscriber::Collector
     pub fn new<S>(subscriber: S) -> Self
     where
-        S: Subscriber + Send + Sync + 'static,
+        S: Collector + Send + Sync + 'static,
     {
         let me = Dispatch {
             subscriber: Arc::new(subscriber),
@@ -422,26 +422,26 @@ impl Dispatch {
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite.
     ///
-    /// This calls the [`register_callsite`] function on the [`Subscriber`]
+    /// This calls the [`register_callsite`] function on the [`Collector`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`register_callsite`]: super::subscriber::Subscriber::register_callsite
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`register_callsite`]: super::subscriber::Collector::register_callsite
     #[inline]
-    pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> subscriber::Interest {
+    pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> collector::Interest {
         self.subscriber.register_callsite(metadata)
     }
 
-    /// Returns the highest [verbosity level][level] that this [`Subscriber`] will
+    /// Returns the highest [verbosity level][level] that this [`Collector`] will
     /// enable, or `None`, if the subscriber does not implement level-based
     /// filtering or chooses not to implement this method.
     ///
-    /// This calls the [`max_level_hint`] function on the [`Subscriber`]
+    /// This calls the [`max_level_hint`] function on the [`Collector`]
     /// that this `Dispatch` forwards to.
     ///
     /// [level]: super::Level
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`register_callsite`]: super::subscriber::Subscriber::max_level_hint
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`register_callsite`]: super::subscriber::Collector::max_level_hint
     // TODO(eliza): consider making this a public API?
     #[inline]
     pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
@@ -451,12 +451,12 @@ impl Dispatch {
     /// Record the construction of a new span, returning a new [ID] for the
     /// span being constructed.
     ///
-    /// This calls the [`new_span`] function on the [`Subscriber`] that this
+    /// This calls the [`new_span`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
     /// [ID]: super::span::Id
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`new_span`]: super::subscriber::Subscriber::new_span
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`new_span`]: super::subscriber::Collector::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         self.subscriber.new_span(span)
@@ -464,11 +464,11 @@ impl Dispatch {
 
     /// Record a set of values on a span.
     ///
-    /// This calls the [`record`] function on the [`Subscriber`] that this
+    /// This calls the [`record`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`record`]: super::subscriber::Subscriber::record
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`record`]: super::subscriber::Collector::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.subscriber.record(span, values)
@@ -477,11 +477,11 @@ impl Dispatch {
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
     ///
-    /// This calls the [`record_follows_from`] function on the [`Subscriber`]
+    /// This calls the [`record_follows_from`] function on the [`Collector`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`record_follows_from`]: super::subscriber::Subscriber::record_follows_from
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`record_follows_from`]: super::subscriber::Collector::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.subscriber.record_follows_from(span, follows)
@@ -490,12 +490,12 @@ impl Dispatch {
     /// Returns true if a span with the specified [metadata] would be
     /// recorded.
     ///
-    /// This calls the [`enabled`] function on the [`Subscriber`] that this
+    /// This calls the [`enabled`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
     /// [metadata]: super::metadata::Metadata
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`enabled`]: super::subscriber::Subscriber::enabled
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`enabled`]: super::subscriber::Collector::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.subscriber.enabled(metadata)
@@ -503,12 +503,12 @@ impl Dispatch {
 
     /// Records that an [`Event`] has occurred.
     ///
-    /// This calls the [`event`] function on the [`Subscriber`] that this
+    /// This calls the [`event`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
     /// [`Event`]: super::event::Event
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`event`]: super::subscriber::Subscriber::event
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`event`]: super::subscriber::Collector::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         self.subscriber.event(event)
@@ -516,11 +516,11 @@ impl Dispatch {
 
     /// Records that a span has been can_enter.
     ///
-    /// This calls the [`enter`] function on the [`Subscriber`] that this
+    /// This calls the [`enter`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`enter`]: super::subscriber::Subscriber::enter
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`enter`]: super::subscriber::Collector::enter
     #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.subscriber.enter(span);
@@ -528,11 +528,11 @@ impl Dispatch {
 
     /// Records that a span has been exited.
     ///
-    /// This calls the [`exit`] function on the [`Subscriber`] that this
+    /// This calls the [`exit`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`exit`]: super::subscriber::Subscriber::exit
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`exit`]: super::subscriber::Collector::exit
     #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.subscriber.exit(span);
@@ -545,13 +545,13 @@ impl Dispatch {
     /// this guarantee and any other libraries implementing instrumentation APIs
     /// must as well.
     ///
-    /// This calls the [`clone_span`] function on the `Subscriber` that this
+    /// This calls the [`clone_span`] function on the `Collector` that this
     /// `Dispatch` forwards to.
     ///
     /// [span ID]: super::span::Id
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`clone_span`]: super::subscriber::Subscriber::clone_span
-    /// [`new_span`]: super::subscriber::Subscriber::new_span
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`clone_span`]: super::subscriber::Collector::clone_span
+    /// [`new_span`]: super::subscriber::Collector::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
         self.subscriber.clone_span(&id)
@@ -564,7 +564,7 @@ impl Dispatch {
     /// this guarantee and any other libraries implementing instrumentation APIs
     /// must as well.
     ///
-    /// This calls the [`drop_span`] function on the [`Subscriber`] that this
+    /// This calls the [`drop_span`] function on the [`Collector`] that this
     ///  `Dispatch` forwards to.
     ///
     /// <div class="information">
@@ -578,9 +578,9 @@ impl Dispatch {
     /// </pre></div>
     ///
     /// [span ID]: super::span::Id
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`drop_span`]: super::subscriber::Subscriber::drop_span
-    /// [`new_span`]: super::subscriber::Subscriber::new_span
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`drop_span`]: super::subscriber::Collector::drop_span
+    /// [`new_span`]: super::subscriber::Collector::new_span
     /// [`try_close`]: Self::try_close
     #[inline]
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
@@ -597,13 +597,13 @@ impl Dispatch {
     /// this guarantee and any other libraries implementing instrumentation APIs
     /// must as well.
     ///
-    /// This calls the [`try_close`] function on the [`Subscriber`] that this
+    /// This calls the [`try_close`] function on the [`Collector`] that this
     ///  `Dispatch` forwards to.
     ///
     /// [span ID]: super::span::Id
-    /// [`Subscriber`]: super::subscriber::Subscriber
-    /// [`try_close`]: super::subscriber::Subscriber::try_close
-    /// [`new_span`]: super::subscriber::Subscriber::new_span
+    /// [`Collector`]: super::subscriber::Collector
+    /// [`try_close`]: super::subscriber::Collector::try_close
+    /// [`new_span`]: super::subscriber::Collector::new_span
     #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
         self.subscriber.try_close(id)
@@ -611,27 +611,27 @@ impl Dispatch {
 
     /// Returns a type representing this subscriber's view of the current span.
     ///
-    /// This calls the [`current`] function on the `Subscriber` that this
+    /// This calls the [`current`] function on the `Collector` that this
     /// `Dispatch` forwards to.
     ///
-    /// [`current`]: super::subscriber::Subscriber::current_span
+    /// [`current`]: super::subscriber::Collector::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber.current_span()
     }
 
-    /// Returns `true` if this `Dispatch` forwards to a `Subscriber` of type
+    /// Returns `true` if this `Dispatch` forwards to a `Collector` of type
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Subscriber::is::<T>(&*self.subscriber)
+        Collector::is::<T>(&*self.subscriber)
     }
 
-    /// Returns some reference to the `Subscriber` this `Dispatch` forwards to
+    /// Returns some reference to the `Collector` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Subscriber::downcast_ref(&*self.subscriber)
+        Collector::downcast_ref(&*self.subscriber)
     }
 }
 
@@ -650,7 +650,7 @@ impl fmt::Debug for Dispatch {
 
 impl<S> From<S> for Dispatch
 where
-    S: Subscriber + Send + Sync + 'static,
+    S: Collector + Send + Sync + 'static,
 {
     #[inline]
     fn from(subscriber: S) -> Self {
@@ -659,10 +659,10 @@ where
 }
 
 struct NoSubscriber;
-impl Subscriber for NoSubscriber {
+impl Collector for NoSubscriber {
     #[inline]
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
-        subscriber::Interest::never()
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> collector::Interest {
+        collector::Interest::never()
     }
 
     fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
@@ -688,7 +688,7 @@ impl Registrar {
     pub(crate) fn try_register(
         &self,
         metadata: &'static Metadata<'static>,
-    ) -> Option<subscriber::Interest> {
+    ) -> Option<collector::Interest> {
         self.0.upgrade().map(|s| s.register_callsite(metadata))
     }
 
@@ -782,7 +782,7 @@ mod test {
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},
-        subscriber::Interest,
+        collector::Interest,
     };
 
     #[test]
@@ -821,7 +821,7 @@ mod test {
         // This test ensures that an event triggered within a subscriber
         // won't cause an infinite loop of events.
         struct TestSubscriber;
-        impl Subscriber for TestSubscriber {
+        impl Collector for TestSubscriber {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -870,7 +870,7 @@ mod test {
         }
 
         struct TestSubscriber;
-        impl Subscriber for TestSubscriber {
+        impl Collector for TestSubscriber {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -910,7 +910,7 @@ mod test {
     #[test]
     fn default_dispatch() {
         struct TestSubscriber;
-        impl Subscriber for TestSubscriber {
+        impl Collector for TestSubscriber {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }

@@ -1,14 +1,14 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     span::{Attributes, Id, Record},
-    subscriber::Interest,
-    Event, Metadata, Subscriber,
+    collector::Interest,
+    Event, Metadata, Collector,
 };
 use tracing_subscriber::{layer, prelude::*, reload::*};
 
 pub struct NopSubscriber;
 
-impl Subscriber for NopSubscriber {
+impl Collector for NopSubscriber {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::never()
     }
@@ -38,7 +38,7 @@ fn reload_handle() {
         Two,
     }
 
-    impl<S: Subscriber> tracing_subscriber::Layer<S> for Filter {
+    impl<S: Collector> tracing_subscriber::Subscriber<S> for Filter {
         fn register_callsite(&self, m: &Metadata<'_>) -> Interest {
             println!("REGISTER: {:?}", m);
             Interest::sometimes()

@@ -199,7 +199,7 @@ impl<S> Clone for AdminSvc<S> {
 
 impl<'a, S> Service<&'a AddrStream> for AdminSvc<S>
 where
-    S: tracing::Subscriber,
+    S: tracing::Collector,
 {
     type Response = AdminSvc<S>;
     type Error = hyper::Error;
@@ -216,7 +216,7 @@ where
 
 impl<S> Service<Request<Body>> for AdminSvc<S>
 where
-    S: tracing::Subscriber + 'static,
+    S: tracing::Collector + 'static,
 {
     type Response = Response<Body>;
     type Error = Err;
@@ -254,7 +254,7 @@ where
 
 impl<S> AdminSvc<S>
 where
-    S: tracing::Subscriber + 'static,
+    S: tracing::Collector + 'static,
 {
     fn set_from(&self, bytes: Bytes) -> Result<(), String> {
         use std::str;

@@ -2,7 +2,7 @@ use tracing_core::{
     callsite::Callsite,
     metadata,
     metadata::{Kind, Level, Metadata},
-    subscriber::Interest,
+    collector::Interest,
 };
 
 #[test]
