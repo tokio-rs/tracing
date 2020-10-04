@@ -390,7 +390,8 @@ where
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
     F: layer::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: layer::Subscriber<Registry> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W>:
+        layer::Subscriber<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Collector<N, E, F, W> {
@@ -440,7 +441,8 @@ where
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
     F: layer::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: layer::Subscriber<Registry> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W>:
+        layer::Subscriber<Registry> + Send + Sync + 'static,
 {
     fn into(self) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(self.finish())

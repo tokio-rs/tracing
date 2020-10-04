@@ -326,7 +326,10 @@ where
     /// when formatting events
     ///
     /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
-    pub fn with_thread_ids(self, display_thread_ids: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+    pub fn with_thread_ids(
+        self,
+        display_thread_ids: bool,
+    ) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
             fmt_fields: self.fmt_fields,
@@ -926,7 +929,9 @@ mod test {
         let subscriber = fmt.with_subscriber(Registry::default());
 
         let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<fmt::Subscriber<Registry>>().is_some());
+        assert!(dispatch
+            .downcast_ref::<fmt::Subscriber<Registry>>()
+            .is_some());
     }
 
     #[test]
