@@ -2,33 +2,33 @@
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
-//! to the subscriber that collects it.
+//! to the collector that collects it.
 //!
 //! # Using the Trace Dispatcher
 //!
-//! Every thread in a program using `tracing` has a _default subscriber_. When
+//! Every thread in a program using `tracing` has a _default collector_. When
 //! events occur, or spans are created, they are dispatched to the thread's
-//! current subscriber.
+//! current collector.
 //!
 //! ## Setting the Default Collector
 //!
-//! By default, the current subscriber is an empty implementation that does
-//! nothing. To use a subscriber implementation, it must be set as the default.
+//! By default, the current collector is an empty implementation that does
+//! nothing. To use a collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
-//! [`set_global_default`]. `with_default` sets the default subscriber for the
-//! duration of a scope, while `set_global_default` sets a default subscriber
+//! [`set_global_default`]. `with_default` sets the default collector for the
+//! duration of a scope, while `set_global_default` sets a default collector
 //! for the entire process.
 //!
-//! To use either of these functions, we must first wrap our subscriber in a
-//! [`Dispatch`], a cloneable, type-erased reference to a subscriber. For
+//! To use either of these functions, we must first wrap our collector in a
+//! [`Dispatch`], a cloneable, type-erased reference to a collector. For
 //! example:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooSubscriber {
+//! # impl tracing_core::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -37,21 +37,21 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! use dispatcher::Dispatch;
 //!
-//! let my_subscriber = FooSubscriber::new();
-//! let my_dispatch = Dispatch::new(my_subscriber);
+//! let my_collector = FooCollector::new();
+//! let my_dispatch = Dispatch::new(my_collector);
 //! ```
 //! Then, we can use [`with_default`] to set our `Dispatch` as the default for
 //! the duration of a block:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooSubscriber {
+//! # impl tracing_core::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -60,33 +60,33 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # let my_subscriber = FooSubscriber::new();
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # let my_collector = FooCollector::new();
+//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! # #[cfg(feature = "std")]
 //! dispatcher::with_default(&my_dispatch, || {
-//!     // my_subscriber is the default
+//!     // my_collector is the default
 //! });
 //!
-//! // no default subscriber again
+//! // no default collector again
 //! ```
 //! It's important to note that `with_default` will not propagate the current
-//! thread's default subscriber to any threads spawned within the `with_default`
-//! block. To propagate the default subscriber to new threads, either use
+//! thread's default collector to any threads spawned within the `with_default`
+//! block. To propagate the default collector to new threads, either use
 //! `with_default` from the new thread, or use `set_global_default`.
 //!
 //! As an alternative to `with_default`, we can use [`set_global_default`] to
 //! set a `Dispatch` as the default for all threads, for the lifetime of the
 //! program. For example:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooSubscriber {
+//! # impl tracing_core::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -95,17 +95,17 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # let my_subscriber = FooSubscriber::new();
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # let my_collector = FooCollector::new();
+//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! dispatcher::set_global_default(my_dispatch)
 //!     // `set_global_default` will return an error if the global default
-//!     // subscriber has already been set.
+//!     // collector has already been set.
 //!     .expect("global default was already set!");
 //!
-//! // `my_subscriber` is now the default
+//! // `my_collector` is now the default
 //! ```
 //!
 //! <div class="information">
@@ -121,7 +121,7 @@
 //!
 //! ## Accessing the Default Collector
 //!
-//! A thread's current default subscriber can be accessed using the
+//! A thread's current default collector can be accessed using the
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
@@ -149,7 +149,7 @@ use crate::stdlib::{
 /// `Dispatch` trace data to a [`Collector`].
 #[derive(Clone)]
 pub struct Dispatch {
-    subscriber: Arc<dyn Collector + Send + Sync>,
+    collector: Arc<dyn Collector + Send + Sync>,
 }
 
 #[cfg(feature = "std")]
@@ -184,7 +184,7 @@ struct State {
     can_enter: Cell<bool>,
 }
 
-/// While this guard is active, additional calls to subscriber functions on
+/// While this guard is active, additional calls to collector functions on
 /// the default dispatcher will not be able to access the dispatch context.
 /// Dropping the guard will allow the dispatch context to be re-entered.
 #[cfg(feature = "std")]
@@ -215,7 +215,7 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// </pre></div>
 ///
 /// [span]: super::span
-/// [`Collector`]: super::subscriber::Collector
+/// [`Collector`]: super::collector::Collector
 /// [`Event`]: super::event::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -268,7 +268,7 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// </pre></div>
 ///
 /// [span]: super::span
-/// [`Collector`]: super::subscriber::Collector
+/// [`Collector`]: super::collector::Collector
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
@@ -397,30 +397,30 @@ impl Dispatch {
     #[inline]
     pub fn none() -> Self {
         Dispatch {
-            subscriber: Arc::new(NoSubscriber),
+            collector: Arc::new(NoSubscriber),
         }
     }
 
     /// Returns a `Dispatch` that forwards to the given [`Collector`].
     ///
     /// [`Collector`]: super::collector::Collector
-    pub fn new<S>(subscriber: S) -> Self
+    pub fn new<S>(collector: S) -> Self
     where
         S: Collector + Send + Sync + 'static,
     {
         let me = Dispatch {
-            subscriber: Arc::new(subscriber),
+            collector: Arc::new(collector),
         };
         callsite::register_dispatch(&me);
         me
     }
 
     pub(crate) fn registrar(&self) -> Registrar {
-        Registrar(Arc::downgrade(&self.subscriber))
+        Registrar(Arc::downgrade(&self.collector))
     }
 
-    /// Registers a new callsite with this subscriber, returning whether or not
-    /// the subscriber is interested in being notified about the callsite.
+    /// Registers a new callsite with this collector, returning whether or not
+    /// the collector is interested in being notified about the callsite.
     ///
     /// This calls the [`register_callsite`] function on the [`Collector`]
     /// that this `Dispatch` forwards to.
@@ -429,11 +429,11 @@ impl Dispatch {
     /// [`register_callsite`]: super::collector::Collector::register_callsite
     #[inline]
     pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> collector::Interest {
-        self.subscriber.register_callsite(metadata)
+        self.collector.register_callsite(metadata)
     }
 
     /// Returns the highest [verbosity level][level] that this [`Collector`] will
-    /// enable, or `None`, if the subscriber does not implement level-based
+    /// enable, or `None`, if the collector does not implement level-based
     /// filtering or chooses not to implement this method.
     ///
     /// This calls the [`max_level_hint`] function on the [`Collector`]
@@ -445,7 +445,7 @@ impl Dispatch {
     // TODO(eliza): consider making this a public API?
     #[inline]
     pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.subscriber.max_level_hint()
+        self.collector.max_level_hint()
     }
 
     /// Record the construction of a new span, returning a new [ID] for the
@@ -459,7 +459,7 @@ impl Dispatch {
     /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
-        self.subscriber.new_span(span)
+        self.collector.new_span(span)
     }
 
     /// Record a set of values on a span.
@@ -471,7 +471,7 @@ impl Dispatch {
     /// [`record`]: super::collector::Collector::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.subscriber.record(span, values)
+        self.collector.record(span, values)
     }
 
     /// Adds an indication that `span` follows from the span with the id
@@ -484,7 +484,7 @@ impl Dispatch {
     /// [`record_follows_from`]: super::collector::Collector::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
-        self.subscriber.record_follows_from(span, follows)
+        self.collector.record_follows_from(span, follows)
     }
 
     /// Returns true if a span with the specified [metadata] would be
@@ -498,7 +498,7 @@ impl Dispatch {
     /// [`enabled`]: super::collector::Collector::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.subscriber.enabled(metadata)
+        self.collector.enabled(metadata)
     }
 
     /// Records that an [`Event`] has occurred.
@@ -511,7 +511,7 @@ impl Dispatch {
     /// [`event`]: super::collector::Collector::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        self.subscriber.event(event)
+        self.collector.event(event)
     }
 
     /// Records that a span has been can_enter.
@@ -523,7 +523,7 @@ impl Dispatch {
     /// [`enter`]: super::collector::Collector::enter
     #[inline]
     pub fn enter(&self, span: &span::Id) {
-        self.subscriber.enter(span);
+        self.collector.enter(span);
     }
 
     /// Records that a span has been exited.
@@ -535,10 +535,10 @@ impl Dispatch {
     /// [`exit`]: super::collector::Collector::exit
     #[inline]
     pub fn exit(&self, span: &span::Id) {
-        self.subscriber.exit(span);
+        self.collector.exit(span);
     }
 
-    /// Notifies the subscriber that a [span ID] has been cloned.
+    /// Notifies the collector that a [span ID] has been cloned.
     ///
     /// This function must only be called with span IDs that were returned by
     /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
@@ -554,10 +554,10 @@ impl Dispatch {
     /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.subscriber.clone_span(&id)
+        self.collector.clone_span(&id)
     }
 
-    /// Notifies the subscriber that a [span ID] has been dropped.
+    /// Notifies the collector that a [span ID] has been dropped.
     ///
     /// This function must only be called with span IDs that were returned by
     /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
@@ -586,10 +586,10 @@ impl Dispatch {
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
     pub fn drop_span(&self, id: span::Id) {
         #[allow(deprecated)]
-        self.subscriber.drop_span(id);
+        self.collector.drop_span(id);
     }
 
-    /// Notifies the subscriber that a [span ID] has been dropped, and returns
+    /// Notifies the collector that a [span ID] has been dropped, and returns
     /// `true` if there are now 0 IDs referring to that span.
     ///
     /// This function must only be called with span IDs that were returned by
@@ -606,10 +606,10 @@ impl Dispatch {
     /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
-        self.subscriber.try_close(id)
+        self.collector.try_close(id)
     }
 
-    /// Returns a type representing this subscriber's view of the current span.
+    /// Returns a type representing this collector's view of the current span.
     ///
     /// This calls the [`current`] function on the `Collector` that this
     /// `Dispatch` forwards to.
@@ -617,21 +617,21 @@ impl Dispatch {
     /// [`current`]: super::collector::Collector::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
-        self.subscriber.current_span()
+        self.collector.current_span()
     }
 
     /// Returns `true` if this `Dispatch` forwards to a `Collector` of type
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Collector::is::<T>(&*self.subscriber)
+        Collector::is::<T>(&*self.collector)
     }
 
     /// Returns some reference to the `Collector` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Collector::downcast_ref(&*self.subscriber)
+        Collector::downcast_ref(&*self.collector)
     }
 }
 
@@ -653,8 +653,8 @@ where
     S: Collector + Send + Sync + 'static,
 {
     #[inline]
-    fn from(subscriber: S) -> Self {
-        Dispatch::new(subscriber)
+    fn from(collector: S) -> Self {
+        Dispatch::new(collector)
     }
 }
 
@@ -693,7 +693,7 @@ impl Registrar {
     }
 
     pub(crate) fn upgrade(&self) -> Option<Dispatch> {
-        self.0.upgrade().map(|subscriber| Dispatch { subscriber })
+        self.0.upgrade().map(|collector| Dispatch { collector })
     }
 }
 
@@ -764,7 +764,7 @@ impl Drop for DefaultGuard {
         if let Some(dispatch) = self.0.take() {
             // Replace the dispatcher and then drop the old one outside
             // of the thread-local context. Dropping the dispatch may
-            // lead to the drop of a subscriber which, in the process,
+            // lead to the drop of a collector which, in the process,
             // could then also attempt to access the same thread local
             // state -- causing a clash.
             let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
@@ -818,7 +818,7 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn events_dont_infinite_loop() {
-        // This test ensures that an event triggered within a subscriber
+        // This test ensures that an event triggered within a collector
         // won't cause an infinite loop of events.
         struct TestSubscriber;
         impl Collector for TestSubscriber {
@@ -857,7 +857,7 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn spans_dont_infinite_loop() {
-        // This test ensures that a span created within a subscriber
+        // This test ensures that a span created within a collector
         // won't cause an infinite loop of new spans.
 
         fn mk_span() {
@@ -901,7 +901,7 @@ mod test {
     }
 
     #[test]
-    fn default_no_subscriber() {
+    fn default_no_collector() {
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoSubscriber>());
     }

@@ -48,7 +48,7 @@
 //! provided to the [`Collector`] when a new span is created. It contains
 //! the span's metadata, the ID of [the span's parent][parent] if one was
 //! explicitly set, and any fields whose values were recorded when the span was
-//! constructed. The subscriber, which is responsible for recording `tracing`
+//! constructed. The collector, which is responsible for recording `tracing`
 //! data, can then store or record these values.
 //!
 //! # The Span Lifecycle
@@ -162,7 +162,7 @@
 //! ```
 //!
 //! A child span should typically be considered _part_ of its parent. For
-//! example, if a subscriber is recording the length of time spent in various
+//! example, if a collector is recording the length of time spent in various
 //! spans, it should generally include the time spent in a span's children as
 //! part of that span's duration.
 //!
@@ -223,8 +223,8 @@
 //! [`Collector`]s have separate trait methods which are called to notify them
 //! of span exits and when span handles are dropped. When execution exits a
 //! span, [`exit`] will always be called with that span's ID to notify the
-//! subscriber that the span has been exited. When span handles are dropped, the
-//! [`drop_span`] method is called with that span's ID. The subscriber may use
+//! collector that the span has been exited. When span handles are dropped, the
+//! [`drop_span`] method is called with that span's ID. The collector may use
 //! this to determine whether or not the span will be entered again.
 //!
 //! If there is only a single handle with the capacity to exit a span, dropping
@@ -239,7 +239,7 @@
 //!     }); // --> Collector::exit(my_span)
 //!
 //!     // The handle to `my_span` only lives inside of this block; when it is
-//!     // dropped, the subscriber will be informed via `drop_span`.
+//!     // dropped, the collector will be informed via `drop_span`.
 //!
 //! } // --> Collector::drop_span(my_span)
 //! ```
@@ -251,7 +251,7 @@
 //! used to track the number of handles to a given span — if `drop_span` has
 //! been called one more time than the number of calls to `clone_span` for a
 //! given ID, then no more handles to the span with that ID exist. The
-//! subscriber may then treat it as closed.
+//! collector may then treat it as closed.
 //!
 //! # When to use spans
 //!
@@ -303,10 +303,10 @@
 //! [`info_span!`]: ../macro.info_span.html
 //! [`warn_span!`]: ../macro.warn_span.html
 //! [`error_span!`]: ../macro.error_span.html
-//! [`clone_span`]: ../subscriber/trait.Collector.html#method.clone_span
-//! [`drop_span`]: ../subscriber/trait.Collector.html#method.drop_span
-//! [`exit`]: ../subscriber/trait.Collector.html#tymethod.exit
-//! [`Collector`]: ../subscriber/trait.Collector.html
+//! [`clone_span`]: ../collector/trait.Collector.html#method.clone_span
+//! [`drop_span`]: ../collector/trait.Collector.html#method.drop_span
+//! [`exit`]: ../collector/trait.Collector.html#tymethod.exit
+//! [`Collector`]: ../collector/trait.Collector.html
 //! [`Attributes`]: struct.Attributes.html
 //! [`enter`]: struct.Span.html#method.enter
 //! [`in_scope`]: struct.Span.html#method.in_scope
@@ -358,14 +358,14 @@ pub struct Span {
 /// span handles; users should typically not need to interact with it directly.
 #[derive(Debug)]
 pub(crate) struct Inner {
-    /// The span's ID, as provided by `subscriber`.
+    /// The span's ID, as provided by `collector`.
     id: Id,
 
-    /// The subscriber that will receive events relating to this span.
+    /// The collector that will receive events relating to this span.
     ///
-    /// This should be the same subscriber that provided this span with its
+    /// This should be the same collector that provided this span with its
     /// `id`.
-    subscriber: Dispatch,
+    collector: Dispatch,
 }
 
 /// A guard representing a span which has been entered and is currently
@@ -403,7 +403,7 @@ impl Span {
     /// annotations may be added to it.
     ///
     /// [metadata]: ../metadata
-    /// [`Collector`]: ../subscriber/trait.Collector.html
+    /// [`Collector`]: ../collector/trait.Collector.html
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
@@ -483,7 +483,7 @@ impl Span {
     /// Constructs a new disabled span with the given `Metadata`.
     ///
     /// This should be used when a span is constructed from a known callsite,
-    /// but the subscriber indicates that it is disabled.
+    /// but the collector indicates that it is disabled.
     ///
     /// Entering, exiting, and recording values on this span will not notify the
     /// `Collector` but _may_ record log messages if the `log` feature flag is
@@ -513,11 +513,11 @@ impl Span {
     /// Returns a handle to the span [considered by the `Collector`] to be the
     /// current span.
     ///
-    /// If the subscriber indicates that it does not track the current span, or
+    /// If the collector indicates that it does not track the current span, or
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Collector`]: ../subscriber/trait.Collector.html#method.current
+    /// [considered by the `Collector`]: ../collector/trait.Collector.html#method.current
     pub fn current() -> Span {
         dispatcher::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -559,7 +559,7 @@ impl Span {
     }
     /// Enters this span, returning a guard that will exit the span when dropped.
     ///
-    /// If this span is enabled by the current subscriber, then this function will
+    /// If this span is enabled by the current collector, then this function will
     /// call [`Collector::enter`] with the span's [`Id`], and dropping the guard
     /// will call [`Collector::exit`]. If the span is disabled, this does
     /// nothing.
@@ -753,12 +753,12 @@ impl Span {
     /// info!("i'm outside the span!")
     /// ```
     ///
-    /// [`Collector::enter`]: ../subscriber/trait.Collector.html#method.enter
-    /// [`Collector::exit`]: ../subscriber/trait.Collector.html#method.exit
+    /// [`Collector::enter`]: ../collector/trait.Collector.html#method.enter
+    /// [`Collector::exit`]: ../collector/trait.Collector.html#method.exit
     /// [`Id`]: ../struct.Id.html
     pub fn enter(&self) -> Entered<'_> {
         if let Some(ref inner) = self.inner.as_ref() {
-            inner.subscriber.enter(&inner.id);
+            inner.collector.enter(&inner.id);
         }
 
         if_log_enabled! {{
@@ -945,7 +945,7 @@ impl Span {
         self
     }
 
-    /// Returns `true` if this span was disabled by the subscriber and does not
+    /// Returns `true` if this span was disabled by the collector and does not
     /// exist.
     ///
     /// See also [`is_none`].
@@ -960,7 +960,7 @@ impl Span {
     /// empty.
     ///
     /// If `is_none` returns `true` for a given span, then [`is_disabled`] will
-    /// also return `true`. However, when a span is disabled by the subscriber
+    /// also return `true`. However, when a span is disabled by the collector
     /// rather than constructed by `Span::none`, this method will return
     /// `false`, while `is_disabled` will return `true`.
     ///
@@ -1063,15 +1063,15 @@ impl Span {
         }
     }
 
-    /// Invokes a function with a reference to this span's ID and subscriber.
+    /// Invokes a function with a reference to this span's ID and collector.
     ///
     /// if this span is enabled, the provided function is called, and the result is returned.
     /// If the span is disabled, the function is not called, and this method returns `None`
     /// instead.
-    pub fn with_subscriber<T>(&self, f: impl FnOnce((&Id, &Dispatch)) -> T) -> Option<T> {
+    pub fn with_collector<T>(&self, f: impl FnOnce((&Id, &Dispatch)) -> T) -> Option<T> {
         self.inner
             .as_ref()
-            .map(|inner| f((&inner.id, &inner.subscriber)))
+            .map(|inner| f((&inner.id, &inner.collector)))
     }
 }
 
@@ -1141,10 +1141,10 @@ impl Drop for Span {
     fn drop(&mut self) {
         if let Some(Inner {
             ref id,
-            ref subscriber,
+            ref collector,
         }) = self.inner
         {
-            subscriber.try_close(id.clone());
+            collector.try_close(id.clone());
         }
 
         if_log_enabled!({
@@ -1178,7 +1178,7 @@ impl Inner {
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
     fn follows_from(&self, from: &Id) {
-        self.subscriber.record_follows_from(&self.id, &from)
+        self.collector.record_follows_from(&self.id, &from)
     }
 
     /// Returns the span's ID.
@@ -1187,13 +1187,13 @@ impl Inner {
     }
 
     fn record(&self, values: &Record<'_>) {
-        self.subscriber.record(&self.id, values)
+        self.collector.record(&self.id, values)
     }
 
-    fn new(id: Id, subscriber: &Dispatch) -> Self {
+    fn new(id: Id, collector: &Dispatch) -> Self {
         Inner {
             id,
-            subscriber: subscriber.clone(),
+            collector: collector.clone(),
         }
     }
 }
@@ -1213,8 +1213,8 @@ impl Hash for Inner {
 impl Clone for Inner {
     fn clone(&self) -> Self {
         Inner {
-            id: self.subscriber.clone_span(&self.id),
-            subscriber: self.subscriber.clone(),
+            id: self.collector.clone_span(&self.id),
+            collector: self.collector.clone(),
         }
     }
 }
@@ -1247,7 +1247,7 @@ impl<'a> Drop for Entered<'a> {
         // Running this behaviour on drop rather than with an explicit function
         // call means that spans may still be exited when unwinding.
         if let Some(inner) = self.span.inner.as_ref() {
-            inner.subscriber.exit(&inner.id);
+            inner.collector.exit(&inner.id);
         }
 
         if_log_enabled! {{
