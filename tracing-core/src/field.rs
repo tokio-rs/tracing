@@ -32,9 +32,9 @@
 //! [`Metadata`]: super::metadata::Metadata
 //! [`Attributes`]:  super::span::Attributes
 //! [`Record`]: super::span::Record
-//! [`new_span`]: super::subscriber::Collector::new_span
-//! [`record`]: super::subscriber::Collector::record
-//! [`event`]:  super::subscriber::Collector::event
+//! [`new_span`]: super::collector::Collector::new_span
+//! [`record`]: super::collector::Collector::record
+//! [`event`]:  super::collector::Collector::event
 use crate::callsite;
 use crate::stdlib::{
     borrow::Borrow,
@@ -177,9 +177,9 @@ pub struct Iter {
 /// </pre></div>
 ///
 /// [recorded]: Value::record
-/// [`Collector`]: super::subscriber::Collector
-/// [records an `Event`]: super::subscriber::Collector::event
-/// [set of `Value`s added to a `Span`]: super::subscriber::Collector::record
+/// [`Collector`]: super::collector::Collector
+/// [records an `Event`]: super::collector::Collector::event
+/// [set of `Value`s added to a `Span`]: super::collector::Collector::record
 /// [`Event`]: super::event::Event
 pub trait Visit {
     /// Visit a signed 64-bit integer value.

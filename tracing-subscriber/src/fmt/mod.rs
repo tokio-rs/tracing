@@ -101,7 +101,7 @@
 //! use tracing_subscriber::{fmt, EnvFilter};
 //! use tracing_subscriber::prelude::*;
 //!
-//! let fmt_layer = fmt::layer()
+//! let fmt_layer = fmt::subscriber()
 //!     .with_target(false);
 //! let filter_layer = EnvFilter::try_from_default_env()
 //!     .or_else(|_| EnvFilter::try_new("info"))
@@ -124,13 +124,13 @@
 use std::{any::TypeId, error::Error, io};
 use tracing_core::{collector::Interest, span, Event, Metadata};
 
-mod fmt_layer;
+mod fmt_subscriber;
 pub mod format;
 pub mod time;
 pub mod writer;
 #[allow(deprecated)]
-pub use fmt_layer::LayerBuilder;
-pub use fmt_layer::{FmtContext, FormattedFields, Layer};
+pub use fmt_subscriber::LayerBuilder;
+pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
 use crate::layer::Subscriber as _;
 use crate::{
@@ -165,7 +165,7 @@ pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> = layer::Layered<fmt_layer::Layer<Registry, N, E, W>, Registry>;
+> = layer::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
@@ -176,7 +176,7 @@ pub struct CollectorBuilder<
     W = fn() -> io::Stdout,
 > {
     filter: F,
-    inner: Layer<Registry, N, E, W>,
+    inner: Subscriber<Registry, N, E, W>,
 }
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting subscriber].
@@ -185,7 +185,7 @@ pub struct CollectorBuilder<
 ///
 /// # Examples
 ///
-/// Using [`init`] to set the default subscriber:
+/// Using [`init`] to set the default collector:
 ///
 /// ```rust
 /// tracing_subscriber::fmt().init();
@@ -204,7 +204,7 @@ pub struct CollectorBuilder<
 ///     .init();
 /// ```
 ///
-/// [`try_init`] returns an error if the default subscriber could not be set:
+/// [`try_init`] returns an error if the default collector could not be set:
 ///
 /// ```rust
 /// use std::error::Error;
@@ -247,7 +247,7 @@ pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
 
-/// Returns a new [formatting subscriber] that can be [composed] with other layers to
+/// Returns a new [formatting subscriber] that can be [composed] with other subscribers to
 /// construct a [`Collector`].
 ///
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
@@ -255,8 +255,8 @@ pub fn fmt() -> CollectorBuilder {
 /// [formatting layer]: struct.Subscriber.html
 /// [composed]: ../layer/index.html
 /// [`Subscriber::default`]: struct.Subscriber.html#method.default
-pub fn layer<S>() -> Layer<S> {
-    Layer::default()
+pub fn subscriber<S>() -> Subscriber<S> {
+    Subscriber::default()
 }
 
 impl Collector {
@@ -295,7 +295,7 @@ where
     F: layer::Subscriber<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
     layer::Layered<F, Formatter<N, E, W>>: tracing_core::Collector,
-    fmt_layer::Layer<Registry, N, E, W>: layer::Subscriber<Registry>,
+    fmt_subscriber::Subscriber<Registry, N, E, W>: layer::Subscriber<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -390,7 +390,7 @@ where
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
     F: layer::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_layer::Layer<Registry, N, E, W>: layer::Subscriber<Registry> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W>: layer::Subscriber<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Collector<N, E, F, W> {
@@ -440,7 +440,7 @@ where
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
     F: layer::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_layer::Layer<Registry, N, E, W>: layer::Subscriber<Registry> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W>: layer::Subscriber<Registry> + Send + Sync + 'static,
 {
     fn into(self) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(self.finish())

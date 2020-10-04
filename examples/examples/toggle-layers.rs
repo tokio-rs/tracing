@@ -28,9 +28,9 @@ fn main() {
         .get_matches();
 
     let (json, plain) = if matches.is_present("json") {
-        (Some(tracing_subscriber::fmt::layer().json()), None)
+        (Some(tracing_subscriber::fmt::subscriber().json()), None)
     } else {
-        (None, Some(tracing_subscriber::fmt::layer()))
+        (None, Some(tracing_subscriber::fmt::subscriber()))
     };
 
     tracing_subscriber::registry().with(json).with(plain).init();

@@ -7,7 +7,7 @@ mod yak_shave;
 
 fn main() {
     let registry =
-        tracing_subscriber::registry().with(tracing_subscriber::fmt::layer().with_target(false));
+        tracing_subscriber::registry().with(tracing_subscriber::fmt::subscriber().with_target(false));
     match tracing_journald::layer() {
         Ok(layer) => {
             registry.with(layer).init();

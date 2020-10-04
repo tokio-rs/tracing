@@ -37,7 +37,7 @@
 //! use tracing_subscriber::{registry::Registry, prelude::*, fmt};
 //!
 //! fn setup_global_subscriber() -> impl Drop {
-//!     let fmt_subscriber = fmt::Layer::default();
+//!     let fmt_subscriber = fmt::Subscriber::default();
 //!
 //!     let (flame_subscriber, _guard) = FlameSubscriber::with_file("./tracing.folded").unwrap();
 //!

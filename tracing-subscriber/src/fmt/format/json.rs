@@ -1,7 +1,7 @@
 use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::{RecordFields, VisitOutput},
-    fmt::fmt_layer::{FmtContext, FormattedFields},
+    fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
 use serde::ser::{SerializeMap, Serializer as _};

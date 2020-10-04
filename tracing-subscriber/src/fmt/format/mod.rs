@@ -2,8 +2,8 @@
 use super::time::{self, FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    fmt::fmt_layer::FmtContext,
-    fmt::fmt_layer::FormattedFields,
+    fmt::fmt_subscriber::FmtContext,
+    fmt::fmt_subscriber::FormattedFields,
     registry::LookupSpan,
 };
 

@@ -403,7 +403,7 @@ impl Dispatch {
 
     /// Returns a `Dispatch` that forwards to the given [`Collector`].
     ///
-    /// [`Collector`]: super::subscriber::Collector
+    /// [`Collector`]: super::collector::Collector
     pub fn new<S>(subscriber: S) -> Self
     where
         S: Collector + Send + Sync + 'static,
@@ -425,8 +425,8 @@ impl Dispatch {
     /// This calls the [`register_callsite`] function on the [`Collector`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`register_callsite`]: super::subscriber::Collector::register_callsite
+    /// [`Collector`]: super::collector::Collector
+    /// [`register_callsite`]: super::collector::Collector::register_callsite
     #[inline]
     pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> collector::Interest {
         self.subscriber.register_callsite(metadata)
@@ -440,8 +440,8 @@ impl Dispatch {
     /// that this `Dispatch` forwards to.
     ///
     /// [level]: super::Level
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`register_callsite`]: super::subscriber::Collector::max_level_hint
+    /// [`Collector`]: super::collector::Collector
+    /// [`register_callsite`]: super::collector::Collector::max_level_hint
     // TODO(eliza): consider making this a public API?
     #[inline]
     pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
@@ -455,8 +455,8 @@ impl Dispatch {
     /// `Dispatch` forwards to.
     ///
     /// [ID]: super::span::Id
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`new_span`]: super::subscriber::Collector::new_span
+    /// [`Collector`]: super::collector::Collector
+    /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         self.subscriber.new_span(span)
@@ -467,8 +467,8 @@ impl Dispatch {
     /// This calls the [`record`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`record`]: super::subscriber::Collector::record
+    /// [`Collector`]: super::collector::Collector
+    /// [`record`]: super::collector::Collector::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.subscriber.record(span, values)
@@ -480,8 +480,8 @@ impl Dispatch {
     /// This calls the [`record_follows_from`] function on the [`Collector`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`record_follows_from`]: super::subscriber::Collector::record_follows_from
+    /// [`Collector`]: super::collector::Collector
+    /// [`record_follows_from`]: super::collector::Collector::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.subscriber.record_follows_from(span, follows)
@@ -494,8 +494,8 @@ impl Dispatch {
     /// `Dispatch` forwards to.
     ///
     /// [metadata]: super::metadata::Metadata
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`enabled`]: super::subscriber::Collector::enabled
+    /// [`Collector`]: super::collector::Collector
+    /// [`enabled`]: super::collector::Collector::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.subscriber.enabled(metadata)
@@ -507,8 +507,8 @@ impl Dispatch {
     /// `Dispatch` forwards to.
     ///
     /// [`Event`]: super::event::Event
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`event`]: super::subscriber::Collector::event
+    /// [`Collector`]: super::collector::Collector
+    /// [`event`]: super::collector::Collector::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         self.subscriber.event(event)
@@ -519,8 +519,8 @@ impl Dispatch {
     /// This calls the [`enter`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`enter`]: super::subscriber::Collector::enter
+    /// [`Collector`]: super::collector::Collector
+    /// [`enter`]: super::collector::Collector::enter
     #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.subscriber.enter(span);
@@ -531,8 +531,8 @@ impl Dispatch {
     /// This calls the [`exit`] function on the [`Collector`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`exit`]: super::subscriber::Collector::exit
+    /// [`Collector`]: super::collector::Collector
+    /// [`exit`]: super::collector::Collector::exit
     #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.subscriber.exit(span);
@@ -549,9 +549,9 @@ impl Dispatch {
     /// `Dispatch` forwards to.
     ///
     /// [span ID]: super::span::Id
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`clone_span`]: super::subscriber::Collector::clone_span
-    /// [`new_span`]: super::subscriber::Collector::new_span
+    /// [`Collector`]: super::collector::Collector
+    /// [`clone_span`]: super::collector::Collector::clone_span
+    /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
         self.subscriber.clone_span(&id)
@@ -578,9 +578,9 @@ impl Dispatch {
     /// </pre></div>
     ///
     /// [span ID]: super::span::Id
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`drop_span`]: super::subscriber::Collector::drop_span
-    /// [`new_span`]: super::subscriber::Collector::new_span
+    /// [`Collector`]: super::collector::Collector
+    /// [`drop_span`]: super::collector::Collector::drop_span
+    /// [`new_span`]: super::collector::Collector::new_span
     /// [`try_close`]: Self::try_close
     #[inline]
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
@@ -601,9 +601,9 @@ impl Dispatch {
     ///  `Dispatch` forwards to.
     ///
     /// [span ID]: super::span::Id
-    /// [`Collector`]: super::subscriber::Collector
-    /// [`try_close`]: super::subscriber::Collector::try_close
-    /// [`new_span`]: super::subscriber::Collector::new_span
+    /// [`Collector`]: super::collector::Collector
+    /// [`try_close`]: super::collector::Collector::try_close
+    /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
         self.subscriber.try_close(id)
@@ -614,7 +614,7 @@ impl Dispatch {
     /// This calls the [`current`] function on the `Collector` that this
     /// `Dispatch` forwards to.
     ///
-    /// [`current`]: super::subscriber::Collector::current_span
+    /// [`current`]: super::collector::Collector::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber.current_span()

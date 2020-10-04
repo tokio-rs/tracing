@@ -38,7 +38,7 @@ struct Registry {
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
-    /// [`Interest`]: super::subscriber::Interest
+    /// [`Interest`]: super::collector::Interest
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
@@ -92,11 +92,11 @@ pub struct Registration<T = &'static dyn Callsite> {
 /// implementation at runtime, then it **must** call this function after that
 /// value changes, in order for the change to be reflected.
 ///
-/// [`max_level_hint`]: super::subscriber::Collector::max_level_hint
+/// [`max_level_hint`]: super::collector::Collector::max_level_hint
 /// [`Callsite`]: super::callsite::Callsite
-/// [`enabled`]: super::subscriber::Collector::enabled
-/// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
-/// [`Collector`]: super::subscriber::Collector
+/// [`enabled`]: super::collector::Collector::enabled
+/// [`Interest::sometimes()`]: super::collector::Interest::sometimes
+/// [`Collector`]: super::collector::Collector
 pub fn rebuild_interest_cache() {
     let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
     let callsites = &REGISTRY.callsites;
