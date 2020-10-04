@@ -75,7 +75,7 @@ pub trait Collector: 'static {
     ///
     /// By default, this function assumes that the collector's [filter]
     /// represents an unchanging view of its interest in the callsite. However,
-    /// if this is not the case, subscribers may override this function to
+    /// if this is not the case, collectors may override this function to
     /// indicate different interests, or to implement behaviour that should run
     /// once for every callsite.
     ///
@@ -92,7 +92,7 @@ pub trait Collector: 'static {
     /// re-evaluated; `Sometimes`, indicating that the collector may sometimes
     /// care about the callsite but not always (such as when sampling), or
     /// `Never`, indicating that the collector never wishes to be notified about
-    /// that callsite. If all active subscribers return `Never`, a callsite will
+    /// that callsite. If all active collectors return `Never`, a callsite will
     /// never be enabled unless a new collector expresses interest in it.
     ///
     /// `Collector`s which require their filters to be run every time an event
@@ -116,10 +116,10 @@ pub trait Collector: 'static {
     /// changed dynamically at runtime, it would need to re-evaluate that filter
     /// if the cached results have changed.
     ///
-    /// A collector which manages fanout to multiple other subscribers
-    /// should proxy this decision to all of its child subscribers,
+    /// A collector which manages fanout to multiple other collectors
+    /// should proxy this decision to all of its child collectors,
     /// returning `Interest::never` only if _all_ such children return
-    /// `Interest::never`. If the set of subscribers to which spans are
+    /// `Interest::never`. If the set of collectors to which spans are
     /// broadcast may change dynamically, the collector should also never
     /// return `Interest::Never`, as a new collector may be added that _is_
     /// interested.
@@ -174,7 +174,7 @@ pub trait Collector: 'static {
     /// If this method returns a [`Level`][level], it will be used as a hint to
     /// determine the most verbose level that will be enabled. This will allow
     /// spans and events which are more verbose than that level to be skipped
-    /// more efficiently. Subscribers which perform filtering are strongly
+    /// more efficiently. collectors which perform filtering are strongly
     /// encouraged to provide an implementation of this method.
     ///
     /// If the maximum level the collector will enable can change over the
@@ -349,7 +349,7 @@ pub trait Collector: 'static {
 
     /// **This method is deprecated.**
     ///
-    /// Using `drop_span` may result in subscribers composed using
+    /// Using `drop_span` may result in collectors composed using
     /// `tracing-subscriber` crate's `Subscriber` trait from observing close events.
     /// Use [`try_close`] instead.
     ///
@@ -364,12 +364,12 @@ pub trait Collector: 'static {
     ///
     /// Higher-level libraries providing functionality for composing multiple
     /// collector implementations may use this return value to notify any
-    /// "layered" subscribers that this collector considers the span closed.
+    /// "layered" collectors that this collector considers the span closed.
     ///
     /// The default implementation of this method calls the collector's
     /// [`drop_span`] method and returns `false`. This means that, unless the
     /// collector overrides the default implementation, close notifications
-    /// will never be sent to any layered subscribers. In general, if the
+    /// will never be sent to any layered collectors. In general, if the
     /// collector tracks reference counts, this method should be implemented,
     /// rather than `drop_span`.
     ///
@@ -403,7 +403,7 @@ pub trait Collector: 'static {
 
     /// Returns a type representing this collector's view of the current span.
     ///
-    /// If subscribers track a current span, they should override this function
+    /// If collectors track a current span, they should override this function
     /// to return [`Current::new`] if the thread from which this method is
     /// called is inside a span, or [`Current::none`] if the thread is not
     /// inside a span.
@@ -434,7 +434,7 @@ pub trait Collector: 'static {
     ///
     /// This method may be overridden by "fan out" or "chained" collector
     /// implementations which consist of multiple composed types. Such
-    /// subscribers might allow `downcast_raw` by returning references to those
+    /// collectors might allow `downcast_raw` by returning references to those
     /// component if they contain components with the given `TypeId`.
     ///
     /// # Safety
@@ -495,7 +495,7 @@ impl Interest {
     /// Returns an `Interest` indicating that the collector is never interested
     /// in being notified about a callsite.
     ///
-    /// If all active subscribers are `never()` interested in a callsite, it will
+    /// If all active collectors are `never()` interested in a callsite, it will
     /// be completely disabled unless a new collector becomes active.
     #[inline]
     pub fn never() -> Self {
@@ -505,7 +505,7 @@ impl Interest {
     /// Returns an `Interest` indicating the collector is sometimes interested
     /// in being notified about a callsite.
     ///
-    /// If all active subscribers are `sometimes` or `never` interested in a
+    /// If all active collectors are `sometimes` or `never` interested in a
     /// callsite, the currently active collector will be asked to filter that
     /// callsite every time it creates a span. This will be the case until a new
     /// collector expresses that it is `always` interested in the callsite.
@@ -549,7 +549,7 @@ impl Interest {
     ///
     /// If both interests are the same, this propagates that interest.
     /// Otherwise, if they differ, the result must always be
-    /// `Interest::sometimes` --- if the two subscribers differ in opinion, we
+    /// `Interest::sometimes` --- if the two collectors differ in opinion, we
     /// will have to ask the current collector what it thinks, no matter what.
     pub(crate) fn and(self, rhs: Interest) -> Self {
         if self.0 == rhs.0 {
