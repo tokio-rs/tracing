@@ -996,8 +996,8 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n",
             actual.as_str()
         );
     }
@@ -1023,7 +1023,7 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
             actual.as_str()
         );
     }
@@ -1050,7 +1050,7 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            " span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close\n",
+            " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
         );
     }
@@ -1076,10 +1076,10 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: new\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: new\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
             actual.as_str()
         );
     }
