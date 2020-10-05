@@ -32,7 +32,7 @@ pub trait OpenTelemetrySpanExt {
     /// let parent_context = propagator.extract(&carrier);
     ///
     /// // Generate a tracing span as usual
-    /// let app_root = tracing::span!(tracing::Level::I NFO, "app_start");
+    /// let app_root = tracing::span!(tracing::Level::INFO, "app_start");
     ///
     /// // Assign parent trace from external context
     /// app_root.set_parent(&parent_context);
