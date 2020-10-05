@@ -258,6 +258,8 @@ impl EnvFilter {
             .collect();
 
         if !disabled.is_empty() {
+            // NOTE: this can't use `MakeWriter` because it's not yet available;
+            // there is not yet a subscriber.
             eprintln!("warning: some trace filter directives would enable traces that are disabled statically");
             for directive in disabled {
                 let target = if let Some(target) = &directive.target {
