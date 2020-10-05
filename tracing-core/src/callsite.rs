@@ -317,6 +317,60 @@ mod tests {
     }
 
     #[test]
+    fn linked_list_push_several() {
+        static REG1: Registration = Registration::new(&CS1);
+        static REG2: Registration = Registration::new(&CS2);
+        static REG3: Registration = Registration::new(&CS1);
+        static REG4: Registration = Registration::new(&CS2);
+
+        let linked_list = LinkedList::new();
+
+        fn expect<'a>(
+            callsites: &'a mut Vec<&'static Registration>,
+        ) -> impl FnMut(&'static Registration) + 'a {
+            move |reg: &'static Registration| {
+                let ptr = callsites
+                    .pop()
+                    .expect("list contained more than the expected number of registrations!");
+                assert!(
+                    ptr::eq(reg, ptr),
+                    "Registration pointers need to match ({:?} != {:?})",
+                    reg,
+                    ptr
+                );
+            }
+        }
+
+        linked_list.push(&REG1);
+        linked_list.push(&REG2);
+        let mut callsites = vec![&REG1, &REG2];
+        linked_list.for_each(expect(&mut callsites));
+        assert!(
+            callsites.is_empty(),
+            "some registrations were expected but not present: {:?}",
+            callsites
+        );
+
+        linked_list.push(&REG3);
+        let mut callsites = vec![&REG1, &REG2, &REG3];
+        linked_list.for_each(expect(&mut callsites));
+        assert!(
+            callsites.is_empty(),
+            "some registrations were expected but not present: {:?}",
+            callsites
+        );
+
+        linked_list.push(&REG4);
+        let mut callsites = vec![&REG1, &REG2, &REG3, &REG4];
+        linked_list.for_each(expect(&mut callsites));
+        assert!(
+            callsites.is_empty(),
+            "some registrations were expected but not present: {:?}",
+            callsites
+        );
+    }
+
+    #[test]
     #[should_panic]
     fn linked_list_repeated() {
         static REG1: Registration = Registration::new(&CS1);
