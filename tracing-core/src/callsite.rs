@@ -334,7 +334,7 @@ mod tests {
                     .expect("list contained more than the expected number of registrations!");
 
                 assert!(
-                    ptr::eq(dbg!(reg), dbg!(ptr)),
+                    ptr::eq(reg, ptr),
                     "Registration pointers need to match ({:?} != {:?})",
                     reg,
                     ptr
@@ -345,7 +345,7 @@ mod tests {
         linked_list.push(&REG1);
         linked_list.push(&REG2);
         let regs = [&REG2, &REG1];
-        let mut callsites = regs.iter().map(|x| *x);
+        let mut callsites = regs.iter().copied();
         linked_list.for_each(expect(&mut callsites));
         assert!(
             callsites.next().is_none(),
@@ -355,7 +355,7 @@ mod tests {
 
         linked_list.push(&REG3);
         let regs = [&REG3, &REG2, &REG1];
-        let mut callsites = regs.iter().map(|x| *x);
+        let mut callsites = regs.iter().copied();
         linked_list.for_each(expect(&mut callsites));
         assert!(
             callsites.next().is_none(),
@@ -365,7 +365,7 @@ mod tests {
 
         linked_list.push(&REG4);
         let regs = [&REG4, &REG3, &REG2, &REG1];
-        let mut callsites = regs.iter().map(|x| *x);
+        let mut callsites = regs.iter().copied();
         linked_list.for_each(expect(&mut callsites));
         assert!(
             callsites.next().is_none(),
