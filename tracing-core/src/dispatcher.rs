@@ -131,7 +131,6 @@ use crate::{
     Event, LevelFilter, Metadata,
 };
 
-use alloc::sync::{Arc, Weak};
 use core::{
     any::Any,
     fmt,

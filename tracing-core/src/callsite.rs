@@ -6,7 +6,6 @@ use crate::{
     subscriber::Interest,
     sync::{Mutex, MutexGuard},
 };
-use alloc::vec::Vec;
 use core::{
     fmt,
     hash::{Hash, Hasher},
@@ -70,18 +69,19 @@ pub use self::inner::{rebuild_interest_cache, register};
 #[cfg(feature = "std")]
 mod inner {
     use super::*;
+    use std::sync::RwLock;
     use std::vec::Vec;
     type Dispatchers = Vec<dispatcher::Registrar>;
 
     struct Registry {
         callsites: Callsites,
-        dispatchers: Mutex<Dispatchers>,
+        dispatchers: RwLock<Dispatchers>,
     }
 
     lazy_static! {
         static ref REGISTRY: Registry = Registry {
             callsites: LinkedList::new(),
-            dispatchers: Mutex::new(Vec::new()),
+            dispatchers: RwLock::new(Vec::new()),
         };
     }
 
@@ -105,7 +105,7 @@ mod inner {
     /// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
     /// [`Subscriber`]: super::subscriber::Subscriber
     pub fn rebuild_interest_cache() {
-        let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
+        let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
         rebuild_interest(callsites, &mut dispatchers);
     }
@@ -115,13 +115,13 @@ mod inner {
     /// This should be called once per callsite after the callsite has been
     /// constructed.
     pub fn register(registration: &'static Registration) {
-        let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
+        let mut dispatchers = REGISTRY.dispatchers.read().unwrap();
         rebuild_callsite_interest(&mut dispatchers, registration.callsite);
         REGISTRY.callsites.push(registration);
     }
 
     pub(crate) fn register_dispatch(dispatch: &Dispatch) {
-        let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
+        let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
 
         dispatchers.push(dispatch.registrar());
@@ -130,7 +130,7 @@ mod inner {
     }
 
     fn rebuild_callsite_interest(
-        dispatchers: &mut MutexGuard<'_, Vec<dispatcher::Registrar>>,
+        dispatchers: &[dispatcher::Registrar],
         callsite: &'static dyn Callsite,
     ) {
         let meta = callsite.metadata();
@@ -155,10 +155,7 @@ mod inner {
         callsite.set_interest(interest)
     }
 
-    fn rebuild_interest(
-        callsites: &Callsites,
-        dispatchers: &mut MutexGuard<'_, Vec<dispatcher::Registrar>>,
-    ) {
+    fn rebuild_interest(callsites: &Callsites, dispatchers: &mut Vec<dispatcher::Registrar>) {
         let mut max_level = LevelFilter::OFF;
         dispatchers.retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
