@@ -205,7 +205,15 @@ mod inner {
     /// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
     /// [`Subscriber`]: super::subscriber::Subscriber
     pub fn rebuild_interest_cache() {
-        rebuild_interest(&REGISTRY, crate::dispatcher::get_global());
+        let dispatcher = crate::dispatcher::get_global();
+        let mut max_level = LevelFilter::OFF;
+        // If the subscriber did not provide a max level hint, assume
+        // that it may enable every level.
+        let level_hint = dispatcher.max_level_hint().unwrap_or(LevelFilter::TRACE);
+
+        REGISTRY.for_each(|reg| rebuild_callsite_interest(dispatcher, reg.callsite));
+
+        LevelFilter::set_max(max_level);
     }
 
     /// Register a new `Callsite` with the global registry.
@@ -221,17 +229,6 @@ mod inner {
         let meta = callsite.metadata();
 
         callsite.set_interest(dispatcher.register_callsite(meta))
-    }
-
-    fn rebuild_interest(callsites: &Callsites, dispatcher: &dyn Subscriber) {
-        let mut max_level = LevelFilter::OFF;
-        // If the subscriber did not provide a max level hint, assume
-        // that it may enable every level.
-        let level_hint = dispatcher.max_level_hint().unwrap_or(LevelFilter::TRACE);
-
-        callsites.for_each(|reg| rebuild_callsite_interest(dispatcher, reg.callsite));
-
-        LevelFilter::set_max(max_level);
     }
 }
 

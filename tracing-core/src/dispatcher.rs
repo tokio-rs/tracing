@@ -184,10 +184,16 @@ const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
+    #[cfg(feature = "std")]
     subscriber: Kind::Global(&NO_SUBSCRIBER),
+    #[cfg(not(feature = "std"))]
+    subscriber: &NO_SUBSCRIBER,
 };
 static NONE: Dispatch = Dispatch {
+    #[cfg(feature = "std")]
     subscriber: Kind::Global(&NO_SUBSCRIBER),
+    #[cfg(not(feature = "std"))]
+    subscriber: &NO_SUBSCRIBER,
 };
 static NO_SUBSCRIBER: NoSubscriber = NoSubscriber;
 
@@ -396,34 +402,34 @@ where
         .unwrap_or_else(|_| f(&Dispatch::none()))
 }
 
-/// Executes a closure with a reference to this thread's current [dispatcher].
-///
-/// Note that calls to `get_default` should not be nested; if this function is
-/// called while inside of another `get_default`, that closure will be provided
-/// with `Dispatch::none` rather than the previously set dispatcher.
-///
-/// [dispatcher]: super::dispatcher::Dispatch
-#[cfg(feature = "std")]
-#[doc(hidden)]
-#[inline(never)]
-pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
-    CURRENT_STATE
-        .try_with(|state| {
-            let entered = state.enter()?;
-            Some(f(&*entered.current()))
-        })
-        .ok()?
-}
+// /// Executes a closure with a reference to this thread's current [dispatcher].
+// ///
+// /// Note that calls to `get_default` should not be nested; if this function is
+// /// called while inside of another `get_default`, that closure will be provided
+// /// with `Dispatch::none` rather than the previously set dispatcher.
+// ///
+// /// [dispatcher]: super::dispatcher::Dispatch
+// #[cfg(feature = "std")]
+// #[doc(hidden)]
+// #[inline(never)]
+// pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+//     CURRENT_STATE
+//         .try_with(|state| {
+//             let entered = state.enter()?;
+//             Some(f(&*entered.current()))
+//         })
+//         .ok()?
+// }
 
-/// Executes a closure with a reference to the current [dispatcher].
-///
-/// [dispatcher]: super::dispatcher::Dispatch
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
-    let dispatch = get_global()?;
-    Some(f(&dispatch))
-}
+// /// Executes a closure with a reference to the current [dispatcher].
+// ///
+// /// [dispatcher]: super::dispatcher::Dispatch
+// #[cfg(not(feature = "std"))]
+// #[doc(hidden)]
+// pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+//     let dispatch = get_global()?;
+//     Some(f(&dispatch))
+// }
 
 /// Executes a closure with a reference to the current [dispatcher].
 ///
@@ -752,6 +758,7 @@ impl fmt::Debug for Dispatch {
     }
 }
 
+#[cfg(feature = "std")]
 impl<S> From<S> for Dispatch
 where
     S: Subscriber + Send + Sync + 'static,
@@ -788,6 +795,7 @@ impl Subscriber for NoSubscriber {
     fn exit(&self, _span: &span::Id) {}
 }
 
+#[cfg(feature = "std")]
 impl Registrar {
     pub(crate) fn upgrade(&self) -> Option<Dispatch> {
         match self.0 {
@@ -889,13 +897,13 @@ mod test {
 
     #[test]
     fn dispatch_is() {
-        let dispatcher = Dispatch::new(NoSubscriber);
+        let dispatcher = Dispatch::from_static(&NO_SUBSCRIBER);
         assert!(dispatcher.is::<NoSubscriber>());
     }
 
     #[test]
     fn dispatch_downcasts() {
-        let dispatcher = Dispatch::new(NoSubscriber);
+        let dispatcher = Dispatch::from_static(&NO_SUBSCRIBER);
         assert!(dispatcher.downcast_ref::<NoSubscriber>().is_some());
     }
 
