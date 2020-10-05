@@ -31,11 +31,13 @@ tracing-core = { path = "../tracing-core", version = "0.1.15", default-features 
 log = { version = "0.4", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.1.10", optional = true }
 cfg-if = "0.1.10"
+pin-project-lite = "0.1"
 
 [dev-dependencies]
 futures = "0.1"
 criterion = { version = "0.3", default_features = false }
 log = "0.4"
+tokio = { version = "0.2.21", features = ["rt-core"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "^0.3"

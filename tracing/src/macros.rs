@@ -32,17 +32,17 @@ macro_rules! span {
                 fields: $($fields)*
             };
             let mut interest = $crate::subscriber::Interest::never();
-            if $crate::level_enabled!($lvl) && { interest = CALLSITE.interest(); !interest.is_never() }{
-                CALLSITE.dispatch_span(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    // span with parent
-                    $crate::Span::child_of_with(
-                        $parent,
-                        meta,
-                        &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*),
-                        current,
-                    )
-                })
+            if $crate::level_enabled!($lvl)
+                && { interest = CALLSITE.interest(); !interest.is_never() }
+                && CALLSITE.is_enabled(interest)
+            {
+                let meta = CALLSITE.metadata();
+                // span with explicit parent
+                $crate::Span::child_of(
+                    $parent,
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*),
+                )
             } else {
                 let span = CALLSITE.disabled_span();
                 $crate::if_log_enabled! {{
@@ -63,15 +63,16 @@ macro_rules! span {
                 fields: $($fields)*
             };
             let mut interest = $crate::subscriber::Interest::never();
-            if $crate::level_enabled!($lvl) && { interest = CALLSITE.interest(); !interest.is_never() }{
-                CALLSITE.dispatch_span(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    $crate::Span::new_with(
-                        meta,
-                        &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*),
-                        current,
-                    )
-                })
+            if $crate::level_enabled!($lvl)
+                && { interest = CALLSITE.interest(); !interest.is_never() }
+                && CALLSITE.is_enabled(interest)
+            {
+                let meta = CALLSITE.metadata();
+                // span with contextual parent
+                $crate::Span::new(
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*),
+                )
             } else {
                 let span = CALLSITE.disabled_span();
                 $crate::if_log_enabled! {{
@@ -605,11 +606,14 @@ macro_rules! event {
                 fields: $($fields)*
             };
             let interest = CALLSITE.interest();
-            if !interest.is_never() {
-                CALLSITE.dispatch_event(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    current.event(&$crate::Event::new_child_of($parent, meta, &$crate::valueset!(meta.fields(), $($fields)*)))
-                });
+            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+                let meta = CALLSITE.metadata();
+                // event with explicit parent
+                $crate::Event::child_of(
+                    $parent,
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*)
+                );
             }
         }
     );
@@ -649,11 +653,13 @@ macro_rules! event {
                 fields: $($fields)*
             };
             let interest = CALLSITE.interest();
-            if !interest.is_never() {
-                CALLSITE.dispatch_event(interest, |current| {
-                    let meta = CALLSITE.metadata();
-                    current.event(&$crate::Event::new(meta, &$crate::valueset!(meta.fields(), $($fields)*)));
-                });
+            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+                let meta = CALLSITE.metadata();
+                // event with contextual parent
+                $crate::Event::dispatch(
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*)
+                );
             }
         }
     });

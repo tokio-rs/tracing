@@ -190,7 +190,6 @@ use syn::{
 /// }
 /// ```
 ///
-/// If `tracing_futures` is specified as a dependency in `Cargo.toml`,
 /// `async fn`s may also be instrumented:
 ///
 /// ```
@@ -445,7 +444,7 @@ fn gen_body(
         if err {
             quote_spanned! {block.span()=>
                 let __tracing_attr_span = #span;
-                tracing_futures::Instrument::instrument(async move {
+                tracing::Instrument::instrument(async move {
                     match async move { #block }.await {
                         Ok(x) => Ok(x),
                         Err(e) => {
@@ -458,7 +457,7 @@ fn gen_body(
         } else {
             quote_spanned!(block.span()=>
                 let __tracing_attr_span = #span;
-                    tracing_futures::Instrument::instrument(
+                    tracing::Instrument::instrument(
                         async move { #block },
                         __tracing_attr_span
                     )

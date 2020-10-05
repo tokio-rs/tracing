@@ -31,8 +31,7 @@ use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 
-use tracing::{debug, info, info_span, trace_span, warn};
-use tracing_futures::Instrument;
+use tracing::{debug, info, info_span, trace_span, warn, Instrument as _};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
@@ -117,6 +116,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
                 info!(message = "echo'd data", %peer_addr, size = n);
             }
         })
-        .instrument(info_span!("echo", %peer_addr));
+        .instrument(info_span!("echo", %peer_addr))
+        .await?;
     }
 }
