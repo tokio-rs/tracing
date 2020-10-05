@@ -276,21 +276,11 @@ impl LinkedList {
 mod tests {
     use super::*;
 
-    #[derive(Eq, PartialEq)]
-    struct Cs1;
-    static CS1: Cs1 = Cs1;
+    struct TestCallsite;
+    static CS1: TestCallsite = TestCallsite;
+    static CS2: TestCallsite = TestCallsite;
 
-    impl Callsite for Cs1 {
-        fn set_interest(&self, _interest: Interest) {}
-        fn metadata(&self) -> &Metadata<'_> {
-            unimplemented!("not needed for this test")
-        }
-    }
-
-    struct Cs2;
-    static CS2: Cs2 = Cs2;
-
-    impl Callsite for Cs2 {
+    impl Callsite for TestCallsite {
         fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
             unimplemented!("not needed for this test")
