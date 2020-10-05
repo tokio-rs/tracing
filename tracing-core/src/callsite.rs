@@ -279,7 +279,6 @@ mod tests {
     #[derive(Eq, PartialEq)]
     struct Cs1;
     static CS1: Cs1 = Cs1;
-    static REG1: Registration = Registration::new(&CS1);
 
     impl Callsite for Cs1 {
         fn set_interest(&self, _interest: Interest) {}
@@ -290,7 +289,6 @@ mod tests {
 
     struct Cs2;
     static CS2: Cs2 = Cs2;
-    static REG2: Registration = Registration::new(&CS2);
 
     impl Callsite for Cs2 {
         fn set_interest(&self, _interest: Interest) {}
@@ -301,6 +299,9 @@ mod tests {
 
     #[test]
     fn linked_list_push() {
+        static REG1: Registration = Registration::new(&CS1);
+        static REG2: Registration = Registration::new(&CS2);
+
         let linked_list = LinkedList::new();
 
         linked_list.push(&REG1);
@@ -328,6 +329,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn linked_list_repeated() {
+        static REG1: Registration = Registration::new(&CS1);
+
         let linked_list = LinkedList::new();
 
         linked_list.push(&REG1);
