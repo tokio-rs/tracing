@@ -9,9 +9,9 @@ use tracing_core::{span, Level, Metadata};
 // TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
 pub struct Directive {
-    pub(crate) target: Option<String>,
     in_span: Option<String>,
     fields: FilterVec<field::Match>,
+    pub(crate) target: Option<String>,
     pub(crate) level: LevelFilter,
 }
 
