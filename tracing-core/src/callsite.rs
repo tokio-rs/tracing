@@ -276,23 +276,11 @@ impl LinkedList {
 mod tests {
     use super::*;
 
-    #[derive(Eq, PartialEq)]
-    struct Cs1;
-    static CS1: Cs1 = Cs1;
-    static REG1: Registration = Registration::new(&CS1);
+    struct TestCallsite;
+    static CS1: TestCallsite = TestCallsite;
+    static CS2: TestCallsite = TestCallsite;
 
-    impl Callsite for Cs1 {
-        fn set_interest(&self, _interest: Interest) {}
-        fn metadata(&self) -> &Metadata<'_> {
-            unimplemented!("not needed for this test")
-        }
-    }
-
-    struct Cs2;
-    static CS2: Cs2 = Cs2;
-    static REG2: Registration = Registration::new(&CS2);
-
-    impl Callsite for Cs2 {
+    impl Callsite for TestCallsite {
         fn set_interest(&self, _interest: Interest) {}
         fn metadata(&self) -> &Metadata<'_> {
             unimplemented!("not needed for this test")
@@ -301,6 +289,9 @@ mod tests {
 
     #[test]
     fn linked_list_push() {
+        static REG1: Registration = Registration::new(&CS1);
+        static REG2: Registration = Registration::new(&CS2);
+
         let linked_list = LinkedList::new();
 
         linked_list.push(&REG1);
@@ -326,8 +317,68 @@ mod tests {
     }
 
     #[test]
+    fn linked_list_push_several() {
+        static REG1: Registration = Registration::new(&CS1);
+        static REG2: Registration = Registration::new(&CS2);
+        static REG3: Registration = Registration::new(&CS1);
+        static REG4: Registration = Registration::new(&CS2);
+
+        let linked_list = LinkedList::new();
+
+        fn expect<'a>(
+            callsites: &'a mut impl Iterator<Item = &'static Registration>,
+        ) -> impl FnMut(&'static Registration) + 'a {
+            move |reg: &'static Registration| {
+                let ptr = callsites
+                    .next()
+                    .expect("list contained more than the expected number of registrations!");
+
+                assert!(
+                    ptr::eq(reg, ptr),
+                    "Registration pointers need to match ({:?} != {:?})",
+                    reg,
+                    ptr
+                );
+            }
+        }
+
+        linked_list.push(&REG1);
+        linked_list.push(&REG2);
+        let regs = [&REG2, &REG1];
+        let mut callsites = regs.iter().copied();
+        linked_list.for_each(expect(&mut callsites));
+        assert!(
+            callsites.next().is_none(),
+            "some registrations were expected but not present: {:?}",
+            callsites
+        );
+
+        linked_list.push(&REG3);
+        let regs = [&REG3, &REG2, &REG1];
+        let mut callsites = regs.iter().copied();
+        linked_list.for_each(expect(&mut callsites));
+        assert!(
+            callsites.next().is_none(),
+            "some registrations were expected but not present: {:?}",
+            callsites
+        );
+
+        linked_list.push(&REG4);
+        let regs = [&REG4, &REG3, &REG2, &REG1];
+        let mut callsites = regs.iter().copied();
+        linked_list.for_each(expect(&mut callsites));
+        assert!(
+            callsites.next().is_none(),
+            "some registrations were expected but not present: {:?}",
+            callsites
+        );
+    }
+
+    #[test]
     #[should_panic]
     fn linked_list_repeated() {
+        static REG1: Registration = Registration::new(&CS1);
+
         let linked_list = LinkedList::new();
 
         linked_list.push(&REG1);
