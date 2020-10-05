@@ -326,14 +326,15 @@ mod tests {
         let linked_list = LinkedList::new();
 
         fn expect<'a>(
-            callsites: &'a mut Vec<&'static Registration>,
+            callsites: &'a mut impl Iterator<Item = &'static Registration>,
         ) -> impl FnMut(&'static Registration) + 'a {
             move |reg: &'static Registration| {
                 let ptr = callsites
-                    .pop()
+                    .next()
                     .expect("list contained more than the expected number of registrations!");
+
                 assert!(
-                    ptr::eq(reg, ptr),
+                    ptr::eq(dbg!(reg), dbg!(ptr)),
                     "Registration pointers need to match ({:?} != {:?})",
                     reg,
                     ptr
@@ -343,28 +344,31 @@ mod tests {
 
         linked_list.push(&REG1);
         linked_list.push(&REG2);
-        let mut callsites = vec![&REG1, &REG2];
+        let regs = [&REG2, &REG1];
+        let mut callsites = regs.iter().map(|x| *x);
         linked_list.for_each(expect(&mut callsites));
         assert!(
-            callsites.is_empty(),
+            callsites.next().is_none(),
             "some registrations were expected but not present: {:?}",
             callsites
         );
 
         linked_list.push(&REG3);
-        let mut callsites = vec![&REG1, &REG2, &REG3];
+        let regs = [&REG3, &REG2, &REG1];
+        let mut callsites = regs.iter().map(|x| *x);
         linked_list.for_each(expect(&mut callsites));
         assert!(
-            callsites.is_empty(),
+            callsites.next().is_none(),
             "some registrations were expected but not present: {:?}",
             callsites
         );
 
         linked_list.push(&REG4);
-        let mut callsites = vec![&REG1, &REG2, &REG3, &REG4];
+        let regs = [&REG4, &REG3, &REG2, &REG1];
+        let mut callsites = regs.iter().map(|x| *x);
         linked_list.for_each(expect(&mut callsites));
         assert!(
-            callsites.is_empty(),
+            callsites.next().is_none(),
             "some registrations were expected but not present: {:?}",
             callsites
         );
