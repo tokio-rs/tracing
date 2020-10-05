@@ -145,12 +145,20 @@ use std::{
     error,
 };
 
+#[cfg(feature = "std")]
+use std::sync::{Arc, Weak};
+
 /// `Dispatch` trace data to a [`Subscriber`].
 #[derive(Clone)]
 pub struct Dispatch {
+    #[cfg(feature = "std")]
     subscriber: Kind<Arc<dyn Subscriber + Send + Sync>>,
+
+    #[cfg(not(feature = "std"))]
+    subscriber: &'static (dyn Subscriber + Send + Sync),
 }
 
+#[cfg(feature = "std")]
 #[derive(Clone)]
 enum Kind<T> {
     Global(&'static (dyn Subscriber + Send + Sync)),
@@ -167,6 +175,8 @@ thread_local! {
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+
+#[cfg(feature = "std")]
 static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 const UNINITIALIZED: usize = 0;
@@ -285,15 +295,22 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
     {
-        let subscriber = match dispatcher.subscriber {
-            Kind::Global(s) => s,
-            Kind::Scoped(s) => unsafe {
-                // safety: this leaks the subscriber onto the heap. the
-                // reference count will always be at least 1.
-                &*Arc::into_raw(s)
-            },
+        #[cfg(feature = "std")]
+        let subscriber = {
+            let subscriber = match dispatcher.subscriber {
+                Kind::Global(s) => s,
+                Kind::Scoped(s) => unsafe {
+                    // safety: this leaks the subscriber onto the heap. the
+                    // reference count will always be at least 1.
+                    &*Arc::into_raw(s)
+                },
+            };
+            Kind::Global(subscriber)
         };
-        let subscriber = Kind::Global(subscriber);
+
+        #[cfg(not(feature = "std"))]
+        let subscriber = dispatcher.subscriber;
+
         unsafe {
             GLOBAL_DISPATCH = Dispatch { subscriber };
         }
@@ -420,7 +437,7 @@ where
 }
 
 #[inline(always)]
-fn get_global() -> &'static Dispatch {
+pub(crate) fn get_global() -> &'static Dispatch {
     if GLOBAL_INIT.load(Ordering::Acquire) != INITIALIZED {
         return &NONE;
     }
@@ -431,6 +448,7 @@ fn get_global() -> &'static Dispatch {
     }
 }
 
+#[cfg(feature = "std")]
 pub(crate) struct Registrar(Kind<Weak<dyn Subscriber + Send + Sync>>);
 
 impl Dispatch {
@@ -438,13 +456,19 @@ impl Dispatch {
     #[inline]
     pub fn none() -> Self {
         Dispatch {
+            #[cfg(feature = "std")]
             subscriber: Kind::Global(&NO_SUBSCRIBER),
+            #[cfg(not(feature = "std"))]
+            subscriber: &NO_SUBSCRIBER,
         }
     }
 
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
     ///
     /// [`Subscriber`]: super::subscriber::Subscriber
+    // TODO(eliza): add separate `alloc` flag!
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn new<S>(subscriber: S) -> Self
     where
         S: Subscriber + Send + Sync + 'static,
@@ -456,6 +480,27 @@ impl Dispatch {
         me
     }
 
+    /// Returns a `Dispatch` that forwards to the given static [`Subscriber`].
+    ///
+    /// Unlike [`Dispatch::new`], this function is always availablee on all
+    /// platforms, even when the `std` or `alloc` features are disabled.
+    ///
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`Dispatch::new`]: Dispatch::new
+    pub fn from_static(subscriber: &'static (dyn Subscriber + Send + Sync)) -> Self {
+        #[cfg(feature = "std")]
+        {
+            let me = Self {
+                subscriber: Kind::Global(subscriber),
+            };
+            callsite::register_dispatch(&me);
+            me
+        }
+        #[cfg(not(feature = "std"))]
+        Dispatch { subscriber }
+    }
+
+    #[cfg(feature = "std")]
     pub(crate) fn registrar(&self) -> Registrar {
         Registrar(match self.subscriber {
             Kind::Scoped(ref s) => Kind::Scoped(Arc::downgrade(s)),
@@ -464,11 +509,18 @@ impl Dispatch {
     }
 
     #[inline(always)]
+    #[cfg(feature = "std")]
     fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
         match self.subscriber {
             Kind::Scoped(ref s) => Arc::deref(s),
             Kind::Global(s) => s,
         }
+    }
+
+    #[inline(always)]
+    #[cfg(not(feature = "std"))]
+    fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
+        self.subscriber
     }
 
     /// Registers a new callsite with this subscriber, returning whether or not

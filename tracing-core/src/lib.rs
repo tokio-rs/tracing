@@ -114,8 +114,8 @@
     unused_parens,
     while_true
 )]
-
-extern crate alloc;
+// #[cfg(not(feature = "std"))]
+// extern crate alloc;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
