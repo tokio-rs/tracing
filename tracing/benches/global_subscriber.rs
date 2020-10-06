@@ -4,11 +4,7 @@ extern crate tracing;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
-use std::{
-    fmt,
-    sync::{Mutex, MutexGuard},
-};
-use tracing::{field, span, Event, Id, Metadata};
+use tracing::{span, Event, Id, Metadata};
 
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
