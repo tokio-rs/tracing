@@ -263,32 +263,46 @@ impl<'a> Location<'a> {
 
 impl<'a> fmt::Debug for Location<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut meta = f.debug_struct("Location");
+        let mut loc = f.debug_struct("Location");
 
         if let Some(path) = self.module_path() {
-            meta.field("module_path", &path);
+            loc.field("module_path", &path);
         }
 
         if let Some(column) = self.column() {
-            meta.field("column", &column);
+            loc.field("column", &column);
         }
 
-        match (self.file(), self.line()) {
-            (Some(file), Some(line)) => {
-                meta.field("location", &format_args!("{}:{}", file, line));
+        match (self.file(), self.line(), self.column()) {
+            (Some(file), Some(line), Some(column)) => {
+                loc.field("location", &format_args!("{}:{}:{}", file, line, column));
             }
-            (Some(file), None) => {
-                meta.field("file", &format_args!("{}", file));
+            (Some(file), Some(line), None) => {
+                loc.field("file", &format_args!("{}:{}", file, line));
+            }
+            (Some(file), None, None) => {
+                loc.field("file", &format_args!("{}", file));
+            }
+            (None, None, Some(column)) => {
+                loc.field("column", &column);
             }
 
             // Note: a line num with no file is a kind of weird case that _probably_ never occurs...
-            (None, Some(line)) => {
-                meta.field("line", &line);
+            (None, Some(line), None) => {
+                loc.field("line", &line);
             }
-            (None, None) => {}
+            (None, Some(line), Some(column)) => {
+                loc.field("column", &column);
+                loc.field("line", &line);
+            }
+            (Some(file), None, Some(column)) => {
+                loc.field("column", &column);
+                loc.field("file", &file);
+            }
+            (None, None, None) => {}
         };
 
-        meta.finish()
+        loc.finish()
     }
 }
 
