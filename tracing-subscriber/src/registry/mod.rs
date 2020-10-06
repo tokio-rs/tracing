@@ -63,7 +63,6 @@
 //! [`LookupSpan`]: trait.LookupSpan.html
 //! [`SpanData`]: trait.SpanData.html
 use tracing_core::{field::FieldSet, span::Id, Metadata};
-use std::borrow::Cow;
 
 /// A module containing a type map of span extensions.
 mod extensions;
@@ -214,7 +213,7 @@ where
     }
 
     /// Returns the span's name,
-    pub fn name(&self) -> Cow<'static, str> {
+    pub fn name(&self) -> &str {
         self.metadata().name()
     }
 

@@ -226,7 +226,6 @@ pub trait AsTrace: crate::sealed::Sealed {
 
 impl<'a> crate::sealed::Sealed for Metadata<'a> {}
 
-use std::borrow::Cow;
 impl<'a> AsLog<'a> for Metadata<'a> {
     type Log = log::Metadata<'a>;
     fn as_log<'b: 'a>(&'b self) -> Self::Log {

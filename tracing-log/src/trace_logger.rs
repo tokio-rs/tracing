@@ -205,7 +205,7 @@ impl<'a> SpanLineBuilder<'a> {
             module_path: meta.module_path().map(String::from),
             target: String::from(meta.target()),
             level: meta.level().as_log(),
-            name: meta.name(),
+            name: Cow::Borrowed(meta.name()), // TODO (dp): can do better than this?
         }
     }
 

@@ -151,7 +151,7 @@ impl Match for Directive {
         // Do we have a name filter, and does it match the metadata's name?
         // TODO(eliza): put name globbing here?
         if let Some(ref name) = self.in_span {
-            if name != meta.name().as_ref() {
+            if name != meta.name() {
                 return false;
             }
         }
