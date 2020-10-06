@@ -309,7 +309,10 @@ impl EnvFilter {
                     .clone()
                     .into_level()
                     .expect("=off would not have enabled any filters");
-                ctx(&format!("`{}` would enable the {} level for {}", directive, level, target));
+                ctx(&format!(
+                    "`{}` would enable the {} level for {}",
+                    directive, level, target
+                ));
             }
             ctx(&format!("the static max level is {}", STATIC_MAX_LEVEL));
             let help_msg = || {
@@ -326,7 +329,10 @@ impl EnvFilter {
                 (feature, format!("{} ", filter))
             };
             let (feature, earlier_level) = help_msg();
-            ctx_help(&format!("to enable {}logging, remove the `{}` feature", earlier_level, feature));
+            ctx_help(&format!(
+                "to enable {}logging, remove the `{}` feature",
+                earlier_level, feature
+            ));
         }
 
         let (dynamics, mut statics) = Directive::make_tables(directives);
