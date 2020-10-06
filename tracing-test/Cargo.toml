@@ -1,0 +1,21 @@
+[package]
+name = "tracing-test"
+version = "0.2.0"
+authors = ["Tokio Contributors <team@tokio.rs>"]
+license = "MIT"
+edition = "2018"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+description = """
+Helper functions and macros that allow for easier testing of crates that use `tracing`.
+"""
+categories = ["development-tools::testing"]
+
+[dependencies]
+lazy_static = "1.4"
+tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
+tracing-test-macro = { path = "../tracing-test-macro", version = "0.2" }
+
+[badges]
+maintenance = { status = "experimental" }

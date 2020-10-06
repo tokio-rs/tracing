@@ -1,0 +1,17 @@
+[package]
+name = "tracing-test-macro-tests"
+version = "0.2.0"
+authors = ["Tokio Contributors <team@tokio.rs>"]
+license = "MIT"
+edition = "2018"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+description = "Only used for internal testing, don't publish."
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
+tracing = { path = "../tracing", version = "0.2", default-features = false }
+tracing-test = { path = "../tracing-test", version = "0.2" }
