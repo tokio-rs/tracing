@@ -93,9 +93,9 @@
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
 //! [`Dispatch::new`]: crate::dispatcher::Dispatch::new
 //! [`Dispatch::from_static`]: crate::dispatcher::Dispatch::from_static
-//! [`Dispatch::set_default`]: crate::dispatcher::Dispatch::set_default
-//! [`with_default`]: crate::dispatcher::Dispatch::with_default
-//! [err]: crate::field::Visit::record_err
+//! [`Dispatch::set_default`]: crate::dispatcher::set_default
+//! [`with_default`]: crate::dispatcher::with_default
+//! [err]: crate::field::Visit::record_error
 //!
 //! ### Crate Feature Flags
 //!
