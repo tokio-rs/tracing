@@ -1,5 +1,5 @@
-use crate::stdlib::future::Future;
 use crate::{Instrument, Instrumented, WithDispatch};
+use core::future::Future;
 use futures_core_preview::{
     future::FutureObj,
     task::{LocalSpawn, Spawn, SpawnError},
