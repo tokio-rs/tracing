@@ -275,17 +275,19 @@ impl EnvFilter {
                 };
                 eprintln!("{}", msg);
             };
-            let ctx_help = |msg: &str| {
+            let ctx_prefixed = |prefix: &str, msg: &str| {
                 #[cfg(not(feature = "ansi_term"))]
                 let msg = format!("note: {}", msg);
                 #[cfg(feature = "ansi_term")]
                 let msg = {
                     let mut equal = Color::Fixed(21).paint("="); // dark blue
                     equal.style_ref_mut().is_bold = true;
-                    format!(" {} {} {}", equal, Style::new().bold().paint("help:"), msg)
+                    format!(" {} {} {}", equal, Style::new().bold().paint(prefix), msg)
                 };
                 eprintln!("{}", msg);
             };
+            let ctx_help = |msg| ctx_prefixed("help:", msg);
+            let ctx_note = |msg| ctx_prefixed("note:", msg);
             let ctx = |msg: &str| {
                 #[cfg(not(feature = "ansi_term"))]
                 let msg = format!("note: {}", msg);
@@ -314,7 +316,7 @@ impl EnvFilter {
                     directive, level, target
                 ));
             }
-            ctx(&format!("the static max level is {}", STATIC_MAX_LEVEL));
+            ctx_note(&format!("the static max level is `{}`", STATIC_MAX_LEVEL));
             let help_msg = || {
                 let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
                     Some(Level::TRACE) => unreachable!(
