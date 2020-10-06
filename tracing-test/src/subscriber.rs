@@ -19,7 +19,9 @@ impl<'a> MockWriter<'a> {
     pub fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
         // Note: The `lock` will block. This would be a problem in production code,
         // but is fine in tests.
-        self.buf.lock().map_err(|_| io::Error::from(io::ErrorKind::Other))
+        self.buf
+            .lock()
+            .map_err(|_| io::Error::from(io::ErrorKind::Other))
     }
 }
 
