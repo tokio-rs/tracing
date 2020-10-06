@@ -113,8 +113,8 @@ mod inner {
     /// This should be called once per callsite after the callsite has been
     /// constructed.
     pub fn register(registration: &'static Registration) {
-        let mut dispatchers = REGISTRY.dispatchers.read().unwrap();
-        rebuild_callsite_interest(&mut dispatchers, registration.callsite);
+        let dispatchers = REGISTRY.dispatchers.read().unwrap();
+        rebuild_callsite_interest(&dispatchers, registration.callsite);
         REGISTRY.callsites.push(registration);
     }
 
