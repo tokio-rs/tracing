@@ -73,16 +73,16 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: span/struct.Id.html
-//! [`Event`]: event/struct.Event.html
-//! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`Metadata`]: metadata/struct.Metadata.html
-//! [`Callsite`]: callsite/trait.Callsite.html
-//! [`Field`]: field/struct.Field.html
-//! [`FieldSet`]: field/struct.FieldSet.html
-//! [`Value`]: field/trait.Value.html
-//! [`ValueSet`]: field/struct.ValueSet.html
-//! [`Dispatch`]: dispatcher/struct.Dispatch.html
+//! [`span::Id`]: span::Id
+//! [`Event`]: event::Event
+//! [`Subscriber`]: subscriber::Subscriber
+//! [`Metadata`]: metadata::Metadata
+//! [`Callsite`]: callsite::Callsite
+//! [`Field`]: field::Field
+//! [`FieldSet`]: field::FieldSet
+//! [`Value`]: field::Value
+//! [`ValueSet`]: field::ValueSet
+//! [`Dispatch`]: dispatcher::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
@@ -114,13 +114,13 @@
     unused_parens,
     while_true
 )]
-#[cfg(not(feature = "std"))]
+
 extern crate alloc;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
 /// This may be used in contexts, such as static initializers, where the
-/// [`Callsite::id`] function is not currently usable.
+/// [`Metadata::callsite`] function is not currently usable.
 ///
 /// For example:
 /// ```rust
@@ -146,9 +146,9 @@ extern crate alloc;
 /// # }
 /// ```
 ///
-/// [`Identifier`]: callsite/struct.Identifier.html
-/// [`Callsite`]: callsite/trait.Callsite.html
-/// [`Callsite::id`]: callsite/trait.Callsite.html#method.id
+/// [`Identifier`]: callsite::Identifier
+/// [`Callsite`]: callsite::Callsite
+/// [`Metadata::callsite`]: metadata::Metadata::callsite
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
@@ -186,8 +186,8 @@ macro_rules! identify_callsite {
 /// # }
 /// ```
 ///
-/// [metadata]: metadata/struct.Metadata.html
-/// [`Metadata::new`]: metadata/struct.Metadata.html#method.new
+/// [metadata]: metadata::Metadata
+/// [`Metadata::new`]: metadata::Metadata::new
 #[macro_export]
 macro_rules! metadata {
     (
@@ -240,17 +240,27 @@ extern crate lazy_static;
 #[macro_use]
 mod lazy_static;
 
+// Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
+#[cfg(not(feature = "std"))]
+mod sync {
+    #[doc(hidden)]
+    pub type Once = crate::spin::Once<()>;
+    pub(crate) use crate::spin::*;
+}
+
+#[cfg(not(feature = "std"))]
 // Trimmed-down vendored version of spin 0.5.2 (0387621)
 // Dependency of no_std lazy_static, not required in a std build
-#[cfg(not(feature = "std"))]
 pub(crate) mod spin;
 
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub type Once = self::spin::Once<()>;
-
 #[cfg(feature = "std")]
-pub use stdlib::sync::Once;
+mod sync {
+    pub use std::sync::Once;
+    pub(crate) use std::sync::{Mutex, MutexGuard};
+}
+
+#[doc(hidden)]
+pub use self::sync::Once;
 
 pub mod callsite;
 pub mod dispatcher;
@@ -259,7 +269,6 @@ pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
 
 #[doc(inline)]

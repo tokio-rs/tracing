@@ -1,7 +1,7 @@
 //! Subscribers collect and record trace data.
 use crate::{span, Event, LevelFilter, Metadata};
 
-use crate::stdlib::any::{Any, TypeId};
+use core::any::{Any, TypeId};
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -60,13 +60,13 @@ use crate::stdlib::any::{Any, TypeId};
 ///   Subscribers which store per-span data or which need to track span closures
 ///   should override these functions together.
 ///
-/// [ID]: ../span/struct.Id.html
-/// [`new_span`]: trait.Subscriber.html#method.new_span
-/// [`register_callsite`]: trait.Subscriber.html#method.register_callsite
-/// [`Interest`]: struct.Interest.html
-/// [`enabled`]: trait.Subscriber.html#method.enabled
-/// [`clone_span`]: trait.Subscriber.html#method.clone_span
-/// [`try_close`]: trait.Subscriber.html#method.try_close
+/// [ID]: super::span::Id
+/// [`new_span`]: Subscriber::new_span
+/// [`register_callsite`]: Subscriber::register_callsite
+/// [`Interest`]: Interest
+/// [`enabled`]: Subscriber::enabled
+/// [`clone_span`]: Subscriber::clone_span
+/// [`try_close`]: Subscriber::try_close
 pub trait Subscriber: 'static {
     // === Span registry methods ==============================================
 
@@ -96,7 +96,7 @@ pub trait Subscriber: 'static {
     /// never be enabled unless a new subscriber expresses interest in it.
     ///
     /// `Subscriber`s which require their filters to be run every time an event
-    /// occurs or a span is entered/exited should return `Interest::sometimes`.
+    /// occurs or a span is entered::exited should return `Interest::sometimes`.
     /// If a subscriber returns `Interest::sometimes`, then its' [`enabled`] method
     /// will be called every time an event or span is created from that callsite.
     ///
@@ -132,11 +132,11 @@ pub trait Subscriber: 'static {
     /// _may_ still see spans and events originating from that callsite, if
     /// another subscriber expressed interest in it.
     ///
-    /// [filter]: #method.enabled
-    /// [metadata]: ../metadata/struct.Metadata.html
-    /// [`Interest`]: struct.Interest.html
-    /// [`enabled`]: #method.enabled
-    /// [`rebuild_interest_cache`]: ../callsite/fn.rebuild_interest_cache.html
+    /// [filter]: Self::enabled
+    /// [metadata]: super::metadata::Metadata
+    /// [`Interest`]: Interest
+    /// [`enabled`]: Self::enabled
+    /// [`rebuild_interest_cache`]: super::callsite::fn.rebuild_interest_cache.html
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
             Interest::always()
@@ -161,10 +161,10 @@ pub trait Subscriber: 'static {
     /// [`Interest::sometimes`]. In that case, this function will be called every
     /// time that span or event occurs.
     ///
-    /// [metadata]: ../metadata/struct.Metadata.html
-    /// [interested]: struct.Interest.html
-    /// [`Interest::sometimes`]: struct.Interest.html#method.sometimes
-    /// [`register_callsite`]: #method.register_callsite
+    /// [metadata]: super::metadata::Metadata
+    /// [interested]: Interest
+    /// [`Interest::sometimes`]: Interest::sometimes
+    /// [`register_callsite`]: Self::register_callsite
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
     /// Returns the highest [verbosity level][level] that this `Subscriber` will
@@ -187,9 +187,9 @@ pub trait Subscriber: 'static {
     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
     /// level changes.
     ///
-    /// [level]: ../struct.Level.html
-    /// [`Interest`]: struct.Interest.html
-    /// [rebuild]: ../callsite/fn.rebuild_interest_cache.html
+    /// [level]: super::Level
+    /// [`Interest`]: Interest
+    /// [rebuild]: super::callsite::fn.rebuild_interest_cache.html
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
@@ -214,10 +214,10 @@ pub trait Subscriber: 'static {
     /// scheme it sees fit. Any guarantees about uniqueness, ordering, or ID
     /// reuse are left up to the subscriber implementation to determine.
     ///
-    /// [span ID]: ../span/struct.Id.html
-    /// [`Attributes`]: ../span/struct.Attributes.html
-    /// [visitor]: ../field/trait.Visit.html
-    /// [`record` method]: ../span/struct.Attributes.html#method.record
+    /// [span ID]: super::span::Id
+    /// [`Attributes`]: super::span::Attributes
+    /// [visitor]: super::field::Visit
+    /// [`record` method]: super::span::Attributes::record
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id;
 
     // === Notification methods ===============================================
@@ -256,9 +256,9 @@ pub trait Subscriber: 'static {
     /// span.record("baz", &"a string");
     /// ```
     ///
-    /// [visitor]: ../field/trait.Visit.html
-    /// [`record`]: ../span/struct.Attributes.html#method.record
-    /// [`record` method]: ../span/struct.Record.html#method.record
+    /// [visitor]: super::field::Visit
+    /// [`record`]: super::span::Attributes::record
+    /// [`record` method]: super::span::Record::record
     fn record(&self, span: &span::Id, values: &span::Record<'_>);
 
     /// Adds an indication that `span` follows from the span with the id
@@ -295,10 +295,10 @@ pub trait Subscriber: 'static {
     /// event. The subscriber may pass a [visitor] to the `Event`'s
     /// [`record` method] to record these values.
     ///
-    /// [`Event`]: ../event/struct.Event.html
-    /// [visitor]: ../field/trait.Visit.html
-    /// [`record` method]: ../event/struct.Event.html#method.record
-    /// [`dispatch` method]: ../event/struct.Event.html#method.dispatch
+    /// [`Event`]: super::event::Event
+    /// [visitor]: super::field::Visit
+    /// [`record` method]: super::event::Event::record
+    /// [`dispatch` method]: super::event::Event::dispatch
     fn event(&self, event: &Event<'_>);
 
     /// Records that a span has been entered.
@@ -308,7 +308,7 @@ pub trait Subscriber: 'static {
     /// [span ID] of the entered span, and should update any internal state
     /// tracking the current span accordingly.
     ///
-    /// [span ID]: ../span/struct.Id.html
+    /// [span ID]: super::span::Id
     fn enter(&self, span: &span::Id);
 
     /// Records that a span has been exited.
@@ -320,7 +320,7 @@ pub trait Subscriber: 'static {
     ///
     /// Exiting a span does not imply that the span will not be re-entered.
     ///
-    /// [span ID]: ../span/struct.Id.html
+    /// [span ID]: super::span::Id
     fn exit(&self, span: &span::Id);
 
     /// Notifies the subscriber that a [span ID] has been cloned.
@@ -341,8 +341,8 @@ pub trait Subscriber: 'static {
     /// kind this can be used as a hook to "clone" the pointer, depending on
     /// what that means for the specified pointer.
     ///
-    /// [span ID]: ../span/struct.Id.html
-    /// [`try_close`]: trait.Subscriber.html#method.try_close
+    /// [span ID]: super::span::Id
+    /// [`try_close`]: Subscriber::try_close
     fn clone_span(&self, id: &span::Id) -> span::Id {
         id.clone()
     }
@@ -355,7 +355,7 @@ pub trait Subscriber: 'static {
     ///
     /// The default implementation of this function does nothing.
     ///
-    /// [`try_close`]: trait.Subscriber.html#method.try_close
+    /// [`try_close`]: Subscriber::try_close
     #[deprecated(since = "0.1.2", note = "use `Subscriber::try_close` instead")]
     fn drop_span(&self, _id: span::Id) {}
 
@@ -392,9 +392,9 @@ pub trait Subscriber: 'static {
     /// inside of a `try_close` function may cause a double panic, if the span
     /// was dropped due to a thread unwinding.
     ///
-    /// [span ID]: ../span/struct.Id.html
-    /// [`clone_span`]: trait.Subscriber.html#method.clone_span
-    /// [`drop_span`]: trait.Subscriber.html#method.drop_span
+    /// [span ID]: super::span::Id
+    /// [`clone_span`]: Subscriber::clone_span
+    /// [`drop_span`]: Subscriber::drop_span
     fn try_close(&self, id: span::Id) -> bool {
         #[allow(deprecated)]
         self.drop_span(id);
@@ -412,8 +412,8 @@ pub trait Subscriber: 'static {
     /// does **not** track what span is current. If the subscriber does not
     /// implement a current span, it should not override this method.
     ///
-    /// [`Current::new`]: ../span/struct.Current.html#tymethod.new
-    /// [`Current::none`]: ../span/struct.Current.html#tymethod.none
+    /// [`Current::new`]: super::span::Current::new
+    /// [`Current::none`]: super::span::Current::none
     fn current_span(&self) -> span::Current {
         span::Current::unknown()
     }
@@ -479,8 +479,8 @@ impl dyn Subscriber {
 /// `Subscriber`s return an `Interest` from their [`register_callsite`] methods
 /// in order to determine whether that span should be enabled or disabled.
 ///
-/// [`Subscriber`]: ../trait.Subscriber.html
-/// [`register_callsite`]: ../trait.Subscriber.html#method.register_callsite
+/// [`Subscriber`]: super::Subscriber
+/// [`register_callsite`]: super::Subscriber::register_callsite
 #[derive(Clone, Debug)]
 pub struct Interest(InterestKind);
 

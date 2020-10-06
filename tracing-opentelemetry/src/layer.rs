@@ -103,6 +103,51 @@ fn str_to_span_kind(s: &str) -> Option<api::SpanKind> {
 struct SpanEventVisitor<'a>(&'a mut api::Event);
 
 impl<'a> field::Visit for SpanEventVisitor<'a> {
+    /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_bool(&mut self, field: &field::Field, value: bool) {
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
+        }
+    }
+
+    /// Record events on the underlying OpenTelemetry [`Span`] from `i64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_i64(&mut self, field: &field::Field, value: i64) {
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
+        }
+    }
+
+    /// Record events on the underlying OpenTelemetry [`Span`] from `u64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_u64(&mut self, field: &field::Field, value: u64) {
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
+        }
+    }
+
     /// Record events on the underlying OpenTelemetry [`Span`] from `&str` values.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
@@ -140,6 +185,42 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
 struct SpanAttributeVisitor<'a>(&'a mut api::SpanBuilder);
 
 impl<'a> field::Visit for SpanAttributeVisitor<'a> {
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `bool` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_bool(&mut self, field: &field::Field, value: bool) {
+        let attribute = api::KeyValue::new(field.name(), value);
+        if let Some(attributes) = &mut self.0.attributes {
+            attributes.push(attribute);
+        } else {
+            self.0.attributes = Some(vec![attribute]);
+        }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `i64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_i64(&mut self, field: &field::Field, value: i64) {
+        let attribute = api::KeyValue::new(field.name(), value);
+        if let Some(attributes) = &mut self.0.attributes {
+            attributes.push(attribute);
+        } else {
+            self.0.attributes = Some(vec![attribute]);
+        }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `u64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_u64(&mut self, field: &field::Field, value: u64) {
+        let attribute = api::KeyValue::new(field.name(), value);
+        if let Some(attributes) = &mut self.0.attributes {
+            attributes.push(attribute);
+        } else {
+            self.0.attributes = Some(vec![attribute]);
+        }
+    }
+
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `&str` values.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html

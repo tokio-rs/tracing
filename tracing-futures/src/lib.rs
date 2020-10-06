@@ -105,10 +105,8 @@
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
 
-pub(crate) mod stdlib;
-
 #[cfg(feature = "std-future")]
-use crate::stdlib::{pin::Pin, task::Context};
+use core::{pin::Pin, task::Context};
 
 #[cfg(feature = "std")]
 use tracing::{dispatcher, Dispatch};
@@ -274,10 +272,10 @@ impl<T: Sized> Instrument for T {}
 
 #[cfg(feature = "std-future")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
-impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
+impl<T: core::future::Future> core::future::Future for Instrumented<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
         this.inner.poll(cx)
@@ -445,10 +443,10 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
 
 #[cfg(all(feature = "std-future", feature = "std"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "std-future", feature = "std"))))]
-impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDispatch<T> {
+impl<T: core::future::Future> core::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
