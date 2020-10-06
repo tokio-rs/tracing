@@ -384,7 +384,7 @@ impl Subscriber for TraceLogger<'static> {
             logger.log(
                 &log::Record::builder()
                     .metadata(log_meta)
-                    .target(meta.target())
+                    .target(&meta.target())
                     .module_path(meta.module_path().as_ref().cloned())
                     .file(meta.file().as_ref().cloned())
                     .line(meta.line())

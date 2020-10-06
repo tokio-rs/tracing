@@ -65,7 +65,8 @@ pub struct Metadata<'a> {
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
-    target: &'a str,
+    // target: &'a str,
+    target: Cow<'a, str>,
 
     /// The level of verbosity of the described span.
     level: Level,
@@ -134,7 +135,7 @@ impl<'a> Metadata<'a> {
     ) -> Self {
         Metadata {
             name: Cow::Borrowed(name),
-            target,
+            target: Cow::Borrowed(target),
             level,
             module_path,
             file,
@@ -164,8 +165,8 @@ impl<'a> Metadata<'a> {
     ///
     /// Typically, this is the module path, but alternate targets may be set
     /// when spans or events are constructed.
-    pub fn target(&self) -> &'a str {
-        self.target
+    pub fn target(&'a self) -> Cow<'a, str> {
+        Cow::Borrowed(&self.target)
     }
 
     /// Returns the path to the Rust module where the span occurred, or
