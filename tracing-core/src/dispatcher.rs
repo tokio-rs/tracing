@@ -489,7 +489,6 @@ impl Dispatch {
         let me = Dispatch {
             subscriber: Kind::Scoped(Arc::new(subscriber)),
         };
-        #[cfg(feature = "std")]
         crate::callsite::register_dispatch(&me);
         me
     }
@@ -503,16 +502,13 @@ impl Dispatch {
     /// [`Dispatch::new`]: Dispatch::new
     pub fn from_static(subscriber: &'static (dyn Subscriber + Send + Sync)) -> Self {
         #[cfg(feature = "alloc")]
-        {
-            let me = Self {
-                subscriber: Kind::Global(subscriber),
-            };
-            #[cfg(feature = "std")]
-            crate::callsite::register_dispatch(&me);
-            me
-        }
+        let me = Self {
+            subscriber: Kind::Global(subscriber),
+        };
         #[cfg(not(feature = "alloc"))]
-        Dispatch { subscriber }
+        let me = Self { subscriber };
+        crate::callsite::register_dispatch(&me);
+        me
     }
 
     #[cfg(feature = "std")]

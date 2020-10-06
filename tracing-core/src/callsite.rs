@@ -61,7 +61,6 @@ pub struct Registration<T = &'static dyn Callsite> {
     next: AtomicPtr<Registration<T>>,
 }
 
-#[cfg(feature = "std")]
 pub(crate) use self::inner::register_dispatch;
 pub use self::inner::{rebuild_interest_cache, register};
 
@@ -201,14 +200,7 @@ mod inner {
     /// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
     /// [`Subscriber`]: super::subscriber::Subscriber
     pub fn rebuild_interest_cache() {
-        let dispatcher = dispatcher::get_global();
-        // If the subscriber did not provide a max level hint, assume
-        // that it may enable every level.
-        let level_hint = dispatcher.max_level_hint().unwrap_or(LevelFilter::TRACE);
-
-        REGISTRY.for_each(|reg| rebuild_callsite_interest(dispatcher, reg.callsite));
-
-        LevelFilter::set_max(level_hint);
+        register_dispatch(dispatcher::get_global());
     }
 
     /// Register a new `Callsite` with the global registry.
@@ -220,7 +212,17 @@ mod inner {
         REGISTRY.push(registration);
     }
 
-    fn rebuild_callsite_interest(dispatcher: &'static Dispatch, callsite: &'static dyn Callsite) {
+    pub(crate) fn register_dispatch(dispatcher: &Dispatch) {
+        // If the subscriber did not provide a max level hint, assume
+        // that it may enable every level.
+        let level_hint = dispatcher.max_level_hint().unwrap_or(LevelFilter::TRACE);
+
+        REGISTRY.for_each(|reg| rebuild_callsite_interest(dispatcher, reg.callsite));
+
+        LevelFilter::set_max(level_hint);
+    }
+
+    fn rebuild_callsite_interest(dispatcher: &Dispatch, callsite: &'static dyn Callsite) {
         let meta = callsite.metadata();
 
         callsite.set_interest(dispatcher.register_callsite(meta))
