@@ -65,7 +65,6 @@ pub struct Metadata<'a> {
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
-    // target: &'a str,
     target: Cow<'a, str>,
 
     /// The level of verbosity of the described span.
