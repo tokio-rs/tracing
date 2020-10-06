@@ -7,7 +7,6 @@ use super::{
     Parent,
 };
 use std::{
-    borrow::Cow,
     collections::{HashMap, VecDeque},
     fmt,
     sync::{
@@ -36,7 +35,7 @@ enum Expect {
 }
 
 struct SpanState {
-    name: Cow<'static, str>,
+    name: &'static str,
     refs: usize,
 }
 

@@ -369,7 +369,6 @@ mod tests {
     use super::Registry;
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::{
-        borrow::Cow,
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
     };
@@ -423,8 +422,8 @@ mod tests {
 
     #[derive(Default)]
     struct CloseState {
-        open: HashMap<Cow<'static, str>, Weak<()>>,
-        closed: Vec<(Cow<'static, str>, Weak<()>)>,
+        open: HashMap<String, Weak<()>>,
+        closed: Vec<(String, Weak<()>)>,
     }
 
     struct SetRemoved(Arc<()>);
@@ -439,7 +438,7 @@ mod tests {
             let is_removed = Arc::new(());
             assert!(
                 lock.open
-                    .insert(span.name(), Arc::downgrade(&is_removed))
+                    .insert(span.name().to_string(), Arc::downgrade(&is_removed))
                     .is_none(),
                 "test layer saw multiple spans with the same name, the test is probably messed up"
             );
@@ -460,9 +459,9 @@ mod tests {
             let name = span.name();
             println!("close {} ({:?})", name, id);
             if let Ok(mut lock) = self.inner.lock() {
-                if let Some(is_removed) = lock.open.remove(name.as_ref()) {
+                if let Some(is_removed) = lock.open.remove(name) {
                     assert!(is_removed.upgrade().is_some());
-                    lock.closed.push((name, is_removed));
+                    lock.closed.push((name.to_string(), is_removed));
                 }
             }
         }
@@ -555,7 +554,7 @@ mod tests {
         }
 
         #[allow(unused)] // may want this for future tests
-        fn assert_last_closed(&self, span: Option<Cow<'static, str>>) {
+        fn assert_last_closed(&self, span: Option<String>) {
             let lock = self.state.lock().unwrap();
             let last = lock.closed.last().map(|(span, _)| span);
             assert_eq!(
