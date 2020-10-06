@@ -126,7 +126,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
-    callsite, span,
+    span,
     subscriber::{self, Subscriber},
     Event, LevelFilter, Metadata,
 };
@@ -134,7 +134,6 @@ use crate::{
 use core::{
     any::Any,
     fmt,
-    ops::Deref,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
@@ -142,22 +141,26 @@ use core::{
 use std::{
     cell::{Cell, RefCell, RefMut},
     error,
+    sync::Weak,
 };
 
-#[cfg(feature = "std")]
-use std::sync::{Arc, Weak};
+#[cfg(feature = "alloc")]
+use alloc::sync::Arc;
+
+#[cfg(feature = "alloc")]
+use core::ops::Deref;
 
 /// `Dispatch` trace data to a [`Subscriber`].
 #[derive(Clone)]
 pub struct Dispatch {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     subscriber: Kind<Arc<dyn Subscriber + Send + Sync>>,
 
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "alloc"))]
     subscriber: &'static (dyn Subscriber + Send + Sync),
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 #[derive(Clone)]
 enum Kind<T> {
     Global(&'static (dyn Subscriber + Send + Sync)),
@@ -183,15 +186,15 @@ const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     subscriber: Kind::Global(&NO_SUBSCRIBER),
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "alloc"))]
     subscriber: &NO_SUBSCRIBER,
 };
 static NONE: Dispatch = Dispatch {
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     subscriber: Kind::Global(&NO_SUBSCRIBER),
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "alloc"))]
     subscriber: &NO_SUBSCRIBER,
 };
 static NO_SUBSCRIBER: NoSubscriber = NoSubscriber;
@@ -300,7 +303,7 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
     {
-        #[cfg(feature = "std")]
+        #[cfg(feature = "alloc")]
         let subscriber = {
             let subscriber = match dispatcher.subscriber {
                 Kind::Global(s) => s,
@@ -313,7 +316,7 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
             Kind::Global(subscriber)
         };
 
-        #[cfg(not(feature = "std"))]
+        #[cfg(not(feature = "alloc"))]
         let subscriber = dispatcher.subscriber;
 
         unsafe {
@@ -401,34 +404,33 @@ where
         .unwrap_or_else(|_| f(&Dispatch::none()))
 }
 
-// /// Executes a closure with a reference to this thread's current [dispatcher].
-// ///
-// /// Note that calls to `get_default` should not be nested; if this function is
-// /// called while inside of another `get_default`, that closure will be provided
-// /// with `Dispatch::none` rather than the previously set dispatcher.
-// ///
-// /// [dispatcher]: super::dispatcher::Dispatch
-// #[cfg(feature = "std")]
-// #[doc(hidden)]
-// #[inline(never)]
-// pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
-//     CURRENT_STATE
-//         .try_with(|state| {
-//             let entered = state.enter()?;
-//             Some(f(&*entered.current()))
-//         })
-//         .ok()?
-// }
+/// Executes a closure with a reference to this thread's current [dispatcher].
+///
+/// Note that calls to `get_default` should not be nested; if this function is
+/// called while inside of another `get_default`, that closure will be provided
+/// with `Dispatch::none` rather than the previously set dispatcher.
+///
+/// [dispatcher]: super::dispatcher::Dispatch
+#[cfg(feature = "std")]
+#[doc(hidden)]
+#[inline(never)]
+pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    CURRENT_STATE
+        .try_with(|state| {
+            let entered = state.enter()?;
+            Some(f(&*entered.current()))
+        })
+        .ok()?
+}
 
-// /// Executes a closure with a reference to the current [dispatcher].
-// ///
-// /// [dispatcher]: super::dispatcher::Dispatch
-// #[cfg(not(feature = "std"))]
-// #[doc(hidden)]
-// pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
-//     let dispatch = get_global()?;
-//     Some(f(&dispatch))
-// }
+/// Executes a closure with a reference to the current [dispatcher].
+///
+/// [dispatcher]: super::dispatcher::Dispatch
+#[cfg(not(feature = "std"))]
+#[doc(hidden)]
+pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    Some(f(&get_global()))
+}
 
 /// Executes a closure with a reference to the current [dispatcher].
 ///
@@ -461,9 +463,9 @@ impl Dispatch {
     #[inline]
     pub fn none() -> Self {
         Dispatch {
-            #[cfg(feature = "std")]
+            #[cfg(feature = "alloc")]
             subscriber: Kind::Global(&NO_SUBSCRIBER),
-            #[cfg(not(feature = "std"))]
+            #[cfg(not(feature = "alloc"))]
             subscriber: &NO_SUBSCRIBER,
         }
     }
@@ -471,9 +473,8 @@ impl Dispatch {
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
     ///
     /// [`Subscriber`]: super::subscriber::Subscriber
-    // TODO(eliza): add separate `alloc` flag!
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     pub fn new<S>(subscriber: S) -> Self
     where
         S: Subscriber + Send + Sync + 'static,
@@ -481,7 +482,8 @@ impl Dispatch {
         let me = Dispatch {
             subscriber: Kind::Scoped(Arc::new(subscriber)),
         };
-        callsite::register_dispatch(&me);
+        #[cfg(feature = "std")]
+        crate::callsite::register_dispatch(&me);
         me
     }
 
@@ -493,15 +495,16 @@ impl Dispatch {
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [`Dispatch::new`]: Dispatch::new
     pub fn from_static(subscriber: &'static (dyn Subscriber + Send + Sync)) -> Self {
-        #[cfg(feature = "std")]
+        #[cfg(feature = "alloc")]
         {
             let me = Self {
                 subscriber: Kind::Global(subscriber),
             };
-            callsite::register_dispatch(&me);
+            #[cfg(feature = "std")]
+            crate::callsite::register_dispatch(&me);
             me
         }
-        #[cfg(not(feature = "std"))]
+        #[cfg(not(feature = "alloc"))]
         Dispatch { subscriber }
     }
 
@@ -514,7 +517,7 @@ impl Dispatch {
     }
 
     #[inline(always)]
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
         match self.subscriber {
             Kind::Scoped(ref s) => Arc::deref(s),
@@ -523,7 +526,7 @@ impl Dispatch {
     }
 
     #[inline(always)]
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "alloc"))]
     fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
         self.subscriber
     }

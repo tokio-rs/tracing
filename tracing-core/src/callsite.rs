@@ -4,7 +4,6 @@ use crate::{
     dispatcher::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
-    sync::{Mutex, MutexGuard},
 };
 use core::{
     fmt,
