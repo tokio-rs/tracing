@@ -258,10 +258,46 @@ impl EnvFilter {
             .collect();
 
         if !disabled.is_empty() {
+            #[cfg(feature = "ansi_term")]
+            use ansi_term::{Color, Style};
             // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
             // has no knowledge of any underlying subscriber or collector, which
             // may or may not use a `MakeWriter`.
-            eprintln!("warning: some trace filter directives would enable traces that are disabled statically");
+            let warn = |msg: &str| {
+                #[cfg(not(feature = "ansi_term"))]
+                let msg = format!("warning: {}", msg);
+                #[cfg(feature = "ansi_term")]
+                let msg = {
+                    let bold = Style::new().bold();
+                    let mut warning = Color::Yellow.paint("warning");
+                    warning.style_ref_mut().is_bold = true;
+                    format!("{}{} {}", warning, bold.clone().paint(":"), bold.paint(msg))
+                };
+                eprintln!("{}", msg);
+            };
+            let ctx_help = |msg: &str| {
+                #[cfg(not(feature = "ansi_term"))]
+                let msg = format!("note: {}", msg);
+                #[cfg(feature = "ansi_term")]
+                let msg = {
+                    let mut equal = Color::Fixed(21).paint("="); // dark blue
+                    equal.style_ref_mut().is_bold = true;
+                    format!(" {} {} {}", equal, Style::new().bold().paint("help:"), msg)
+                };
+                eprintln!("{}", msg);
+            };
+            let ctx = |msg: &str| {
+                #[cfg(not(feature = "ansi_term"))]
+                let msg = format!("note: {}", msg);
+                #[cfg(feature = "ansi_term")]
+                let msg = {
+                    let mut pipe = Color::Fixed(21).paint("|");
+                    pipe.style_ref_mut().is_bold = true;
+                    format!(" {} {}", pipe, msg)
+                };
+                eprintln!("{}", msg);
+            };
+            warn("some trace filter directives would enable traces that are disabled statically");
             for directive in disabled {
                 let target = if let Some(target) = &directive.target {
                     format!("the `{}` target", target)
@@ -273,12 +309,9 @@ impl EnvFilter {
                     .clone()
                     .into_level()
                     .expect("=off would not have enabled any filters");
-                eprintln!(
-                    " | `{}` would enable the {} level for {}",
-                    directive, level, target
-                );
+                ctx(&format!("`{}` would enable the {} level for {}", directive, level, target));
             }
-            eprintln!(" | the static max level is {}", STATIC_MAX_LEVEL);
+            ctx(&format!("the static max level is {}", STATIC_MAX_LEVEL));
             let help_msg = || {
                 let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
                     Some(Level::TRACE) => unreachable!(
@@ -293,10 +326,7 @@ impl EnvFilter {
                 (feature, format!("{} ", filter))
             };
             let (feature, earlier_level) = help_msg();
-            eprintln!(
-                "note: to enable {}logging, remove the `{}` feature",
-                earlier_level, feature
-            );
+            ctx_help(&format!("to enable {}logging, remove the `{}` feature", earlier_level, feature));
         }
 
         let (dynamics, mut statics) = Directive::make_tables(directives);
