@@ -17,6 +17,3 @@ members = [
     "tracing-journald",
     "examples"
 ]
-
-# [patch.crates-io]
-# opentelemetry = { git = "https://github.com/dvdplm/opentelemetry-rust", branch = "dp-use-cow" }
