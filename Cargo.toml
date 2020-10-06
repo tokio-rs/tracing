@@ -18,5 +18,5 @@ members = [
     "examples"
 ]
 
-[patch.crates-io]
-opentelemetry = { git = "https://github.com/dvdplm/opentelemetry-rust", branch = "dp-use-cow" }
+# [patch.crates-io]
+# opentelemetry = { git = "https://github.com/dvdplm/opentelemetry-rust", branch = "dp-use-cow" }
