@@ -7,8 +7,8 @@ name = "tracing-attributes"
 #   - Cargo.toml
 #   - README.md
 # - Update CHANGELOG.md.
-# - Create "v0.1.x" git tag.
-version = "0.1.11"
+# - Create "v0.2.x" git tag.
+version = "0.2.0"
 authors = [
     "Tokio Contributors <team@tokio.rs>",
     "Eliza Weisman <eliza@buoyant.io>",
@@ -32,11 +32,6 @@ edition = "2018"
 [lib]
 proc-macro = true
 
-[features]
-
-# This feature flag is no longer necessary.
-async-await = []
-
 [dependencies]
 proc-macro2 = "1"
 syn = { version = "1", default-features = false, features = ["full", "parsing", "printing", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
@@ -44,9 +39,9 @@ quote = "1"
 
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1" }
+tracing = { path = "../tracing", version = "0.2" }
 tokio-test = { version = "0.2.0" }
-tracing-core = { path = "../tracing-core", version = "0.1"}
+tracing-core = { path = "../tracing-core", version = "0.2"}
 async-trait = "0.1"
 
 [badges]

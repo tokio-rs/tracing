@@ -36,7 +36,7 @@ and tracing data to monitor your services in production.
 The `tracing` crate provides the APIs necessary for instrumenting
 libraries and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.40+][msrv]*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -98,10 +98,26 @@ After you implement your `Subscriber`, you can use your `tracing`
 subscriber (`JsonSubscriber` in the above example) to record serialized
 trace data.
 
+##  Crate Feature Flags
+
+The following crate feature flags are available:
+
+* `std`: Depend on the Rust standard library (enabled by default).
+
+  `no_std` users may disable this feature with `default-features = false`:
+
+  ```toml
+  [dependencies]
+  tracing-serde = { version = "0.2", default-features = false }
+  ```
+
+  **Note**:`tracing-serde`'s `no_std` support requires `liballoc`.
+
+
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.40. The current Tracing version is not guaranteed to build on Rust
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

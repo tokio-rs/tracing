@@ -201,7 +201,7 @@ where
         }
     }
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.max_level.clone()
+        self.max_level
     }
 
     fn record(&self, id: &Id, values: &span::Record<'_>) {
@@ -214,11 +214,7 @@ where
             "[{}] record: {}; id={:?}; values={:?};",
             self.name, span.name, id, values
         );
-        let was_expected = if let Some(Expect::Visit(_, _)) = expected.front() {
-            true
-        } else {
-            false
-        };
+        let was_expected = matches!(expected.front(), Some(Expect::Visit(_, _)));
         if was_expected {
             if let Expect::Visit(expected_span, mut expected_values) = expected.pop_front().unwrap()
             {
@@ -320,10 +316,7 @@ where
             id
         );
         let mut expected = self.expected.lock().unwrap();
-        let was_expected = match expected.front() {
-            Some(Expect::NewSpan(_)) => true,
-            _ => false,
-        };
+        let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {

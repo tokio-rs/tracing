@@ -210,19 +210,13 @@ impl Error {
     /// Returns `true` if this error occurred because the layer was poisoned by
     /// a panic on another thread.
     pub fn is_poisoned(&self) -> bool {
-        match self.kind {
-            ErrorKind::Poisoned => true,
-            _ => false,
-        }
+        matches!(self.kind, ErrorKind::Poisoned)
     }
 
     /// Returns `true` if this error occurred because the `Subscriber`
     /// containing the reloadable layer was dropped.
     pub fn is_dropped(&self) -> bool {
-        match self.kind {
-            ErrorKind::SubscriberGone => true,
-            _ => false,
-        }
+        matches!(self.kind, ErrorKind::SubscriberGone)
     }
 }
 

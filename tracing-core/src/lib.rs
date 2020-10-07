@@ -23,7 +23,7 @@
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -53,7 +53,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing-core = { version = "0.1.16", default-features = false }
+//!   tracing-core = { version = "0.1.17", default-features = false }
 //!   ```
 //!
 //!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
@@ -61,7 +61,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -73,19 +73,19 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: span/struct.Id.html
-//! [`Event`]: event/struct.Event.html
-//! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`Metadata`]: metadata/struct.Metadata.html
-//! [`Callsite`]: callsite/trait.Callsite.html
-//! [`Field`]: field/struct.Field.html
-//! [`FieldSet`]: field/struct.FieldSet.html
-//! [`Value`]: field/trait.Value.html
-//! [`ValueSet`]: field/struct.ValueSet.html
-//! [`Dispatch`]: dispatcher/struct.Dispatch.html
+//! [`span::Id`]: span::Id
+//! [`Event`]: event::Event
+//! [`Subscriber`]: subscriber::Subscriber
+//! [`Metadata`]: metadata::Metadata
+//! [`Callsite`]: callsite::Callsite
+//! [`Field`]: field::Field
+//! [`FieldSet`]: field::FieldSet
+//! [`Value`]: field::Value
+//! [`ValueSet`]: field::ValueSet
+//! [`Dispatch`]: dispatcher::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.16")]
+#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
@@ -114,13 +114,13 @@
     unused_parens,
     while_true
 )]
-#[cfg(not(feature = "std"))]
+
 extern crate alloc;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
 /// This may be used in contexts, such as static initializers, where the
-/// [`Callsite::id`] function is not currently usable.
+/// [`Metadata::callsite`] function is not currently usable.
 ///
 /// For example:
 /// ```rust
@@ -146,9 +146,9 @@ extern crate alloc;
 /// # }
 /// ```
 ///
-/// [`Identifier`]: callsite/struct.Identifier.html
-/// [`Callsite`]: callsite/trait.Callsite.html
-/// [`Callsite::id`]: callsite/trait.Callsite.html#method.id
+/// [`Identifier`]: callsite::Identifier
+/// [`Callsite`]: callsite::Callsite
+/// [`Metadata::callsite`]: metadata::Metadata::callsite
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
@@ -186,8 +186,8 @@ macro_rules! identify_callsite {
 /// # }
 /// ```
 ///
-/// [metadata]: metadata/struct.Metadata.html
-/// [`Metadata::new`]: metadata/struct.Metadata.html#method.new
+/// [metadata]: metadata::Metadata
+/// [`Metadata::new`]: metadata::Metadata::new
 #[macro_export]
 macro_rules! metadata {
     (
@@ -240,17 +240,27 @@ extern crate lazy_static;
 #[macro_use]
 mod lazy_static;
 
+// Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
+#[cfg(not(feature = "std"))]
+mod sync {
+    #[doc(hidden)]
+    pub type Once = crate::spin::Once<()>;
+    pub(crate) use crate::spin::*;
+}
+
+#[cfg(not(feature = "std"))]
 // Trimmed-down vendored version of spin 0.5.2 (0387621)
 // Dependency of no_std lazy_static, not required in a std build
-#[cfg(not(feature = "std"))]
 pub(crate) mod spin;
 
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub type Once = self::spin::Once<()>;
-
 #[cfg(feature = "std")]
-pub use stdlib::sync::Once;
+mod sync {
+    pub use std::sync::Once;
+    pub(crate) use std::sync::{Mutex, MutexGuard};
+}
+
+#[doc(hidden)]
+pub use self::sync::Once;
 
 pub mod callsite;
 pub mod dispatcher;
@@ -259,7 +269,6 @@ pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
 
 #[doc(inline)]

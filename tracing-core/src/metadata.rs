@@ -1,7 +1,7 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use crate::stdlib::{
-    borrow::Cow,
+use alloc::borrow::Cow;
+use core::{
     cmp, fmt,
     str::FromStr,
     sync::atomic::{AtomicUsize, Ordering},
@@ -39,26 +39,26 @@ use crate::stdlib::{
 /// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: Although instances of <code>Metadata</code> cannot
-/// be compared directly, they provide a method <a href="struct.Metadata.html#method.id">
-/// <code>id</code></a>, returning an opaque <a href="../callsite/struct.Identifier.html">
-/// callsite identifier</a>  which uniquely identifies the callsite where the metadata
-/// originated. This can be used to determine if two <code>Metadata</code> correspond to
-/// the same callsite.
+///
+/// **Note**: Although instances of `Metadata` cannot
+/// be compared directly, they provide a method [`callsite`][Metadata::callsite],
+/// returning an opaque [callsite identifier] which uniquely identifies the
+/// callsite where the metadata originated. This can be used to determine if two
+/// `Metadata` correspond to the same callsite.
+///
 /// </pre></div>
 ///
-/// [span]: ../span/index.html
-/// [event]: ../event/index.html
-/// [name]: #method.name
-/// [target]: #method.target
-/// [fields]: #method.fields
-/// [verbosity level]: #method.level
-/// [file name]: #method.file
-/// [line number]: #method.line
-/// [module path]: #method.module
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`id`]: struct.Metadata.html#method.id
-/// [callsite identifier]: ../callsite/struct.Identifier.html
+/// [span]: super::span
+/// [event]: super::event
+/// [name]: Self::name
+/// [target]: Self::target
+/// [fields]: Self::fields
+/// [verbosity level]: Self::level
+/// [file name]: Self::file
+/// [line number]: Self::line
+/// [module path]: Self::module_path
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: Cow<'a, str>,
@@ -95,7 +95,7 @@ pub struct Metadata<'a> {
 pub struct Kind(KindInner);
 
 /// Describes the level of verbosity of a span or event.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity `Level`.
@@ -108,7 +108,7 @@ pub struct Level(LevelInner);
 /// addition of an `OFF` level that completely disables all trace
 /// instrumentation.
 #[repr(transparent)]
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
@@ -252,18 +252,12 @@ impl Kind {
 
     /// Return true if the callsite kind is `Span`
     pub fn is_span(&self) -> bool {
-        match self {
-            Kind(KindInner::Span) => true,
-            _ => false,
-        }
+        matches!(self, Kind(KindInner::Span))
     }
 
     /// Return true if the callsite kind is `Event`
     pub fn is_event(&self) -> bool {
-        match self {
-            Kind(KindInner::Event) => true,
-            _ => false,
-        }
+        matches!(self, Kind(KindInner::Event))
     }
 }
 
@@ -306,7 +300,7 @@ impl fmt::Display for Level {
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl crate::stdlib::error::Error for ParseLevelError {}
+impl std::error::Error for ParseLevelError {}
 
 impl FromStr for Level {
     type Err = ParseLevelError;
@@ -415,7 +409,7 @@ impl LevelFilter {
     /// Returns the most verbose [`Level`] that this filter accepts, or `None`
     /// if it is [`OFF`].
     ///
-    /// [`Level`]: ../struct.Level.html
+    /// [`Level`]: super::Level
     /// [`OFF`]: #associatedconstant.OFF
     pub const fn into_level(self) -> Option<Level> {
         self.0
@@ -449,8 +443,8 @@ impl LevelFilter {
     /// *disabled*, but **should not** be used for determining if something is
     /// *enabled*.`
     ///
-    /// [`Level`]: ../struct.Level.html
-    /// [`Subscriber`]: ../../trait.Subscriber.html
+    /// [`Level`]: super::Level
+    /// [`Subscriber`]: super::Subscriber
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {
@@ -488,7 +482,7 @@ impl LevelFilter {
                 // the inputs to `set_max` to the set of valid discriminants.
                 // Therefore, **as long as `MAX_VALUE` is only ever set by
                 // `set_max`**, this is safe.
-                crate::stdlib::hint::unreachable_unchecked()
+                core::hint::unreachable_unchecked()
             },
         }
     }
@@ -555,7 +549,7 @@ impl FromStr for LevelFilter {
                 s if s.eq_ignore_ascii_case("off") => Some(LevelFilter::OFF),
                 _ => None,
             })
-            .ok_or_else(|| ParseLevelFilterError(()))
+            .ok_or(ParseLevelFilterError(()))
     }
 }
 
@@ -806,7 +800,7 @@ impl PartialOrd<Level> for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stdlib::mem;
+    use core::mem;
 
     #[test]
     fn level_from_str() {
@@ -859,13 +853,13 @@ mod tests {
             (LevelFilter::DEBUG, LevelInner::Debug as usize),
             (LevelFilter::TRACE, LevelInner::Trace as usize),
         ];
-        for &(ref filter, expected) in &mapping {
+        for &(filter, expected) in &mapping {
             let repr = unsafe {
                 // safety: The entire purpose of this test is to assert that the
                 // actual repr matches what we expect it to be --- we're testing
                 // that *other* unsafe code is sound using the transmuted value.
                 // We're not going to do anything with it that might be unsound.
-                mem::transmute::<_, usize>(filter.clone())
+                mem::transmute::<LevelFilter, usize>(filter)
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }

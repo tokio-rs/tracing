@@ -10,7 +10,7 @@
 //! `tracing-subscriber` is intended for use by both `Subscriber` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -46,7 +46,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -98,26 +98,10 @@
 use tracing_core::span::Id;
 
 #[macro_use]
-macro_rules! try_lock {
-    ($lock:expr) => {
-        try_lock!($lock, else return)
-    };
-    ($lock:expr, else $els:expr) => {
-        if let Ok(l) = $lock {
-            l
-        } else if std::thread::panicking() {
-            $els
-        } else {
-            panic!("lock poisoned")
-        }
-    };
-}
+mod macros;
 
 pub mod field;
 pub mod filter;
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub mod fmt;
 pub mod layer;
 pub mod prelude;
 pub mod registry;
@@ -132,24 +116,20 @@ pub use filter::EnvFilter;
 
 pub use layer::Layer;
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use registry::Registry;
+cfg_feature!("fmt", {
+    pub mod fmt;
+    pub use fmt::fmt;
+    pub use fmt::Subscriber as FmtSubscriber;
+});
 
-///
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub fn registry() -> Registry {
-    Registry::default()
-}
+cfg_feature!("registry", {
+    pub use registry::Registry;
 
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::Subscriber as FmtSubscriber;
-
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::fmt;
+    ///
+    pub fn registry() -> Registry {
+        Registry::default()
+    }
+});
 
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.

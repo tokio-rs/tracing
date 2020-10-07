@@ -49,12 +49,12 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// The returned value may be dereferenced for data access
     /// and the lock will be dropped when the guard falls out of scope.
-    pub(crate) fn lock(&self) -> MutexGuard<'_, T> {
+    pub(crate) fn lock(&self) -> Result<MutexGuard<'_, T>, core::convert::Infallible> {
         self.obtain_lock();
-        MutexGuard {
+        Ok(MutexGuard {
             lock: &self.lock,
             data: unsafe { &mut *self.data.get() },
-        }
+        })
     }
 
     /// Tries to lock the mutex. If it is already locked, it will return None. Otherwise it returns

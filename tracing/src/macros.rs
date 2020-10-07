@@ -54,7 +54,7 @@ macro_rules! span {
     };
     (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
-            use $crate::__macro_support::Callsite as _;
+            use $crate::__macro_support::{Callsite as _, Registration};
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
                 name: $name,
                 kind: $crate::metadata::Kind::SPAN,
@@ -62,6 +62,7 @@ macro_rules! span {
                 level: $lvl,
                 fields: $($fields)*
             };
+
             let mut interest = $crate::subscriber::Interest::never();
             if $crate::level_enabled!($lvl)
                 && { interest = CALLSITE.interest(); !interest.is_never() }
@@ -1852,7 +1853,7 @@ macro_rules! callsite {
         level: $lvl:expr,
         fields: $($fields:tt)*
     ) => {{
-        use $crate::__macro_support::MacroCallsite;
+        use $crate::__macro_support::{MacroCallsite, Registration};
         static META: $crate::Metadata<'static> = {
             $crate::metadata! {
                 name: $name,
@@ -1863,7 +1864,8 @@ macro_rules! callsite {
                 kind: $kind,
             }
         };
-        static CALLSITE: MacroCallsite = MacroCallsite::new(&META);
+        static REG: Registration = Registration::new(&CALLSITE);
+        static CALLSITE: MacroCallsite = MacroCallsite::new(&META, &REG);
         CALLSITE.register();
         &CALLSITE
     }};
@@ -1903,7 +1905,7 @@ macro_rules! callsite2 {
         level: $lvl:expr,
         fields: $($fields:tt)*
     ) => {{
-        use $crate::__macro_support::MacroCallsite;
+        use $crate::__macro_support::{MacroCallsite, Registration};
         static META: $crate::Metadata<'static> = {
             $crate::metadata! {
                 name: $name,
@@ -1914,7 +1916,9 @@ macro_rules! callsite2 {
                 kind: $kind,
             }
         };
-        MacroCallsite::new(&META)
+        static REG: Registration = Registration::new(&CALLSITE);
+
+        MacroCallsite::new(&META, &REG)
     }};
 }
 
@@ -2150,7 +2154,7 @@ macro_rules! fieldset {
 #[macro_export]
 macro_rules! level_to_log {
     ($level:expr) => {
-        match *$level {
+        match $level {
             $crate::Level::ERROR => $crate::log::Level::Error,
             $crate::Level::WARN => $crate::log::Level::Warn,
             $crate::Level::INFO => $crate::log::Level::Info,
@@ -2297,7 +2301,7 @@ macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
         $crate::if_log_enabled! {{
             use $crate::log;
-            let level = $crate::level_to_log!(&$level);
+            let level = $crate::level_to_log!($level);
             if level <= log::STATIC_MAX_LEVEL && level <= log::max_level() {
                 let log_meta = log::Metadata::builder()
                     .level(level)
