@@ -69,6 +69,7 @@ mod inner {
     use super::*;
     use std::sync::RwLock;
     use std::vec::Vec;
+
     type Dispatchers = Vec<dispatcher::Registrar>;
 
     struct Registry {

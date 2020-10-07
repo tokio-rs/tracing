@@ -495,7 +495,7 @@ impl Dispatch {
 
     /// Returns a `Dispatch` that forwards to the given static [`Subscriber`].
     ///
-    /// Unlike [`Dispatch::new`], this function is always availablee on all
+    /// Unlike [`Dispatch::new`], this function is always available on all
     /// platforms, even when the `std` or `alloc` features are disabled.
     ///
     /// [`Subscriber`]: super::subscriber::Subscriber
