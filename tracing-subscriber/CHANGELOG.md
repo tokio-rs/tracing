@@ -1,3 +1,23 @@
+# 0.2.13 (October 7, 2020)
+
+### Changed
+
+- Updated `tracing-core` to 0.1.17 ([#992])
+
+### Added
+
+- **env-filter**: Added support for filtering on targets which contain dashes
+  ([#1014])
+- **env-filter**: Added a warning when creating an `EnvFilter` that contains
+  directives that would enable a level disabled by the `tracing` crate's
+  `static_max_level` features ([#1021])
+
+Thanks to @jyn514 and @bkchr for contributing to this release!
+
+[#992]: https://github.com/tokio-rs/tracing/pull/992
+[#1014]: https://github.com/tokio-rs/tracing/pull/1014
+[#1021]: https://github.com/tokio-rs/tracing/pull/1021
+
 # 0.2.12 (September 11, 2020)
 
 ### Fixed
@@ -6,7 +26,7 @@
   `Into<LevelFilter>` impl ([#966])
 - **env-filter**: Fixed `EnvFilter` enabling spans that should not be enabled
   when multiple subscribers are in use ([#927])
-  
+
 ### Changed
 
 - **json**: `format::Json` now outputs fields in a more readable order ([#892])
@@ -33,7 +53,7 @@ for contributing to this release!
 [#910]: https://github.com/tokio-rs/tracing/pull/910
 [#918]: https://github.com/tokio-rs/tracing/pull/918
 
-# 0.2.12 (August 10, 2020)
+# 0.2.11 (August 10, 2020)
 
 ### Fixed
 
