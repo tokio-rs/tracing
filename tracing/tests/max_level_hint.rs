@@ -1,3 +1,7 @@
+// liballoc is required because the test subscriber cannot be constructed
+// statically
+#![cfg(feature = "alloc")]
+
 mod support;
 
 use self::support::*;
