@@ -34,7 +34,7 @@ json = ["tracing-serde", "serde", "serde_json"]
 tracing-core = { path = "../tracing-core", version = "0.1.17" }
 
 # only required by the filter feature
-tracing = { optional = true, path = "../tracing", version = "0.2" }
+tracing = { optional = true, path = "../tracing", version = "0.1" }
 matchers = { optional = true, version = "0.0.1" }
 regex = { optional = true, version = "1", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1" }
