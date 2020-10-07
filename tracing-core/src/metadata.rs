@@ -72,7 +72,7 @@ pub struct Metadata<'a> {
 
     /// The name of the Rust module where the span occurred, or `None` if this
     /// could not be determined.
-    module_path: Option<&'a str>,
+    module_path: Option<Cow<'a, str>>,
 
     /// The name of the source code file where the span occurred, or `None` if
     /// this could not be determined.
@@ -139,6 +139,13 @@ impl<'a> Metadata<'a> {
                 None
             }
         };
+        let module_path = {
+            if let Some(module_path) = module_path {
+                Some(Cow::Borrowed(module_path))
+            } else {
+                None
+            }
+        };
         Metadata {
             name: Cow::Borrowed(name),
             target: Cow::Borrowed(target),
@@ -177,8 +184,8 @@ impl<'a> Metadata<'a> {
 
     /// Returns the path to the Rust module where the span occurred, or
     /// `None` if the module path is unknown.
-    pub fn module_path(&self) -> Option<&'a str> {
-        self.module_path
+    pub fn module_path(&'a self) -> Option<&'a str> {
+        self.module_path.as_ref().map(|p| p.as_ref() )
     }
 
     /// Returns the name of the source code file where the span
