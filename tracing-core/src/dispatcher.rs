@@ -506,7 +506,7 @@ impl Dispatch {
     ///    // ...
     /// }
     ///
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Event, Metadata}
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Event, Metadata};
     /// impl tracing_core::Subscriber for MySubscriber {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
