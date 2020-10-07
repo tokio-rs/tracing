@@ -76,7 +76,7 @@ pub struct Metadata<'a> {
 
     /// The name of the source code file where the span occurred, or `None` if
     /// this could not be determined.
-    file: Option<&'a str>,
+    file: Option<Cow<'a, str>>,
 
     /// The line number in the source code file where the span occurred, or
     /// `None` if this could not be determined.
@@ -132,6 +132,13 @@ impl<'a> Metadata<'a> {
         fields: field::FieldSet,
         kind: Kind,
     ) -> Self {
+        let file = {
+            if let Some(file) = file {
+                Some(Cow::Borrowed(file))
+            } else {
+                None
+            }
+        };
         Metadata {
             name: Cow::Borrowed(name),
             target: Cow::Borrowed(target),
@@ -176,8 +183,8 @@ impl<'a> Metadata<'a> {
 
     /// Returns the name of the source code file where the span
     /// occurred, or `None` if the file is unknown
-    pub fn file(&self) -> Option<&'a str> {
-        self.file
+    pub fn file(&'a self) -> Option<&'a str> {
+        self.file.as_ref().map(|f| f.as_ref() )
     }
 
     /// Returns the line number in the source code file where the span
