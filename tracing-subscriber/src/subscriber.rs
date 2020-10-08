@@ -77,7 +77,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
 /// # }
-/// # impl MySubscriber {
+/// # impl MyCollector {
 /// # fn new() -> Self { Self { }}
 /// # }
 ///
@@ -111,7 +111,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// # impl<S: Collector> Subscriber<S> for MySubscriber {}
 /// # pub struct MyCollector { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-/// # impl Collector for MySubscriber {
+/// # impl Collector for MyCollector {
 /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 /// #   fn record(&self, _: &Id, _: &Record) {}
 /// #   fn event(&self, _: &Event) {}
@@ -129,22 +129,23 @@ use std::{any::TypeId, marker::PhantomData};
 /// # impl MyThirdSubscriber {
 /// # fn new() -> Self { Self {} }
 /// # }
-/// # impl MySubscriber {
+/// # impl MyCollector {
 /// # fn new() -> Self { Self { }}
 /// # }
 ///
-/// let collector = MySubscriber::new()
+/// let collector = MyCollector::new()
+///     .with(MySubscriber::new())
 ///     .with(MyOtherSubscriber::new())
 ///     .with(MyThirdSubscriber::new());
 ///
 /// tracing::collector::set_global_default(collector);
 /// ```
 ///
-/// The [`Subscriber::with_subscriber` method][with-sub] constructs the `Layered`
+/// The [`Subscriber::with_collector` method][with-col] constructs the `Layered`
 /// type from a `Subscriber` and `Collector`, and is called by
 /// [`SubscriberExt::with`]. In general, it is more idiomatic to use
-/// `SubscriberExt::with`, and treat `Subscriber::with_subscriber` as an
-/// implementation detail, as `with_subscriber` calls must be nested, leading to
+/// `SubscriberExt::with`, and treat `Subscriber::with_collector` as an
+/// implementation detail, as `with_collector` calls must be nested, leading to
 /// less clear code for the reader. However, `Subscriber`s which wish to perform
 /// additional behavior when composed with a subscriber may provide their own
 /// implementations of `SubscriberExt::with`.
@@ -152,7 +153,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`SubscriberExt::with`]: trait.SubscriberExt.html#method.with
 /// [`Layered`]: struct.Layered.html
 /// [prelude]: ../prelude/index.html
-/// [with-sub]: #method.with_subscriber
+/// [with-col]: #method.with_collector
 ///
 /// ## Recording Traces
 ///
@@ -392,7 +393,7 @@ where
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .and_then(BarSubscriber::new())
-    ///     .with_subscriber(MyCollector::new());
+    ///     .with_collector(MyCollector::new());
     /// ```
     ///
     /// Multiple subscribers may be composed in this manner:
@@ -436,9 +437,9 @@ where
     /// let collector = FooSubscriber::new()
     ///     .and_then(BarSubscriber::new())
     ///     .and_then(BazSubscriber::new())
-    ///     .with_subscriber(MyCollector::new());
+    ///     .with_collector(MyCollector::new());
     /// ```
-    fn and_then<S>(self, subscriber: S) -> Layered<S, Self, S>
+    fn and_then<S>(self, subscriber: S) -> Layered<S, Self, C>
     where
         S: Subscriber<C>,
         Self: Sized,
@@ -812,13 +813,6 @@ where
     C: Collector,
 {
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
-        if let Some(ref inner) = self {
-            inner.new_span(attrs, id, ctx)
-        }
-    }
-
-    #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         match self {
             Some(ref inner) => inner.register_callsite(metadata),
@@ -831,6 +825,13 @@ where
         match self {
             Some(ref inner) => inner.enabled(metadata, ctx),
             None => true,
+        }
+    }
+
+    #[inline]
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+        if let Some(ref inner) = self {
+            inner.new_span(attrs, id, ctx)
         }
     }
 
@@ -1240,51 +1241,53 @@ pub(crate) mod tests {
         fn exit(&self, _: &span::Id) {}
     }
 
-    fn assert_subscriber(_s: impl Collector) {}
+    fn assert_collector(_s: impl Collector) {}
 
     #[test]
-    fn layer_is_subscriber() {
+    fn subscriber_is_collector() {
         let s = NopSubscriber.with_collector(NopCollector);
-        assert_subscriber(s)
+        assert_collector(s)
     }
 
     #[test]
-    fn two_layers_are_subscriber() {
-        let s = NopSubscriber.and_then(NopSubscriber).with_collector(NopCollector);
-        assert_subscriber(s)
+    fn two_subscribers_are_collector() {
+        let s = NopSubscriber
+            .and_then(NopSubscriber)
+            .with_collector(NopCollector);
+        assert_collector(s)
     }
 
     #[test]
-    fn three_layers_are_subscriber() {
+    fn three_subscribers_are_collector() {
         let s = NopSubscriber
             .and_then(NopSubscriber)
             .and_then(NopSubscriber)
             .with_collector(NopCollector);
-        assert_subscriber(s)
+        assert_collector(s)
+    }
+
+    #[test]
+    fn downcasts_to_collector() {
+        let s = NopSubscriber
+            .and_then(NopSubscriber)
+            .and_then(NopSubscriber)
+            .with_collector(StringCollector("collector".into()));
+        let collector =
+            Collector::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
+        assert_eq!(&collector.0, "collector");
     }
 
     #[test]
     fn downcasts_to_subscriber() {
-        let s = NopSubscriber
-            .and_then(NopSubscriber)
-            .and_then(NopSubscriber)
-            .with_collector(StringCollector("subscriber".into()));
-        let subscriber =
-            Collector::downcast_ref::<StringCollector>(&s).expect("subscriber should downcast");
-        assert_eq!(&subscriber.0, "subscriber");
-    }
-
-    #[test]
-    fn downcasts_to_layer() {
-        let s = StringSubscriber("layer_1".into())
-            .and_then(StringSubscriber2("layer_2".into()))
-            .and_then(StringSubscriber3("layer_3".into()))
+        let s = StringSubscriber("subscriber_1".into())
+            .and_then(StringSubscriber2("subscriber_2".into()))
+            .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
-        let layer = Collector::downcast_ref::<StringSubscriber>(&s).expect("layer 1 should downcast");
-        assert_eq!(&layer.0, "layer_1");
-        let layer = Collector::downcast_ref::<StringSubscriber2>(&s).expect("layer 2 should downcast");
-        assert_eq!(&layer.0, "layer_2");
-        let layer = Collector::downcast_ref::<StringSubscriber3>(&s).expect("layer 3 should downcast");
-        assert_eq!(&layer.0, "layer_3");
+        let layer = Collector::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
+        assert_eq!(&layer.0, "subscriber_1");
+        let layer = Collector::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
+        assert_eq!(&layer.0, "subscriber_2");
+        let layer = Collector::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
+        assert_eq!(&layer.0, "subscriber_3");
     }
 }
