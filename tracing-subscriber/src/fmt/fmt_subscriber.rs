@@ -1,8 +1,8 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
-    subscriber::{self, Context, Scope},
     registry::{LookupSpan, SpanRef},
+    subscriber::{self, Context, Scope},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};

@@ -367,7 +367,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 #[cfg(test)]
 mod tests {
     use super::Registry;
-    use crate::{subscriber::Context, registry::LookupSpan, Subscriber};
+    use crate::{registry::LookupSpan, subscriber::Context, Subscriber};
     use std::{
         collections::HashMap,
         sync::{Arc, Mutex, Weak},

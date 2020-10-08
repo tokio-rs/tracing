@@ -135,8 +135,8 @@ pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 use crate::subscriber::Subscriber as _;
 use crate::{
     filter::LevelFilter,
-    subscriber,
     registry::{LookupSpan, Registry},
+    subscriber,
 };
 
 #[doc(inline)]

@@ -8,7 +8,7 @@ pub use crate::field::{
     RecordFields as __tracing_subscriber_field_RecordFields,
 };
 pub use crate::subscriber::{
-    Subscriber as __tracing_subscriber_Layer, CollectorExt as __tracing_subscriber_SubscriberExt,
+    CollectorExt as __tracing_subscriber_SubscriberExt, Subscriber as __tracing_subscriber_Layer,
 };
 
 pub use crate::util::SubscriberInitExt as _;

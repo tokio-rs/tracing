@@ -73,17 +73,32 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: subscriber::Context<'_, S>) {
+    fn new_span(
+        &self,
+        attrs: &span::Attributes<'_>,
+        id: &span::Id,
+        ctx: subscriber::Context<'_, S>,
+    ) {
         try_lock!(self.inner.read()).new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: subscriber::Context<'_, S>) {
+    fn on_record(
+        &self,
+        span: &span::Id,
+        values: &span::Record<'_>,
+        ctx: subscriber::Context<'_, S>,
+    ) {
         try_lock!(self.inner.read()).on_record(span, values, ctx)
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: subscriber::Context<'_, S>) {
+    fn on_follows_from(
+        &self,
+        span: &span::Id,
+        follows: &span::Id,
+        ctx: subscriber::Context<'_, S>,
+    ) {
         try_lock!(self.inner.read()).on_follows_from(span, follows, ctx)
     }
 

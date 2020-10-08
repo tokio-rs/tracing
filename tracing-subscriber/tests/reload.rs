@@ -4,7 +4,7 @@ use tracing_core::{
     span::{Attributes, Id, Record},
     Collector, Event, Metadata,
 };
-use tracing_subscriber::{subscriber, prelude::*, reload::*};
+use tracing_subscriber::{prelude::*, reload::*, subscriber};
 
 pub struct NopSubscriber;
 

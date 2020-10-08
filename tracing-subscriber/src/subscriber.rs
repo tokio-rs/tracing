@@ -626,7 +626,10 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        std::cmp::max(self.subscriber.max_level_hint(), self.inner.max_level_hint())
+        std::cmp::max(
+            self.subscriber.max_level_hint(),
+            self.inner.max_level_hint(),
+        )
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
@@ -1283,11 +1286,14 @@ pub(crate) mod tests {
             .and_then(StringSubscriber2("subscriber_2".into()))
             .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
-        let layer = Collector::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
+        let layer =
+            Collector::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
         assert_eq!(&layer.0, "subscriber_1");
-        let layer = Collector::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
+        let layer =
+            Collector::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
         assert_eq!(&layer.0, "subscriber_2");
-        let layer = Collector::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
+        let layer =
+            Collector::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
         assert_eq!(&layer.0, "subscriber_3");
     }
 }

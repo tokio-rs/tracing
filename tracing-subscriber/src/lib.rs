@@ -118,10 +118,10 @@ pub mod filter;
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
-pub mod subscriber;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
+pub mod subscriber;
 pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;

@@ -47,7 +47,7 @@ use tracing_core::{
     span::{Attributes, Id, Record},
     Collector, Field, Level, Metadata,
 };
-use tracing_subscriber::{subscriber::Context, registry::LookupSpan};
+use tracing_subscriber::{registry::LookupSpan, subscriber::Context};
 
 /// Sends events and their fields to journald
 ///
