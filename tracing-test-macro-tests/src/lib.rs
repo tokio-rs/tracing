@@ -3,7 +3,6 @@
 
 #[cfg(test)]
 mod tests {
-    use tokio;
     use tracing::{info, warn};
     use tracing_test::traced_test;
 
