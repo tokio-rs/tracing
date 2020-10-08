@@ -5,7 +5,7 @@ use tracing::{span, Collector, Dispatch, Metadata};
 use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
 use tracing_subscriber::{
     fmt::FormattedFields,
-    layer::{self, Subscriber},
+    subscriber::{self, Subscriber},
     registry::LookupSpan,
 };
 
@@ -40,7 +40,7 @@ where
 {
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: subscriber::Context<'_, S>) {
         let span = ctx.span(id).expect("span must already exist!");
         if span.extensions().get::<FormattedFields<F>>().is_some() {
             return;

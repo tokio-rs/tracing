@@ -367,7 +367,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 #[cfg(test)]
 mod tests {
     use super::Registry;
-    use crate::{layer::Context, registry::LookupSpan, Subscriber};
+    use crate::{subscriber::Context, registry::LookupSpan, Subscriber};
     use std::{
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
@@ -379,12 +379,12 @@ mod tests {
         Collector,
     };
 
-    struct AssertionLayer;
-    impl<S> Subscriber<S> for AssertionLayer
+    struct AssertionSubscriber;
+    impl<C> Subscriber<C> for AssertionSubscriber
     where
-        S: Collector + for<'a> LookupSpan<'a>,
+        C: Collector + for<'a> LookupSpan<'a>,
     {
-        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        fn on_close(&self, id: Id, ctx: Context<'_, C>) {
             dbg!(format_args!("closing {:?}", id));
             assert!(&ctx.span(&id).is_some());
         }
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn single_layer_can_access_closed_span() {
-        let subscriber = AssertionLayer.with_subscriber(Registry::default());
+        let subscriber = AssertionSubscriber.with_collector(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -402,9 +402,9 @@ mod tests {
 
     #[test]
     fn multiple_layers_can_access_closed_span() {
-        let subscriber = AssertionLayer
-            .and_then(AssertionLayer)
-            .with_subscriber(Registry::default());
+        let subscriber = AssertionSubscriber
+            .and_then(AssertionSubscriber)
+            .with_collector(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -583,9 +583,9 @@ mod tests {
     #[test]
     fn spans_are_removed_from_registry() {
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = AssertionLayer
+        let subscriber = AssertionSubscriber
             .and_then(close_layer)
-            .with_subscriber(Registry::default());
+            .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -611,9 +611,9 @@ mod tests {
     #[test]
     fn spans_are_only_closed_when_the_last_ref_drops() {
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = AssertionLayer
+        let subscriber = AssertionSubscriber
             .and_then(close_layer)
-            .with_subscriber(Registry::default());
+            .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -644,9 +644,9 @@ mod tests {
     #[test]
     fn span_enter_guards_are_dropped_out_of_order() {
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = AssertionLayer
+        let subscriber = AssertionSubscriber
             .and_then(close_layer)
-            .with_subscriber(Registry::default());
+            .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -684,7 +684,7 @@ mod tests {
         // closes, and will then be closed.
 
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = close_layer.with_subscriber(Registry::default());
+        let subscriber = close_layer.with_collector(Registry::default());
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
@@ -711,7 +711,7 @@ mod tests {
         // is *itself* kept open by a child, closing the grandchild will close
         // both the parent *and* the grandparent.
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = close_layer.with_subscriber(Registry::default());
+        let subscriber = close_layer.with_collector(Registry::default());
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 

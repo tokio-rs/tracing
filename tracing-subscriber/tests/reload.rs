@@ -4,7 +4,7 @@ use tracing_core::{
     span::{Attributes, Id, Record},
     Collector, Event, Metadata,
 };
-use tracing_subscriber::{layer, prelude::*, reload::*};
+use tracing_subscriber::{subscriber, prelude::*, reload::*};
 
 pub struct NopSubscriber;
 
@@ -44,7 +44,7 @@ fn reload_handle() {
             Interest::sometimes()
         }
 
-        fn enabled(&self, m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+        fn enabled(&self, m: &Metadata<'_>, _: subscriber::Context<'_, S>) -> bool {
             println!("ENABLED: {:?}", m);
             match self {
                 Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
@@ -59,7 +59,7 @@ fn reload_handle() {
 
     let (layer, handle) = Layer::new(Filter::One);
 
-    let subscriber = tracing_core::dispatcher::Dispatch::new(layer.with_subscriber(NopSubscriber));
+    let subscriber = tracing_core::dispatcher::Dispatch::new(layer.with_collector(NopSubscriber));
 
     tracing_core::dispatcher::with_default(&subscriber, || {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);

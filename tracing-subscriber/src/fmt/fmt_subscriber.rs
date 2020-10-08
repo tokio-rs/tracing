@@ -1,7 +1,7 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
-    layer::{self, Context, Scope},
+    subscriber::{self, Context, Scope},
     registry::{LookupSpan, SpanRef},
 };
 use format::{FmtSpan, TimingDisplay};
@@ -52,7 +52,7 @@ use tracing_core::{
 /// let fmt_layer = fmt::subscriber()
 ///     .event_format(fmt)
 ///     .with_target(false);
-/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+/// # let subscriber = fmt_layer.with_collector(tracing_subscriber::registry::Registry::default());
 /// # tracing::collector::set_global_default(subscriber).unwrap();
 /// ```
 ///
@@ -129,7 +129,7 @@ where
     ///     .event_format(format().compact());
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscriber as _;
-    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [`FormatEvent`]: ./format/trait.FormatEvent.html
     /// [`FmtContext`]: ./struct.FmtContext.html
@@ -164,7 +164,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscriber as _;
-    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
     /// [`MakeWriter`]: ../fmt/trait.MakeWriter.html
@@ -199,7 +199,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     ///     .with_test_writer();
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscriber as _;
-    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
@@ -356,7 +356,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
+    /// Sets the subscriber being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
     pub fn compact(self) -> Subscriber<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -370,7 +370,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    /// Sets the subscriber being built to use a [JSON formatter](../fmt/format/struct.Json.html).
     ///
     /// The full format includes fields from all entered spans.
     ///
@@ -583,7 +583,7 @@ macro_rules! with_event_from_span {
     };
 }
 
-impl<S, N, E, W> layer::Subscriber<S> for Subscriber<S, N, E, W>
+impl<S, N, E, W> subscriber::Subscriber<S> for Subscriber<S, N, E, W>
 where
     S: Collector + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -892,7 +892,7 @@ mod test {
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
-        layer::Subscriber as _,
+        subscriber::Subscriber as _,
         test::MockWriter,
         time,
     };
@@ -908,17 +908,17 @@ mod test {
     fn impls() {
         let f = Format::default().with_timer(time::Uptime::default());
         let fmt = fmt::Subscriber::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = fmt.with_collector(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = fmt.with_collector(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
         let fmt = fmt::Subscriber::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = fmt.with_collector(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
     }
 
@@ -926,7 +926,7 @@ mod test {
     fn fmt_layer_downcasts() {
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = fmt.with_collector(Registry::default());
 
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch
@@ -938,7 +938,7 @@ mod test {
     fn fmt_layer_downcasts_to_parts() {
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = fmt.with_collector(Registry::default());
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
@@ -948,7 +948,7 @@ mod test {
     fn is_lookup_span() {
         fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
         let fmt = fmt::Subscriber::default();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let subscriber = fmt.with_collector(Registry::default());
         assert_lookup_span(subscriber)
     }
 

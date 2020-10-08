@@ -17,7 +17,7 @@ impl<S: Collector> crate::Subscriber<S> for LevelFilter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: crate::layer::Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: crate::subscriber::Context<'_, S>) -> bool {
         self >= metadata.level()
     }
 

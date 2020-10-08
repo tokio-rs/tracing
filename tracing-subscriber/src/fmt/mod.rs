@@ -132,10 +132,10 @@ pub mod writer;
 pub use fmt_subscriber::LayerBuilder;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
-use crate::layer::Subscriber as _;
+use crate::subscriber::Subscriber as _;
 use crate::{
     filter::LevelFilter,
-    layer,
+    subscriber,
     registry::{LookupSpan, Registry},
 };
 
@@ -156,7 +156,7 @@ pub struct Collector<
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
-    inner: layer::Layered<F, Formatter<N, E, W>>,
+    inner: subscriber::Layered<F, Formatter<N, E, W>>,
 }
 
 /// A `Collector` that logs formatted representations of `tracing` events.
@@ -165,7 +165,7 @@ pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> = layer::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+> = subscriber::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
@@ -292,10 +292,10 @@ impl<N, E, F, W> tracing_core::Collector for Collector<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    F: layer::Subscriber<Formatter<N, E, W>> + 'static,
+    F: subscriber::Subscriber<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
-    layer::Layered<F, Formatter<N, E, W>>: tracing_core::Collector,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: layer::Subscriber<Registry>,
+    subscriber::Layered<F, Formatter<N, E, W>>: tracing_core::Collector,
+    fmt_subscriber::Subscriber<Registry, N, E, W>: subscriber::Subscriber<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -364,9 +364,9 @@ where
 
 impl<'a, N, E, F, W> LookupSpan<'a> for Collector<N, E, F, W>
 where
-    layer::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+    subscriber::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
 {
-    type Data = <layer::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+    type Data = <subscriber::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
@@ -389,15 +389,15 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: layer::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
+    F: subscriber::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
-        layer::Subscriber<Registry> + Send + Sync + 'static,
+        subscriber::Subscriber<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Collector<N, E, F, W> {
-        let subscriber = self.inner.with_subscriber(Registry::default());
+        let subscriber = self.inner.with_collector(Registry::default());
         Collector {
-            inner: self.filter.with_subscriber(subscriber),
+            inner: self.filter.with_collector(subscriber),
         }
     }
 
@@ -440,9 +440,9 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: layer::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
+    F: subscriber::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
-        layer::Subscriber<Registry> + Send + Sync + 'static,
+        subscriber::Subscriber<Registry> + Send + Sync + 'static,
 {
     fn into(self) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(self.finish())

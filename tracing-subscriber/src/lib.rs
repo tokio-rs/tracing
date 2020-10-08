@@ -118,7 +118,7 @@ pub mod filter;
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
-pub mod layer;
+pub mod subscriber;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
@@ -130,7 +130,7 @@ pub mod util;
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use filter::EnvFilter;
 
-pub use layer::Subscriber;
+pub use subscriber::Subscriber;
 
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]

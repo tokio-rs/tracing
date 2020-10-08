@@ -154,7 +154,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::span;
 use tracing::Collector;
-use tracing_subscriber::layer::Context;
+use tracing_subscriber::subscriber::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
 use tracing_subscriber::Subscriber;

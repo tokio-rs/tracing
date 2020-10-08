@@ -53,7 +53,7 @@
 //! ```
 //! use opentelemetry::{api::Provider, sdk};
 //! use tracing::{error, span};
-//! use tracing_subscriber::layer::SubscriberExt;
+//! use tracing_subscriber::subscriber::CollectorExt;
 //! use tracing_subscriber::Registry;
 //!
 //! // Create a new tracer

@@ -79,7 +79,7 @@ impl Json {
 }
 
 struct SerializableContext<'a, 'b, Span, N>(
-    &'b crate::layer::Context<'a, Span>,
+    &'b crate::subscriber::Context<'a, Span>,
     std::marker::PhantomData<N>,
 )
 where

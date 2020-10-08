@@ -8,9 +8,9 @@ mod yak_shave;
 fn main() {
     let registry = tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::subscriber().with_target(false));
-    match tracing_journald::layer() {
-        Ok(layer) => {
-            registry.with(layer).init();
+    match tracing_journald::subscriber() {
+        Ok(subscriber) => {
+            registry.with(subscriber).init();
         }
         // journald is typically available on Linux systems, but nowhere else. Portable software
         // should handle its absence gracefully.

@@ -13,7 +13,7 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    layer::{Context, Subscriber},
+    subscriber::{Context, Subscriber},
     sync::RwLock,
 };
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
@@ -516,7 +516,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_no_span_directive() {
-        let filter = EnvFilter::new("app=debug").with_subscriber(NoCollector);
+        let filter = EnvFilter::new("app=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -534,7 +534,7 @@ mod tests {
 
     #[test]
     fn callsite_off() {
-        let filter = EnvFilter::new("app=off").with_subscriber(NoCollector);
+        let filter = EnvFilter::new("app=off").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive() {
-        let filter = EnvFilter::new("app[mySpan]=debug").with_subscriber(NoCollector);
+        let filter = EnvFilter::new("app[mySpan]=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -571,7 +571,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive_field() {
         let filter =
-            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoCollector);
+            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -590,7 +590,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
         let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
-            .with_subscriber(NoCollector);
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",

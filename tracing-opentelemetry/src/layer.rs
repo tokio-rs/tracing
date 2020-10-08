@@ -8,7 +8,7 @@ use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collector, Event};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
-use tracing_subscriber::layer::Context;
+use tracing_subscriber::subscriber::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Subscriber;
 
@@ -43,7 +43,7 @@ where
 /// # Examples
 ///
 /// ```rust,no_run
-/// use tracing_subscriber::layer::SubscriberExt;
+/// use tracing_subscriber::subscriber::CollectorExt;
 /// use tracing_subscriber::Registry;
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
@@ -275,7 +275,7 @@ where
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, sdk};
     /// use tracing_opentelemetry::OpenTelemetryLayer;
-    /// use tracing_subscriber::layer::SubscriberExt;
+    /// use tracing_subscriber::subscriber::CollectorExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter for a `trace-demo` service.
@@ -325,7 +325,7 @@ where
     ///
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, sdk};
-    /// use tracing_subscriber::layer::SubscriberExt;
+    /// use tracing_subscriber::subscriber::CollectorExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter for a `trace-demo` service.
