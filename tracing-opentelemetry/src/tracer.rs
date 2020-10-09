@@ -56,14 +56,18 @@ impl PreSampledTracer for api::NoopTracer {
 
 impl PreSampledTracer for sdk::Tracer {
     fn sampled_span_context(&self, builder: &mut api::SpanBuilder) -> api::SpanContext {
-        let span_id = builder.span_id.expect("Builders must have id");
+        let span_id = builder
+            .span_id
+            .unwrap_or_else(|| self.provider().config().id_generator.new_span_id());
         let (trace_id, trace_flags) = builder
             .parent_context
             .as_ref()
             .filter(|parent_context| parent_context.is_valid())
             .map(|parent_context| (parent_context.trace_id(), parent_context.trace_flags()))
             .unwrap_or_else(|| {
-                let trace_id = builder.trace_id.expect("trace_id should exist");
+                let trace_id = builder
+                    .trace_id
+                    .unwrap_or_else(|| self.provider().config().id_generator.new_trace_id());
 
                 // ensure sampling decision is recorded so all span contexts have consistent flags
                 let sampling_decision = if let Some(result) = builder.sampling_result.as_ref() {
@@ -109,5 +113,23 @@ impl PreSampledTracer for sdk::Tracer {
 
     fn new_span_id(&self) -> api::SpanId {
         self.provider().config().id_generator.new_span_id()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use opentelemetry::api::{Provider, SpanBuilder};
+    use opentelemetry::sdk;
+
+    #[test]
+    fn assigns_default_ids_if_missing() {
+        let tracer = sdk::Provider::default().get_tracer("test");
+        let mut builder = SpanBuilder::from_name("empty".to_string());
+        builder.trace_id = None;
+        builder.span_id = None;
+        let span_context = tracer.sampled_span_context(&mut builder);
+
+        assert!(span_context.is_valid());
     }
 }
