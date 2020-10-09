@@ -1,7 +1,7 @@
-use tracing_core::{metadata::Metadata, span, subscriber::Subscriber, Event};
+use tracing_core::{collector::Collector, metadata::Metadata, span, Event};
 
 pub struct TestSubscriberA;
-impl Subscriber for TestSubscriberA {
+impl Collector for TestSubscriberA {
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         true
     }
@@ -15,7 +15,7 @@ impl Subscriber for TestSubscriberA {
     fn exit(&self, _: &span::Id) {}
 }
 pub struct TestSubscriberB;
-impl Subscriber for TestSubscriberB {
+impl Collector for TestSubscriberB {
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         true
     }

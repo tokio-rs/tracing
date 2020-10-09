@@ -77,42 +77,42 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures to be instrumented with
-/// a `tracing` [`Subscriber`].
+/// a `tracing` [`Collector`].
 ///
-/// [`Subscriber`]: ../trait.Subscriber.html
-pub trait WithSubscriber: Sized {
-    /// Attaches the provided [`Subscriber`] to this type, returning a
+/// [`Collector`]: ../trait.Collector.html
+pub trait WithCollector: Sized {
+    /// Attaches the provided [`Collector`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
-    /// The attached subscriber will be set as the [default] when the returned `Future` is polled.
+    /// The attached collector will be set as the [default] when the returned `Future` is polled.
     ///
-    /// [`Subscriber`]: ../trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
-    fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
+    /// [`Collector`]: ../trait.Collector.html
+    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-collector
+    fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
-            dispatch: subscriber.into(),
+            dispatch: collector.into(),
         }
     }
 
-    /// Attaches the current [default] [`Subscriber`] to this type, returning a
+    /// Attaches the current [default] [`Collector`] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
-    /// subscriber will be set as the [default] while it is being polled.
-    /// When the wrapped type is an executor, the subscriber will be set as the
+    /// collector will be set as the [default] while it is being polled.
+    /// When the wrapped type is an executor, the collector will be set as the
     /// default for any futures spawned on that executor.
     ///
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Subscriber`]: ../trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [`Collector`]: ../trait.Collector.html
+    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-collector
     #[inline]
-    fn with_current_subscriber(self) -> WithDispatch<Self> {
+    fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
             dispatch: dispatcher::get_default(|default| default.clone()),
@@ -121,7 +121,7 @@ pub trait WithSubscriber: Sized {
 }
 
 pin_project! {
-    /// A future that has been instrumented with a `tracing` subscriber.
+    /// A future that has been instrumented with a `tracing` collector.
     #[derive(Clone, Debug)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct WithDispatch<T> {

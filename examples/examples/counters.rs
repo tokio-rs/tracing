@@ -1,10 +1,9 @@
 #![deny(rust_2018_idioms)]
 
 use tracing::{
+    collector::{self, Collector},
     field::{Field, Visit},
-    info, span,
-    subscriber::{self, Subscriber},
-    warn, Event, Id, Level, Metadata,
+    info, span, warn, Event, Id, Level, Metadata,
 };
 
 use std::{
@@ -58,9 +57,9 @@ impl CounterSubscriber {
     }
 }
 
-impl Subscriber for CounterSubscriber {
-    fn register_callsite(&self, meta: &Metadata<'_>) -> subscriber::Interest {
-        let mut interest = subscriber::Interest::never();
+impl Collector for CounterSubscriber {
+    fn register_callsite(&self, meta: &Metadata<'_>) -> collector::Interest {
+        let mut interest = collector::Interest::never();
         for key in meta.fields() {
             let name = key.name();
             if name.contains("count") {
@@ -70,7 +69,7 @@ impl Subscriber for CounterSubscriber {
                     .unwrap()
                     .entry(name.to_owned())
                     .or_insert_with(|| AtomicUsize::new(0));
-                interest = subscriber::Interest::always();
+                interest = collector::Interest::always();
             }
         }
         interest
@@ -122,7 +121,7 @@ impl Counters {
 fn main() {
     let (counters, subscriber) = Counters::new();
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::collector::set_global_default(subscriber).unwrap();
 
     let mut foo: u64 = 2;
     span!(Level::TRACE, "my_great_span", foo_count = &foo).in_scope(|| {

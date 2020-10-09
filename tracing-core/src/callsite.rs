@@ -11,9 +11,9 @@ use crate::stdlib::{
     vec::Vec,
 };
 use crate::{
+    collector::Interest,
     dispatcher::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
-    subscriber::Interest,
 };
 
 lazy_static! {
@@ -38,7 +38,7 @@ struct Registry {
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
-    /// [`Interest`]: super::subscriber::Interest
+    /// [`Interest`]: super::collector::Interest
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
@@ -82,21 +82,21 @@ pub struct Registration<T = &'static dyn Callsite> {
 ///
 /// This function is intended for runtime reconfiguration of filters on traces
 /// when the filter recalculation is much less frequent than trace events are.
-/// The alternative is to have the [`Subscriber`] that supports runtime
+/// The alternative is to have the [`Collector`] that supports runtime
 /// reconfiguration of filters always return [`Interest::sometimes()`] so that
 /// [`enabled`] is evaluated for every event.
 ///
 /// This function will also re-compute the global maximum level as determined by
-/// the [`max_level_hint`] method. If a [`Subscriber`]
+/// the [`max_level_hint`] method. If a [`Collector`]
 /// implementation changes the value returned by its `max_level_hint`
 /// implementation at runtime, then it **must** call this function after that
 /// value changes, in order for the change to be reflected.
 ///
-/// [`max_level_hint`]: super::subscriber::Subscriber::max_level_hint
+/// [`max_level_hint`]: super::collector::Collector::max_level_hint
 /// [`Callsite`]: super::callsite::Callsite
-/// [`enabled`]: super::subscriber::Subscriber::enabled
-/// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
-/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`enabled`]: super::collector::Collector::enabled
+/// [`Interest::sometimes()`]: super::collector::Interest::sometimes
+/// [`Collector`]: super::collector::Collector
 pub fn rebuild_interest_cache() {
     let mut dispatchers = REGISTRY.dispatchers.lock().unwrap();
     let callsites = &REGISTRY.callsites;

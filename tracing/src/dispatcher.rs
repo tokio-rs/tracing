@@ -1,34 +1,34 @@
-//! Dispatches trace events to [`Subscriber`]s.
+//! Dispatches trace events to [`Collector`]s.
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
-//! to the subscriber that collects it.
+//! to the collector that collects it.
 //!
 //! # Using the Trace Dispatcher
 //!
-//! Every thread in a program using `tracing` has a _default subscriber_. When
+//! Every thread in a program using `tracing` has a _default collector_. When
 //! events occur, or spans are created, they are dispatched to the thread's
-//! current subscriber.
+//! current collector.
 //!
-//! ## Setting the Default Subscriber
+//! ## Setting the Default Collector
 //!
-//! By default, the current subscriber is an empty implementation that does
-//! nothing. To use a subscriber implementation, it must be set as the default.
+//! By default, the current collector is an empty implementation that does
+//! nothing. To use a collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
-//! [`set_global_default`]. `with_default` sets the default subscriber for the
-//! duration of a scope, while `set_global_default` sets a default subscriber
+//! [`set_global_default`]. `with_default` sets the default collector for the
+//! duration of a scope, while `set_global_default` sets a default collector
 //! for the entire process.
 //!
-//! To use either of these functions, we must first wrap our subscriber in a
-//! [`Dispatch`], a cloneable, type-erased reference to a subscriber. For
+//! To use either of these functions, we must first wrap our collector in a
+//! [`Dispatch`], a cloneable, type-erased reference to a collector. For
 //! example:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -37,21 +37,21 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! use dispatcher::Dispatch;
 //!
-//! let my_subscriber = FooSubscriber::new();
-//! let my_dispatch = Dispatch::new(my_subscriber);
+//! let my_collector = FooCollector::new();
+//! let my_dispatch = Dispatch::new(my_collector);
 //! ```
 //! Then, we can use [`with_default`] to set our `Dispatch` as the default for
 //! the duration of a block:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -60,33 +60,33 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # let my_subscriber = FooSubscriber::new();
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # let my_collector = FooCollector::new();
+//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! # #[cfg(feature = "std")]
 //! dispatcher::with_default(&my_dispatch, || {
-//!     // my_subscriber is the default
+//!     // my_collector is the default
 //! });
 //!
-//! // no default subscriber again
+//! // no default collector again
 //! ```
 //! It's important to note that `with_default` will not propagate the current
-//! thread's default subscriber to any threads spawned within the `with_default`
-//! block. To propagate the default subscriber to new threads, either use
+//! thread's default collector to any threads spawned within the `with_default`
+//! block. To propagate the default collector to new threads, either use
 //! `with_default` from the new thread, or use `set_global_default`.
 //!
 //! As an alternative to `with_default`, we can use [`set_global_default`] to
 //! set a `Dispatch` as the default for all threads, for the lifetime of the
 //! program. For example:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -95,17 +95,17 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
-//! # let my_subscriber = FooSubscriber::new();
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # let my_collector = FooCollector::new();
+//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! dispatcher::set_global_default(my_dispatch)
 //!     // `set_global_default` will return an error if the global default
-//!     // subscriber has already been set.
+//!     // collector has already been set.
 //!     .expect("global default was already set!");
 //!
-//! // `my_subscriber` is now the default
+//! // `my_collector` is now the default
 //! ```
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
@@ -118,14 +118,14 @@
 //! instead.
 //! </pre></div>
 //!
-//! ## Accessing the Default Subscriber
+//! ## Accessing the Default Collector
 //!
-//! A thread's current default subscriber can be accessed using the
+//! A thread's current default collector can be accessed using the
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: struct.Subscriber.html
+//! [`Collector`]: struct.Collector.html
 //! [`with_default`]: fn.with_default.html
 //! [`set_global_default`]: fn.set_global_default.html
 //! [`get_default`]: fn.get_default.html

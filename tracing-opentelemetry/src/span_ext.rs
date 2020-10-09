@@ -74,9 +74,9 @@ pub trait OpenTelemetrySpanExt {
 
 impl OpenTelemetrySpanExt for tracing::Span {
     fn set_parent(&self, parent_context: &api::Context) {
-        self.with_subscriber(move |(id, subscriber)| {
-            if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, move |builder, _tracer| {
+        self.with_collector(move |(id, collector)| {
+            if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                get_context.with_context(collector, id, move |builder, _tracer| {
                     builder.parent_context = parent_context.remote_span_context().cloned()
                 });
             }
@@ -85,9 +85,9 @@ impl OpenTelemetrySpanExt for tracing::Span {
 
     fn context(&self) -> api::Context {
         let mut span_context = None;
-        self.with_subscriber(|(id, subscriber)| {
-            if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, |builder, tracer| {
+        self.with_collector(|(id, collector)| {
+            if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                get_context.with_context(collector, id, |builder, tracer| {
                     span_context = Some(tracer.sampled_span_context(builder));
                 })
             }

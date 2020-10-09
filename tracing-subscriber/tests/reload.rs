@@ -1,14 +1,14 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
+    collector::Interest,
     span::{Attributes, Id, Record},
-    subscriber::Interest,
-    Event, Metadata, Subscriber,
+    Collector, Event, Metadata,
 };
-use tracing_subscriber::{layer, prelude::*, reload::*};
+use tracing_subscriber::{prelude::*, reload::*, subscriber};
 
 pub struct NopSubscriber;
 
-impl Subscriber for NopSubscriber {
+impl Collector for NopSubscriber {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::never()
     }
@@ -38,13 +38,13 @@ fn reload_handle() {
         Two,
     }
 
-    impl<S: Subscriber> tracing_subscriber::Layer<S> for Filter {
+    impl<S: Collector> tracing_subscriber::Subscriber<S> for Filter {
         fn register_callsite(&self, m: &Metadata<'_>) -> Interest {
             println!("REGISTER: {:?}", m);
             Interest::sometimes()
         }
 
-        fn enabled(&self, m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+        fn enabled(&self, m: &Metadata<'_>, _: subscriber::Context<'_, S>) -> bool {
             println!("ENABLED: {:?}", m);
             match self {
                 Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
@@ -59,7 +59,7 @@ fn reload_handle() {
 
     let (layer, handle) = Layer::new(Filter::One);
 
-    let subscriber = tracing_core::dispatcher::Dispatch::new(layer.with_subscriber(NopSubscriber));
+    let subscriber = tracing_core::dispatcher::Dispatch::new(layer.with_collector(NopSubscriber));
 
     tracing_core::dispatcher::with_default(&subscriber, || {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);

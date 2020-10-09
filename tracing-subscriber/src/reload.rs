@@ -1,17 +1,17 @@
-//! Wrapper for a `Layer` to allow it to be dynamically reloaded.
+//! Wrapper for a `Subscriber` to allow it to be dynamically reloaded.
 //!
-//! This module provides a [`Layer` type] which wraps another type implementing
-//! the [`Layer` trait], allowing the wrapped type to be replaced with another
+//! This module provides a [`Subscriber` type] which wraps another type implementing
+//! the [`Subscriber` trait], allowing the wrapped type to be replaced with another
 //! instance of that type at runtime.
 //!
-//! This can be used in cases where a subset of `Subscriber` functionality
+//! This can be used in cases where a subset of `Collector` functionality
 //! should be dynamically reconfigured, such as when filtering directives may
 //! change at runtime. Note that this layer introduces a (relatively small)
 //! amount of overhead, and should thus only be used as needed.
 //!
-//! [`Layer` type]: struct.Layer.html
-//! [`Layer` trait]: ../layer/trait.Layer.html
-use crate::layer;
+//! [`Subscriber` type]: struct.Subscriber.html
+//! [`Subscriber` trait]: ../layer/trait.Subscriber.html
+use crate::subscriber;
 use crate::sync::RwLock;
 
 use std::{
@@ -20,12 +20,12 @@ use std::{
     sync::{Arc, Weak},
 };
 use tracing_core::{
-    callsite, span,
-    subscriber::{Interest, Subscriber},
-    Event, Metadata,
+    callsite,
+    collector::{Collector, Interest},
+    span, Event, Metadata,
 };
 
-/// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
+/// Wraps a `Subscriber`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
     // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
@@ -36,7 +36,7 @@ pub struct Layer<L, S> {
     _s: PhantomData<fn(S)>,
 }
 
-/// Allows reloading the state of an associated `Layer`.
+/// Allows reloading the state of an associated `Subscriber`.
 #[derive(Debug)]
 pub struct Handle<L, S> {
     inner: Weak<RwLock<L>>,
@@ -55,12 +55,12 @@ enum ErrorKind {
     Poisoned,
 }
 
-// ===== impl Layer =====
+// ===== impl Subscriber =====
 
-impl<L, S> crate::Layer<S> for Layer<L, S>
+impl<L, S> crate::Subscriber<S> for Layer<L, S>
 where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
+    L: crate::Subscriber<S> + 'static,
+    S: Collector,
 {
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -68,57 +68,72 @@ where
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: layer::Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: subscriber::Context<'_, S>) -> bool {
         try_lock!(self.inner.read(), else return false).enabled(metadata, ctx)
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn new_span(
+        &self,
+        attrs: &span::Attributes<'_>,
+        id: &span::Id,
+        ctx: subscriber::Context<'_, S>,
+    ) {
         try_lock!(self.inner.read()).new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: layer::Context<'_, S>) {
+    fn on_record(
+        &self,
+        span: &span::Id,
+        values: &span::Record<'_>,
+        ctx: subscriber::Context<'_, S>,
+    ) {
         try_lock!(self.inner.read()).on_record(span, values, ctx)
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: layer::Context<'_, S>) {
+    fn on_follows_from(
+        &self,
+        span: &span::Id,
+        follows: &span::Id,
+        ctx: subscriber::Context<'_, S>,
+    ) {
         try_lock!(self.inner.read()).on_follows_from(span, follows, ctx)
     }
 
     #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: layer::Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: subscriber::Context<'_, S>) {
         try_lock!(self.inner.read()).on_event(event, ctx)
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, ctx: subscriber::Context<'_, S>) {
         try_lock!(self.inner.read()).on_enter(id, ctx)
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, ctx: subscriber::Context<'_, S>) {
         try_lock!(self.inner.read()).on_exit(id, ctx)
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: layer::Context<'_, S>) {
+    fn on_close(&self, id: span::Id, ctx: subscriber::Context<'_, S>) {
         try_lock!(self.inner.read()).on_close(id, ctx)
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: layer::Context<'_, S>) {
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: subscriber::Context<'_, S>) {
         try_lock!(self.inner.read()).on_id_change(old, new, ctx)
     }
 }
 
 impl<L, S> Layer<L, S>
 where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
+    L: crate::Subscriber<S> + 'static,
+    S: Collector,
 {
-    /// Wraps the given `Layer`, returning a `Layer` and a `Handle` that allows
+    /// Wraps the given `Subscriber`, returning a `Subscriber` and a `Handle` that allows
     /// the inner type to be modified at runtime.
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
@@ -129,7 +144,7 @@ where
         (this, handle)
     }
 
-    /// Returns a `Handle` that can be used to reload the wrapped `Layer`.
+    /// Returns a `Handle` that can be used to reload the wrapped `Subscriber`.
     pub fn handle(&self) -> Handle<L, S> {
         Handle {
             inner: Arc::downgrade(&self.inner),
@@ -142,8 +157,8 @@ where
 
 impl<L, S> Handle<L, S>
 where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
+    L: crate::Subscriber<S> + 'static,
+    S: Collector,
 {
     /// Replace the current layer with the provided `new_layer`.
     pub fn reload(&self, new_layer: impl Into<L>) -> Result<(), Error> {
@@ -213,7 +228,7 @@ impl Error {
         matches!(self.kind, ErrorKind::Poisoned)
     }
 
-    /// Returns `true` if this error occurred because the `Subscriber`
+    /// Returns `true` if this error occurred because the `Collector`
     /// containing the reloadable layer was dropped.
     pub fn is_dropped(&self) -> bool {
         matches!(self.kind, ErrorKind::SubscriberGone)

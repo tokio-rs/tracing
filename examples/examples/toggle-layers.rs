@@ -1,5 +1,5 @@
 #![deny(rust_2018_idioms)]
-/// This is a example showing how `Layer` can be enabled or disabled by
+/// This is a example showing how `Subscriber` can be enabled or disabled by
 /// by wrapping them with an `Option`. This example shows `fmt` and `json`
 /// being toggled based on the `json` command line flag.
 ///
@@ -28,9 +28,9 @@ fn main() {
         .get_matches();
 
     let (json, plain) = if matches.is_present("json") {
-        (Some(tracing_subscriber::fmt::layer().json()), None)
+        (Some(tracing_subscriber::fmt::subscriber().json()), None)
     } else {
-        (None, Some(tracing_subscriber::fmt::layer()))
+        (None, Some(tracing_subscriber::fmt::subscriber()))
     };
 
     tracing_subscriber::registry().with(json).with(plain).init();

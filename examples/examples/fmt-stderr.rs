@@ -5,7 +5,7 @@ use tracing::error;
 fn main() {
     let subscriber = tracing_subscriber::fmt().with_writer(io::stderr).finish();
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collector::with_default(subscriber, || {
         error!("This event will be printed to `stderr`.");
     });
 }

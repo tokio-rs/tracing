@@ -41,7 +41,7 @@
 //! # fn docs() {
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
 //! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-//! tracing::subscriber::with_default(subscriber.finish(), || {
+//! tracing::collector::with_default(subscriber.finish(), || {
 //!    tracing::event!(tracing::Level::INFO, "Hello");
 //! });
 //! # }
@@ -93,7 +93,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// # fn doc() {
 ///     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
 ///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     tracing::collector::with_default(subscriber.finish(), || {
 ///         // Emit some tracing events within context of the non_blocking `_guard` and tracing subscriber
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
@@ -111,7 +111,7 @@ pub struct WorkerGuard {
 /// A non-blocking writer.
 ///
 /// While the line between "blocking" and "non-blocking" IO is fuzzy, writing to a file is typically
-/// considered to be a _blocking_ operation. For an application whose `Subscriber` writes spans and events
+/// considered to be a _blocking_ operation. For an application whose `Collector` writes spans and events
 /// as they are emitted, an application might find the latency profile to be unacceptable.
 /// `NonBlocking` moves the writing out of an application's data path by sending spans and events
 /// to a dedicated logging thread.
@@ -397,7 +397,7 @@ mod test {
             let cloned_non_blocking = non_blocking.clone();
             join_handles.push(thread::spawn(move || {
                 let subscriber = tracing_subscriber::fmt().with_writer(cloned_non_blocking);
-                tracing::subscriber::with_default(subscriber.finish(), || {
+                tracing::collector::with_default(subscriber.finish(), || {
                     tracing::event!(tracing::Level::INFO, "Hello");
                 });
             }));

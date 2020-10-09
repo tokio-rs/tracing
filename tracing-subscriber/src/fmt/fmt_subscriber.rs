@@ -1,45 +1,45 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
-    layer::{self, Context, Scope},
     registry::{LookupSpan, SpanRef},
+    subscriber::{self, Context, Scope},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
-    Event, Metadata, Subscriber,
+    Collector, Event, Metadata,
 };
 
-/// A [`Layer`] that logs formatted representations of `tracing` events.
+/// A [`Subscriber`] that logs formatted representations of `tracing` events.
 ///
 /// ## Examples
 ///
-/// Constructing a layer with the default configuration:
+/// Constructing a subscriber with the default configuration:
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
 /// use tracing_subscriber::prelude::*;
 ///
-/// let subscriber = Registry::default()
-///     .with(fmt::Layer::default());
+/// let collector = Registry::default()
+///     .with(fmt::Subscriber::default());
 ///
-/// tracing::subscriber::set_global_default(subscriber).unwrap();
+/// tracing::collector::set_global_default(collector).unwrap();
 /// ```
 ///
-/// Overriding the layer's behavior:
+/// Overriding the subscriber's behavior:
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
 /// use tracing_subscriber::prelude::*;
 ///
-/// let fmt_layer = fmt::layer()
+/// let fmt_subscriber = fmt::subscriber()
 ///    .with_target(false) // don't include event targets when logging
 ///    .with_level(false); // don't include event levels when logging
 ///
-/// let subscriber = Registry::default().with(fmt_layer);
-/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// let collector = Registry::default().with(fmt_subscriber);
+/// # tracing::collector::set_global_default(collector).unwrap();
 /// ```
 ///
 /// Setting a custom event formatter:
@@ -49,16 +49,16 @@ use tracing_core::{
 /// use tracing_subscriber::prelude::*;
 ///
 /// let fmt = format().with_timer(time::Uptime::default());
-/// let fmt_layer = fmt::layer()
+/// let fmt_layer = fmt::subscriber()
 ///     .event_format(fmt)
 ///     .with_target(false);
-/// # let subscriber = fmt_layer.with_subscriber(tracing_subscriber::registry::Registry::default());
-/// # tracing::subscriber::set_global_default(subscriber).unwrap();
+/// # let subscriber = fmt_layer.with_collector(tracing_subscriber::registry::Registry::default());
+/// # tracing::collector::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Subscriber`]: ../layer/trait.Subscriber.html
 #[derive(Debug)]
-pub struct Layer<
+pub struct Subscriber<
     S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
@@ -71,44 +71,44 @@ pub struct Layer<
     _inner: PhantomData<S>,
 }
 
-/// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
+/// A builder for [`Subscriber`](struct.Subscriber.html) that logs formatted representations of `tracing`
 /// events and spans.
 ///
 /// **Note**: As of `tracing-subscriber` 0.2.4, the separate builder type is now
-/// deprecated, as the `Layer` type itself supports all the builder's
-/// configuration methods. This is now an alias for `Layer`.
+/// deprecated, as the `Subscriber` type itself supports all the builder's
+/// configuration methods. This is now an alias for `Subscriber`.
 #[deprecated(
     since = "0.2.4",
-    note = "a separate layer builder type is not necessary, `Layer`s now support configuration"
+    note = "a separate layer builder type is not necessary, `Subscriber`s now support configuration"
 )]
 pub type LayerBuilder<
     S,
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> = Layer<S, N, E, W>;
+> = Subscriber<S, N, E, W>;
 
-impl<S> Layer<S> {
-    /// Returns a new [`LayerBuilder`](type.LayerBuilder.html) for configuring a `Layer`.
+impl<S> Subscriber<S> {
+    /// Returns a new [`LayerBuilder`](type.LayerBuilder.html) for configuring a `Subscriber`.
     #[deprecated(
         since = "0.2.4",
-        note = "a separate layer builder is not necessary, use `Layer::new`/`Layer::default` instead"
+        note = "a separate layer builder is not necessary, use `Subscriber::new`/`Subscriber::default` instead"
     )]
     #[allow(deprecated)]
     pub fn builder() -> LayerBuilder<S> {
-        Layer::default()
+        Subscriber::default()
     }
 
-    /// Returns a new [`Layer`](struct.Layer.html) with the default configuration.
+    /// Returns a new [`Subscriber`](struct.Subscriber.html) with the default configuration.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
-impl<S, N, E, W> Layer<S, N, E, W>
+impl<S, N, E, W> Subscriber<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     W: MakeWriter + 'static,
 {
@@ -125,20 +125,20 @@ where
     /// ```rust
     /// use tracing_subscriber::fmt::{self, format};
     ///
-    /// let layer = fmt::layer()
+    /// let layer = fmt::subscriber()
     ///     .event_format(format().compact());
     /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Layer as _;
-    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// # use tracing_subscriber::Subscriber as _;
+    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [`FormatEvent`]: ./format/trait.FormatEvent.html
     /// [`FmtContext`]: ./struct.FmtContext.html
     /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-    pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
+    pub fn event_format<E2>(self, e: E2) -> Subscriber<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
     {
-        Layer {
+        Subscriber {
             fmt_fields: self.fmt_fields,
             fmt_event: e,
             fmt_span: self.fmt_span,
@@ -149,8 +149,8 @@ where
 }
 
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
-impl<S, N, E, W> Layer<S, N, E, W> {
-    /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
+impl<S, N, E, W> Subscriber<S, N, E, W> {
+    /// Sets the [`MakeWriter`] that the [`Subscriber`] being built will use to write events.
     ///
     /// # Examples
     ///
@@ -160,20 +160,20 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::layer()
+    /// let layer = fmt::subscriber()
     ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Layer as _;
-    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// # use tracing_subscriber::Subscriber as _;
+    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
     /// [`MakeWriter`]: ../fmt/trait.MakeWriter.html
-    /// [`Layer`]: ../layer/trait.Layer.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> Layer<S, N, E, W2>
+    /// [`Subscriber`]: ../layer/trait.Subscriber.html
+    pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
     {
-        Layer {
+        Subscriber {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
@@ -195,17 +195,17 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::layer()
+    /// let layer = fmt::subscriber()
     ///     .with_test_writer();
     /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Layer as _;
-    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// # use tracing_subscriber::Subscriber as _;
+    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
     /// [`TestWriter`]: writer/struct.TestWriter.html
-    pub fn with_test_writer(self) -> Layer<S, N, E, TestWriter> {
-        Layer {
+    pub fn with_test_writer(self) -> Subscriber<S, N, E, TestWriter> {
+        Subscriber {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
@@ -215,7 +215,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     }
 }
 
-impl<S, N, L, T, W> Layer<S, N, format::Format<L, T>, W>
+impl<S, N, L, T, W> Subscriber<S, N, format::Format<L, T>, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
@@ -230,8 +230,8 @@ where
     /// [`timer`]: ./time/trait.FormatTime.html
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
-    pub fn with_timer<T2>(self, timer: T2) -> Layer<S, N, format::Format<L, T2>, W> {
-        Layer {
+    pub fn with_timer<T2>(self, timer: T2) -> Subscriber<S, N, format::Format<L, T2>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_timer(timer),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -241,8 +241,8 @@ where
     }
 
     /// Do not emit timestamps with spans and event.
-    pub fn without_time(self) -> Layer<S, N, format::Format<L, ()>, W> {
-        Layer {
+    pub fn without_time(self) -> Subscriber<S, N, format::Format<L, ()>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.without_time(),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.without_time(),
@@ -272,13 +272,13 @@ where
     ///    described above.
     ///
     /// Note that the generated events will only be part of the log output by
-    /// this formatter; they will not be recorded by other `Subscriber`s or by
-    /// `Layer`s added to this subscriber.
+    /// this formatter; they will not be recorded by other `Collector`s or by
+    /// `Subscriber`s added to this subscriber.
     ///
     /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
     /// [time]: #method.without_time
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
-        Layer {
+        Subscriber {
             fmt_event: self.fmt_event,
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.with_kind(kind),
@@ -290,8 +290,8 @@ where
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> Layer<S, N, format::Format<L, T>, W> {
-        Layer {
+    pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_ansi(ansi),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -301,8 +301,8 @@ where
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Layer<S, N, format::Format<L, T>, W> {
-        Layer {
+    pub fn with_target(self, display_target: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_target(display_target),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -312,8 +312,8 @@ where
     }
 
     /// Sets whether or not an event's level is displayed.
-    pub fn with_level(self, display_level: bool) -> Layer<S, N, format::Format<L, T>, W> {
-        Layer {
+    pub fn with_level(self, display_level: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_level(display_level),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -326,8 +326,11 @@ where
     /// when formatting events
     ///
     /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
-    pub fn with_thread_ids(self, display_thread_ids: bool) -> Layer<S, N, format::Format<L, T>, W> {
-        Layer {
+    pub fn with_thread_ids(
+        self,
+        display_thread_ids: bool,
+    ) -> Subscriber<S, N, format::Format<L, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -343,8 +346,8 @@ where
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
-    ) -> Layer<S, N, format::Format<L, T>, W> {
-        Layer {
+    ) -> Subscriber<S, N, format::Format<L, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_thread_names(display_thread_names),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -353,12 +356,12 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
-    pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
+    /// Sets the subscriber being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
+    pub fn compact(self) -> Subscriber<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
-        Layer {
+        Subscriber {
             fmt_event: self.fmt_event.compact(),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
@@ -367,7 +370,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    /// Sets the subscriber being built to use a [JSON formatter](../fmt/format/struct.Json.html).
     ///
     /// The full format includes fields from all entered spans.
     ///
@@ -379,14 +382,14 @@ where
     ///
     /// # Options
     ///
-    /// - [`Layer::flatten_event`] can be used to enable flattening event fields into the root
+    /// - [`Subscriber::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
-    /// [`Layer::flatten_event`]: #method.flatten_event
+    /// [`Subscriber::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(self) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        Layer {
+    pub fn json(self) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
@@ -398,15 +401,15 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        Layer {
+    ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
@@ -422,8 +425,8 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        Layer {
+    ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
@@ -439,8 +442,8 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
-        Layer {
+    ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
@@ -450,14 +453,14 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     }
 }
 
-impl<S, N, E, W> Layer<S, N, E, W> {
+impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// Sets the field formatter that the layer being built will use to record
     /// fields.
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Layer<S, N2, E, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<S, N2, E, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
-        Layer {
+        Subscriber {
             fmt_event: self.fmt_event,
             fmt_fields,
             fmt_span: self.fmt_span,
@@ -470,26 +473,26 @@ impl<S, N, E, W> Layer<S, N, E, W> {
 #[allow(deprecated)]
 impl<S, N, E, W> LayerBuilder<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
 {
-    /// Builds a [`Layer`] with the provided configuration.
+    /// Builds a [`Subscriber`] with the provided configuration.
     ///
-    /// [`Layer`]: struct.Layer.html
+    /// [`Subscriber`]: struct.Subscriber.html
     #[deprecated(
         since = "0.2.4",
         note = "`LayerBuilder` is no longer a separate type; this method is not necessary"
     )]
-    pub fn finish(self) -> Layer<S, N, E, W> {
+    pub fn finish(self) -> Subscriber<S, N, E, W> {
         self
     }
 }
 
-impl<S> Default for Layer<S> {
+impl<S> Default for Subscriber<S> {
     fn default() -> Self {
-        Layer {
+        Subscriber {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
@@ -499,9 +502,9 @@ impl<S> Default for Layer<S> {
     }
 }
 
-impl<S, N, E, W> Layer<S, N, E, W>
+impl<S, N, E, W> Subscriber<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -580,9 +583,9 @@ macro_rules! with_event_from_span {
     };
 }
 
-impl<S, N, E, W> layer::Layer<S> for Layer<S, N, E, W>
+impl<S, N, E, W> subscriber::Subscriber<S> for Subscriber<S, N, E, W>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -773,7 +776,7 @@ impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
 
 impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
@@ -787,7 +790,7 @@ where
 
 impl<'a, S, N> FmtContext<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
@@ -889,7 +892,7 @@ mod test {
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
-        layer::Layer as _,
+        subscriber::Subscriber as _,
         test::MockWriter,
         time,
     };
@@ -898,42 +901,44 @@ mod test {
     use lazy_static::lazy_static;
     use regex::Regex;
     use std::sync::Mutex;
-    use tracing::subscriber::with_default;
+    use tracing::collector::with_default;
     use tracing_core::dispatcher::Dispatch;
 
     #[test]
     fn impls() {
         let f = Format::default().with_timer(time::Uptime::default());
-        let fmt = fmt::Layer::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let fmt = fmt::Subscriber::default().event_format(f);
+        let subscriber = fmt.with_collector(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let fmt = fmt::Layer::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let fmt = fmt::Subscriber::default().event_format(f);
+        let subscriber = fmt.with_collector(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let fmt = fmt::Layer::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let fmt = fmt::Subscriber::default().event_format(f);
+        let subscriber = fmt.with_collector(Registry::default());
         let _dispatch = Dispatch::new(subscriber);
     }
 
     #[test]
     fn fmt_layer_downcasts() {
         let f = format::Format::default();
-        let fmt = fmt::Layer::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let fmt = fmt::Subscriber::default().event_format(f);
+        let subscriber = fmt.with_collector(Registry::default());
 
         let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<fmt::Layer<Registry>>().is_some());
+        assert!(dispatch
+            .downcast_ref::<fmt::Subscriber<Registry>>()
+            .is_some());
     }
 
     #[test]
     fn fmt_layer_downcasts_to_parts() {
         let f = format::Format::default();
-        let fmt = fmt::Layer::default().event_format(f);
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let fmt = fmt::Subscriber::default().event_format(f);
+        let subscriber = fmt.with_collector(Registry::default());
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
@@ -942,8 +947,8 @@ mod test {
     #[test]
     fn is_lookup_span() {
         fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
-        let fmt = fmt::Layer::default();
-        let subscriber = fmt.with_subscriber(Registry::default());
+        let fmt = fmt::Subscriber::default();
+        let subscriber = fmt.with_collector(Registry::default());
         assert_lookup_span(subscriber)
     }
 
@@ -959,7 +964,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -982,7 +987,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -996,8 +1001,8 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n",
             actual.as_str()
         );
     }
@@ -1009,7 +1014,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -1023,7 +1028,7 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
             actual.as_str()
         );
     }
@@ -1035,7 +1040,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -1050,7 +1055,7 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            " span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close\n",
+            " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
         );
     }
@@ -1062,7 +1067,7 @@ mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -1076,10 +1081,10 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: new\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
-             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: new\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
             actual.as_str()
         );
     }

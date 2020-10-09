@@ -8,10 +8,10 @@ use tracing_core::dispatcher::{self, Dispatch};
 /// This trait provides extension methods to make configuring and setting a
 /// [default subscriber] more ergonomic. It is automatically implemented for all
 /// types that can be converted into a [trace dispatcher]. Since `Dispatch`
-/// implements `From<T>` for all `T: Subscriber`, all `Subscriber`
+/// implements `From<T>` for all `T: Collector`, all `Collector`
 /// implementations will implement this extension trait as well. Types which
-/// can be converted into `Subscriber`s, such as builders that construct a
-/// `Subscriber`, may implement `Into<Dispatch>`, and will also receive an
+/// can be converted into `Collector`s, such as builders that construct a
+/// `Collector`, may implement `Into<Dispatch>`, and will also receive an
 /// implementation of this trait.
 ///
 /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber

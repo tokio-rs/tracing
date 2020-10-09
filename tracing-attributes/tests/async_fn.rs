@@ -4,7 +4,7 @@
 mod support;
 use support::*;
 
-use tracing::subscriber::with_default;
+use tracing::collector::with_default;
 use tracing_attributes::instrument;
 
 #[instrument]
@@ -16,7 +16,7 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
 
 #[test]
 fn async_fn_only_enters_for_polls() {
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span::mock().named("test_async_fn"))
         .enter(span::mock().named("test_async_fn"))
         .event(event::mock().with_fields(field::mock("awaiting").with_value(&true)))
@@ -26,7 +26,7 @@ fn async_fn_only_enters_for_polls() {
         .drop_span(span::mock().named("test_async_fn"))
         .done()
         .run_with_handle();
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { test_async_fn(2).await }).unwrap();
     });
     handle.assert_finished();
@@ -46,7 +46,7 @@ fn async_fn_nested() {
 
     let span = span::mock().named("test_async_fns_nested");
     let span2 = span::mock().named("test_async_fns_nested_other");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .new_span(span2.clone())
@@ -59,7 +59,7 @@ fn async_fn_nested() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { test_async_fns_nested().await });
     });
 
@@ -121,7 +121,7 @@ fn async_fn_with_async_trait() {
     let span = span::mock().named("foo");
     let span2 = span::mock().named("bar");
     let span3 = span::mock().named("baz");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
                 .with_field(field::mock("self"))
@@ -143,7 +143,7 @@ fn async_fn_with_async_trait() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         let mut test = TestImpl(2);
         block_on_future(async { test.foo(5).await });
     });
@@ -177,7 +177,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     }
 
     let span = span::mock().named("call");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
                 field::mock("v")
@@ -192,7 +192,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { TestImpl.call(5).await });
     });
 
@@ -229,7 +229,7 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
     //let span = span::mock().named("call");
     let span2 = span::mock().named("call_with_self");
     let span3 = span::mock().named("call_with_mut_self");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         /*.new_span(span.clone()
             .with_field(
                 field::mock("Self").with_value(&"TestImpler")))
@@ -255,7 +255,7 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async {
             TestImpl::call().await;
             TestImpl.call_with_self().await;

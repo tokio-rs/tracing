@@ -25,7 +25,7 @@
 //! # Core Concepts
 //!
 //! The core of `tracing`'s API is composed of _spans_, _events_ and
-//! _subscribers_. We'll cover these in turn.
+//! _collectors_. We'll cover these in turn.
 //!
 //! ## Spans
 //!
@@ -95,20 +95,20 @@
 //! ## Subscribers
 //!
 //! As `Span`s and `Event`s occur, they are recorded or aggregated by
-//! implementations of the [`Subscriber`] trait. `Subscriber`s are notified
+//! implementations of the [`Collector`] trait. `Collector`s are notified
 //! when an `Event` takes place and when a `Span` is entered or exited. These
-//! notifications are represented by the following `Subscriber` trait methods:
+//! notifications are represented by the following `Collector` trait methods:
 //!
-//! + [`event`][Subscriber::event], called when an `Event` takes place,
+//! + [`event`][Collector::event], called when an `Event` takes place,
 //! + [`enter`], called when execution enters a `Span`,
 //! + [`exit`], called when execution exits a `Span`
 //!
-//! In addition, subscribers may implement the [`enabled`] function to _filter_
+//! In addition, collectors may implement the [`enabled`] function to _filter_
 //! the notifications they receive based on [metadata] describing each `Span`
-//! or `Event`. If a call to `Subscriber::enabled` returns `false` for a given
-//! set of metadata, that `Subscriber` will *not* be notified about the
+//! or `Event`. If a call to `Collector::enabled` returns `false` for a given
+//! set of metadata, that `Collector` will *not* be notified about the
 //! corresponding `Span` or `Event`. For performance reasons, if no currently
-//! active subscribers express interest in a given set of metadata by returning
+//! active collectors express interest in a given set of metadata by returning
 //! `true`, then the corresponding `Span` or `Event` will never be constructed.
 //!
 //! # Usage
@@ -201,7 +201,7 @@
 //! event. Optionally, the [target] and [parent span] may be overridden. If the
 //! target and parent span are not overridden, they will default to the
 //! module path where the macro was invoked and the current span (as determined
-//! by the subscriber), respectively.
+//! by the collector), respectively.
 //!
 //! For example:
 //!
@@ -527,21 +527,21 @@
 //!
 //! ## In executables
 //!
-//! In order to record trace events, executables have to use a `Subscriber`
-//! implementation compatible with `tracing`. A `Subscriber` implements a
+//! In order to record trace events, executables have to use a `Collector`
+//! implementation compatible with `tracing`. A `Collector` implements a
 //! way of collecting trace data, such as by logging it to standard output.
 //!
-//! This library does not contain any `Subscriber` implementations; these are
+//! This library does not contain any `Collector` implementations; these are
 //! provided by [other crates](#related-crates).
 //!
-//! The simplest way to use a subscriber is to call the [`set_global_default`]
+//! The simplest way to use a collector is to call the [`set_global_default`]
 //! function:
 //!
 //! ```
 //! extern crate tracing;
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
-//! # impl tracing::Subscriber for FooSubscriber {
+//! # impl tracing::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
@@ -550,13 +550,13 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber {
-//! #   fn new() -> Self { FooSubscriber }
+//! # impl FooCollector {
+//! #   fn new() -> Self { FooCollector }
 //! # }
 //! # fn main() {
 //!
-//! let my_subscriber = FooSubscriber::new();
-//! tracing::subscriber::set_global_default(my_subscriber)
+//! let my_collector = FooCollector::new();
+//! tracing::collector::set_global_default(my_collector)
 //!     .expect("setting tracing default failed");
 //! # }
 //! ```
@@ -569,19 +569,19 @@
 //! executables that depend on the library try to set the default later.
 //! </pre></div>
 //!
-//! This subscriber will be used as the default in all threads for the
+//! This collector will be used as the default in all threads for the
 //! remainder of the duration of the program, similar to setting the logger
 //! in the `log` crate.
 //!
-//! In addition, the default subscriber can be set through using the
+//! In addition, the default collector can be set through using the
 //! [`with_default`] function. This follows the `tokio` pattern of using
 //! closures to represent executing code in a context that is exited at the end
 //! of the closure. For example:
 //!
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
-//! # impl tracing::Subscriber for FooSubscriber {
+//! # impl tracing::Collector for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
@@ -590,27 +590,27 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber {
-//! #   fn new() -> Self { FooSubscriber }
+//! # impl FooCollector {
+//! #   fn new() -> Self { FooCollector }
 //! # }
 //! # fn main() {
 //!
-//! let my_subscriber = FooSubscriber::new();
+//! let my_collector = FooCollector::new();
 //! # #[cfg(feature = "std")]
-//! tracing::subscriber::with_default(my_subscriber, || {
+//! tracing::collector::with_default(my_collector, || {
 //!     // Any trace events generated in this closure or by functions it calls
-//!     // will be collected by `my_subscriber`.
+//!     // will be collected by `my_collector`.
 //! })
 //! # }
 //! ```
 //!
-//! This approach allows trace data to be collected by multiple subscribers
+//! This approach allows trace data to be collected by multiple collectors
 //! within different contexts in the program. Note that the override only applies to the
 //! currently executing thread; other threads will not see the change from with_default.
 //!
-//! Any trace events generated outside the context of a subscriber will not be collected.
+//! Any trace events generated outside the context of a collector will not be collected.
 //!
-//! Once a subscriber has been set, instrumentation points may be added to the
+//! Once a collector has been set, instrumentation points may be added to the
 //! executable using the `tracing` crate's macros.
 //!
 //! ## `log` Compatibility
@@ -622,13 +622,13 @@
 //! libraries and applications either emit or consume `log` records. Therefore,
 //! `tracing` provides multiple forms of interoperability with `log`: `tracing`
 //! instrumentation can emit `log` records, and a compatibility layer enables
-//! `tracing` [`Subscriber`]s to consume `log` records as `tracing` [`Event`]s.
+//! `tracing` [`Collector`]s to consume `log` records as `tracing` [`Event`]s.
 //!
 //! ### Emitting `log` Records
 //!
 //! This crate provides two feature flags, "log" and "log-always", which will
 //! cause [spans] and [events] to emit `log` records. When the "log" feature is
-//! enabled, if no `tracing` `Subscriber` is active, invoking an event macro or
+//! enabled, if no `tracing` `Collector` is active, invoking an event macro or
 //! creating a span with fields will emit a `log` record. This is intended
 //! primarily for use in libraries which wish to emit diagnostics that can be
 //! consumed by applications using `tracing` *or* `log`, without paying the
@@ -636,7 +636,7 @@
 //! in use.
 //!
 //! Enabling the "log-always" feature will cause `log` records to be emitted
-//! even if a `tracing` `Subscriber` _is_ set. This is intended to be used in
+//! even if a `tracing` `Collector` _is_ set. This is intended to be used in
 //! applications where a `log` `Logger` is being used to record a textual log,
 //! and `tracing` is used only to record other forms of diagnostics (such as
 //! metrics, profiling, or distributed tracing data). Unlike the "log" feature,
@@ -661,7 +661,7 @@
 //! ### Consuming `log` Records
 //!
 //! The [`tracing-log`] crate provides a compatibility layer which
-//! allows a `tracing` [`Subscriber`] to consume `log` records as though they
+//! allows a `tracing` [`Collector`] to consume `log` records as though they
 //! were `tracing` [events]. This allows applications using `tracing` to record
 //! the logs emitted by dependencies using `log` as events within the context of
 //! the application's trace tree. See [that crate's documentation][log-tracer]
@@ -673,16 +673,16 @@
 //!
 //! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 //! contains several additional crates designed to be used with the `tracing` ecosystem.
-//! This includes a collection of `Subscriber` implementations, as well as utility
-//! and adapter crates to assist in writing `Subscriber`s and instrumenting
+//! This includes a collection of `Collector` implementations, as well as utility
+//! and adapter crates to assist in writing `Collector`s and instrumenting
 //! applications.
 //!
 //! In particular, the following crates are likely to be of interest:
 //!
 //!  - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
-//!  - [`tracing-subscriber`] provides `Subscriber` implementations and
-//!    utilities for working with `Subscriber`s. This includes a [`FmtSubscriber`]
+//!  - [`tracing-subscriber`] provides `Collector` implementations and
+//!    utilities for working with `Collector`s. This includes a [`FmtSubscriber`]
 //!    `FmtSubscriber` for logging formatted trace data to stdout, with similar
 //!    filtering and formatting to the [`env_logger`] crate.
 //!  - [`tracing-log`] provides a compatibility layer with the [`log`] crate,
@@ -712,13 +712,13 @@
 //!    (Linux-only).
 //!  - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans
 //!    in [bunyan] format, enriched with timing information.
-//!  - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
+//!  - [`tracing-wasm`] provides a `Collector`/`Subscriber` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 //!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 //!  - [`test-env-log`] takes care of initializing `tracing` for tests, based on
 //!    environment variables with an `env_logger` compatible syntax.
 //!  - [`tracing-unwrap`] provides convenience methods to report failed unwraps
-//!    on `Result` or `Option` types to a `Subscriber`.
+//!    on `Result` or `Option` types to a `Collector`.
 //!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
@@ -764,11 +764,11 @@
 //!
 //! * A set of features controlling the [static verbosity level].
 //! * `log`: causes trace instrumentation points to emit [`log`] records as well
-//!   as trace events, if a default `tracing` subscriber has not been set. This
+//!   as trace events, if a default `tracing` collector has not been set. This
 //!   is intended for use in libraries whose users may be using either `tracing`
 //!   or `log`.
 //! * `log-always`: Emit `log` records from all `tracing` spans and events, even
-//!   if a `tracing` subscriber has been set. This should be set only by
+//!   if a `tracing` collector has been set. This should be set only by
 //!   applications which intend to collect traces and logs separately; if an
 //!   adapter is used to convert `log` records into `tracing` events, this will
 //!   cause duplicate events to occur.
@@ -814,16 +814,16 @@
 //! [`in_scope`]: span::Span::in_scope
 //! [event]: Event
 //! [events]: Event
-//! [`Subscriber`]: subscriber::Subscriber
-//! [Subscriber::event]: subscriber::Subscriber::event
-//! [`enter`]: subscriber::Subscriber::enter
-//! [`exit`]: subscriber::Subscriber::exit
-//! [`enabled`]: subscriber::Subscriber::enabled
+//! [`Collector`]: collector::Collector
+//! [Collector::event]: collector::Collector::event
+//! [`enter`]: collector::Collector::enter
+//! [`exit`]: collector::Collector::exit
+//! [`enabled`]: collector::Collector::enabled
 //! [metadata]: Metadata
 //! [`field::display`]: field::display
 //! [`field::debug`]: field::debug
-//! [`set_global_default`]: subscriber::set_global_default
-//! [`with_default`]: subscriber::with_default
+//! [`set_global_default`]: collector::set_global_default
+//! [`with_default`]: collector::with_default
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing-futures`]: https://crates.io/crates/tracing-futures
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
@@ -883,7 +883,7 @@ use tracing_core::*;
 
 #[doc(inline)]
 pub use self::instrument::Instrument;
-pub use self::{dispatcher::Dispatch, event::Event, field::Value, subscriber::Subscriber};
+pub use self::{collector::Collector, dispatcher::Dispatch, event::Event, field::Value};
 
 #[doc(hidden)]
 pub use self::span::Id;
@@ -905,6 +905,7 @@ pub use tracing_attributes::instrument;
 #[macro_use]
 mod macros;
 
+pub mod collector;
 pub mod dispatcher;
 pub mod field;
 /// Attach a span to a `std::future::Future`.
@@ -912,7 +913,6 @@ pub mod instrument;
 pub mod level_filters;
 pub mod span;
 pub(crate) mod stdlib;
-pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
@@ -921,7 +921,7 @@ pub mod __macro_support {
         fmt,
         sync::atomic::{AtomicUsize, Ordering},
     };
-    use crate::{subscriber::Interest, Metadata};
+    use crate::{collector::Interest, Metadata};
     use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.

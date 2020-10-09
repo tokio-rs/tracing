@@ -16,31 +16,31 @@ use std::{
 use tracing_core::{
     dispatcher::{self, Dispatch},
     span::{self, Current, Id},
-    Event, Interest, Metadata, Subscriber,
+    Collector, Event, Interest, Metadata,
 };
 
 /// A shared, reusable store for spans.
 ///
-/// A `Registry` is a [`Subscriber`] around which multiple [`Layer`]s
+/// A `Registry` is a [`Collector`] around which multiple [`Subscriber`]s
 /// implementing various behaviors may be [added]. Unlike other types
-/// implementing `Subscriber` `Registry` does not actually record traces itself:
-/// instead, it collects and stores span data that is exposed to any `Layer`s
+/// implementing `Collector` `Registry` does not actually record traces itself:
+/// instead, it collects and stores span data that is exposed to any `Subscriber`s
 /// wrapping it through implementations of the [`LookupSpan`] trait.
 /// The `Registry` is responsible for storing span metadata, recording
 /// relationships between spans, and tracking which spans are active and whicb
-/// are closed. In addition, it provides a mechanism for `Layer`s to store
+/// are closed. In addition, it provides a mechanism for `Subscriber`s to store
 /// user-defined per-span data, called [extensions], in the registry. This
-/// allows `Layer`-specific data to benefit from the `Registry`'s
+/// allows `Subscriber`-specific data to benefit from the `Registry`'s
 /// high-performance concurrent storage.
 ///
 /// This registry is implemented using a [lock-free sharded slab][slab], and is
 /// highly optimized for concurrent access.
 ///
 /// [slab]: https://docs.rs/crate/sharded-slab/
-/// [`Subscriber`]:
+/// [`Collector`]:
 ///     https://docs.rs/crate/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-/// [`Layer`]: ../trait.Layer.html
-/// [added]: ../trait.Layer.html#method.with_subscriber
+/// [`Subscriber`]: ../trait.Subscriber.html
+/// [added]: ../trait.Subscriber.html#method.with_subscriber
 /// [`LookupSpan`]: trait.LookupSpan.html
 /// [extensions]: extensions/index.html
 #[cfg(feature = "registry")]
@@ -55,11 +55,11 @@ pub struct Registry {
 ///
 /// The registry stores well-known data defined by tracing: span relationships,
 /// metadata and reference counts. Additional user-defined data provided by
-/// [`Layer`s], such as formatted fields, metrics, or distributed traces should
+/// [`Subscriber`s], such as formatted fields, metrics, or distributed traces should
 /// be stored in the [extensions] typemap.
 ///
 /// [`Registry`]: struct.Registry.html
-/// [`Layer`s]: ../layer/trait.Layer.html
+/// [`Subscriber`s]: ../layer/trait.Subscriber.html
 /// [extensions]: struct.Extensions.html
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
@@ -97,20 +97,20 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-/// A guard that tracks how many [`Registry`]-backed `Layer`s have
+/// A guard that tracks how many [`Registry`]-backed `Subscriber`s have
 /// processed an `on_close` event.
 ///
-/// This is needed to enable a [`Registry`]-backed Layer to access span
-/// data after the `Layer` has recieved the `on_close` callback.
+/// This is needed to enable a [`Registry`]-backed Subscriber to access span
+/// data after the `Subscriber` has recieved the `on_close` callback.
 ///
-/// Once all `Layer`s have processed this event, the [`Registry`] knows
+/// Once all `Subscriber`s have processed this event, the [`Registry`] knows
 /// that is able to safely remove the span tracked by `id`. `CloseGuard`
 /// accomplishes this through a two-step process:
-/// 1. Whenever a [`Registry`]-backed `Layer::on_close` method is
+/// 1. Whenever a [`Registry`]-backed `Subscriber::on_close` method is
 ///    called, `Registry::start_close` is closed.
 ///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
 ///    by 1 and returns a `CloseGuard`.
-/// 2. The `CloseGuard` is dropped at the end of `Layer::on_close`. On
+/// 2. The `CloseGuard` is dropped at the end of `Subscriber::on_close`. On
 ///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
 ///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
 ///    `id` from the registry, as all `Layers` that might have seen the
@@ -134,7 +134,7 @@ impl Registry {
         self.spans.get(id_to_idx(id))
     }
 
-    /// Returns a guard which tracks how many `Layer`s have
+    /// Returns a guard which tracks how many `Subscriber`s have
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
     ///
@@ -161,7 +161,7 @@ thread_local! {
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
 }
 
-impl Subscriber for Registry {
+impl Collector for Registry {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::always()
     }
@@ -297,7 +297,7 @@ impl Drop for DataInner {
         if self.parent.is_some() {
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
-            // determine whether to call the `Layer`'s `on_close` callback ---
+            // determine whether to call the `Subscriber`'s `on_close` callback ---
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
@@ -367,24 +367,24 @@ impl<'a> SpanData<'a> for Data<'a> {
 #[cfg(test)]
 mod tests {
     use super::Registry;
-    use crate::{layer::Context, registry::LookupSpan, Layer};
+    use crate::{registry::LookupSpan, subscriber::Context, Subscriber};
     use std::{
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
     };
-    use tracing::{self, subscriber::with_default};
+    use tracing::{self, collector::with_default};
     use tracing_core::{
         dispatcher,
         span::{Attributes, Id},
-        Subscriber,
+        Collector,
     };
 
-    struct AssertionLayer;
-    impl<S> Layer<S> for AssertionLayer
+    struct AssertionSubscriber;
+    impl<C> Subscriber<C> for AssertionSubscriber
     where
-        S: Subscriber + for<'a> LookupSpan<'a>,
+        C: Collector + for<'a> LookupSpan<'a>,
     {
-        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        fn on_close(&self, id: Id, ctx: Context<'_, C>) {
             dbg!(format_args!("closing {:?}", id));
             assert!(&ctx.span(&id).is_some());
         }
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn single_layer_can_access_closed_span() {
-        let subscriber = AssertionLayer.with_subscriber(Registry::default());
+        let subscriber = AssertionSubscriber.with_collector(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -402,9 +402,9 @@ mod tests {
 
     #[test]
     fn multiple_layers_can_access_closed_span() {
-        let subscriber = AssertionLayer
-            .and_then(AssertionLayer)
-            .with_subscriber(Registry::default());
+        let subscriber = AssertionSubscriber
+            .and_then(AssertionSubscriber)
+            .with_collector(Registry::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -428,9 +428,9 @@ mod tests {
 
     struct SetRemoved(Arc<()>);
 
-    impl<S> Layer<S> for CloseLayer
+    impl<S> Subscriber<S> for CloseLayer
     where
-        S: Subscriber + for<'a> LookupSpan<'a>,
+        S: Collector + for<'a> LookupSpan<'a>,
     {
         fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");
@@ -583,9 +583,9 @@ mod tests {
     #[test]
     fn spans_are_removed_from_registry() {
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = AssertionLayer
+        let subscriber = AssertionSubscriber
             .and_then(close_layer)
-            .with_subscriber(Registry::default());
+            .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -611,9 +611,9 @@ mod tests {
     #[test]
     fn spans_are_only_closed_when_the_last_ref_drops() {
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = AssertionLayer
+        let subscriber = AssertionSubscriber
             .and_then(close_layer)
-            .with_subscriber(Registry::default());
+            .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -644,9 +644,9 @@ mod tests {
     #[test]
     fn span_enter_guards_are_dropped_out_of_order() {
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = AssertionLayer
+        let subscriber = AssertionSubscriber
             .and_then(close_layer)
-            .with_subscriber(Registry::default());
+            .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -684,7 +684,7 @@ mod tests {
         // closes, and will then be closed.
 
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = close_layer.with_subscriber(Registry::default());
+        let subscriber = close_layer.with_collector(Registry::default());
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
@@ -711,7 +711,7 @@ mod tests {
         // is *itself* kept open by a child, closing the grandchild will close
         // both the parent *and* the grandparent.
         let (close_layer, state) = CloseLayer::new();
-        let subscriber = close_layer.with_subscriber(Registry::default());
+        let subscriber = close_layer.with_collector(Registry::default());
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 

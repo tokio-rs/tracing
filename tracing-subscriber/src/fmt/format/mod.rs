@@ -2,8 +2,8 @@
 use super::time::{self, FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    fmt::fmt_layer::FmtContext,
-    fmt::fmt_layer::FormattedFields,
+    fmt::fmt_subscriber::FmtContext,
+    fmt::fmt_subscriber::FormattedFields,
     registry::LookupSpan,
 };
 
@@ -13,7 +13,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field, Visit},
-    span, Event, Level, Subscriber,
+    span, Collector, Event, Level,
 };
 
 #[cfg(feature = "tracing-log")]
@@ -32,18 +32,18 @@ pub use json::*;
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Subscriber`] or [`fmt::Layer`]. Each time an event is
-/// dispatched to [`fmt::Subscriber`] or [`fmt::Layer`], the subscriber or layer forwards it to
+/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`]. Each time an event is
+/// dispatched to [`fmt::Collector`] or [`fmt::Subscriber`], the subscriber or layer forwards it to
 /// its associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
+/// [`fmt::Collector`]: ../struct.Collector.html
 /// [`fmt::Subscriber`]: ../struct.Subscriber.html
-/// [`fmt::Layer`]: ../struct.Layer.html
 pub trait FormatEvent<S, N>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
@@ -58,7 +58,7 @@ where
 impl<S, N> FormatEvent<S, N>
     for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
@@ -77,7 +77,7 @@ where
 /// those fields with its associated `FormatFields` implementation.
 ///
 /// [set of fields]: ../field/trait.RecordFields.html
-/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
+/// [`FmtSubscriber`]: ../fmt/struct.Collector.html
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided `writer`, returning a result.
     fn format_fields<R: RecordFields>(
@@ -367,7 +367,7 @@ impl<T> Format<Json, T> {
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
@@ -442,7 +442,7 @@ where
 
 impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    S: Collector + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
@@ -679,7 +679,7 @@ struct FmtCtx<'a, S, N> {
 
 impl<'a, S, N: 'a> FmtCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
@@ -710,7 +710,7 @@ where
 
 impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -740,7 +740,7 @@ where
 
 struct FullCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     ctx: &'a FmtContext<'a, S, N>,
@@ -751,7 +751,7 @@ where
 
 impl<'a, S, N: 'a> FullCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
@@ -782,7 +782,7 @@ where
 
 impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collector + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1101,7 +1101,7 @@ pub(super) mod test {
 
     use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
-    use tracing::{self, subscriber::with_default};
+    use tracing::{self, collector::with_default};
 
     use super::TimingDisplay;
     use std::{fmt, sync::Mutex};
@@ -1147,7 +1147,7 @@ pub(super) mod test {
 
         let make_writer = || MockWriter::new(&BUF);
         let expected = "fake time  INFO tracing_subscriber::fmt::format::test: some ansi test\n";
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_timer(MockTime)
             .finish();
@@ -1165,7 +1165,7 @@ pub(super) mod test {
     where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_ansi(is_ansi)
             .with_timer(MockTime)
@@ -1186,7 +1186,7 @@ pub(super) mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -1210,7 +1210,7 @@ pub(super) mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)
@@ -1236,7 +1236,7 @@ pub(super) mod test {
         }
 
         let make_writer = || MockWriter::new(&BUF);
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
             .with_level(false)
             .with_ansi(false)

@@ -174,7 +174,7 @@ mod worker;
 /// # fn docs() {
 /// let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
 /// let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-/// tracing::subscriber::with_default(subscriber.finish(), || {
+/// tracing::collector::with_default(subscriber.finish(), || {
 ///    tracing::event!(tracing::Level::INFO, "Hello");
 /// });
 /// # }

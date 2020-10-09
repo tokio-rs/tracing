@@ -10,7 +10,7 @@
 //!
 //! * [`Event`] represents a single event within a trace.
 //!
-//! * [`Subscriber`], the trait implemented to collect trace data.
+//! * [`Collector`], the trait implemented to collect trace data.
 //!
 //! * [`Metadata`] and [`Callsite`] provide information describing spans and
 //!   `Event`s.
@@ -18,7 +18,7 @@
 //! * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
 //!   structured data attached to a span.
 //!
-//! * [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
+//! * [`Dispatch`] allows spans and events to be dispatched to `Collector`s.
 //!
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
@@ -34,14 +34,14 @@
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
 //!
-//! `Subscriber` implementations may depend on `tracing-core` rather than
+//! `Collector` implementations may depend on `tracing-core` rather than
 //! `tracing`, as the additional APIs provided by `tracing` are primarily useful
 //! for instrumenting libraries and applications, and are generally not
-//! necessary for `Subscriber` implementations.
+//! necessary for `Collector` implementations.
 //!
 //! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
-//! `Subscriber` implementations, as well as utility and adapter crates.
+//! `Collector` implementations, as well as utility and adapter crates.
 //!
 //! ### Crate Feature Flags
 //!
@@ -75,7 +75,7 @@
 //!
 //! [`span::Id`]: span::Id
 //! [`Event`]: event::Event
-//! [`Subscriber`]: subscriber::Subscriber
+//! [`Collector`]: collector::Collector
 //! [`Metadata`]: metadata::Metadata
 //! [`Callsite`]: callsite::Callsite
 //! [`Field`]: field::Field
@@ -127,7 +127,7 @@ extern crate alloc;
 /// # #[macro_use]
 /// # extern crate tracing_core;
 /// use tracing_core::callsite;
-/// # use tracing_core::{Metadata, subscriber::Interest};
+/// # use tracing_core::{Metadata, collector::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
 ///    // ...
@@ -162,7 +162,7 @@ macro_rules! identify_callsite {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing_core;
-/// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// # use tracing_core::{callsite::Callsite, collector::Interest};
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -253,6 +253,7 @@ pub type Once = self::spin::Once<()>;
 pub use stdlib::sync::Once;
 
 pub mod callsite;
+pub mod collector;
 pub mod dispatcher;
 pub mod event;
 pub mod field;
@@ -260,19 +261,18 @@ pub mod metadata;
 mod parent;
 pub mod span;
 pub(crate) mod stdlib;
-pub mod subscriber;
 
 #[doc(inline)]
 pub use self::{
     callsite::Callsite,
+    collector::Collector,
     dispatcher::Dispatch,
     event::Event,
     field::Field,
     metadata::{Level, LevelFilter, Metadata},
-    subscriber::Subscriber,
 };
 
-pub use self::{metadata::Kind, subscriber::Interest};
+pub use self::{collector::Interest, metadata::Kind};
 
 mod sealed {
     pub trait Sealed {}

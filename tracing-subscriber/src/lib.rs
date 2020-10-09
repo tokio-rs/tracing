@@ -1,13 +1,13 @@
 //! Utilities for implementing and composing [`tracing`] subscribers.
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
-//! scoped, structured, and async-aware diagnostics. The [`Subscriber`] trait
+//! scoped, structured, and async-aware diagnostics. The [`Collector`] trait
 //! represents the functionality necessary to collect this trace data. This
 //! crate contains tools for composing subscribers out of smaller units of
 //! behaviour, and batteries-included implementations of common subscriber
 //! functionality.
 //!
-//! `tracing-subscriber` is intended for use by both `Subscriber` authors and
+//! `tracing-subscriber` is intended for use by both `Collector` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
@@ -16,7 +16,7 @@
 //!
 //! ## Included Subscribers
 //!
-//! The following `Subscriber`s are provided for application authors:
+//! The following `Collector`s are provided for application authors:
 //!
 //! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
 //!
@@ -58,7 +58,7 @@
 //! long as doing so complies with this policy.
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [`EnvFilter`]: filter/struct.EnvFilter.html
 //! [`fmt`]: fmt/index.html
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
@@ -118,10 +118,10 @@ pub mod filter;
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
-pub mod layer;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
+pub mod subscriber;
 pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;
@@ -130,7 +130,7 @@ pub mod util;
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use filter::EnvFilter;
 
-pub use layer::Layer;
+pub use subscriber::Subscriber;
 
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
@@ -145,7 +145,7 @@ pub fn registry() -> Registry {
 
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::Subscriber as FmtSubscriber;
+pub use fmt::Collector as FmtSubscriber;
 
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]

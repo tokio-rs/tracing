@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
-use tracing::subscriber::with_default;
+use tracing::collector::with_default;
 use tracing_core::span::{Attributes, Record};
-use tracing_core::{span, Event, Level, Metadata, Subscriber};
+use tracing_core::{span, Collector, Event, Level, Metadata};
 use tracing_log::{LogTracer, NormalizeEvent};
 
 struct State {
@@ -20,7 +20,7 @@ struct OwnedMetadata {
 
 struct TestSubscriber(Arc<State>);
 
-impl Subscriber for TestSubscriber {
+impl Collector for TestSubscriber {
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         true
     }

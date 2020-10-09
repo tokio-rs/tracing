@@ -13,7 +13,7 @@
 use ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
-    Id, Level, Subscriber,
+    Collector, Id, Level,
 };
 
 use std::{
@@ -194,7 +194,7 @@ impl SloggishSubscriber {
     }
 }
 
-impl Subscriber for SloggishSubscriber {
+impl Collector for SloggishSubscriber {
     fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }

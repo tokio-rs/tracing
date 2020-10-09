@@ -1,4 +1,4 @@
-//! Subscribers collect and record trace data.
+//! Collectors collect and record trace data.
 use crate::{span, Event, LevelFilter, Metadata};
 
 use crate::stdlib::any::{Any, TypeId};
@@ -6,15 +6,15 @@ use crate::stdlib::any::{Any, TypeId};
 /// Trait representing the functions required to collect trace data.
 ///
 /// Crates that provide implementations of methods for collecting or recording
-/// trace data should implement the `Subscriber` interface. This trait is
+/// trace data should implement the `Collector` interface. This trait is
 /// intended to represent fundamental primitives for collecting trace events and
 /// spans — other libraries may offer utility functions and types to make
-/// subscriber implementations more modular or improve the ergonomics of writing
-/// subscribers.
+/// collector implementations more modular or improve the ergonomics of writing
+/// collectors.
 ///
-/// A subscriber is responsible for the following:
+/// A collector is responsible for the following:
 /// - Registering new spans as they are created, and providing them with span
-///   IDs. Implicitly, this means the subscriber may determine the strategy for
+///   IDs. Implicitly, this means the collector may determine the strategy for
 ///   determining span equality.
 /// - Recording the attachment of field values and follows-from annotations to
 ///   spans.
@@ -23,114 +23,114 @@ use crate::stdlib::any::{Any, TypeId};
 /// - Observing spans as they are entered, exited, and closed, and events as
 ///   they occur.
 ///
-/// When a span is entered or exited, the subscriber is provided only with the
+/// When a span is entered or exited, the collector is provided only with the
 /// [ID] with which it tagged that span when it was created. This means
-/// that it is up to the subscriber to determine whether and how span _data_ —
+/// that it is up to the collector to determine whether and how span _data_ —
 /// the fields and metadata describing the span — should be stored. The
 /// [`new_span`] function is called when a new span is created, and at that
-/// point, the subscriber _may_ choose to store the associated data if it will
+/// point, the collector _may_ choose to store the associated data if it will
 /// be referenced again. However, if the data has already been recorded and will
-/// not be needed by the implementations of `enter` and `exit`, the subscriber
+/// not be needed by the implementations of `enter` and `exit`, the collector
 /// may freely discard that data without allocating space to store it.
 ///
 /// ## Overriding default impls
 ///
-/// Some trait methods on `Subscriber` have default implementations, either in
-/// order to reduce the surface area of implementing `Subscriber`, or for
-/// backward-compatibility reasons. However, many subscribers will likely want
+/// Some trait methods on `Collector` have default implementations, either in
+/// order to reduce the surface area of implementing `Collector`, or for
+/// backward-compatibility reasons. However, many collectors will likely want
 /// to override these default implementations.
 ///
 /// The following methods are likely of interest:
 ///
 /// - [`register_callsite`] is called once for each callsite from which a span
 ///   event may originate, and returns an [`Interest`] value describing whether or
-///   not the subscriber wishes to see events or spans from that callsite. By
+///   not the collector wishes to see events or spans from that callsite. By
 ///   default, it calls [`enabled`], and returns `Interest::always()` if
 ///   `enabled` returns true, or `Interest::never()` if enabled returns false.
-///   However, if the subscriber's interest can change dynamically at runtime,
+///   However, if the collector's interest can change dynamically at runtime,
 ///   it may want to override this function to return `Interest::sometimes()`.
-///   Additionally, subscribers which wish to perform a behaviour once for each
+///   Additionally, collectors which wish to perform a behaviour once for each
 ///   callsite, such as allocating storage for data related to that callsite,
 ///   can perform it in `register_callsite`.
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
-///   spans, allowing subscribers to free storage for span data and to determine
+///   spans, allowing collectors to free storage for span data and to determine
 ///   when a span has _closed_ permanently (rather than being exited).
-///   Subscribers which store per-span data or which need to track span closures
+///   Collcetors which store per-span data or which need to track span closures
 ///   should override these functions together.
 ///
 /// [ID]: super::span::Id
-/// [`new_span`]: Subscriber::new_span
-/// [`register_callsite`]: Subscriber::register_callsite
+/// [`new_span`]: Collector::new_span
+/// [`register_callsite`]: Collector::register_callsite
 /// [`Interest`]: Interest
-/// [`enabled`]: Subscriber::enabled
-/// [`clone_span`]: Subscriber::clone_span
-/// [`try_close`]: Subscriber::try_close
-pub trait Subscriber: 'static {
+/// [`enabled`]: Collector::enabled
+/// [`clone_span`]: Collector::clone_span
+/// [`try_close`]: Collector::try_close
+pub trait Collector: 'static {
     // === Span registry methods ==============================================
 
-    /// Registers a new callsite with this subscriber, returning whether or not
-    /// the subscriber is interested in being notified about the callsite.
+    /// Registers a new callsite with this collector, returning whether or not
+    /// the collector is interested in being notified about the callsite.
     ///
-    /// By default, this function assumes that the subscriber's [filter]
+    /// By default, this function assumes that the collector's [filter]
     /// represents an unchanging view of its interest in the callsite. However,
-    /// if this is not the case, subscribers may override this function to
+    /// if this is not the case, collectors may override this function to
     /// indicate different interests, or to implement behaviour that should run
     /// once for every callsite.
     ///
     /// This function is guaranteed to be called at least once per callsite on
-    /// every active subscriber. The subscriber may store the keys to fields it
+    /// every active collector. The collector may store the keys to fields it
     /// cares about in order to reduce the cost of accessing fields by name,
     /// preallocate storage for that callsite, or perform any other actions it
     /// wishes to perform once for each callsite.
     ///
-    /// The subscriber should then return an [`Interest`], indicating
+    /// The collector should then return an [`Interest`], indicating
     /// whether it is interested in being notified about that callsite in the
-    /// future. This may be `Always` indicating that the subscriber always
+    /// future. This may be `Always` indicating that the collector always
     /// wishes to be notified about the callsite, and its filter need not be
-    /// re-evaluated; `Sometimes`, indicating that the subscriber may sometimes
+    /// re-evaluated; `Sometimes`, indicating that the collector may sometimes
     /// care about the callsite but not always (such as when sampling), or
-    /// `Never`, indicating that the subscriber never wishes to be notified about
-    /// that callsite. If all active subscribers return `Never`, a callsite will
-    /// never be enabled unless a new subscriber expresses interest in it.
+    /// `Never`, indicating that the collector never wishes to be notified about
+    /// that callsite. If all active collectors return `Never`, a callsite will
+    /// never be enabled unless a new collector expresses interest in it.
     ///
-    /// `Subscriber`s which require their filters to be run every time an event
+    /// `Collector`s which require their filters to be run every time an event
     /// occurs or a span is entered::exited should return `Interest::sometimes`.
-    /// If a subscriber returns `Interest::sometimes`, then its' [`enabled`] method
+    /// If a collector returns `Interest::sometimes`, then its' [`enabled`] method
     /// will be called every time an event or span is created from that callsite.
     ///
-    /// For example, suppose a sampling subscriber is implemented by
+    /// For example, suppose a sampling collector is implemented by
     /// incrementing a counter every time `enabled` is called and only returning
     /// `true` when the counter is divisible by a specified sampling rate. If
-    /// that subscriber returns `Interest::always` from `register_callsite`, then
+    /// that collector returns `Interest::always` from `register_callsite`, then
     /// the filter will not be re-evaluated once it has been applied to a given
     /// set of metadata. Thus, the counter will not be incremented, and the span
     /// or event that corresponds to the metadata will never be `enabled`.
     ///
-    /// `Subscriber`s that need to change their filters occasionally should call
+    /// `Collector`s that need to change their filters occasionally should call
     /// [`rebuild_interest_cache`] to re-evaluate `register_callsite` for all
     /// callsites.
     ///
-    /// Similarly, if a `Subscriber` has a filtering strategy that can be
+    /// Similarly, if a `Collector` has a filtering strategy that can be
     /// changed dynamically at runtime, it would need to re-evaluate that filter
     /// if the cached results have changed.
     ///
-    /// A subscriber which manages fanout to multiple other subscribers
-    /// should proxy this decision to all of its child subscribers,
+    /// A collector which manages fanout to multiple other collectors
+    /// should proxy this decision to all of its child collectors,
     /// returning `Interest::never` only if _all_ such children return
-    /// `Interest::never`. If the set of subscribers to which spans are
-    /// broadcast may change dynamically, the subscriber should also never
-    /// return `Interest::Never`, as a new subscriber may be added that _is_
+    /// `Interest::never`. If the set of collectors to which spans are
+    /// broadcast may change dynamically, the collector should also never
+    /// return `Interest::Never`, as a new collector may be added that _is_
     /// interested.
     ///
     /// # Notes
-    /// This function may be called again when a new subscriber is created or
+    /// This function may be called again when a new collector is created or
     /// when the registry is invalidated.
     ///
-    /// If a subscriber returns `Interest::never` for a particular callsite, it
+    /// If a collector returns `Interest::never` for a particular callsite, it
     /// _may_ still see spans and events originating from that callsite, if
-    /// another subscriber expressed interest in it.
+    /// another collector expressed interest in it.
     ///
     /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
@@ -150,12 +150,12 @@ pub trait Subscriber: 'static {
     ///
     /// By default, it is assumed that this filter needs only be evaluated once
     /// for each callsite, so it is called by [`register_callsite`] when each
-    /// callsite is registered. The result is used to determine if the subscriber
+    /// callsite is registered. The result is used to determine if the collector
     /// is always [interested] or never interested in that callsite. This is intended
     /// primarily as an optimization, so that expensive filters (such as those
     /// involving string search, et cetera) need not be re-evaluated.
     ///
-    /// However, if the subscriber's interest in a particular span or event may
+    /// However, if the collector's interest in a particular span or event may
     /// change, or depends on contexts only determined dynamically at runtime,
     /// then the `register_callsite` method should be overridden to return
     /// [`Interest::sometimes`]. In that case, this function will be called every
@@ -167,22 +167,22 @@ pub trait Subscriber: 'static {
     /// [`register_callsite`]: Self::register_callsite
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
-    /// Returns the highest [verbosity level][level] that this `Subscriber` will
-    /// enable, or `None`, if the subscriber does not implement level-based
+    /// Returns the highest [verbosity level][level] that this `Collector` will
+    /// enable, or `None`, if the collector does not implement level-based
     /// filtering or chooses not to implement this method.
     ///
     /// If this method returns a [`Level`][level], it will be used as a hint to
     /// determine the most verbose level that will be enabled. This will allow
     /// spans and events which are more verbose than that level to be skipped
-    /// more efficiently. Subscribers which perform filtering are strongly
+    /// more efficiently. collectors which perform filtering are strongly
     /// encouraged to provide an implementation of this method.
     ///
-    /// If the maximum level the subscriber will enable can change over the
+    /// If the maximum level the collector will enable can change over the
     /// course of its lifetime, it is free to return a different value from
     /// multiple invocations of this method. However, note that changes in the
     /// maximum level will **only** be reflected after the callsite [`Interest`]
     /// cache is rebuilt, by calling the [`callsite::rebuild_interest_cache`][rebuild]
-    /// function. Therefore, if the subscriber will change the value returned by
+    /// function. Therefore, if the collector will change the value returned by
     /// this method, it is responsible for ensuring that
     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
     /// level changes.
@@ -198,21 +198,21 @@ pub trait Subscriber: 'static {
     /// span being constructed.
     ///
     /// The provided [`Attributes`] contains any field values that were provided
-    /// when the span was created. The subscriber may pass a [visitor] to the
+    /// when the span was created. The collector may pass a [visitor] to the
     /// `Attributes`' [`record` method] to record these values.
     ///
     /// IDs are used to uniquely identify spans and events within the context of a
-    /// subscriber, so span equality will be based on the returned ID. Thus, if
-    /// the subscriber wishes for all spans with the same metadata to be
+    /// collector, so span equality will be based on the returned ID. Thus, if
+    /// the collector wishes for all spans with the same metadata to be
     /// considered equal, it should return the same ID every time it is given a
     /// particular set of metadata. Similarly, if it wishes for two separate
     /// instances of a span with the same metadata to *not* be equal, it should
     /// return a distinct ID every time this function is called, regardless of
     /// the metadata.
     ///
-    /// Note that the subscriber is free to assign span IDs based on whatever
+    /// Note that the collector is free to assign span IDs based on whatever
     /// scheme it sees fit. Any guarantees about uniqueness, ordering, or ID
-    /// reuse are left up to the subscriber implementation to determine.
+    /// reuse are left up to the collector implementation to determine.
     ///
     /// [span ID]: super::span::Id
     /// [`Attributes`]: super::span::Attributes
@@ -226,12 +226,12 @@ pub trait Subscriber: 'static {
     ///
     /// This method will be invoked when value is recorded on a span.
     /// Recording multiple values for the same field is possible,
-    /// but the actual behaviour is defined by the subscriber implementation.
+    /// but the actual behaviour is defined by the collector implementation.
     ///
     /// Keep in mind that a span might not provide a value
     /// for each field it declares.
     ///
-    /// The subscriber is expected to provide a [visitor] to the `Record`'s
+    /// The collector is expected to provide a [visitor] to the `Record`'s
     /// [`record` method] in order to record the added values.
     ///
     /// # Example
@@ -247,11 +247,11 @@ pub trait Subscriber: 'static {
     ///
     /// let mut span = span!("my_span", foo = 3, bar, baz);
     ///
-    /// // `Subscriber::record` will be called with a `Record`
+    /// // `Collector::record` will be called with a `Record`
     /// // containing "bar = false"
     /// span.record("bar", &false);
     ///
-    /// // `Subscriber::record` will be called with a `Record`
+    /// // `Collector::record` will be called with a `Record`
     /// // containing "baz = "a string""
     /// span.record("baz", &"a string");
     /// ```
@@ -273,10 +273,10 @@ pub trait Subscriber: 'static {
     /// executing. This is used to model causal relationships such as when a
     /// single future spawns several related background tasks, et cetera.
     ///
-    /// If the subscriber has spans corresponding to the given IDs, it should
+    /// If the collector has spans corresponding to the given IDs, it should
     /// record this relationship in whatever way it deems necessary. Otherwise,
     /// if one or both of the given span IDs do not correspond to spans that the
-    /// subscriber knows about, or if a cyclical relationship would be created
+    /// collector knows about, or if a cyclical relationship would be created
     /// (i.e., some span _a_ which proceeds some other span _b_ may not also
     /// follow from _b_), it may silently do nothing.
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id);
@@ -292,7 +292,7 @@ pub trait Subscriber: 'static {
     /// while `event` is called when a new event occurs.
     ///
     /// The provided `Event` struct contains any field values attached to the
-    /// event. The subscriber may pass a [visitor] to the `Event`'s
+    /// event. The collector may pass a [visitor] to the `Event`'s
     /// [`record` method] to record these values.
     ///
     /// [`Event`]: super::event::Event
@@ -303,8 +303,8 @@ pub trait Subscriber: 'static {
 
     /// Records that a span has been entered.
     ///
-    /// When entering a span, this method is called to notify the subscriber
-    /// that the span has been entered. The subscriber is provided with the
+    /// When entering a span, this method is called to notify the collector
+    /// that the span has been entered. The collector is provided with the
     /// [span ID] of the entered span, and should update any internal state
     /// tracking the current span accordingly.
     ///
@@ -313,8 +313,8 @@ pub trait Subscriber: 'static {
 
     /// Records that a span has been exited.
     ///
-    /// When exiting a span, this method is called to notify the subscriber
-    /// that the span has been exited. The subscriber is provided with the
+    /// When exiting a span, this method is called to notify the collector
+    /// that the span has been exited. The collector is provided with the
     /// [span ID] of the exited span, and should update any internal state
     /// tracking the current span accordingly.
     ///
@@ -323,17 +323,17 @@ pub trait Subscriber: 'static {
     /// [span ID]: super::span::Id
     fn exit(&self, span: &span::Id);
 
-    /// Notifies the subscriber that a [span ID] has been cloned.
+    /// Notifies the collector that a [span ID] has been cloned.
     ///
     /// This function is guaranteed to only be called with span IDs that were
-    /// returned by this subscriber's `new_span` function.
+    /// returned by this collector's `new_span` function.
     ///
     /// Note that the default implementation of this function this is just the
     /// identity function, passing through the identifier. However, it can be
     /// used in conjunction with [`try_close`] to track the number of handles
     /// capable of `enter`ing a span. When all the handles have been dropped
     /// (i.e., `try_close` has been called one more time than `clone_span` for a
-    /// given ID), the subscriber may assume that the span will not be entered
+    /// given ID), the collector may assume that the span will not be entered
     /// again. It is then free to deallocate storage for data associated with
     /// that span, write data from that span to IO, and so on.
     ///
@@ -342,39 +342,39 @@ pub trait Subscriber: 'static {
     /// what that means for the specified pointer.
     ///
     /// [span ID]: super::span::Id
-    /// [`try_close`]: Subscriber::try_close
+    /// [`try_close`]: Collector::try_close
     fn clone_span(&self, id: &span::Id) -> span::Id {
         id.clone()
     }
 
     /// **This method is deprecated.**
     ///
-    /// Using `drop_span` may result in subscribers composed using
-    /// `tracing-subscriber` crate's `Layer` trait from observing close events.
+    /// Using `drop_span` may result in collectors composed using
+    /// `tracing-subscriber` crate's `Subscriber` trait from observing close events.
     /// Use [`try_close`] instead.
     ///
     /// The default implementation of this function does nothing.
     ///
-    /// [`try_close`]: Subscriber::try_close
-    #[deprecated(since = "0.1.2", note = "use `Subscriber::try_close` instead")]
+    /// [`try_close`]: Collector::try_close
+    #[deprecated(since = "0.1.2", note = "use `Collector::try_close` instead")]
     fn drop_span(&self, _id: span::Id) {}
 
-    /// Notifies the subscriber that a [`span ID`] has been dropped, and returns
+    /// Notifies the collector that a [`span ID`] has been dropped, and returns
     /// `true` if there are now 0 IDs that refer to that span.
     ///
     /// Higher-level libraries providing functionality for composing multiple
-    /// subscriber implementations may use this return value to notify any
-    /// "layered" subscribers that this subscriber considers the span closed.
+    /// collector implementations may use this return value to notify any
+    /// "layered" collectors that this collector considers the span closed.
     ///
-    /// The default implementation of this method calls the subscriber's
+    /// The default implementation of this method calls the collector's
     /// [`drop_span`] method and returns `false`. This means that, unless the
-    /// subscriber overrides the default implementation, close notifications
-    /// will never be sent to any layered subscribers. In general, if the
-    /// subscriber tracks reference counts, this method should be implemented,
+    /// collector overrides the default implementation, close notifications
+    /// will never be sent to any layered collectors. In general, if the
+    /// collector tracks reference counts, this method should be implemented,
     /// rather than `drop_span`.
     ///
     /// This function is guaranteed to only be called with span IDs that were
-    /// returned by this subscriber's `new_span` function.
+    /// returned by this collector's `new_span` function.
     ///
     /// It's guaranteed that if this function has been called once more than the
     /// number of times `clone_span` was called with the same `id`, then no more
@@ -382,7 +382,7 @@ pub trait Subscriber: 'static {
     /// can be used in conjunction with [`clone_span`] to track the number of
     /// handles capable of `enter`ing a span. When all the handles have been
     /// dropped (i.e., `try_close` has been called one more time than
-    /// `clone_span` for a given ID), the subscriber may assume that the span
+    /// `clone_span` for a given ID), the collector may assume that the span
     /// will not be entered again, and should return `true`. It is then free to
     /// deallocate storage for data associated with that span, write data from
     /// that span to IO, and so on.
@@ -393,23 +393,23 @@ pub trait Subscriber: 'static {
     /// was dropped due to a thread unwinding.
     ///
     /// [span ID]: super::span::Id
-    /// [`clone_span`]: Subscriber::clone_span
-    /// [`drop_span`]: Subscriber::drop_span
+    /// [`clone_span`]: Collector::clone_span
+    /// [`drop_span`]: Collector::drop_span
     fn try_close(&self, id: span::Id) -> bool {
         #[allow(deprecated)]
         self.drop_span(id);
         false
     }
 
-    /// Returns a type representing this subscriber's view of the current span.
+    /// Returns a type representing this collector's view of the current span.
     ///
-    /// If subscribers track a current span, they should override this function
+    /// If collectors track a current span, they should override this function
     /// to return [`Current::new`] if the thread from which this method is
     /// called is inside a span, or [`Current::none`] if the thread is not
     /// inside a span.
     ///
-    /// By default, this returns a value indicating that the subscriber
-    /// does **not** track what span is current. If the subscriber does not
+    /// By default, this returns a value indicating that the collector
+    /// does **not** track what span is current. If the collector does not
     /// implement a current span, it should not override this method.
     ///
     /// [`Current::new`]: super::span::Current::new
@@ -423,18 +423,18 @@ pub trait Subscriber: 'static {
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
     /// `*const` pointer to that type. Otherwise, returns `None`.
     ///
-    /// If you wish to downcast a `Subscriber`, it is strongly advised to use
+    /// If you wish to downcast a `Collector`, it is strongly advised to use
     /// the safe API provided by [`downcast_ref`] instead.
     ///
     /// This API is required for `downcast_raw` to be a trait method; a method
     /// signature like [`downcast_ref`] (with a generic type parameter) is not
-    /// object-safe, and thus cannot be a trait method for `Subscriber`. This
-    /// means that if we only exposed `downcast_ref`, `Subscriber`
+    /// object-safe, and thus cannot be a trait method for `Collector`. This
+    /// means that if we only exposed `downcast_ref`, `Collector`
     /// implementations could not override the downcasting behavior
     ///
-    /// This method may be overridden by "fan out" or "chained" subscriber
+    /// This method may be overridden by "fan out" or "chained" collector
     /// implementations which consist of multiple composed types. Such
-    /// subscribers might allow `downcast_raw` by returning references to those
+    /// collectors might allow `downcast_raw` by returning references to those
     /// component if they contain components with the given `TypeId`.
     ///
     /// # Safety
@@ -454,13 +454,13 @@ pub trait Subscriber: 'static {
     }
 }
 
-impl dyn Subscriber {
-    /// Returns `true` if this `Subscriber` is the same type as `T`.
+impl dyn Collector {
+    /// Returns `true` if this `Collector` is the same type as `T`.
     pub fn is<T: Any>(&self) -> bool {
         self.downcast_ref::<T>().is_some()
     }
 
-    /// Returns some reference to this `Subscriber` value if it is of type `T`,
+    /// Returns some reference to this `Collector` value if it is of type `T`,
     /// or `None` if it isn't.
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         unsafe {
@@ -474,13 +474,13 @@ impl dyn Subscriber {
     }
 }
 
-/// Indicates a [`Subscriber`]'s interest in a particular callsite.
+/// Indicates a [`Collector`]'s interest in a particular callsite.
 ///
-/// `Subscriber`s return an `Interest` from their [`register_callsite`] methods
+/// `Collector`s return an `Interest` from their [`register_callsite`] methods
 /// in order to determine whether that span should be enabled or disabled.
 ///
-/// [`Subscriber`]: super::Subscriber
-/// [`register_callsite`]: super::Subscriber::register_callsite
+/// [`Collector`]: super::Collector
+/// [`register_callsite`]: super::Collector::register_callsite
 #[derive(Clone, Debug)]
 pub struct Interest(InterestKind);
 
@@ -492,53 +492,53 @@ enum InterestKind {
 }
 
 impl Interest {
-    /// Returns an `Interest` indicating that the subscriber is never interested
+    /// Returns an `Interest` indicating that the collector is never interested
     /// in being notified about a callsite.
     ///
-    /// If all active subscribers are `never()` interested in a callsite, it will
-    /// be completely disabled unless a new subscriber becomes active.
+    /// If all active collectors are `never()` interested in a callsite, it will
+    /// be completely disabled unless a new collector becomes active.
     #[inline]
     pub fn never() -> Self {
         Interest(InterestKind::Never)
     }
 
-    /// Returns an `Interest` indicating the subscriber is sometimes interested
+    /// Returns an `Interest` indicating the collector is sometimes interested
     /// in being notified about a callsite.
     ///
-    /// If all active subscribers are `sometimes` or `never` interested in a
-    /// callsite, the currently active subscriber will be asked to filter that
+    /// If all active collectors are `sometimes` or `never` interested in a
+    /// callsite, the currently active collector will be asked to filter that
     /// callsite every time it creates a span. This will be the case until a new
-    /// subscriber expresses that it is `always` interested in the callsite.
+    /// collector expresses that it is `always` interested in the callsite.
     #[inline]
     pub fn sometimes() -> Self {
         Interest(InterestKind::Sometimes)
     }
 
-    /// Returns an `Interest` indicating the subscriber is always interested in
+    /// Returns an `Interest` indicating the collector is always interested in
     /// being notified about a callsite.
     ///
-    /// If any subscriber expresses that it is `always()` interested in a given
+    /// If any collector expresses that it is `always()` interested in a given
     /// callsite, then the callsite will always be enabled.
     #[inline]
     pub fn always() -> Self {
         Interest(InterestKind::Always)
     }
 
-    /// Returns `true` if the subscriber is never interested in being notified
+    /// Returns `true` if the collector is never interested in being notified
     /// about this callsite.
     #[inline]
     pub fn is_never(&self) -> bool {
         matches!(self.0, InterestKind::Never)
     }
 
-    /// Returns `true` if the subscriber is sometimes interested in being notified
+    /// Returns `true` if the collector is sometimes interested in being notified
     /// about this callsite.
     #[inline]
     pub fn is_sometimes(&self) -> bool {
         matches!(self.0, InterestKind::Sometimes)
     }
 
-    /// Returns `true` if the subscriber is always interested in being notified
+    /// Returns `true` if the collector is always interested in being notified
     /// about this callsite.
     #[inline]
     pub fn is_always(&self) -> bool {
@@ -549,8 +549,8 @@ impl Interest {
     ///
     /// If both interests are the same, this propagates that interest.
     /// Otherwise, if they differ, the result must always be
-    /// `Interest::sometimes` --- if the two subscribers differ in opinion, we
-    /// will have to ask the current subscriber what it thinks, no matter what.
+    /// `Interest::sometimes` --- if the two collectors differ in opinion, we
+    /// will have to ask the current collector what it thinks, no matter what.
     pub(crate) fn and(self, rhs: Interest) -> Self {
         if self.0 == rhs.0 {
             self

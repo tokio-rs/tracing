@@ -2,7 +2,7 @@ use opentelemetry::{api, api::HttpTextFormat};
 use std::collections::HashMap;
 use tracing::span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::subscriber::CollectorExt;
 use tracing_subscriber::Registry;
 
 fn make_request(_cx: api::Context) {
@@ -27,7 +27,7 @@ fn main() {
     // Propagator can be swapped with trace context propagator binary propagator, etc.
     let propagator = api::B3Propagator::new();
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collector::with_default(subscriber, || {
         // Extract from request headers, or any type that impls `opentelemetry::api::Carrier`
         let parent_context = propagator.extract(&build_example_carrier());
 

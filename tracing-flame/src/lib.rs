@@ -1,4 +1,4 @@
-//! A Tracing [Layer][`FlameLayer`] for generating a folded stack trace for generating flamegraphs
+//! A Tracing [Subscriber][`FlameSubscriber`] for generating a folded stack trace for generating flamegraphs
 //! and flamecharts with [`inferno`]
 //!
 //! # Overview
@@ -20,32 +20,32 @@
 //! This crate is meant to be used in a two step process:
 //!
 //! 1. Capture textual representation of the spans that are entered and exited
-//!    with [`FlameLayer`].
+//!    with [`FlameSubscriber`].
 //! 2. Feed the textual representation into `inferno-flamegraph` to generate the
 //!    flamegraph or flamechart.
 //!
-//! *Note*: when using a buffered writer as the writer for a `FlameLayer`, it is necessary to
+//! *Note*: when using a buffered writer as the writer for a `FlameSubscriber`, it is necessary to
 //! ensure that the buffer has been flushed before the data is passed into
 //! [`inferno-flamegraph`]. For more details on how to flush the internal writer
-//! of the `FlameLayer`, see the docs for [`FlushGuard`].
+//! of the `FlameSubscriber`, see the docs for [`FlushGuard`].
 //!
-//! ## Layer Setup
+//! ## Subscriber Setup
 //!
 //! ```rust
 //! use std::{fs::File, io::BufWriter};
-//! use tracing_flame::FlameLayer;
+//! use tracing_flame::FlameSubscriber;
 //! use tracing_subscriber::{registry::Registry, prelude::*, fmt};
 //!
 //! fn setup_global_subscriber() -> impl Drop {
-//!     let fmt_layer = fmt::Layer::default();
+//!     let fmt_subscriber = fmt::Subscriber::default();
 //!
-//!     let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
+//!     let (flame_subscriber, _guard) = FlameSubscriber::with_file("./tracing.folded").unwrap();
 //!
-//!     let subscriber = Registry::default()
-//!         .with(fmt_layer)
-//!         .with(flame_layer);
+//!     let collector = Registry::default()
+//!         .with(fmt_subscriber)
+//!         .with(flame_subscriber);
 //!
-//!     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+//!     tracing::collector::set_global_default(collector).expect("Could not set global default");
 //!     _guard
 //! }
 //!
@@ -53,7 +53,7 @@
 //! ```
 //!
 //! As an alternative, you can provide _any_ type that implements `std::io::Write` to
-//! `FlameLayer::new`.
+//! `FlameSubscriber::new`.
 //!
 //! ## Generating the Image
 //!
@@ -153,11 +153,11 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::span;
-use tracing::Subscriber;
-use tracing_subscriber::layer::Context;
+use tracing::Collector;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
-use tracing_subscriber::Layer;
+use tracing_subscriber::subscriber::Context;
+use tracing_subscriber::Subscriber;
 
 mod error;
 
@@ -179,7 +179,7 @@ thread_local! {
     };
 }
 
-/// A `Layer` that records span open/close events as folded flamegraph stack
+/// A `Subscriber` that records span open/close events as folded flamegraph stack
 /// samples.
 ///
 /// The output of `FlameLayer` emulates the output of commands like `perf` once
@@ -214,7 +214,7 @@ thread_local! {
 /// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
 /// [`FlushGuard`]: struct.FlushGuard.html
 #[derive(Debug)]
-pub struct FlameLayer<S, W> {
+pub struct FlameSubscriber<S, W> {
     out: Arc<Mutex<W>>,
     config: Config,
     _inner: PhantomData<S>,
@@ -253,12 +253,12 @@ where
     out: Arc<Mutex<W>>,
 }
 
-impl<S, W> FlameLayer<S, W>
+impl<S, W> FlameSubscriber<S, W>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    /// Returns a new `FlameLayer` that outputs all folded stack samples to the
+    /// Returns a new `FlameSubscriber` that outputs all folded stack samples to the
     /// provided writer.
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
@@ -271,7 +271,7 @@ where
         }
     }
 
-    /// Returns a `FlushGuard` which will flush the `FlameLayer`'s writer when
+    /// Returns a `FlushGuard` which will flush the `FlameSubscriber`'s writer when
     /// it is dropped, or when `flush` is manually invoked on the guard.
     pub fn flush_on_drop(&self) -> FlushGuard<W> {
         FlushGuard {
@@ -317,7 +317,7 @@ impl<W> FlushGuard<W>
 where
     W: Write + 'static,
 {
-    /// Flush the internal writer of the `FlameLayer`, ensuring that all
+    /// Flush the internal writer of the `FlameSubscriber`, ensuring that all
     /// intermediately buffered contents reach their destination.
     pub fn flush(&self) -> Result<(), Error> {
         let mut guard = match self.out.lock() {
@@ -347,11 +347,11 @@ where
     }
 }
 
-impl<S> FlameLayer<S, BufWriter<File>>
+impl<S> FlameSubscriber<S, BufWriter<File>>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
 {
-    /// Constructs a `FlameLayer` that outputs to a `BufWriter` to the given path, and a
+    /// Constructs a `FlameSubscriber` that outputs to a `BufWriter` to the given path, and a
     /// `FlushGuard` to ensure the writer is flushed.
     pub fn with_file(path: impl AsRef<Path>) -> Result<(Self, FlushGuard<BufWriter<File>>), Error> {
         let path = path.as_ref();
@@ -368,9 +368,9 @@ where
     }
 }
 
-impl<S, W> Layer<S> for FlameLayer<S, W>
+impl<S, W> Subscriber<S> for FlameSubscriber<S, W>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
@@ -455,9 +455,9 @@ where
     }
 }
 
-impl<S, W> FlameLayer<S, W>
+impl<S, W> FlameSubscriber<S, W>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     fn time_since_last_event(&self) -> Duration {
@@ -475,7 +475,7 @@ where
 
 fn write<S>(dest: &mut String, span: SpanRef<'_, S>) -> fmt::Result
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collector + for<'span> LookupSpan<'span>,
 {
     if let Some(module_path) = span.metadata().module_path() {
         write!(dest, "{}::", module_path)?;
