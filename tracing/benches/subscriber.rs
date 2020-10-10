@@ -111,7 +111,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("event", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collector::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 tracing::event!(Level::TRACE, "hello");
             });

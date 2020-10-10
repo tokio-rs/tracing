@@ -6,10 +6,10 @@ use tracing::Level;
 
 use tracing::{span, Event, Id, Metadata};
 
-/// A subscriber that is enabled but otherwise does nothing.
-struct EnabledSubscriber;
+/// A collector that is enabled but otherwise does nothing.
+struct EnabledCollector;
 
-impl tracing::Subscriber for EnabledSubscriber {
+impl tracing::Collector for EnabledCollector {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)
@@ -44,8 +44,8 @@ impl tracing::Subscriber for EnabledSubscriber {
 const N_SPANS: usize = 100;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut c = c.benchmark_group("global/subscriber");
-    let _ = tracing::subscriber::set_global_default(EnabledSubscriber);
+    let mut c = c.benchmark_group("global/collector");
+    let _ = tracing::collector::set_global_default(EnabledCollector);
     c.bench_function("span_no_fields", |b| b.iter(|| span!(Level::TRACE, "span")));
 
     c.bench_function("event", |b| {
@@ -85,7 +85,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 }
 
 fn bench_dispatch(c: &mut Criterion) {
-    let _ = tracing::subscriber::set_global_default(EnabledSubscriber);
+    let _ = tracing::collector::set_global_default(EnabledCollector);
     let mut group = c.benchmark_group("global/dispatch");
     group.bench_function("get_ref", |b| {
         b.iter(|| {

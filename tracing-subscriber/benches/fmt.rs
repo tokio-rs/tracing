@@ -86,10 +86,10 @@ fn bench_thrpt(c: &mut Criterion, name: &'static str, mut f: impl FnMut(&mut Gro
 }
 
 fn mk_dispatch() -> tracing::Dispatch {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    let collector = tracing_subscriber::fmt::Collector::builder()
         .with_writer(NoWriter::new)
         .finish();
-    tracing::Dispatch::new(subscriber)
+    tracing::Dispatch::new(collector)
 }
 
 fn bench_event(c: &mut Criterion) {
