@@ -133,9 +133,8 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
-    span,
-    subscriber::{self, Subscriber},
-    Event, LevelFilter, Metadata,
+    collector::{self, Collector},
+    span, Event, LevelFilter, Metadata,
 };
 
 use core::{
@@ -157,20 +156,20 @@ use alloc::sync::Arc;
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
 
-/// `Dispatch` trace data to a [`Subscriber`].
+/// `Dispatch` trace data to a [`Collector`].
 #[derive(Clone)]
 pub struct Dispatch {
     #[cfg(feature = "alloc")]
-    subscriber: Kind<Arc<dyn Subscriber + Send + Sync>>,
+    collector: Kind<Arc<dyn Collector + Send + Sync>>,
 
     #[cfg(not(feature = "alloc"))]
-    subscriber: &'static (dyn Subscriber + Send + Sync),
+    collector: &'static (dyn Collector + Send + Sync),
 }
 
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 enum Kind<T> {
-    Global(&'static (dyn Subscriber + Send + Sync)),
+    Global(&'static (dyn Collector + Send + Sync)),
     Scoped(T),
 }
 
@@ -194,17 +193,17 @@ const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
     #[cfg(feature = "alloc")]
-    subscriber: Kind::Global(&NO_SUBSCRIBER),
+    collector: Kind::Global(&NO_COLLECTOR),
     #[cfg(not(feature = "alloc"))]
-    subscriber: &NO_SUBSCRIBER,
+    collector: &NO_COLLECTOR,
 };
 static NONE: Dispatch = Dispatch {
     #[cfg(feature = "alloc")]
-    subscriber: Kind::Global(&NO_SUBSCRIBER),
+    collector: Kind::Global(&NO_COLLECTOR),
     #[cfg(not(feature = "alloc"))]
-    subscriber: &NO_SUBSCRIBER,
+    collector: &NO_COLLECTOR,
 };
-static NO_SUBSCRIBER: NoSubscriber = NoSubscriber;
+static NO_COLLECTOR: NoCollector = NoCollector;
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
@@ -311,23 +310,23 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
     {
         #[cfg(feature = "alloc")]
-        let subscriber = {
-            let subscriber = match dispatcher.subscriber {
+        let collector = {
+            let collector = match dispatcher.collector {
                 Kind::Global(s) => s,
                 Kind::Scoped(s) => unsafe {
-                    // safety: this leaks the subscriber onto the heap. the
+                    // safety: this leaks the collector onto the heap. the
                     // reference count will always be at least 1.
                     &*Arc::into_raw(s)
                 },
             };
-            Kind::Global(subscriber)
+            Kind::Global(collector)
         };
 
         #[cfg(not(feature = "alloc"))]
-        let subscriber = dispatcher.subscriber;
+        let collector = dispatcher.collector;
 
         unsafe {
-            GLOBAL_DISPATCH = Dispatch { subscriber };
+            GLOBAL_DISPATCH = Dispatch { collector };
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);
@@ -381,7 +380,7 @@ where
         return f(get_global());
     }
 
-    // While this guard is active, additional calls to subscriber functions on
+    // While this guard is active, additional calls to collector functions on
     // the default dispatcher will not be able to access the dispatch context.
     // Dropping the guard will allow the dispatch context to be re-entered.
     struct Entered<'a>(&'a Cell<bool>);
@@ -399,7 +398,7 @@ where
 
                 let mut default = state.default.borrow_mut();
 
-                if default.is::<NoSubscriber>() {
+                if default.is::<NoCollector>() {
                     // don't redo this call on the next check
                     *default = get_global().clone();
                 }
@@ -463,7 +462,7 @@ pub(crate) fn get_global() -> &'static Dispatch {
 }
 
 #[cfg(feature = "std")]
-pub(crate) struct Registrar(Kind<Weak<dyn Subscriber + Send + Sync>>);
+pub(crate) struct Registrar(Kind<Weak<dyn Collector + Send + Sync>>);
 
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
@@ -471,43 +470,43 @@ impl Dispatch {
     pub fn none() -> Self {
         Dispatch {
             #[cfg(feature = "alloc")]
-            subscriber: Kind::Global(&NO_SUBSCRIBER),
+            collector: Kind::Global(&NO_COLLECTOR),
             #[cfg(not(feature = "alloc"))]
-            subscriber: &NO_SUBSCRIBER,
+            collector: &NO_COLLECTOR,
         }
     }
 
     /// Returns a `Dispatch` that forwards to the given [`Collector`].
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`Collector`]: super::subscriber::Collector
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    pub fn new<S>(subscriber: S) -> Self
+    pub fn new<S>(collector: S) -> Self
     where
         S: Collector + Send + Sync + 'static,
     {
         let me = Dispatch {
-            subscriber: Kind::Scoped(Arc::new(subscriber)),
+            collector: Kind::Scoped(Arc::new(collector)),
         };
         crate::callsite::register_dispatch(&me);
         me
     }
 
-    /// Returns a `Dispatch` that forwards to the given static [`Subscriber`].
+    /// Returns a `Dispatch` that forwards to the given static [`Collector`].
     ///
     /// Unlike [`Dispatch::new`], this function is always available on all
     /// platforms, even when the `std` or `alloc` features are disabled.
     ///
-    /// In order to use `from_static`, the `Subscriber` itself must be stored in
+    /// In order to use `from_static`, the `Collector` itself must be stored in
     /// a static. For example:
     ///
     /// ```rust
-    /// struct MySubscriber {
+    /// struct MyCollector {
     ///    // ...
     /// }
     ///
     /// # use tracing_core::{span::{Id, Attributes, Record}, Event, Metadata};
-    /// impl tracing_core::Subscriber for MySubscriber {
+    /// impl tracing_core::Collector for MyCollector {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
@@ -518,21 +517,21 @@ impl Dispatch {
     /// #   fn exit(&self, _: &Id) {}
     /// }
     ///
-    /// static SUBSCRIBER: MySubscriber = MySubscriber {
+    /// static COLLECTOR: MyCollector = MyCollector {
     ///     // ...
     /// };
     ///
     /// fn main() {
     ///     use tracing_core::dispatcher::{self, Dispatch};
     ///
-    ///     let dispatch = Dispatch::from_static(&SUBSCRIBER);
+    ///     let dispatch = Dispatch::from_static(&COLLECTOR);
     ///
     ///     dispatcher::set_global_default(dispatch)
-    ///         .expect("no global default subscriber should have been set previously!");
+    ///         .expect("no global default collector should have been set previously!");
     /// }
     /// ```
     ///
-    /// Constructing the subscriber in a static initializer may make some forms
+    /// Constructing the collector in a static initializer may make some forms
     /// of runtime configuration more challenging. If this is the case, users
     /// with access to `liballoc` or the Rust standard library are encouraged to
     /// use [`Dispatch::new`] rather than `from_static`. `no_std` users who
@@ -540,23 +539,23 @@ impl Dispatch {
     /// the [`lazy_static`] crate, or another library which allows lazy
     /// initialization of statics.
     ///
-    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`Collector`]: super::collector::Collector
     /// [`Dispatch::new`]: Dispatch::new
     /// [`lazy_static`]: https://crates.io/crates/lazy_static
-    pub fn from_static(subscriber: &'static (dyn Subscriber + Send + Sync)) -> Self {
+    pub fn from_static(collector: &'static (dyn Collector + Send + Sync)) -> Self {
         #[cfg(feature = "alloc")]
         let me = Self {
-            subscriber: Kind::Global(subscriber),
+            collector: Kind::Global(collector),
         };
         #[cfg(not(feature = "alloc"))]
-        let me = Self { subscriber };
+        let me = Self { collector };
         crate::callsite::register_dispatch(&me);
         me
     }
 
     #[cfg(feature = "std")]
     pub(crate) fn registrar(&self) -> Registrar {
-        Registrar(match self.subscriber {
+        Registrar(match self.collector {
             Kind::Scoped(ref s) => Kind::Scoped(Arc::downgrade(s)),
             Kind::Global(s) => Kind::Global(s),
         })
@@ -564,8 +563,8 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(feature = "alloc")]
-    fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
-        match self.subscriber {
+    fn collector(&self) -> &(dyn Collector + Send + Sync) {
+        match self.collector {
             Kind::Scoped(ref s) => Arc::deref(s),
             Kind::Global(s) => s,
         }
@@ -573,8 +572,8 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(not(feature = "alloc"))]
-    fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
-        self.subscriber
+    fn collector(&self) -> &(dyn Collector + Send + Sync) {
+        self.collector
     }
 
     /// Registers a new callsite with this collector, returning whether or not
@@ -586,8 +585,8 @@ impl Dispatch {
     /// [`Collector`]: super::collector::Collector
     /// [`register_callsite`]: super::collector::Collector::register_callsite
     #[inline]
-    pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> subscriber::Interest {
-        self.subscriber().register_callsite(metadata)
+    pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> collector::Interest {
+        self.collector().register_callsite(metadata)
     }
 
     /// Returns the highest [verbosity level][level] that this [`Collector`] will
@@ -603,7 +602,7 @@ impl Dispatch {
     // TODO(eliza): consider making this a public API?
     #[inline]
     pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.subscriber().max_level_hint()
+        self.collector().max_level_hint()
     }
 
     /// Record the construction of a new span, returning a new [ID] for the
@@ -617,7 +616,7 @@ impl Dispatch {
     /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
-        self.subscriber().new_span(span)
+        self.collector().new_span(span)
     }
 
     /// Record a set of values on a span.
@@ -629,7 +628,7 @@ impl Dispatch {
     /// [`record`]: super::collector::Collector::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.subscriber().record(span, values)
+        self.collector().record(span, values)
     }
 
     /// Adds an indication that `span` follows from the span with the id
@@ -642,7 +641,7 @@ impl Dispatch {
     /// [`record_follows_from`]: super::collector::Collector::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
-        self.subscriber().record_follows_from(span, follows)
+        self.collector().record_follows_from(span, follows)
     }
 
     /// Returns true if a span with the specified [metadata] would be
@@ -656,7 +655,7 @@ impl Dispatch {
     /// [`enabled`]: super::collector::Collector::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.subscriber().enabled(metadata)
+        self.collector().enabled(metadata)
     }
 
     /// Records that an [`Event`] has occurred.
@@ -669,7 +668,7 @@ impl Dispatch {
     /// [`event`]: super::collector::Collector::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        self.subscriber().event(event)
+        self.collector().event(event)
     }
 
     /// Records that a span has been can_enter.
@@ -681,7 +680,7 @@ impl Dispatch {
     /// [`enter`]: super::collector::Collector::enter
     #[inline]
     pub fn enter(&self, span: &span::Id) {
-        self.subscriber().enter(span);
+        self.collector().enter(span);
     }
 
     /// Records that a span has been exited.
@@ -693,7 +692,7 @@ impl Dispatch {
     /// [`exit`]: super::collector::Collector::exit
     #[inline]
     pub fn exit(&self, span: &span::Id) {
-        self.subscriber().exit(span);
+        self.collector().exit(span);
     }
 
     /// Notifies the collector that a [span ID] has been cloned.
@@ -712,7 +711,7 @@ impl Dispatch {
     /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.subscriber().clone_span(&id)
+        self.collector().clone_span(&id)
     }
 
     /// Notifies the collector that a [span ID] has been dropped.
@@ -744,7 +743,7 @@ impl Dispatch {
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
     pub fn drop_span(&self, id: span::Id) {
         #[allow(deprecated)]
-        self.subscriber().drop_span(id);
+        self.collector().drop_span(id);
     }
 
     /// Notifies the collector that a [span ID] has been dropped, and returns
@@ -764,7 +763,7 @@ impl Dispatch {
     /// [`new_span`]: super::collector::Collector::new_span
     #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
-        self.subscriber().try_close(id)
+        self.collector().try_close(id)
     }
 
     /// Returns a type representing this collector's view of the current span.
@@ -775,21 +774,21 @@ impl Dispatch {
     /// [`current`]: super::collector::Collector::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
-        self.subscriber().current_span()
+        self.collector().current_span()
     }
 
     /// Returns `true` if this `Dispatch` forwards to a `Collector` of type
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Subscriber::is::<T>(&*self.subscriber())
+        Collector::is::<T>(&*self.collector())
     }
 
     /// Returns some reference to the `Collector` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Subscriber::downcast_ref(&*self.subscriber())
+        Collector::downcast_ref(&*self.collector())
     }
 }
 
@@ -817,8 +816,8 @@ where
     }
 }
 
-struct NoSubscriber;
-impl Collector for NoSubscriber {
+struct NoCollector;
+impl Collector for NoCollector {
     #[inline]
     fn register_callsite(&self, _: &'static Metadata<'static>) -> collector::Interest {
         collector::Interest::never()
@@ -848,10 +847,10 @@ impl Registrar {
     pub(crate) fn upgrade(&self) -> Option<Dispatch> {
         match self.0 {
             Kind::Global(s) => Some(Dispatch {
-                subscriber: Kind::Global(s),
+                collector: Kind::Global(s),
             }),
             Kind::Scoped(ref s) => s.upgrade().map(|s| Dispatch {
-                subscriber: Kind::Scoped(s),
+                collector: Kind::Scoped(s),
             }),
         }
     }
@@ -897,7 +896,7 @@ impl<'a> Entered<'a> {
     fn current(&self) -> RefMut<'a, Dispatch> {
         let mut default = self.0.default.borrow_mut();
 
-        if default.is::<NoSubscriber>() {
+        if default.is::<NoCollector>() {
             // don't redo this call on the next check
             *default = get_global().clone();
         }
@@ -945,14 +944,14 @@ mod test {
 
     #[test]
     fn dispatch_is() {
-        let dispatcher = Dispatch::from_static(&NO_SUBSCRIBER);
-        assert!(dispatcher.is::<NoSubscriber>());
+        let dispatcher = Dispatch::from_static(&NO_COLLECTOR);
+        assert!(dispatcher.is::<NoCollector>());
     }
 
     #[test]
     fn dispatch_downcasts() {
-        let dispatcher = Dispatch::from_static(&NO_SUBSCRIBER);
-        assert!(dispatcher.downcast_ref::<NoSubscriber>().is_some());
+        let dispatcher = Dispatch::from_static(&NoCollector);
+        assert!(dispatcher.downcast_ref::<NoCollector>().is_some());
     }
 
     struct TestCallsite;
@@ -1027,8 +1026,8 @@ mod test {
             });
         }
 
-        struct TestSubscriber;
-        impl Collector for TestSubscriber {
+        struct TestCollector;
+        impl Collector for TestCollector {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -1055,20 +1054,20 @@ mod test {
             fn exit(&self, _: &span::Id) {}
         }
 
-        with_default(&Dispatch::new(TestSubscriber), mk_span)
+        with_default(&Dispatch::new(TestCollector), mk_span)
     }
 
     #[test]
     fn default_no_collector() {
         let default_dispatcher = Dispatch::default();
-        assert!(default_dispatcher.is::<NoSubscriber>());
+        assert!(default_dispatcher.is::<NoCollector>());
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn default_dispatch() {
-        struct TestSubscriber;
-        impl Collector for TestSubscriber {
+        struct TestCollector;
+        impl Collector for TestCollector {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -1087,12 +1086,12 @@ mod test {
 
             fn exit(&self, _: &span::Id) {}
         }
-        let guard = set_default(&Dispatch::new(TestSubscriber));
+        let guard = set_default(&Dispatch::new(TestCollector));
         let default_dispatcher = Dispatch::default();
-        assert!(default_dispatcher.is::<TestSubscriber>());
+        assert!(default_dispatcher.is::<TestCollector>());
 
         drop(guard);
         let default_dispatcher = Dispatch::default();
-        assert!(default_dispatcher.is::<NoSubscriber>());
+        assert!(default_dispatcher.is::<NoCollector>());
     }
 }

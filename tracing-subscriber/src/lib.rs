@@ -120,7 +120,6 @@ pub use filter::EnvFilter;
 pub use subscriber::Subscriber;
 
 cfg_feature!("fmt", {
-    pub mod fmt;
     pub use fmt::fmt;
     pub use fmt::Subscriber as FmtSubscriber;
 });

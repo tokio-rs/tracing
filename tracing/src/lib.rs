@@ -944,7 +944,6 @@ pub use tracing_attributes::instrument;
 mod macros;
 
 pub mod collector;
-pub mod collector;
 pub mod dispatcher;
 pub mod field;
 /// Attach a span to a `std::future::Future`.
