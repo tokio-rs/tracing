@@ -1,6 +1,6 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use crate::stdlib::{
+use core::{
     cmp, fmt,
     str::FromStr,
     sync::atomic::{AtomicUsize, Ordering},
@@ -299,7 +299,7 @@ impl fmt::Display for Level {
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl crate::stdlib::error::Error for ParseLevelError {}
+impl std::error::Error for ParseLevelError {}
 
 impl FromStr for Level {
     type Err = ParseLevelError;
@@ -481,7 +481,7 @@ impl LevelFilter {
                 // the inputs to `set_max` to the set of valid discriminants.
                 // Therefore, **as long as `MAX_VALUE` is only ever set by
                 // `set_max`**, this is safe.
-                crate::stdlib::hint::unreachable_unchecked()
+                core::hint::unreachable_unchecked()
             },
         }
     }
@@ -799,7 +799,7 @@ impl PartialOrd<Level> for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stdlib::mem;
+    use core::mem;
 
     #[test]
     fn level_from_str() {

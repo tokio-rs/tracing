@@ -1,7 +1,7 @@
 //! Collectors collect and record trace data.
 use crate::{span, Event, LevelFilter, Metadata};
 
-use crate::stdlib::any::{Any, TypeId};
+use core::any::{Any, TypeId};
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -551,6 +551,8 @@ impl Interest {
     /// Otherwise, if they differ, the result must always be
     /// `Interest::sometimes` --- if the two collectors differ in opinion, we
     /// will have to ask the current collector what it thinks, no matter what.
+    // Only needed when combining interest from multiple collectors.
+    #[cfg(feature = "std")]
     pub(crate) fn and(self, rhs: Interest) -> Self {
         if self.0 == rhs.0 {
             self

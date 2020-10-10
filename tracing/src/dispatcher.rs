@@ -38,9 +38,12 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # #[cfg(feature = "alloc")]
 //! use dispatcher::Dispatch;
 //!
+//! # #[cfg(feature = "alloc")]
 //! let my_collector = FooCollector::new();
+//! # #[cfg(feature = "alloc")]
 //! let my_dispatch = Dispatch::new(my_collector);
 //! ```
 //! Then, we can use [`with_default`] to set our `Dispatch` as the default for
@@ -60,10 +63,12 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # impl FooCollector { fn new() -> Self { FooSubscriber } }
+//! # #[cfg(feature = "alloc")]
 //! # let my_collector = FooCollector::new();
+//! # #[cfg(feature = "alloc")]
 //! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
-//! // no default collector
+//! // no default subscriber
 //!
 //! # #[cfg(feature = "std")]
 //! dispatcher::with_default(&my_dispatch, || {
@@ -96,10 +101,13 @@
 //! #   fn exit(&self, _: &Id) {}
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
+//! # #[cfg(feature = "alloc")]
 //! # let my_collector = FooCollector::new();
+//! # #[cfg(feature = "alloc")]
 //! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
-//! // no default collector
+//! // no default subscriber
 //!
+//! # #[cfg(feature = "alloc")]
 //! dispatcher::set_global_default(my_dispatch)
 //!     // `set_global_default` will return an error if the global default
 //!     // collector has already been set.

@@ -538,7 +538,6 @@
 //! function:
 //!
 //! ```
-//! extern crate tracing;
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
 //! # impl tracing::Collector for FooCollector {
@@ -555,8 +554,10 @@
 //! # }
 //! # fn main() {
 //!
-//! let my_collector = FooCollector::new();
-//! tracing::collector::set_global_default(my_collector)
+//! # #[cfg(feature = "alloc")]
+//! let my_collector = FoodCollector::new();
+//! # #[cfg(feature = "alloc")]
+//! tracing::subscriber::set_global_default(my_collector)
 //!     .expect("setting tracing default failed");
 //! # }
 //! ```
@@ -669,6 +670,60 @@
 //!
 //! [log-tracer]: https://docs.rs/tracing-log/latest/tracing_log/#convert-log-records-to-tracing-events
 //!
+//! ### `no_std` Support
+//!
+//! In embedded systems and other bare-metal applications, `tracing` can be
+//! used without requiring the Rust standard library, although some features are
+//! disabled.
+//!
+//! The dependency on the standard library is controlled by two crate feature
+//! flags, "std", which enables the dependency on [`libstd`], and "alloc", which
+//! enables the dependency on [`liballoc`] (and is enabled by the "std"
+//! feature). These features are enabled by default, but `no_std` users can
+//! disable them using:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing = { version = "0.2", default-features = false }
+//! ```
+//!
+//! To enable `liballoc` but not `std`, use:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing = { version = "0.2", default-features = false, features = ["alloc"] }
+//! ```
+//!
+//! When both the "std" and "alloc" feature flags are disabled, `tracing-core`
+//! will not make any dynamic memory allocations at runtime, and does not
+//! require a global memory allocator.
+//!
+//! The "alloc" feature is required to enable the [`Dispatch::new`] function,
+//! which requires dynamic memory allocation to construct a `Subscriber` trait
+//! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
+//! created from `&'static dyn Subscriber` references, using
+//! [`Dispatch::from_static`].
+//!
+//! The "std" feature is required to enable the following features:
+//!
+//! * Per-thread scoped trace dispatchers ([`Dispatch::set_default`] and
+//!   [`with_default`]. Since setting a thread-local dispatcher inherently
+//!   requires a concept of threads to be available, this API is not possible
+//!   without the standard library.
+//! * Support for [constructing `Value`s from types implementing
+//!   `std::error::Error`][err]. Since the `Error` trait is defined in `std`,
+//!   it's not possible to provide this feature without `std`.
+//!
+//! All other features of `tracing` should behave identically with and
+//! without `std` and `alloc`.
+//!
+//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`Dispatch::new`]: crate::dispatcher::Dispatch::new
+//! [`Dispatch::from_static`]: crate::dispatcher::Dispatch::from_static
+//! [`Dispatch::set_default`]: crate::dispatcher::set_default
+//! [`with_default`]: crate::dispatcher::with_default
+//! [err]: crate::field::Visit::record_error
+//!
 //! ## Related Crates
 //!
 //! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
@@ -776,23 +831,9 @@
 //!   This is on by default, but does bring in the `syn` crate as a dependency,
 //!   which may add to the compile time of crates that do not already use it.
 //! * `std`: Depend on the Rust standard library (enabled by default).
+//! * `alloc`: Depend on [`liballoc`] (enabled by "std").
 //!
-//!   `no_std` users may disable this feature with `default-features = false`:
-//!
-//!   ```toml
-//!   [dependencies]
-//!   tracing = { version = "0.1.21", default-features = false }
-//!   ```
-//!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
-//! <div class="example-wrap" style="display:inline-block">
-//! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
-//! requires <code>liballoc</code>.
-//! </pre></div>
-//!
+//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
@@ -865,9 +906,6 @@
     while_true
 )]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
 #[macro_use]
 extern crate cfg_if;
 
@@ -906,22 +944,20 @@ pub use tracing_attributes::instrument;
 mod macros;
 
 pub mod collector;
+pub mod collector;
 pub mod dispatcher;
 pub mod field;
 /// Attach a span to a `std::future::Future`.
 pub mod instrument;
 pub mod level_filters;
 pub mod span;
-pub(crate) mod stdlib;
 
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
-    use crate::stdlib::{
-        fmt,
-        sync::atomic::{AtomicUsize, Ordering},
-    };
     use crate::{collector::Interest, Metadata};
+    use core::fmt;
+    use core::sync::atomic::{AtomicUsize, Ordering};
     use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.

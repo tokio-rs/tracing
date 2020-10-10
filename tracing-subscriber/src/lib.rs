@@ -98,20 +98,7 @@
 use tracing_core::span::Id;
 
 #[macro_use]
-macro_rules! try_lock {
-    ($lock:expr) => {
-        try_lock!($lock, else return)
-    };
-    ($lock:expr, else $els:expr) => {
-        if let Ok(l) = $lock {
-            l
-        } else if std::thread::panicking() {
-            $els
-        } else {
-            panic!("lock poisoned")
-        }
-    };
-}
+mod macros;
 
 pub mod field;
 pub mod filter;
@@ -132,24 +119,19 @@ pub use filter::EnvFilter;
 
 pub use subscriber::Subscriber;
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use registry::Registry;
+cfg_feature!("fmt", {
+    pub mod fmt;
+    pub use fmt::fmt;
+    pub use fmt::Subscriber as FmtSubscriber;
+});
 
-///
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub fn registry() -> Registry {
-    Registry::default()
-}
+cfg_feature!("registry", {
+    pub use registry::Registry;
 
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::Collector as FmtSubscriber;
-
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::fmt;
+    pub fn registry() -> Registry {
+        Registry::default()
+    }
+});
 
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.
