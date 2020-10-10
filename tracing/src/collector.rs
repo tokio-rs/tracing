@@ -9,11 +9,11 @@ pub use tracing_core::dispatcher::DefaultGuard;
 ///
 /// The default collector is used when creating a new [`Span`] or
 /// [`Event`], _if no span is currently executing_. If a span is currently
-/// executing, new spans or events are dispatched to the subscriber that
+/// executing, new spans or events are dispatched to the collector that
 /// tagged that span, instead.
 ///
 /// [`Span`]: ../span/struct.Span.html
-/// [`Collector`]: ../subscriber/trait.Collector.html
+/// [`Collector`]: ../collector/trait.Collector.html
 /// [`Event`]: :../event/struct.Event.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]

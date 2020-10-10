@@ -63,12 +63,12 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooCollector { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
 //! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
 //! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
-//! // no default subscriber
+//! // no default collector
 //!
 //! # #[cfg(feature = "std")]
 //! dispatcher::with_default(&my_dispatch, || {
@@ -105,7 +105,7 @@
 //! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
 //! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
-//! // no default subscriber
+//! // no default collector
 //!
 //! # #[cfg(feature = "alloc")]
 //! dispatcher::set_global_default(my_dispatch)

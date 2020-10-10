@@ -92,7 +92,7 @@
 //! The [`Event` struct][`Event`] documentation provides further details on using
 //! events.
 //!
-//! ## Subscribers
+//! ## Collectors
 //!
 //! As `Span`s and `Event`s occur, they are recorded or aggregated by
 //! implementations of the [`Collector`] trait. `Collector`s are notified
@@ -555,9 +555,9 @@
 //! # fn main() {
 //!
 //! # #[cfg(feature = "alloc")]
-//! let my_collector = FoodCollector::new();
+//! let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! tracing::subscriber::set_global_default(my_collector)
+//! tracing::collector::set_global_default(my_collector)
 //!     .expect("setting tracing default failed");
 //! # }
 //! ```
@@ -699,9 +699,9 @@
 //! require a global memory allocator.
 //!
 //! The "alloc" feature is required to enable the [`Dispatch::new`] function,
-//! which requires dynamic memory allocation to construct a `Subscriber` trait
+//! which requires dynamic memory allocation to construct a `Collector` trait
 //! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
-//! created from `&'static dyn Subscriber` references, using
+//! created from `&'static dyn Collector` references, using
 //! [`Dispatch::from_static`].
 //!
 //! The "std" feature is required to enable the following features:

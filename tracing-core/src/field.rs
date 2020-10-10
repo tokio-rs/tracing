@@ -12,7 +12,7 @@
 //! [`new_span`] method, containing any fields whose values were provided when
 //! the span was created; and may call the `Collector`'s [`record`] method
 //! with additional [`Record`]s if values are added for more of its fields.
-//! Similarly, the [`Event`] type passed to the subscriber's [`event`] method
+//! Similarly, the [`Event`] type passed to the collector's [`event`] method
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
@@ -52,7 +52,7 @@ use self::private::ValidLen;
 /// As keys are defined by the _metadata_ of a span, rather than by an
 /// individual instance of a span, a key may be used to access the same field
 /// across all instances of a given span with the same metadata. Thus, when a
-/// subscriber observes a new span, it need only access a field by name _once_,
+/// collector observes a new span, it need only access a field by name _once_,
 /// and use the key for that name for all other accesses.
 #[derive(Debug)]
 pub struct Field {

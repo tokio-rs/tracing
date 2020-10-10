@@ -99,12 +99,12 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "std")]
-//! # let my_subscriber = FooSubscriber::new();
+//! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "std")]
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! # #[cfg(feature = "std")]
 //! dispatcher::set_global_default(my_dispatch)
@@ -478,7 +478,7 @@ impl Dispatch {
 
     /// Returns a `Dispatch` that forwards to the given [`Collector`].
     ///
-    /// [`Collector`]: super::subscriber::Collector
+    /// [`Collector`]: super::collector::Collector
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     pub fn new<S>(collector: S) -> Self
@@ -977,8 +977,8 @@ mod test {
     fn events_dont_infinite_loop() {
         // This test ensures that an event triggered within a collector
         // won't cause an infinite loop of events.
-        struct TestSubscriber;
-        impl Collector for TestSubscriber {
+        struct TestCollector;
+        impl Collector for TestCollector {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -1006,7 +1006,7 @@ mod test {
             fn exit(&self, _: &span::Id) {}
         }
 
-        with_default(&Dispatch::new(TestSubscriber), || {
+        with_default(&Dispatch::new(TestCollector), || {
             Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
         })
     }

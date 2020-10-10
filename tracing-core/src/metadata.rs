@@ -434,7 +434,7 @@ impl LevelFilter {
     /// User code should treat this as a *hint*. If a given span or event has a
     /// level *higher* than the returned `LevelFilter`, it will not be enabled.
     /// However, if the level is less than or equal to this value, the span or
-    /// event is *not* guaranteed to be enabled; the subscriber will still
+    /// event is *not* guaranteed to be enabled; the collector will still
     /// filter each callsite individually.
     ///
     /// Therefore, comparing a given span or event's level to the returned

@@ -18,7 +18,7 @@ use std::{
 #[derive(Clone)]
 struct Counters(Arc<RwLock<HashMap<String, AtomicUsize>>>);
 
-struct CounterSubscriber {
+struct CounterCollector {
     ids: AtomicUsize,
     counters: Counters,
 }
@@ -49,7 +49,7 @@ impl<'a> Visit for Count<'a> {
     fn record_debug(&mut self, _: &Field, _: &dyn fmt::Debug) {}
 }
 
-impl CounterSubscriber {
+impl CounterCollector {
     fn visitor(&self) -> Count<'_> {
         Count {
             counters: self.counters.0.read().unwrap(),
@@ -57,7 +57,7 @@ impl CounterSubscriber {
     }
 }
 
-impl Collector for CounterSubscriber {
+impl Collector for CounterCollector {
     fn register_callsite(&self, meta: &Metadata<'_>) -> collector::Interest {
         let mut interest = collector::Interest::never();
         for key in meta.fields() {
@@ -108,20 +108,20 @@ impl Counters {
         }
     }
 
-    fn new() -> (Self, CounterSubscriber) {
+    fn new() -> (Self, CounterCollector) {
         let counters = Counters(Arc::new(RwLock::new(HashMap::new())));
-        let subscriber = CounterSubscriber {
+        let collector = CounterCollector {
             ids: AtomicUsize::new(1),
             counters: counters.clone(),
         };
-        (counters, subscriber)
+        (counters, collector)
     }
 }
 
 fn main() {
-    let (counters, subscriber) = Counters::new();
+    let (counters, collector) = Counters::new();
 
-    tracing::collector::set_global_default(subscriber).unwrap();
+    tracing::collector::set_global_default(collector).unwrap();
 
     let mut foo: u64 = 2;
     span!(Level::TRACE, "my_great_span", foo_count = &foo).in_scope(|| {

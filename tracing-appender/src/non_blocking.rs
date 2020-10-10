@@ -40,8 +40,8 @@
 //! ``` rust
 //! # fn docs() {
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
-//! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-//! tracing::collector::with_default(subscriber.finish(), || {
+//! let collector = tracing_subscriber::fmt().with_writer(non_blocking);
+//! tracing::collector::with_default(collector.finish(), || {
 //!    tracing::event!(tracing::Level::INFO, "Hello");
 //! });
 //! # }
@@ -92,8 +92,8 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// fn main () {
 /// # fn doc() {
 ///     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-///     tracing::collector::with_default(subscriber.finish(), || {
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking);
+///     tracing::collector::with_default(collector.finish(), || {
 ///         // Emit some tracing events within context of the non_blocking `_guard` and tracing subscriber
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
@@ -396,8 +396,8 @@ mod test {
         for _ in 0..10 {
             let cloned_non_blocking = non_blocking.clone();
             join_handles.push(thread::spawn(move || {
-                let subscriber = tracing_subscriber::fmt().with_writer(cloned_non_blocking);
-                tracing::collector::with_default(subscriber.finish(), || {
+                let collector = tracing_subscriber::fmt().with_writer(cloned_non_blocking);
+                tracing::collector::with_default(collector.finish(), || {
                     tracing::event!(tracing::Level::INFO, "Hello");
                 });
             }));

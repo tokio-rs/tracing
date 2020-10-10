@@ -6,9 +6,9 @@ use support::MultithreadedBench;
 
 /// A fake writer that doesn't actually do anything.
 ///
-/// We want to measure the subscriber's overhead, *not* the performance of
+/// We want to measure the collectors's overhead, *not* the performance of
 /// stdout/file writers. Using a no-op Write implementation lets us only measure
-/// the subscriber's overhead.
+/// the collectors's overhead.
 struct NoWriter;
 
 impl io::Write for NoWriter {

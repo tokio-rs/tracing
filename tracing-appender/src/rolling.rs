@@ -130,9 +130,9 @@ impl io::Write for RollingFileAppender {
 ///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(subscriber.finish(), || {
+///     tracing::collector::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -165,9 +165,9 @@ pub fn minutely(
 ///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(subscriber.finish(), || {
+///     tracing::collector::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -201,9 +201,9 @@ pub fn hourly(
 ///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(subscriber.finish(), || {
+///     tracing::collector::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -235,9 +235,9 @@ pub fn daily(
 ///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(subscriber.finish(), || {
+///     tracing::collector::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }

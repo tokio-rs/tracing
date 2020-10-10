@@ -72,9 +72,9 @@
 //! require a global memory allocator.
 //!
 //! The "alloc" feature is required to enable the [`Dispatch::new`] function,
-//! which requires dynamic memory allocation to construct a `Subscriber` trait
+//! which requires dynamic memory allocation to construct a `Collector` trait
 //! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
-//! created from `&'static dyn Subscriber` references, using
+//! created from `&'static dyn Collector` references, using
 //! [`Dispatch::from_static`].
 //!
 //! The "std" feature is required to enable the following features:

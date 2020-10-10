@@ -80,12 +80,12 @@
 //! Finally, once you have configured your `Collector`, you need to
 //! configure your executable to use it.
 //!
-//! A subscriber can be installed globally using:
+//! A collector can be installed globally using:
 //! ```rust
 //! use tracing;
-//! use tracing_subscriber::FmtSubscriber;
+//! use tracing_subscriber::fmt;
 //!
-//! let subscriber = FmtSubscriber::new();
+//! let subscriber = fmt::Collector::new();
 //!
 //! tracing::collector::set_global_default(subscriber)
 //!     .map_err(|_err| eprintln!("Unable to set global default subscriber"));
