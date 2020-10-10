@@ -36,6 +36,8 @@ where
 /// [span]: ../span/index.html
 /// [`Collector`]: ../collector/trait.Collector.html
 /// [`Event`]: ../event/struct.Event.html
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
 pub fn set_global_default<S>(collector: S) -> Result<(), SetGlobalDefaultError>
 where
     S: Collector + Send + Sync + 'static,
