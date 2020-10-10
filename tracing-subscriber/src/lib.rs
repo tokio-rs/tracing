@@ -127,6 +127,7 @@ cfg_feature!("fmt", {
 cfg_feature!("registry", {
     pub use registry::Registry;
 
+    ///
     pub fn registry() -> Registry {
         Registry::default()
     }
