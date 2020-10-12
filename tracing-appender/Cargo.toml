@@ -20,7 +20,7 @@ keywords = ["logging", "tracing", "file-appender", "non-blocking-writer"]
 edition = "2018"
 
 [dependencies]
-crossbeam-channel = "0.4.2"
+crossbeam-channel = "0.5.0"
 chrono = "0.4.11"
 
 [dependencies.tracing-subscriber]
