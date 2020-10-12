@@ -1,5 +1,5 @@
 #![deny(rust_2018_idioms)]
-/// This is a example showing how `Subscriber` can be enabled or disabled by
+/// This is a example showing how `Subscriber`s can be enabled or disabled by
 /// by wrapping them with an `Option`. This example shows `fmt` and `json`
 /// being toggled based on the `json` command line flag.
 ///
