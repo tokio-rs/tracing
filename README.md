@@ -58,7 +58,7 @@ use tracing::info;
 use tracing_subscriber;
 
 fn main() {
-    // install global collector configured based on RUST_LOG envvar.
+    // install global collector configured based on RUST_LOG env var.
     tracing_subscriber::fmt::init();
 
     let number_of_yaks = 3;
