@@ -6,7 +6,7 @@ This directory contains a collection of examples that demonstrate the use of the
 - **tracing**:
   + `counters`: Implements a very simple metrics system to demonstrate how
     collectors can consume field values as typed data.
-  + `sloggish`: A demo `Collectors` implementation that mimics the output of
+  + `sloggish`: A demo `Collector` implementation that mimics the output of
     `slog-term`'s `Compact` formatter.
 - **tracing-attributes**:
   + `attrs-basic`: A simple example of the `#[instrument]` attribute.
