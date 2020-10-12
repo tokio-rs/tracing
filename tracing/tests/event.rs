@@ -310,6 +310,32 @@ fn debug_shorthand() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn downcast_field() {
+    use tracing::field::Value;
+
+    #[derive(Debug)]
+    pub struct Foo {}
+
+    let (subscriber, handle) = subscriber::mock()
+        .event(
+            event::mock().with_fields(
+                field::mock("my_field")
+                    .with_value(&Foo {} as &dyn fmt::Debug)
+                    .downcasts_to::<Foo>()
+                    .only(),
+            ),
+        )
+        .done()
+        .run_with_handle();
+    with_default(subscriber, || {
+        event!(Level::TRACE, my_field = Value::any(&Foo {}));
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn both_shorthands() {
     let (subscriber, handle) = subscriber::mock()
         .event(

@@ -83,6 +83,16 @@ impl MockField {
         }
         .and(self)
     }
+
+    pub fn downcasts_to<T: Any>(self) -> Self {
+        Self {
+            value: MockValue {
+                value: self.value.value,
+                downcasts_to: Some(Downcasts::to::<T>()),
+            },
+            ..self
+        }
+    }
 }
 
 impl Into<Expect> for MockField {

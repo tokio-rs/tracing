@@ -734,29 +734,29 @@ impl<'a> From<&'_ Value<'a>> for Value<'a> {
     }
 }
 
-#[cfg(feature = "std")]
-impl<'a> From<&'a Box<dyn Error + 'static>> for Value<'a> {
-    #[inline]
-    fn from(err: &'a Box<dyn Error + 'static>) -> Self {
-        Self::error(err.as_ref())
-    }
-}
+// #[cfg(feature = "std")]
+// impl<'a> From<&'a Box<dyn Error + 'static>> for Value<'a> {
+//     #[inline]
+//     fn from(err: &'a Box<dyn Error + 'static>) -> Self {
+//         Self::error(err.as_ref())
+//     }
+// }
 
-#[cfg(feature = "std")]
-impl<'a> From<&'a Box<dyn Error + Send + 'static>> for Value<'a> {
-    #[inline]
-    fn from(err: &'a Box<dyn Error + Send + 'static>) -> Self {
-        Self::error(err.as_ref())
-    }
-}
+// #[cfg(feature = "std")]
+// impl<'a> From<&'a Box<dyn Error + Send + 'static>> for Value<'a> {
+//     #[inline]
+//     fn from(err: &'a Box<dyn Error + Send + 'static>) -> Self {
+//         Self::error(err.as_ref())
+//     }
+// }
 
-#[cfg(feature = "std")]
-impl<'a> From<&'a Box<dyn Error + Send + Sync + 'static>> for Value<'a> {
-    #[inline]
-    fn from(err: &'a Box<dyn Error + Send + Sync + 'static>) -> Self {
-        Self::error(err.as_ref())
-    }
-}
+// #[cfg(feature = "std")]
+// impl<'a> From<&'a Box<dyn Error + Send + Sync + 'static>> for Value<'a> {
+//     #[inline]
+//     fn from(err: &'a Box<dyn Error + Send + Sync + 'static>) -> Self {
+//         Self::error(err.as_ref())
+//     }
+// }
 // ===== impl Value =====
 
 // impl_values! {

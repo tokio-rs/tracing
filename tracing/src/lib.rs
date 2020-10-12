@@ -921,18 +921,12 @@ pub mod __macro_support {
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
     pub mod as_value {
-        pub use crate::field::convert::{
-            AsDebugAnyValue as _, AsDebugUnsizedValue as _, AsDebugValue as _,
-            AsDisplayAnyValue as _, AsDisplayUnsizedValue as _, AsDisplayValue as _,
-            AsOptionValue as _, AsValue as _,
-        };
+        pub use crate::field::convert::{AsValueDebug as _, AsValuePrimitive as _};
 
-        #[cfg(feature = "std")]
-        pub use crate::field::convert::AsErrorValue as _;
-        pub use crate::stdlib::borrow::Borrow as _;
+        // #[cfg(feature = "std")]
+        // pub use crate::field::convert::AsErrorValue as _;
+        // pub use crate::stdlib::borrow::Borrow as _;
     }
-
-    pub use crate::field::convert::Specialize;
 
     pub trait BorrowOnce {
         fn borrow_once(&self) -> &Self;
