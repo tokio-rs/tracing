@@ -9,7 +9,7 @@ use tracing_subscriber::{
     subscriber::{self, Subscriber},
 };
 
-/// A subscriber [`Subscriber`] that enables capturing [`SpanTrace`]s.
+/// A [`Subscriber`] that enables capturing [`SpanTrace`]s.
 ///
 /// Optionally, this type may be constructed with a [field formatter] to use
 /// when formatting the fields of each span in a trace. When no formatter is
