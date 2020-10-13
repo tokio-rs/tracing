@@ -1,4 +1,5 @@
-use opentelemetry::{api, api::HttpTextFormat};
+use opentelemetry::sdk::propagation::B3Propagator;
+use opentelemetry::{api, api::propagation::TextMapPropagator};
 use std::collections::HashMap;
 use tracing::span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -25,7 +26,7 @@ fn main() {
     let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 
     // Propagator can be swapped with trace context propagator binary propagator, etc.
-    let propagator = api::B3Propagator::new();
+    let propagator = B3Propagator::new();
 
     tracing::subscriber::with_default(subscriber, || {
         // Extract from request headers, or any type that impls `opentelemetry::api::Carrier`

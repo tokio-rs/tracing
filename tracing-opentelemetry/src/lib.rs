@@ -51,17 +51,19 @@
 //! ## Examples
 //!
 //! ```
-//! use opentelemetry::{api::Provider, sdk};
+//! use opentelemetry::exporter::trace::stdout;
 //! use tracing::{error, span};
 //! use tracing_subscriber::layer::SubscriberExt;
 //! use tracing_subscriber::Registry;
 //!
-//! // Create a new tracer
-//! let tracer = sdk::Provider::default().get_tracer("service_name");
+//! // Create a new OpenTelemetry pipeline
+//! let (tracer, _uninstall) = stdout::new_pipeline().install();
 //!
-//! // Create a new OpenTelemetry tracing layer
+//! // Create a tracing layer with the configured tracer
 //! let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 //!
+//! // Use the tracing subscriber `Registry`, or any other subscriber
+//! // that impls `LookupSpan`
 //! let subscriber = Registry::default().with(telemetry);
 //!
 //! // Trace executed code
