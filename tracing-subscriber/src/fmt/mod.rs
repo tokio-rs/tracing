@@ -827,6 +827,9 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// // Now, the max level is INFO, so this event will be recorded.
     /// tracing::debug!("this is recorded!");
     /// ```
+    ///
+    /// [`reload_handle`]: SubscriberBuilder::reload_handle
+    /// [`reload::Handle`]: crate::reload::Handle
     pub fn with_filter_reloading(self) -> SubscriberBuilder<N, E, reload::Layer<F>, W> {
         let (filter, _) = reload::Layer::new(self.filter);
         SubscriberBuilder {
