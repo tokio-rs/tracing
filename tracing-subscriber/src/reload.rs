@@ -16,7 +16,6 @@ use crate::sync::RwLock;
 
 use std::{
     error, fmt,
-    marker::PhantomData,
     sync::{Arc, Weak},
 };
 use tracing_core::{
@@ -27,20 +26,18 @@ use tracing_core::{
 
 /// Wraps a `Subscriber`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
-pub struct Layer<L, S> {
+pub struct Layer<L> {
     // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
     // eventually wish to replace it with a sharded lock implementation on top
     // of our internal `RwLock` wrapper type. If possible, we should profile
     // this first to determine if it's necessary.
     inner: Arc<RwLock<L>>,
-    _s: PhantomData<fn(S)>,
 }
 
 /// Allows reloading the state of an associated `Subscriber`.
 #[derive(Debug)]
-pub struct Handle<L, S> {
+pub struct Handle<L> {
     inner: Weak<RwLock<L>>,
-    _s: PhantomData<fn(S)>,
 }
 
 /// Indicates that an error occurred when reloading a layer.
@@ -57,7 +54,7 @@ enum ErrorKind {
 
 // ===== impl Subscriber =====
 
-impl<L, S> crate::Subscriber<S> for Layer<L, S>
+impl<L, S> crate::Subscriber<S> for Layer<L>
 where
     L: crate::Subscriber<S> + 'static,
     S: Collector,
@@ -128,38 +125,28 @@ where
     }
 }
 
-impl<L, S> Layer<L, S>
-where
-    L: crate::Subscriber<S> + 'static,
-    S: Collector,
-{
-    /// Wraps the given `Subscriber`, returning a `Subscriber` and a `Handle` that allows
+impl<L> Layer<L> {
+    /// Wraps the given `Layer`, returning a `Layer` and a `Handle` that allows
     /// the inner type to be modified at runtime.
-    pub fn new(inner: L) -> (Self, Handle<L, S>) {
+    pub fn new(inner: L) -> (Self, Handle<L>) {
         let this = Self {
             inner: Arc::new(RwLock::new(inner)),
-            _s: PhantomData,
         };
         let handle = this.handle();
         (this, handle)
     }
 
-    /// Returns a `Handle` that can be used to reload the wrapped `Subscriber`.
-    pub fn handle(&self) -> Handle<L, S> {
+    /// Returns a `Handle` that can be used to reload the wrapped `Layer`.
+    pub fn handle(&self) -> Handle<L> {
         Handle {
             inner: Arc::downgrade(&self.inner),
-            _s: PhantomData,
         }
     }
 }
 
 // ===== impl Handle =====
 
-impl<L, S> Handle<L, S>
-where
-    L: crate::Subscriber<S> + 'static,
-    S: Collector,
-{
+impl<L> Handle<L> {
     /// Replace the current layer with the provided `new_layer`.
     pub fn reload(&self, new_layer: impl Into<L>) -> Result<(), Error> {
         self.modify(|layer| {
@@ -204,11 +191,10 @@ where
     }
 }
 
-impl<L, S> Clone for Handle<L, S> {
+impl<L> Clone for Handle<L> {
     fn clone(&self) -> Self {
         Handle {
             inner: self.inner.clone(),
-            _s: PhantomData,
         }
     }
 }

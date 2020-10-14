@@ -116,7 +116,7 @@
 //! [`EnvFilter`]: ../filter/struct.EnvFilter.html
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: ../filter/index.html
-//! [`fmtBuilder`]: ./struct.SubscriberBuilder.html
+//! [`fmtBuilder`]: ./struct.CollectorBuilder.html
 //! [`FmtSubscriber`]: ./struct.Collector.html
 //! [`Collector`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
@@ -136,7 +136,7 @@ use crate::subscriber::Subscriber as _;
 use crate::{
     filter::LevelFilter,
     registry::{LookupSpan, Registry},
-    subscriber,
+    reload, subscriber,
 };
 
 #[doc(inline)]
@@ -237,12 +237,12 @@ pub struct CollectorBuilder<
 /// })
 /// ```
 ///
-/// [`SubscriberBuilder`]: struct.SubscriberBuilder.html
+/// [`CollectorBuilder`]: struct.CollectorBuilder.html
 /// [formatting subscriber]: struct.Collector.html
-/// [`SubscriberBuilder::default()`]: struct.SubscriberBuilder.html#method.default
-/// [`init`]: struct.SubscriberBuilder.html#method.init
-/// [`try_init`]: struct.SubscriberBuilder.html#method.try_init
-/// [`finish`]: struct.SubscriberBuilder.html#method.finish
+/// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
+/// [`init`]: struct.CollectorBuilder.html#method.init
+/// [`try_init`]: struct.CollectorBuilder.html#method.try_init
+/// [`finish`]: struct.CollectorBuilder.html#method.finish
 pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
@@ -263,13 +263,13 @@ impl Collector {
     /// The maximum [verbosity level] that is enabled by a `Collector` by
     /// default.
     ///
-    /// This can be overridden with the [`SubscriberBuilder::with_max_level`] method.
+    /// This can be overridden with the [`CollectorBuilder::with_max_level`] method.
     ///
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`SubscriberBuilder::with_max_level`]: struct.SubscriberBuilder.html#method.with_max_level
+    /// [`CollectorBuilder::with_max_level`]: struct.CollectorBuilder.html#method.with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
-    /// Returns a new `SubscriberBuilder` for configuring a format subscriber.
+    /// Returns a new `CollectorBuilder` for configuring a format subscriber.
     pub fn builder() -> CollectorBuilder {
         CollectorBuilder::default()
     }
@@ -373,7 +373,7 @@ where
     }
 }
 
-// ===== impl SubscriberBuilder =====
+// ===== impl CollectorBuilder =====
 
 impl Default for CollectorBuilder {
     fn default() -> Self {
@@ -646,34 +646,13 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     }
 }
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-impl<N, E, W> CollectorBuilder<N, E, crate::EnvFilter, W>
-where
-    Formatter<N, E, W>: tracing_core::Collector + 'static,
-{
-    /// Configures the subscriber being built to allow filter reloading at
-    /// runtime.
-    pub fn with_filter_reloading(
-        self,
-    ) -> CollectorBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W> {
-        let (filter, _) = crate::reload::Layer::new(self.filter);
-        CollectorBuilder {
-            filter,
-            inner: self.inner,
-        }
-    }
-}
-
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-impl<N, E, W> CollectorBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
+impl<N, E, F, W> CollectorBuilder<N, E, reload::Layer<F>, W>
 where
     Formatter<N, E, W>: tracing_core::Collector + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed subscriber's
     /// filter.
-    pub fn reload_handle(&self) -> crate::reload::Handle<crate::EnvFilter, Formatter<N, E, W>> {
+    pub fn reload_handle(&self) -> reload::Handle<F> {
         self.filter.handle()
     }
 }
@@ -807,6 +786,51 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         filter: impl Into<LevelFilter>,
     ) -> CollectorBuilder<N, E, LevelFilter, W> {
         let filter = filter.into();
+        CollectorBuilder {
+            filter,
+            inner: self.inner,
+        }
+    }
+
+    /// Configures the subscriber being built to allow filter reloading at
+    /// runtime.
+    ///
+    /// The returned builder will have a [`reload_handle`] method, which returns
+    /// a [`reload::Handle`] that may be used to set a new filter value.
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// use tracing::Level;
+    /// use tracing_subscriber::prelude::*;
+    ///
+    /// let builder = tracing_subscriber::fmt()
+    ///      // Set a max level filter on the subscriber
+    ///     .with_max_level(Level::INFO)
+    ///     .with_filter_reloading();
+    ///
+    /// // Get a handle for modifying the subscriber's max level filter.
+    /// let handle = builder.reload_handle();
+    ///
+    /// // Finish building the subscriber, and set it as the default.
+    /// builder.finish().init();
+    ///
+    /// // Currently, the max level is INFO, so this event will be disabled.
+    /// tracing::debug!("this is not recorded!");
+    ///
+    /// // Use the handle to set a new max level filter.
+    /// // (this returns an error if the subscriber has been dropped, which shouldn't
+    /// // happen in this example.)
+    /// handle.reload(Level::DEBUG).expect("the subscriber should still exist");
+    ///
+    /// // Now, the max level is INFO, so this event will be recorded.
+    /// tracing::debug!("this is recorded!");
+    /// ```
+    ///
+    /// [`reload_handle`]: CollectorBuilder::reload_handle
+    /// [`reload::Handle`]: crate::reload::Handle
+    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Layer<F>, W> {
+        let (filter, _) = reload::Layer::new(self.filter);
         CollectorBuilder {
             filter,
             inner: self.inner,
