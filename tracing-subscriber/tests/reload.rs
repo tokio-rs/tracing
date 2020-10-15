@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
-    collector::Interest,
+    collect::Interest,
     span::{Attributes, Id, Record},
     Collect, Event, Metadata,
 };

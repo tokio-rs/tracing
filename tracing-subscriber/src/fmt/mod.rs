@@ -122,7 +122,7 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, error::Error, io};
-use tracing_core::{collector::Interest, span, Event, Metadata};
+use tracing_core::{collect::Interest, span, Event, Metadata};
 
 mod fmt_subscriber;
 pub mod format;

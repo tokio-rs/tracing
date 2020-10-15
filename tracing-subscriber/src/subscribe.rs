@@ -1,6 +1,6 @@
 //! A composable abstraction for building `Collector`s.
 use tracing_core::{
-    collector::{Collect, Interest},
+    collect::{Collect, Interest},
     metadata::Metadata,
     span, Event, LevelFilter,
 };

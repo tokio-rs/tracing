@@ -9,8 +9,8 @@ use core::num::NonZeroU64;
 /// the [`new_span`] trait method. See the documentation for that method for
 /// more information on span ID generation.
 ///
-/// [`Collector`]: super::collector::Collector
-/// [`new_span`]: super::collector::Collector::new_span
+/// [`Collector`]: super::collect::Collect
+/// [`new_span`]: super::collect::Collect::new_span
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(NonZeroU64);
 
@@ -37,7 +37,7 @@ pub struct Record<'a> {
 /// - "none", indicating that the current context is known to not be in a span,
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
-/// [the `Collector` considers]: super::collector::Collector::current_span
+/// [the `Collector` considers]: super::collect::Collect::current_span
 /// [`Id`]: Id
 /// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]

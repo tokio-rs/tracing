@@ -177,7 +177,7 @@ extern crate alloc;
 /// # #[macro_use]
 /// # extern crate tracing_core;
 /// use tracing_core::callsite;
-/// # use tracing_core::{Metadata, collector::Interest};
+/// # use tracing_core::{Metadata, collect::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
 ///    // ...
@@ -212,7 +212,7 @@ macro_rules! identify_callsite {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing_core;
-/// # use tracing_core::{callsite::Callsite, collector::Interest};
+/// # use tracing_core::{callsite::Callsite, collect::Interest};
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -298,7 +298,7 @@ pub use std::sync::Once;
 pub(crate) mod spin;
 
 pub mod callsite;
-pub mod collector;
+pub mod collect;
 pub mod dispatcher;
 pub mod event;
 pub mod field;
@@ -309,14 +309,14 @@ pub mod span;
 #[doc(inline)]
 pub use self::{
     callsite::Callsite,
-    collector::Collect,
+    collect::Collect,
     dispatcher::Dispatch,
     event::Event,
     field::Field,
     metadata::{Level, LevelFilter, Metadata},
 };
 
-pub use self::{collector::Interest, metadata::Kind};
+pub use self::{collect::Interest, metadata::Kind};
 
 mod sealed {
     pub trait Sealed {}

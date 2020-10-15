@@ -140,7 +140,7 @@ use std::{fmt, io};
 
 use tracing_core::{
     callsite::{self, Callsite},
-    collector, dispatcher,
+    collect, dispatcher,
     field::{self, Field, Visit},
     identify_callsite,
     metadata::{Kind, Level},

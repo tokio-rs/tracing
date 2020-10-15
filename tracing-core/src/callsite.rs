@@ -1,7 +1,7 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
 use crate::{
-    collector::Interest,
+    collect::Interest,
     dispatcher::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
 };

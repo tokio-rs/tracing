@@ -1,5 +1,5 @@
 //! Collects and records trace data.
-pub use tracing_core::collector::*;
+pub use tracing_core::collect::*;
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]

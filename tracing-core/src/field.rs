@@ -32,9 +32,9 @@
 //! [`Metadata`]: super::metadata::Metadata
 //! [`Attributes`]:  super::span::Attributes
 //! [`Record`]: super::span::Record
-//! [`new_span`]: super::collector::Collector::new_span
-//! [`record`]: super::collector::Collector::record
-//! [`event`]:  super::collector::Collector::event
+//! [`new_span`]: super::collect::Collect::new_span
+//! [`record`]: super::collect::Collect::record
+//! [`event`]:  super::collect::Collect::event
 use crate::callsite;
 use core::{
     borrow::Borrow,
@@ -177,9 +177,9 @@ pub struct Iter {
 /// </pre></div>
 ///
 /// [recorded]: Value::record
-/// [`Collector`]: super::collector::Collector
-/// [records an `Event`]: super::collector::Collector::event
-/// [set of `Value`s added to a `Span`]: super::collector::Collector::record
+/// [`Collector`]: super::collect::Collect
+/// [records an `Event`]: super::collect::Collect::event
+/// [set of `Value`s added to a `Span`]: super::collect::Collect::record
 /// [`Event`]: super::event::Event
 pub trait Visit {
     /// Visit a signed 64-bit integer value.
@@ -443,7 +443,7 @@ impl fmt::Debug for dyn Value {
         struct NullCallsite;
         static NULL_CALLSITE: NullCallsite = NullCallsite;
         impl crate::callsite::Callsite for NullCallsite {
-            fn set_interest(&self, _: crate::collector::Interest) {
+            fn set_interest(&self, _: crate::collect::Interest) {
                 unreachable!("you somehow managed to register the null callsite?")
             }
 
@@ -841,7 +841,7 @@ mod test {
     };
 
     impl crate::callsite::Callsite for TestCallsite1 {
-        fn set_interest(&self, _: crate::collector::Interest) {
+        fn set_interest(&self, _: crate::collect::Interest) {
             unimplemented!()
         }
 
@@ -862,7 +862,7 @@ mod test {
     };
 
     impl crate::callsite::Callsite for TestCallsite2 {
-        fn set_interest(&self, _: crate::collector::Interest) {
+        fn set_interest(&self, _: crate::collect::Interest) {
             unimplemented!()
         }
 

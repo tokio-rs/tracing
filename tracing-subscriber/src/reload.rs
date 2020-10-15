@@ -19,7 +19,7 @@ use std::{
 };
 use tracing_core::{
     callsite,
-    collector::{Collect, Interest},
+    collect::{Collect, Interest},
     span, Event, Metadata,
 };
 

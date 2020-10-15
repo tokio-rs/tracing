@@ -1,6 +1,6 @@
 use tracing_core::{
     callsite::Callsite,
-    collector::Interest,
+    collect::Interest,
     metadata,
     metadata::{Kind, Level, Metadata},
 };

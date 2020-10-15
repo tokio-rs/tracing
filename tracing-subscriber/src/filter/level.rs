@@ -1,5 +1,5 @@
 use tracing_core::{
-    collector::{Collect, Interest},
+    collect::{Collect, Interest},
     Metadata,
 };
 

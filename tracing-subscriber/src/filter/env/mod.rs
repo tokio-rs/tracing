@@ -19,7 +19,7 @@ use crate::{
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
-    collector::{Collect, Interest},
+    collect::{Collect, Interest},
     field::Field,
     span, Metadata,
 };
@@ -578,8 +578,8 @@ mod tests {
     struct NoCollector;
     impl Collect for NoCollector {
         #[inline]
-        fn register_callsite(&self, _: &'static Metadata<'static>) -> collector::Interest {
-            collector::Interest::always()
+        fn register_callsite(&self, _: &'static Metadata<'static>) -> collect::Interest {
+            collect::Interest::always()
         }
         fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xDEAD)

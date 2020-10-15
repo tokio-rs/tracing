@@ -56,7 +56,7 @@ use core::{
 /// [file name]: Self::file
 /// [line number]: Self::line
 /// [module path]: Self::module_path
-/// [`Collector`]: super::collector::Collector
+/// [`Collector`]: super::collect::Collect
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.

@@ -309,7 +309,7 @@ pub(in crate::field) mod test_util {
     };
 
     impl Callsite for TestCallsite1 {
-        fn set_interest(&self, _: tracing_core::collector::Interest) {
+        fn set_interest(&self, _: tracing_core::collect::Interest) {
             unimplemented!()
         }
 
