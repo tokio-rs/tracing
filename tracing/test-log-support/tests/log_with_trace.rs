@@ -7,7 +7,7 @@ use tracing::Level;
 
 pub struct NopCollector;
 
-impl tracing::Collector for NopCollector {
+impl tracing::Collect for NopCollector {
     fn enabled(&self, _: &tracing::Metadata) -> bool {
         true
     }
@@ -29,7 +29,7 @@ impl tracing::Collector for NopCollector {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn log_with_trace() {
-    tracing::collector::set_global_default(NopCollector).expect("set global should succeed");
+    tracing::collect::set_global_default(NopCollector).expect("set global should succeed");
 
     let test = Test::start();
 
