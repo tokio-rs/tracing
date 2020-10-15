@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tracing::debug;
 use tracing_core::{
-    collector::Collector,
+    collector::Collect,
     event::Event,
     metadata::Metadata,
     span::{Attributes, Id, Record},
@@ -18,7 +18,7 @@ pub struct JsonSubscriber {
     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 }
 
-impl Collector for JsonSubscriber {
+impl Collect for JsonSubscriber {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let json = json!({
         "enabled": {

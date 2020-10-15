@@ -1,6 +1,6 @@
 //! A composable abstraction for building `Collector`s.
 use tracing_core::{
-    collector::{Collector, Interest},
+    collector::{Collect, Interest},
     metadata::Metadata,
     span, Event, LevelFilter,
 };
@@ -47,15 +47,15 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// For example:
 /// ```rust
-/// use tracing_subscriber::Subscriber;
+/// use tracing_subscriber::Subscribe;
 /// use tracing_subscriber::prelude::*;
-/// use tracing::Collector;
+/// use tracing::Collect;
 ///
 /// pub struct MySubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collector> Subscriber<S> for MySubscriber {
+/// impl<S: Collect> Subscribe<S> for MySubscriber {
 ///     // ...
 /// }
 ///
@@ -64,7 +64,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// }
 ///
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-/// impl Collector for MySubscriber {
+/// impl Collect for MySubscriber {
 ///     // ...
 /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 /// #   fn record(&self, _: &Id, _: &Record) {}
@@ -89,14 +89,14 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// Multiple `Subscriber`s may be composed in the same manner:
 /// ```rust
-/// # use tracing_subscriber::Subscriber;
+/// # use tracing_subscriber::Subscribe;
 /// # use tracing_subscriber::prelude::*;
-/// # use tracing::Collector;
+/// # use tracing::Collect;
 /// pub struct MyOtherSubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collector> Subscriber<S> for MyOtherSubscriber {
+/// impl<S: Collect> Subscribe<S> for MyOtherSubscriber {
 ///     // ...
 /// }
 ///
@@ -104,14 +104,14 @@ use std::{any::TypeId, marker::PhantomData};
 ///     // ...
 /// }
 ///
-/// impl<S: Collector> Subscriber<S> for MyThirdSubscriber {
+/// impl<S: Collect> Subscribe<S> for MyThirdSubscriber {
 ///     // ...
 /// }
 /// # pub struct MySubscriber {}
-/// # impl<S: Collector> Subscriber<S> for MySubscriber {}
+/// # impl<S: Collect> Subscribe<S> for MySubscriber {}
 /// # pub struct MyCollector { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-/// # impl Collector for MyCollector {
+/// # impl Collect for MyCollector {
 /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 /// #   fn record(&self, _: &Id, _: &Record) {}
 /// #   fn event(&self, _: &Event) {}
@@ -141,12 +141,12 @@ use std::{any::TypeId, marker::PhantomData};
 /// tracing::collector::set_global_default(collector);
 /// ```
 ///
-/// The [`Subscriber::with_collector` method][with-col] constructs the `Layered`
-/// type from a `Subscriber` and `Collector`, and is called by
+/// The [`Subscribe::with_collector` method][with-col] constructs the `Layered`
+/// type from a `Subscribe` and `Collect`, and is called by
 /// [`SubscriberExt::with`]. In general, it is more idiomatic to use
-/// `SubscriberExt::with`, and treat `Subscriber::with_collector` as an
+/// `SubscriberExt::with`, and treat `Subscribe::with_collector` as an
 /// implementation detail, as `with_collector` calls must be nested, leading to
-/// less clear code for the reader. However, `Subscriber`s which wish to perform
+/// less clear code for the reader. However, subscribers which wish to perform
 /// additional behavior when composed with a subscriber may provide their own
 /// implementations of `SubscriberExt::with`.
 ///
@@ -157,14 +157,14 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// ## Recording Traces
 ///
-/// The `Subscriber` trait defines a set of methods for consuming notifications from
+/// The `Subscribe` trait defines a set of methods for consuming notifications from
 /// tracing instrumentation, which are generally equivalent to the similarly
 /// named methods on [`Collector`]. Unlike [`Collector`], the methods on
-/// `Subscriber` are additionally passed a [`Context`] type, which exposes additional
-/// information provided by the wrapped subscriber (such as [the current span])
-/// to the layer.
+/// `Subscribe` are additionally passed a [`Context`] type, which exposes additional
+/// information provided by the wrapped collector (such as [the current span])
+/// to the subscriber.
 ///
-/// ## Filtering with `Subscriber`s
+/// ## Filtering with Subscribers
 ///
 /// As well as strategies for handling trace events, the `Subscriber` trait may also
 /// be used to represent composable _filters_. This allows the determination of
@@ -175,7 +175,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// methods such as [`on_enter`], if it wishes to filter trace events based on
 /// the current span context.
 ///
-/// Note that the [`Subscriber::register_callsite`] and [`Subscriber::enabled`] methods
+/// Note that the [`Subscribe::register_callsite`] and [`Subscribe::enabled`] methods
 /// determine whether a span or event is enabled *globally*. Thus, they should
 /// **not** be used to indicate whether an individual layer wishes to record a
 /// particular span or event. Instead, if a subscriber is only interested in a subset
@@ -183,9 +183,9 @@ use std::{any::TypeId, marker::PhantomData};
 /// rest of the subscriber stack should ignore those spans and events in its
 /// notification methods.
 ///
-/// The filtering methods on a stack of `Subscriber`s are evaluated in a top-down
-/// order, starting with the outermost `Subscriber` and ending with the wrapped
-/// [`Collector`]. If any layer returns `false` from its [`enabled`] method, or
+/// The filtering methods on a stack of subscribers are evaluated in a top-down
+/// order, starting with the outermost `Subscribe` and ending with the wrapped
+/// [`Collector`]. If any subscriber returns `false` from its [`enabled`] method, or
 /// [`Interest::never()`] from its [`register_callsite`] method, filter
 /// evaluation will short-circuit and the span or event will be disabled.
 ///
@@ -196,12 +196,12 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`register_callsite`]: #method.register_callsite
 /// [`enabled`]: #method.enabled
 /// [`on_enter`]: #method.on_enter
-/// [`Subscriber::register_callsite`]: #method.register_callsite
-/// [`Subscriber::enabled`]: #method.enabled
+/// [`Subscribe::register_callsite`]: #method.register_callsite
+/// [`Subscribe::enabled`]: #method.enabled
 /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-pub trait Subscriber<C>
+pub trait Subscribe<C>
 where
-    C: Collector,
+    C: Collect,
     Self: 'static,
 {
     /// Registers a new callsite with this subscriber, returning whether or not
@@ -350,8 +350,8 @@ where
     /// it wraps. For example:
     ///
     /// ```rust
-    /// # use tracing_subscriber::subscriber::Subscriber;
-    /// # use tracing_core::Collector;
+    /// # use tracing_subscriber::subscribe::Subscribe;
+    /// # use tracing_core::Collect;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -364,11 +364,11 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<S: Collector> Subscriber<S> for FooSubscriber {
+    /// impl<S: Collect> Subscribe<S> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Collector> Subscriber<S> for BarSubscriber {
+    /// impl<S: Collect> Subscribe<S> for BarSubscriber {
     ///     // ...
     /// }
     ///
@@ -382,7 +382,7 @@ where
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-    /// # impl tracing_core::Collector for MyCollector {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
@@ -399,13 +399,13 @@ where
     /// Multiple subscribers may be composed in this manner:
     ///
     /// ```rust
-    /// # use tracing_subscriber::subscriber::Subscriber;
-    /// # use tracing_core::Collector;
+    /// # use tracing_subscriber::subscribe::Subscribe;
+    /// # use tracing_core::Collect;
     /// # pub struct FooSubscriber {}
     /// # pub struct BarSubscriber {}
     /// # pub struct MyCollector {}
-    /// # impl<S: Collector> Subscriber<S> for FooSubscriber {}
-    /// # impl<S: Collector> Subscriber<S> for BarSubscriber {}
+    /// # impl<S: Collect> Subscribe<S> for FooSubscriber {}
+    /// # impl<S: Collect> Subscribe<S> for BarSubscriber {}
     /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
@@ -416,7 +416,7 @@ where
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-    /// # impl tracing_core::Collector for MyCollector {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
@@ -429,7 +429,7 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<C: Collector> Subscriber<C> for BazSubscriber {
+    /// impl<C: Collect> Subscribe<C> for BazSubscriber {
     ///     // ...
     /// }
     /// # impl BazSubscriber { fn new() -> Self { BazSubscriber {} } }
@@ -441,7 +441,7 @@ where
     /// ```
     fn and_then<S>(self, subscriber: S) -> Layered<S, Self, C>
     where
-        S: Subscriber<C>,
+        S: Subscribe<C>,
         Self: Sized,
     {
         Layered {
@@ -459,8 +459,8 @@ where
     ///
     /// For example:
     /// ```rust
-    /// # use tracing_subscriber::subscriber::Subscriber;
-    /// # use tracing_core::Collector;
+    /// # use tracing_subscriber::subscribe::Subscribe;
+    /// # use tracing_core::Collect;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -469,7 +469,7 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<C: Collector> Subscriber<C> for FooSubscriber {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
@@ -480,7 +480,7 @@ where
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata};
-    /// # impl tracing_core::Collector for MyCollector {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &tracing_core::Event) {}
@@ -516,11 +516,11 @@ where
 }
 
 /// Extension trait adding a `with(Subscriber)` combinator to `Collector`s.
-pub trait CollectorExt: Collector + crate::sealed::Sealed {
+pub trait CollectorExt: Collect + crate::sealed::Sealed {
     /// Wraps `self` with the provided `layer`.
     fn with<S>(self, subscriber: S) -> Layered<S, Self>
     where
-        S: Subscriber<Self>,
+        S: Subscribe<Self>,
         Self: Sized,
     {
         subscriber.with_collector(self)
@@ -535,14 +535,14 @@ pub trait CollectorExt: Collector + crate::sealed::Sealed {
 /// [`LookupSpan`]:
 ///
 /// ```rust
-/// use tracing::Collector;
-/// use tracing_subscriber::{Subscriber, registry::LookupSpan};
+/// use tracing::Collect;
+/// use tracing_subscriber::{Subscribe, registry::LookupSpan};
 ///
 /// pub struct MyCollector;
 ///
-/// impl<C> Subscriber<C> for MyCollector
+/// impl<C> Subscribe<C> for MyCollector
 /// where
-///     C: Collector + for<'a> LookupSpan<'a>,
+///     C: Collect + for<'a> LookupSpan<'a>,
 /// {
 ///     // ...
 /// }
@@ -591,10 +591,10 @@ pub struct Scope<'a, L: LookupSpan<'a>>(
 
 // === impl Layered ===
 
-impl<S, C> Collector for Layered<S, C>
+impl<S, C> Collect for Layered<S, C>
 where
-    S: Subscriber<C>,
-    C: Collector,
+    S: Subscribe<C>,
+    C: Collect,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.subscriber.register_callsite(metadata);
@@ -678,7 +678,7 @@ where
 
     fn try_close(&self, id: span::Id) -> bool {
         #[cfg(feature = "registry")]
-        let subscriber = &self.inner as &dyn Collector;
+        let subscriber = &self.inner as &dyn Collect;
         #[cfg(feature = "registry")]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
@@ -716,11 +716,11 @@ where
     }
 }
 
-impl<C, A, B> Subscriber<C> for Layered<A, B, C>
+impl<C, A, B> Subscribe<C> for Layered<A, B, C>
 where
-    A: Subscriber<C>,
-    B: Subscriber<C>,
-    C: Collector,
+    A: Subscribe<C>,
+    B: Subscribe<C>,
+    C: Collect,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.subscriber.register_callsite(metadata);
@@ -810,10 +810,10 @@ where
     }
 }
 
-impl<S, C> Subscriber<C> for Option<S>
+impl<S, C> Subscribe<C> for Option<S>
 where
-    S: Subscriber<C>,
-    C: Collector,
+    S: Subscribe<C>,
+    C: Collect,
 {
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -910,7 +910,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, S, C> LookupSpan<'a> for Layered<S, C>
 where
-    C: Collector + LookupSpan<'a>,
+    C: Collect + LookupSpan<'a>,
 {
     type Data = C::Data;
 
@@ -921,7 +921,7 @@ where
 
 impl<S, C> Layered<S, C>
 where
-    C: Collector,
+    C: Collect,
 {
     fn ctx(&self) -> Context<'_, C> {
         Context {
@@ -939,20 +939,20 @@ where
 
 // === impl CollectorExt ===
 
-impl<C: Collector> crate::sealed::Sealed for C {}
-impl<C: Collector> CollectorExt for C {}
+impl<C: Collect> crate::sealed::Sealed for C {}
+impl<C: Collect> CollectorExt for C {}
 
 // === impl Context ===
 
 impl<'a, C> Context<'a, C>
 where
-    C: Collector,
+    C: Collect,
 {
     /// Returns the wrapped subscriber's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber
-            .map(Collector::current_span)
+            .map(Collect::current_span)
             // TODO: this would be more correct as "unknown", so perhaps
             // `tracing-core` should make `Current::unknown()` public?
             .unwrap_or_else(span::Current::none)
@@ -1148,7 +1148,7 @@ impl<'a, C> Clone for Context<'a, C> {
 
 // === impl Identity ===
 //
-impl<C: Collector> Subscriber<C> for Identity {}
+impl<C: Collect> Subscribe<C> for Identity {}
 
 impl Identity {
     /// Returns a new `Identity` subscriber.
@@ -1184,7 +1184,7 @@ pub(crate) mod tests {
 
     pub(crate) struct NopCollector;
 
-    impl Collector for NopCollector {
+    impl Collect for NopCollector {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
             Interest::never()
         }
@@ -1205,26 +1205,26 @@ pub(crate) mod tests {
     }
 
     struct NopSubscriber;
-    impl<C: Collector> Subscriber<C> for NopSubscriber {}
+    impl<C: Collect> Subscribe<C> for NopSubscriber {}
 
     #[allow(dead_code)]
     struct NopSubscriber2;
-    impl<C: Collector> Subscriber<C> for NopSubscriber2 {}
+    impl<C: Collect> Subscribe<C> for NopSubscriber2 {}
 
     /// A subscriber that holds a string.
     ///
     /// Used to test that pointers returned by downcasting are actually valid.
     struct StringSubscriber(String);
-    impl<C: Collector> Subscriber<C> for StringSubscriber {}
+    impl<C: Collect> Subscribe<C> for StringSubscriber {}
     struct StringSubscriber2(String);
-    impl<C: Collector> Subscriber<C> for StringSubscriber2 {}
+    impl<C: Collect> Subscribe<C> for StringSubscriber2 {}
 
     struct StringSubscriber3(String);
-    impl<C: Collector> Subscriber<C> for StringSubscriber3 {}
+    impl<C: Collect> Subscribe<C> for StringSubscriber3 {}
 
     pub(crate) struct StringCollector(String);
 
-    impl Collector for StringCollector {
+    impl Collect for StringCollector {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
             Interest::never()
         }
@@ -1244,7 +1244,7 @@ pub(crate) mod tests {
         fn exit(&self, _: &span::Id) {}
     }
 
-    fn assert_collector(_s: impl Collector) {}
+    fn assert_collector(_s: impl Collect) {}
 
     #[test]
     fn subscriber_is_collector() {
@@ -1276,7 +1276,7 @@ pub(crate) mod tests {
             .and_then(NopSubscriber)
             .with_collector(StringCollector("collector".into()));
         let collector =
-            Collector::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
+            Collect::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
         assert_eq!(&collector.0, "collector");
     }
 
@@ -1287,13 +1287,13 @@ pub(crate) mod tests {
             .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
         let layer =
-            Collector::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
+            Collect::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
         assert_eq!(&layer.0, "subscriber_1");
         let layer =
-            Collector::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
+            Collect::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
         assert_eq!(&layer.0, "subscriber_2");
         let layer =
-            Collector::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
+            Collect::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
         assert_eq!(&layer.0, "subscriber_3");
     }
 }

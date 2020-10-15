@@ -309,7 +309,7 @@ pub mod span;
 #[doc(inline)]
 pub use self::{
     callsite::Callsite,
-    collector::Collector,
+    collector::Collect,
     dispatcher::Dispatch,
     event::Event,
     field::Field,

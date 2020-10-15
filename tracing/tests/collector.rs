@@ -9,7 +9,7 @@
 #[macro_use]
 extern crate tracing;
 use tracing::{
-    collector::{with_default, Collector, Interest},
+    collector::{with_default, Collect, Interest},
     span, Event, Level, Metadata,
 };
 
@@ -19,7 +19,7 @@ fn event_macros_dont_infinite_loop() {
     // This test ensures that an event macro within a subscriber
     // won't cause an infinite loop of events.
     struct TestSubscriber;
-    impl Collector for TestSubscriber {
+    impl Collect for TestSubscriber {
         fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
             // Always return sometimes so that `enabled` will be called
             // (which can loop).

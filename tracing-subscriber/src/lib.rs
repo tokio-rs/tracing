@@ -58,7 +58,7 @@
 //! long as doing so complies with this policy.
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/collector/trait.Collector.html
 //! [`EnvFilter`]: filter/struct.EnvFilter.html
 //! [`fmt`]: fmt/index.html
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
@@ -109,7 +109,7 @@ pub mod fmt;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
-pub mod subscriber;
+pub mod subscribe;
 pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;
@@ -118,7 +118,7 @@ pub mod util;
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use filter::EnvFilter;
 
-pub use subscriber::Subscriber;
+pub use subscribe::Subscribe;
 
 cfg_feature!("fmt", {
     pub use fmt::fmt;

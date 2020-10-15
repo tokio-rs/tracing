@@ -154,11 +154,11 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::span;
-use tracing::Collector;
+use tracing::Collect;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
-use tracing_subscriber::subscriber::Context;
-use tracing_subscriber::Subscriber;
+use tracing_subscriber::subscribe::Context;
+use tracing_subscriber::Subscribe;
 
 mod error;
 
@@ -256,7 +256,7 @@ where
 
 impl<S, W> FlameSubscriber<S, W>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     /// Returns a new `FlameSubscriber` that outputs all folded stack samples to the
@@ -350,7 +350,7 @@ where
 
 impl<S> FlameSubscriber<S, BufWriter<File>>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     /// Constructs a `FlameSubscriber` that outputs to a `BufWriter` to the given path, and a
     /// `FlushGuard` to ensure the writer is flushed.
@@ -369,9 +369,9 @@ where
     }
 }
 
-impl<S, W> Subscriber<S> for FlameSubscriber<S, W>
+impl<S, W> Subscribe<S> for FlameSubscriber<S, W>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
@@ -458,7 +458,7 @@ where
 
 impl<S, W> FlameSubscriber<S, W>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     fn time_since_last_event(&self) -> Duration {
@@ -476,7 +476,7 @@ where
 
 fn write<S>(dest: &mut String, span: SpanRef<'_, S>) -> fmt::Result
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     if let Some(module_path) = span.metadata().module_path() {
         write!(dest, "{}::", module_path)?;

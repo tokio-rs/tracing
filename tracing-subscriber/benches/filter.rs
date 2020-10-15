@@ -9,7 +9,7 @@ use support::MultithreadedBench;
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
 
-impl tracing::Collector for EnabledSubscriber {
+impl tracing::Collect for EnabledSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)

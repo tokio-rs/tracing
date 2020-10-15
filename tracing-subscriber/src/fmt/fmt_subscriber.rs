@@ -2,14 +2,14 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{LookupSpan, SpanRef},
-    subscriber::{self, Context, Scope},
+    subscribe::{self, Context, Scope},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
-    Collector, Event, Metadata,
+    Collect, Event, Metadata,
 };
 
 /// A [`Subscriber`] that logs formatted representations of `tracing` events.
@@ -108,7 +108,7 @@ impl<S> Subscriber<S> {
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Subscriber<S, N, E, W>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     W: MakeWriter + 'static,
 {
@@ -128,7 +128,7 @@ where
     /// let layer = fmt::subscriber()
     ///     .event_format(format().compact());
     /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Subscriber as _;
+    /// # use tracing_subscriber::Subscribe as _;
     /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [`FormatEvent`]: ./format/trait.FormatEvent.html
@@ -163,7 +163,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// let layer = fmt::subscriber()
     ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Subscriber as _;
+    /// # use tracing_subscriber::Subscribe as _;
     /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
@@ -198,7 +198,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// let layer = fmt::subscriber()
     ///     .with_test_writer();
     /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Subscriber as _;
+    /// # use tracing_subscriber::Subscribe as _;
     /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [capturing]:
@@ -473,7 +473,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
 #[allow(deprecated)]
 impl<S, N, E, W> LayerBuilder<S, N, E, W>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -504,7 +504,7 @@ impl<S> Default for Subscriber<S> {
 
 impl<S, N, E, W> Subscriber<S, N, E, W>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -583,9 +583,9 @@ macro_rules! with_event_from_span {
     };
 }
 
-impl<S, N, E, W> subscriber::Subscriber<S> for Subscriber<S, N, E, W>
+impl<S, N, E, W> subscribe::Subscribe<S> for Subscriber<S, N, E, W>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
     W: MakeWriter + 'static,
@@ -776,7 +776,7 @@ impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
 
 impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
@@ -790,7 +790,7 @@ where
 
 impl<'a, S, N> FmtContext<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
@@ -892,7 +892,7 @@ mod test {
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
-        subscriber::Subscriber as _,
+        subscribe::Subscribe as _,
         test::MockWriter,
         time,
     };

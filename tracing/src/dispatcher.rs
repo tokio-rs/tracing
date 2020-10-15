@@ -28,7 +28,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooCollector {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -54,7 +54,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooCollector {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -91,7 +91,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooCollector {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}

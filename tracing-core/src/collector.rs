@@ -6,7 +6,7 @@ use core::any::{Any, TypeId};
 /// Trait representing the functions required to collect trace data.
 ///
 /// Crates that provide implementations of methods for collecting or recording
-/// trace data should implement the `Collector` interface. This trait is
+/// trace data should implement the `Collect` interface. This trait is
 /// intended to represent fundamental primitives for collecting trace events and
 /// spans — other libraries may offer utility functions and types to make
 /// collector implementations more modular or improve the ergonomics of writing
@@ -35,8 +35,8 @@ use core::any::{Any, TypeId};
 ///
 /// ## Overriding default impls
 ///
-/// Some trait methods on `Collector` have default implementations, either in
-/// order to reduce the surface area of implementing `Collector`, or for
+/// Some trait methods on `Collect` have default implementations, either in
+/// order to reduce the surface area of implementing `Collect`, or for
 /// backward-compatibility reasons. However, many collectors will likely want
 /// to override these default implementations.
 ///
@@ -57,17 +57,17 @@ use core::any::{Any, TypeId};
 ///   nothing. However, they can be used to implement reference counting for
 ///   spans, allowing collectors to free storage for span data and to determine
 ///   when a span has _closed_ permanently (rather than being exited).
-///   Collcetors which store per-span data or which need to track span closures
+///   Collectors which store per-span data or which need to track span closures
 ///   should override these functions together.
 ///
 /// [ID]: super::span::Id
-/// [`new_span`]: Collector::new_span
-/// [`register_callsite`]: Collector::register_callsite
+/// [`new_span`]: Collect::new_span
+/// [`register_callsite`]: Collect::register_callsite
 /// [`Interest`]: Interest
-/// [`enabled`]: Collector::enabled
-/// [`clone_span`]: Collector::clone_span
-/// [`try_close`]: Collector::try_close
-pub trait Collector: 'static {
+/// [`enabled`]: Collect::enabled
+/// [`clone_span`]: Collect::clone_span
+/// [`try_close`]: Collect::try_close
+pub trait Collect: 'static {
     // === Span registry methods ==============================================
 
     /// Registers a new callsite with this collector, returning whether or not
@@ -454,7 +454,7 @@ pub trait Collector: 'static {
     }
 }
 
-impl dyn Collector {
+impl dyn Collect {
     /// Returns `true` if this `Collector` is the same type as `T`.
     pub fn is<T: Any>(&self) -> bool {
         self.downcast_ref::<T>().is_some()

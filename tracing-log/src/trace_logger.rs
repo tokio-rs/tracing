@@ -30,7 +30,7 @@ use std::{
 use tracing_core::{
     field,
     span::{self, Id},
-    Collector, Event, Metadata,
+    Collect, Event, Metadata,
 };
 
 /// A `tracing` [`Collector`] implementation that logs all recorded
@@ -240,7 +240,7 @@ impl field::Visit for SpanLineBuilder {
     }
 }
 
-impl Collector for TraceLogger {
+impl Collect for TraceLogger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         log::logger().enabled(&metadata.as_log())
     }

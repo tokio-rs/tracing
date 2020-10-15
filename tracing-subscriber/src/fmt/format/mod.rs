@@ -13,7 +13,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field, Visit},
-    span, Collector, Event, Level,
+    span, Collect, Event, Level,
 };
 
 #[cfg(feature = "tracing-log")]
@@ -43,7 +43,7 @@ pub use json::*;
 /// [`fmt::Subscriber`]: ../struct.Subscriber.html
 pub trait FormatEvent<S, N>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
@@ -58,7 +58,7 @@ where
 impl<S, N> FormatEvent<S, N>
     for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
@@ -367,7 +367,7 @@ impl<T> Format<Json, T> {
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
@@ -442,7 +442,7 @@ where
 
 impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
 where
-    S: Collector + for<'a> LookupSpan<'a>,
+    S: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
@@ -679,7 +679,7 @@ struct FmtCtx<'a, S, N> {
 
 impl<'a, S, N: 'a> FmtCtx<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
@@ -710,7 +710,7 @@ where
 
 impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -740,7 +740,7 @@ where
 
 struct FullCtx<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     ctx: &'a FmtContext<'a, S, N>,
@@ -751,7 +751,7 @@ where
 
 impl<'a, S, N: 'a> FullCtx<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
@@ -782,7 +782,7 @@ where
 
 impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

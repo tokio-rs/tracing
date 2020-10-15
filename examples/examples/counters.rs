@@ -1,7 +1,7 @@
 #![deny(rust_2018_idioms)]
 
 use tracing::{
-    collector::{self, Collector},
+    collector::{self, Collect},
     field::{Field, Visit},
     info, span, warn, Event, Id, Level, Metadata,
 };
@@ -57,7 +57,7 @@ impl CounterCollector {
     }
 }
 
-impl Collector for CounterCollector {
+impl Collect for CounterCollector {
     fn register_callsite(&self, meta: &Metadata<'_>) -> collector::Interest {
         let mut interest = collector::Interest::never();
         for key in meta.fields() {

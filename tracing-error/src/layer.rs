@@ -1,12 +1,12 @@
 use std::any::{type_name, TypeId};
 use std::fmt;
 use std::marker::PhantomData;
-use tracing::{span, Collector, Dispatch, Metadata};
+use tracing::{span, Collect, Dispatch, Metadata};
 use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
 use tracing_subscriber::{
     fmt::FormattedFields,
     registry::LookupSpan,
-    subscriber::{self, Subscriber},
+    subscribe::{self, Subscribe},
 };
 
 /// A [`Subscriber`] that enables capturing [`SpanTrace`]s.
@@ -33,9 +33,9 @@ pub(crate) struct WithContext(
     fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
 );
 
-impl<S, F> Subscriber<S> for ErrorLayer<S, F>
+impl<S, F> Subscribe<S> for ErrorLayer<S, F>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Notifies this layer that a new span was constructed with the given
@@ -44,7 +44,7 @@ where
         &self,
         attrs: &span::Attributes<'_>,
         id: &span::Id,
-        ctx: subscriber::Context<'_, S>,
+        ctx: subscribe::Context<'_, S>,
     ) {
         let span = ctx.span(id).expect("span must already exist!");
         if span.extensions().get::<FormattedFields<F>>().is_some() {
@@ -71,7 +71,7 @@ where
 impl<S, F> ErrorLayer<S, F>
 where
     F: for<'writer> FormatFields<'writer> + 'static,
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     /// Returns a new `ErrorLayer` with the provided [field formatter].
     ///
@@ -122,7 +122,7 @@ impl WithContext {
 
 impl<S> Default for ErrorLayer<S>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         Self::new(DefaultFields::default())

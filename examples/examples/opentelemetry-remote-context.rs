@@ -2,7 +2,7 @@ use opentelemetry::{api, api::HttpTextFormat};
 use std::collections::HashMap;
 use tracing::span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_subscriber::subscriber::CollectorExt;
+use tracing_subscriber::subscribe::CollectorExt;
 use tracing_subscriber::Registry;
 
 fn make_request(_cx: api::Context) {

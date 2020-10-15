@@ -13,12 +13,12 @@
 //!
 //! For example, we might create a `Registry` and add multiple `Subscriber`s like so:
 //! ```rust
-//! use tracing_subscriber::{registry::Registry, Subscriber, prelude::*};
-//! # use tracing_core::Collector;
+//! use tracing_subscriber::{registry::Registry, Subscribe, prelude::*};
+//! # use tracing_core::Collect;
 //! # pub struct FooLayer {}
 //! # pub struct BarLayer {}
-//! # impl<S: Collector> Subscriber<S> for FooLayer {}
-//! # impl<S: Collector> Subscriber<S> for BarLayer {}
+//! # impl<S: Collect> Subscribe<S> for FooLayer {}
+//! # impl<S: Collect> Subscribe<S> for BarLayer {}
 //! # impl FooLayer {
 //! # fn new() -> Self { Self {} }
 //! # }
@@ -36,16 +36,16 @@
 //! [`LookupSpan`] trait, like so:
 //!
 //! ```rust
-//! use tracing_subscriber::{registry, Subscriber};
-//! use tracing_core::Collector;
+//! use tracing_subscriber::{registry, Subscribe};
+//! use tracing_core::Collect;
 //!
 //! pub struct MyLayer {
 //!     // ...
 //! }
 //!
-//! impl<S> Subscriber<S> for MyLayer
+//! impl<S> Subscribe<S> for MyLayer
 //! where
-//!     S: Collector + for<'a> registry::LookupSpan<'a>,
+//!     S: Collect + for<'a> registry::LookupSpan<'a>,
 //! {
 //!     // ...
 //! }

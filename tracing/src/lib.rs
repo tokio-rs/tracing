@@ -540,7 +540,7 @@
 //! ```
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
-//! # impl tracing::Collector for FooCollector {
+//! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
@@ -582,7 +582,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
-//! # impl tracing::Collector for FooCollector {
+//! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
@@ -922,7 +922,7 @@ use tracing_core::*;
 
 #[doc(inline)]
 pub use self::instrument::Instrument;
-pub use self::{collector::Collector, dispatcher::Dispatch, event::Event, field::Value};
+pub use self::{collector::Collect, dispatcher::Dispatch, event::Event, field::Value};
 
 #[doc(hidden)]
 pub use self::span::Id;

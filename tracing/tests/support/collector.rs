@@ -18,7 +18,7 @@ use tracing::{
     collector::Interest,
     level_filters::LevelFilter,
     span::{self, Attributes, Id},
-    Collector, Event, Metadata,
+    Collect, Event, Metadata,
 };
 
 #[derive(Debug, Eq, PartialEq)]
@@ -159,12 +159,12 @@ where
         }
     }
 
-    pub fn run(self) -> impl Collector {
+    pub fn run(self) -> impl Collect {
         let (collector, _) = self.run_with_handle();
         collector
     }
 
-    pub fn run_with_handle(self) -> (impl Collector, MockHandle) {
+    pub fn run_with_handle(self) -> (impl Collect, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
         let handle = MockHandle(expected.clone(), self.name.clone());
         let collector = Running {
@@ -180,7 +180,7 @@ where
     }
 }
 
-impl<F> Collector for Running<F>
+impl<F> Collect for Running<F>
 where
     F: Fn(&Metadata<'_>) -> bool + 'static,
 {

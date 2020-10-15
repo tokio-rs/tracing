@@ -16,7 +16,7 @@ use std::{
 use tracing_core::{
     dispatcher::{self, Dispatch},
     span::{self, Current, Id},
-    Collector, Event, Interest, Metadata,
+    Collect, Event, Interest, Metadata,
 };
 
 /// A shared, reusable store for spans.
@@ -161,7 +161,7 @@ thread_local! {
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
 }
 
-impl Collector for Registry {
+impl Collect for Registry {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::always()
     }
@@ -367,7 +367,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 #[cfg(test)]
 mod tests {
     use super::Registry;
-    use crate::{registry::LookupSpan, subscriber::Context, Subscriber};
+    use crate::{registry::LookupSpan, subscribe::Context, Subscribe};
     use std::{
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
@@ -376,13 +376,13 @@ mod tests {
     use tracing_core::{
         dispatcher,
         span::{Attributes, Id},
-        Collector,
+        Collect,
     };
 
     struct AssertionSubscriber;
-    impl<C> Subscriber<C> for AssertionSubscriber
+    impl<C> Subscribe<C> for AssertionSubscriber
     where
-        C: Collector + for<'a> LookupSpan<'a>,
+        C: Collect + for<'a> LookupSpan<'a>,
     {
         fn on_close(&self, id: Id, ctx: Context<'_, C>) {
             dbg!(format_args!("closing {:?}", id));
@@ -428,9 +428,9 @@ mod tests {
 
     struct SetRemoved(Arc<()>);
 
-    impl<S> Subscriber<S> for CloseLayer
+    impl<S> Subscribe<S> for CloseLayer
     where
-        S: Collector + for<'a> LookupSpan<'a>,
+        S: Collect + for<'a> LookupSpan<'a>,
     {
         fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");

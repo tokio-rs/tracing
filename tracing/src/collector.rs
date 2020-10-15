@@ -19,7 +19,7 @@ pub use tracing_core::dispatcher::DefaultGuard;
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, S>(collector: S, f: impl FnOnce() -> T) -> T
 where
-    S: Collector + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
     crate::dispatcher::with_default(&crate::Dispatch::new(collector), f)
 }
@@ -40,7 +40,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
 pub fn set_global_default<S>(collector: S) -> Result<(), SetGlobalDefaultError>
 where
-    S: Collector + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
     crate::dispatcher::set_global_default(crate::Dispatch::new(collector))
 }
@@ -62,7 +62,7 @@ where
 #[must_use = "Dropping the guard unregisters the collector."]
 pub fn set_default<S>(collector: S) -> DefaultGuard
 where
-    S: Collector + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
     crate::dispatcher::set_default(&crate::Dispatch::new(collector))
 }

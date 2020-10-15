@@ -2,13 +2,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     collector::Interest,
     span::{Attributes, Id, Record},
-    Collector, Event, Metadata,
+    Collect, Event, Metadata,
 };
-use tracing_subscriber::{prelude::*, reload::*, subscriber};
+use tracing_subscriber::{prelude::*, reload::*, subscribe};
 
 pub struct NopSubscriber;
 
-impl Collector for NopSubscriber {
+impl Collect for NopSubscriber {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::never()
     }
@@ -38,13 +38,13 @@ fn reload_handle() {
         Two,
     }
 
-    impl<S: Collector> tracing_subscriber::Subscriber<S> for Filter {
+    impl<S: Collect> tracing_subscriber::Subscribe<S> for Filter {
         fn register_callsite(&self, m: &Metadata<'_>) -> Interest {
             println!("REGISTER: {:?}", m);
             Interest::sometimes()
         }
 
-        fn enabled(&self, m: &Metadata<'_>, _: subscriber::Context<'_, S>) -> bool {
+        fn enabled(&self, m: &Metadata<'_>, _: subscribe::Context<'_, S>) -> bool {
             println!("ENABLED: {:?}", m);
             match self {
                 Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),

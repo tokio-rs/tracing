@@ -65,7 +65,7 @@
 //! types how you'd like.
 //!
 //! ```rust
-//! # use tracing_core::{Collector, Metadata, Event};
+//! # use tracing_core::{Collect, Metadata, Event};
 //! # use tracing_core::span::{Attributes, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
@@ -75,7 +75,7 @@
 //!     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 //! }
 //!
-//! impl Collector for JsonSubscriber {
+//! impl Collect for JsonSubscriber {
 //!
 //!     fn new_span(&self, attrs: &Attributes<'_>) -> Id {
 //!         let id = self.next_id.fetch_add(1, Ordering::Relaxed);

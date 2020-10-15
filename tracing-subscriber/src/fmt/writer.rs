@@ -114,10 +114,10 @@ impl MakeWriter for TestWriter {
 /// A function that returns a [`Collector`] that will write to either stdout or stderr:
 ///
 /// ```rust
-/// # use tracing::Collector;
+/// # use tracing::Collect;
 /// # use tracing_subscriber::fmt::writer::BoxMakeWriter;
 ///
-/// fn dynamic_writer(use_stderr: bool) -> impl Collector {
+/// fn dynamic_writer(use_stderr: bool) -> impl Collect {
 ///     let writer = if use_stderr {
 ///         BoxMakeWriter::new(std::io::stderr)
 ///     } else {

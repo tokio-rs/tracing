@@ -28,7 +28,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooCollector {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -54,7 +54,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooCollector {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -90,7 +90,7 @@
 //! #   dispatcher, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Collector for FooCollector {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -133,7 +133,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
-    collector::{self, Collector},
+    collector::{self, Collect},
     span, Event, LevelFilter, Metadata,
 };
 
@@ -160,16 +160,16 @@ use core::ops::Deref;
 #[derive(Clone)]
 pub struct Dispatch {
     #[cfg(feature = "alloc")]
-    collector: Kind<Arc<dyn Collector + Send + Sync>>,
+    collector: Kind<Arc<dyn Collect + Send + Sync>>,
 
     #[cfg(not(feature = "alloc"))]
-    collector: &'static (dyn Collector + Send + Sync),
+    collector: &'static (dyn Collect + Send + Sync),
 }
 
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 enum Kind<T> {
-    Global(&'static (dyn Collector + Send + Sync)),
+    Global(&'static (dyn Collect + Send + Sync)),
     Scoped(T),
 }
 
@@ -462,7 +462,7 @@ pub(crate) fn get_global() -> &'static Dispatch {
 }
 
 #[cfg(feature = "std")]
-pub(crate) struct Registrar(Kind<Weak<dyn Collector + Send + Sync>>);
+pub(crate) struct Registrar(Kind<Weak<dyn Collect + Send + Sync>>);
 
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
@@ -483,7 +483,7 @@ impl Dispatch {
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     pub fn new<S>(collector: S) -> Self
     where
-        S: Collector + Send + Sync + 'static,
+        S: Collect + Send + Sync + 'static,
     {
         let me = Dispatch {
             collector: Kind::Scoped(Arc::new(collector)),
@@ -506,7 +506,7 @@ impl Dispatch {
     /// }
     ///
     /// # use tracing_core::{span::{Id, Attributes, Record}, Event, Metadata};
-    /// impl tracing_core::Collector for MyCollector {
+    /// impl tracing_core::Collect for MyCollector {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
@@ -542,7 +542,7 @@ impl Dispatch {
     /// [`Collector`]: super::collector::Collector
     /// [`Dispatch::new`]: Dispatch::new
     /// [`lazy_static`]: https://crates.io/crates/lazy_static
-    pub fn from_static(collector: &'static (dyn Collector + Send + Sync)) -> Self {
+    pub fn from_static(collector: &'static (dyn Collect + Send + Sync)) -> Self {
         #[cfg(feature = "alloc")]
         let me = Self {
             collector: Kind::Global(collector),
@@ -563,7 +563,7 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(feature = "alloc")]
-    fn collector(&self) -> &(dyn Collector + Send + Sync) {
+    fn collector(&self) -> &(dyn Collect + Send + Sync) {
         match self.collector {
             Kind::Scoped(ref s) => Arc::deref(s),
             Kind::Global(s) => s,
@@ -572,7 +572,7 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(not(feature = "alloc"))]
-    fn collector(&self) -> &(dyn Collector + Send + Sync) {
+    fn collector(&self) -> &(dyn Collect + Send + Sync) {
         self.collector
     }
 
@@ -781,14 +781,14 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Collector::is::<T>(&*self.collector())
+        Collect::is::<T>(&*self.collector())
     }
 
     /// Returns some reference to the `Collector` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Collector::downcast_ref(&*self.collector())
+        Collect::downcast_ref(&*self.collector())
     }
 }
 
@@ -808,7 +808,7 @@ impl fmt::Debug for Dispatch {
 #[cfg(feature = "std")]
 impl<S> From<S> for Dispatch
 where
-    S: Collector + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
     #[inline]
     fn from(collector: S) -> Self {
@@ -817,7 +817,7 @@ where
 }
 
 struct NoCollector;
-impl Collector for NoCollector {
+impl Collect for NoCollector {
     #[inline]
     fn register_callsite(&self, _: &'static Metadata<'static>) -> collector::Interest {
         collector::Interest::never()
@@ -978,7 +978,7 @@ mod test {
         // This test ensures that an event triggered within a collector
         // won't cause an infinite loop of events.
         struct TestCollector;
-        impl Collector for TestCollector {
+        impl Collect for TestCollector {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -1027,7 +1027,7 @@ mod test {
         }
 
         struct TestCollector;
-        impl Collector for TestCollector {
+        impl Collect for TestCollector {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }
@@ -1067,7 +1067,7 @@ mod test {
     #[test]
     fn default_dispatch() {
         struct TestCollector;
-        impl Collector for TestCollector {
+        impl Collect for TestCollector {
             fn enabled(&self, _: &Metadata<'_>) -> bool {
                 true
             }

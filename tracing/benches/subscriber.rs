@@ -13,7 +13,7 @@ use tracing::{field, span, Event, Id, Metadata};
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
 
-impl tracing::Collector for EnabledSubscriber {
+impl tracing::Collect for EnabledSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)
@@ -57,7 +57,7 @@ impl<'a> field::Visit for Visitor<'a> {
     }
 }
 
-impl tracing::Collector for VisitingSubscriber {
+impl tracing::Collect for VisitingSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let mut visitor = Visitor(self.0.lock().unwrap());
         span.record(&mut visitor);

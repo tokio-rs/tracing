@@ -9,7 +9,7 @@ use tracing::{span, Event, Id, Metadata};
 /// A collector that is enabled but otherwise does nothing.
 struct EnabledCollector;
 
-impl tracing::Collector for EnabledCollector {
+impl tracing::Collect for EnabledCollector {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)

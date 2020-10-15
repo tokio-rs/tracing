@@ -5,12 +5,12 @@ use std::fmt;
 use std::marker;
 use std::time::SystemTime;
 use tracing_core::span::{self, Attributes, Id, Record};
-use tracing_core::{field, Collector, Event};
+use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::subscriber::Context;
-use tracing_subscriber::Subscriber;
+use tracing_subscriber::subscribe::Context;
+use tracing_subscriber::Subscribe;
 
 static SPAN_NAME_FIELD: &str = "otel.name";
 static SPAN_KIND_FIELD: &str = "otel.kind";
@@ -29,7 +29,7 @@ pub struct OpenTelemetryLayer<S, T> {
 
 impl<S> Default for OpenTelemetryLayer<S, api::NoopTracer>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         OpenTelemetryLayer::new(api::NoopTracer {})
@@ -43,7 +43,7 @@ where
 /// # Examples
 ///
 /// ```rust,no_run
-/// use tracing_subscriber::subscriber::CollectorExt;
+/// use tracing_subscriber::subscribe::CollectorExt;
 /// use tracing_subscriber::Registry;
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
@@ -53,7 +53,7 @@ where
 /// ```
 pub fn layer<S>() -> OpenTelemetryLayer<S, api::NoopTracer>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     OpenTelemetryLayer::default()
 }
@@ -261,7 +261,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
 
 impl<S, T> OpenTelemetryLayer<S, T>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Set the [`Tracer`] that this layer will use to produce and track
@@ -275,7 +275,7 @@ where
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, sdk};
     /// use tracing_opentelemetry::OpenTelemetryLayer;
-    /// use tracing_subscriber::subscriber::CollectorExt;
+    /// use tracing_subscriber::subscribe::CollectorExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter for a `trace-demo` service.
@@ -325,7 +325,7 @@ where
     ///
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, sdk};
-    /// use tracing_subscriber::subscriber::CollectorExt;
+    /// use tracing_subscriber::subscribe::CollectorExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter for a `trace-demo` service.
@@ -424,9 +424,9 @@ where
     }
 }
 
-impl<S, T> Subscriber<S> for OpenTelemetryLayer<S, T>
+impl<S, T> Subscribe<S> for OpenTelemetryLayer<S, T>
 where
-    S: Collector + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`].

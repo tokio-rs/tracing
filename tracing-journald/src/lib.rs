@@ -46,9 +46,9 @@ use tracing_core::{
     event::Event,
     field::Visit,
     span::{Attributes, Id, Record},
-    Collector, Field, Level, Metadata,
+    Collect, Field, Level, Metadata,
 };
-use tracing_subscriber::{registry::LookupSpan, subscriber::Context};
+use tracing_subscriber::{registry::LookupSpan, subscribe::Context};
 
 /// Sends events and their fields to journald
 ///
@@ -119,9 +119,9 @@ pub fn subscriber() -> io::Result<Subscriber> {
     Subscriber::new()
 }
 
-impl<C> tracing_subscriber::Subscriber<C> for Subscriber
+impl<C> tracing_subscriber::Subscribe<C> for Subscriber
 where
-    C: Collector + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
 {
     fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");

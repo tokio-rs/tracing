@@ -14,7 +14,7 @@ use std::{
 use tracing_core::{
     field::{self, Field},
     span::Record,
-    Collector, Event,
+    Collect, Event,
 };
 use tracing_serde::AsSerde;
 
@@ -79,16 +79,16 @@ impl Json {
 }
 
 struct SerializableContext<'a, 'b, Span, N>(
-    &'b crate::subscriber::Context<'a, Span>,
+    &'b crate::subscribe::Context<'a, Span>,
     std::marker::PhantomData<N>,
 )
 where
-    Span: Collector + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
 impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
 where
-    Span: Collector + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
@@ -177,7 +177,7 @@ where
 
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
-    S: Collector + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
@@ -188,7 +188,7 @@ where
         event: &Event<'_>,
     ) -> fmt::Result
     where
-        S: Collector + for<'a> LookupSpan<'a>,
+        S: Collect + for<'a> LookupSpan<'a>,
     {
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;

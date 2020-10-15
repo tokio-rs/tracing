@@ -13,13 +13,13 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    subscriber::{Context, Subscriber},
+    subscribe::{Context, Subscribe},
     sync::RwLock,
 };
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
-    collector::{Collector, Interest},
+    collector::{Collect, Interest},
     field::Field,
     span, Metadata,
 };
@@ -366,7 +366,7 @@ impl EnvFilter {
     }
 }
 
-impl<S: Collector> Subscriber<S> for EnvFilter {
+impl<S: Collect> Subscribe<S> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a

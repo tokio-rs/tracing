@@ -1,10 +1,10 @@
-//! A `Collector` for formatting and logging `tracing` data.
+//! A Collector for formatting and logging `tracing` data.
 //!
 //! ## Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides an
-//! implementation of the [`Collector`] trait that records `tracing`'s `Event`s
+//! implementation of the [`Collect`] trait that records `tracing`'s `Event`s
 //! and `Span`s by formatting them as text and logging them to stdout.
 //!
 //! ## Usage
@@ -118,8 +118,8 @@
 //! [`filter`]: ../filter/index.html
 //! [`fmtBuilder`]: ./struct.CollectorBuilder.html
 //! [`FmtSubscriber`]: ./struct.Collector.html
-//! [`Collector`]:
-//!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`Collect`]:
+//!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, error::Error, io};
 use tracing_core::{collector::Interest, span, Event, Metadata};
@@ -132,11 +132,11 @@ pub mod writer;
 pub use fmt_subscriber::LayerBuilder;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
-use crate::subscriber::Subscriber as _;
+use crate::subscribe::Subscribe as _;
 use crate::{
     filter::LevelFilter,
     registry::{LookupSpan, Registry},
-    reload, subscriber,
+    reload, subscribe,
 };
 
 #[doc(inline)]
@@ -156,16 +156,16 @@ pub struct Collector<
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
-    inner: subscriber::Layered<F, Formatter<N, E, W>>,
+    inner: subscribe::Layered<F, Formatter<N, E, W>>,
 }
 
-/// A `Collector` that logs formatted representations of `tracing` events.
+/// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
 pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> = subscriber::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
@@ -179,7 +179,7 @@ pub struct CollectorBuilder<
     inner: Subscriber<Registry, N, E, W>,
 }
 
-/// Returns a new [`CollectorBuilder`] for configuring a [formatting subscriber].
+/// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
 ///
 /// This is essentially shorthand for [`CollectorBuilder::default()]`.
 ///
@@ -248,11 +248,11 @@ pub fn fmt() -> CollectorBuilder {
 }
 
 /// Returns a new [formatting subscriber] that can be [composed] with other subscribers to
-/// construct a [`Collector`].
+/// construct a [`Collect`].
 ///
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///
-/// [formatting layer]: struct.Subscriber.html
+/// [formatting collector]: struct.Subscriber.html
 /// [composed]: ../layer/index.html
 /// [`Subscriber::default`]: struct.Subscriber.html#method.default
 pub fn subscriber<S>() -> Subscriber<S> {
@@ -288,14 +288,14 @@ impl Default for Collector {
 
 // === impl Collector ===
 
-impl<N, E, F, W> tracing_core::Collector for Collector<N, E, F, W>
+impl<N, E, F, W> tracing_core::Collect for Collector<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    F: subscriber::Subscriber<Formatter<N, E, W>> + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
-    subscriber::Layered<F, Formatter<N, E, W>>: tracing_core::Collector,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: subscriber::Subscriber<Registry>,
+    subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
+    fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -364,9 +364,9 @@ where
 
 impl<'a, N, E, F, W> LookupSpan<'a> for Collector<N, E, F, W>
 where
-    subscriber::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+    subscribe::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
 {
-    type Data = <subscriber::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+    type Data = <subscribe::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
@@ -389,9 +389,9 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: subscriber::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
-        subscriber::Subscriber<Registry> + Send + Sync + 'static,
+        subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtSubscriber`.
     pub fn finish(self) -> Collector<N, E, F, W> {
@@ -421,14 +421,14 @@ where
         Ok(())
     }
 
-    /// Install this Collector as the global default.
+    /// Install this collector as the global default.
     ///
     /// If the `tracing-log` feature is enabled, this will also install
     /// the LogTracer to convert `Log` records into `tracing` `Event`s.
     ///
     /// # Panics
     /// Panics if the initialization was unsuccessful, likely because a
-    /// global subscriber was already installed by another call to `try_init`.
+    /// global collector was already installed by another call to `try_init`.
     pub fn init(self) {
         self.try_init()
             .expect("Unable to install global subscriber")
@@ -440,9 +440,9 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: subscriber::Subscriber<Formatter<N, E, W>> + Send + Sync + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
-        subscriber::Subscriber<Registry> + Send + Sync + 'static,
+        subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     fn into(self) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(self.finish())
@@ -648,7 +648,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Layer<F>, W>
 where
-    Formatter<N, E, W>: tracing_core::Collector + 'static,
+    Formatter<N, E, W>: tracing_core::Collect + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed subscriber's
     /// filter.
@@ -743,7 +743,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         filter: impl Into<crate::EnvFilter>,
     ) -> CollectorBuilder<N, E, crate::EnvFilter, W>
     where
-        Formatter<N, E, W>: tracing_core::Collector + 'static,
+        Formatter<N, E, W>: tracing_core::Collect + 'static,
     {
         let filter = filter.into();
         CollectorBuilder {
