@@ -10,7 +10,7 @@
 //!
 //! * [`Event`] represents a single event within a trace.
 //!
-//! * [`Collector`], the trait implemented to collect trace data.
+//! * [`Collect`], the trait implemented to collect trace data.
 //!
 //! * [`Metadata`] and [`Callsite`] provide information describing spans and
 //!   `Event`s.
@@ -18,7 +18,7 @@
 //! * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
 //!   structured data attached to a span.
 //!
-//! * [`Dispatch`] allows spans and events to be dispatched to `Collector`s.
+//! * [`Dispatch`] allows spans and events to be dispatched to collectors.
 //!
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
@@ -34,14 +34,14 @@
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
 //!
-//! `Collector` implementations may depend on `tracing-core` rather than
+//! Collector implementations may depend on `tracing-core` rather than
 //! `tracing`, as the additional APIs provided by `tracing` are primarily useful
 //! for instrumenting libraries and applications, and are generally not
-//! necessary for `Collector` implementations.
+//! necessary for collector implementations.
 //!
 //! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
-//! `Collector` implementations, as well as utility and adapter crates.
+//! collector implementations, as well as utility and adapter crates.
 //!
 //! ### `no_std` Support
 //!
@@ -72,9 +72,9 @@
 //! require a global memory allocator.
 //!
 //! The "alloc" feature is required to enable the [`Dispatch::new`] function,
-//! which requires dynamic memory allocation to construct a `Collector` trait
+//! which requires dynamic memory allocation to construct a collector trait
 //! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
-//! created from `&'static dyn Collector` references, using
+//! created from `&'static dyn Collect` references, using
 //! [`Dispatch::from_static`].
 //!
 //! The "std" feature is required to enable the following features:
@@ -123,7 +123,7 @@
 //!
 //! [`span::Id`]: span::Id
 //! [`Event`]: event::Event
-//! [`Collector`]: collector::Collector
+//! [`Collect`]: collect::Collect
 //! [`Metadata`]: metadata::Metadata
 //! [`Callsite`]: callsite::Callsite
 //! [`Field`]: field::Field
