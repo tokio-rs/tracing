@@ -1,7 +1,7 @@
 #![deny(rust_2018_idioms)]
 
 use tracing::{
-    collector::{self, Collect},
+    collect::{self, Collect},
     field::{Field, Visit},
     info, span, warn, Event, Id, Level, Metadata,
 };
@@ -58,8 +58,8 @@ impl CounterCollector {
 }
 
 impl Collect for CounterCollector {
-    fn register_callsite(&self, meta: &Metadata<'_>) -> collector::Interest {
-        let mut interest = collector::Interest::never();
+    fn register_callsite(&self, meta: &Metadata<'_>) -> collect::Interest {
+        let mut interest = collect::Interest::never();
         for key in meta.fields() {
             let name = key.name();
             if name.contains("count") {
@@ -69,7 +69,7 @@ impl Collect for CounterCollector {
                     .unwrap()
                     .entry(name.to_owned())
                     .or_insert_with(|| AtomicUsize::new(0));
-                interest = collector::Interest::always();
+                interest = collect::Interest::always();
             }
         }
         interest
@@ -121,7 +121,7 @@ impl Counters {
 fn main() {
     let (counters, collector) = Counters::new();
 
-    tracing::collector::set_global_default(collector).unwrap();
+    tracing::collect::set_global_default(collector).unwrap();
 
     let mut foo: u64 = 2;
     span!(Level::TRACE, "my_great_span", foo_count = &foo).in_scope(|| {

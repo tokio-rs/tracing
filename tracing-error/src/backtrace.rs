@@ -266,7 +266,7 @@ impl fmt::Debug for SpanTrace {
 mod tests {
     use super::*;
     use crate::ErrorLayer;
-    use tracing::collector::with_default;
+    use tracing::collect::with_default;
     use tracing::{span, Level};
     use tracing_subscriber::{prelude::*, registry::Registry};
 

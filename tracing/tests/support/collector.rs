@@ -15,7 +15,7 @@ use std::{
     thread,
 };
 use tracing::{
-    collector::Interest,
+    collect::Interest,
     level_filters::LevelFilter,
     span::{self, Attributes, Id},
     Collect, Event, Metadata,

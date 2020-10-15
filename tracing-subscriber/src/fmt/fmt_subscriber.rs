@@ -25,7 +25,7 @@ use tracing_core::{
 /// let collector = Registry::default()
 ///     .with(fmt::Subscriber::default());
 ///
-/// tracing::collector::set_global_default(collector).unwrap();
+/// tracing::collect::set_global_default(collector).unwrap();
 /// ```
 ///
 /// Overriding the subscriber's behavior:
@@ -39,7 +39,7 @@ use tracing_core::{
 ///    .with_level(false); // don't include event levels when logging
 ///
 /// let collector = Registry::default().with(fmt_subscriber);
-/// # tracing::collector::set_global_default(collector).unwrap();
+/// # tracing::collect::set_global_default(collector).unwrap();
 /// ```
 ///
 /// Setting a custom event formatter:
@@ -53,7 +53,7 @@ use tracing_core::{
 ///     .event_format(fmt)
 ///     .with_target(false);
 /// # let subscriber = fmt_layer.with_collector(tracing_subscriber::registry::Registry::default());
-/// # tracing::collector::set_global_default(subscriber).unwrap();
+/// # tracing::collect::set_global_default(subscriber).unwrap();
 /// ```
 ///
 /// [`Subscriber`]: ../layer/trait.Subscriber.html
@@ -901,7 +901,7 @@ mod test {
     use lazy_static::lazy_static;
     use regex::Regex;
     use std::sync::Mutex;
-    use tracing::collector::with_default;
+    use tracing::collect::with_default;
     use tracing_core::dispatcher::Dispatch;
 
     #[test]

@@ -97,13 +97,13 @@ const N_SPANS: usize = 100;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut c = c.benchmark_group("scoped/subscriber");
     c.bench_function("span_no_fields", |b| {
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| span!(Level::TRACE, "span"))
         });
     });
 
     c.bench_function("enter_span", |b| {
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             let span = span!(Level::TRACE, "span");
             #[allow(clippy::unit_arg)]
             b.iter(|| black_box(span.in_scope(|| {})))
@@ -111,7 +111,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("event", |b| {
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 tracing::event!(Level::TRACE, "hello");
             });
@@ -125,13 +125,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
 
         let n = black_box(N_SPANS);
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| (0..n).fold(mk_span(0), |_, i| mk_span(i as u64)))
         });
     });
 
     c.bench_function("span_with_fields", |b| {
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 span!(
                     Level::TRACE,
@@ -147,7 +147,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("span_with_fields_record", |b| {
         let subscriber = VisitingSubscriber(Mutex::new(String::from("")));
-        tracing::collector::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             b.iter(|| {
                 span!(
                     Level::TRACE,
@@ -183,7 +183,7 @@ fn bench_dispatch(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("scoped/dispatch");
     group.bench_function("get_ref", |b| {
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 tracing::dispatcher::get_default(|current| {
                     black_box(&current);
@@ -192,7 +192,7 @@ fn bench_dispatch(c: &mut Criterion) {
         })
     });
     group.bench_function("get_clone", |b| {
-        tracing::collector::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 let current = tracing::dispatcher::get_default(|current| current.clone());
                 black_box(current);

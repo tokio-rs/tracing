@@ -31,7 +31,7 @@ fn main() {
         .with_env_filter("attrs_args=trace")
         .finish();
 
-    tracing::collector::with_default(subscriber, || {
+    tracing::collect::with_default(subscriber, || {
         let n = 5;
         let sequence = fibonacci_seq(n);
         info!("The first {} fibonacci numbers are {:?}", n, sequence);

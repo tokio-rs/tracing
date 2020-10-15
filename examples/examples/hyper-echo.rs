@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(Some("hyper"), log::LevelFilter::Trace)
         .emit_traces() // from `tracing_log::env_logger::BuilderExt`
         .try_init()?;
-    tracing::collector::set_global_default(subscriber)?;
+    tracing::collect::set_global_default(subscriber)?;
 
     let local_addr: std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
     let server_span = span!(Level::TRACE, "server", %local_addr);

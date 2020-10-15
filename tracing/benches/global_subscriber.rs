@@ -45,7 +45,7 @@ const N_SPANS: usize = 100;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut c = c.benchmark_group("global/collector");
-    let _ = tracing::collector::set_global_default(EnabledCollector);
+    let _ = tracing::collect::set_global_default(EnabledCollector);
     c.bench_function("span_no_fields", |b| b.iter(|| span!(Level::TRACE, "span")));
 
     c.bench_function("event", |b| {
@@ -85,7 +85,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 }
 
 fn bench_dispatch(c: &mut Criterion) {
-    let _ = tracing::collector::set_global_default(EnabledCollector);
+    let _ = tracing::collect::set_global_default(EnabledCollector);
     let mut group = c.benchmark_group("global/dispatch");
     group.bench_function("get_ref", |b| {
         b.iter(|| {

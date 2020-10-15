@@ -557,7 +557,7 @@
 //! # #[cfg(feature = "alloc")]
 //! let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! tracing::collector::set_global_default(my_collector)
+//! tracing::collect::set_global_default(my_collector)
 //!     .expect("setting tracing default failed");
 //! # }
 //! ```
@@ -598,7 +598,7 @@
 //!
 //! let my_collector = FooCollector::new();
 //! # #[cfg(feature = "std")]
-//! tracing::collector::with_default(my_collector, || {
+//! tracing::collect::with_default(my_collector, || {
 //!     // Any trace events generated in this closure or by functions it calls
 //!     // will be collected by `my_collector`.
 //! })
@@ -855,16 +855,16 @@
 //! [`in_scope`]: span::Span::in_scope
 //! [event]: Event
 //! [events]: Event
-//! [`Collector`]: collector::Collector
-//! [Collector::event]: collector::Collector::event
-//! [`enter`]: collector::Collector::enter
-//! [`exit`]: collector::Collector::exit
-//! [`enabled`]: collector::Collector::enabled
+//! [`Collector`]: collect::Collect
+//! [Collector::event]: collect::Collect::event
+//! [`enter`]: collect::Collect::enter
+//! [`exit`]: collect::Collect::exit
+//! [`enabled`]: collect::Collect::enabled
 //! [metadata]: Metadata
 //! [`field::display`]: field::display
 //! [`field::debug`]: field::debug
-//! [`set_global_default`]: collector::set_global_default
-//! [`with_default`]: collector::with_default
+//! [`set_global_default`]: collect::set_global_default
+//! [`with_default`]: collect::with_default
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing-futures`]: https://crates.io/crates/tracing-futures
 //! [`tracing-subscriber`]: https://crates.io/crates/tracing-subscriber
@@ -922,7 +922,7 @@ use tracing_core::*;
 
 #[doc(inline)]
 pub use self::instrument::Instrument;
-pub use self::{collector::Collect, dispatcher::Dispatch, event::Event, field::Value};
+pub use self::{collect::Collect, dispatcher::Dispatch, event::Event, field::Value};
 
 #[doc(hidden)]
 pub use self::span::Id;
@@ -944,7 +944,7 @@ pub use tracing_attributes::instrument;
 #[macro_use]
 mod macros;
 
-pub mod collector;
+pub mod collect;
 pub mod dispatcher;
 pub mod field;
 /// Attach a span to a `std::future::Future`.
@@ -955,7 +955,7 @@ pub mod span;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
-    use crate::{collector::Interest, Metadata};
+    use crate::{collect::Interest, Metadata};
     use core::fmt;
     use core::sync::atomic::{AtomicUsize, Ordering};
     use tracing_core::Once;

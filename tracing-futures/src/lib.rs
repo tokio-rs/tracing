@@ -515,7 +515,7 @@ mod tests {
     #[cfg(feature = "futures-01")]
     mod futures_01_tests {
         use futures_01::{future, stream, task, Async, Future, Stream};
-        use tracing::collector::with_default;
+        use tracing::collect::with_default;
 
         use super::*;
 
@@ -656,7 +656,7 @@ mod tests {
     #[cfg(all(feature = "futures-03", feature = "std-future"))]
     mod futures_03_tests {
         use futures::{future, sink, stream, FutureExt, SinkExt, StreamExt};
-        use tracing::collector::with_default;
+        use tracing::collect::with_default;
 
         use super::*;
 

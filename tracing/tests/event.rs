@@ -13,7 +13,7 @@ mod support;
 use self::support::*;
 
 use tracing::{
-    collector::with_default,
+    collect::with_default,
     field::{debug, display},
     Level,
 };

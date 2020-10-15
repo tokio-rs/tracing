@@ -372,7 +372,7 @@ mod tests {
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
     };
-    use tracing::{self, collector::with_default};
+    use tracing::{self, collect::with_default};
     use tracing_core::{
         dispatcher,
         span::{Attributes, Id},

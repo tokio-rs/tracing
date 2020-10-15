@@ -132,7 +132,7 @@ impl io::Write for RollingFileAppender {
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(collector.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -167,7 +167,7 @@ pub fn minutely(
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(collector.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -203,7 +203,7 @@ pub fn hourly(
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(collector.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -237,7 +237,7 @@ pub fn daily(
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collector::with_default(collector.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }

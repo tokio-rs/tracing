@@ -45,7 +45,7 @@
 //!         .with(fmt_subscriber)
 //!         .with(flame_subscriber);
 //!
-//!     tracing::collector::set_global_default(collector).expect("Could not set global default");
+//!     tracing::collect::set_global_default(collector).expect("Could not set global default");
 //!     _guard
 //! }
 //!

@@ -85,7 +85,7 @@ fn main() {
         next_id: AtomicUsize::new(1),
     };
 
-    tracing::collector::with_default(subscriber, || {
+    tracing::collect::with_default(subscriber, || {
         let number_of_yaks = 3;
         debug!("preparing to shave {} yaks", number_of_yaks);
 

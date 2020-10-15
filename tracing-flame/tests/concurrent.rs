@@ -13,7 +13,7 @@ fn capture_supported() {
 
     let subscriber = Registry::default().with(flame_layer);
 
-    tracing::collector::set_global_default(subscriber).expect("Could not set global default");
+    tracing::collect::set_global_default(subscriber).expect("Could not set global default");
     let span = span!(Level::ERROR, "main");
     let _guard = span.enter();
 

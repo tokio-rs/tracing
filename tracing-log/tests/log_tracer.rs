@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use tracing::collector::with_default;
+use tracing::collect::with_default;
 use tracing_core::span::{Attributes, Record};
 use tracing_core::{span, Collect, Event, Level, Metadata};
 use tracing_log::{LogTracer, NormalizeEvent};

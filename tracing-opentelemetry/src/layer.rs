@@ -627,7 +627,7 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::collector::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
         });
 
@@ -640,7 +640,7 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::collector::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 
@@ -661,7 +661,7 @@ mod tests {
         )));
         let _g = existing_cx.attach();
 
-        tracing::collector::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 

@@ -287,7 +287,7 @@ macro_rules! log_cs {
         );
 
         impl callsite::Callsite for Callsite {
-            fn set_interest(&self, _: collector::Interest) {}
+            fn set_interest(&self, _: collect::Interest) {}
             fn metadata(&self) -> &'static Metadata<'static> {
                 &META
             }

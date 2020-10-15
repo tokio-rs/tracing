@@ -14,7 +14,7 @@ fn main() {
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter("attrs_literal_field_names=trace")
         .finish();
-    tracing::collector::with_default(subscriber, || {
+    tracing::collect::with_default(subscriber, || {
         let span = span!(Level::TRACE, "get_band_rec", "guid:x-request-id" = "abcdef");
         let _enter = span.enter();
         suggest_band();

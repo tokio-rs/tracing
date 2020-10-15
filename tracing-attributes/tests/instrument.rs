@@ -1,7 +1,7 @@
 mod support;
 use support::*;
 
-use tracing::collector::with_default;
+use tracing::collect::with_default;
 use tracing::Level;
 use tracing_attributes::instrument;
 

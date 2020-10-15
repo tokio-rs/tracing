@@ -84,7 +84,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// let collector = MySubscriber::new()
 ///     .with(MySubscriber::new());
 ///
-/// tracing::collector::set_global_default(collector);
+/// tracing::collect::set_global_default(collector);
 /// ```
 ///
 /// Multiple `Subscriber`s may be composed in the same manner:
@@ -138,7 +138,7 @@ use std::{any::TypeId, marker::PhantomData};
 ///     .with(MyOtherSubscriber::new())
 ///     .with(MyThirdSubscriber::new());
 ///
-/// tracing::collector::set_global_default(collector);
+/// tracing::collect::set_global_default(collector);
 /// ```
 ///
 /// The [`Subscribe::with_collector` method][with-col] constructs the `Layered`

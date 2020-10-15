@@ -9,7 +9,7 @@
 #[macro_use]
 extern crate tracing;
 use tracing::{
-    collector::{with_default, Collect, Interest},
+    collect::{with_default, Collect, Interest},
     span, Event, Level, Metadata,
 };
 

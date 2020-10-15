@@ -17,7 +17,7 @@ fn spans_dont_leak() {
         .done()
         .run_with_handle();
 
-    let _guard = tracing::collector::set_default(collector);
+    let _guard = tracing::collect::set_default(collector);
 
     do_span();
 
@@ -32,7 +32,7 @@ fn spans_dont_leak() {
         .done()
         .run_with_handle();
 
-    tracing::collector::with_default(subscriber2, || {
+    tracing::collect::with_default(subscriber2, || {
         println!("--- subscriber 2 is default ---");
         do_span()
     });
@@ -57,7 +57,7 @@ fn events_dont_leak() {
         .done()
         .run_with_handle();
 
-    let _guard = tracing::collector::set_default(collector);
+    let _guard = tracing::collect::set_default(collector);
 
     do_event();
 
@@ -68,7 +68,7 @@ fn events_dont_leak() {
         .done()
         .run_with_handle();
 
-    tracing::collector::with_default(collector2, || {
+    tracing::collect::with_default(collector2, || {
         println!("--- collector 2 is default ---");
         do_event()
     });

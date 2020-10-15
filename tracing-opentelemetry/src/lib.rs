@@ -65,7 +65,7 @@
 //! let subscriber = Registry::default().with(telemetry);
 //!
 //! // Trace executed code
-//! tracing::collector::with_default(subscriber, || {
+//! tracing::collect::with_default(subscriber, || {
 //!     // Spans will be sent to the configured OpenTelemetry exporter
 //!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
 //!     let _enter = root.enter();

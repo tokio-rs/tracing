@@ -342,7 +342,7 @@ pub trait Collect: 'static {
     /// what that means for the specified pointer.
     ///
     /// [span ID]: super::span::Id
-    /// [`try_close`]: Collector::try_close
+    /// [`try_close`]: Collect::try_close
     fn clone_span(&self, id: &span::Id) -> span::Id {
         id.clone()
     }
@@ -355,7 +355,7 @@ pub trait Collect: 'static {
     ///
     /// The default implementation of this function does nothing.
     ///
-    /// [`try_close`]: Collector::try_close
+    /// [`try_close`]: Collect::try_close
     #[deprecated(since = "0.1.2", note = "use `Collector::try_close` instead")]
     fn drop_span(&self, _id: span::Id) {}
 
@@ -393,8 +393,8 @@ pub trait Collect: 'static {
     /// was dropped due to a thread unwinding.
     ///
     /// [span ID]: super::span::Id
-    /// [`clone_span`]: Collector::clone_span
-    /// [`drop_span`]: Collector::drop_span
+    /// [`clone_span`]: Collect::clone_span
+    /// [`drop_span`]: Collect::drop_span
     fn try_close(&self, id: span::Id) -> bool {
         #[allow(deprecated)]
         self.drop_span(id);
@@ -474,13 +474,13 @@ impl dyn Collect {
     }
 }
 
-/// Indicates a [`Collector`]'s interest in a particular callsite.
+/// Indicates a [`Collect`]'s interest in a particular callsite.
 ///
-/// `Collector`s return an `Interest` from their [`register_callsite`] methods
+/// Collectors return an `Interest` from their [`register_callsite`] methods
 /// in order to determine whether that span should be enabled or disabled.
 ///
-/// [`Collector`]: super::Collector
-/// [`register_callsite`]: super::Collector::register_callsite
+/// [`Collect`]: super::Collect
+/// [`register_callsite`]: super::Collect::register_callsite
 #[derive(Clone, Debug)]
 pub struct Interest(InterestKind);
 

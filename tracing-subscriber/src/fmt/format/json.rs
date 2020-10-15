@@ -503,7 +503,7 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 mod test {
     use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
-    use tracing::{self, collector::with_default};
+    use tracing::{self, collect::with_default};
 
     use std::{fmt, sync::Mutex};
 

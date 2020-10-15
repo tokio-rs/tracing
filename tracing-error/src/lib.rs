@@ -153,7 +153,7 @@
 //!         .with(ErrorLayer::default());
 //!
 //!     // set the subscriber as the default for the application
-//!     tracing::collector::set_global_default(subscriber);
+//!     tracing::collect::set_global_default(subscriber);
 //! }
 //! ```
 //!

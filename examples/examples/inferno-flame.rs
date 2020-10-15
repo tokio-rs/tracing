@@ -15,7 +15,7 @@ fn setup_global_subscriber(dir: &Path) -> impl Drop {
 
     let subscriber = Registry::default().with(flame_layer);
 
-    tracing::collector::set_global_default(subscriber).unwrap();
+    tracing::collect::set_global_default(subscriber).unwrap();
 
     _guard
 }

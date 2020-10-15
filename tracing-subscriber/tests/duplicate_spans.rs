@@ -1,5 +1,5 @@
 mod support;
-use tracing::{self, collector::with_default, Span};
+use tracing::{self, collect::with_default, Span};
 use tracing_subscriber::{filter::EnvFilter, fmt::Collector};
 
 #[test]

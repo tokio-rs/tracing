@@ -87,7 +87,7 @@
 //!
 //! let subscriber = fmt::Collector::new();
 //!
-//! tracing::collector::set_global_default(subscriber)
+//! tracing::collect::set_global_default(subscriber)
 //!     .map_err(|_err| eprintln!("Unable to set global default subscriber"));
 //! // Note this will only fail if you try to set the global default
 //! // subscriber multiple times
@@ -231,7 +231,7 @@ pub struct CollectorBuilder<
 ///     .compact()
 ///     .finish();
 ///
-/// tracing::collector::with_default(collector, || {
+/// tracing::collect::with_default(collector, || {
 ///     // the collector will only be set as the default
 ///     // inside this closure...
 /// })
@@ -909,9 +909,9 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// ```rust
     /// use tracing_subscriber::fmt;
-    /// use tracing::collector;
+    /// use tracing::collect;
     ///
-    /// collector::set_default(
+    /// collect::set_default(
     ///     fmt()
     ///         .with_test_writer()
     ///         .finish()
