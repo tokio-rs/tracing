@@ -43,12 +43,12 @@
 //!
 //! ## Configuration
 //!
-//! You can configure a subscriber instead of using the defaults with
+//! You can configure a collector instead of using the defaults with
 //! the following functions:
 //!
 //! ### Collector
 //!
-//! The [`FmtSubscriber`] formats and records `tracing` events as line-oriented logs.
+//! The [`FmtCollector`] formats and records `tracing` events as line-oriented logs.
 //! You can create one by calling:
 //!
 //! ```rust
@@ -57,7 +57,7 @@
 //!     .finish();
 //! ```
 //!
-//! You can find the configuration methods for [`FmtSubscriber`] in [`fmtBuilder`].
+//! You can find the configuration methods for [`FmtCollector`] in [`fmtBuilder`].
 //!
 //! ### Filters
 //!
@@ -117,7 +117,7 @@
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: ../filter/index.html
 //! [`fmtBuilder`]: ./struct.CollectorBuilder.html
-//! [`FmtSubscriber`]: ./struct.Collector.html
+//! [`FmtCollector`]: ./struct.Collector.html
 //! [`Collect`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -238,7 +238,7 @@ pub struct CollectorBuilder<
 /// ```
 ///
 /// [`CollectorBuilder`]: struct.CollectorBuilder.html
-/// [formatting subscriber]: struct.Collector.html
+/// [formatting collector]: struct.Collector.html
 /// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
 /// [`init`]: struct.CollectorBuilder.html#method.init
 /// [`try_init`]: struct.CollectorBuilder.html#method.try_init
@@ -252,7 +252,7 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///
-/// [formatting collector]: struct.Subscriber.html
+/// [formatting subscriber]: struct.Subscriber.html
 /// [composed]: ../layer/index.html
 /// [`Subscriber::default`]: struct.Subscriber.html#method.default
 pub fn subscriber<S>() -> Subscriber<S> {
@@ -646,7 +646,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, reload::Layer<F>, W>
+impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
 where
     Formatter<N, E, W>: tracing_core::Collect + 'static,
 {
@@ -829,8 +829,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// [`reload_handle`]: CollectorBuilder::reload_handle
     /// [`reload::Handle`]: crate::reload::Handle
-    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Layer<F>, W> {
-        let (filter, _) = reload::Layer::new(self.filter);
+    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Subscriber<F>, W> {
+        let (filter, _) = reload::Subscriber::new(self.filter);
         CollectorBuilder {
             filter,
             inner: self.inner,

@@ -576,7 +576,7 @@ mod tests {
     use tracing_core::*;
 
     struct NoCollector;
-    impl Collector for NoCollector {
+    impl Collect for NoCollector {
         #[inline]
         fn register_callsite(&self, _: &'static Metadata<'static>) -> collector::Interest {
             collector::Interest::always()
