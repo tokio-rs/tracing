@@ -429,7 +429,7 @@ impl LevelFilter {
     const OFF_USIZE: usize = LevelInner::Error as usize + 1;
 
     /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
-    /// currently active [`Collector`] will enable.
+    /// currently active [`Collect`] will enable.
     ///
     /// User code should treat this as a *hint*. If a given span or event has a
     /// level *higher* than the returned `LevelFilter`, it will not be enabled.
@@ -443,7 +443,7 @@ impl LevelFilter {
     /// *enabled*.`
     ///
     /// [`Level`]: super::Level
-    /// [`Collector`]: super::Collector
+    /// [`Collect`]: super::Collect
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {

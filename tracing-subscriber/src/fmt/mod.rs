@@ -248,7 +248,7 @@ pub fn fmt() -> CollectorBuilder {
 }
 
 /// Returns a new [formatting subscriber] that can be [composed] with other subscribers to
-/// construct a [`Collect`].
+/// construct a collector.
 ///
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///

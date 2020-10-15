@@ -1,4 +1,4 @@
-//! Dispatches trace events to [`Collector`]s.
+//! Dispatches trace events to [`Collect`]s.
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
@@ -156,7 +156,7 @@ use alloc::sync::Arc;
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
 
-/// `Dispatch` trace data to a [`Collector`].
+/// `Dispatch` trace data to a [`Collect`].
 #[derive(Clone)]
 pub struct Dispatch {
     #[cfg(feature = "alloc")]

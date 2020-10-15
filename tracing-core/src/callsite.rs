@@ -21,7 +21,7 @@ type Callsites = LinkedList;
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
-    /// [`Interest`]: super::collector::Interest
+    /// [`Interest`]: super::collect::Interest
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
@@ -102,7 +102,7 @@ mod inner {
     /// [`Callsite`]: crate::callsite::Callsite
     /// [`enabled`]: crate::collect::Collect::enabled
     /// [`Interest::sometimes()`]: crate::collect::Interest::sometimes
-    /// [`Collect`]: crate::collect::collect
+    /// [`Collect`]: crate::collect::Collect
     pub fn rebuild_interest_cache() {
         let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
