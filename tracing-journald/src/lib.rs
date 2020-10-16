@@ -10,7 +10,7 @@
 //! [`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
-//!  
+//!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
@@ -154,7 +154,7 @@ where
         });
     }
 
-    fn on_event(&self, event: &Event, ctx: Context<S>) {
+    fn on_event(&self, event: &Event<'_, '_>, ctx: Context<S>) {
         let mut buf = Vec::with_capacity(256);
 
         // Record span fields

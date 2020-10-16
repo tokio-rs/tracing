@@ -153,8 +153,8 @@ where
 
 // === impl RecordFields ===
 
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
-impl<'a> RecordFields for Event<'a> {
+impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a, '_> {}
+impl<'a> RecordFields for Event<'a, '_> {
     fn record(&self, visitor: &mut dyn Visit) {
         Event::record(&self, visitor)
     }

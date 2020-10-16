@@ -228,7 +228,7 @@ where
         }
     }
 
-    fn event(&self, event: &Event<'_>) {
+    fn event(&self, event: &Event<'_, '_>) {
         let name = event.metadata().name();
         println!("[{}] event: {};", self.name, name);
         match self.expected.lock().unwrap().pop_front() {

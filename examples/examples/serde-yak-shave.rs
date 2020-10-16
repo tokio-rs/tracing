@@ -58,7 +58,7 @@ impl Subscriber for JsonSubscriber {
         println!("{}", json);
     }
 
-    fn event(&self, event: &Event<'_>) {
+    fn event(&self, event: &Event<'_, '_>) {
         let json = json!({
             "event": event.as_serde(),
         });

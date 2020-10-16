@@ -85,7 +85,8 @@ where
     }
 
     #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: layer::Context<'_, S>) {
+    // fn on_event<'a>(&'a self, event: &'a Event<'a>, ctx: layer::Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_, '_>, ctx: layer::Context<'_, S>) {
         try_lock!(self.inner.read()).on_event(event, ctx)
     }
 

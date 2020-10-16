@@ -585,7 +585,7 @@ mod tests {
         fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xDEAD)
         }
-        fn event(&self, _event: &Event<'_>) {}
+        fn event(&self, _event: &Event<'_, '_>) {}
         fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
         fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 

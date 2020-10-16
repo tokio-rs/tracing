@@ -504,7 +504,7 @@ where
     /// [`Event`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/event/struct.Event.html
     /// [`ERROR`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.ERROR
     /// [`Unknown`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/enum.StatusCode.html#variant.Unknown
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_, '_>, ctx: Context<'_, S>) {
         // Ignore events that are not in the context of a span
         if let Some(span) = ctx.lookup_current() {
             // Performing read operations before getting a write lock to avoid a deadlock

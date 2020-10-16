@@ -70,6 +70,7 @@ pub struct Field {
 pub struct Empty;
 
 /// Describes the fields present on a span.
+#[derive(Clone)]
 pub struct FieldSet {
     /// The names of each field on the described span.
     names: &'static [&'static str],

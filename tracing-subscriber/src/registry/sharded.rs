@@ -199,7 +199,7 @@ impl Subscriber for Registry {
 
     /// This is intentionally not implemented, as recording events
     /// is the responsibility of layers atop of this registry.
-    fn event(&self, _: &Event<'_>) {}
+    fn event(&self, _: &Event<'_, '_>) {}
 
     fn enter(&self, id: &span::Id) {
         self.current_spans

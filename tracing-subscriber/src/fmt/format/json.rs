@@ -185,7 +185,7 @@ where
         &self,
         ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
+        event: &Event<'_, '_>,
     ) -> fmt::Result
     where
         S: Subscriber + for<'a> LookupSpan<'a>,

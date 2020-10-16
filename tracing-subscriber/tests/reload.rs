@@ -23,7 +23,7 @@ impl Subscriber for NopSubscriber {
 
     fn record(&self, _: &Id, _: &Record<'_>) {}
     fn record_follows_from(&self, _: &Id, _: &Id) {}
-    fn event(&self, _: &Event<'_>) {}
+    fn event(&self, _: &Event<'_, '_>) {}
     fn enter(&self, _: &Id) {}
     fn exit(&self, _: &Id) {}
 }

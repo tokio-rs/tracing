@@ -328,7 +328,8 @@ where
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that an event has occurred.
-    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {}
+    // fn on_event<'a, 'b: 'a>(&'a self, _event: &'a Event<'a, 'b>, _ctx: Context<'_, S>) {}
+    fn on_event(&self, _event: &Event<'_, '_>, _ctx: Context<'_, S>) {}
 
     /// Notifies this layer that a span with the given ID was entered.
     fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
@@ -646,7 +647,7 @@ where
         self.layer.on_follows_from(span, follows, self.ctx());
     }
 
-    fn event(&self, event: &Event<'_>) {
+    fn event<'a>(&'a self, event: &'a Event<'a, '_>) {
         self.inner.event(event);
         self.layer.on_event(event, self.ctx());
     }
@@ -768,7 +769,7 @@ where
     }
 
     #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_, '_>, ctx: Context<'_, S>) {
         self.inner.on_event(event, ctx.clone());
         self.layer.on_event(event, ctx);
     }
@@ -859,7 +860,7 @@ where
     }
 
     #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_, '_>, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_event(event, ctx);
         }
@@ -988,7 +989,7 @@ where
     /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.enabled
     /// [`Context::enabled`]: #method.enabled
     #[inline]
-    pub fn event(&self, event: &Event<'_>) {
+    pub fn event(&self, event: &'a Event<'a, '_>) {
         if let Some(ref subscriber) = self.subscriber {
             subscriber.event(event);
         }
@@ -1197,7 +1198,7 @@ pub(crate) mod tests {
 
         fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
         fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-        fn event(&self, _: &Event<'_>) {}
+        fn event(&self, _: &Event<'_, '_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
     }
@@ -1237,7 +1238,7 @@ pub(crate) mod tests {
 
         fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
         fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-        fn event(&self, _: &Event<'_>) {}
+        fn event(&self, _: &Event<'_, '_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
     }

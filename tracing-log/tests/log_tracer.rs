@@ -33,7 +33,7 @@ impl Subscriber for TestSubscriber {
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
-    fn event(&self, event: &Event<'_>) {
+    fn event(&self, event: &Event<'_, '_>) {
         *self.0.last_normalized_metadata.lock().unwrap() = (
             event.is_log(),
             event.normalized_metadata().map(|normalized| OwnedMetadata {

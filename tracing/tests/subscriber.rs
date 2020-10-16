@@ -41,7 +41,7 @@ fn event_macros_dont_infinite_loop() {
 
         fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
-        fn event(&self, event: &Event<'_>) {
+        fn event(&self, event: &Event<'_, '_>) {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
             event!(Level::TRACE, baz = false);
         }

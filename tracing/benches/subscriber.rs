@@ -19,7 +19,7 @@ impl tracing::Subscriber for EnabledSubscriber {
         Id::from_u64(0xDEAD_FACE)
     }
 
-    fn event(&self, event: &Event<'_>) {
+    fn event(&self, event: &Event<'_, '_>) {
         let _ = event;
     }
 
@@ -69,7 +69,7 @@ impl tracing::Subscriber for VisitingSubscriber {
         values.record(&mut visitor);
     }
 
-    fn event(&self, event: &Event<'_>) {
+    fn event(&self, event: &Event<'_, '_>) {
         let mut visitor = Visitor(self.0.lock().unwrap());
         event.record(&mut visitor);
     }

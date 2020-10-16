@@ -363,8 +363,9 @@ impl Subscriber for TraceLogger<'static> {
         }
     }
 
-    fn event(&self, event: &Event<'_>) {
-        let meta = event.metadata();
+    // fn event(&self, event: &Event<'_>) {
+    fn event<'a>(&'a self, event: &'a Event<'a, '_>) {
+        let meta = event.metadata().clone(); // TODO dp: is `TraceLogger` gone from 0.2?
         let log_meta = meta.as_log();
         let logger = log::logger();
         if logger.enabled(&log_meta) {
@@ -434,9 +435,9 @@ impl TraceLogger<'static> {
     }
 }
 
-struct LogEvent<'a>(&'a Event<'a>);
+struct LogEvent<'a, 'b>(&'a Event<'a, 'b>);
 
-impl<'a> fmt::Display for LogEvent<'a> {
+impl<'a, 'b> fmt::Display for LogEvent<'a, 'b> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut has_logged = false;
         let mut format_fields = |field: &field::Field, value: &dyn fmt::Debug| {

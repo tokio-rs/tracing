@@ -47,16 +47,18 @@ where
     N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
+    // fn format_event<'a>(
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
+        event: &Event<'_, '_>,
+        // event: &'a Event<'a>,
     ) -> fmt::Result;
 }
 
 impl<S, N> FormatEvent<S, N>
-    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_, '_>) -> fmt::Result
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
@@ -65,7 +67,7 @@ where
         &self,
         ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
+        event: &Event<'_, '_>,
     ) -> fmt::Result {
         (*self)(ctx, writer, event)
     }
@@ -371,11 +373,13 @@ where
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
+    // fn format_event<'a>(
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
+        // event: &'a Event<'a>,
+        event: &Event<'_, '_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
@@ -450,7 +454,7 @@ where
         &self,
         ctx: &FmtContext<'_, S, N>,
         writer: &mut dyn fmt::Write,
-        event: &Event<'_>,
+        event: &Event<'_, '_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
