@@ -1,6 +1,6 @@
 [package]
 name = "tracing-subscriber"
-version = "0.2.12"
+version = "0.3.0"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "David Barsky <me@davidbarsky.com>",
@@ -24,30 +24,31 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 [features]
 
 default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log", "json"]
-env-filter = ["matchers", "regex", "lazy_static"]
+env-filter = ["matchers", "regex", "lazy_static", "tracing"]
 fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.16" }
+tracing-core = { path = "../tracing-core", version = "0.2" }
 
 # only required by the filter feature
+tracing = { optional = true, path = "../tracing", version = "0.2" }
 matchers = { optional = true, version = "0.0.1" }
 regex = { optional = true, version = "1", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1" }
 lazy_static = { optional = true, version = "1" }
 
 # fmt
-tracing-log = { path = "../tracing-log", version = "0.1", optional = true, default-features = false, features = ["log-tracer", "std"] }
+tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
 ansi_term = { version = "0.12", optional = true }
 chrono = { version = "0.4", optional = true }
 
 # only required by the json feature
 serde_json = { version = "1.0", optional = true }
 serde = { version = "1.0", optional = true }
-tracing-serde = { path = "../tracing-serde", version = "0.1.2", optional = true }
+tracing-serde = { path = "../tracing-serde", version = "0.2", optional = true }
 
 # opt-in deps
 parking_lot = { version = ">= 0.7, <= 0.11", optional = true }
@@ -57,12 +58,12 @@ sharded-slab = { version = "^0.0.9", optional = true }
 thread_local = { version = "1.0.1", optional = true }
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1" }
+tracing = { path = "../tracing", version = "0.2" }
 log = "0.4"
-tracing-log = { path = "../tracing-log", version = "0.1" }
+tracing-log = { path = "../tracing-log", version = "0.2" }
 criterion = { version = "0.3", default_features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
-tracing-futures = { path = "../tracing-futures", version = "0.2", default-features = false, features = ["std-future", "std"] }
+tracing-futures = { path = "../tracing-futures", version = "0.3", default-features = false, features = ["std-future", "std"] }
 tokio = { version = "0.2", features = ["rt-core", "macros"] }
 
 [badges]

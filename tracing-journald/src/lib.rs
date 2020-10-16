@@ -11,7 +11,7 @@
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!  
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -21,7 +21,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -34,6 +34,7 @@
 //!
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, deny(broken_intra_doc_links))]

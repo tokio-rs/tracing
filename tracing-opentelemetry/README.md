@@ -17,9 +17,9 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-opentelemetry.svg
-[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.7.0
+[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.8.0
 [docs-badge]: https://docs.rs/tracing-opentelemetry/badge.svg
-[docs-url]: https://docs.rs/tracing-opentelemetry/0.7.0/tracing_opentelemetry
+[docs-url]: https://docs.rs/tracing-opentelemetry/0.8.0/tracing_opentelemetry
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_opentelemetry
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -50,7 +50,7 @@ The crate provides the following types:
 [`tracing`]: https://crates.io/crates/tracing
 [OpenTelemetry]: https://opentelemetry.io/
 
-*Compiler support: [requires `rustc` 1.40+][msrv]*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -101,7 +101,7 @@ $ firefox http://localhost:16686/
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.40. The current Tracing version is not guaranteed to build on Rust
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

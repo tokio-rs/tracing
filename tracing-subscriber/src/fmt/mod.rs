@@ -137,6 +137,7 @@ use crate::{
     filter::LevelFilter,
     layer,
     registry::{LookupSpan, Registry},
+    reload,
 };
 
 #[doc(inline)]
@@ -646,35 +647,13 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
     }
 }
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-impl<N, E, W> SubscriberBuilder<N, E, crate::EnvFilter, W>
-where
-    Formatter<N, E, W>: tracing_core::Subscriber + 'static,
-{
-    /// Configures the subscriber being built to allow filter reloading at
-    /// runtime.
-    pub fn with_filter_reloading(
-        self,
-    ) -> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
-    {
-        let (filter, _) = crate::reload::Layer::new(self.filter);
-        SubscriberBuilder {
-            filter,
-            inner: self.inner,
-        }
-    }
-}
-
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-impl<N, E, W> SubscriberBuilder<N, E, crate::reload::Layer<crate::EnvFilter, Formatter<N, E, W>>, W>
+impl<N, E, F, W> SubscriberBuilder<N, E, reload::Layer<F>, W>
 where
     Formatter<N, E, W>: tracing_core::Subscriber + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed subscriber's
     /// filter.
-    pub fn reload_handle(&self) -> crate::reload::Handle<crate::EnvFilter, Formatter<N, E, W>> {
+    pub fn reload_handle(&self) -> reload::Handle<F> {
         self.filter.handle()
     }
 }
@@ -808,6 +787,51 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         filter: impl Into<LevelFilter>,
     ) -> SubscriberBuilder<N, E, LevelFilter, W> {
         let filter = filter.into();
+        SubscriberBuilder {
+            filter,
+            inner: self.inner,
+        }
+    }
+
+    /// Configures the subscriber being built to allow filter reloading at
+    /// runtime.
+    ///
+    /// The returned builder will have a [`reload_handle`] method, which returns
+    /// a [`reload::Handle`] that may be used to set a new filter value.
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// use tracing::Level;
+    /// use tracing_subscriber::prelude::*;
+    ///
+    /// let builder = tracing_subscriber::fmt()
+    ///      // Set a max level filter on the subscriber
+    ///     .with_max_level(Level::INFO)
+    ///     .with_filter_reloading();
+    ///
+    /// // Get a handle for modifying the subscriber's max level filter.
+    /// let handle = builder.reload_handle();
+    ///
+    /// // Finish building the subscriber, and set it as the default.
+    /// builder.finish().init();
+    ///
+    /// // Currently, the max level is INFO, so this event will be disabled.
+    /// tracing::debug!("this is not recorded!");
+    ///
+    /// // Use the handle to set a new max level filter.
+    /// // (this returns an error if the subscriber has been dropped, which shouldn't
+    /// // happen in this example.)
+    /// handle.reload(Level::DEBUG).expect("the subscriber should still exist");
+    ///
+    /// // Now, the max level is INFO, so this event will be recorded.
+    /// tracing::debug!("this is recorded!");
+    /// ```
+    ///
+    /// [`reload_handle`]: SubscriberBuilder::reload_handle
+    /// [`reload::Handle`]: crate::reload::Handle
+    pub fn with_filter_reloading(self) -> SubscriberBuilder<N, E, reload::Layer<F>, W> {
+        let (filter, _) = reload::Layer::new(self.filter);
         SubscriberBuilder {
             filter,
             inner: self.inner,

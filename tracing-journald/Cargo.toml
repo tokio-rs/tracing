@@ -1,6 +1,6 @@
 [package]
 name = "tracing-journald"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Benjamin Saunders <ben.e.saunders@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -15,5 +15,5 @@ categories = [
 keywords = ["tracing", "journald"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.10" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.5" }
+tracing-core = { path = "../tracing-core", version = "0.2" }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
