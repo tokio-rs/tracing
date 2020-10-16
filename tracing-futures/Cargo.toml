@@ -35,7 +35,7 @@ tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = "0.1.22"
-tokio-test = "0.2"
+tokio-test = "0.3"
 tracing-core = { path = "../tracing-core", version = "0.2" }
 
 [badges]
