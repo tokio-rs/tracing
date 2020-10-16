@@ -230,7 +230,7 @@ pub trait WithSubscriber: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {
