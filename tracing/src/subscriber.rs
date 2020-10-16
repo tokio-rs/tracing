@@ -40,7 +40,7 @@ pub fn set_global_default<S>(subscriber: S) -> Result<(), SetGlobalDefaultError>
 where
     S: Subscriber + Send + Sync + 'static,
 {
-    crate::dispatcher::set_global_default(crate::Dispatch::new(subscriber))
+    crate::dispatcher::set_global_default(&crate::Dispatch::new(subscriber))
 }
 
 /// Sets the subscriber as the default for the duration of the lifetime of the

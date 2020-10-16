@@ -414,7 +414,7 @@ where
         #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(Box::new)?;
 
-        tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
+        tracing_core::dispatcher::set_global_default(&tracing_core::dispatcher::Dispatch::new(
             self.finish(),
         ))?;
         Ok(())

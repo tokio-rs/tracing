@@ -4,7 +4,7 @@ use common::*;
 use tracing_core::dispatcher::*;
 #[test]
 fn global_dispatch() {
-    set_global_default(Dispatch::new(TestSubscriberA)).expect("global dispatch set failed");
+    set_global_default(&Dispatch::new(TestSubscriberA)).expect("global dispatch set failed");
     get_default(|current| {
         assert!(
             current.is::<TestSubscriberA>(),
@@ -29,6 +29,6 @@ fn global_dispatch() {
         )
     });
 
-    set_global_default(Dispatch::new(TestSubscriberA))
+    set_global_default(&Dispatch::new(TestSubscriberA))
         .expect_err("double global dispatch set succeeded");
 }

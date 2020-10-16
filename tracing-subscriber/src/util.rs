@@ -53,7 +53,7 @@ where
         #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(TryInitError::new)?;
 
-        dispatcher::set_global_default(self.into()).map_err(TryInitError::new)?;
+        dispatcher::set_global_default(&self.into()).map_err(TryInitError::new)?;
 
         Ok(())
     }

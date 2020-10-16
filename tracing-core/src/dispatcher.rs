@@ -100,7 +100,7 @@
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
 //!
-//! dispatcher::set_global_default(my_dispatch)
+//! dispatcher::set_global_default(&my_dispatch)
 //!     // `set_global_default` will return an error if the global default
 //!     // subscriber has already been set.
 //!     .expect("global default was already set!");
@@ -279,11 +279,11 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// [span]: ../span/index.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: ../event/struct.Event.html
-pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
+pub fn set_global_default(dispatcher: &Dispatch) -> Result<(), SetGlobalDefaultError> {
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
     {
         unsafe {
-            GLOBAL_DISPATCH = Some(dispatcher);
+            GLOBAL_DISPATCH = Some(dispatcher.clone());
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);

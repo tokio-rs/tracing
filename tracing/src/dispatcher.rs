@@ -100,7 +100,7 @@
 //! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
 //! // no default subscriber
 //!
-//! dispatcher::set_global_default(my_dispatch)
+//! dispatcher::set_global_default(&my_dispatch)
 //!     // `set_global_default` will return an error if the global default
 //!     // subscriber has already been set.
 //!     .expect("global default was already set!");

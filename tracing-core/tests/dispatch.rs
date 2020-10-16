@@ -6,7 +6,7 @@ use tracing_core::dispatcher::*;
 #[cfg(feature = "std")]
 #[test]
 fn set_default_dispatch() {
-    set_global_default(Dispatch::new(TestSubscriberA)).expect("global dispatch set failed");
+    set_global_default(&Dispatch::new(TestSubscriberA)).expect("global dispatch set failed");
     get_default(|current| {
         assert!(
             current.is::<TestSubscriberA>(),
