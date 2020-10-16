@@ -199,7 +199,7 @@ pub trait Instrument: Sized {
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
-    /// Attaches the provided [`Collector`] to this type, returning a
+    /// Attaches the provided [collector] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
