@@ -12,7 +12,7 @@
 //! * [`Instrument`] allows a `tracing` [span] to be attached to a future, sink,
 //!   stream, or executor.
 //!
-//! * [`WithSubscriber`] allows a `tracing` [`Collector`] to be attached to a
+//! * [`WithSubscriber`] allows a `tracing` [collector] to be attached to a
 //!   future, sink, stream, or executor.
 //!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
@@ -54,7 +54,7 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
+//! [collector]: https://docs.rs/tracing/latest/tracing/collect/index.html
 //! [`Instrument`]: trait.Instrument.html
 //! [`WithSubscriber`]: trait.WithSubscriber.html
 //! [`futures`]: https://crates.io/crates/futures
@@ -193,9 +193,9 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures, streams, and sinks to be instrumented with
-/// a `tracing` [`Collector`].
+/// a `tracing` [collector].
 ///
-/// [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+/// [`Collector`]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
