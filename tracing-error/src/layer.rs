@@ -9,13 +9,13 @@ use tracing_subscriber::{
     subscribe::{self, Subscribe},
 };
 
-/// A [`Subscriber`] that enables capturing [`SpanTrace`]s.
+/// A [subscriber] that enables capturing [`SpanTrace`]s.
 ///
 /// Optionally, this type may be constructed with a [field formatter] to use
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [`Subscriber`]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/layer/trait.Layer.html
+/// [subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/subscriber/trait.Subscribe.html
 /// [`SpanTrace`]: ../struct.SpanTrace.html
 /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
 /// [default format]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/format/struct.DefaultFields.html

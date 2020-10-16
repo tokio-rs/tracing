@@ -139,7 +139,7 @@
 //! ```
 //!
 //! Applications that wish to use `tracing-error`-enabled errors should
-//! construct an [`ErrorLayer`] and add it to their [`Collector`] in order to
+//! construct an [`ErrorLayer`] and add it to their [collector` in order to
 //! enable capturing [`SpanTrace`]s. For example:
 //!
 //! ```rust
@@ -166,7 +166,7 @@
 //! [`in_current_span()`]: trait.InstrumentResult.html#tymethod.in_current_span
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-//! [`Collector`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [collector]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 //! [`tracing`]: https://docs.rs/tracing
 //! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
