@@ -9,7 +9,10 @@ name = "tracing"
 # - Update CHANGELOG.md.
 # - Create "v0.2.x" git tag
 version = "0.2.0"
-authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
+authors = [
+    "Eliza Weisman <eliza@buoyant.io>",
+    "Tokio Contributors <team@tokio.rs>",
+]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
@@ -30,7 +33,7 @@ edition = "2018"
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
 log = { version = "0.4", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
-cfg-if = "0.1.10"
+cfg-if = "1.0.0"
 pin-project-lite = "0.1"
 
 [dev-dependencies]
@@ -45,24 +48,25 @@ wasm-bindgen-test = "^0.3"
 [features]
 default = ["std", "attributes"]
 
-max_level_off   = []
+max_level_off = []
 max_level_error = []
-max_level_warn  = []
-max_level_info  = []
+max_level_warn = []
+max_level_info = []
 max_level_debug = []
 max_level_trace = []
 
-release_max_level_off   = []
+release_max_level_off = []
 release_max_level_error = []
-release_max_level_warn  = []
-release_max_level_info  = []
+release_max_level_warn = []
+release_max_level_info = []
 release_max_level_debug = []
 release_max_level_trace = []
 
 # This feature flag is no longer necessary.
 async-await = []
 
-std = ["tracing-core/std"]
+alloc = ["tracing-core/alloc"]
+std = ["tracing-core/std", "alloc"]
 log-always = ["log"]
 attributes = ["tracing-attributes"]
 
@@ -72,6 +76,10 @@ harness = false
 
 [[bench]]
 name = "no_subscriber"
+harness = false
+
+[[bench]]
+name = "global_subscriber"
 harness = false
 
 [badges]

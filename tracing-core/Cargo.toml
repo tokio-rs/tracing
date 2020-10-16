@@ -27,7 +27,8 @@ edition = "2018"
 
 [features]
 default = ["std"]
-std = ["lazy_static"]
+alloc = []
+std = ["lazy_static", "alloc"]
 
 [badges]
 maintenance = { status = "actively-developed" }
