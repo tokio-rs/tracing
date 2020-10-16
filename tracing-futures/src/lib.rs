@@ -207,7 +207,7 @@ pub trait WithSubscriber: Sized {
     /// When the wrapped type is an executor, the subscriber will be set as the
     /// default for any futures spawned on that executor.
     ///
-    /// [`Collector`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+    /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
