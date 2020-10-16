@@ -443,7 +443,7 @@ impl LevelFilter {
     /// *enabled*.`
     ///
     /// [`Level`]: super::Level
-    /// [`Collect`]: super::Collect
+    /// [collector]: super::Collect
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {
