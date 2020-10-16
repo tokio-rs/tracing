@@ -24,7 +24,7 @@ use core::{
 /// - The [line number]
 /// - The [module path]
 ///
-/// Metadata is used by [`Collector`]s when filtering spans and events, and it
+/// Metadata is used by [collector]s when filtering spans and events, and it
 /// may also be used as part of their data payload.
 ///
 /// When created by the `event!` or `span!` macro, the metadata describing a
