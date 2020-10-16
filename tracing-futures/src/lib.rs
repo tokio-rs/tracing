@@ -219,7 +219,7 @@ pub trait WithSubscriber: Sized {
         }
     }
 
-    /// Attaches the current [default] [`Collector`] to this type, returning a
+    /// Attaches the current [default] [collector] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
