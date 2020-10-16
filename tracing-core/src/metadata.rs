@@ -429,7 +429,7 @@ impl LevelFilter {
     const OFF_USIZE: usize = LevelInner::Error as usize + 1;
 
     /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
-    /// currently active [`Collect`] will enable.
+    /// currently active [collector] will enable.
     ///
     /// User code should treat this as a *hint*. If a given span or event has a
     /// level *higher* than the returned `LevelFilter`, it will not be enabled.
