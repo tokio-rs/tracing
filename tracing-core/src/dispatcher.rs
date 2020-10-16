@@ -312,12 +312,12 @@ pub fn set_global_default(dispatcher: &Dispatch) -> Result<(), SetGlobalDefaultE
     {
         #[cfg(feature = "alloc")]
         let subscriber = {
-            let subscriber = match &dispatcher.subscriber {
-                Kind::Global(s) => s.clone(),
+            let subscriber = match dispatcher.subscriber.clone() {
+                Kind::Global(s) => s,
                 Kind::Scoped(s) => unsafe {
                     // safety: this leaks the subscriber onto the heap. the
                     // reference count will always be at least 1.
-                    &*Arc::into_raw(s.clone())
+                    &*Arc::into_raw(s)
                 },
             };
             Kind::Global(subscriber)
