@@ -668,7 +668,6 @@ impl Dispatch {
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [`event`]: super::subscriber::Subscriber::event
     #[inline]
-    // pub fn event(&self, event: &Event<'static>) {
     pub fn event<'a>(&'a self, event: &'a Event<'a, '_>) {
         self.subscriber().event(event)
     }
