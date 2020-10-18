@@ -2,7 +2,6 @@
 use crate::parent::Parent;
 use crate::span::Id;
 use crate::{field, Metadata};
-use alloc::borrow::Cow;
 
 /// `Event`s represent single points in time where something occurred during the
 /// execution of a program.
@@ -23,9 +22,7 @@ use alloc::borrow::Cow;
 #[derive(Debug)]
 pub struct Event<'a, 'b> {
     fields: &'a field::ValueSet<'a>,
-    // metadata: &'static Metadata<'static>,
-    // metadata: Cow<'a, Metadata<'static>>,
-    metadata: Cow<'a, Metadata<'b>>,
+    metadata: &'a Metadata<'b>,
     parent: Parent,
 }
 
@@ -44,7 +41,7 @@ impl<'a, 'b: 'a> Event<'a, 'b> {
     #[inline]
     pub fn new(metadata: &'a Metadata<'b>, fields: &'a field::ValueSet<'a>) -> Self {
         Event {
-            metadata: Cow::Borrowed(metadata),
+            metadata,
             fields,
             parent: Parent::Current,
         }
@@ -55,7 +52,7 @@ impl<'a, 'b: 'a> Event<'a, 'b> {
     #[inline]
     pub fn new_child_of(
         parent: impl Into<Option<Id>>,
-        metadata: &'static Metadata<'static>,
+        metadata: &'a Metadata<'b>,
         fields: &'a field::ValueSet<'a>,
     ) -> Self {
         let parent = match parent.into() {
@@ -63,7 +60,7 @@ impl<'a, 'b: 'a> Event<'a, 'b> {
             None => Parent::Root,
         };
         Event {
-            metadata: Cow::Borrowed(metadata),
+            metadata,
             fields,
             parent,
         }
@@ -73,10 +70,9 @@ impl<'a, 'b: 'a> Event<'a, 'b> {
     /// and observes it with the current subscriber and an explicit parent.
     pub fn child_of(
         parent: impl Into<Option<Id>>,
-        metadata: &'static Metadata<'_>,
+        metadata: &'a Metadata<'b>,
         fields: &'a field::ValueSet<'_>,
     ) {
-        // TODO (dp)
         let event = Self::new_child_of(parent, metadata, fields);
         crate::dispatcher::get_default(|current| {
             current.event(&event);
@@ -102,9 +98,6 @@ impl<'a, 'b: 'a> Event<'a, 'b> {
     pub fn metadata(&'a self) -> &'a Metadata<'_> {
         &self.metadata
     }
-    // pub fn metadata(&self) -> &'static Metadata<'static> {
-    //     self.metadata
-    // }
 
     /// Returns true if the new event should be a root.
     pub fn is_root(&self) -> bool {
