@@ -59,7 +59,6 @@ use core::{
 /// [module path]: Self::module_path
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [callsite identifier]: super::callsite::Identifier
-#[derive(Clone)]
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: Cow<'a, str>,
