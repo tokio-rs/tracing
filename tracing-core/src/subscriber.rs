@@ -299,9 +299,7 @@ pub trait Subscriber: 'static {
     /// [visitor]: super::field::Visit
     /// [`record` method]: super::event::Event::record
     /// [`dispatch` method]: super::event::Event::dispatch
-    // TODO dp: try `&'a Event<'static>`
     fn event<'a>(&'a self, event: &'a Event<'a, '_>);
-    // fn event(&self, event: &Event<'static>);
 
     /// Records that a span has been entered.
     ///

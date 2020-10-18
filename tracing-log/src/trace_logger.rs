@@ -363,9 +363,8 @@ impl Subscriber for TraceLogger<'static> {
         }
     }
 
-    // fn event(&self, event: &Event<'_>) {
     fn event<'a>(&'a self, event: &'a Event<'a, '_>) {
-        let meta = event.metadata().clone(); // TODO dp: is `TraceLogger` gone from 0.2?
+        let meta = event.metadata();
         let log_meta = meta.as_log();
         let logger = log::logger();
         if logger.enabled(&log_meta) {

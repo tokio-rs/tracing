@@ -15,7 +15,6 @@ impl<'a> AsMap for Attributes<'a> {}
 impl<'a> AsMap for Record<'a> {}
 
 // === impl SerializeFieldMap ===
-// TODO dp: Feels like `Event<'_>` should work here
 impl<'a> Serialize for SerializeFieldMap<'a, Event<'a, '_>> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
