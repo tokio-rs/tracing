@@ -60,6 +60,75 @@ pub struct TracedError<E> {
     inner: ErrorImpl<E>,
 }
 
+impl<E> TracedError<E>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    /// Convert the inner error type of a `TracedError` while preserving the
+    /// existing SpanTrace.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::TracedError;
+    /// # #[derive(Debug)]
+    /// # struct InnerError;
+    /// # #[derive(Debug)]
+    /// # struct OuterError(InnerError);
+    /// # impl std::fmt::Display for InnerError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Inner Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for InnerError {
+    /// # }
+    /// # impl std::fmt::Display for OuterError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Outer Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for OuterError {
+    /// #     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    /// #         Some(&self.0)
+    /// #     }
+    /// # }
+    ///
+    /// let err: TracedError<InnerError> = InnerError.into();
+    /// let err: TracedError<OuterError> = err.map(|inner| OuterError(inner));
+    /// ```
+    pub fn map<F, O>(self, op: O) -> TracedError<F>
+    where
+        O: FnOnce(E) -> F,
+        F: std::error::Error + Send + Sync + 'static,
+    {
+        // # SAFETY
+        //
+        // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
+        // of this struct's methods safe. This saves a function pointer that is parameterized on the Error type
+        // being stored inside the ErrorImpl. This lets the object_ref function safely cast a type
+        // erased `ErrorImpl` back to its original type, which is needed in order to forward our
+        // error/display/debug impls to the internal error type from the type erased error type.
+        //
+        // The repr(C) is necessary to ensure that the struct is layed out in the order we
+        // specified it so that we can safely access the vtable and spantrace fields thru a type
+        // erased pointer to the original object.
+        let vtable = &ErrorVTable {
+            object_ref: object_ref::<F>,
+        };
+        let span_trace = self.inner.span_trace;
+        let error = self.inner.error;
+        let error = op(error);
+
+        TracedError {
+            inner: ErrorImpl {
+                vtable,
+                span_trace,
+                error,
+            },
+        }
+    }
+}
+
 impl<E> From<E> for TracedError<E>
 where
     E: Error + Send + Sync + 'static,
