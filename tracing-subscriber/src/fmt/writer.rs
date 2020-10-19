@@ -213,7 +213,7 @@ mod test {
         };
         let dispatch = Dispatch::from(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatcher::with_default(dispatch, || {
             error!("{}", msg);
         });
 

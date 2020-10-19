@@ -66,7 +66,7 @@
 //! // no default subscriber
 //!
 //! # #[cfg(feature = "std")]
-//! dispatcher::with_default(&my_dispatch, || {
+//! dispatcher::with_default(my_dispatch, || {
 //!     // my_subscriber is the default
 //! });
 //!
@@ -227,7 +227,7 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
+pub fn with_default<T>(dispatcher: Dispatch, f: impl FnOnce() -> T) -> T {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this (rather than simply resetting after calling
     // `f`) ensures that we always reset to the prior dispatcher even if `f`
@@ -253,7 +253,7 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the dispatcher."]
-pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
+pub fn set_default(dispatcher: Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
     // dispatcher even if the thread calling this function panics.
@@ -856,7 +856,7 @@ mod test {
             fn exit(&self, _: &span::Id) {}
         }
 
-        with_default(&Dispatch::new(TestSubscriber), || {
+        with_default(Dispatch::new(TestSubscriber), || {
             Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
         })
     }
@@ -904,7 +904,7 @@ mod test {
             fn exit(&self, _: &span::Id) {}
         }
 
-        with_default(&Dispatch::new(TestSubscriber), mk_span)
+        with_default(Dispatch::new(TestSubscriber), mk_span)
     }
 
     #[test]
@@ -936,7 +936,7 @@ mod test {
 
             fn exit(&self, _: &span::Id) {}
         }
-        let guard = set_default(&Dispatch::new(TestSubscriber));
+        let guard = set_default(Dispatch::new(TestSubscriber));
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<TestSubscriber>());
 

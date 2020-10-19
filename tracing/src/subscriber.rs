@@ -21,7 +21,7 @@ pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
 where
     S: Subscriber + Send + Sync + 'static,
 {
-    crate::dispatcher::with_default(&crate::Dispatch::new(subscriber), f)
+    crate::dispatcher::with_default(crate::Dispatch::new(subscriber), f)
 }
 
 /// Sets this subscriber as the global default for the duration of the entire program.
@@ -62,7 +62,7 @@ pub fn set_default<S>(subscriber: S) -> DefaultGuard
 where
     S: Subscriber + Send + Sync + 'static,
 {
-    crate::dispatcher::set_default(&crate::Dispatch::new(subscriber))
+    crate::dispatcher::set_default(crate::Dispatch::new(subscriber))
 }
 
 pub use tracing_core::dispatcher::SetGlobalDefaultError;

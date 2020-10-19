@@ -594,7 +594,7 @@ mod tests {
         // registry.
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatcher::with_default(dispatch, || {
             let span = tracing::debug_span!("span1");
             drop(span);
             let span = tracing::info_span!("span2");
@@ -604,8 +604,6 @@ mod tests {
         state.assert_removed("span1");
         state.assert_removed("span2");
 
-        // Ensure the registry itself outlives the span.
-        drop(dispatch);
     }
 
     #[test]
@@ -622,7 +620,7 @@ mod tests {
         // registry.
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
-        let span2 = dispatcher::with_default(&dispatch, || {
+        let span2 = dispatcher::with_default(dispatch, || {
             let span = tracing::debug_span!("span1");
             drop(span);
             let span2 = tracing::info_span!("span2");
@@ -637,8 +635,6 @@ mod tests {
         drop(span2);
         state.assert_removed("span1");
 
-        // Ensure the registry itself outlives the span.
-        drop(dispatch);
     }
 
     #[test]
@@ -655,7 +651,7 @@ mod tests {
         // registry.
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatcher::with_default(dispatch, || {
             let span1 = tracing::debug_span!("span1");
             let span2 = tracing::info_span!("span2");
 
@@ -688,7 +684,7 @@ mod tests {
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatcher::with_default(dispatch, || {
             let span1 = tracing::info_span!("parent");
             let span2 = tracing::info_span!(parent: &span1, "child");
 
@@ -715,7 +711,7 @@ mod tests {
 
         let dispatch = dispatcher::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatcher::with_default(dispatch, || {
             let span1 = tracing::info_span!("grandparent");
             let span2 = tracing::info_span!(parent: &span1, "parent");
             let span3 = tracing::info_span!(parent: &span2, "child");

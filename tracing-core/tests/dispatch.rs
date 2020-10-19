@@ -14,7 +14,7 @@ fn set_default_dispatch() {
         )
     });
 
-    let guard = set_default(&Dispatch::new(TestSubscriberB));
+    let guard = set_default(Dispatch::new(TestSubscriberB));
     get_default(|current| assert!(current.is::<TestSubscriberB>(), "set_default get failed"));
 
     // Drop the guard, setting the dispatch back to the global dispatch
@@ -31,7 +31,7 @@ fn set_default_dispatch() {
 #[cfg(feature = "std")]
 #[test]
 fn nested_set_default() {
-    let _guard = set_default(&Dispatch::new(TestSubscriberA));
+    let _guard = set_default(Dispatch::new(TestSubscriberA));
     get_default(|current| {
         assert!(
             current.is::<TestSubscriberA>(),
@@ -39,7 +39,7 @@ fn nested_set_default() {
         )
     });
 
-    let inner_guard = set_default(&Dispatch::new(TestSubscriberB));
+    let inner_guard = set_default(Dispatch::new(TestSubscriberB));
     get_default(|current| {
         assert!(
             current.is::<TestSubscriberB>(),

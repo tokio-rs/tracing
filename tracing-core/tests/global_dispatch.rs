@@ -13,7 +13,7 @@ fn global_dispatch() {
     });
 
     #[cfg(feature = "std")]
-    with_default(&Dispatch::new(TestSubscriberB), || {
+    with_default(Dispatch::new(TestSubscriberB), || {
         get_default(|current| {
             assert!(
                 current.is::<TestSubscriberB>(),

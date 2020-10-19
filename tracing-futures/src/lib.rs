@@ -439,7 +439,7 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
 
     fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
-        dispatcher::with_default(&self.dispatch, || inner.poll())
+        dispatcher::with_default(self.dispatch.clone(), || inner.poll())
     }
 }
 
@@ -452,7 +452,7 @@ impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDis
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
-        dispatcher::with_default(dispatch, || future.poll(cx))
+        dispatcher::with_default(dispatch.clone(), || future.poll(cx))
     }
 }
 

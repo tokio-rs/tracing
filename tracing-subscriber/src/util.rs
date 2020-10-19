@@ -33,7 +33,7 @@ where
         #[cfg(feature = "tracing-log")]
         let _ = tracing_log::LogTracer::init();
 
-        dispatcher::set_default(&self.into())
+        dispatcher::set_default(self.into())
     }
 
     /// Attempts to set `self` as the [global default subscriber] in the current

@@ -66,7 +66,7 @@
 //! // no default subscriber
 //!
 //! # #[cfg(feature = "std")]
-//! dispatcher::with_default(&my_dispatch, || {
+//! dispatcher::with_default(my_dispatch, || {
 //!     // my_subscriber is the default
 //! });
 //!
