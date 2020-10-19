@@ -67,6 +67,101 @@ fn async_fn_nested() {
 }
 
 #[test]
+fn async_fn_bindings() {
+    #[instrument]
+    async fn test_async_fn_bindings((a, b): (u64, u64)) {
+        let _ = a;
+        let _ = b;
+    }
+
+    let span = span::mock().named("test_async_fn_bindings");
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span.clone()
+                .with_field(field::mock("a").with_value(&tracing::field::debug(123u64)))
+                .with_field(field::mock("b").with_value(&tracing::field::debug(456u64))),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(test_async_fn_bindings((123, 456)))
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn async_fn_return_inference() {
+    type RetBox = Box<dyn FnOnce() + Send + Sync>;
+
+    #[instrument]
+    async fn test_async_fn_bindings((a, b): (u64, u64)) -> Result<RetBox, ()> {
+        let _ = a;
+        let _ = b;
+
+        Ok(Box::new(|| ()))
+    }
+
+    let span = span::mock().named("test_async_fn_bindings");
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span.clone()
+                .with_field(field::mock("a").with_value(&tracing::field::debug(123u64)))
+                .with_field(field::mock("b").with_value(&tracing::field::debug(456u64))),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    let _ = with_default(collector, || {
+        block_on_future(test_async_fn_bindings((123, 456)))
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn async_fn_generic() {
+    #[instrument]
+    async fn test_async_fn_generic<T: std::fmt::Debug>(
+        (a, b): (u64, T),
+    ) -> Result<Box<dyn Fn() -> T + Send>, ()>
+    where
+        T: Clone + Send + 'static, // test both where-clauses and inline guards
+    {
+        let _ = a;
+
+        Ok(Box::new(move || b.clone()))
+    }
+
+    let span = span::mock().named("test_async_fn_generic");
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span.clone()
+                .with_field(field::mock("a").with_value(&tracing::field::debug(123u64)))
+                .with_field(field::mock("b").with_value(&tracing::field::debug(456u64))),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    let _ = with_default(collector, || {
+        let rv = block_on_future(test_async_fn_generic((123, 456))).unwrap();
+        assert_eq!(456, rv())
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
 fn async_fn_with_async_trait() {
     use async_trait::async_trait;
 
@@ -87,6 +182,12 @@ fn async_fn_with_async_trait() {
     #[async_trait]
     pub trait TestC {
         async fn baz(&self);
+    }
+
+    // test boxed trait object type inference with async trait
+    #[async_trait]
+    pub trait TestD {
+        async fn quux(&self) -> Result<Box<dyn Fn() + Send + Sync>, ()>;
     }
 
     #[derive(Debug)]
@@ -118,9 +219,18 @@ fn async_fn_with_async_trait() {
         }
     }
 
+    #[async_trait]
+    impl TestD for TestImpl {
+        #[instrument(skip(self))]
+        async fn quux(&self) -> Result<Box<dyn Fn() + Send + Sync>, ()> {
+            Ok(Box::new(|| ()))
+        }
+    }
+
     let span = span::mock().named("foo");
     let span2 = span::mock().named("bar");
     let span3 = span::mock().named("baz");
+    let span4 = span::mock().named("quux");
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
@@ -140,12 +250,18 @@ fn async_fn_with_async_trait() {
         .drop_span(span2)
         .exit(span.clone())
         .drop_span(span)
+        .new_span(span4.clone())
+        .enter(span4.clone())
+        .exit(span4)
         .done()
         .run_with_handle();
 
     with_default(collector, || {
         let mut test = TestImpl(2);
-        block_on_future(async { test.foo(5).await });
+        block_on_future(async {
+            test.foo(5).await;
+            let _ = test.quux().await;
+        });
     });
 
     handle.assert_finished();
@@ -173,7 +289,9 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
         #[instrument(fields(val=self.foo(), test=%v+5))]
-        async fn call(&mut self, v: usize) {}
+        async fn call(&mut self, v: usize) {
+            let _ = v;
+        }
     }
 
     let span = span::mock().named("call");

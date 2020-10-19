@@ -90,8 +90,8 @@ use std::iter;
 
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt as _};
-use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
+use syn::{ext::IdentExt as _, token::Comma};
 use syn::{
     punctuated::Punctuated, spanned::Spanned, AttributeArgs, Block, Expr, ExprCall, FieldPat,
     FnArg, Ident, Item, ItemFn, Lit, LitInt, LitStr, Meta, MetaList, MetaNameValue, NestedMeta,
@@ -301,6 +301,122 @@ pub fn instrument(
     }
 }
 
+fn argname(index: usize) -> String {
+    format!("__tracing_arg{}", index)
+}
+
+/// Converts a series of possibly pattern-matched arguments, into a series of
+/// arguments with standardized names (self, __tracing_arg0, __tracing_arg1,
+/// ...), preserving spans. We do this because function args can contain
+/// irrefutable pattern matches, but it's simpler to pass them as a singla chunk
+/// rather than trying to rebuild all the various kinds of pattern matches.
+///
+/// Returns the new arguments list, and a token stream of let-bindings to rebind
+/// things to their original names.
+fn enumerate_args(
+    input: &Punctuated<FnArg, Comma>,
+) -> (Punctuated<FnArg, Comma>, proc_macro2::TokenStream) {
+    use syn::spanned::Spanned;
+
+    let mut rebind = proc_macro2::TokenStream::new();
+
+    let args = input
+        .iter()
+        .enumerate()
+        .map(|(index, arg)| {
+            match arg {
+                FnArg::Receiver(_) => arg.clone(),
+                FnArg::Typed(pat) => {
+                    let ident_span = pat.pat.span();
+
+                    match pat.pat.as_ref() {
+                        Pat::Ident(PatIdent { ident, .. }) if *ident == "self" => {
+                            // e.g. self: Arc<Self>
+                            arg.clone()
+                        }
+                        Pat::Ident(pat_ident) => {
+                            let original_name = &pat_ident.ident;
+                            let new_ident = Ident::new(&argname(index), ident_span);
+
+                            // Normal argument: fn foo(bar: Baz) { ... }
+                            rebind.extend(quote_spanned! {input.span() =>
+                                let #original_name = &#new_ident;
+                            });
+
+                            FnArg::Typed(PatType {
+                                pat: Box::new(Pat::Ident(PatIdent {
+                                    ident: new_ident,
+                                    ..pat_ident.clone()
+                                })),
+                                ..pat.clone()
+                            })
+                        }
+                        other_pattern => {
+                            // Non-ident pattern, e.g. fn foo((a, b) : (u64, u64)) { ... }
+                            let new_ident = Ident::new(&argname(index), ident_span);
+
+                            rebind.extend(quote_spanned! {input.span() =>
+                                let #other_pattern = &#new_ident;
+                            });
+
+                            FnArg::Typed(PatType {
+                                pat: Box::new(Pat::Ident(PatIdent {
+                                    ident: new_ident,
+                                    attrs: vec![],
+                                    by_ref: None,
+                                    mutability: None,
+                                    subpat: None,
+                                })),
+                                ..pat.clone()
+                            })
+                        }
+                    }
+                }
+            }
+        })
+        .collect();
+
+    (args, rebind)
+}
+
+/// Generates a sequence of tokens which amount to declaring the function in
+/// question and invoking it. We want to declare it as an actual function to
+/// ensure that any return type in the function's signature is properly used to
+/// infer any coercions on the returned value.
+fn gen_invocation(input: &ItemFn, args: &InstrumentArgs) -> proc_macro2::TokenStream {
+    use syn::{FnArg, Visibility};
+
+    // Don't reapply function attributes to the inner declaration
+    let mut input = ItemFn {
+        attrs: vec![],
+        ..input.clone()
+    };
+
+    let mut arg_tokens: Punctuated<proc_macro2::TokenStream, Comma> = Punctuated::new();
+
+    for (index, argument) in input.sig.inputs.iter().enumerate() {
+        arg_tokens.push(match argument {
+            FnArg::Receiver(r) => {
+                quote_spanned! { input.span() => self }
+            }
+            FnArg::Typed(t) => {
+                let ident = Ident::new(&argname(index), t.span());
+                quote! { #ident }
+            }
+        })
+    }
+
+    let fn_name = &input.sig.ident;
+
+    quote_spanned! {input.span()=>
+        {
+            #input // declare internal function
+
+            #fn_name ( #arg_tokens )
+        }
+    }
+}
+
 fn gen_body(
     input: &ItemFn,
     mut args: InstrumentArgs,
@@ -335,6 +451,34 @@ fn gen_body(
         ..
     } = sig;
 
+    // If we're in an async block, we'll need to do a bit of a dance in order to
+    // ensure that return type inference works properly. This is because rust is
+    // not able to infer the correct coercion when faced with e.g.:
+    // ```
+    // #[instrument]
+    // async fn foo() -> Box<FnOnce()->() + Send> {
+    //   Box::new(|| ())
+    // }
+    // ```
+    //
+    // becoming
+    //
+    // ```
+    // #[instrument]
+    // async fn foo() -> Box<FnOnce()->() + Send> {
+    //   instrument(async move { Box::new(|| ())} ).await
+    // }
+    // ```
+    //
+    // To work around this we must instead declare the inner body as an actual function
+    // (an inner function to avoid name clashes) in order to attach the proper return type
+    // to the function.
+    let (mut params, rebind) = if sig.asyncness.is_some() {
+        enumerate_args(params)
+    } else {
+        (params.clone(), quote! {})
+    };
+
     let err = args.err;
     let warnings = args.warnings();
 
@@ -350,7 +494,8 @@ fn gen_body(
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
         // below.
-        let param_names: Vec<(Ident, Ident)> = params
+        let param_names: Vec<(Ident, Ident)> = sig
+            .inputs
             .clone()
             .into_iter()
             .flat_map(|param| match param {
@@ -418,6 +563,7 @@ fn gen_body(
         {
             let mut replacer = SelfReplacer {
                 ty: async_trait_fun.self_type.clone(),
+                is_async: sig.asyncness.is_some(),
             };
             for e in fields.iter_mut().filter_map(|f| f.value.as_mut()) {
                 syn::visit_mut::visit_expr_mut(&mut replacer, e);
@@ -426,14 +572,13 @@ fn gen_body(
 
         let custom_fields = &args.fields;
 
-        quote!(tracing::span!(
+        quote!({ #rebind tracing::span!(
             target: #target,
             #level,
             #span_name,
             #(#quoted_fields,)*
             #custom_fields
-
-        ))
+        )})
     })();
 
     // Generate the instrumented function body.
@@ -442,11 +587,13 @@ fn gen_body(
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     let body = if asyncness.is_some() {
+        let invoker = gen_invocation(&input, &args);
+
         if err {
             quote_spanned! {block.span()=>
                 let __tracing_attr_span = #span;
                 tracing::Instrument::instrument(async move {
-                    match async move { #block }.await {
+                    match (#invoker).await {
                         Ok(x) => Ok(x),
                         Err(e) => {
                             tracing::error!(error = %e);
@@ -459,7 +606,7 @@ fn gen_body(
             quote_spanned!(block.span()=>
                 let __tracing_attr_span = #span;
                     tracing::Instrument::instrument(
-                        async move { #block },
+                        #invoker,
                         __tracing_attr_span
                     )
                     .await
@@ -980,12 +1127,17 @@ fn path_to_string(path: &Path) -> String {
 // the function is generated by async-trait.
 struct SelfReplacer {
     ty: Option<syn::TypePath>,
+    is_async: bool,
 }
 
 impl syn::visit_mut::VisitMut for SelfReplacer {
     fn visit_ident_mut(&mut self, id: &mut Ident) {
         if id == "self" {
-            *id = Ident::new("_self", id.span())
+            if self.is_async {
+                *id = Ident::new(&argname(0), id.span());
+            } else {
+                *id = Ident::new("_self", id.span());
+            }
         }
     }
 
