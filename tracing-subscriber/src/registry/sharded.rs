@@ -603,7 +603,6 @@ mod tests {
 
         state.assert_removed("span1");
         state.assert_removed("span2");
-
     }
 
     #[test]
@@ -634,7 +633,6 @@ mod tests {
 
         drop(span2);
         state.assert_removed("span1");
-
     }
 
     #[test]
