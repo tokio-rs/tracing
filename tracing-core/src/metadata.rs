@@ -180,6 +180,35 @@ impl<'a> Metadata<'a> {
         }
     }
 
+    /// Construct new metadata for a span or event, with a name, target, level, field
+    /// names, and optional source code location using dynamically allocated data.
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
+    pub fn from_cow<S>(
+        name: S,
+        target: S,
+        level: Level,
+        file: Option<S>,
+        line: Option<u32>,
+        module_path: Option<S>,
+        fields: field::FieldSet,
+        kind: Kind,
+    ) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+    {
+        Metadata {
+            name: name.into(),
+            target: target.into(),
+            level,
+            module_path: module_path.map(Into::into),
+            file: file.map(Into::into),
+            line,
+            fields,
+            kind
+        }
+    }
+
     /// Returns the names of the fields on the described span or event.
     pub fn fields(&self) -> &field::FieldSet {
         &self.fields
@@ -837,6 +866,13 @@ impl PartialOrd<Level> for LevelFilter {
 mod tests {
     use super::*;
     use core::mem;
+    #[cfg(feature = "alloc")]
+    use crate::{
+        callsite::{Callsite, Identifier},
+        field::FieldSet,
+        Interest,
+    };
+
 
     #[test]
     fn level_from_str() {
@@ -899,5 +935,49 @@ mod tests {
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn create_metadata_from_dynamic_data() {
+        struct TestCallsite;
+        static CS1: TestCallsite = TestCallsite;
+
+        impl Callsite for TestCallsite {
+            fn set_interest(&self, _interest: Interest) {}
+            fn metadata(&self) -> &Metadata<'_> {
+                unimplemented!("not needed for this test")
+            }
+        }
+        let callsite_id = Identifier(&CS1);
+        let field_set = FieldSet::new(&["one", "fine", "day"], callsite_id);
+
+        // Use `String`s
+        let _metadata = Metadata::from_cow(
+            "a name".to_string(),
+            "a target".to_string(),
+            Level::TRACE,
+            None,
+            None,
+            None,
+            field_set,
+            Kind::EVENT,
+        );
+
+        let callsite_id = Identifier(&CS1);
+        let field_set = FieldSet::new(&["one", "fine", "day"], callsite_id);
+        // Use `str`s
+        let _metadata = Metadata::from_cow(
+            "a name",
+            "a target",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            field_set,
+            Kind::EVENT,
+        );
+
+        // TODO dp: come up with a test that makes sense.
     }
 }
