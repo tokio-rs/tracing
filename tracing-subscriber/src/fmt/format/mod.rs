@@ -1052,22 +1052,13 @@ impl FmtSpanConfig {
         }
     }
     pub(super) fn trace_new(&self) -> bool {
-        match self.kind {
-            FmtSpan::FULL => true,
-            _ => false,
-        }
+        matches!(self.kind, FmtSpan::FULL)
     }
     pub(super) fn trace_active(&self) -> bool {
-        match self.kind {
-            FmtSpan::ACTIVE | FmtSpan::FULL => true,
-            _ => false,
-        }
+        matches!(self.kind, FmtSpan::ACTIVE | FmtSpan::FULL)
     }
     pub(super) fn trace_close(&self) -> bool {
-        match self.kind {
-            FmtSpan::CLOSE | FmtSpan::FULL => true,
-            _ => false,
-        }
+        matches!(self.kind, FmtSpan::CLOSE | FmtSpan::FULL)
     }
 }
 
