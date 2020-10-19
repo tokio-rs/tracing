@@ -29,6 +29,7 @@ macro_rules! dbg {
         use tracing::{
             callsite,
             field::{debug, Value},
+            subscriber::Interest,
             Event, Id, Subscriber,
         };
         let callsite = tracing::callsite! {
@@ -39,7 +40,7 @@ macro_rules! dbg {
             fields: value,
         };
         let val = $ex;
-        if callsite.is_enabled() {
+        if callsite.is_enabled(Interest::always()) {
             let meta = callsite.metadata();
             let fields = meta.fields();
             let key = meta
@@ -49,7 +50,7 @@ macro_rules! dbg {
                 .expect("trace_dbg event must have one field");
             Event::dispatch(
                 meta,
-                &fields.value_set(&[(&key, Some(&debug(&val) as &Value))]),
+                &fields.value_set(&[(&key, Some(&debug(&val) as &dyn Value))]),
             );
         }
         val
