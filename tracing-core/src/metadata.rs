@@ -1,5 +1,6 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
+#[cfg(feature = "alloc")]
 use alloc::borrow::Cow;
 use core::{
     cmp, fmt,
@@ -61,22 +62,34 @@ use core::{
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
+    #[cfg(feature = "alloc")]
     name: Cow<'a, str>,
+    #[cfg(not(feature = "alloc"))]
+    name: &'a str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
+    #[cfg(feature = "alloc")]
     target: Cow<'a, str>,
+    #[cfg(not(feature = "alloc"))]
+    target: &'a str,
 
     /// The level of verbosity of the described span.
     level: Level,
 
     /// The name of the Rust module where the span occurred, or `None` if this
     /// could not be determined.
+    #[cfg(feature = "alloc")]
     module_path: Option<Cow<'a, str>>,
+    #[cfg(not(feature = "alloc"))]
+    module_path: Option<&'a str>,
 
     /// The name of the source code file where the span occurred, or `None` if
     /// this could not be determined.
+    #[cfg(feature = "alloc")]
     file: Option<Cow<'a, str>>,
+    #[cfg(not(feature = "alloc"))]
+    file: Option<&'a str>,
 
     /// The line number in the source code file where the span occurred, or
     /// `None` if this could not be determined.
@@ -132,6 +145,7 @@ impl<'a> Metadata<'a> {
         fields: field::FieldSet,
         kind: Kind,
     ) -> Self {
+        #[cfg(feature = "alloc")]
         let file = {
             if let Some(file) = file {
                 Some(Cow::Borrowed(file))
@@ -139,6 +153,7 @@ impl<'a> Metadata<'a> {
                 None
             }
         };
+        #[cfg(feature = "alloc")]
         let module_path = {
             if let Some(module_path) = module_path {
                 Some(Cow::Borrowed(module_path))
@@ -146,9 +161,16 @@ impl<'a> Metadata<'a> {
                 None
             }
         };
+
         Metadata {
+            #[cfg(feature = "alloc")]
             name: Cow::Borrowed(name),
+            #[cfg(not(feature = "alloc"))]
+            name,
+            #[cfg(feature = "alloc")]
             target: Cow::Borrowed(target),
+            #[cfg(not(feature = "alloc"))]
+            target,
             level,
             module_path,
             file,
