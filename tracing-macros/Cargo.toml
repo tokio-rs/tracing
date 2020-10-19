@@ -17,11 +17,10 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 
 [dependencies]
-tracing = "0.1.18"
+tracing = "0.1.20"
 
 [dev-dependencies]
-tracing-log = "0.1"
-env_logger = "0.7"
+tracing-subscriber = "0.2"
 
 [badges]
 maintenance = { status = "experimental" }
