@@ -257,7 +257,7 @@ pub fn set_default(dispatcher: Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
     // dispatcher even if the thread calling this function panics.
-    State::set_default(dispatcher.clone())
+    State::set_default(dispatcher)
 }
 
 /// Sets this dispatch as the global default for the duration of the entire program.
