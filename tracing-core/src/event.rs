@@ -29,7 +29,6 @@ pub struct Event<'a> {
 impl<'a> Event<'a> {
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current subscriber.
-    #[inline]
     pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
         let event = Event::new(metadata, fields);
         crate::dispatcher::get_default(|current| {
@@ -69,7 +68,6 @@ impl<'a> Event<'a> {
 
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current subscriber and an explicit parent.
-    #[inline]
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         metadata: &'static Metadata<'static>,
@@ -83,7 +81,7 @@ impl<'a> Event<'a> {
 
     /// Visits all the fields on this `Event` with the specified [visitor].
     ///
-    /// [visitor]: ../field/trait.Visit.html
+    /// [visitor]: super::field::Visit
     #[inline]
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.fields.record(visitor);
@@ -96,17 +94,14 @@ impl<'a> Event<'a> {
 
     /// Returns [metadata] describing this `Event`.
     ///
-    /// [metadata]: ../struct.Metadata.html
+    /// [metadata]: super::Metadata
     pub fn metadata(&self) -> &'static Metadata<'static> {
         self.metadata
     }
 
     /// Returns true if the new event should be a root.
     pub fn is_root(&self) -> bool {
-        match self.parent {
-            Parent::Root => true,
-            _ => false,
-        }
+        matches!(self.parent, Parent::Root)
     }
 
     /// Returns true if the new event's parent should be determined based on the
@@ -117,10 +112,7 @@ impl<'a> Event<'a> {
     /// thread is _not_ inside a span, then the new event will be the root of its
     /// own trace tree.
     pub fn is_contextual(&self) -> bool {
-        match self.parent {
-            Parent::Current => true,
-            _ => false,
-        }
+        matches!(self.parent, Parent::Current)
     }
 
     /// Returns the new event's explicitly-specified parent, if there is one.

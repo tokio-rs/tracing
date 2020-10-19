@@ -16,7 +16,7 @@
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -76,7 +76,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -105,6 +105,7 @@
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
@@ -293,8 +294,8 @@ lazy_static! {
     static ref ERROR_FIELDS: Fields = Fields::new(ERROR_CS);
 }
 
-fn level_to_cs(level: &Level) -> (&'static dyn Callsite, &'static Fields) {
-    match *level {
+fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
+    match level {
         Level::TRACE => (TRACE_CS, &*TRACE_FIELDS),
         Level::DEBUG => (DEBUG_CS, &*DEBUG_FIELDS),
         Level::INFO => (INFO_CS, &*INFO_FIELDS),
@@ -398,13 +399,13 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
         let original = self.metadata();
         if self.is_log() {
-            let mut fields = LogVisitor::new_for(self, level_to_cs(original.level()).1);
+            let mut fields = LogVisitor::new_for(self, level_to_cs(*original.level()).1);
             self.record(&mut fields);
 
             Some(Metadata::new(
                 "log event",
                 fields.target.unwrap_or("log"),
-                original.level().clone(),
+                *original.level(),
                 fields.file,
                 fields.line.map(|l| l as u32),
                 fields.module_path,
@@ -417,7 +418,7 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     }
 
     fn is_log(&self) -> bool {
-        self.metadata().callsite() == identify_callsite!(level_to_cs(self.metadata().level()).0)
+        self.metadata().callsite() == identify_callsite!(level_to_cs(*self.metadata().level()).0)
     }
 }
 

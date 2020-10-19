@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -55,6 +55,7 @@
 #![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.11")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, deny(broken_intra_doc_links))]
@@ -468,7 +469,8 @@ fn gen_body(
         quote_spanned!(block.span()=>
             let __tracing_attr_span = #span;
             let __tracing_attr_guard = __tracing_attr_span.enter();
-            match { #block } {
+            let f = move || #return_type { #block };
+            match f() {
                 Ok(x) => Ok(x),
                 Err(e) => {
                     tracing::error!(error = %e);

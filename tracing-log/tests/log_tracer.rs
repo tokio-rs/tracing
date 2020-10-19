@@ -39,7 +39,7 @@ impl Subscriber for TestSubscriber {
             event.normalized_metadata().map(|normalized| OwnedMetadata {
                 name: normalized.name().to_string(),
                 target: normalized.target().to_string(),
-                level: normalized.level().clone(),
+                level: *normalized.level(),
                 module_path: normalized.module_path().map(String::from),
                 file: normalized.file().map(String::from),
                 line: normalized.line(),
