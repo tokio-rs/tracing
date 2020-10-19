@@ -213,7 +213,7 @@ pub trait AsLog<'a>: crate::sealed::Sealed {
     /// The `log` type that this type can be converted into.
     type Log;
     /// Returns the `log` equivalent of `self`.
-    fn as_log<'b: 'a>(&'b self) -> Self::Log;
+    fn as_log(&'a self) -> Self::Log;
 }
 
 /// Trait implemented for `log` types that can be converted to a `tracing`
@@ -229,7 +229,7 @@ impl<'a> crate::sealed::Sealed for Metadata<'a> {}
 
 impl<'a> AsLog<'a> for Metadata<'a> {
     type Log = log::Metadata<'a>;
-    fn as_log<'b: 'a>(&'b self) -> Self::Log {
+    fn as_log(&'a self) -> Self::Log {
         log::Metadata::builder()
             .level(self.level().as_log())
             .target(&self.target())
@@ -354,7 +354,7 @@ impl crate::sealed::Sealed for tracing_core::Level {}
 
 impl<'a> AsLog<'a> for tracing_core::Level {
     type Log = log::Level;
-    fn as_log<'b: 'a>(&'b self) -> log::Level {
+    fn as_log(&self) -> log::Level {
         match *self {
             tracing_core::Level::ERROR => log::Level::Error,
             tracing_core::Level::WARN => log::Level::Warn,
