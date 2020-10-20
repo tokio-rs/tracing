@@ -184,19 +184,16 @@ impl<'a> Metadata<'a> {
     /// names, and optional source code location using dynamically allocated data.
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    pub fn from_cow<S>(
-        name: S,
-        target: S,
+    pub fn from_cow(
+        name: impl Into<Cow<'a, str>>,
+        target: impl Into<Cow<'a, str>>,
         level: Level,
-        file: Option<S>,
+        file: Option<impl Into<Cow<'a, str>>>,
         line: Option<u32>,
-        module_path: Option<S>,
+        module_path: Option<impl Into<Cow<'a, str>>>,
         fields: field::FieldSet,
         kind: Kind,
-    ) -> Self
-    where
-        S: Into<Cow<'a, str>>,
-    {
+    ) -> Self {
         Metadata {
             name: name.into(),
             target: target.into(),
@@ -205,7 +202,7 @@ impl<'a> Metadata<'a> {
             file: file.map(Into::into),
             line,
             fields,
-            kind
+            kind,
         }
     }
 
@@ -236,13 +233,13 @@ impl<'a> Metadata<'a> {
     /// Returns the path to the Rust module where the span occurred, or
     /// `None` if the module path is unknown.
     pub fn module_path(&'a self) -> Option<&'a str> {
-        self.module_path.as_ref().map(|p| p.as_ref() )
+        self.module_path.as_ref().map(|p| p.as_ref())
     }
 
     /// Returns the name of the source code file where the span
     /// occurred, or `None` if the file is unknown
     pub fn file(&'a self) -> Option<&'a str> {
-        self.file.as_ref().map(|f| f.as_ref() )
+        self.file.as_ref().map(|f| f.as_ref())
     }
 
     /// Returns the line number in the source code file where the span
@@ -865,14 +862,13 @@ impl PartialOrd<Level> for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::mem;
     #[cfg(feature = "alloc")]
     use crate::{
         callsite::{Callsite, Identifier},
         field::FieldSet,
         Interest,
     };
-
+    use core::mem;
 
     #[test]
     fn level_from_str() {
@@ -952,32 +948,15 @@ mod tests {
         let callsite_id = Identifier(&CS1);
         let field_set = FieldSet::new(&["one", "fine", "day"], callsite_id);
 
-        // Use `String`s
         let _metadata = Metadata::from_cow(
             "a name".to_string(),
-            "a target".to_string(),
-            Level::TRACE,
-            None,
-            None,
-            None,
-            field_set,
-            Kind::EVENT,
-        );
-
-        let callsite_id = Identifier(&CS1);
-        let field_set = FieldSet::new(&["one", "fine", "day"], callsite_id);
-        // Use `str`s
-        let _metadata = Metadata::from_cow(
-            "a name",
             "a target",
             Level::TRACE,
+            Some("a file".to_string()),
             None,
-            None,
-            None,
+            None::<Cow<'_, str>>,
             field_set,
             Kind::EVENT,
         );
-
-        // TODO dp: come up with a test that makes sense.
     }
 }
