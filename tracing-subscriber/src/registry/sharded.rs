@@ -1,4 +1,4 @@
-use sharded_slab::{Entry, Slab};
+use sharded_slab::{pool::Ref, Clear, Pool};
 use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
@@ -47,7 +47,7 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Registry {
-    spans: Slab<DataInner>,
+    spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
 }
 
@@ -65,7 +65,7 @@ pub struct Registry {
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Data<'a> {
-    inner: Entry<'a, DataInner>,
+    inner: Ref<'a, DataInner>,
 }
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ struct DataInner {
 impl Default for Registry {
     fn default() -> Self {
         Self {
-            spans: Slab::new(),
+            spans: Pool::new(),
             current_spans: ThreadLocal::new(),
         }
     }
@@ -126,11 +126,7 @@ pub(crate) struct CloseGuard<'a> {
 }
 
 impl Registry {
-    fn insert(&self, s: DataInner) -> Option<usize> {
-        self.spans.insert(s)
-    }
-
-    fn get(&self, id: &Id) -> Option<Entry<'_, DataInner>> {
+    fn get(&self, id: &Id) -> Option<Ref<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -180,13 +176,13 @@ impl Subscriber for Registry {
             attrs.parent().map(|id| self.clone_span(id))
         };
 
-        let s = DataInner {
-            metadata: attrs.metadata(),
-            parent,
-            ref_count: AtomicUsize::new(1),
-            extensions: RwLock::new(ExtensionsInner::new()),
-        };
-        let id = self.insert(s).expect("Unable to allocate another span");
+        let id = self
+            .spans
+            .create_with(|data| {
+                data.metadata = attrs.metadata();
+                data.parent = parent;
+            })
+            .expect("Unable to allocate another span");
         idx_to_id(id)
     }
 
@@ -336,7 +332,7 @@ impl<'a> Drop for CloseGuard<'a> {
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
-                self.registry.spans.remove(id_to_idx(&self.id));
+                self.registry.spans.clear(id_to_idx(&self.id));
             }
         });
     }
@@ -363,6 +359,53 @@ impl<'a> SpanData<'a> for Data<'a> {
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
         ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
+    }
+}
+
+// === impl DataInner ===
+
+struct NullCallsite;
+static NULL_CALLSITE: NullCallsite = NullCallsite;
+impl tracing_core::callsite::Callsite for NullCallsite {
+    fn set_interest(&self, _: tracing_core::subscriber::Interest) {
+        unreachable!("you somehow managed to register the null callsite?")
+    }
+
+    fn metadata(&self) -> &Metadata<'_> {
+        unreachable!("you somehow managed to access the null callsite?")
+    }
+}
+
+static NULL_METADATA: Metadata<'static> = tracing_core::metadata! {
+    name: "",
+    target: "",
+    level: tracing_core::Level::TRACE,
+    fields: &[],
+    callsite: &NULL_CALLSITE,
+    kind: tracing_core::metadata::Kind::SPAN,
+};
+
+impl Default for DataInner {
+    fn default() -> Self {
+        Self {
+            metadata: &NULL_METADATA,
+            parent: None,
+            ref_count: AtomicUsize::new(0),
+            extensions: RwLock::new(ExtensionsInner::new()),
+        }
+    }
+}
+
+impl Clear for DataInner {
+    fn clear(&mut self) {
+        self.parent.take();
+        let refs = self.ref_count.get_mut();
+        debug_assert_eq!(*refs, 0);
+        *refs = 1;
+        self.extensions
+            .get_mut()
+            .unwrap_or_else(|l| l.into_inner())
+            .clear();
     }
 }
 

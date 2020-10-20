@@ -113,14 +113,16 @@ impl<'a> ExtensionsMut<'a> {
 pub(crate) struct ExtensionsInner {
     // If extensions are never used, no need to carry around an empty HashMap.
     // That's 3 words. Instead, this is only 1 word.
-    map: Option<Box<AnyMap>>,
+    map: AnyMap,
 }
 
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
     #[inline]
     pub(crate) fn new() -> ExtensionsInner {
-        ExtensionsInner { map: None }
+        ExtensionsInner {
+            map: AnyMap::default(),
+        }
     }
 
     /// Insert a type into this `Extensions`.
@@ -129,7 +131,6 @@ impl ExtensionsInner {
     /// be returned.
     pub(crate) fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.map
-            .get_or_insert_with(|| Box::new(HashMap::default()))
             .insert(TypeId::of::<T>(), Box::new(val))
             .and_then(|boxed| {
                 #[allow(warnings)]
@@ -145,16 +146,14 @@ impl ExtensionsInner {
     /// Get a reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get<T: 'static>(&self) -> Option<&T> {
         self.map
-            .as_ref()
-            .and_then(|map| map.get(&TypeId::of::<T>()))
+            .get(&TypeId::of::<T>())
             .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
     }
 
     /// Get a mutable reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
-            .as_mut()
-            .and_then(|map| map.get_mut(&TypeId::of::<T>()))
+            .get_mut(&TypeId::of::<T>())
             .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
     }
 
@@ -162,18 +161,19 @@ impl ExtensionsInner {
     ///
     /// If a extension of this type existed, it will be returned.
     pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
-        self.map
-            .as_mut()
-            .and_then(|map| map.remove(&TypeId::of::<T>()))
-            .and_then(|boxed| {
-                #[allow(warnings)]
-                {
-                    (boxed as Box<Any + 'static>)
-                        .downcast()
-                        .ok()
-                        .map(|boxed| *boxed)
-                }
-            })
+        self.map.remove(&TypeId::of::<T>()).and_then(|boxed| {
+            #[allow(warnings)]
+            {
+                (boxed as Box<Any + 'static>)
+                    .downcast()
+                    .ok()
+                    .map(|boxed| *boxed)
+            }
+        })
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.map.clear();
     }
 }
 
