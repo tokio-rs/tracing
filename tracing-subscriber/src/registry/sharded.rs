@@ -181,6 +181,7 @@ impl Subscriber for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
+                *data.ref_count.get_mut() = 1;
             })
             .expect("Unable to allocate another span");
         idx_to_id(id)
@@ -226,7 +227,10 @@ impl Subscriber for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert!(refs != 0, "tried to clone a span that already closed");
+        assert!(
+            refs != 0,
+            "tried to clone a span ({:?}) that already closed"
+        );
         id.clone()
     }
 
@@ -401,7 +405,6 @@ impl Clear for DataInner {
         self.parent.take();
         let refs = self.ref_count.get_mut();
         debug_assert_eq!(*refs, 0);
-        *refs = 1;
         self.extensions
             .get_mut()
             .unwrap_or_else(|l| l.into_inner())
