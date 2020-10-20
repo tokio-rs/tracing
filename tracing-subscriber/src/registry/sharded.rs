@@ -1,4 +1,4 @@
-use sharded_slab::{Guard, Slab};
+use sharded_slab::{Entry, Slab};
 use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
@@ -65,7 +65,7 @@ pub struct Registry {
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Data<'a> {
-    inner: Guard<'a, DataInner>,
+    inner: Entry<'a, DataInner>,
 }
 
 #[derive(Debug)]
@@ -130,7 +130,7 @@ impl Registry {
         self.spans.insert(s)
     }
 
-    fn get(&self, id: &Id) -> Option<Guard<'_, DataInner>> {
+    fn get(&self, id: &Id) -> Option<Entry<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
 
