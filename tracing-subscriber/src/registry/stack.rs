@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    hash::{BuildHasherDefault, Hasher},
+};
 
 pub(crate) use tracing_core::span::Id;
 
@@ -15,8 +18,11 @@ struct ContextId {
 #[derive(Debug, Default)]
 pub(crate) struct SpanStack {
     stack: Vec<ContextId>,
-    ids: HashSet<Id>,
+    ids: HashSet<Id, BuildHasherDefault<IdHasher>>,
 }
+
+#[derive(Default)]
+struct IdHasher(u64);
 
 impl SpanStack {
     pub(crate) fn push(&mut self, id: Id) {
@@ -24,7 +30,10 @@ impl SpanStack {
         if !duplicate {
             self.ids.insert(id.clone());
         }
-        self.stack.push(ContextId { id, duplicate })
+        self.stack.push(ContextId {
+            id,
+            duplicate: false,
+        })
     }
 
     pub(crate) fn pop(&mut self, expected_id: &Id) -> Option<Id> {
@@ -52,6 +61,22 @@ impl SpanStack {
             .rev()
             .find(|context_id| !context_id.duplicate)
             .map(|context_id| &context_id.id)
+    }
+}
+
+impl Hasher for IdHasher {
+    fn write(&mut self, _: &[u8]) {
+        unreachable!("span Id calls write_u64");
+    }
+
+    #[inline]
+    fn write_u64(&mut self, id: u64) {
+        self.0 = id;
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
     }
 }
 
