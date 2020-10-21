@@ -3,7 +3,7 @@ extern crate tracing;
 
 use std::sync::{Arc, Mutex};
 use tracing::span::{Attributes, Record};
-use tracing::{span, Event, Id, Level, Metadata, Collector};
+use tracing::{span, Collect, Event, Id, Level, Metadata};
 
 struct State {
     last_level: Mutex<Option<Level>>,
@@ -11,7 +11,7 @@ struct State {
 
 struct TestCollector(Arc<State>);
 
-impl Collector for TestCollector {
+impl Collect for TestCollector {
     fn enabled(&self, _: &Metadata) -> bool {
         true
     }
@@ -40,7 +40,7 @@ fn test_static_max_level_features() {
         last_level: Mutex::new(None),
     });
     let a = me.clone();
-    tracing::collector::with_default(TestCollector(me), || {
+    tracing::collect::with_default(TestCollector(me), || {
         error!("");
         last(&a, Some(Level::ERROR));
         warn!("");
