@@ -65,7 +65,7 @@ where
     E: std::error::Error + Send + Sync + 'static,
 {
     /// Convert the inner error type of a `TracedError` while preserving the
-    /// existing SpanTrace.
+    /// attached `SpanTrace`.
     ///
     /// # Examples
     ///
@@ -110,7 +110,7 @@ where
         // error/display/debug impls to the internal error type from the type erased error type.
         //
         // The repr(C) is necessary to ensure that the struct is layed out in the order we
-        // specified it so that we can safely access the vtable and spantrace fields thru a type
+        // specified it, so that we can safely access the vtable and spantrace fields through a type
         // erased pointer to the original object.
         let vtable = &ErrorVTable {
             object_ref: object_ref::<F>,
