@@ -26,14 +26,8 @@ struct IdHasher(u64);
 
 impl SpanStack {
     pub(crate) fn push(&mut self, id: Id) {
-        let duplicate = self.ids.contains(&id);
-        if !duplicate {
-            self.ids.insert(id.clone());
-        }
-        self.stack.push(ContextId {
-            id,
-            duplicate: false,
-        })
+        let duplicate = self.stack.iter().any(|i| &i.id == &id);
+        self.stack.push(ContextId { id, duplicate })
     }
 
     pub(crate) fn pop(&mut self, expected_id: &Id) -> Option<Id> {
@@ -44,10 +38,10 @@ impl SpanStack {
             .rev()
             .find(|(_, ctx_id)| ctx_id.id == *expected_id)
         {
-            let ContextId { id, duplicate } = self.stack.remove(idx);
-            if !duplicate {
-                self.ids.remove(&id);
-            }
+            let ContextId { id, duplicate: _ } = self.stack.remove(idx);
+            // if !duplicate {
+            //     self.ids.remove(&id);
+            // }
             Some(id)
         } else {
             None
