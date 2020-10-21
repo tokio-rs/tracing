@@ -83,3 +83,7 @@ harness = false
 [[bench]]
 name = "fmt"
 harness = false
+
+[[bench]]
+name = "enter"
+harness = false
