@@ -365,7 +365,7 @@ impl Default for DataInner {
         // inserted into it, the null metadata will never actually be accessed.
         struct NullCallsite;
         impl tracing_core::callsite::Callsite for NullCallsite {
-            fn set_interest(self: &Self, _: Interest) {
+            fn set_interest(&self, _: Interest) {
                 unreachable!(
                     "/!\\ Tried to register the null callsite /!\\\n \
                     This should never have happened and is definitely a bug. \
@@ -373,7 +373,7 @@ impl Default for DataInner {
                 )
             }
 
-            fn metadata(self: &Self) -> &Metadata<'_> {
+            fn metadata(&self) -> &Metadata<'_> {
                 unreachable!(
                     "/!\\ Tried to access the null callsite's metadata /!\\\n \
                     This should never have happened and is definitely a bug. \
