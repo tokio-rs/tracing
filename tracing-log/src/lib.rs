@@ -59,9 +59,9 @@
 //!
 //! Note that logger implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
-//! log records (such as the `TraceLogger`), as doing so will result in the
-//! event recursing between the subscriber and the logger forever (or, in real
-//! life, probably overflowing the call stack).
+//! log records, as doing so will result in the event recursing between the
+//! subscriber and the logger forever (or, in real life, probably overflowing
+//! the call stack).
 //!
 //! If the logging of trace events generated from log records produced by the
 //! `log` crate is desired, either the `log` crate should not be used to
@@ -69,8 +69,6 @@
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
 //! # Feature Flags
-//! * `trace-logger`: enables an experimental `log` subscriber, deprecated since
-//!   version 0.1.1.
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
@@ -94,7 +92,6 @@
 //! [`AsTrace`]: trait.AsTrace.html
 //! [`AsLog`]: trait.AsLog.html
 //! [`LogTracer`]: struct.LogTracer.html
-//! [`TraceLogger`]: struct.TraceLogger.html
 //! [`env_logger`]: env_logger/index.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
@@ -151,24 +148,10 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 pub mod log_tracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-pub mod trace_logger;
-
 #[cfg(feature = "log-tracer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
-
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-#[deprecated(
-    since = "0.1.1",
-    note = "use the `tracing` crate's \"log\" feature flag instead"
-)]
-#[allow(deprecated)]
-#[doc(inline)]
-pub use self::trace_logger::TraceLogger;
 
 #[cfg(feature = "env_logger")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env_logger")))]
@@ -213,7 +196,7 @@ pub trait AsLog<'a>: crate::sealed::Sealed {
     /// The `log` type that this type can be converted into.
     type Log;
     /// Returns the `log` equivalent of `self`.
-    fn as_log<'b: 'a>(&'b self) -> Self::Log;
+    fn as_log(&'a self) -> Self::Log;
 }
 
 /// Trait implemented for `log` types that can be converted to a `tracing`
@@ -229,7 +212,7 @@ impl<'a> crate::sealed::Sealed for Metadata<'a> {}
 
 impl<'a> AsLog<'a> for Metadata<'a> {
     type Log = log::Metadata<'a>;
-    fn as_log<'b: 'a>(&'b self) -> Self::Log {
+    fn as_log(&'a self) -> Self::Log {
         log::Metadata::builder()
             .level(self.level().as_log())
             .target(&self.target())
@@ -354,7 +337,7 @@ impl crate::sealed::Sealed for tracing_core::Level {}
 
 impl<'a> AsLog<'a> for tracing_core::Level {
     type Log = log::Level;
-    fn as_log<'b: 'a>(&'b self) -> log::Level {
+    fn as_log(&self) -> log::Level {
         match *self {
             tracing_core::Level::ERROR => log::Level::Error,
             tracing_core::Level::WARN => log::Level::Warn,
