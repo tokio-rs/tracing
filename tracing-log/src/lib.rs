@@ -69,8 +69,6 @@
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
 //! # Feature Flags
-//! * `trace-logger`: enables an experimental `log` collector, deprecated since
-//!   version 0.1.1.
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
@@ -94,7 +92,6 @@
 //! [`AsTrace`]: trait.AsTrace.html
 //! [`AsLog`]: trait.AsLog.html
 //! [`LogTracer`]: struct.LogTracer.html
-//! [`TraceLogger`]: struct.TraceLogger.html
 //! [`env_logger`]: env_logger/index.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
@@ -151,24 +148,10 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 pub mod log_tracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-pub mod trace_logger;
-
 #[cfg(feature = "log-tracer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
-
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-#[deprecated(
-    since = "0.1.1",
-    note = "use the `tracing` crate's \"log\" feature flag instead"
-)]
-#[allow(deprecated)]
-#[doc(inline)]
-pub use self::trace_logger::TraceLogger;
 
 #[cfg(feature = "env_logger")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env_logger")))]
