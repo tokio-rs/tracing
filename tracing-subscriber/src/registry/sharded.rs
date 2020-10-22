@@ -421,7 +421,7 @@ impl Clear for DataInner {
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
-            let subscriber = dispatch::get_default(Dispatch::clone);
+            let subscriber = dispatcher::get_default(Dispatch::clone);
             if let Some(parent) = self.parent.take() {
                 let _ = subscriber.try_close(parent);
             }
