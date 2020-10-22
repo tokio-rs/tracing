@@ -215,10 +215,10 @@ thread_local! {
 /// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
 /// [`FlushGuard`]: struct.FlushGuard.html
 #[derive(Debug)]
-pub struct FlameSubscriber<S, W> {
+pub struct FlameSubscriber<C, W> {
     out: Arc<Mutex<W>>,
     config: Config,
-    _inner: PhantomData<S>,
+    _inner: PhantomData<C>,
 }
 
 #[derive(Debug)]
@@ -254,9 +254,9 @@ where
     out: Arc<Mutex<W>>,
 }
 
-impl<S, W> FlameSubscriber<S, W>
+impl<C, W> FlameSubscriber<C, W>
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     /// Returns a new `FlameSubscriber` that outputs all folded stack samples to the
@@ -348,9 +348,9 @@ where
     }
 }
 
-impl<S> FlameSubscriber<S, BufWriter<File>>
+impl<C> FlameSubscriber<C, BufWriter<File>>
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
 {
     /// Constructs a `FlameSubscriber` that outputs to a `BufWriter` to the given path, and a
     /// `FlushGuard` to ensure the writer is flushed.
@@ -369,12 +369,12 @@ where
     }
 }
 
-impl<S, W> Subscribe<S> for FlameSubscriber<S, W>
+impl<C, W> Subscribe<C> for FlameSubscriber<C, W>
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
         let samples = self.time_since_last_event();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
@@ -404,7 +404,7 @@ where
         let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
     }
 
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
         let panicking = std::thread::panicking();
         macro_rules! expect {
             ($e:expr, $msg:literal) => {
@@ -456,9 +456,9 @@ where
     }
 }
 
-impl<S, W> FlameSubscriber<S, W>
+impl<C, W> FlameSubscriber<C, W>
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
     fn time_since_last_event(&self) -> Duration {
@@ -474,9 +474,9 @@ where
     }
 }
 
-fn write<S>(dest: &mut String, span: SpanRef<'_, S>) -> fmt::Result
+fn write<C>(dest: &mut String, span: SpanRef<'_, C>) -> fmt::Result
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
 {
     if let Some(module_path) = span.metadata().module_path() {
         write!(dest, "{}::", module_path)?;
