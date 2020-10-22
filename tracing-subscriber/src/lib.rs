@@ -59,14 +59,12 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
-//! [`EnvFilter`]: filter/struct.EnvFilter.html
-//! [`fmt`]: fmt/index.html
+//! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
-//! [`registry`]: registry/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

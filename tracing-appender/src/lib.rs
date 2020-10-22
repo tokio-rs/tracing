@@ -10,7 +10,7 @@
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
-//! [file_appender]: ./rolling/struct.RollingFileAppender.html
+//! [file_appender]: rolling::RollingFileAppender
 //! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage
@@ -88,12 +88,10 @@
 //!
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
-//! [non_blocking]: ./non_blocking/index.html
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
-//! [guard]: ./non_blocking/struct.WorkerGuard.html
-//! [rolling]: ./rolling/index.html
+//! [guard]: non_blocking::WorkerGuard
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-//! [rolling_struct]: ./rolling/struct.RollingFileAppender.html
+//! [rolling_struct]: rolling::RollingFileAppender
 //! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //!
 //! ## Non-Blocking Rolling File Appender
@@ -167,7 +165,6 @@ mod worker;
 ///
 /// See the [`non_blocking` module's docs][non_blocking]'s for more details.
 ///
-/// [non_blocking]: ./non_blocking/index.html
 ///
 /// # Examples
 ///

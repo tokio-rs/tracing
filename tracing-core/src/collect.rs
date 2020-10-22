@@ -63,7 +63,6 @@ use core::any::{Any, TypeId};
 /// [ID]: super::span::Id
 /// [`new_span`]: Collect::new_span
 /// [`register_callsite`]: Collect::register_callsite
-/// [`Interest`]: Interest
 /// [`enabled`]: Collect::enabled
 /// [`clone_span`]: Collect::clone_span
 /// [`try_close`]: Collect::try_close
@@ -134,7 +133,6 @@ pub trait Collect: 'static {
     ///
     /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
-    /// [`Interest`]: Interest
     /// [`enabled`]: Self::enabled
     /// [`rebuild_interest_cache`]: super::callsite::fn.rebuild_interest_cache.html
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -163,7 +161,6 @@ pub trait Collect: 'static {
     ///
     /// [metadata]: super::metadata::Metadata
     /// [interested]: Interest
-    /// [`Interest::sometimes`]: Interest::sometimes
     /// [`register_callsite`]: Self::register_callsite
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
@@ -188,7 +185,6 @@ pub trait Collect: 'static {
     /// level changes.
     ///
     /// [level]: super::Level
-    /// [`Interest`]: Interest
     /// [rebuild]: super::callsite::fn.rebuild_interest_cache.html
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
@@ -444,7 +440,7 @@ pub trait Collect: 'static {
     /// with the provided `TypeId`. Failure to ensure this will result in
     /// undefined behaviour, so implementing `downcast_raw` is unsafe.
     ///
-    /// [`downcast_ref`]: #method.downcast_ref
+    /// [`downcast_ref`]: Collect::downcast_ref()
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
             Some(self as *const Self as *const ())

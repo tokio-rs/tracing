@@ -14,8 +14,8 @@ use std::{fmt::Debug, io};
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-/// [`fmt::Collector`]: ../../fmt/struct.Collector.html
-/// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
+/// [`fmt::Collector`]: super::super::fmt::Collector
+/// [`fmt::Subscriber`]: super::super::fmt::Subscriber
 /// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
@@ -23,7 +23,7 @@ pub trait MakeWriter {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
     /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-    /// [`make_writer`]: #tymethod.make_writer
+    /// [`make_writer`]: MakeWriter::make_writer
     type Writer: io::Write;
 
     /// Returns an instance of [`Writer`].
@@ -35,11 +35,10 @@ pub trait MakeWriter {
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
     /// [`MakeWriter`] to improve performance.
     ///
-    /// [`Writer`]: #associatedtype.Writer
-    /// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
-    /// [`fmt::Collector`]: ../../fmt/struct.Collector.html
+    /// [`Writer`]: MakeWriter::Writer
+    /// [`fmt::Subscriber`]: super::super::fmt::Subscriber
+    /// [`fmt::Collector`]: super::super::fmt::Collector
     /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-    /// [`MakeWriter`]: trait.MakeWriter.html
     fn make_writer(&self) -> Self::Writer;
 }
 
@@ -65,8 +64,8 @@ where
 /// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
 /// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
 ///
-/// [`fmt::Collector`]: ../struct.Collector.html
-/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Collector`]: super::Collector
+/// [`fmt::Subscriber`]: super::Subscriber
 /// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
 /// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
@@ -128,7 +127,6 @@ impl MakeWriter for TestWriter {
 /// }
 /// ```
 ///
-/// [`MakeWriter`]: trait.MakeWriter.html
 /// [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 pub struct BoxMakeWriter {
@@ -138,7 +136,6 @@ pub struct BoxMakeWriter {
 impl BoxMakeWriter {
     /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn new<M>(make_writer: M) -> Self
     where
         M: MakeWriter + Send + Sync + 'static,

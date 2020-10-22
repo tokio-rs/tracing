@@ -150,10 +150,8 @@ use std::{any::TypeId, marker::PhantomData};
 /// additional behavior when composed with a subscriber may provide their own
 /// implementations of `SubscriberExt::with`.
 ///
-/// [`SubscriberExt::with`]: trait.SubscriberExt.html#method.with
-/// [`Layered`]: struct.Layered.html
-/// [prelude]: ../prelude/index.html
-/// [with-col]: #method.with_collector
+/// [prelude]: super::prelude
+/// [with-col]: Subscribe::with_collector()
 ///
 /// ## Recording Traces
 ///
@@ -191,13 +189,10 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
 /// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
-/// [`Context`]: struct.Context.html
-/// [the current span]: struct.Context.html#method.current_span
-/// [`register_callsite`]: #method.register_callsite
-/// [`enabled`]: #method.enabled
-/// [`on_enter`]: #method.on_enter
-/// [`Subscribe::register_callsite`]: #method.register_callsite
-/// [`Subscribe::enabled`]: #method.enabled
+/// [the current span]: Context::current_span()
+/// [`register_callsite`]: Subscribe::register_callsite()
+/// [`enabled`]: Subscribe::enabled()
+/// [`on_enter`]: Subscribe::on_enter()
 /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
 pub trait Subscribe<C>
 where
@@ -242,11 +237,11 @@ where
     /// [`Collector::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
     /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
     /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
-    /// [`self.enabled`]: #method.enabled
-    /// [`Subscriber::enabled`]: #method.enabled
-    /// [`on_event`]: #method.on_event
-    /// [`on_enter`]: #method.on_enter
-    /// [`on_exit`]: #method.on_exit
+    /// [`self.enabled`]: Subscribe::enabled()
+    /// [`Subscriber::enabled`]: Subscribe::enabled()
+    /// [`on_event`]: Subscribe::on_event()
+    /// [`on_enter`]: Subscribe::on_enter()
+    /// [`on_exit`]: Subscribe::on_exit()
     /// [the trait-level documentation]: #filtering-with-layers
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata, Context::none()) {
@@ -286,12 +281,12 @@ where
     /// with `Subscriber`s.
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Context`]: ../struct.Context.html
+    /// [`Context`]: super::Context
     /// [`Collector::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
-    /// [`Subscriber::register_callsite`]: #method.register_callsite
-    /// [`on_event`]: #method.on_event
-    /// [`on_enter`]: #method.on_enter
-    /// [`on_exit`]: #method.on_exit
+    /// [`Subscriber::register_callsite`]: Subscribe::register_callsite()
+    /// [`on_event`]: Subscribe::on_event()
+    /// [`on_enter`]: Subscribe::on_enter()
+    /// [`on_exit`]: Subscribe::on_exit()
     /// [the trait-level documentation]: #filtering-with-layers
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
@@ -548,9 +543,9 @@ pub trait CollectorExt: Collect + crate::sealed::Sealed {
 /// }
 /// ```
 ///
-/// [subscriber]: ../subscriber/trait.Subscribe.html
+/// [subscriber]: super::subscriber::Subscribe
 /// [collector]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
-/// [stored data]: ../registry/struct.SpanRef.html
+/// [stored data]: super::registry::SpanRef
 /// [`LookupSpan`]: "../registry/trait.LookupSpan.html
 #[derive(Debug)]
 pub struct Context<'a, S> {
@@ -560,7 +555,7 @@ pub struct Context<'a, S> {
 /// A [collector] composed of a collector wrapped by one or more
 /// [subscriber]s.
 ///
-/// [subscriber]: ../subscribe/trait.Subscribe.html
+/// [subscriber]: super::subscribe::Subscribe
 /// [collector]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
 #[derive(Clone, Debug)]
 pub struct Layered<S, I, C = I> {
@@ -581,8 +576,7 @@ pub struct Identity {
 ///
 /// This is returned by [`Context::scope`].
 ///
-/// [stored data]: ../registry/struct.SpanRef.html
-/// [`Context::scope`]: struct.Context.html#method.scope
+/// [stored data]: super::registry::SpanRef
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct Scope<'a, L: LookupSpan<'a>>(
@@ -988,7 +982,7 @@ where
     ///
     /// [register]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html#method.register_callsite
     /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html#method.enabled
-    /// [`Context::enabled`]: #method.enabled
+    /// [`Context::enabled`]: Layered::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         if let Some(ref subscriber) = self.subscriber {
@@ -1027,7 +1021,7 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: super::registry::SpanRef
     #[inline]
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
@@ -1076,7 +1070,7 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: super::registry::SpanRef
     #[inline]
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
@@ -1113,7 +1107,7 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: super::registry::SpanRef
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn scope(&self) -> Scope<'_, C>
