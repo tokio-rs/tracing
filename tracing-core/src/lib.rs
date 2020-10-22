@@ -10,7 +10,7 @@
 //!
 //! * [`Event`] represents a single event within a trace.
 //!
-//! * [`Subscriber`], the trait implemented to collect trace data.
+//! * [`Collect`], the trait implemented to collect trace data.
 //!
 //! * [`Metadata`] and [`Callsite`] provide information describing spans and
 //!   `Event`s.
@@ -18,7 +18,7 @@
 //! * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
 //!   structured data attached to a span.
 //!
-//! * [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
+//! * [`Dispatch`] allows spans and events to be dispatched to collectors.
 //!
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
@@ -34,14 +34,14 @@
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
 //!
-//! `Subscriber` implementations may depend on `tracing-core` rather than
+//! Collector implementations may depend on `tracing-core` rather than
 //! `tracing`, as the additional APIs provided by `tracing` are primarily useful
 //! for instrumenting libraries and applications, and are generally not
-//! necessary for `Subscriber` implementations.
+//! necessary for collector implementations.
 //!
 //! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
-//! `Subscriber` implementations, as well as utility and adapter crates.
+//! collector implementations, as well as utility and adapter crates.
 //!
 //! ### `no_std` Support
 //!
@@ -72,9 +72,9 @@
 //! require a global memory allocator.
 //!
 //! The "alloc" feature is required to enable the [`Dispatch::new`] function,
-//! which requires dynamic memory allocation to construct a `Subscriber` trait
+//! which requires dynamic memory allocation to construct a collector trait
 //! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
-//! created from `&'static dyn Subscriber` references, using
+//! created from `&'static dyn Collect` references, using
 //! [`Dispatch::from_static`].
 //!
 //! The "std" feature is required to enable the following features:
@@ -91,10 +91,10 @@
 //! without `std` and `alloc`.
 //!
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
-//! [`Dispatch::new`]: crate::dispatcher::Dispatch::new
-//! [`Dispatch::from_static`]: crate::dispatcher::Dispatch::from_static
-//! [`Dispatch::set_default`]: crate::dispatcher::set_default
-//! [`with_default`]: crate::dispatcher::with_default
+//! [`Dispatch::new`]: crate::dispatch::Dispatch::new
+//! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
+//! [`Dispatch::set_default`]: crate::dispatch::set_default
+//! [`with_default`]: crate::dispatch::with_default
 //! [err]: crate::field::Visit::record_error
 //!
 //! ### Crate Feature Flags
@@ -123,14 +123,14 @@
 //!
 //! [`span::Id`]: span::Id
 //! [`Event`]: event::Event
-//! [`Subscriber`]: subscriber::Subscriber
+//! [`Collect`]: collect::Collect
 //! [`Metadata`]: metadata::Metadata
 //! [`Callsite`]: callsite::Callsite
 //! [`Field`]: field::Field
 //! [`FieldSet`]: field::FieldSet
 //! [`Value`]: field::Value
 //! [`ValueSet`]: field::ValueSet
-//! [`Dispatch`]: dispatcher::Dispatch
+//! [`Dispatch`]: dispatch::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
@@ -177,7 +177,7 @@ extern crate alloc;
 /// # #[macro_use]
 /// # extern crate tracing_core;
 /// use tracing_core::callsite;
-/// # use tracing_core::{Metadata, subscriber::Interest};
+/// # use tracing_core::{Metadata, collect::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
 ///    // ...
@@ -212,7 +212,7 @@ macro_rules! identify_callsite {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing_core;
-/// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// # use tracing_core::{callsite::Callsite, collect::Interest};
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -298,25 +298,25 @@ pub use std::sync::Once;
 pub(crate) mod spin;
 
 pub mod callsite;
-pub mod dispatcher;
+pub mod collect;
+pub mod dispatch;
 pub mod event;
 pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub mod subscriber;
 
 #[doc(inline)]
 pub use self::{
     callsite::Callsite,
-    dispatcher::Dispatch,
+    collect::Collect,
+    dispatch::Dispatch,
     event::Event,
     field::Field,
     metadata::{Level, LevelFilter, Metadata},
-    subscriber::Subscriber,
 };
 
-pub use self::{metadata::Kind, subscriber::Interest};
+pub use self::{collect::Interest, metadata::Kind};
 
 mod sealed {
     pub trait Sealed {}

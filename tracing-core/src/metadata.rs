@@ -24,7 +24,7 @@ use core::{
 /// - The [line number]
 /// - The [module path]
 ///
-/// Metadata is used by [`Subscriber`]s when filtering spans and events, and it
+/// Metadata is used by [collector]s when filtering spans and events, and it
 /// may also be used as part of their data payload.
 ///
 /// When created by the `event!` or `span!` macro, the metadata describing a
@@ -56,7 +56,7 @@ use core::{
 /// [file name]: Self::file
 /// [line number]: Self::line
 /// [module path]: Self::module_path
-/// [`Subscriber`]: super::subscriber::Subscriber
+/// [collector]: super::collect::Collect
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
@@ -429,12 +429,12 @@ impl LevelFilter {
     const OFF_USIZE: usize = LevelInner::Error as usize + 1;
 
     /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
-    /// currently active [`Subscriber`] will enable.
+    /// currently active [collector] will enable.
     ///
     /// User code should treat this as a *hint*. If a given span or event has a
     /// level *higher* than the returned `LevelFilter`, it will not be enabled.
     /// However, if the level is less than or equal to this value, the span or
-    /// event is *not* guaranteed to be enabled; the subscriber will still
+    /// event is *not* guaranteed to be enabled; the collector will still
     /// filter each callsite individually.
     ///
     /// Therefore, comparing a given span or event's level to the returned
@@ -443,7 +443,7 @@ impl LevelFilter {
     /// *enabled*.`
     ///
     /// [`Level`]: super::Level
-    /// [`Subscriber`]: super::Subscriber
+    /// [collector]: super::Collect
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {
