@@ -181,6 +181,9 @@ impl Subscriber for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
+                let refs = data.ref_count.get_mut();
+                debug_assert_eq!(*refs, 0);
+                *refs = 1;
             })
             .expect("Unable to allocate another span");
         idx_to_id(id)
@@ -396,9 +399,6 @@ impl Clear for DataInner {
                 let _ = subscriber.try_close(parent);
             }
         }
-        let refs = self.ref_count.get_mut();
-        debug_assert_eq!(*refs, 0);
-        *refs = 1;
         self.extensions
             .get_mut()
             .unwrap_or_else(|l| l.into_inner())
