@@ -9,7 +9,7 @@ fn main() {
         // all spans/events with a level higher than DEBUG (e.g, info, warn, etc.)
         // will be written to stdout.
         .with_max_level(Level::DEBUG)
-        // sets this to be the default, global subscriber for this application.
+        // sets this to be the default, global collector for this application.
         .init();
 
     let number_of_yaks = 3;

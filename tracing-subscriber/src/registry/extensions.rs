@@ -64,9 +64,9 @@ impl<'a> ExtensionsMut<'a> {
     /// Insert a type into this `Extensions`.
     ///
     /// Note that extensions are _not_
-    /// `Layer`-specific—they are _span_-specific. This means that
+    /// `Subscriber`-specific—they are _span_-specific. This means that
     /// other layers can access and mutate extensions that
-    /// a different Layer recorded. For example, an application might
+    /// a different Subscriber recorded. For example, an application might
     /// have a layer that records execution timings, alongside a layer
     /// that reports spans and events to a distributed
     /// tracing system that requires timestamps for spans.
@@ -75,7 +75,7 @@ impl<'a> ExtensionsMut<'a> {
     ///
     /// Therefore, extensions should generally be newtypes, rather than common
     /// types like [`String`](https://doc.rust-lang.org/std/string/struct.String.html), to avoid accidental
-    /// cross-`Layer` clobbering.
+    /// cross-`Subscriber` clobbering.
     ///
     /// ## Panics
     ///
@@ -107,7 +107,7 @@ impl<'a> ExtensionsMut<'a> {
 /// A type map of span extensions.
 ///
 /// [ExtensionsInner] is used by [Data] to store and
-/// span-specific data. A given [Layer] can read and write
+/// span-specific data. A given [Subscriber] can read and write
 /// data that it is interested in recording and emitting.
 #[derive(Default)]
 pub(crate) struct ExtensionsInner {

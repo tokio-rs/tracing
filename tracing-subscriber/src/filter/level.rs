@@ -1,5 +1,5 @@
 use tracing_core::{
-    subscriber::{Interest, Subscriber},
+    collect::{Collect, Interest},
     Metadata,
 };
 
@@ -8,7 +8,7 @@ pub use tracing_core::metadata::{LevelFilter, ParseLevelFilterError as ParseErro
 
 // === impl LevelFilter ===
 
-impl<S: Subscriber> crate::Layer<S> for LevelFilter {
+impl<S: Collect> crate::Subscribe<S> for LevelFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self >= metadata.level() {
             Interest::always()
@@ -17,7 +17,7 @@ impl<S: Subscriber> crate::Layer<S> for LevelFilter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: crate::layer::Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: crate::subscribe::Context<'_, S>) -> bool {
         self >= metadata.level()
     }
 

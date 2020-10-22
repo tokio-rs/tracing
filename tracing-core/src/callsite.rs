@@ -1,9 +1,9 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
 use crate::{
-    dispatcher::{self, Dispatch},
+    collect::Interest,
+    dispatch::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
-    subscriber::Interest,
 };
 use core::{
     fmt,
@@ -17,11 +17,11 @@ type Callsites = LinkedList;
 /// Trait implemented by callsites.
 ///
 /// These functions are only intended to be called by the callsite registry, which
-/// correctly handles determining the common interest between all subscribers.
+/// correctly handles determining the common interest between all collectors.
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
-    /// [`Interest`]: super::subscriber::Interest
+    /// [`Interest`]: super::collect::Interest
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
@@ -70,7 +70,7 @@ mod inner {
     use std::sync::RwLock;
     use std::vec::Vec;
 
-    type Dispatchers = Vec<dispatcher::Registrar>;
+    type Dispatchers = Vec<dispatch::Registrar>;
 
     struct Registry {
         callsites: Callsites,
@@ -88,21 +88,21 @@ mod inner {
     ///
     /// This function is intended for runtime reconfiguration of filters on traces
     /// when the filter recalculation is much less frequent than trace events are.
-    /// The alternative is to have the [`Subscriber`] that supports runtime
+    /// The alternative is to have the [`Collect`] that supports runtime
     /// reconfiguration of filters always return [`Interest::sometimes()`] so that
     /// [`enabled`] is evaluated for every event.
     ///
     /// This function will also re-compute the global maximum level as determined by
-    /// the [`max_level_hint`] method. If a [`Subscriber`]
+    /// the [`max_level_hint`] method. If a [`Collect`]
     /// implementation changes the value returned by its `max_level_hint`
     /// implementation at runtime, then it **must** call this function after that
     /// value changes, in order for the change to be reflected.
     ///
-    /// [`max_level_hint`]: crate::subscriber::Subscriber::max_level_hint
+    /// [`max_level_hint`]: crate::collect::Collect::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
-    /// [`enabled`]: crate::subscriber::Subscriber::enabled
-    /// [`Interest::sometimes()`]: crate::subscriber::Interest::sometimes
-    /// [`Subscriber`]: crate::subscriber::Subscriber
+    /// [`enabled`]: crate::collect::Collect::enabled
+    /// [`Interest::sometimes()`]: crate::collect::Interest::sometimes
+    /// [`Collect`]: crate::collect::Collect
     pub fn rebuild_interest_cache() {
         let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
@@ -129,12 +129,12 @@ mod inner {
     }
 
     fn rebuild_callsite_interest(
-        dispatchers: &[dispatcher::Registrar],
+        dispatchers: &[dispatch::Registrar],
         callsite: &'static dyn Callsite,
     ) {
         let meta = callsite.metadata();
 
-        // Iterate over the subscribers in the registry, and — if they are
+        // Iterate over the collectors in the registry, and — if they are
         // active — register the callsite with them.
         let mut interests = dispatchers.iter().filter_map(|registrar| {
             registrar
@@ -142,7 +142,7 @@ mod inner {
                 .map(|dispatch| dispatch.register_callsite(meta))
         });
 
-        // Use the first subscriber's `Interest` as the base value.
+        // Use the first collector's `Interest` as the base value.
         let interest = if let Some(interest) = interests.next() {
             // Combine all remaining `Interest`s.
             interests.fold(interest, Interest::and)
@@ -154,11 +154,11 @@ mod inner {
         callsite.set_interest(interest)
     }
 
-    fn rebuild_interest(callsites: &Callsites, dispatchers: &mut Vec<dispatcher::Registrar>) {
+    fn rebuild_interest(callsites: &Callsites, dispatchers: &mut Vec<dispatch::Registrar>) {
         let mut max_level = LevelFilter::OFF;
         dispatchers.retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
-                // If the subscriber did not provide a max level hint, assume
+                // If the collector did not provide a max level hint, assume
                 // that it may enable every level.
                 let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
                 if level_hint > max_level {
@@ -185,23 +185,24 @@ mod inner {
     ///
     /// This function is intended for runtime reconfiguration of filters on traces
     /// when the filter recalculation is much less frequent than trace events are.
-    /// The alternative is to have the [`Subscriber`] that supports runtime
+    /// The alternative is to have the [collector] that supports runtime
     /// reconfiguration of filters always return [`Interest::sometimes()`] so that
     /// [`enabled`] is evaluated for every event.
     ///
     /// This function will also re-compute the global maximum level as determined by
-    /// the [`max_level_hint`] method. If a [`Subscriber`]
+    /// the [`max_level_hint`] method. If a [`Collect`]
     /// implementation changes the value returned by its `max_level_hint`
     /// implementation at runtime, then it **must** call this function after that
     /// value changes, in order for the change to be reflected.
     ///
-    /// [`max_level_hint`]: crate::subscriber::Subscriber::max_level_hint
+    /// [`max_level_hint`]: crate::collector::Collector::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
-    /// [`enabled`]: crate::subscriber::Subscriber::enabled
-    /// [`Interest::sometimes()`]: crate::subscriber::Interest::sometimes
-    /// [`Subscriber`]: crate::subscriber::Subscriber
+    /// [`enabled`]: crate::collector::Collector::enabled
+    /// [`Interest::sometimes()`]: crate::collect::Interest::sometimes
+    /// [collector]: crate::collect::Collect
+    /// [`Collect`]: crate::collect::Collect
     pub fn rebuild_interest_cache() {
-        register_dispatch(dispatcher::get_global());
+        register_dispatch(dispatch::get_global());
     }
 
     /// Register a new `Callsite` with the global registry.
@@ -209,12 +210,12 @@ mod inner {
     /// This should be called once per callsite after the callsite has been
     /// constructed.
     pub fn register(registration: &'static Registration) {
-        rebuild_callsite_interest(dispatcher::get_global(), registration.callsite);
+        rebuild_callsite_interest(dispatch::get_global(), registration.callsite);
         REGISTRY.push(registration);
     }
 
     pub(crate) fn register_dispatch(dispatcher: &Dispatch) {
-        // If the subscriber did not provide a max level hint, assume
+        // If the collector did not provide a max level hint, assume
         // that it may enable every level.
         let level_hint = dispatcher.max_level_hint().unwrap_or(LevelFilter::TRACE);
 
