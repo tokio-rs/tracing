@@ -1,11 +1,11 @@
 //! Collects and records trace data.
-pub use tracing_core::subscriber::*;
+pub use tracing_core::collect::*;
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatch::DefaultGuard;
 
-/// Sets this subscriber as the default for the duration of a closure.
+/// Sets this collector as the default for the duration of a closure.
 ///
 /// The default subscriber is used when creating a new [`Span`] or
 /// [`Event`], _if no span is currently executing_. If a span is currently
@@ -13,19 +13,19 @@ pub use tracing_core::dispatch::DefaultGuard;
 /// tagged that span, instead.
 ///
 /// [`Span`]: ../span/struct.Span.html
-/// [`Collector`]: ../subscriber/trait.Subscriber.html
-/// [`Event`]: :../event/struct.Event.html
+/// [`Collect`]: ../collect/trait.Collect.html
+// /// [`Event`]: :../event/struct.Event.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
+pub fn with_default<T, S>(collector: S, f: impl FnOnce() -> T) -> T
 where
-    S: Subscriber + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
-    crate::dispatcher::with_default(&crate::Dispatch::new(subscriber), f)
+    crate::dispatch::with_default(&crate::Dispatch::new(collector), f)
 }
 
-/// Sets this subscriber as the global default for the duration of the entire program.
-/// Will be used as a fallback if no thread-local subscriber has been set in a thread (using `with_default`.)
+/// Sets this collector as the global default for the duration of the entire program.
+/// Will be used as a fallback if no thread-local collector has been set in a thread (using `with_default`.)
 ///
 /// Can only be set once; subsequent attempts to set the global default will fail.
 /// Returns whether the initialization was successful.
@@ -34,37 +34,38 @@ where
 /// executables try to set them later.
 ///
 /// [span]: ../span/index.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+/// [`Collect`]: ../collect/trait.Collect.html
 /// [`Event`]: ../event/struct.Event.html
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-pub fn set_global_default<S>(subscriber: S) -> Result<(), SetGlobalDefaultError>
+pub fn set_global_default<S>(collector: S) -> Result<(), SetGlobalDefaultError>
 where
-    S: Subscriber + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
-    crate::dispatcher::set_global_default(crate::Dispatch::new(subscriber))
+    crate::dispatch::set_global_default(crate::Dispatch::new(collector))
 }
 
-/// Sets the subscriber as the default for the duration of the lifetime of the
+/// Sets the collector as the default for the duration of the lifetime of the
 /// returned [`DefaultGuard`]
 ///
-/// The default subscriber is used when creating a new [`Span`] or
+/// The default collector is used when creating a new [`Span`] or
 /// [`Event`], _if no span is currently executing_. If a span is currently
-/// executing, new spans or events are dispatched to the subscriber that
+/// executing, new spans or events are dispatched to the collector that
 /// tagged that span, instead.
 ///
 /// [`Span`]: ../span/struct.Span.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+/// [`Collect`]: ../collect/trait.Collect.html
 /// [`Event`]: :../event/struct.Event.html
-/// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
+/// [`DefaultGuard`]: ../dispatch/struct.DefaultGuard.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-#[must_use = "Dropping the guard unregisters the subscriber."]
-pub fn set_default<S>(subscriber: S) -> DefaultGuard
+#[must_use = "Dropping the guard unregisters the collector."]
+pub fn set_default<S>(collector: S) -> DefaultGuard
 where
-    S: Subscriber + Send + Sync + 'static,
+    S: Collect + Send + Sync + 'static,
 {
-    crate::dispatcher::set_default(&crate::Dispatch::new(subscriber))
+    crate::dispatch::set_default(&crate::Dispatch::new(collector))
 }
 
-pub use tracing_core::dispatcher::SetGlobalDefaultError;
+pub use tracing_core::dispatch::SetGlobalDefaultError;
+use tracing_core::Collect;
