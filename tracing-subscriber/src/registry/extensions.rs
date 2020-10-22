@@ -111,8 +111,6 @@ impl<'a> ExtensionsMut<'a> {
 /// data that it is interested in recording and emitting.
 #[derive(Default)]
 pub(crate) struct ExtensionsInner {
-    // If extensions are never used, no need to carry around an empty HashMap.
-    // That's 3 words. Instead, this is only 1 word.
     map: AnyMap,
 }
 
@@ -172,6 +170,11 @@ impl ExtensionsInner {
         })
     }
 
+    /// Clear the `ExtensionsInner` in-place, dropping any elements in the map but
+    /// retaining allocated capacity.
+    ///
+    /// This permits the hash map allocation to be pooled by the registry so
+    /// that future spans will not need to allocate new hashmaps.
     pub(crate) fn clear(&mut self) {
         self.map.clear();
     }

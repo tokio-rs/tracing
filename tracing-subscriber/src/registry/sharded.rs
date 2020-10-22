@@ -65,14 +65,23 @@ pub struct Registry {
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Data<'a> {
+    /// Immutable reference to the pooled `DataInner` entry.
     inner: Ref<'a, DataInner>,
 }
 
+/// Stored data associated with a span.
+///
+/// This type is pooled using `sharded_slab::Pool`; when a span is dropped, the
+/// `DataInner` entry at that span's slab index is cleared in place and reused
+/// by a future span. Thus, the `Default` and `sharded_slab::Clear`
+/// implementations for this type are load-bearing.
 #[derive(Debug)]
 struct DataInner {
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
+    // The span's `Extensions` typemap. Allocations for the `HashMap` backing
+    // this are pooled and reused in place.
     pub(crate) extensions: RwLock<ExtensionsInner>,
 }
 
@@ -178,6 +187,10 @@ impl Subscriber for Registry {
 
         let id = self
             .spans
+            // Check out a `DataInner` entry from the pool for the new span. If
+            // there are free entries already allocated in the pool, this will
+            // preferentially reuse one; otherwise, a new `DataInner` is
+            // allocated and added to the pool.
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
@@ -346,18 +359,30 @@ impl<'a> SpanData<'a> for Data<'a> {
 
 impl Default for DataInner {
     fn default() -> Self {
+        // Since `DataInner` owns a `&'static Callsite` pointer, we need
+        // something to use as the initial default value for that callsite.
+        // Since we can't access a `DataInner` until it has had actual span data
+        // inserted into it, the null metadata will never actually be accessed.
         struct NullCallsite;
-        static NULL_CALLSITE: NullCallsite = NullCallsite;
         impl tracing_core::callsite::Callsite for NullCallsite {
-            fn set_interest(&self, _: tracing_core::subscriber::Interest) {
-                unreachable!("you somehow managed to register the null callsite?")
+            fn set_interest(self: &Self, _: Interest) {
+                unreachable!(
+                    "/!\\ Tried to register the null callsite /!\\\n \
+                    This should never have happened and is definitely a bug. \
+                    A `tracing` bug report would be appreciated."
+                )
             }
 
-            fn metadata(&self) -> &Metadata<'_> {
-                unreachable!("you somehow managed to access the null callsite?")
+            fn metadata(self: &Self) -> &Metadata<'_> {
+                unreachable!(
+                    "/!\\ Tried to access the null callsite's metadata /!\\\n \
+                    This should never have happened and is definitely a bug. \
+                    A `tracing` bug report would be appreciated."
+                )
             }
         }
 
+        static NULL_CALLSITE: NullCallsite = NullCallsite;
         static NULL_METADATA: Metadata<'static> = tracing_core::metadata! {
             name: "",
             target: "",
@@ -366,6 +391,7 @@ impl Default for DataInner {
             callsite: &NULL_CALLSITE,
             kind: tracing_core::metadata::Kind::SPAN,
         };
+
         Self {
             metadata: &NULL_METADATA,
             parent: None,
@@ -376,6 +402,7 @@ impl Default for DataInner {
 }
 
 impl Clear for DataInner {
+    /// Clears the span's data in place, dropping the parent's reference count.
     fn clear(&mut self) {
         // A span is not considered closed until all of its children have closed.
         // Therefore, each span's `DataInner` holds a "reference" to the parent
@@ -399,9 +426,15 @@ impl Clear for DataInner {
                 let _ = subscriber.try_close(parent);
             }
         }
+
+        // Clear (but do not deallocate!) the pooled `HashMap` for the span's extensions.
         self.extensions
             .get_mut()
-            .unwrap_or_else(|l| l.into_inner())
+            .unwrap_or_else(|l| {
+                // This function can be called in a `Drop` impl, such as while
+                // panicking, so ignore lock poisoning.
+                l.into_inner()
+            })
             .clear();
     }
 }
