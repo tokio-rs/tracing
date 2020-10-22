@@ -415,7 +415,7 @@ where
         #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(Box::new)?;
 
-        tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
+        tracing_core::dispatch::set_global_default(tracing_core::dispatch::Dispatch::new(
             self.finish(),
         ))?;
         Ok(())
@@ -1001,7 +1001,7 @@ mod test {
         io,
         sync::{Mutex, MutexGuard, TryLockError},
     };
-    use tracing_core::dispatcher::Dispatch;
+    use tracing_core::dispatch::Dispatch;
 
     pub(crate) struct MockWriter<'a> {
         buf: &'a Mutex<Vec<u8>>,

@@ -3,7 +3,7 @@ pub use tracing_core::collect::*;
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::DefaultGuard;
+pub use tracing_core::dispatch::DefaultGuard;
 
 /// Sets this collector as the default for the duration of a closure.
 ///
@@ -67,4 +67,4 @@ where
     crate::dispatch::set_default(&crate::Dispatch::new(collector))
 }
 
-pub use tracing_core::dispatcher::SetGlobalDefaultError;
+pub use tracing_core::dispatch::SetGlobalDefaultError;

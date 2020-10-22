@@ -902,7 +902,7 @@ mod test {
     use regex::Regex;
     use std::sync::Mutex;
     use tracing::collect::with_default;
-    use tracing_core::dispatcher::Dispatch;
+    use tracing_core::dispatch::Dispatch;
 
     #[test]
     fn impls() {

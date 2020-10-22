@@ -140,7 +140,7 @@ use std::{fmt, io};
 
 use tracing_core::{
     callsite::{self, Callsite},
-    collect, dispatcher,
+    collect, dispatch,
     field::{self, Field, Visit},
     identify_callsite,
     metadata::{Kind, Level},
@@ -179,7 +179,7 @@ pub use log;
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
     let filter_meta = record.as_trace();
-    if !dispatcher::get_default(|dispatch| dispatch.enabled(&filter_meta)) {
+    if !dispatch::get_default(|dispatch| dispatch.enabled(&filter_meta)) {
         return Ok(());
     };
 

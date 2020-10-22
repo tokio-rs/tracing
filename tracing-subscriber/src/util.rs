@@ -1,7 +1,7 @@
 //! Extension traits and other utilities to make working with subscribers more
 //! ergonomic.
 use std::{error::Error, fmt};
-use tracing_core::dispatcher::{self, Dispatch};
+use tracing_core::dispatch::{self, Dispatch};
 
 /// Extension trait adding utility methods for subscriber initialization.
 ///
@@ -29,11 +29,11 @@ where
     ///
     /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
-    fn set_default(self) -> dispatcher::DefaultGuard {
+    fn set_default(self) -> dispatch::DefaultGuard {
         #[cfg(feature = "tracing-log")]
         let _ = tracing_log::LogTracer::init();
 
-        dispatcher::set_default(&self.into())
+        dispatch::set_default(&self.into())
     }
 
     /// Attempts to set `self` as the [global default subscriber] in the current
@@ -53,7 +53,7 @@ where
         #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(TryInitError::new)?;
 
-        dispatcher::set_global_default(self.into()).map_err(TryInitError::new)?;
+        dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
 
         Ok(())
     }

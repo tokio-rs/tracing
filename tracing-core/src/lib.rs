@@ -299,7 +299,7 @@ pub(crate) mod spin;
 
 pub mod callsite;
 pub mod collect;
-pub mod dispatcher;
+pub mod dispatch;
 pub mod event;
 pub mod field;
 pub mod metadata;
@@ -310,7 +310,7 @@ pub mod span;
 pub use self::{
     callsite::Callsite,
     collect::Collect,
-    dispatcher::Dispatch,
+    dispatch::Dispatch,
     event::Event,
     field::Field,
     metadata::{Level, LevelFilter, Metadata},

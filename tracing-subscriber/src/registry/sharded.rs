@@ -14,7 +14,7 @@ use std::{
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
-    dispatcher::{self, Dispatch},
+    dispatch::{self, Dispatch},
     span::{self, Current, Id},
     Collect, Event, Interest, Metadata,
 };
@@ -214,7 +214,7 @@ impl Collect for Registry {
             .get()
             .and_then(|spans| spans.borrow_mut().pop(id))
         {
-            dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
+            dispatch::get_default(|dispatch| dispatch.try_close(id.clone()));
         }
     }
 
@@ -301,7 +301,7 @@ impl Drop for DataInner {
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
-            let subscriber = dispatcher::get_default(Dispatch::clone);
+            let subscriber = dispatch::get_default(Dispatch::clone);
             if let Some(parent) = self.parent.take() {
                 let _ = subscriber.try_close(parent);
             }
@@ -374,7 +374,7 @@ mod tests {
     };
     use tracing::{self, collect::with_default};
     use tracing_core::{
-        dispatcher,
+        dispatch,
         span::{Attributes, Id},
         Collect,
     };
@@ -592,9 +592,9 @@ mod tests {
         // passed the subscriber itself to `with_default`, we could see the span
         // be dropped when the subscriber itself is dropped, destroying the
         // registry.
-        let dispatch = dispatcher::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatch::with_default(&dispatch, || {
             let span = tracing::debug_span!("span1");
             drop(span);
             let span = tracing::info_span!("span2");
@@ -620,9 +620,9 @@ mod tests {
         // passed the subscriber itself to `with_default`, we could see the span
         // be dropped when the subscriber itself is dropped, destroying the
         // registry.
-        let dispatch = dispatcher::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(subscriber);
 
-        let span2 = dispatcher::with_default(&dispatch, || {
+        let span2 = dispatch::with_default(&dispatch, || {
             let span = tracing::debug_span!("span1");
             drop(span);
             let span2 = tracing::info_span!("span2");
@@ -653,9 +653,9 @@ mod tests {
         // passed the subscriber itself to `with_default`, we could see the span
         // be dropped when the subscriber itself is dropped, destroying the
         // registry.
-        let dispatch = dispatcher::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatch::with_default(&dispatch, || {
             let span1 = tracing::debug_span!("span1");
             let span2 = tracing::info_span!("span2");
 
@@ -686,9 +686,9 @@ mod tests {
         let (close_layer, state) = CloseLayer::new();
         let subscriber = close_layer.with_collector(Registry::default());
 
-        let dispatch = dispatcher::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatch::with_default(&dispatch, || {
             let span1 = tracing::info_span!("parent");
             let span2 = tracing::info_span!(parent: &span1, "child");
 
@@ -713,9 +713,9 @@ mod tests {
         let (close_layer, state) = CloseLayer::new();
         let subscriber = close_layer.with_collector(Registry::default());
 
-        let dispatch = dispatcher::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatch::with_default(&dispatch, || {
             let span1 = tracing::info_span!("grandparent");
             let span2 = tracing::info_span!(parent: &span1, "parent");
             let span3 = tracing::info_span!(parent: &span2, "child");

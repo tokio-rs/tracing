@@ -28,7 +28,7 @@
 //! [ignore]: struct.Builder.html#method.ignore_crate
 use crate::{format_trace, AsTrace};
 pub use log::SetLoggerError;
-use tracing_core::dispatcher;
+use tracing_core::dispatch;
 
 /// A simple "logger" that converts all log records into `tracing` `Event`s.
 #[derive(Debug)]
@@ -174,7 +174,7 @@ impl log::Log for LogTracer {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let enabled = dispatcher::get_default(|dispatch| {
+        let enabled = dispatch::get_default(|dispatch| {
             // TODO: can we cache this for each log record, so we can get
             // similar to the callsite cache?
             dispatch.enabled(&record.as_trace())

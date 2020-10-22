@@ -4,7 +4,7 @@ mod common;
 #[cfg(feature = "std")]
 use common::*;
 #[cfg(feature = "std")]
-use tracing_core::dispatcher::*;
+use tracing_core::dispatch::*;
 
 #[cfg(feature = "std")]
 #[test]

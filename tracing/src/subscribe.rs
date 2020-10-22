@@ -3,7 +3,7 @@ pub use tracing_core::subscriber::*;
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::DefaultGuard;
+pub use tracing_core::dispatch::DefaultGuard;
 
 /// Sets this subscriber as the default for the duration of a closure.
 ///
@@ -13,7 +13,7 @@ pub use tracing_core::dispatcher::DefaultGuard;
 /// tagged that span, instead.
 ///
 /// [`Span`]: ../span/struct.Span.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+/// [`Collector`]: ../subscriber/trait.Subscriber.html
 /// [`Event`]: :../event/struct.Event.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]

@@ -31,7 +31,7 @@ impl<'a> Event<'a> {
     /// and observes it with the current collector.
     pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
         let event = Event::new(metadata, fields);
-        crate::dispatcher::get_default(|current| {
+        crate::dispatch::get_default(|current| {
             current.event(&event);
         });
     }
@@ -74,7 +74,7 @@ impl<'a> Event<'a> {
         fields: &'a field::ValueSet<'_>,
     ) {
         let event = Self::new_child_of(parent, metadata, fields);
-        crate::dispatcher::get_default(|current| {
+        crate::dispatch::get_default(|current| {
             current.event(&event);
         });
     }

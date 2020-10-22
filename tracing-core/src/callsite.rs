@@ -2,7 +2,7 @@
 //! originate.
 use crate::{
     collect::Interest,
-    dispatcher::{self, Dispatch},
+    dispatch::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
 };
 use core::{
@@ -70,7 +70,7 @@ mod inner {
     use std::sync::RwLock;
     use std::vec::Vec;
 
-    type Dispatchers = Vec<dispatcher::Registrar>;
+    type Dispatchers = Vec<dispatch::Registrar>;
 
     struct Registry {
         callsites: Callsites,
@@ -129,7 +129,7 @@ mod inner {
     }
 
     fn rebuild_callsite_interest(
-        dispatchers: &[dispatcher::Registrar],
+        dispatchers: &[dispatch::Registrar],
         callsite: &'static dyn Callsite,
     ) {
         let meta = callsite.metadata();
@@ -154,7 +154,7 @@ mod inner {
         callsite.set_interest(interest)
     }
 
-    fn rebuild_interest(callsites: &Callsites, dispatchers: &mut Vec<dispatcher::Registrar>) {
+    fn rebuild_interest(callsites: &Callsites, dispatchers: &mut Vec<dispatch::Registrar>) {
         let mut max_level = LevelFilter::OFF;
         dispatchers.retain(|registrar| {
             if let Some(dispatch) = registrar.upgrade() {
@@ -201,7 +201,7 @@ mod inner {
     /// [`Interest::sometimes()`]: crate::collector::Interest::sometimes
     /// [`Collector`]: crate::collector::Collector
     pub fn rebuild_interest_cache() {
-        register_dispatch(dispatcher::get_global());
+        register_dispatch(dispatch::get_global());
     }
 
     /// Register a new `Callsite` with the global registry.
@@ -209,7 +209,7 @@ mod inner {
     /// This should be called once per callsite after the callsite has been
     /// constructed.
     pub fn register(registration: &'static Registration) {
-        rebuild_callsite_interest(dispatcher::get_global(), registration.callsite);
+        rebuild_callsite_interest(dispatch::get_global(), registration.callsite);
         REGISTRY.push(registration);
     }
 

@@ -187,7 +187,7 @@ mod test {
     use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tracing::error;
-    use tracing_core::dispatcher::{self, Dispatch};
+    use tracing_core::dispatch::{self, Dispatch};
 
     fn test_writer<T>(make_writer: T, msg: &str, buf: &Mutex<Vec<u8>>)
     where
@@ -213,7 +213,7 @@ mod test {
         };
         let dispatch = Dispatch::from(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatch::with_default(&dispatch, || {
             error!("{}", msg);
         });
 

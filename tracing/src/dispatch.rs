@@ -25,7 +25,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatcher, Event, Metadata,
+//! #   dispatch, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
@@ -39,7 +39,7 @@
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
-//! use dispatcher::Dispatch;
+//! use dispatch::Dispatch;
 //!
 //! # #[cfg(feature = "alloc")]
 //! let my_collector = FooCollector::new();
@@ -51,7 +51,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatcher, Event, Metadata,
+//! #   dispatch, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
@@ -67,11 +67,11 @@
 //! # #[cfg(feature = "alloc")]
 //! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! # let my_dispatch = dispatch::Dispatch::new(my_collector);
 //! // no default collector
 //!
 //! # #[cfg(feature = "std")]
-//! dispatcher::with_default(&my_dispatch, || {
+//! dispatch::with_default(&my_dispatch, || {
 //!     // my_collector is the default
 //! });
 //!
@@ -88,7 +88,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatcher, Event, Metadata,
+//! #   dispatch, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
@@ -104,11 +104,11 @@
 //! # #[cfg(feature = "alloc")]
 //! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! # let my_dispatch = dispatcher::Dispatch::new(my_collector);
+//! # let my_dispatch = dispatch::Dispatch::new(my_collector);
 //! // no default collector
 //!
 //! # #[cfg(feature = "alloc")]
-//! dispatcher::set_global_default(my_dispatch)
+//! dispatch::set_global_default(my_dispatch)
 //!     // `set_global_default` will return an error if the global default
 //!     // collector has already been set.
 //!     .expect("global default was already set!");
@@ -140,14 +140,14 @@
 //! [`Dispatch`]: struct.Dispatch.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::set_default;
+pub use tracing_core::dispatch::set_default;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::with_default;
+pub use tracing_core::dispatch::with_default;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::DefaultGuard;
-pub use tracing_core::dispatcher::{
+pub use tracing_core::dispatch::DefaultGuard;
+pub use tracing_core::dispatch::{
     get_default, set_global_default, Dispatch, SetGlobalDefaultError,
 };
 
@@ -157,4 +157,4 @@ pub use tracing_core::dispatcher::{
 /// stability guarantees. If you use it, and it breaks or disappears entirely,
 /// don't say we didn;'t warn you.
 #[doc(hidden)]
-pub use tracing_core::dispatcher::has_been_set;
+pub use tracing_core::dispatch::has_been_set;
