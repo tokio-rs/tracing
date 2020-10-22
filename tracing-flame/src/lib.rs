@@ -183,7 +183,7 @@ thread_local! {
 /// A `Subscriber` that records span open/close events as folded flamegraph stack
 /// samples.
 ///
-/// The output of `FlameLayer` emulates the output of commands like `perf` once
+/// The output of `FlameSubscriber` emulates the output of commands like `perf` once
 /// they've been collapsed by `inferno-flamegraph`. The output of this layer
 /// should look similar to the output of the following commands:
 ///
@@ -201,18 +201,18 @@ thread_local! {
 ///
 /// # Dropping and Flushing
 ///
-/// If you use a global subscriber the drop implementations on your various
-/// layers will not get called when your program exits. This means that if
-/// you're using a buffered writer as the inner writer for the `FlameLayer`
+/// If you use a global collector the drop implementations on your various
+/// subscribers will not get called when your program exits. This means that if
+/// you're using a buffered writer as the inner writer for the `FlameSubscriber`
 /// you're not guaranteed to see all the events that have been emitted in the
 /// file by default.
 ///
-/// To ensure all data is flushed when the program exits, `FlameLayer` exposes
+/// To ensure all data is flushed when the program exits, `FlameSubscriber` exposes
 /// the [`flush_on_drop`] function, which returns a [`FlushGuard`]. The `FlushGuard`
 /// will flush the writer when it is dropped. If necessary, it can also be used to manually
 /// flush the writer.
 ///
-/// [`flush_on_drop`]: struct.FlameLayer.html#method.flush_on_drop
+/// [`flush_on_drop`]: struct.FlameSubscriber.html#method.flush_on_drop
 /// [`FlushGuard`]: struct.FlushGuard.html
 #[derive(Debug)]
 pub struct FlameSubscriber<C, W> {

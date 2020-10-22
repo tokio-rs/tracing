@@ -98,8 +98,8 @@
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
 //! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
 //! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
-//! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-//! [`Collector`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
+//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
@@ -375,7 +375,7 @@ impl AsTrace for log::Level {
 /// that only lives as long as its source `Event`, but provides complete
 /// data.
 ///
-/// It can typically be used by `Collector`s when processing an `Event`,
+/// It can typically be used by collectors when processing an `Event`,
 /// to allow accessing its complete metadata in a consistent way,
 /// regardless of the source of its source.
 ///

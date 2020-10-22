@@ -11,39 +11,39 @@ use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
 ///
-/// The [`Collector`] trait in `tracing-core` represents the _complete_ set of
+/// The [`Collect`] trait in `tracing-core` represents the _complete_ set of
 /// functionality required to consume `tracing` instrumentation. This means that
 /// a single `Collector` instance is a self-contained implementation of a
 /// complete strategy for collecting traces; but it _also_ means that the
 /// `Collector` trait cannot easily be composed with other `Collector`s.
 ///
-/// In particular, [`Collector`]'s are responsible for generating [span IDs] and
+/// In particular, collectors are responsible for generating [span IDs] and
 /// assigning them to spans. Since these IDs must uniquely identify a span
 /// within the context of the current trace, this means that there may only be
 /// a single `Collector` for a given thread at any point in time &mdash;
 /// otherwise, there would be no authoritative source of span IDs.
 ///
-/// On the other hand, the majority of the [`Collector`] trait's functionality
+/// On the other hand, the majority of the [`Collect`] trait's functionality
 /// is composable: any number of collectors may _observe_ events, span entry
 /// and exit, and so on, provided that there is a single authoritative source of
-/// span IDs. The `Subscriber` trait represents this composable subset of the
-/// [`Collector`] behavior; it can _observe_ events and spans, but does not
+/// span IDs. The `Subscribe` trait represents this composable subset of the
+/// [`Collect`]'s behavior; it can _observe_ events and spans, but does not
 /// assign IDs.
 ///
 /// ## Composing Subscribers
 ///
-/// Since a `Subscriber` does not implement a complete strategy for collecting
-/// traces, it must be composed with a `Collector` in order to be used. The
-/// `Subscriber` trait is generic over a type parameter (called `S` in the trait
-/// definition), representing the types of `Collector` they can be composed
-/// with. Thus, a `Subscriber` may be implemented that will only compose with a
-/// particular `Collector` implementation, or additional trait bounds may be
-/// added to constrain what types implementing `Collector` a `Subscriber` can wrap.
+/// Since `Subscribe` does not implement a complete strategy for collecting
+/// traces, it must be composed with a `Collect` in order to be used. The
+/// `Subscribe` trait is generic over a type parameter (called `S` in the trait
+/// definition), representing the types of `Collect` they can be composed
+/// with. Thus, a subscriber may be implemented that will only compose with a
+/// particular `Collect` implementation, or additional trait bounds may be
+/// added to constrain what types implementing `Collect` a subscriber can wrap.
 ///
-/// `Subscriber`s may be added to a `Collector` by using the [`SubscriberExt::with`]
+/// Subscribers may be added to a `Collect` by using the [`SubscriberExt::with`]
 /// method, which is provided by `tracing-subscriber`'s [prelude]. This method
-/// returns a [`Layered`] struct that implements `Collector` by composing the
-/// `Subscriber` with the `Collector`.
+/// returns a [`Layered`] struct that implements `Collect` by composing the
+/// subscriber with the collector.
 ///
 /// For example:
 /// ```rust
@@ -159,7 +159,7 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// The `Subscribe` trait defines a set of methods for consuming notifications from
 /// tracing instrumentation, which are generally equivalent to the similarly
-/// named methods on [`Collector`]. Unlike [`Collector`], the methods on
+/// named methods on [`Collect`]. Unlike [`Collect`], the methods on
 /// `Subscribe` are additionally passed a [`Context`] type, which exposes additional
 /// information provided by the wrapped collector (such as [the current span])
 /// to the subscriber.
@@ -185,11 +185,11 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// The filtering methods on a stack of subscribers are evaluated in a top-down
 /// order, starting with the outermost `Subscribe` and ending with the wrapped
-/// [`Collector`]. If any subscriber returns `false` from its [`enabled`] method, or
+/// [`Collect`]. If any subscriber returns `false` from its [`enabled`] method, or
 /// [`Interest::never()`] from its [`register_callsite`] method, filter
 /// evaluation will short-circuit and the span or event will be disabled.
 ///
-/// [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
+/// [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
 /// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
 /// [`Context`]: struct.Context.html
 /// [the current span]: struct.Context.html#method.current_span
@@ -342,11 +342,11 @@ where
     /// subscriber returned a different ID.
     fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, C>) {}
 
-    /// Composes this subscriber around the given `Subscriber`, returning a `Layered`
-    /// struct implementing `Subscriber`.
+    /// Composes this subscriber around the given collector, returning a `Layered`
+    /// struct implementing `Subscribe`.
     ///
-    /// The returned `Subscriber` will call the methods on this `Subscriber` and then
-    /// those of the new `Subscriber`, before calling the methods on the subscriber
+    /// The returned subscriber will call the methods on this subscriber and then
+    /// those of the new subscriber, before calling the methods on the collector
     /// it wraps. For example:
     ///
     /// ```rust
@@ -451,11 +451,11 @@ where
         }
     }
 
-    /// Composes this `Subscriber` with the given [`Collector`], returning a
-    /// `Layered` struct that implements [`Collector`].
+    /// Composes this subscriber with the given collecto, returning a
+    /// `Layered` struct that implements [`Collect`].
     ///
-    /// The returned `Layered` subscriber will call the methods on this `Subscriber`
-    /// and then those of the wrapped subscriber.
+    /// The returned `Layered` subscriber will call the methods on this subscriber
+    /// and then those of the wrapped collector.
     ///
     /// For example:
     /// ```rust
@@ -493,7 +493,7 @@ where
     ///     .with_collector(MyCollector::new());
     ///```
     ///
-    /// [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collector.html
+    /// [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
     fn with_collector(self, inner: C) -> Layered<Self, C>
     where
         Self: Sized,
@@ -527,11 +527,11 @@ pub trait CollectorExt: Collect + crate::sealed::Sealed {
     }
 }
 
-/// Represents information about the current context provided to [`Subscriber`]s by the
-/// wrapped [`Collector`].
+/// Represents information about the current context provided to [subscriber]s by the
+/// wrapped [collector].
 ///
-/// To access [stored data] keyed by a span ID, implementors of the `Subscriber`
-/// trait should ensure that the `Collector` type parameter is *also* bound by the
+/// To access [stored data] keyed by a span ID, implementors of the `Subscribe`
+/// trait should ensure that the `Collect` type parameter is *also* bound by the
 /// [`LookupSpan`]:
 ///
 /// ```rust
@@ -548,8 +548,8 @@ pub trait CollectorExt: Collect + crate::sealed::Sealed {
 /// }
 /// ```
 ///
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
+/// [subscriber]: ../subscriber/trait.Subscribe.html
+/// [collector]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
 /// [stored data]: ../registry/struct.SpanRef.html
 /// [`LookupSpan`]: "../registry/trait.LookupSpan.html
 #[derive(Debug)]
@@ -557,11 +557,11 @@ pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
 }
 
-/// A [`Collector`] composed of a `Collector` wrapped by one or more
-/// [`Subscriber`]s.
+/// A [collector] composed of a collector wrapped by one or more
+/// [subscriber]s.
 ///
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
+/// [subscriber]: ../subscribe/trait.Subscribe.html
+/// [collector]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
 #[derive(Clone, Debug)]
 pub struct Layered<S, I, C = I> {
     subscriber: S,

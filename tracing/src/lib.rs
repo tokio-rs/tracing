@@ -767,13 +767,13 @@
 //!    (Linux-only).
 //!  - [`tracing-bunyan-formatter`] provides a layer implementation that reports events and spans
 //!    in [bunyan] format, enriched with timing information.
-//!  - [`tracing-wasm`] provides a `Collector`/`Subscriber` implementation that reports
+//!  - [`tracing-wasm`] provides a `Collect`/`Subscribe` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 //!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 //!  - [`test-env-log`] takes care of initializing `tracing` for tests, based on
 //!    environment variables with an `env_logger` compatible syntax.
 //!  - [`tracing-unwrap`] provides convenience methods to report failed unwraps
-//!    on `Result` or `Option` types to a `Collector`.
+//!    on `Result` or `Option` types to a [`collect`].
 //!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
@@ -855,8 +855,8 @@
 //! [`in_scope`]: span::Span::in_scope
 //! [event]: Event
 //! [events]: Event
-//! [`Collector`]: collect::Collect
-//! [Collector::event]: collect::Collect::event
+//! [`collect`]: collect::Collect
+//! [Collect::event]: collect::Collect::event
 //! [`enter`]: collect::Collect::enter
 //! [`exit`]: collect::Collect::exit
 //! [`enabled`]: collect::Collect::enabled

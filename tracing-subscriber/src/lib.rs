@@ -1,7 +1,7 @@
 //! Utilities for implementing and composing [`tracing`] subscribers.
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
-//! scoped, structured, and async-aware diagnostics. The [`Collector`] trait
+//! scoped, structured, and async-aware diagnostics. The [`Collect`] trait
 //! represents the functionality necessary to collect this trace data. This
 //! crate contains tools for composing subscribers out of smaller units of
 //! behaviour, and batteries-included implementations of common subscriber
@@ -58,7 +58,7 @@
 //! long as doing so complies with this policy.
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Collector`]: https://docs.rs/tracing-core/latest/tracing_core/collector/trait.Collector.html
+//! [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
 //! [`EnvFilter`]: filter/struct.EnvFilter.html
 //! [`fmt`]: fmt/index.html
 //! [`tracing-log`]: https://crates.io/crates/tracing-log

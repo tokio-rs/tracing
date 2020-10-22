@@ -45,7 +45,7 @@
 //! ## Recording Span Creation
 //!
 //! The [`Attributes`] type contains data associated with a span, and is
-//! provided to the [`Collector`] when a new span is created. It contains
+//! provided to the [collector] when a new span is created. It contains
 //! the span's metadata, the ID of [the span's parent][parent] if one was
 //! explicitly set, and any fields whose values were recorded when the span was
 //! constructed. The collector, which is responsible for recording `tracing`
@@ -220,7 +220,7 @@
 //! to be _idle_.
 //!
 //! Because spans may be entered and exited multiple times before they close,
-//! [`Collector`]s have separate trait methods which are called to notify them
+//! [collector]s have separate trait methods which are called to notify them
 //! of span exits and when span handles are dropped. When execution exits a
 //! span, [`exit`] will always be called with that span's ID to notify the
 //! collector that the span has been exited. When span handles are dropped, the
@@ -236,17 +236,17 @@
 //! {
 //!     span!(Level::TRACE, "my_span").in_scope(|| {
 //!         // perform some work in the context of `my_span`...
-//!     }); // --> Collector::exit(my_span)
+//!     }); // --> Collect::exit(my_span)
 //!
 //!     // The handle to `my_span` only lives inside of this block; when it is
 //!     // dropped, the collector will be informed via `drop_span`.
 //!
-//! } // --> Collector::drop_span(my_span)
+//! } // --> Collect::drop_span(my_span)
 //! ```
 //!
 //! However, if multiple handles exist, the span can still be re-entered even if
 //! one or more is dropped. For determining when _all_ handles to a span have
-//! been dropped, `Collector`s have a [`clone_span`] method, which is called
+//! been dropped, collectors have a [`clone_span`] method, which is called
 //! every time a span handle is cloned. Combined with `drop_span`, this may be
 //! used to track the number of handles to a given span — if `drop_span` has
 //! been called one more time than the number of calls to `clone_span` for a
@@ -303,10 +303,10 @@
 //! [`info_span!`]: ../macro.info_span.html
 //! [`warn_span!`]: ../macro.warn_span.html
 //! [`error_span!`]: ../macro.error_span.html
-//! [`clone_span`]: ../collector/trait.Collector.html#method.clone_span
-//! [`drop_span`]: ../collector/trait.Collector.html#method.drop_span
-//! [`exit`]: ../collector/trait.Collector.html#tymethod.exit
-//! [`Collector`]: ../collector/trait.Collector.html
+//! [`clone_span`]: ../collect/trait.Collect.html#method.clone_span
+//! [`drop_span`]: ../collect/trait.Collect.html#method.drop_span
+//! [`exit`]: ../collect/trait.Collect.html#tymethod.exit
+//! [collector]: ../collect/trait.Collect.html
 //! [`Attributes`]: struct.Attributes.html
 //! [`enter`]: struct.Span.html#method.enter
 //! [`in_scope`]: struct.Span.html#method.in_scope
@@ -396,14 +396,14 @@ impl Span {
     /// Constructs a new `Span` with the given [metadata] and set of
     /// [field values].
     ///
-    /// The new span will be constructed by the currently-active [`Collector`],
+    /// The new span will be constructed by the currently-active [collector],
     /// with the current span as its parent (if one exists).
     ///
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
     /// [metadata]: ../metadata
-    /// [`Collector`]: ../collector/trait.Collector.html
+    /// [collector]: ../collect/trait.Collect.html
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {

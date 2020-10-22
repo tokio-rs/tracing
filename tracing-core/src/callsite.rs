@@ -185,12 +185,12 @@ mod inner {
     ///
     /// This function is intended for runtime reconfiguration of filters on traces
     /// when the filter recalculation is much less frequent than trace events are.
-    /// The alternative is to have the [`Collector`] that supports runtime
+    /// The alternative is to have the [collector] that supports runtime
     /// reconfiguration of filters always return [`Interest::sometimes()`] so that
     /// [`enabled`] is evaluated for every event.
     ///
     /// This function will also re-compute the global maximum level as determined by
-    /// the [`max_level_hint`] method. If a [`Collector`]
+    /// the [`max_level_hint`] method. If a [`Collect`]
     /// implementation changes the value returned by its `max_level_hint`
     /// implementation at runtime, then it **must** call this function after that
     /// value changes, in order for the change to be reflected.
@@ -198,8 +198,9 @@ mod inner {
     /// [`max_level_hint`]: crate::collector::Collector::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
     /// [`enabled`]: crate::collector::Collector::enabled
-    /// [`Interest::sometimes()`]: crate::collector::Interest::sometimes
-    /// [`Collector`]: crate::collector::Collector
+    /// [`Interest::sometimes()`]: crate::collect::Interest::sometimes
+    /// [collector]: crate::collect::Collect
+    /// [`Collect`]: crate::collect::Collect
     pub fn rebuild_interest_cache() {
         register_dispatch(dispatch::get_global());
     }

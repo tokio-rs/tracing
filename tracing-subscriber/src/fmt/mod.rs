@@ -393,15 +393,15 @@ where
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
-    /// Finish the builder, returning a new `FmtSubscriber`.
+    /// Finish the builder, returning a new `FmtCollector`.
     pub fn finish(self) -> Collector<N, E, F, W> {
-        let subscriber = self.inner.with_collector(Registry::default());
+        let collector = self.inner.with_collector(Registry::default());
         Collector {
-            inner: self.filter.with_collector(subscriber),
+            inner: self.filter.with_collector(collector),
         }
     }
 
-    /// Install this Collector as the global default if one is
+    /// Install this collector as the global default if one is
     /// not already set.
     ///
     /// If the `tracing-log` feature is enabled, this will also install
@@ -409,7 +409,7 @@ where
     ///
     /// # Errors
     /// Returns an Error if the initialization was unsuccessful, likely
-    /// because a global subscriber was already installed by another
+    /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         #[cfg(feature = "tracing-log")]
@@ -430,8 +430,7 @@ where
     /// Panics if the initialization was unsuccessful, likely because a
     /// global collector was already installed by another call to `try_init`.
     pub fn init(self) {
-        self.try_init()
-            .expect("Unable to install global subscriber")
+        self.try_init().expect("Unable to install global collector")
     }
 }
 
@@ -572,7 +571,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a less verbose formatter.
+    /// Sets the collector being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`](../fmt/format/struct.Compact.html).
     pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
@@ -585,7 +584,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a JSON formatter.
+    /// Sets the collector being built to use a JSON formatter.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]
@@ -604,7 +603,7 @@ where
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
-    /// Sets the json subscriber being built to flatten event metadata.
+    /// Sets the json collector being built to flatten event metadata.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn flatten_event(
@@ -650,7 +649,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
 where
     Formatter<N, E, W>: tracing_core::Collect + 'static,
 {
-    /// Returns a `Handle` that may be used to reload the constructed subscriber's
+    /// Returns a `Handle` that may be used to reload the constructed collector's
     /// filter.
     pub fn reload_handle(&self) -> reload::Handle<F> {
         self.filter.handle()
@@ -658,7 +657,7 @@ where
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
-    /// Sets the Visitor that the subscriber being built will use to record
+    /// Sets the Visitor that the collector being built will use to record
     /// fields.
     ///
     /// For example:
@@ -673,10 +672,10 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
-    /// let subscriber = tracing_subscriber::fmt()
+    /// let collector = tracing_subscriber::fmt()
     ///     .fmt_fields(formatter)
     ///     .finish();
-    /// # drop(subscriber)
+    /// # drop(collector)
     /// ```
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<N2, E, F, W>
     where
@@ -688,7 +687,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         }
     }
 
-    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
+    /// Sets the [`EnvFilter`] that the collector will use to determine if
     /// a span or event is enabled.
     ///
     /// Note that this method requires the "env-filter" feature flag to be enabled.
@@ -753,7 +752,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     }
 
     /// Sets the maximum [verbosity level] that will be enabled by the
-    /// subscriber.
+    /// collector.
     ///
     /// If the max level has already been set, or a [`EnvFilter`] was added by
     /// [`with_filter`], this replaces that configuration with the new
@@ -770,7 +769,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .with_max_level(Level::DEBUG)
     ///     .init();
     /// ```
-    /// This subscriber won't record any spans or events!
+    /// This collector won't record any spans or events!
     /// ```rust
     /// use tracing_subscriber::{fmt, filter::LevelFilter};
     ///
@@ -792,7 +791,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         }
     }
 
-    /// Configures the subscriber being built to allow filter reloading at
+    /// Configures the collector being built to allow filter reloading at
     /// runtime.
     ///
     /// The returned builder will have a [`reload_handle`] method, which returns
@@ -805,23 +804,23 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// use tracing_subscriber::prelude::*;
     ///
     /// let builder = tracing_subscriber::fmt()
-    ///      // Set a max level filter on the subscriber
+    ///      // Set a max level filter on the collector
     ///     .with_max_level(Level::INFO)
     ///     .with_filter_reloading();
     ///
-    /// // Get a handle for modifying the subscriber's max level filter.
+    /// // Get a handle for modifying the collector's max level filter.
     /// let handle = builder.reload_handle();
     ///
-    /// // Finish building the subscriber, and set it as the default.
+    /// // Finish building the collector, and set it as the default.
     /// builder.finish().init();
     ///
     /// // Currently, the max level is INFO, so this event will be disabled.
     /// tracing::debug!("this is not recorded!");
     ///
     /// // Use the handle to set a new max level filter.
-    /// // (this returns an error if the subscriber has been dropped, which shouldn't
+    /// // (this returns an error if the collector has been dropped, which shouldn't
     /// // happen in this example.)
-    /// handle.reload(Level::DEBUG).expect("the subscriber should still exist");
+    /// handle.reload(Level::DEBUG).expect("the collector should still exist");
     ///
     /// // Now, the max level is INFO, so this event will be recorded.
     /// tracing::debug!("this is recorded!");
@@ -837,7 +836,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         }
     }
 
-    /// Sets the function that the subscriber being built should use to format
+    /// Sets the function that the collector being built should use to format
     /// events that occur.
     pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
     where
@@ -859,7 +858,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         self
     }
 
-    /// Sets the function that the subscriber being built should use to format
+    /// Sets the function that the collector being built should use to format
     /// events that occur.
     #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
     pub fn on_event<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
@@ -871,7 +870,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         self.event_format(fmt_event)
     }
 
-    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    /// Sets the [`MakeWriter`] that the collector being built will use to write events.
     ///
     /// # Examples
     ///
@@ -897,7 +896,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         }
     }
 
-    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// Configures the collector to support [`libtest`'s output capturing][capturing] when used in
     /// unit tests.
     ///
     /// See [`TestWriter`] for additional details.
@@ -929,7 +928,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     }
 }
 
-/// Install a global tracing subscriber that listens for events and
+/// Install a global tracing collector that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable],
 /// if one is not already set.
 ///
@@ -948,7 +947,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
 /// # Errors
 ///
 /// Returns an Error if the initialization was unsuccessful,
-/// likely because a global subscriber was already installed by another
+/// likely because a global collector was already installed by another
 /// call to `try_init`.
 ///
 /// [`LogTracer`]:
@@ -964,7 +963,7 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     builder.try_init()
 }
 
-/// Install a global tracing subscriber that listens for events and
+/// Install a global tracing collector that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable].
 ///
 /// If the `tracing-log` feature is enabled, this will also install
@@ -978,12 +977,12 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///
 /// # Panics
 /// Panics if the initialization was unsuccessful, likely because a
-/// global subscriber was already installed by another call to `try_init`.
+/// global collector was already installed by another call to `try_init`.
 ///
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn init() {
-    try_init().expect("Unable to install global subscriber")
+    try_init().expect("Unable to install global collector")
 }
 
 #[cfg(test)]

@@ -4,20 +4,20 @@
 //! as _fields_. These fields consist of a mapping from a key (corresponding to
 //! a `&str` but represented internally as an array index) to a [`Value`].
 //!
-//! # `Value`s and `Collector`s
+//! # `Value`s and `Collect`s
 //!
-//! `Collector`s consume `Value`s as fields attached to [span]s or [`Event`]s.
+//! Collectors consume `Value`s as fields attached to [span]s or [`Event`]s.
 //! The set of field keys on a given span or is defined on its [`Metadata`].
-//! When a span is created, it provides [`Attributes`] to the `Collector`'s
+//! When a span is created, it provides [`Attributes`] to the collector's
 //! [`new_span`] method, containing any fields whose values were provided when
-//! the span was created; and may call the `Collector`'s [`record`] method
+//! the span was created; and may call the collector's [`record`] method
 //! with additional [`Record`]s if values are added for more of its fields.
 //! Similarly, the [`Event`] type passed to the collector's [`event`] method
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
 //! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
-//! implementation. `Collector`s are provided these primitive value types as
+//! implementation. Collectors are provided these primitive value types as
 //! `dyn Value` trait objects.
 //!
 //! These trait objects can be formatted using `fmt::Debug`, but may also be
@@ -97,7 +97,7 @@ pub struct Iter {
 /// [recorded], it calls the appropriate method on the provided visitor to
 /// indicate the type that value should be recorded as.
 ///
-/// When a [`Collector`] implementation [records an `Event`] or a
+/// When a [`Collect`] implementation [records an `Event`] or a
 /// [set of `Value`s added to a `Span`], it can pass an `&mut Visit` to the
 /// `record` method on the provided [`ValueSet`] or [`Event`]. This visitor
 /// will then be used to record all the field-value pairs present on that
@@ -177,7 +177,7 @@ pub struct Iter {
 /// </pre></div>
 ///
 /// [recorded]: Value::record
-/// [`Collector`]: super::collect::Collect
+/// [`Collect`]: super::collect::Collect
 /// [records an `Event`]: super::collect::Collect::event
 /// [set of `Value`s added to a `Span`]: super::collect::Collect::record
 /// [`Event`]: super::event::Event

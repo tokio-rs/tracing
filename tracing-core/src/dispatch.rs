@@ -251,7 +251,6 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// </pre></div>
 ///
 /// [span]: super::span
-/// [`Collector`]: super::collect::Collect
 /// [`Event`]: super::event::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -300,11 +299,10 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 /// <strong>Warning</strong>: In general, libraries should <em>not</em> call
 /// <code>set_global_default()</code>! Doing so will cause conflicts when
-/// executables that depend on the library try to set the default later.
+/// executables that depend on the library try to set the default collector later.
 /// </pre></div>
 ///
 /// [span]: super::span
-/// [`Collector`]: super::collect::Collect
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
@@ -476,9 +474,9 @@ impl Dispatch {
         }
     }
 
-    /// Returns a `Dispatch` that forwards to the given [`Collector`].
+    /// Returns a `Dispatch` that forwards to the given [`Collect`].
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
     pub fn new<S>(collector: S) -> Self
@@ -492,7 +490,7 @@ impl Dispatch {
         me
     }
 
-    /// Returns a `Dispatch` that forwards to the given static [`Collector`].
+    /// Returns a `Dispatch` that forwards to the given static [collector].
     ///
     /// Unlike [`Dispatch::new`], this function is always available on all
     /// platforms, even when the `std` or `alloc` features are disabled.
@@ -539,7 +537,7 @@ impl Dispatch {
     /// the [`lazy_static`] crate, or another library which allows lazy
     /// initialization of statics.
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [collector]: super::collect::Collect
     /// [`Dispatch::new`]: Dispatch::new
     /// [`lazy_static`]: https://crates.io/crates/lazy_static
     pub fn from_static(collector: &'static (dyn Collect + Send + Sync)) -> Self {
@@ -579,25 +577,26 @@ impl Dispatch {
     /// Registers a new callsite with this collector, returning whether or not
     /// the collector is interested in being notified about the callsite.
     ///
-    /// This calls the [`register_callsite`] function on the [`Collector`]
+    /// This calls the [`register_callsite`] function on the [`Collect`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`register_callsite`]: super::collect::Collect::register_callsite
     #[inline]
     pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> collect::Interest {
         self.collector().register_callsite(metadata)
     }
 
-    /// Returns the highest [verbosity level][level] that this [`Collector`] will
+    /// Returns the highest [verbosity level][level] that this [collector] will
     /// enable, or `None`, if the collector does not implement level-based
     /// filtering or chooses not to implement this method.
     ///
-    /// This calls the [`max_level_hint`] function on the [`Collector`]
+    /// This calls the [`max_level_hint`] function on the [`Collect`]
     /// that this `Dispatch` forwards to.
     ///
     /// [level]: super::Level
-    /// [`Collector`]: super::collect::Collect
+    /// [collector]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`register_callsite`]: super::collect::Collect::max_level_hint
     // TODO(eliza): consider making this a public API?
     #[inline]
@@ -608,11 +607,11 @@ impl Dispatch {
     /// Record the construction of a new span, returning a new [ID] for the
     /// span being constructed.
     ///
-    /// This calls the [`new_span`] function on the [`Collector`] that this
+    /// This calls the [`new_span`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
     /// [ID]: super::span::Id
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`new_span`]: super::collect::Collect::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
@@ -621,10 +620,10 @@ impl Dispatch {
 
     /// Record a set of values on a span.
     ///
-    /// This calls the [`record`] function on the [`Collector`] that this
+    /// This calls the [`record`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`record`]: super::collect::Collect::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
@@ -634,10 +633,10 @@ impl Dispatch {
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
     ///
-    /// This calls the [`record_follows_from`] function on the [`Collector`]
+    /// This calls the [`record_follows_from`] function on the [`Collect`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`record_follows_from`]: super::collect::Collect::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
@@ -647,11 +646,11 @@ impl Dispatch {
     /// Returns true if a span with the specified [metadata] would be
     /// recorded.
     ///
-    /// This calls the [`enabled`] function on the [`Collector`] that this
+    /// This calls the [`enabled`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
     /// [metadata]: super::metadata::Metadata
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`enabled`]: super::collect::Collect::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
@@ -660,11 +659,11 @@ impl Dispatch {
 
     /// Records that an [`Event`] has occurred.
     ///
-    /// This calls the [`event`] function on the [`Collector`] that this
+    /// This calls the [`event`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
     /// [`Event`]: super::event::Event
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`event`]: super::collect::Collect::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
@@ -673,10 +672,10 @@ impl Dispatch {
 
     /// Records that a span has been can_enter.
     ///
-    /// This calls the [`enter`] function on the [`Collector`] that this
+    /// This calls the [`enter`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`enter`]: super::collect::Collect::enter
     #[inline]
     pub fn enter(&self, span: &span::Id) {
@@ -685,28 +684,28 @@ impl Dispatch {
 
     /// Records that a span has been exited.
     ///
-    /// This calls the [`exit`] function on the [`Collector`] that this
+    /// This calls the [`exit`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`exit`]: super::collect::Collect::exit
     #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.collector().exit(span);
     }
 
-    /// Notifies the collector that a [span ID] has been cloned.
+    /// Notifies the [collector] that a [span ID] has been cloned.
     ///
     /// This function must only be called with span IDs that were returned by
     /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
     /// this guarantee and any other libraries implementing instrumentation APIs
     /// must as well.
     ///
-    /// This calls the [`clone_span`] function on the `Collector` that this
+    /// This calls the [`clone_span`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
     /// [span ID]: super::span::Id
-    /// [`Collector`]: super::collect::Collect
+    /// [collector]: super::collect::Collect
     /// [`clone_span`]: super::collect::Collect::clone_span
     /// [`new_span`]: super::collect::Collect::new_span
     #[inline]
@@ -721,7 +720,7 @@ impl Dispatch {
     /// this guarantee and any other libraries implementing instrumentation APIs
     /// must as well.
     ///
-    /// This calls the [`drop_span`] function on the [`Collector`] that this
+    /// This calls the [`drop_span`] function on the [`Collect`] that this
     ///  `Dispatch` forwards to.
     ///
     /// <div class="information">
@@ -735,7 +734,7 @@ impl Dispatch {
     /// </pre></div>
     ///
     /// [span ID]: super::span::Id
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`drop_span`]: super::collect::Collect::drop_span
     /// [`new_span`]: super::collect::Collect::new_span
     /// [`try_close`]: Self::try_close
@@ -754,11 +753,11 @@ impl Dispatch {
     /// this guarantee and any other libraries implementing instrumentation APIs
     /// must as well.
     ///
-    /// This calls the [`try_close`] function on the [`Collector`] that this
-    ///  `Dispatch` forwards to.
+    /// This calls the [`try_close`] function on the [`Collect`] trait
+    /// that this `Dispatch` forwards to.
     ///
     /// [span ID]: super::span::Id
-    /// [`Collector`]: super::collect::Collect
+    /// [`Collect`]: super::collect::Collect
     /// [`try_close`]: super::collect::Collect::try_close
     /// [`new_span`]: super::collect::Collect::new_span
     #[inline]
@@ -768,24 +767,27 @@ impl Dispatch {
 
     /// Returns a type representing this collector's view of the current span.
     ///
-    /// This calls the [`current`] function on the `Collector` that this
+    /// This calls the [`current`] function on the [`Collect`] that this
     /// `Dispatch` forwards to.
     ///
+    /// [`Collect`]: super::collect::Collect
     /// [`current`]: super::collect::Collect::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.collector().current_span()
     }
 
-    /// Returns `true` if this `Dispatch` forwards to a `Collector` of type
+    /// Returns `true` if this `Dispatch` forwards to a collector of type
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
         Collect::is::<T>(&*self.collector())
     }
 
-    /// Returns some reference to the `Collector` this `Dispatch` forwards to
+    /// Returns some reference to the [`Collect`] this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
+    ///
+    /// [`Collect`]: super::collect::Collect
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         Collect::downcast_ref(&*self.collector())
