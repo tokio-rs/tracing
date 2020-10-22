@@ -32,7 +32,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting
 //! libraries and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.40+][msrv]*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -109,10 +109,25 @@
 //! subscriber (`JsonSubscriber` in the above example) to record serialized
 //! trace data.
 //!
+//! ##  Crate Feature Flags
+//!
+//! The following crate feature flags are available:
+//!
+//! * `std`: Depend on the Rust standard library (enabled by default).
+//!
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing-serde = { version = "0.2", default-features = false }
+//!   ```
+//
+//!   **Note**:`tracing-serde`'s `no_std` support requires `liballoc`.
+//!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.40. The current Tracing version is not guaranteed to build on
+//! version is 1.42. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -128,6 +143,7 @@
 #![doc(html_root_url = "https://docs.rs/tracing-serde/0.1.2")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, deny(broken_intra_doc_links))]
@@ -153,7 +169,10 @@
     unused_parens,
     while_true
 )]
-use std::fmt;
+// Support using tracing-serde without the standard library!
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::fmt;
 
 use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},

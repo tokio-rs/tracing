@@ -3,6 +3,11 @@
 // registry. The registry was changed so that each time a new dispatcher is
 // added all filters are re-evaluated. The tests being run only in separate
 // threads with shared global state lets them interfere with each other
+
+// liballoc is required because the test subscriber cannot be constructed
+// statically
+#![cfg(feature = "alloc")]
+
 #[cfg(not(feature = "std"))]
 extern crate std;
 

@@ -10,15 +10,15 @@ default = []
 [dev-dependencies]
 
 # tracing crates
-tracing = { path = "../tracing", version = "0.1"}
-tracing-core = { path = "../tracing-core", version = "0.1"}
+tracing = { path = "../tracing", version = "0.2"}
+tracing-core = { path = "../tracing-core", version = "0.2"}
 tracing-error = { path = "../tracing-error" }
 tracing-flame = { path = "../tracing-flame" }
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.2.12", features = ["json", "chrono"] }
-tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["futures-01"] }
-tracing-attributes =  { path = "../tracing-attributes", version = "0.1.2"}
-tracing-log = { path = "../tracing-log", version = "0.1.1", features = ["env_logger"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["json", "chrono"] }
+tracing-futures = { version = "0.3", path = "../tracing-futures", features = ["futures-01"] }
+tracing-attributes =  { path = "../tracing-attributes", version = "0.2"}
+tracing-log = { path = "../tracing-log", version = "0.2", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
 tracing-opentelemetry = { path = "../tracing-opentelemetry" }
 tracing-journald = { path = "../tracing-journald" }
@@ -30,7 +30,7 @@ futures = "0.3"
 tokio = { version = "0.2.12", features = ["full"] }
 
 # env-logger example
-env_logger = "0.7"
+env_logger = "0.8"
 
 # tower examples
 tower = "0.3"

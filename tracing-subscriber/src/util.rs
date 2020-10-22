@@ -14,8 +14,8 @@ use tracing_core::dispatcher::{self, Dispatch};
 /// `Subscriber`, may implement `Into<Dispatch>`, and will also receive an
 /// implementation of this trait.
 ///
-/// [default subscriber]: https://docs.rs/tracing/0.1.20/tracing/dispatcher/index.html#setting-the-default-subscriber
-/// [trace dispatcher]: https://docs.rs/tracing/0.1.20/tracing/dispatcher/index.html
+/// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
+/// [trace dispatcher]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html
 pub trait SubscriberInitExt
 where
     Self: Into<Dispatch>,
@@ -27,7 +27,7 @@ where
     /// a [`log`] compatibility layer. This allows the subscriber to consume
     /// `log::Record`s as though they were `tracing` `Event`s.
     ///
-    /// [default subscriber]: https://docs.rs/tracing/0.1.20/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
     fn set_default(self) -> dispatcher::DefaultGuard {
         #[cfg(feature = "tracing-log")]
@@ -47,7 +47,7 @@ where
     /// been set, or if a `log` logger has already been set (when the
     /// "tracing-log" feature is enabled).
     ///
-    /// [global default subscriber]: https://docs.rs/tracing/0.1.20/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [global default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
     fn try_init(self) -> Result<(), TryInitError> {
         #[cfg(feature = "tracing-log")]
@@ -69,7 +69,7 @@ where
     /// or if a `log` logger has already been set (when the "tracing-log"
     /// feature is enabled).
     ///
-    /// [global default subscriber]: https://docs.rs/tracing/0.1.20/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [global default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
     fn init(self) {
         self.try_init()
