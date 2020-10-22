@@ -182,7 +182,10 @@ impl ExtensionsInner {
 
 impl fmt::Debug for ExtensionsInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Extensions").finish()
+        f.debug_struct("Extensions")
+            .field("len", &self.map.len())
+            .field("capacity", &self.map.capacity())
+            .finish()
     }
 }
 
