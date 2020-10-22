@@ -35,11 +35,11 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ### In Applications
 
-In order to record trace events, executables have to use a `Collector`
-implementation compatible with `tracing`. A `Collector` implements a way of
+In order to record trace events, executables have to use a collector
+implementation compatible with `tracing`. A collector implements a way of
 collecting trace data, such as by logging it to standard output.
 [`tracing-subscriber`][tracing-subscriber-docs]'s [`fmt` module][fmt] provides
-a Collector for logging traces with reasonable defaults. Additionally,
+a collector for logging traces with reasonable defaults. Additionally,
 `tracing-subscriber` is able to consume messages emitted by `log`-instrumented
 libraries and modules.
 
@@ -51,7 +51,7 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 ```
 
-Then create and install a `Collector`, for example using [`init()`]:
+Then create and install a collector, for example using [`init()`]:
 
 ```rust
 use tracing::info;
