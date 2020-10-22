@@ -316,7 +316,7 @@
 pub use tracing_core::span::{Attributes, Id, Record};
 
 use crate::{
-    dispatcher::{self, Dispatch},
+    dispatch::{self, Dispatch},
     field, Metadata,
 };
 use core::{
@@ -407,7 +407,7 @@ impl Span {
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
-        dispatcher::get_default(|dispatch| Self::new_with(meta, values, dispatch))
+        dispatch::get_default(|dispatch| Self::new_with(meta, values, dispatch))
     }
 
     #[inline]
@@ -431,7 +431,7 @@ impl Span {
     /// [field values]: ../field/struct.ValueSet.html
     /// [`follows_from`]: ../struct.Span.html#method.follows_from
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
-        dispatcher::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
+        dispatch::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
     }
 
     #[inline]
@@ -460,7 +460,7 @@ impl Span {
         values: &field::ValueSet<'_>,
     ) -> Span {
         let mut parent = parent.into();
-        dispatcher::get_default(move |dispatch| {
+        dispatch::get_default(move |dispatch| {
             Self::child_of_with(Option::take(&mut parent), meta, values, dispatch)
         })
     }
@@ -519,7 +519,7 @@ impl Span {
     ///
     /// [considered by the `Collector`]: ../collector/trait.Collector.html#method.current
     pub fn current() -> Span {
-        dispatcher::get_default(|dispatch| {
+        dispatch::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
                 let id = dispatch.clone_span(&id);
                 Self {

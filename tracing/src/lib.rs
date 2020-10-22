@@ -922,7 +922,7 @@ use tracing_core::*;
 
 #[doc(inline)]
 pub use self::instrument::Instrument;
-pub use self::{collect::Collect, dispatcher::Dispatch, event::Event, field::Value};
+pub use self::{collect::Collect, dispatch::Dispatch, event::Event, field::Value};
 
 #[doc(hidden)]
 pub use self::span::Id;
@@ -945,7 +945,7 @@ pub use tracing_attributes::instrument;
 mod macros;
 
 pub mod collect;
-pub mod dispatcher;
+pub mod dispatch;
 pub mod field;
 /// Attach a span to a `std::future::Future`.
 pub mod instrument;
@@ -1045,7 +1045,7 @@ pub mod __macro_support {
 
         pub fn is_enabled(&self, interest: Interest) -> bool {
             interest.is_always()
-                || crate::dispatcher::get_default(|default| default.enabled(self.meta))
+                || crate::dispatch::get_default(|default| default.enabled(self.meta))
         }
 
         #[inline]

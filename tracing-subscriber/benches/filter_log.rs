@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::Duration;
-use tracing::{dispatcher::Dispatch, span, Event, Id, Metadata};
+use tracing::{dispatch::Dispatch, span, Event, Id, Metadata};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 mod support;

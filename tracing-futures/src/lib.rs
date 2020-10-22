@@ -110,7 +110,7 @@ use pin_project::pin_project;
 use core::{pin::Pin, task::Context};
 
 #[cfg(feature = "std")]
-use tracing::{dispatcher, Dispatch};
+use tracing::{dispatch, Dispatch};
 
 use tracing::Span;
 
@@ -236,7 +236,7 @@ pub trait WithSubscriber: Sized {
     fn with_current_subscriber(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
-            dispatch: dispatcher::get_default(|default| default.clone()),
+            dispatch: dispatch::get_default(|default| default.clone()),
         }
     }
 }
@@ -438,7 +438,7 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
 
     fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
-        dispatcher::with_default(&self.dispatch, || inner.poll())
+        dispatch::with_default(&self.dispatch, || inner.poll())
     }
 }
 
@@ -451,7 +451,7 @@ impl<T: core::future::Future> core::future::Future for WithDispatch<T> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
-        dispatcher::with_default(dispatch, || future.poll(cx))
+        dispatch::with_default(dispatch, || future.poll(cx))
     }
 }
 

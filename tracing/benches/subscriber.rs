@@ -168,14 +168,14 @@ fn bench_dispatch(c: &mut Criterion) {
     let mut group = c.benchmark_group("no/dispatch");
     group.bench_function("get_ref", |b| {
         b.iter(|| {
-            tracing::dispatcher::get_default(|current| {
+            tracing::dispatch::get_default(|current| {
                 black_box(&current);
             })
         })
     });
     group.bench_function("get_clone", |b| {
         b.iter(|| {
-            let current = tracing::dispatcher::get_default(|current| current.clone());
+            let current = tracing::dispatch::get_default(|current| current.clone());
             black_box(current);
         })
     });
@@ -185,7 +185,7 @@ fn bench_dispatch(c: &mut Criterion) {
     group.bench_function("get_ref", |b| {
         tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
-                tracing::dispatcher::get_default(|current| {
+                tracing::dispatch::get_default(|current| {
                     black_box(&current);
                 })
             })
@@ -194,7 +194,7 @@ fn bench_dispatch(c: &mut Criterion) {
     group.bench_function("get_clone", |b| {
         tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
-                let current = tracing::dispatcher::get_default(|current| current.clone());
+                let current = tracing::dispatch::get_default(|current| current.clone());
                 black_box(current);
             })
         })

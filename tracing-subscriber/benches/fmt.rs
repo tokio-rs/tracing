@@ -30,7 +30,7 @@ impl NoWriter {
 fn bench_new_span(c: &mut Criterion) {
     bench_thrpt(c, "new_span", |group, i| {
         group.bench_with_input(BenchmarkId::new("single_thread", i), i, |b, &i| {
-            tracing::dispatcher::with_default(&mk_dispatch(), || {
+            tracing::dispatch::with_default(&mk_dispatch(), || {
                 b.iter(|| {
                     for n in 0..i {
                         let _span = tracing::info_span!("span", n);
@@ -95,7 +95,7 @@ fn mk_dispatch() -> tracing::Dispatch {
 fn bench_event(c: &mut Criterion) {
     bench_thrpt(c, "event", |group, i| {
         group.bench_with_input(BenchmarkId::new("root/single_threaded", i), i, |b, &i| {
-            tracing::dispatcher::with_default(&mk_dispatch(), || {
+            tracing::dispatch::with_default(&mk_dispatch(), || {
                 b.iter(|| {
                     for n in 0..i {
                         tracing::info!(n);
@@ -139,7 +139,7 @@ fn bench_event(c: &mut Criterion) {
             BenchmarkId::new("unique_parent/single_threaded", i),
             i,
             |b, &i| {
-                tracing::dispatcher::with_default(&mk_dispatch(), || {
+                tracing::dispatch::with_default(&mk_dispatch(), || {
                     let span = tracing::info_span!("unique_parent", foo = false);
                     let _guard = span.enter();
                     b.iter(|| {
@@ -206,7 +206,7 @@ fn bench_event(c: &mut Criterion) {
                     let mut total = Duration::from_secs(0);
                     for _ in 0..iters {
                         let dispatch = mk_dispatch();
-                        let parent = tracing::dispatcher::with_default(&dispatch, || {
+                        let parent = tracing::dispatch::with_default(&dispatch, || {
                             tracing::info_span!("shared_parent", foo = "hello world")
                         });
                         let bench = MultithreadedBench::new(dispatch);

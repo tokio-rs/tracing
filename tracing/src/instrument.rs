@@ -1,4 +1,4 @@
-use crate::{dispatcher, span::Span, Dispatch};
+use crate::{dispatch, span::Span, Dispatch};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::{future::Future, marker::Sized};
@@ -115,7 +115,7 @@ pub trait WithCollector: Sized {
     fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
-            dispatch: dispatcher::get_default(|default| default.clone()),
+            dispatch: dispatch::get_default(|default| default.clone()),
         }
     }
 }
