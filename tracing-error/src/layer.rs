@@ -1,21 +1,21 @@
 use std::any::{type_name, TypeId};
 use std::fmt;
 use std::marker::PhantomData;
-use tracing::{span, Dispatch, Metadata, Subscriber};
+use tracing::{span, Collect, Dispatch, Metadata};
 use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
 use tracing_subscriber::{
     fmt::FormattedFields,
-    layer::{self, Layer},
     registry::LookupSpan,
+    subscribe::{self, Subscribe},
 };
 
-/// A subscriber [`Layer`] that enables capturing [`SpanTrace`]s.
+/// A [subscriber] that enables capturing [`SpanTrace`]s.
 ///
 /// Optionally, this type may be constructed with a [field formatter] to use
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [`Layer`]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/layer/trait.Layer.html
+/// [subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/subscriber/trait.Subscribe.html
 /// [`SpanTrace`]: ../struct.SpanTrace.html
 /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
 /// [default format]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/format/struct.DefaultFields.html
@@ -33,14 +33,19 @@ pub(crate) struct WithContext(
     fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
 );
 
-impl<S, F> Layer<S> for ErrorLayer<S, F>
+impl<S, F> Subscribe<S> for ErrorLayer<S, F>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn new_span(
+        &self,
+        attrs: &span::Attributes<'_>,
+        id: &span::Id,
+        ctx: subscribe::Context<'_, S>,
+    ) {
         let span = ctx.span(id).expect("span must already exist!");
         if span.extensions().get::<FormattedFields<F>>().is_some() {
             return;
@@ -66,7 +71,7 @@ where
 impl<S, F> ErrorLayer<S, F>
 where
     F: for<'writer> FormatFields<'writer> + 'static,
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     /// Returns a new `ErrorLayer` with the provided [field formatter].
     ///
@@ -117,7 +122,7 @@ impl WithContext {
 
 impl<S> Default for ErrorLayer<S>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         Self::new(DefaultFields::default())

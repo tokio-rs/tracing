@@ -44,7 +44,7 @@ fn do_another_thing(
 #[tracing::instrument]
 fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::subscriber())
         // The `ErrorLayer` subscriber layer enables the use of `SpanTrace`.
         .with(ErrorLayer::default())
         .init();
