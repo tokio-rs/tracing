@@ -114,7 +114,7 @@ impl SpanTrace {
     /// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
     /// [`Metadata`]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html
     pub fn with_spans(&self, f: impl FnMut(&'static Metadata<'static>, &str) -> bool) {
-        self.span.with_subscriber(|(id, s)| {
+        self.span.with_collector(|(id, s)| {
             if let Some(getcx) = s.downcast_ref::<WithContext>() {
                 getcx.with_context(s, id, f);
             }
@@ -124,7 +124,7 @@ impl SpanTrace {
     /// Returns the status of this `SpanTrace`.
     ///
     /// The status indicates one of the following:
-    /// * the current subscriber does not support capturing `SpanTrace`s
+    /// * the current collector does not support capturing `SpanTrace`s
     /// * there was no current span, so a trace was not captured
     /// * a span trace was successfully captured
     pub fn status(&self) -> SpanTraceStatus {
@@ -132,7 +132,7 @@ impl SpanTrace {
             SpanTraceStatusInner::Empty
         } else {
             let mut status = None;
-            self.span.with_subscriber(|(_, s)| {
+            self.span.with_collector(|(_, s)| {
                 if s.downcast_ref::<WithContext>().is_some() {
                     status = Some(SpanTraceStatusInner::Captured);
                 }
@@ -266,15 +266,15 @@ impl fmt::Debug for SpanTrace {
 mod tests {
     use super::*;
     use crate::ErrorLayer;
-    use tracing::subscriber::with_default;
+    use tracing::collect::with_default;
     use tracing::{span, Level};
     use tracing_subscriber::{prelude::*, registry::Registry};
 
     #[test]
     fn capture_supported() {
-        let subscriber = Registry::default().with(ErrorLayer::default());
+        let collector = Registry::default().with(ErrorLayer::default());
 
-        with_default(subscriber, || {
+        with_default(collector, || {
             let span = span!(Level::ERROR, "test span");
             let _guard = span.enter();
 
@@ -288,9 +288,9 @@ mod tests {
 
     #[test]
     fn capture_empty() {
-        let subscriber = Registry::default().with(ErrorLayer::default());
+        let collector = Registry::default().with(ErrorLayer::default());
 
-        with_default(subscriber, || {
+        with_default(collector, || {
             let span_trace = SpanTrace::capture();
 
             dbg!(&span_trace);
@@ -301,9 +301,9 @@ mod tests {
 
     #[test]
     fn capture_unsupported() {
-        let subscriber = Registry::default();
+        let collector = Registry::default();
 
-        with_default(subscriber, || {
+        with_default(collector, || {
             let span = span!(Level::ERROR, "test span");
             let _guard = span.enter();
 
