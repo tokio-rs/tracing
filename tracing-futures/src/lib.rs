@@ -12,7 +12,7 @@
 //! * [`Instrument`] allows a `tracing` [span] to be attached to a future, sink,
 //!   stream, or executor.
 //!
-//! * [`WithSubscriber`] allows a `tracing` [collector] to be attached to a
+//! * [`WithCollector`] allows a `tracing` [collector] to be attached to a
 //!   future, sink, stream, or executor.
 //!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
@@ -25,11 +25,11 @@
 //! features with other crates in the asynchronous ecosystem:
 //!
 //! - `tokio`: Enables compatibility with the `tokio` crate, including
-//!    [`Instrument`] and [`WithSubscriber`] implementations for
+//!    [`Instrument`] and [`WithCollector`] implementations for
 //!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
 //!    `tokio::runtime::current_thread`. Enabled by default.
 //! - `tokio-executor`: Enables compatibility with the `tokio-executor`
-//!    crate, including [`Instrument`] and [`WithSubscriber`]
+//!    crate, including [`Instrument`] and [`WithCollector`]
 //!    implementations for types implementing `tokio_executor::Executor`.
 //!    This is intended primarily for use in crates which depend on
 //!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
@@ -54,9 +54,9 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [collector]: https://docs.rs/tracing/latest/tracing/collect/index.html
+//! [collect]: https://docs.rs/tracing/latest/tracing/collect/index.html
 //! [`Instrument`]: trait.Instrument.html
-//! [`WithSubscriber`]: trait.WithSubscriber.html
+//! [`WithCollector`]: trait.WithCollector.html
 //! [`futures`]: https://crates.io/crates/futures
 //!
 //! ## Supported Rust Versions
@@ -198,7 +198,7 @@ pub trait Instrument: Sized {
 /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub trait WithSubscriber: Sized {
+pub trait WithCollector: Sized {
     /// Attaches the provided [collector] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
@@ -209,13 +209,13 @@ pub trait WithSubscriber: Sized {
     ///
     /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
-    fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
+    fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
-            dispatch: subscriber.into(),
+            dispatch: collector.into(),
         }
     }
 
@@ -233,7 +233,7 @@ pub trait WithSubscriber: Sized {
     /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
     /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
     #[inline]
-    fn with_current_subscriber(self) -> WithDispatch<Self> {
+    fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
             dispatch: dispatch::get_default(|default| default.clone()),
@@ -428,7 +428,7 @@ impl<T> Instrumented<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: Sized> WithSubscriber for T {}
+impl<T: Sized> WithCollector for T {}
 
 #[cfg(all(feature = "futures-01", feature = "std"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "futures-01", feature = "std"))))]
