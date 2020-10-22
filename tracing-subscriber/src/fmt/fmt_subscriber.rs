@@ -71,34 +71,7 @@ pub struct Subscriber<
     _inner: PhantomData<S>,
 }
 
-/// A builder for [`Subscriber`](struct.Subscriber.html) that logs formatted representations of `tracing`
-/// events and spans.
-///
-/// **Note**: As of `tracing-subscriber` 0.2.4, the separate builder type is now
-/// deprecated, as the `Subscriber` type itself supports all the builder's
-/// configuration methods. This is now an alias for `Subscriber`.
-#[deprecated(
-    since = "0.2.4",
-    note = "a separate layer builder type is not necessary, `Subscriber`s now support configuration"
-)]
-pub type LayerBuilder<
-    S,
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> = Subscriber<S, N, E, W>;
-
 impl<S> Subscriber<S> {
-    /// Returns a new [`LayerBuilder`](type.LayerBuilder.html) for configuring a `Subscriber`.
-    #[deprecated(
-        since = "0.2.4",
-        note = "a separate layer builder is not necessary, use `Subscriber::new`/`Subscriber::default` instead"
-    )]
-    #[allow(deprecated)]
-    pub fn builder() -> LayerBuilder<S> {
-        Subscriber::default()
-    }
-
     /// Returns a new [`Subscriber`](struct.Subscriber.html) with the default configuration.
     pub fn new() -> Self {
         Self::default()
@@ -467,26 +440,6 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
             make_writer: self.make_writer,
             _inner: self._inner,
         }
-    }
-}
-
-#[allow(deprecated)]
-impl<S, N, E, W> LayerBuilder<S, N, E, W>
-where
-    S: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
-{
-    /// Builds a [`Subscriber`] with the provided configuration.
-    ///
-    /// [`Subscriber`]: struct.Subscriber.html
-    #[deprecated(
-        since = "0.2.4",
-        note = "`LayerBuilder` is no longer a separate type; this method is not necessary"
-    )]
-    pub fn finish(self) -> Subscriber<S, N, E, W> {
-        self
     }
 }
 
