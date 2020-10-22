@@ -91,10 +91,10 @@
 //! without `std` and `alloc`.
 //!
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
-//! [`Dispatch::new`]: crate::dispatcher::Dispatch::new
-//! [`Dispatch::from_static`]: crate::dispatcher::Dispatch::from_static
-//! [`Dispatch::set_default`]: crate::dispatcher::set_default
-//! [`with_default`]: crate::dispatcher::with_default
+//! [`Dispatch::new`]: crate::dispatch::Dispatch::new
+//! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
+//! [`Dispatch::set_default`]: crate::dispatch::set_default
+//! [`with_default`]: crate::dispatch::with_default
 //! [err]: crate::field::Visit::record_error
 //!
 //! ### Crate Feature Flags
@@ -130,7 +130,7 @@
 //! [`FieldSet`]: field::FieldSet
 //! [`Value`]: field::Value
 //! [`ValueSet`]: field::ValueSet
-//! [`Dispatch`]: dispatcher::Dispatch
+//! [`Dispatch`]: dispatch::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]

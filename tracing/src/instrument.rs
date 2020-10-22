@@ -77,17 +77,16 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures to be instrumented with
-/// a `tracing` [`Collector`].
+/// a `tracing` collector.
 ///
-/// [`Collector`]: ../trait.Collector.html
 pub trait WithCollector: Sized {
-    /// Attaches the provided [`Collector`] to this type, returning a
+    /// Attaches the provided collector to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// The attached collector will be set as the [default] when the returned `Future` is polled.
     ///
-    /// [`Collector`]: ../trait.Collector.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-collector
+    /// [`Collect`]: ../trait.Collect.html
+    /// [default]: https://docs.rs/tracing/latest/tracing/dispatch/index.html#setting-the-default-collector
     fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
@@ -98,7 +97,7 @@ pub trait WithCollector: Sized {
         }
     }
 
-    /// Attaches the current [default] [`Collector`] to this type, returning a
+    /// Attaches the current [default] collector to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
@@ -109,8 +108,7 @@ pub trait WithCollector: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Collector`]: ../trait.Collector.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-collector
+    /// [default]: https://docs.rs/tracing/latest/tracing/dispatch/index.html#setting-the-default-collector
     #[inline]
     fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {

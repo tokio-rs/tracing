@@ -1,4 +1,4 @@
-//! Dispatches trace events to [`Collector`]s.
+//! Dispatches trace events to a [`Collect`].
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
@@ -133,7 +133,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Collector`]: struct.Collector.html
+//! [`Collect`]: struct.Collect.html
 //! [`with_default`]: fn.with_default.html
 //! [`set_global_default`]: fn.set_global_default.html
 //! [`get_default`]: fn.get_default.html

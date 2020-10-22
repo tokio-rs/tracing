@@ -21,9 +21,9 @@ use tracing_core::{
 
 /// A shared, reusable store for spans.
 ///
-/// A `Registry` is a [`Collector`] around which multiple [`Subscriber`]s
+/// A `Registry` is a [`Collect`] around which multiple subscribers
 /// implementing various behaviors may be [added]. Unlike other types
-/// implementing `Collector` `Registry` does not actually record traces itself:
+/// implementing `Collect`, `Registry` does not actually record traces itself:
 /// instead, it collects and stores span data that is exposed to any `Subscriber`s
 /// wrapping it through implementations of the [`LookupSpan`] trait.
 /// The `Registry` is responsible for storing span metadata, recording

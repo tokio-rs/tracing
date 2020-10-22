@@ -111,7 +111,7 @@ impl MakeWriter for TestWriter {
 ///
 /// # Examples
 ///
-/// A function that returns a [`Collector`] that will write to either stdout or stderr:
+/// A function that returns a [`Collect`] that will write to either stdout or stderr:
 ///
 /// ```rust
 /// # use tracing::Collect;
@@ -129,7 +129,7 @@ impl MakeWriter for TestWriter {
 /// ```
 ///
 /// [`MakeWriter`]: trait.MakeWriter.html
-/// [`Collector`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+/// [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 pub struct BoxMakeWriter {
     inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,

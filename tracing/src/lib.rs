@@ -95,18 +95,18 @@
 //! ## Collectors
 //!
 //! As `Span`s and `Event`s occur, they are recorded or aggregated by
-//! implementations of the [`Collector`] trait. `Collector`s are notified
+//! implementations of the [`Collect`] trait. Collectors are notified
 //! when an `Event` takes place and when a `Span` is entered or exited. These
-//! notifications are represented by the following `Collector` trait methods:
+//! notifications are represented by the following `Collect` trait methods:
 //!
-//! + [`event`][Collector::event], called when an `Event` takes place,
+//! + [`event`][Collect::event], called when an `Event` takes place,
 //! + [`enter`], called when execution enters a `Span`,
 //! + [`exit`], called when execution exits a `Span`
 //!
 //! In addition, collectors may implement the [`enabled`] function to _filter_
 //! the notifications they receive based on [metadata] describing each `Span`
-//! or `Event`. If a call to `Collector::enabled` returns `false` for a given
-//! set of metadata, that `Collector` will *not* be notified about the
+//! or `Event`. If a call to `Collect::enabled` returns `false` for a given
+//! set of metadata, that collector will *not* be notified about the
 //! corresponding `Span` or `Event`. For performance reasons, if no currently
 //! active collectors express interest in a given set of metadata by returning
 //! `true`, then the corresponding `Span` or `Event` will never be constructed.
@@ -527,11 +527,11 @@
 //!
 //! ## In executables
 //!
-//! In order to record trace events, executables have to use a `Collector`
-//! implementation compatible with `tracing`. A `Collector` implements a
+//! In order to record trace events, executables have to use a collector
+//! implementation compatible with `tracing`. A collector implements a
 //! way of collecting trace data, such as by logging it to standard output.
 //!
-//! This library does not contain any `Collector` implementations; these are
+//! This library does not contain any `Collect` implementations; these are
 //! provided by [other crates](#related-crates).
 //!
 //! The simplest way to use a collector is to call the [`set_global_default`]
@@ -623,13 +623,13 @@
 //! libraries and applications either emit or consume `log` records. Therefore,
 //! `tracing` provides multiple forms of interoperability with `log`: `tracing`
 //! instrumentation can emit `log` records, and a compatibility layer enables
-//! `tracing` [`Collector`]s to consume `log` records as `tracing` [`Event`]s.
+//! `tracing` [`Collect`]s to consume `log` records as `tracing` [`Event`]s.
 //!
 //! ### Emitting `log` Records
 //!
 //! This crate provides two feature flags, "log" and "log-always", which will
 //! cause [spans] and [events] to emit `log` records. When the "log" feature is
-//! enabled, if no `tracing` `Collector` is active, invoking an event macro or
+//! enabled, if no `tracing` collector is active, invoking an event macro or
 //! creating a span with fields will emit a `log` record. This is intended
 //! primarily for use in libraries which wish to emit diagnostics that can be
 //! consumed by applications using `tracing` *or* `log`, without paying the
@@ -637,7 +637,7 @@
 //! in use.
 //!
 //! Enabling the "log-always" feature will cause `log` records to be emitted
-//! even if a `tracing` `Collector` _is_ set. This is intended to be used in
+//! even if a `tracing` collector _is_ set. This is intended to be used in
 //! applications where a `log` `Logger` is being used to record a textual log,
 //! and `tracing` is used only to record other forms of diagnostics (such as
 //! metrics, profiling, or distributed tracing data). Unlike the "log" feature,
@@ -662,7 +662,7 @@
 //! ### Consuming `log` Records
 //!
 //! The [`tracing-log`] crate provides a compatibility layer which
-//! allows a `tracing` [`Collector`] to consume `log` records as though they
+//! allows a `tracing` collector to consume `log` records as though they
 //! were `tracing` [events]. This allows applications using `tracing` to record
 //! the logs emitted by dependencies using `log` as events within the context of
 //! the application's trace tree. See [that crate's documentation][log-tracer]
@@ -699,7 +699,7 @@
 //! require a global memory allocator.
 //!
 //! The "alloc" feature is required to enable the [`Dispatch::new`] function,
-//! which requires dynamic memory allocation to construct a `Collector` trait
+//! which requires dynamic memory allocation to construct a collect trait
 //! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
 //! created from `&'static dyn Collector` references, using
 //! [`Dispatch::from_static`].
@@ -718,26 +718,26 @@
 //! without `std` and `alloc`.
 //!
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
-//! [`Dispatch::new`]: crate::dispatcher::Dispatch::new
-//! [`Dispatch::from_static`]: crate::dispatcher::Dispatch::from_static
-//! [`Dispatch::set_default`]: crate::dispatcher::set_default
-//! [`with_default`]: crate::dispatcher::with_default
+//! [`Dispatch::new`]: crate::dispatch::Dispatch::new
+//! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
+//! [`Dispatch::set_default`]: crate::dispatch::set_default
+//! [`with_default`]: crate::dispatch::with_default
 //! [err]: crate::field::Visit::record_error
 //!
 //! ## Related Crates
 //!
 //! In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 //! contains several additional crates designed to be used with the `tracing` ecosystem.
-//! This includes a collection of `Collector` implementations, as well as utility
-//! and adapter crates to assist in writing `Collector`s and instrumenting
+//! This includes a collection of `Collect` implementations, as well as utility
+//! and adapter crates to assist in writing collectors and instrumenting
 //! applications.
 //!
 //! In particular, the following crates are likely to be of interest:
 //!
 //!  - [`tracing-futures`] provides a compatibility layer with the `futures`
 //!    crate, allowing spans to be attached to `Future`s, `Stream`s, and `Executor`s.
-//!  - [`tracing-subscriber`] provides `Collector` implementations and
-//!    utilities for working with `Collector`s. This includes a [`FmtSubscriber`]
+//!  - [`tracing-subscriber`] provides `tracing_subscriber::Subscribe` implementations and
+//!    utilities for working with collectors. This includes a [`FmtSubscriber`]
 //!    `FmtSubscriber` for logging formatted trace data to stdout, with similar
 //!    filtering and formatting to the [`env_logger`] crate.
 //!  - [`tracing-log`] provides a compatibility layer with the [`log`] crate,

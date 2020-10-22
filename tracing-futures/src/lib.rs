@@ -195,7 +195,7 @@ pub trait Instrument: Sized {
 /// Extension trait allowing futures, streams, and sinks to be instrumented with
 /// a `tracing` [collector].
 ///
-/// [`Collector`]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
+/// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {

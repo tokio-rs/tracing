@@ -368,7 +368,7 @@ impl error::Error for SetGlobalDefaultError {}
 /// called while inside of another `get_default`, that closure will be provided
 /// with `Dispatch::none` rather than the previously set dispatcher.
 ///
-/// [dispatcher]: super::dispatcher::Dispatch
+/// [dispatcher]: super::dispatch::Dispatch
 #[cfg(feature = "std")]
 pub fn get_default<T, F>(mut f: F) -> T
 where

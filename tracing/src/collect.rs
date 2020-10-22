@@ -13,7 +13,7 @@ pub use tracing_core::dispatch::DefaultGuard;
 /// tagged that span, instead.
 ///
 /// [`Span`]: ../span/struct.Span.html
-/// [`Collector`]: ../collector/trait.Collector.html
+/// [`Collect`]: ../collect/trait.Collect.html
 /// [`Event`]: :../event/struct.Event.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -34,7 +34,6 @@ where
 /// executables try to set them later.
 ///
 /// [span]: ../span/index.html
-/// [`Collector`]: ../collector/trait.Collector.html
 /// [`Event`]: ../event/struct.Event.html
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
@@ -54,7 +53,6 @@ where
 /// tagged that span, instead.
 ///
 /// [`Span`]: ../span/struct.Span.html
-/// [`Collector`]: ../collector/trait.Collector.html
 /// [`Event`]: :../event/struct.Event.html
 /// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
 #[cfg(feature = "std")]
