@@ -56,7 +56,7 @@ use tracing_core::{
 /// # tracing::collect::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// [`Subscriber`]: super::layer::Subscriber
+/// [`Subscriber`]: subscribe::Subscribe
 #[derive(Debug)]
 pub struct Subscriber<
     S,
@@ -139,8 +139,8 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
-    /// [`MakeWriter`]: super::fmt::MakeWriter
-    /// [`Subscriber`]: super::layer::Subscriber
+    /// [`MakeWriter`]: super::writer::MakeWriter
+    /// [`Subscriber`]: super::Subscriber
     pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
@@ -175,7 +175,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer::TestWriter
+    /// [`TestWriter`]: super::writer::TestWriter
     pub fn with_test_writer(self) -> Subscriber<S, N, E, TestWriter> {
         Subscriber {
             fmt_fields: self.fmt_fields,
@@ -198,9 +198,10 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`time`]: mod@super::time
+    /// [`timer`]: super::time::FormatTime
+    /// [`ChronoUtc`]: super::time::ChronoUtc
+    /// [`ChronoLocal`]: super::time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> Subscriber<S, N, format::Format<L, T2>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_timer(timer),
@@ -489,7 +490,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: super::registry::Extensions
+/// [extensions]: crate::registry::Extensions
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
@@ -789,7 +790,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: SpanRef
     #[inline]
     pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
     where
@@ -812,7 +813,7 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
     where
@@ -825,7 +826,7 @@ where
     /// current context, starting the root of the trace tree and ending with
     /// the current span.
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: SpanRef
     pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> LookupSpan<'lookup>,

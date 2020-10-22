@@ -103,7 +103,7 @@ impl MakeWriter for TestWriter {
     }
 }
 
-/// A writer that erases the specific [`io::Write`] and [`Makewriter`] types being used.
+/// A writer that erases the specific [`io::Write`] and [`MakeWriter`] types being used.
 ///
 /// This is useful in cases where the concrete type of the writer cannot be known
 /// until runtime.

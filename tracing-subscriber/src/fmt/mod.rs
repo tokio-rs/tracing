@@ -412,7 +412,7 @@ pub fn fmt() -> CollectorBuilder {
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///
 /// [formatting subscriber]: Subscriber
-/// [composed]: super::layer
+/// [composed]: super::subscribe
 pub fn subscriber<S>() -> Subscriber<S> {
     Subscriber::default()
 }
@@ -616,6 +616,7 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
+    /// [`time`]: mod@time
     /// [`timer`]: time::FormatTime
     /// [`ChronoUtc`]: time::ChronoUtc
     /// [`ChronoLocal`]: time::ChronoLocal
@@ -922,9 +923,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// Sets the maximum [verbosity level] that will be enabled by the
     /// collector.
     ///
-    /// If the max level has already been set, or a [`EnvFilter`] was added by
-    /// [`with_filter`], this replaces that configuration with the new
-    /// maximum level.
+    /// If the max level has already been set, this replaces that configuration
+    /// with the new maximum level.
     ///
     /// # Examples
     ///
@@ -947,7 +947,6 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// ```
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
     /// [`EnvFilter`]: super::filter::EnvFilter
-    /// [`with_filter`]: CollectorBuilder::with_filter()
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,

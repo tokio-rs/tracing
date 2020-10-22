@@ -87,7 +87,7 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
-/// [`Subscriber`]: super::layer::Subscriber
+/// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
 /// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
@@ -199,7 +199,6 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`LevelFilter`]: super::filter::LevelFilter
     /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
     ///
     /// # Examples

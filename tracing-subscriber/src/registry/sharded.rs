@@ -37,10 +37,9 @@ use tracing_core::{
 /// highly optimized for concurrent access.
 ///
 /// [slab]: https://docs.rs/crate/sharded-slab/
-/// [`Collect`]:
-///     https://docs.rs/crate/tracing-core/latest/tracing_core/collect/trait.Collect.html
-/// [`Subscriber`]: super::Subscriber
-/// [added]: super::Subscriber::with_subscriber()
+/// [`Subscriber`]: crate::Subscribe
+/// [added]: crate::FmtSubscriber::with_collector()
+/// [extensions]: super::Extensions
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
@@ -56,7 +55,7 @@ pub struct Registry {
 /// [`Subscriber`s], such as formatted fields, metrics, or distributed traces should
 /// be stored in the [extensions] typemap.
 ///
-/// [`Subscriber`s]: super::layer::Subscriber
+/// [`Subscriber`s]: crate::Subscribe
 /// [extensions]: Extensions
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]

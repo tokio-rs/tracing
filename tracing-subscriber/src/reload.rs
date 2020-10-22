@@ -9,7 +9,7 @@
 //! change at runtime. Note that this subscriber introduces a (relatively small)
 //! amount of overhead, and should thus only be used as needed.
 //!
-//! [`Subscribe`]: super::subscriber::Subscribe
+//! [`Subscribe`]: crate::Subscribe
 use crate::subscribe;
 use crate::sync::RwLock;
 

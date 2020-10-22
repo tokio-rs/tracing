@@ -40,7 +40,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// particular `Collect` implementation, or additional trait bounds may be
 /// added to constrain what types implementing `Collect` a subscriber can wrap.
 ///
-/// Subscribers may be added to a `Collect` by using the [`SubscriberExt::with`]
+/// Subscribers may be added to a `Collect` by using the [`CollectorExt::with`]
 /// method, which is provided by `tracing-subscriber`'s [prelude]. This method
 /// returns a [`Layered`] struct that implements `Collect` by composing the
 /// subscriber with the collector.
@@ -143,8 +143,8 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// The [`Subscribe::with_collector` method][with-col] constructs the `Layered`
 /// type from a `Subscribe` and `Collect`, and is called by
-/// [`SubscriberExt::with`]. In general, it is more idiomatic to use
-/// `SubscriberExt::with`, and treat `Subscribe::with_collector` as an
+/// [`CollectorExt::with`]. In general, it is more idiomatic to use
+/// `CollectorExt::with`, and treat `Subscribe::with_collector` as an
 /// implementation detail, as `with_collector` calls must be nested, leading to
 /// less clear code for the reader. However, subscribers which wish to perform
 /// additional behavior when composed with a subscriber may provide their own
@@ -253,7 +253,7 @@ where
 
     /// Returns `true` if this subscriber is interested in a span or event with the
     /// given `metadata` in the current [`Context`], similarly to
-    /// [`Collector::enabled`].
+    /// [`Collect::enabled`].
     ///
     /// By default, this always returns `true`, allowing the wrapped collector
     /// to choose to disable the span.
@@ -281,12 +281,9 @@ where
     /// with `Subscriber`s.
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Context`]: super::Context
-    /// [`Collector::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
-    /// [`Subscriber::register_callsite`]: Subscribe::register_callsite()
-    /// [`on_event`]: Subscribe::on_event()
-    /// [`on_enter`]: Subscribe::on_enter()
-    /// [`on_exit`]: Subscribe::on_exit()
+    /// [`on_event`]: Layer::on_event()
+    /// [`on_enter`]: Layer::on_enter()
+    /// [`on_exit`]: Layer::on_exit()
     /// [the trait-level documentation]: #filtering-with-layers
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
@@ -543,10 +540,9 @@ pub trait CollectorExt: Collect + crate::sealed::Sealed {
 /// }
 /// ```
 ///
-/// [subscriber]: super::subscriber::Subscribe
-/// [collector]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
+/// [subscriber]: Subscribe
+/// [collector]: tracing_core::Collect
 /// [stored data]: super::registry::SpanRef
-/// [`LookupSpan`]: "../registry/trait.LookupSpan.html
 #[derive(Debug)]
 pub struct Context<'a, S> {
     subscriber: Option<&'a S>,

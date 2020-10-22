@@ -20,6 +20,8 @@ use opentelemetry::{api, sdk};
 /// See the [`OpenTelemetrySpanExt::set_parent`] and
 /// [`OpenTelemetrySpanExt::context`] methods for example usage.
 ///
+/// [`OpenTelemetrySpanExt::set_parent`]: crate::OpenTelemetrySpanExt::set_parent
+/// [`OpenTelemetrySpanExt::context`]: crate::OpenTelemetrySpanExt::context
 /// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
 /// [`SpanBuilder`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/struct.SpanBuilder.html
 /// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html

@@ -54,11 +54,10 @@
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
 //! require the root collector to be a registry.
 //!
-//! [`Subscribe`]: super::layer::serSubscribe
-//! [`Collect`]:
-//!     https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
-//! [ctx]: super::layer::Context
-//! [lookup]: super::layer::Context::span()
+//! [`Subscribe`]: crate::subscribe::Subscribe
+//! [`Collect`]: tracing_core::collect::Collect
+//! [ctx]: crate::subscribe::Context
+//! [lookup]: crate::subscribe::Context::span()
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
@@ -82,9 +81,9 @@ pub use sharded::Registry;
 /// implement this trait; if they do, any [`Subscriber`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`span()`] method.
 ///
-/// [`Subscriber`]: super::layer::Subscriber
-/// [`Context`]: super::layer::Context
-/// [`span()`]: super::layer::Context::span()
+/// [`Subscriber`]: crate::Subscribe
+/// [`Context`]: crate::subscribe::Context
+/// [`span()`]: crate::subscribe::Context::span()
 pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;

@@ -57,6 +57,8 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
+//! [`fmt`]: mod@fmt
+//! [`registry`]: mod@registry
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
 //! [`EnvFilter`]: filter::EnvFilter

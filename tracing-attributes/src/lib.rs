@@ -35,6 +35,7 @@
 //! ```
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
+//! [instrument]: macro@instrument
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //!
 //! ## Supported Rust Versions

@@ -79,12 +79,12 @@ where
 }
 /// A type that can format a [set of fields] to a `fmt::Write`.
 ///
-/// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
+/// `FormatFields` is primarily used in the context of [`fmt::Subscriber`]. Each
 /// time a span or event with fields is recorded, the subscriber will format
 /// those fields with its associated `FormatFields` implementation.
 ///
-/// [set of fields]: super::field::RecordFields
-/// [`FmtSubscriber`]: super::fmt::Collector
+/// [set of fields]: RecordFields
+/// [`fmt::Subscriber`]: super::Subscriber
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided `writer`, returning a result.
     fn format_fields<R: RecordFields>(
