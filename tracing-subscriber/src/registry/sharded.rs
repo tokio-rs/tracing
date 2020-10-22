@@ -347,11 +347,11 @@ impl<'a> SpanData<'a> for Data<'a> {
     }
 
     fn extensions(&self) -> Extensions<'_> {
-        Extensions::new(self.inner.extensions.read().expect("Mutex poisoned"))
+        Extensions::new(self.inner.extensions.read())
     }
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
-        ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
+        ExtensionsMut::new(self.inner.extensions.write())
     }
 }
 
@@ -428,14 +428,7 @@ impl Clear for DataInner {
         }
 
         // Clear (but do not deallocate!) the pooled `HashMap` for the span's extensions.
-        self.extensions
-            .get_mut()
-            .unwrap_or_else(|l| {
-                // This function can be called in a `Drop` impl, such as while
-                // panicking, so ignore lock poisoning.
-                l.into_inner()
-            })
-            .clear();
+        self.extensions.get_mut().clear();
     }
 }
 

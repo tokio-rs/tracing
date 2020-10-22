@@ -354,8 +354,7 @@ impl EnvFilter {
     }
 
     fn cares_about_span(&self, span: &span::Id) -> bool {
-        let spans = try_lock!(self.by_id.read(), else return false);
-        spans.contains_key(span)
+        self.by_id.read().contains_key(span)
     }
 
     fn base_interest(&self) -> Interest {
@@ -374,8 +373,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
             // dynamic filter that should be constructed for it. If so, it
             // should always be enabled, since it influences filtering.
             if let Some(matcher) = self.dynamics.matcher(metadata) {
-                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
-                by_cs.insert(metadata.callsite(), matcher);
+                self.by_cs.write().insert(metadata.callsite(), matcher);
                 return Interest::always();
             }
         }
@@ -410,12 +408,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         if self.has_dynamics && self.dynamics.max_level >= *level {
             if metadata.is_span() {
                 // If the metadata is a span, see if we care about its callsite.
-                let enabled_by_cs = self
-                    .by_cs
-                    .read()
-                    .ok()
-                    .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
-                    .unwrap_or(false);
+                let enabled_by_cs = self.by_cs.read().contains_key(&metadata.callsite());
                 if enabled_by_cs {
                     return true;
                 }
@@ -445,15 +438,14 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
-        let by_cs = try_lock!(self.by_cs.read());
-        if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
+        if let Some(cs) = self.by_cs.read().get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
-            try_lock!(self.by_id.write()).insert(id.clone(), span);
+            self.by_id.write().insert(id.clone(), span);
         }
     }
 
     fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+        if let Some(span) = self.by_id.read().get(id) {
             span.record_update(values);
         }
     }
@@ -462,7 +454,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+        if let Some(span) = self.by_id.read().get(id) {
             SCOPE.with(|scope| scope.borrow_mut().push(span.level()));
         }
     }
@@ -478,9 +470,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         if !self.cares_about_span(&id) {
             return;
         }
-
-        let mut spans = try_lock!(self.by_id.write());
-        spans.remove(&id);
+        self.by_id.write().remove(&id);
     }
 }
 
