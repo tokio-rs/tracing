@@ -1,14 +1,14 @@
-//! Storage for span data shared by multiple [`Subscriber`]s.
+//! Storage for span data shared by multiple [`Subscribe`]s.
 //!
 //! ## Using the Span Registry
 //!
-//! This module provides the [`Registry`] type, a [`Collector`] implementation
-//! which tracks per-span data and exposes it to [`Subscriber`]s. When a `Registry`
-//! is used as the base `Collector` of a `Subscriber` stack, the
-//! [`layer::Context`][ctx] type will provide methods allowing `Subscriber`s to
+//! This module provides the [`Registry`] type, a [`Collect`] implementation
+//! which tracks per-span data and exposes it to subscribers. When a `Registry`
+//! is used as the base `Collect` of a `Subscribe` stack, the
+//! [`layer::Context`][ctx] type will provide methods allowing subscribers to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
-//! [`LookupSpan`] and [`Collector`] themselves (with [`SpanData`] implemented
+//! [`LookupSpan`] and [`Collect`] themselves (with [`SpanData`] implemented
 //! by the per-span data they store) can be used as a drop-in replacement.
 //!
 //! For example, we might create a `Registry` and add multiple `Subscriber`s like so:
@@ -31,8 +31,8 @@
 //!     .with(BarLayer::new());
 //! ```
 //!
-//! If a type implementing `Subscriber` depends on the functionality of a `Registry`
-//! implementation, it should bound its `Collector` type parameter with the
+//! If a type implementing `Subscribe` depends on the functionality of a `Registry`
+//! implementation, it should bound its `Collect` type parameter with the
 //! [`LookupSpan`] trait, like so:
 //!
 //! ```rust
@@ -50,13 +50,13 @@
 //!     // ...
 //! }
 //! ```
-//! When this bound is added, the `Subscriber` implementation will be guaranteed
+//! When this bound is added, the subscriber implementation will be guaranteed
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
-//! require the root subscriber to be a registry.
+//! require the root collector to be a registry.
 //!
-//! [`Subscriber`]: ../layer/trait.Subscriber.html
-//! [`Collector`]:
-//!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Subscribe`]: ../layer/trait.serSubscribe.html
+//! [`Collect`]:
+//!     https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
 //! [`Registry`]: struct.Registry.html
 //! [ctx]: ../layer/struct.Context.html
 //! [lookup]: ../layer/struct.Context.html#method.span

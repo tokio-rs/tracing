@@ -986,8 +986,8 @@ where
     ///   check whether the event would be enabled. This allows `Collectors`s to
     ///   elide constructing the event if it would not be recorded.
     ///
-    /// [register]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.register_callsite
-    /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.enabled
+    /// [register]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html#method.register_callsite
+    /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html#method.enabled
     /// [`Context::enabled`]: #method.enabled
     #[inline]
     pub fn event(&self, event: &Event<'_>) {

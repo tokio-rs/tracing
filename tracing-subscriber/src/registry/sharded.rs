@@ -37,8 +37,8 @@ use tracing_core::{
 /// highly optimized for concurrent access.
 ///
 /// [slab]: https://docs.rs/crate/sharded-slab/
-/// [`Collector`]:
-///     https://docs.rs/crate/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+/// [`Collect`]:
+///     https://docs.rs/crate/tracing-core/latest/tracing_core/collect/trait.Collect.html
 /// [`Subscriber`]: ../trait.Subscriber.html
 /// [added]: ../trait.Subscriber.html#method.with_subscriber
 /// [`LookupSpan`]: trait.LookupSpan.html
