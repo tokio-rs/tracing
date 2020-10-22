@@ -1,17 +1,17 @@
 //! Extension traits and other utilities to make working with subscribers more
 //! ergonomic.
 use std::{error::Error, fmt};
-use tracing_core::dispatcher::{self, Dispatch};
+use tracing_core::dispatch::{self, Dispatch};
 
 /// Extension trait adding utility methods for subscriber initialization.
 ///
 /// This trait provides extension methods to make configuring and setting a
 /// [default subscriber] more ergonomic. It is automatically implemented for all
 /// types that can be converted into a [trace dispatcher]. Since `Dispatch`
-/// implements `From<T>` for all `T: Subscriber`, all `Subscriber`
+/// implements `From<T>` for all `T: Collector`, all `Collector`
 /// implementations will implement this extension trait as well. Types which
-/// can be converted into `Subscriber`s, such as builders that construct a
-/// `Subscriber`, may implement `Into<Dispatch>`, and will also receive an
+/// can be converted into `Collector`s, such as builders that construct a
+/// `Collector`, may implement `Into<Dispatch>`, and will also receive an
 /// implementation of this trait.
 ///
 /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
@@ -29,11 +29,11 @@ where
     ///
     /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
-    fn set_default(self) -> dispatcher::DefaultGuard {
+    fn set_default(self) -> dispatch::DefaultGuard {
         #[cfg(feature = "tracing-log")]
         let _ = tracing_log::LogTracer::init();
 
-        dispatcher::set_default(&self.into())
+        dispatch::set_default(&self.into())
     }
 
     /// Attempts to set `self` as the [global default subscriber] in the current
@@ -53,7 +53,7 @@ where
         #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(TryInitError::new)?;
 
-        dispatcher::set_global_default(self.into()).map_err(TryInitError::new)?;
+        dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
 
         Ok(())
     }

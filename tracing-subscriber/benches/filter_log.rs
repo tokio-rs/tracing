@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::Duration;
-use tracing::{dispatcher::Dispatch, span, Event, Id, Metadata};
+use tracing::{dispatch::Dispatch, span, Event, Id, Metadata};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 mod support;
@@ -9,7 +9,7 @@ use support::MultithreadedBench;
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
 
-impl tracing::Subscriber for EnabledSubscriber {
+impl tracing::Collect for EnabledSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)
@@ -47,7 +47,7 @@ fn bench_static(c: &mut Criterion) {
     let mut group = c.benchmark_group("log/static");
 
     group.bench_function("baseline_single_threaded", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
                 log::debug!(target: "static_filter", "hi");
@@ -60,7 +60,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
                 log::debug!(target: "static_filter", "hi");
@@ -73,7 +73,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
             })
@@ -83,7 +83,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "foo=debug,bar=trace,baz=error,quux=warn,static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
             })
@@ -93,7 +93,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::debug!(target: "static_filter", "hi");
             })
@@ -103,7 +103,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "foo=debug,bar=info,baz=error,quux=warn,static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::trace!(target: "static_filter", "hi");
             })
@@ -111,7 +111,7 @@ fn bench_static(c: &mut Criterion) {
     });
     group.bench_function("disabled_one", |b| {
         let filter = "foo=info".parse::<EnvFilter>().expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
             })
@@ -121,7 +121,7 @@ fn bench_static(c: &mut Criterion) {
         let filter = "foo=debug,bar=trace,baz=error,quux=warn,whibble=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
             })
@@ -189,7 +189,7 @@ fn bench_dynamic(c: &mut Criterion) {
     let mut group = c.benchmark_group("log/dynamic");
 
     group.bench_function("baseline_single_threaded", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 tracing::info_span!("foo").in_scope(|| {
                     log::info!("hi");
@@ -204,7 +204,7 @@ fn bench_dynamic(c: &mut Criterion) {
     });
     group.bench_function("single_threaded", |b| {
         let filter = "[foo]=trace".parse::<EnvFilter>().expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 tracing::info_span!("foo").in_scope(|| {
                     log::info!("hi");
@@ -293,7 +293,7 @@ fn bench_mixed(c: &mut Criterion) {
         let filter = "[foo]=trace,bar[quux]=debug,[{baz}]=debug,asdf=warn,wibble=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::info!(target: "static_filter", "hi");
             })
@@ -303,7 +303,7 @@ fn bench_mixed(c: &mut Criterion) {
         let filter = "[foo]=info,bar[quux]=debug,asdf=warn,static_filter=info"
             .parse::<EnvFilter>()
             .expect("should parse");
-        tracing::subscriber::with_default(EnabledSubscriber.with(filter), || {
+        tracing::collect::with_default(EnabledSubscriber.with(filter), || {
             b.iter(|| {
                 log::trace!(target: "static_filter", "hi");
             })
