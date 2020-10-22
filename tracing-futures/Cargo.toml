@@ -31,10 +31,10 @@ futures-task = { version = "0.3", optional = true }
 pin-project = { version = "1.0", optional = true }
 tracing = { path = "../tracing", version = "0.2", default-features = false }
 tokio-executor = { version = "0.1", optional = true }
-tokio = { version = "0.1", optional = true }
+tokio = { version = "0.3", optional = true }
 
 [dev-dependencies]
-tokio = "0.1.22"
+tokio = "0.3.1"
 tokio-test = "0.2"
 tracing-core = { path = "../tracing-core", version = "0.2" }
 
