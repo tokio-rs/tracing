@@ -1,3 +1,20 @@
+# 0.2.14 (October 22, 2020)
+
+### Fixed
+
+- **registry**: Fixed `Registry::new` allocating an excessively large amount of
+  memory, most of which would never be used ([#1064])
+
+### Changed
+
+- **registry**: Improved `new_span` performance by reusing `HashMap` allocations
+  for `Extensions` ([#1064])
+- **registry**: Significantly improved the performance of `Registry::enter` and
+  `Registry::exit` ([#1058])
+
+[#1064]: https://github.com/tokio-rs/tracing/pull/1064
+[#1058]: https://github.com/tokio-rs/tracing/pull/1058
+
 # 0.2.13 (October 7, 2020)
 
 ### Changed
