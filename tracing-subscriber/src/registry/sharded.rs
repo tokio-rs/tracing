@@ -1,4 +1,4 @@
-use sharded_slab::{Guard, Slab};
+use sharded_slab::{pool::Ref, Clear, Pool};
 use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
@@ -47,7 +47,7 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Registry {
-    spans: Slab<DataInner>,
+    spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
 }
 
@@ -65,14 +65,23 @@ pub struct Registry {
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
 pub struct Data<'a> {
-    inner: Guard<'a, DataInner>,
+    /// Immutable reference to the pooled `DataInner` entry.
+    inner: Ref<'a, DataInner>,
 }
 
+/// Stored data associated with a span.
+///
+/// This type is pooled using `sharded_slab::Pool`; when a span is dropped, the
+/// `DataInner` entry at that span's slab index is cleared in place and reused
+/// by a future span. Thus, the `Default` and `sharded_slab::Clear`
+/// implementations for this type are load-bearing.
 #[derive(Debug)]
 struct DataInner {
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
+    // The span's `Extensions` typemap. Allocations for the `HashMap` backing
+    // this are pooled and reused in place.
     pub(crate) extensions: RwLock<ExtensionsInner>,
 }
 
@@ -81,7 +90,7 @@ struct DataInner {
 impl Default for Registry {
     fn default() -> Self {
         Self {
-            spans: Slab::new(),
+            spans: Pool::new(),
             current_spans: ThreadLocal::new(),
         }
     }
@@ -126,11 +135,7 @@ pub(crate) struct CloseGuard<'a> {
 }
 
 impl Registry {
-    fn insert(&self, s: DataInner) -> Option<usize> {
-        self.spans.insert(s)
-    }
-
-    fn get(&self, id: &Id) -> Option<Guard<'_, DataInner>> {
+    fn get(&self, id: &Id) -> Option<Ref<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -180,13 +185,20 @@ impl Subscriber for Registry {
             attrs.parent().map(|id| self.clone_span(id))
         };
 
-        let s = DataInner {
-            metadata: attrs.metadata(),
-            parent,
-            ref_count: AtomicUsize::new(1),
-            extensions: RwLock::new(ExtensionsInner::new()),
-        };
-        let id = self.insert(s).expect("Unable to allocate another span");
+        let id = self
+            .spans
+            // Check out a `DataInner` entry from the pool for the new span. If
+            // there are free entries already allocated in the pool, this will
+            // preferentially reuse one; otherwise, a new `DataInner` is
+            // allocated and added to the pool.
+            .create_with(|data| {
+                data.metadata = attrs.metadata();
+                data.parent = parent;
+                let refs = data.ref_count.get_mut();
+                debug_assert_eq!(*refs, 0);
+                *refs = 1;
+            })
+            .expect("Unable to allocate another span");
         idx_to_id(id)
     }
 
@@ -230,7 +242,11 @@ impl Subscriber for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert!(refs != 0, "tried to clone a span that already closed");
+        assert!(
+            refs != 0,
+            "tried to clone a span ({:?}) that already closed",
+            id
+        );
         id.clone()
     }
 
@@ -282,34 +298,7 @@ impl<'a> LookupSpan<'a> for Registry {
     }
 }
 
-// === impl DataInner ===
-
-impl Drop for DataInner {
-    // A span is not considered closed until all of its children have closed.
-    // Therefore, each span's `DataInner` holds a "reference" to the parent
-    // span, keeping the parent span open until all its children have closed.
-    // When we close a span, we must then decrement the parent's ref count
-    // (potentially, allowing it to close, if this child is the last reference
-    // to that span).
-    fn drop(&mut self) {
-        // We have to actually unpack the option inside the `get_default`
-        // closure, since it is a `FnMut`, but testing that there _is_ a value
-        // here lets us avoid the thread-local access if we don't need the
-        // dispatcher at all.
-        if self.parent.is_some() {
-            // Note that --- because `Layered::try_close` works by calling
-            // `try_close` on the inner subscriber and using the return value to
-            // determine whether to call the `Layer`'s `on_close` callback ---
-            // we must call `try_close` on the entire subscriber stack, rather
-            // than just on the registry. If the registry called `try_close` on
-            // itself directly, the layers wouldn't see the close notification.
-            let subscriber = dispatcher::get_default(Dispatch::clone);
-            if let Some(parent) = self.parent.take() {
-                let _ = subscriber.try_close(parent);
-            }
-        }
-    }
-}
+// === impl CloseGuard ===
 
 impl<'a> CloseGuard<'a> {
     pub(crate) fn is_closing(&mut self) {
@@ -336,7 +325,7 @@ impl<'a> Drop for CloseGuard<'a> {
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
-                self.registry.spans.remove(id_to_idx(&self.id));
+                self.registry.spans.clear(id_to_idx(&self.id));
             }
         });
     }
@@ -363,6 +352,90 @@ impl<'a> SpanData<'a> for Data<'a> {
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
         ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
+    }
+}
+
+// === impl DataInner ===
+
+impl Default for DataInner {
+    fn default() -> Self {
+        // Since `DataInner` owns a `&'static Callsite` pointer, we need
+        // something to use as the initial default value for that callsite.
+        // Since we can't access a `DataInner` until it has had actual span data
+        // inserted into it, the null metadata will never actually be accessed.
+        struct NullCallsite;
+        impl tracing_core::callsite::Callsite for NullCallsite {
+            fn set_interest(&self, _: Interest) {
+                unreachable!(
+                    "/!\\ Tried to register the null callsite /!\\\n \
+                    This should never have happened and is definitely a bug. \
+                    A `tracing` bug report would be appreciated."
+                )
+            }
+
+            fn metadata(&self) -> &Metadata<'_> {
+                unreachable!(
+                    "/!\\ Tried to access the null callsite's metadata /!\\\n \
+                    This should never have happened and is definitely a bug. \
+                    A `tracing` bug report would be appreciated."
+                )
+            }
+        }
+
+        static NULL_CALLSITE: NullCallsite = NullCallsite;
+        static NULL_METADATA: Metadata<'static> = tracing_core::metadata! {
+            name: "",
+            target: "",
+            level: tracing_core::Level::TRACE,
+            fields: &[],
+            callsite: &NULL_CALLSITE,
+            kind: tracing_core::metadata::Kind::SPAN,
+        };
+
+        Self {
+            metadata: &NULL_METADATA,
+            parent: None,
+            ref_count: AtomicUsize::new(0),
+            extensions: RwLock::new(ExtensionsInner::new()),
+        }
+    }
+}
+
+impl Clear for DataInner {
+    /// Clears the span's data in place, dropping the parent's reference count.
+    fn clear(&mut self) {
+        // A span is not considered closed until all of its children have closed.
+        // Therefore, each span's `DataInner` holds a "reference" to the parent
+        // span, keeping the parent span open until all its children have closed.
+        // When we close a span, we must then decrement the parent's ref count
+        // (potentially, allowing it to close, if this child is the last reference
+        // to that span).
+        // We have to actually unpack the option inside the `get_default`
+        // closure, since it is a `FnMut`, but testing that there _is_ a value
+        // here lets us avoid the thread-local access if we don't need the
+        // dispatcher at all.
+        if self.parent.is_some() {
+            // Note that --- because `Layered::try_close` works by calling
+            // `try_close` on the inner subscriber and using the return value to
+            // determine whether to call the `Layer`'s `on_close` callback ---
+            // we must call `try_close` on the entire subscriber stack, rather
+            // than just on the registry. If the registry called `try_close` on
+            // itself directly, the layers wouldn't see the close notification.
+            let subscriber = dispatch::get_default(Dispatch::clone);
+            if let Some(parent) = self.parent.take() {
+                let _ = subscriber.try_close(parent);
+            }
+        }
+
+        // Clear (but do not deallocate!) the pooled `HashMap` for the span's extensions.
+        self.extensions
+            .get_mut()
+            .unwrap_or_else(|l| {
+                // This function can be called in a `Drop` impl, such as while
+                // panicking, so ignore lock poisoning.
+                l.into_inner()
+            })
+            .clear();
     }
 }
 
