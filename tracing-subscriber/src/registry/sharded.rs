@@ -228,7 +228,8 @@ impl Subscriber for Registry {
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
         assert!(
             refs != 0,
-            "tried to clone a span ({:?}) that already closed"
+            "tried to clone a span ({:?}) that already closed",
+            id
         );
         id.clone()
     }
@@ -307,7 +308,7 @@ impl<'a> Drop for CloseGuard<'a> {
             // If the current close count is 1, this stack frame is the last
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
-            if dbg!(c) == 1 && dbg!(self.is_closing) {
+            if c == 1 && self.is_closing {
                 self.registry.spans.clear(id_to_idx(&self.id));
             }
         });
