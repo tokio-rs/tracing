@@ -27,7 +27,7 @@ use tracing_log::NormalizeEvent;
 ///
 /// # Example Output
 ///
-/// ```ignore,json
+/// ```json
 /// {
 ///     "timestamp":"Feb 20 11:28:15.096",
 ///     "level":"INFO",
