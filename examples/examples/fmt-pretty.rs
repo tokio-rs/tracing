@@ -4,7 +4,13 @@ use tracing::{debug, info, span, warn, Level};
 use tracing_subscriber::prelude::*;
 fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::subscriber().pretty())
+        .with(
+            tracing_subscriber::fmt::subscriber()
+                .pretty()
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(false),
+        )
         .init();
 
     let app_span = span!(Level::TRACE, "app", version = %5.0);
