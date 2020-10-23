@@ -97,9 +97,7 @@ const N_SPANS: usize = 100;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut c = c.benchmark_group("scoped/subscriber");
     c.bench_function("span_no_fields", |b| {
-        tracing::collect::with_default(EnabledCollector, || {
-            b.iter(|| span!(Level::TRACE, "span"))
-        });
+        tracing::collect::with_default(EnabledCollector, || b.iter(|| span!(Level::TRACE, "span")));
     });
 
     c.bench_function("enter_span", |b| {
