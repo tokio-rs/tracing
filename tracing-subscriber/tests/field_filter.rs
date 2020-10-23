@@ -1,12 +1,12 @@
 mod support;
 use self::support::*;
-use tracing::{self, subscriber::with_default, Level};
+use tracing::{self, collect::with_default, Level};
 use tracing_subscriber::{filter::EnvFilter, prelude::*};
 
 #[test]
 fn field_filter_events() {
     let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = collector::mock()
         .event(
             event::mock()
                 .at_level(Level::INFO)
@@ -37,7 +37,7 @@ fn field_filter_spans() {
     let filter: EnvFilter = "[{enabled=true}]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = collector::mock()
         .enter(span::mock().named("span1"))
         .event(
             event::mock()
@@ -80,7 +80,7 @@ fn record_after_created() {
     let filter: EnvFilter = "[{enabled=true}]=debug"
         .parse()
         .expect("filter should parse");
-    let (subscriber, finished) = subscriber::mock()
+    let (subscriber, finished) = collector::mock()
         .enter(span::mock().named("span"))
         .exit(span::mock().named("span"))
         .record(

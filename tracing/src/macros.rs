@@ -31,7 +31,7 @@ macro_rules! span {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let mut interest = $crate::subscriber::Interest::never();
+            let mut interest = $crate::collect::Interest::never();
             if $crate::level_enabled!($lvl)
                 && { interest = CALLSITE.interest(); !interest.is_never() }
                 && CALLSITE.is_enabled(interest)
@@ -63,7 +63,7 @@ macro_rules! span {
                 fields: $($fields)*
             };
 
-            let mut interest = $crate::subscriber::Interest::never();
+            let mut interest = $crate::collect::Interest::never();
             if $crate::level_enabled!($lvl)
                 && { interest = CALLSITE.interest(); !interest.is_never() }
                 && CALLSITE.is_enabled(interest)

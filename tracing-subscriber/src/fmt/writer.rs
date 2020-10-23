@@ -7,15 +7,15 @@ use std::{fmt::Debug, io};
 
 /// A type that can create [`io::Write`] instances.
 ///
-/// `MakeWriter` is used by [`fmt::Subscriber`] or [`fmt::Layer`] to print formatted text representations of
+/// `MakeWriter` is used by [`fmt::Collector`] or [`fmt::Subscriber`] to print formatted text representations of
 /// [`Event`]s.
 ///
 /// This trait is already implemented for function pointers and immutably-borrowing closures that
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+/// [`fmt::Collector`]: ../../fmt/struct.Collector.html
 /// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
-/// [`fmt::Layer`]: ../../fmt/struct.Layer.html
 /// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
@@ -30,14 +30,14 @@ pub trait MakeWriter {
     ///
     /// # Implementer notes
     ///
-    /// [`fmt::Layer`] or [`fmt::Subscriber`] will call this method each time an event is recorded. Ensure any state
+    /// [`fmt::Subscriber`] or [`fmt::Collector`] will call this method each time an event is recorded. Ensure any state
     /// that must be saved across writes is not lost when the [`Writer`] instance is dropped. If
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
     /// [`MakeWriter`] to improve performance.
     ///
     /// [`Writer`]: #associatedtype.Writer
-    /// [`fmt::Layer`]: ../../fmt/struct.Layer.html
     /// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
+    /// [`fmt::Collector`]: ../../fmt/struct.Collector.html
     /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
     /// [`MakeWriter`]: trait.MakeWriter.html
     fn make_writer(&self) -> Self::Writer;
@@ -57,7 +57,7 @@ where
 
 /// A writer intended to support [`libtest`'s output capturing][capturing] for use in unit tests.
 ///
-/// `TestWriter` is used by [`fmt::Subscriber`] or [`fmt::Layer`] to enable capturing support.
+/// `TestWriter` is used by [`fmt::Collector`] or [`fmt::Subscriber`] to enable capturing support.
 ///
 /// `cargo test` can only capture output from the standard library's [`print!`] macro. See
 /// [`libtest`'s output capturing][capturing] for more details about output capturing.
@@ -65,8 +65,8 @@ where
 /// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
 /// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
 ///
+/// [`fmt::Collector`]: ../struct.Collector.html
 /// [`fmt::Subscriber`]: ../struct.Subscriber.html
-/// [`fmt::Layer`]: ../struct.Layer.html
 /// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
 /// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
@@ -111,13 +111,13 @@ impl MakeWriter for TestWriter {
 ///
 /// # Examples
 ///
-/// A function that returns a [`Subscriber`] that will write to either stdout or stderr:
+/// A function that returns a [`Collect`] that will write to either stdout or stderr:
 ///
 /// ```rust
-/// # use tracing::Subscriber;
+/// # use tracing::Collect;
 /// # use tracing_subscriber::fmt::writer::BoxMakeWriter;
 ///
-/// fn dynamic_writer(use_stderr: bool) -> impl Subscriber {
+/// fn dynamic_writer(use_stderr: bool) -> impl Collect {
 ///     let writer = if use_stderr {
 ///         BoxMakeWriter::new(std::io::stderr)
 ///     } else {
@@ -129,7 +129,7 @@ impl MakeWriter for TestWriter {
 /// ```
 ///
 /// [`MakeWriter`]: trait.MakeWriter.html
-/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+/// [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 pub struct BoxMakeWriter {
     inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,
@@ -183,11 +183,11 @@ mod test {
     use super::MakeWriter;
     use crate::fmt::format::Format;
     use crate::fmt::test::{MockMakeWriter, MockWriter};
-    use crate::fmt::Subscriber;
+    use crate::fmt::Collector;
     use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tracing::error;
-    use tracing_core::dispatcher::{self, Dispatch};
+    use tracing_core::dispatch::{self, Dispatch};
 
     fn test_writer<T>(make_writer: T, msg: &str, buf: &Mutex<Vec<u8>>)
     where
@@ -197,7 +197,7 @@ mod test {
             #[cfg(feature = "ansi")]
             {
                 let f = Format::default().without_time().with_ansi(false);
-                Subscriber::builder()
+                Collector::builder()
                     .event_format(f)
                     .with_writer(make_writer)
                     .finish()
@@ -205,7 +205,7 @@ mod test {
             #[cfg(not(feature = "ansi"))]
             {
                 let f = Format::default().without_time();
-                Subscriber::builder()
+                Collector::builder()
                     .event_format(f)
                     .with_writer(make_writer)
                     .finish()
@@ -213,7 +213,7 @@ mod test {
         };
         let dispatch = Dispatch::from(subscriber);
 
-        dispatcher::with_default(&dispatch, || {
+        dispatch::with_default(&dispatch, || {
             error!("{}", msg);
         });
 

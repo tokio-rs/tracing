@@ -11,18 +11,18 @@ fn spans_dont_leak() {
         let _e = span.enter();
     }
 
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .named("spans/subscriber1")
         .with_filter(|_| false)
         .done()
         .run_with_handle();
 
-    let _guard = tracing::subscriber::set_default(subscriber);
+    let _guard = tracing::collect::set_default(collector);
 
     do_span();
 
     let alice = span::mock().named("alice");
-    let (subscriber2, handle2) = subscriber::mock()
+    let (subscriber2, handle2) = collector::mock()
         .named("spans/subscriber2")
         .with_filter(|_| true)
         .new_span(alice.clone())
@@ -32,7 +32,7 @@ fn spans_dont_leak() {
         .done()
         .run_with_handle();
 
-    tracing::subscriber::with_default(subscriber2, || {
+    tracing::collect::with_default(subscriber2, || {
         println!("--- subscriber 2 is default ---");
         do_span()
     });
@@ -51,29 +51,29 @@ fn events_dont_leak() {
         tracing::debug!("alice");
     }
 
-    let (subscriber, handle) = subscriber::mock()
-        .named("events/subscriber1")
+    let (collector, handle) = collector::mock()
+        .named("events/collector1")
         .with_filter(|_| false)
         .done()
         .run_with_handle();
 
-    let _guard = tracing::subscriber::set_default(subscriber);
+    let _guard = tracing::collect::set_default(collector);
 
     do_event();
 
-    let (subscriber2, handle2) = subscriber::mock()
-        .named("events/subscriber2")
+    let (collector2, handle2) = collector::mock()
+        .named("events/collector2")
         .with_filter(|_| true)
         .event(event::mock())
         .done()
         .run_with_handle();
 
-    tracing::subscriber::with_default(subscriber2, || {
-        println!("--- subscriber 2 is default ---");
+    tracing::collect::with_default(collector2, || {
+        println!("--- collector 2 is default ---");
         do_event()
     });
 
-    println!("--- subscriber 1 is default ---");
+    println!("--- collector 1 is default ---");
 
     do_event();
 
