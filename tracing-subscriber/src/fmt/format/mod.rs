@@ -565,7 +565,13 @@ where
         let meta = event.metadata();
         write!(writer, "  ")?;
         time::write(&self.timer, writer, self.ansi)?;
-        let style = style_for(meta.level());
+
+        let style = if self.display_level {
+            style_for(meta.level())
+        } else {
+            Style::new()
+        };
+
         if self.display_target {
             write!(
                 writer,
