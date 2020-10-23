@@ -7,7 +7,7 @@
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
 //! scoped, structured, and async-aware diagnostics. `tracing-journald` provides a
-//! [`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
+//! [`tracing-subscriber::Subscriber`][subscriber] implementation for logging `tracing` spans
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!
@@ -15,7 +15,7 @@
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
+//! [subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/subscriber/trait.Subscriber.html
 //! [journald]: https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html
 //!
 //! ## Supported Rust Versions
@@ -46,14 +46,14 @@ use tracing_core::{
     event::Event,
     field::Visit,
     span::{Attributes, Id, Record},
-    Field, Level, Metadata, Subscriber,
+    Collect, Field, Level, Metadata,
 };
-use tracing_subscriber::{layer::Context, registry::LookupSpan};
+use tracing_subscriber::{registry::LookupSpan, subscribe::Context};
 
 /// Sends events and their fields to journald
 ///
 /// [journald conventions] for structured field names differ from typical tracing idioms, and journald
-/// discards fields which violate its conventions. Hence, this layer automatically sanitizes field
+/// discards fields which violate its conventions. Hence, this subscriber automatically sanitizes field
 /// names by translating `.`s into `_`s, stripping leading `_`s and non-ascii-alphanumeric
 /// characters other than `_`, and upcasing.
 ///
@@ -76,14 +76,14 @@ use tracing_subscriber::{layer::Context, registry::LookupSpan};
 /// prevent collision with standard fields.
 ///
 /// [journald conventions]: https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
-pub struct Layer {
+pub struct Subscriber {
     #[cfg(unix)]
     socket: UnixDatagram,
     field_prefix: Option<String>,
 }
 
-impl Layer {
-    /// Construct a journald layer
+impl Subscriber {
+    /// Construct a journald subscriber
     ///
     /// Fails if the journald socket couldn't be opened. Returns a `NotFound` error unconditionally
     /// in non-Unix environments.
@@ -112,18 +112,18 @@ impl Layer {
     }
 }
 
-/// Construct a journald layer
+/// Construct a journald subscriber
 ///
 /// Fails if the journald socket couldn't be opened.
-pub fn layer() -> io::Result<Layer> {
-    Layer::new()
+pub fn subscriber() -> io::Result<Subscriber> {
+    Subscriber::new()
 }
 
-impl<S> tracing_subscriber::Layer<S> for Layer
+impl<C> tracing_subscriber::Subscribe<C> for Subscriber
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
 {
-    fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<S>) {
+    fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
@@ -142,7 +142,7 @@ where
         span.extensions_mut().insert(SpanFields(buf));
     }
 
-    fn on_record(&self, id: &Id, values: &Record, ctx: Context<S>) {
+    fn on_record(&self, id: &Id, values: &Record, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
         let depth = span.parents().count();
         let mut exts = span.extensions_mut();
@@ -154,7 +154,7 @@ where
         });
     }
 
-    fn on_event(&self, event: &Event<'_, '_>, ctx: Context<S>) {
+    fn on_event(&self, event: &Event<'_, '_>, ctx: Context<C>) {
         let mut buf = Vec::with_capacity(256);
 
         // Record span fields

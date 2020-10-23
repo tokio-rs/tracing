@@ -28,10 +28,10 @@ pub struct Event<'a, 'b> {
 
 impl<'a, 'b: 'a> Event<'a, 'b> {
     /// Constructs a new `Event` with the specified metadata and set of values,
-    /// and observes it with the current subscriber.
+    /// and observes it with the current collector.
     pub fn dispatch(metadata: &'a Metadata<'_>, fields: &'a field::ValueSet<'_>) {
         let event = Event::new(metadata, fields);
-        crate::dispatcher::get_default(|current| {
+        crate::dispatch::get_default(|current| {
             current.event(&event);
         });
     }
@@ -67,14 +67,14 @@ impl<'a, 'b: 'a> Event<'a, 'b> {
     }
 
     /// Constructs a new `Event` with the specified metadata and set of values,
-    /// and observes it with the current subscriber and an explicit parent.
+    /// and observes it with the current collector and an explicit parent.
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         metadata: &'a Metadata<'b>,
         fields: &'a field::ValueSet<'_>,
     ) {
         let event = Self::new_child_of(parent, metadata, fields);
-        crate::dispatcher::get_default(|current| {
+        crate::dispatch::get_default(|current| {
             current.event(&event);
         });
     }

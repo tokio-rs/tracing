@@ -35,11 +35,11 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ### In Applications
 
-In order to record trace events, executables have to use a `Subscriber`
-implementation compatible with `tracing`. A `Subscriber` implements a way of
+In order to record trace events, executables have to use a collector
+implementation compatible with `tracing`. A collector implements a way of
 collecting trace data, such as by logging it to standard output.
 [`tracing-subscriber`][tracing-subscriber-docs]'s [`fmt` module][fmt] provides
-a subscriber for logging traces with reasonable defaults. Additionally,
+a collector for logging traces with reasonable defaults. Additionally,
 `tracing-subscriber` is able to consume messages emitted by `log`-instrumented
 libraries and modules.
 
@@ -51,14 +51,14 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 ```
 
-Then create and install a `Subscriber`, for example using [`init()`]:
+Then create and install a collector, for example using [`init()`]:
 
 ```rust
 use tracing::info;
 use tracing_subscriber;
 
 fn main() {
-    // install global subscriber configured based on RUST_LOG envvar.
+    // install global collector configured based on RUST_LOG env var.
     tracing_subscriber::fmt::init();
 
     let number_of_yaks = 3;
@@ -73,7 +73,7 @@ fn main() {
 }
 ```
 
-Using `init()` calls [`set_global_default()`] so this subscriber will be used
+Using `init()` calls [`set_global_default()`] so this collector will be used
 as the default in all threads for the remainder of the duration of the
 program, similar to how loggers work in the `log` crate.
 
@@ -82,34 +82,34 @@ program, similar to how loggers work in the `log` crate.
 [`set_global_default`]: https://docs.rs/tracing/latest/tracing/subscriber/fn.set_global_default.html
 
 
-For more control, a subscriber can be built in stages and not set globally,
-but instead used to locally override the default subscriber. For example:
+For more control, a collector can be built in stages and not set globally,
+but instead used to locally override the default collector. For example:
 
 ```rust
 use tracing::{info, Level};
 use tracing_subscriber;
 
 fn main() {
-    let subscriber = tracing_subscriber::fmt()
+    let collector = tracing_subscriber::fmt()
         // filter spans/events with level TRACE or higher.
         .with_max_level(Level::TRACE)
         // build but do not install the subscriber.
         .finish();
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collector::with_default(collector, || {
         info!("This will be logged to stdout");
     });
     info!("This will _not_ be logged to stdout");
 }
 ```
 
-Any trace events generated outside the context of a subscriber will not be collected.
+Any trace events generated outside the context of a collector will not be collected.
 
-This approach allows trace data to be collected by multiple subscribers
+This approach allows trace data to be collected by multiple collectors
 within different contexts in the program. Note that the override only applies to the
 currently executing thread; other threads will not see the change from with_default.
 
-Once a subscriber has been set, instrumentation points may be added to the
+Once a collector has been set, instrumentation points may be added to the
 executable using the `tracing` crate's macros.
 
 [`tracing-subscriber`]: https://docs.rs/tracing-subscriber/
@@ -186,7 +186,7 @@ pub fn shave_all(yaks: usize) -> usize {
 tracing = "0.1"
 ```
 
-Note: Libraries should *NOT* install a subscriber by using a method that calls
+Note: Libraries should *NOT* install a collector by using a method that calls
 [`set_global_default()`], as this will cause conflicts when executables try to
 set the default later.
 
@@ -317,8 +317,8 @@ The crates included as part of Tracing are:
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
-* [`tracing-subscriber`]: Subscriber implementations, and utilities for
-  implementing and composing `Subscriber`s.
+* [`tracing-subscriber`]: Collector implementations, and utilities for
+  implementing and composing `Collector`s.
   ([crates.io][sub-crates]|[docs][sub-docs])
 
 * [`tracing-tower`]: Compatibility with the `tower` ecosystem (unstable).
@@ -391,11 +391,11 @@ are not maintained by the `tokio` project. These include:
   pretty printing them.
 - [`spandoc`] provides a proc macro for constructing spans from doc comments
   _inside_ of functions.
-- [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
+- [`tracing-wasm`] provides a `Collector`/`Subscriber` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 - [`test-env-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
-- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
+- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Collector`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
