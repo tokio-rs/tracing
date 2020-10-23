@@ -585,14 +585,23 @@ where
         event.record(&mut v);
         v.finish()?;
         writeln!(writer, "")?;
-
+        let thread = self.display_thread_name || self.display_thread_id;
         let dimmed = Style::new().dimmed().italic();
         if let (Some(file), Some(line)) = (meta.file(), meta.line()) {
-            writeln!(writer, "    {} {}:{}", dimmed.paint("at"), file, line,)?;
+            write!(
+                writer,
+                "    {} {}:{}{}",
+                dimmed.paint("at"),
+                file,
+                line,
+                dimmed.paint(if thread { " " } else { "\n" })
+            )?;
+        } else if thread {
+            write!(writer, "    ")?;
         }
 
-        if self.display_thread_name || self.display_thread_id {
-            write!(writer, "    {} ", dimmed.paint("on"))?;
+        if thread {
+            write!(writer, "{} ", dimmed.paint("on"))?;
             let thread = std::thread::current();
             if self.display_thread_name {
                 if let Some(name) = thread.name() {
