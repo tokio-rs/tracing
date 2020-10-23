@@ -582,6 +582,15 @@ where
         }
     }
 
+    pub fn pretty(
+        self,
+    ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.pretty(),
+        }
+    }
+
     /// Sets the collector being built to use a JSON formatter.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
