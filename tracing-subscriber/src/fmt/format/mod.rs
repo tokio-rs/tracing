@@ -536,15 +536,15 @@ where
 }
 
 #[cfg(feature = "ansi")]
-impl<S, N, T> FormatEvent<S, N> for Format<Pretty, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Pretty, T>
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -566,25 +566,44 @@ where
         write!(writer, "  ")?;
         time::write(&self.timer, writer, self.ansi)?;
         let style = style_for(meta.level());
-        write!(
-            writer,
-            "{}{}{}: ",
-            style.bold().prefix(),
-            meta.target(),
-            style.bold().infix(style)
-        )?;
+        if self.display_target {
+            write!(
+                writer,
+                "{}{}{}: ",
+                style.bold().prefix(),
+                meta.target(),
+                style.bold().infix(style)
+            )?;
+        }
         let mut v = PrettyVisitor::new(writer, true).with_style(style);
         event.record(&mut v);
         v.finish()?;
         writeln!(writer, "")?;
+
         let dimmed = Style::new().dimmed().italic();
         if let (Some(file), Some(line)) = (meta.file(), meta.line()) {
             writeln!(writer, "    {} {}:{}", dimmed.paint("at"), file, line,)?;
         }
 
-        let bold = Style::new().bold();
-        // let mut seen = false;
+        if self.display_thread_name || self.display_thread_id {
+            write!(writer, "    {} ", dimmed.paint("on"))?;
+            let thread = std::thread::current();
+            if self.display_thread_name {
+                if let Some(name) = thread.name() {
+                    write!(writer, "{}", name)?;
+                    if self.display_thread_id {
+                        write!(writer, " ({:?})", thread.id())?;
+                    }
+                } else if !self.display_thread_id {
+                    write!(writer, " {:?}", thread.id())?;
+                }
+            } else if self.display_thread_id {
+                write!(writer, " {:?}", thread.id())?;
+            }
+            writer.write_char('\n')?;
+        }
 
+        let bold = Style::new().bold();
         let span = event
             .parent()
             .and_then(|id| ctx.span(&id))
@@ -597,13 +616,23 @@ where
 
         for span in scope {
             let meta = span.metadata();
-            write!(
-                writer,
-                "    {} {}::{}",
-                dimmed.paint("in"),
-                meta.target(),
-                bold.paint(meta.name()),
-            )?;
+            if self.display_target {
+                write!(
+                    writer,
+                    "    {} {}::{}",
+                    dimmed.paint("in"),
+                    meta.target(),
+                    bold.paint(meta.name()),
+                )?;
+            } else {
+                write!(
+                    writer,
+                    "    {} {}",
+                    dimmed.paint("in"),
+                    bold.paint(meta.name()),
+                )?;
+            }
+
             // seen = true;
 
             let ext = span.extensions();
