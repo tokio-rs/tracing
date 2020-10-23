@@ -343,6 +343,16 @@ where
         }
     }
 
+    pub fn pretty(self) -> Layer<S, format::Pretty, format::Format<format::Pretty, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.pretty(),
+            fmt_fields: format::Pretty,
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            _inner: self._inner,
+        }
+    }
+
     /// Sets the subscriber being built to use a [JSON formatter](../fmt/format/struct.Json.html).
     ///
     /// The full format includes fields from all entered spans.
