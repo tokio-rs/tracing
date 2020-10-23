@@ -5,11 +5,11 @@ mod yak_shave;
 fn main() {
     use tracing_subscriber::{fmt, EnvFilter};
 
-    let subscriber = fmt::Subscriber::builder()
+    let subscriber = fmt::Collector::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collect::with_default(subscriber, || {
         let number_of_yaks = 3;
         tracing::debug!("preparing to shave {} yaks", number_of_yaks);
 

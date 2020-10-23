@@ -9,7 +9,7 @@ use tracing::Level;
 fn multiple_max_level_hints() {
     // This test ensures that when multiple subscribers are active, their max
     // level hints are handled correctly. The global max level should be the
-    // maximum of the level filters returned by the two `Subscriber`'s
+    // maximum of the level filters returned by the two `Collector`'s
     // `max_level_hint` method.
     //
     // In this test, we create a subscriber whose max level is `INFO`, and
@@ -25,14 +25,14 @@ fn multiple_max_level_hints() {
         tracing::error!("everything is on fire");
     }
 
-    let (subscriber1, handle1) = subscriber::mock()
-        .named("subscriber1")
+    let (collector1, handle1) = collector::mock()
+        .named("collector1")
         .with_max_level_hint(Level::INFO)
         .with_filter(|meta| {
             let level = dbg!(meta.level());
             assert!(
                 level <= &Level::DEBUG,
-                "a TRACE event was dynamically filtered by subscriber1"
+                "a TRACE event was dynamically filtered by collector1"
             );
             level <= &Level::INFO
         })
@@ -41,14 +41,14 @@ fn multiple_max_level_hints() {
         .event(event::mock().at_level(Level::ERROR))
         .done()
         .run_with_handle();
-    let (subscriber2, handle2) = subscriber::mock()
-        .named("subscriber2")
+    let (collector2, handle2) = collector::mock()
+        .named("collector2")
         .with_max_level_hint(Level::DEBUG)
         .with_filter(|meta| {
             let level = dbg!(meta.level());
             assert!(
                 level <= &Level::DEBUG,
-                "a TRACE event was dynamically filtered by subscriber2"
+                "a TRACE event was dynamically filtered by collector2"
             );
             level <= &Level::DEBUG
         })
@@ -59,12 +59,12 @@ fn multiple_max_level_hints() {
         .done()
         .run_with_handle();
 
-    let dispatch1 = tracing::Dispatch::new(subscriber1);
+    let dispatch1 = tracing::Dispatch::new(collector1);
 
-    tracing::dispatcher::with_default(dispatch1, do_events);
+    tracing::dispatch::with_default(dispatch1, do_events);
     handle1.assert_finished();
 
-    let dispatch2 = tracing::Dispatch::new(subscriber2);
-    tracing::dispatcher::with_default(dispatch2, do_events);
+    let dispatch2 = tracing::Dispatch::new(collector2);
+    tracing::dispatch::with_default(dispatch2, do_events);
     handle2.assert_finished();
 }

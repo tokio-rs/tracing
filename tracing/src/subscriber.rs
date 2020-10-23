@@ -21,7 +21,7 @@ pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
 where
     S: Subscriber + Send + Sync + 'static,
 {
-    crate::dispatcher::with_default(crate::Dispatch::new(subscriber), f)
+    crate::dispatch::with_default(crate::Dispatch::new(subscriber), f)
 }
 
 /// Sets this subscriber as the global default for the duration of the entire program.

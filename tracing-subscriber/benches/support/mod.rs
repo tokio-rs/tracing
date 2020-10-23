@@ -3,7 +3,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tracing::dispatcher::Dispatch;
+use tracing::dispatch::Dispatch;
 
 #[derive(Clone)]
 pub(super) struct MultithreadedBench {
@@ -32,7 +32,7 @@ impl MultithreadedBench {
         let this = self.clone();
         thread::spawn(move || {
             let dispatch = this.dispatch.clone();
-            tracing::dispatcher::with_default(dispatch, move || {
+            tracing::dispatch::with_default(dispatch, move || {
                 f(&*this.start);
                 this.end.wait();
             })
