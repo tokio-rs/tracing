@@ -39,12 +39,12 @@ mod std_impl {
         }
 
         #[inline]
-        pub(crate) fn read<'a>(&'a self) -> RwLockReadGuard<'a, T> {
+        pub(crate) fn read(&self) -> RwLockReadGuard<'_, T> {
             self.inner.read().unwrap_or_else(PoisonError::into_inner)
         }
 
         #[inline]
-        pub(crate) fn try_read<'a>(&'a self) -> Option<RwLockReadGuard<'a, T>> {
+        pub(crate) fn try_read(&self) -> Option<RwLockReadGuard<'_, T>> {
             match self.inner.try_read() {
                 Ok(guard) => Some(guard),
                 Err(TryLockError::Poisoned(guard)) => Some(guard.into_inner()),
@@ -53,7 +53,7 @@ mod std_impl {
         }
 
         #[inline]
-        pub(crate) fn write<'a>(&'a self) -> RwLockWriteGuard<'a, T> {
+        pub(crate) fn write(&self) -> RwLockWriteGuard<'_, T> {
             self.inner.write().unwrap_or_else(PoisonError::into_inner)
         }
     }
