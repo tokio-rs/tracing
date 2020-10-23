@@ -139,7 +139,7 @@
 //! ```
 //!
 //! Applications that wish to use `tracing-error`-enabled errors should
-//! construct an [`ErrorSubscriber`] and add it to their [collector` in order to
+//! construct an [`ErrorSubscriber`] and add it to their [`collector`] in order to
 //! enable capturing [`SpanTrace`]s. For example:
 //!
 //! ```rust
@@ -148,7 +148,7 @@
 //!
 //! fn main() {
 //!     let subscriber = tracing_subscriber::Registry::default()
-//!         // any number of other subscriber layers may be added before or
+//!         // any number of other collector subscribers may be added before or
 //!         // after the `ErrorSubscriber`...
 //!         .with(ErrorSubscriber::default());
 //!
