@@ -121,7 +121,7 @@ where
         let mut v = PrettyVisitor::new(writer, true).with_style(style);
         event.record(&mut v);
         v.finish()?;
-        writeln!(writer, "")?;
+        writer.write_char('\n')?;
 
         let dimmed = Style::new().dimmed().italic();
         let thread = self.display_thread_name || self.display_thread_id;
