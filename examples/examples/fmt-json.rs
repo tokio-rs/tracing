@@ -4,11 +4,9 @@ mod yak_shave;
 
 fn main() {
     tracing_subscriber::fmt()
-        .pretty()
-        .with_thread_names(true)
-        // enable everything
+        .json()
         .with_max_level(tracing::Level::TRACE)
-        // sets this to be the default, global collector for this application.
+        .with_current_span(false)
         .init();
 
     let number_of_yaks = 3;
