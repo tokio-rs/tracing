@@ -111,7 +111,6 @@ pub mod registry;
 pub mod reload;
 pub mod subscribe;
 pub(crate) mod sync;
-pub(crate) mod thread;
 pub mod util;
 
 #[cfg(feature = "env-filter")]
@@ -134,18 +133,20 @@ cfg_feature!("registry", {
     }
 });
 
+use std::cell::RefCell;
 use std::default::Default;
+
 /// Tracks the currently executing span on a per-thread basis.
 #[derive(Debug)]
 pub struct CurrentSpan {
-    current: thread::Local<Vec<Id>>,
+    current: thread_local::ThreadLocal<RefCell<Vec<Id>>>,
 }
 
 impl CurrentSpan {
     /// Returns a new `CurrentSpan`.
     pub fn new() -> Self {
         Self {
-            current: thread::Local::new(),
+            current: thread_local::ThreadLocal::new(),
         }
     }
 
@@ -155,19 +156,17 @@ impl CurrentSpan {
     ///
     /// [`Id`]: https://docs.rs/tracing/latest/tracing/span/struct.Id.html
     pub fn id(&self) -> Option<Id> {
-        self.current.with(|current| current.last().cloned())?
+        self.current.get()?.borrow().last().cloned()
     }
 
     /// Records that the current thread has entered the span with the provided ID.
     pub fn enter(&self, span: Id) {
-        self.current.with(|current| current.push(span));
+        self.current.get_or_default().borrow_mut().push(span);
     }
 
     /// Records that the current thread has exited a span.
     pub fn exit(&self) {
-        self.current.with(|current| {
-            let _ = current.pop();
-        });
+        self.current.get_or_default().borrow_mut().pop();
     }
 }
 

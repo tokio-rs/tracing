@@ -40,15 +40,8 @@ pub struct Handle<S> {
 }
 
 /// Indicates that an error occurred when reloading a subscriber.
-#[derive(Debug)]
 pub struct Error {
-    kind: ErrorKind,
-}
-
-#[derive(Debug)]
-enum ErrorKind {
-    CollectorGone,
-    Poisoned,
+    _p: (),
 }
 
 // ===== impl Collect =====
@@ -60,12 +53,12 @@ where
 {
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        try_lock!(self.inner.read(), else return Interest::sometimes()).register_callsite(metadata)
+        self.inner.read().register_callsite(metadata)
     }
 
     #[inline]
     fn enabled(&self, metadata: &Metadata<'_>, ctx: subscribe::Context<'_, C>) -> bool {
-        try_lock!(self.inner.read(), else return false).enabled(metadata, ctx)
+        self.inner.read().enabled(metadata, ctx)
     }
 
     #[inline]
@@ -75,7 +68,7 @@ where
         id: &span::Id,
         ctx: subscribe::Context<'_, C>,
     ) {
-        try_lock!(self.inner.read()).new_span(attrs, id, ctx)
+        self.inner.read().new_span(attrs, id, ctx)
     }
 
     #[inline]
@@ -85,37 +78,37 @@ where
         values: &span::Record<'_>,
         ctx: subscribe::Context<'_, C>,
     ) {
-        try_lock!(self.inner.read()).on_record(span, values, ctx)
+        self.inner.read().on_record(span, values, ctx)
     }
 
     #[inline]
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_follows_from(span, follows, ctx)
+        self.inner.read().on_follows_from(span, follows, ctx)
     }
 
     #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_event(event, ctx)
+        self.inner.read().on_event(event, ctx)
     }
 
     #[inline]
     fn on_enter(&self, id: &span::Id, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_enter(id, ctx)
+        self.inner.read().on_enter(id, ctx)
     }
 
     #[inline]
     fn on_exit(&self, id: &span::Id, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_exit(id, ctx)
+        self.inner.read().on_exit(id, ctx)
     }
 
     #[inline]
     fn on_close(&self, id: span::Id, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_close(id, ctx)
+        self.inner.read().on_close(id, ctx)
     }
 
     #[inline]
     fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_id_change(old, new, ctx)
+        self.inner.read().on_id_change(old, new, ctx)
     }
 }
 
@@ -151,15 +144,11 @@ impl<S> Handle<S> {
     /// Invokes a closure with a mutable reference to the current subscriber,
     /// allowing it to be modified in place.
     pub fn modify(&self, f: impl FnOnce(&mut S)) -> Result<(), Error> {
-        let inner = self.inner.upgrade().ok_or(Error {
-            kind: ErrorKind::CollectorGone,
-        })?;
+        let inner = self.inner.upgrade().ok_or_else(Error::new)?;
 
-        let mut lock = try_lock!(inner.write(), else return Err(Error::poisoned()));
-        f(&mut *lock);
         // Release the lock before rebuilding the interest cache, as that
         // function will lock the new subscriber.
-        drop(lock);
+        f(&mut *inner.write());
 
         callsite::rebuild_interest_cache();
         Ok(())
@@ -177,11 +166,9 @@ impl<S> Handle<S> {
     /// Invokes a closure with a borrowed reference to the current subscriber,
     /// returning the result (or an error if the collector no longer exists).
     pub fn with_current<T>(&self, f: impl FnOnce(&S) -> T) -> Result<T, Error> {
-        let inner = self.inner.upgrade().ok_or(Error {
-            kind: ErrorKind::CollectorGone,
-        })?;
-        let inner = try_lock!(inner.read(), else return Err(Error::poisoned()));
-        Ok(f(&*inner))
+        let inner = self.inner.upgrade().ok_or_else(Error::new)?;
+        let lock = inner.read();
+        Ok(f(&*lock))
     }
 }
 
@@ -196,32 +183,34 @@ impl<S> Clone for Handle<S> {
 // ===== impl Error =====
 
 impl Error {
-    fn poisoned() -> Self {
-        Self {
-            kind: ErrorKind::Poisoned,
-        }
+    fn new() -> Self {
+        Self { _p: () }
     }
 
     /// Returns `true` if this error occurred because the subscriber was poisoned by
     /// a panic on another thread.
     pub fn is_poisoned(&self) -> bool {
-        matches!(self.kind, ErrorKind::Poisoned)
+        false
     }
 
     /// Returns `true` if this error occurred because the `Collector`
     /// containing the reloadable subscriber was dropped.
     pub fn is_dropped(&self) -> bool {
-        matches!(self.kind, ErrorKind::CollectorGone)
+        true
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let msg = match self.kind {
-            ErrorKind::CollectorGone => "subscriber no longer exists",
-            ErrorKind::Poisoned => "lock poisoned",
-        };
-        f.pad(msg)
+        f.pad("subscriber no longer exists")
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error")
+            .field("kind", &format_args!("CollectorGone"))
+            .finish()
     }
 }
 

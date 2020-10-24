@@ -6,52 +6,55 @@
 //! opt-in feature flag. Because `parking_lot::RwLock` has a slightly different
 //! API than `std::sync::RwLock` (it does not support poisoning on panics), we
 //! wrap it with a type that provides the same method signatures. This allows us
-//! to transparently swap `parking_lot` in without changing code at the callsite.
-#[allow(unused_imports)] // may be used later;
-pub(crate) use std::sync::{LockResult, PoisonError, TryLockResult};
+//! to transparently swap `parking_lot` in without changing code at the cal
 
 #[cfg(not(feature = "parking_lot"))]
-pub(crate) use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+pub(crate) use self::std_impl::*;
 
 #[cfg(feature = "parking_lot")]
-pub(crate) use self::parking_lot_impl::*;
+pub(crate) use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 
-#[cfg(feature = "parking_lot")]
-mod parking_lot_impl {
-    pub(crate) use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
-    use std::sync::{LockResult, TryLockError, TryLockResult};
+#[cfg(not(feature = "parking_lot"))]
+mod std_impl {
+    #![allow(dead_code)] // some of this may be used later.
+
+    use std::sync::{self, PoisonError, TryLockError};
+    pub(crate) use std::sync::{RwLockReadGuard, RwLockWriteGuard};
 
     #[derive(Debug)]
     pub(crate) struct RwLock<T> {
-        inner: parking_lot::RwLock<T>,
+        inner: sync::RwLock<T>,
     }
 
     impl<T> RwLock<T> {
         pub(crate) fn new(val: T) -> Self {
             Self {
-                inner: parking_lot::RwLock::new(val),
+                inner: sync::RwLock::new(val),
             }
         }
 
         #[inline]
-        pub(crate) fn get_mut(&mut self) -> LockResult<&mut T> {
-            Ok(self.inner.get_mut())
+        pub(crate) fn get_mut(&mut self) -> &mut T {
+            self.inner.get_mut().unwrap_or_else(PoisonError::into_inner)
         }
 
         #[inline]
-        pub(crate) fn read<'a>(&'a self) -> LockResult<RwLockReadGuard<'a, T>> {
-            Ok(self.inner.read())
+        pub(crate) fn read(&self) -> RwLockReadGuard<'_, T> {
+            self.inner.read().unwrap_or_else(PoisonError::into_inner)
         }
 
         #[inline]
-        #[allow(dead_code)] // may be used later;
-        pub(crate) fn try_read<'a>(&'a self) -> TryLockResult<RwLockReadGuard<'a, T>> {
-            self.inner.try_read().ok_or(TryLockError::WouldBlock)
+        pub(crate) fn try_read(&self) -> Option<RwLockReadGuard<'_, T>> {
+            match self.inner.try_read() {
+                Ok(guard) => Some(guard),
+                Err(TryLockError::Poisoned(guard)) => Some(guard.into_inner()),
+                Err(TryLockError::WouldBlock) => None,
+            }
         }
 
         #[inline]
-        pub(crate) fn write<'a>(&'a self) -> LockResult<RwLockWriteGuard<'a, T>> {
-            Ok(self.inner.write())
+        pub(crate) fn write(&self) -> RwLockWriteGuard<'_, T> {
+            self.inner.write().unwrap_or_else(PoisonError::into_inner)
         }
     }
 }
