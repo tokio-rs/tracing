@@ -346,7 +346,7 @@ where
     pub fn pretty(self) -> Subscriber<S, format::Pretty, format::Format<format::Pretty, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.pretty(),
-            fmt_fields: format::Pretty,
+            fmt_fields: format::Pretty::default(),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             _inner: self._inner,
