@@ -139,7 +139,7 @@
 //! ```
 //!
 //! Applications that wish to use `tracing-error`-enabled errors should
-//! construct an [`ErrorSubscriber`] and add it to their [`collector`] in order to
+//! construct an [`ErrorSubscriber`] and add it to their [collector] in order to
 //! enable capturing [`SpanTrace`]s. For example:
 //!
 //! ```rust
