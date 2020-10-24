@@ -343,6 +343,9 @@ where
         }
     }
 
+    /// Sets the subscriber being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(self) -> Subscriber<S, format::Pretty, format::Format<format::Pretty, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.pretty(),

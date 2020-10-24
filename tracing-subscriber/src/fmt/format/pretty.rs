@@ -1,8 +1,7 @@
 use super::*;
 use crate::{
-    field::{MakeVisitor, VisitOutput},
-    fmt::fmt_subscriber::FmtContext,
-    fmt::fmt_subscriber::FormattedFields,
+    field::{VisitFmt, VisitOutput},
+    fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
 
@@ -18,9 +17,9 @@ use tracing_core::{
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-#[cfg(feature = "ansi")]
 use ansi_term::{Colour, Style};
 
+/// An excessively pretty, human-readable event formatter.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Pretty {
     display_location: bool,
@@ -38,6 +37,50 @@ pub struct PrettyVisitor<'a> {
     result: fmt::Result,
 }
 
+// === impl Pretty ===
+
+impl Default for Pretty {
+    fn default() -> Self {
+        Self {
+            display_location: true,
+        }
+    }
+}
+
+impl Pretty {
+    fn style_for(level: &Level) -> Style {
+        match *level {
+            Level::TRACE => Style::new().fg(Colour::Purple),
+            Level::DEBUG => Style::new().fg(Colour::Blue),
+            Level::INFO => Style::new().fg(Colour::Green),
+            Level::WARN => Style::new().fg(Colour::Yellow),
+            Level::ERROR => Style::new().fg(Colour::Red),
+        }
+    }
+
+    /// Sets whether or not the source code location from which an event
+    /// originated is displayed.
+    ///
+    /// This defaults to `true`.
+    pub fn with_source_location(self, display_location: bool) -> Self {
+        Self {
+            display_location,
+            ..self
+        }
+    }
+}
+
+impl<T> Format<Pretty, T> {
+    /// Sets whether or not the source code location from which an event
+    /// originated is displayed.
+    ///
+    /// This defaults to `true`.
+    pub fn with_source_location(mut self, display_location: bool) -> Self {
+        self.format = self.format.with_source_location(display_location);
+        self
+    }
+}
+
 impl<C, N, T> FormatEvent<C, N> for Format<Pretty, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
@@ -50,15 +93,6 @@ where
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
-        fn style_for(level: &Level) -> Style {
-            match *level {
-                Level::TRACE => Style::new().fg(Colour::Purple),
-                Level::DEBUG => Style::new().fg(Colour::Blue),
-                Level::INFO => Style::new().fg(Colour::Green),
-                Level::WARN => Style::new().fg(Colour::Yellow),
-                Level::ERROR => Style::new().fg(Colour::Red),
-            }
-        }
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
         #[cfg(feature = "tracing-log")]
@@ -66,30 +100,34 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         write!(writer, "  ")?;
-        time::write(&self.timer, writer, self.ansi)?;
+        time::write(&self.timer, writer, true)?;
 
         let style = if self.display_level {
-            style_for(meta.level())
+            Pretty::style_for(meta.level())
         } else {
             Style::new()
         };
 
         if self.display_target {
+            let bold = style.bold();
             write!(
                 writer,
                 "{}{}{}: ",
-                style.bold().prefix(),
+                bold.prefix(),
                 meta.target(),
-                style.bold().infix(style)
+                bold.infix(style)
             )?;
         }
         let mut v = PrettyVisitor::new(writer, true).with_style(style);
         event.record(&mut v);
         v.finish()?;
         writeln!(writer, "")?;
-        let thread = self.display_thread_name || self.display_thread_id;
+
         let dimmed = Style::new().dimmed().italic();
-        if let (Some(file), Some(line)) = (meta.file(), meta.line()) {
+        let thread = self.display_thread_name || self.display_thread_id;
+        if let (true, Some(file), Some(line)) =
+            (self.format.display_location, meta.file(), meta.line())
+        {
             write!(
                 writer,
                 "    {} {}:{}{}",
@@ -166,14 +204,22 @@ where
     }
 }
 
-// === PrettyFields ===
+impl<'writer> FormatFields<'writer> for Pretty {
+    fn format_fields<R: RecordFields>(
+        &self,
+        writer: &'writer mut dyn fmt::Write,
+        fields: R,
+    ) -> fmt::Result {
+        let mut v = PrettyVisitor::new(writer, true);
+        fields.record(&mut v);
+        v.finish()
+    }
 
-impl<'a> MakeVisitor<&'a mut dyn Write> for Pretty {
-    type Visitor = PrettyVisitor<'a>;
-
-    #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
-        PrettyVisitor::new(target, true)
+    fn add_fields(&self, current: &'writer mut String, fields: &span::Record<'_>) -> fmt::Result {
+        let empty = current.is_empty();
+        let mut v = PrettyVisitor::new(current, empty);
+        fields.record(&mut v);
+        v.finish()
     }
 }
 
@@ -195,7 +241,7 @@ impl<'a> PrettyVisitor<'a> {
         }
     }
 
-    pub fn with_style(self, style: Style) -> Self {
+    pub(crate) fn with_style(self, style: Style) -> Self {
         Self { style, ..self }
     }
 
@@ -271,15 +317,26 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for PrettyVisitor<'a> {
+impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
     fn finish(self) -> fmt::Result {
         write!(self.writer, "{}", self.style.suffix())?;
         self.result
     }
 }
 
-impl<'a> crate::field::VisitFmt for PrettyVisitor<'a> {
+impl<'a> VisitFmt for PrettyVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         self.writer
+    }
+}
+
+impl<'a> fmt::Debug for PrettyVisitor<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PrettyVisitor")
+            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("is_empty", &self.is_empty)
+            .field("result", &self.result)
+            .field("style", &self.style)
+            .finish()
     }
 }

@@ -571,7 +571,7 @@ where
 
     /// Sets the collector being built to use a less verbose formatter.
     ///
-    /// See [`format::Compact`](../fmt/format/struct.Compact.html).
+    /// See [`format::Compact`].
     pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -582,6 +582,9 @@ where
         }
     }
 
+    /// Sets the collector being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(
         self,
     ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T>, F, W> {

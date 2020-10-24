@@ -220,6 +220,13 @@ impl<F, T> Format<F, T> {
         }
     }
 
+    /// Use an excessively pretty, human-readable output format.
+    ///
+    /// See [`Pretty`].
+    ///
+    /// Note that this requires the "ansi" feature to be enabled.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(self) -> Format<Pretty, T> {
         Format {
             format: Pretty::default(),
