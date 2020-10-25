@@ -27,7 +27,7 @@
 //!
 //! ## Filtering Events with Environment Variables
 //!
-//! The default subscriber installed by `init` enables you to filter events
+//! The default collector installed by `init` enables you to filter events
 //! at runtime using environment variables (using the [`EnvFilter`]).
 //!
 //! The filter syntax is a superset of the [`env_logger`] syntax.
@@ -52,7 +52,7 @@
 //! You can create one by calling:
 //!
 //! ```rust
-//! let subscriber = tracing_subscriber::fmt()
+//! let collector = tracing_subscriber::fmt()
 //!     // ... add configuration
 //!     .finish();
 //! ```
@@ -213,7 +213,7 @@
 //!
 //! ### Using Your Collector
 //!
-//! Finally, once you have configured your `Collector`, you need to
+//! Finally, once you have configured your `Collect`, you need to
 //! configure your executable to use it.
 //!
 //! A collector can be installed globally using:
@@ -221,31 +221,31 @@
 //! use tracing;
 //! use tracing_subscriber::fmt;
 //!
-//! let subscriber = fmt::Collector::new();
+//! let collector = fmt::Collector::new();
 //!
-//! tracing::collect::set_global_default(subscriber)
-//!     .map_err(|_err| eprintln!("Unable to set global default subscriber"));
+//! tracing::collect::set_global_default(collector)
+//!     .map_err(|_err| eprintln!("Unable to set global default collector"));
 //! // Note this will only fail if you try to set the global default
-//! // subscriber multiple times
+//! // collector multiple times
 //! ```
 //!
-//! ### Composing Layers
+//! ### Composing Subscribers
 //!
-//! Composing an [`EnvFilter`] `Subscriber` and a [format `Subscriber`](../fmt/struct.Subscriber.html):
+//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](../fmt/struct.Subscriber.html):
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
 //! use tracing_subscriber::prelude::*;
 //!
-//! let fmt_layer = fmt::subscriber()
+//! let fmt_subscriber = fmt::subscriber()
 //!     .with_target(false);
-//! let filter_layer = EnvFilter::try_from_default_env()
+//! let filter_subscriber = EnvFilter::try_from_default_env()
 //!     .or_else(|_| EnvFilter::try_new("info"))
 //!     .unwrap();
 //!
 //! tracing_subscriber::registry()
-//!     .with(filter_layer)
-//!     .with(fmt_layer)
+//!     .with(filter_subscriber)
+//!     .with(fmt_subscriber)
 //!     .init();
 //! ```
 //!
@@ -334,7 +334,7 @@ pub struct CollectorBuilder<
 ///     .with_target(false)
 ///     .with_timer(tracing_subscriber::fmt::time::uptime())
 ///     .with_level(true)
-///     // Set the subscriber as the default.
+///     // Set the collector as the default.
 ///     .init();
 /// ```
 ///
@@ -345,18 +345,18 @@ pub struct CollectorBuilder<
 ///
 /// fn init_subscriber() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///     tracing_subscriber::fmt()
-///         // Configure the subscriber to emit logs in JSON format.
+///         // Configure the collector to emit logs in JSON format.
 ///         .json()
-///         // Configure the subscriber to flatten event fields in the output JSON objects.
+///         // Configure the collector to flatten event fields in the output JSON objects.
 ///         .flatten_event(true)
-///         // Set the subscriber as the default, returning an error if this fails.
+///         // Set the collector as the default, returning an error if this fails.
 ///         .try_init()?;
 ///
 ///     Ok(())
 /// }
 /// ```
 ///
-/// Rather than setting the subscriber as the default, [`finish`] _returns_ the
+/// Rather than setting the collector as the default, [`finish`] _returns_ the
 /// constructed collector, which may then be passed to other functions:
 ///
 /// ```rust
@@ -387,7 +387,7 @@ pub fn fmt() -> CollectorBuilder {
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///
 /// [formatting subscriber]: struct.Subscriber.html
-/// [composed]: ../layer/index.html
+/// [composed]: ../subscribe/index.html
 /// [`Subscriber::default`]: struct.Subscriber.html#method.default
 pub fn subscriber<S>() -> Subscriber<S> {
     Subscriber::default()
@@ -762,7 +762,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include the current span
+    /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
@@ -776,7 +776,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include a list (from
+    /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
