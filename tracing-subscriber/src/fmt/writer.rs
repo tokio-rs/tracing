@@ -44,9 +44,8 @@ use std::{
 /// ```
 ///
 /// A closure can be used to introduce arbitrary logic into how the writer is
-/// created. For example, this will send every 5th event to stderr, and all
-/// other events to stdout (why you would actually want to do this, I have no
-/// idea, but you _can_):
+/// created. Consider the (admittedly rather silly) example of sending every 5th
+/// event to stderr, and all other events to stdout:
 ///
 /// ```
 /// use std::io;
@@ -65,7 +64,6 @@ use std::{
 /// # drop(subscriber);
 /// ```
 ///
-
 /// A single instance of a type implementing [`io::Write`] may be used as a
 /// `MakeWriter` by wrapping it in a [`Mutex`][mutex]. For example, we could
 /// write to a file like so:
