@@ -187,7 +187,6 @@ where
                 )?;
             }
 
-
             let ext = span.extensions();
             let fields = &ext
                 .get::<FormattedFields<N>>()

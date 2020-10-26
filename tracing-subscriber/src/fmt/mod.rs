@@ -171,7 +171,7 @@
 //!
 //! * [`format::Json`]: Outputs newline-delimited JSON logs. This is intended
 //!   for production use with systems where structured logs are consumed as JSON
-//!   by analysis and viewing tools. The JSON output, as seen below, is *not* 
+//!   by analysis and viewing tools. The JSON output, as seen below, is *not*
 //!   optimized for human readability.
 //!
 //!   For example:
