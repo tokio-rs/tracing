@@ -24,11 +24,17 @@ use ansi_term::{Colour, Style};
 
 #[cfg(feature = "json")]
 mod json;
-
-use fmt::{Debug, Display};
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use json::*;
+
+#[cfg(feature = "ansi")]
+mod pretty;
+#[cfg(feature = "ansi")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+pub use pretty::*;
+
+use fmt::{Debug, Display};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -205,6 +211,25 @@ impl<F, T> Format<F, T> {
     pub fn compact(self) -> Format<Compact, T> {
         Format {
             format: Compact,
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+            display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
+        }
+    }
+
+    /// Use an excessively pretty, human-readable output format.
+    ///
+    /// See [`Pretty`].
+    ///
+    /// Note that this requires the "ansi" feature to be enabled.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn pretty(self) -> Format<Pretty, T> {
+        Format {
+            format: Pretty::default(),
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
@@ -521,6 +546,7 @@ where
 }
 
 // === impl FormatFields ===
+
 impl<'writer, M> FormatFields<'writer> for M
 where
     M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,
@@ -622,10 +648,7 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            self.record_debug(
-                field,
-                &format_args!("{} {}.source={}", value, field, source),
-            )
+            self.record_debug(field, &format_args!("{}, {}: {}", value, field, source))
         } else {
             self.record_debug(field, &format_args!("{}", value))
         }
