@@ -58,8 +58,7 @@ impl Pretty {
         }
     }
 
-    /// Sets whether or not the source code location from which an event
-    /// originated is displayed.
+    /// Sets whether the event's source code location is displayed.
     ///
     /// This defaults to `true`.
     pub fn with_source_location(self, display_location: bool) -> Self {
@@ -188,7 +187,6 @@ where
                 )?;
             }
 
-            // seen = true;
 
             let ext = span.extensions();
             let fields = &ext

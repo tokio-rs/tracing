@@ -57,7 +57,7 @@
 //!     .finish();
 //! ```
 //!
-//! You can find the configuration methods for [`FmtCollector`] in
+//! The configuration methods for [`FmtCollector`] can be found in
 //! [`fmtBuilder`].
 //!
 //! ### Formatters
@@ -171,8 +171,8 @@
 //!
 //! * [`format::Json`]: Outputs newline-delimited JSON logs. This is intended
 //!   for production use with systems where structured logs are consumed as JSON
-//!   by analysis and viewing tools. The JSON output is *not* pretty-printed for
-//!   human readability.
+//!   by analysis and viewing tools. The JSON output, as seen below, is *not* 
+//!   optimized for human readability.
 //!
 //!   For example:
 //!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.58s
