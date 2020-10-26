@@ -898,14 +898,16 @@ struct FmtLevel<'a, F: ?Sized> {
 impl<'a, F: LevelNames> fmt::Display for FmtLevel<'a, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
-        if self.ansi {
-            return match *self.level {
-                Level::TRACE => write!(f, "{}", Colour::Purple.paint(F::TRACE_STR)),
-                Level::DEBUG => write!(f, "{}", Colour::Blue.paint(F::DEBUG_STR)),
-                Level::INFO => write!(f, "{}", Colour::Green.paint(F::INFO_STR)),
-                Level::WARN => write!(f, "{}", Colour::Yellow.paint(F::WARN_STR)),
-                Level::ERROR => write!(f, "{}", Colour::Red.paint(F::ERROR_STR)),
-            };
+        {
+            if self.ansi {
+                return match *self.level {
+                    Level::TRACE => write!(f, "{}", Colour::Purple.paint(F::TRACE_STR)),
+                    Level::DEBUG => write!(f, "{}", Colour::Blue.paint(F::DEBUG_STR)),
+                    Level::INFO => write!(f, "{}", Colour::Green.paint(F::INFO_STR)),
+                    Level::WARN => write!(f, "{}", Colour::Yellow.paint(F::WARN_STR)),
+                    Level::ERROR => write!(f, "{}", Colour::Red.paint(F::ERROR_STR)),
+                };
+            }
         }
 
         match *self.level {
