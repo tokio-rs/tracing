@@ -80,7 +80,8 @@ pub fn traced_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     .expect("Could not find crate name in module path")
                     .to_string();
                 let env_filter = format!("{}=trace", crate_name);
-                let subscriber = tracing_test::get_subscriber(&tracing_test::GLOBAL_BUF, &env_filter);
+                let mock_writer = tracing_test::MockWriter::new(&tracing_test::GLOBAL_BUF);
+                let subscriber = tracing_test::get_subscriber(mock_writer, &env_filter);
                 tracing::dispatcher::set_global_default(subscriber)
                     .expect("Could not set global tracing subscriber");
             });

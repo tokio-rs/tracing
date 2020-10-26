@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 
 mod subscriber;
 
-pub use subscriber::get_subscriber;
+pub use subscriber::{get_subscriber, MockWriter};
 pub use tracing_test_macro::traced_test;
 
 /// Static variable to ensure that logging is only initialized once.
