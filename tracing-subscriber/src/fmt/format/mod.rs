@@ -349,7 +349,7 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    fn format_level(&self, level: &Level, writer: &mut dyn fmt::Write) -> fmt::Result
+    fn format_level(&self, level: Level, writer: &mut dyn fmt::Write) -> fmt::Result
     where
         F: LevelNames,
     {
@@ -435,7 +435,7 @@ where
         #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
-        self.format_level(meta.level(), writer)?;
+        self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -498,7 +498,7 @@ where
         #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
-        self.format_level(meta.level(), writer)?;
+        self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -855,7 +855,7 @@ trait LevelNames {
     const ERROR_STR: &'static str;
 
     #[cfg(feature = "ansi")]
-    fn format_level<'a>(level: &'a Level, ansi: bool) -> FmtLevel<'a, Self> {
+    fn format_level(level: Level, ansi: bool) -> FmtLevel<Self> {
         FmtLevel {
             level,
             ansi,
@@ -864,7 +864,7 @@ trait LevelNames {
     }
 
     #[cfg(not(feature = "ansi"))]
-    fn format_level<'a>(level: &'a Level) -> FmtLevel<'a, Self> {
+    fn format_level(level: Level) -> FmtLevel<Self> {
         FmtLevel {
             level,
             _f: PhantomData,
@@ -887,19 +887,19 @@ impl LevelNames for Compact {
     const ERROR_STR: &'static str = "!";
 }
 
-struct FmtLevel<'a, F: ?Sized> {
-    level: &'a Level,
+struct FmtLevel<F: ?Sized> {
+    level: Level,
     #[cfg(feature = "ansi")]
     ansi: bool,
-    _f: PhantomData<fn(&'a F)>,
+    _f: PhantomData<fn(F)>,
 }
 
-impl<'a, F: LevelNames> fmt::Display for FmtLevel<'a, F> {
+impl<'a, F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
         {
             if self.ansi {
-                return match *self.level {
+                return match self.level {
                     Level::TRACE => write!(f, "{}", Colour::Purple.paint(F::TRACE_STR)),
                     Level::DEBUG => write!(f, "{}", Colour::Blue.paint(F::DEBUG_STR)),
                     Level::INFO => write!(f, "{}", Colour::Green.paint(F::INFO_STR)),
@@ -909,7 +909,7 @@ impl<'a, F: LevelNames> fmt::Display for FmtLevel<'a, F> {
             }
         }
 
-        match *self.level {
+        match self.level {
             Level::TRACE => f.pad(F::TRACE_STR),
             Level::DEBUG => f.pad(F::DEBUG_STR),
             Level::INFO => f.pad(F::INFO_STR),
