@@ -867,7 +867,6 @@ trait LevelNames {
     fn format_level<'a>(level: &'a Level) -> FmtLevel<'a, Self> {
         FmtLevel {
             level,
-            ansi,
             _f: PhantomData,
         }
     }
