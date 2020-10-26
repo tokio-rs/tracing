@@ -96,6 +96,12 @@
     unused_parens,
     while_true
 )]
+// Using struct update syntax when a struct has no additional fields avoids
+// a potential source change if additional fields are added to the struct in the
+// future, reducing diff noise. Allow this even though clippy considers it
+// "needless".
+#![allow(clippy::needless_update)]
+
 use tracing_core::span::Id;
 
 #[macro_use]
