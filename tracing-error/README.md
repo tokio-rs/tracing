@@ -44,7 +44,7 @@ The crate provides the following:
 
 * [`SpanTrace`], a captured trace of the current `tracing` [span] context
 
-* [`ErrorLayer`], a [subscriber layer] which enables capturing `SpanTrace`s
+* [`ErrorSubscriber`], a [subscriber layer] which enables capturing `SpanTrace`s
 
 **Note**: This crate is currently experimental.
 
@@ -156,18 +156,18 @@ fn print_naive_spantraces(error: &(dyn Error + 'static)) {
 ```
 
 Applications that wish to use `tracing-error`-enabled errors should
-construct an [`ErrorLayer`] and add it to their [`Subscriber`] in order to
+construct an [`ErrorSubscriber`] and add it to their [`Subscriber`] in order to
 enable capturing [`SpanTrace`]s. For example:
 
 ```rust
-use tracing_error::ErrorLayer;
+use tracing_error::ErrorSubscriber;
 use tracing_subscriber::prelude::*;
 
 fn main() {
     let subscriber = tracing_subscriber::Registry::default()
         // any number of other subscriber layers may be added before or
-        // after the `ErrorLayer`...
-        .with(ErrorLayer::default());
+        // after the `ErrorSubscriber`...
+        .with(ErrorSubscriber::default());
 
     // set the subscriber as the default for the application
     tracing::subscriber::set_global_default(subscriber);
@@ -222,7 +222,7 @@ for inclusion in Tracing by you, shall be licensed as MIT, without any additiona
 terms or conditions.
 
 [`SpanTrace`]: https://docs.rs/tracing-error/*/tracing_error/struct.SpanTrace.html
-[`ErrorLayer`]: https://docs.rs/tracing-error/*/tracing_error/struct.ErrorLayer.html
+[`ErrorSubscriber`]: https://docs.rs/tracing-error/*/tracing_error/struct.ErrorSubscriber.html
 [`TracedError`]: https://docs.rs/tracing-error/*/tracing_error/struct.TracedError.html
 [`InstrumentResult`]: https://docs.rs/tracing-error/*/tracing_error/trait.InstrumentResult.html
 [`InstrumentError`]: https://docs.rs/tracing-error/*/tracing_error/trait.InstrumentError.html
@@ -235,4 +235,4 @@ terms or conditions.
 [`tracing`]: https://docs.rs/tracing
 [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 [`SpanTrace`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.SpanTrace.html
-[`ErrorLayer`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.ErrorLayer.html
+[`ErrorSubscriber`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.ErrorSubscriber.html

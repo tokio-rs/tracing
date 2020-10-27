@@ -152,7 +152,7 @@ pub struct SpanTraceStatus(SpanTraceStatusInner);
 
 impl SpanTraceStatus {
     /// Formatting a SpanTrace is not supported, likely because there is no
-    /// ErrorLayer or the ErrorLayer is from a different version of
+    /// ErrorSubscriber or the ErrorSubscriber is from a different version of
     /// tracing_error
     pub const UNSUPPORTED: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Unsupported);
 
@@ -265,14 +265,14 @@ impl fmt::Debug for SpanTrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ErrorLayer;
+    use crate::ErrorSubscriber;
     use tracing::collect::with_default;
     use tracing::{span, Level};
     use tracing_subscriber::{prelude::*, registry::Registry};
 
     #[test]
     fn capture_supported() {
-        let collector = Registry::default().with(ErrorLayer::default());
+        let collector = Registry::default().with(ErrorSubscriber::default());
 
         with_default(collector, || {
             let span = span!(Level::ERROR, "test span");
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn capture_empty() {
-        let collector = Registry::default().with(ErrorLayer::default());
+        let collector = Registry::default().with(ErrorSubscriber::default());
 
         with_default(collector, || {
             let span_trace = SpanTrace::capture();
