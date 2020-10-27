@@ -1189,7 +1189,7 @@ pub(super) mod test {
     fn run_test(subscriber: impl Into<Dispatch>, buf: MockMakeWriter, expected: &str) {
         let _default = set_default(&subscriber.into());
         tracing::info!("hello");
-        assert_eq!(expected, buf.to_string())
+        assert_eq!(expected, buf.get_string())
     }
 
     #[test]
@@ -1209,7 +1209,7 @@ pub(super) mod test {
         });
         assert_eq!(
             "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
-            make_writer.to_string()
+            make_writer.get_string()
         );
     }
 
@@ -1232,13 +1232,13 @@ pub(super) mod test {
             tracing::info!("hello");
             assert_eq!(
                 "fake time span3: tracing_subscriber::fmt::format::test: hello\n",
-                make_writer.to_string().as_str()
+                make_writer.get_string().as_str()
             );
 
             tracing::info!(parent: &span2, "hello");
             assert_eq!(
                 "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
-                make_writer.to_string().as_str()
+                make_writer.get_string().as_str()
             );
         });
     }

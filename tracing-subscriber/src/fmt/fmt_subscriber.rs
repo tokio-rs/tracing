@@ -936,7 +936,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(make_writer.to_string());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!("", actual.as_str());
     }
 
@@ -955,7 +955,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(make_writer.to_string());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n",
@@ -978,7 +978,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(make_writer.to_string());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
             actual.as_str()
@@ -1001,7 +1001,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(make_writer.to_string());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
@@ -1023,7 +1023,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(make_writer.to_string());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: new\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\

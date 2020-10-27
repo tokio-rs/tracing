@@ -1173,7 +1173,7 @@ mod test {
             self.buf.lock().unwrap()
         }
 
-        pub(crate) fn to_string(&self) -> String {
+        pub(crate) fn get_string(&self) -> String {
             let mut buf = self.buf.lock().expect("lock shouldn't be poisoned");
             let string = std::str::from_utf8(&buf[..])
                 .expect("formatter should not have produced invalid utf-8")
