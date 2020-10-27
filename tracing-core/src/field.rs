@@ -4,20 +4,20 @@
 //! as _fields_. These fields consist of a mapping from a key (corresponding to
 //! a `&str` but represented internally as an array index) to a [`Value`].
 //!
-//! # `Value`s and `Subscriber`s
+//! # `Value`s and `Collect`s
 //!
-//! `Subscriber`s consume `Value`s as fields attached to [span]s or [`Event`]s.
+//! Collectors consume `Value`s as fields attached to [span]s or [`Event`]s.
 //! The set of field keys on a given span or is defined on its [`Metadata`].
-//! When a span is created, it provides [`Attributes`] to the `Subscriber`'s
+//! When a span is created, it provides [`Attributes`] to the collector's
 //! [`new_span`] method, containing any fields whose values were provided when
-//! the span was created; and may call the `Subscriber`'s [`record`] method
+//! the span was created; and may call the collector's [`record`] method
 //! with additional [`Record`]s if values are added for more of its fields.
-//! Similarly, the [`Event`] type passed to the subscriber's [`event`] method
+//! Similarly, the [`Event`] type passed to the collector's [`event`] method
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
 //! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
-//! implementation. `Subscriber`s are provided these primitive value types as
+//! implementation. Collectors are provided these primitive value types as
 //! `dyn Value` trait objects.
 //!
 //! These trait objects can be formatted using `fmt::Debug`, but may also be
@@ -27,19 +27,16 @@
 //! we might record integers by incrementing counters for their field names,
 //! rather than printing them.
 //!
-//! [`Value`]: trait.Value.html
-//! [span]: ../span/
-//! [`Event`]: ../event/struct.Event.html
-//! [`Metadata`]: ../metadata/struct.Metadata.html
-//! [`Attributes`]:  ../span/struct.Attributes.html
-//! [`Record`]: ../span/struct.Record.html
-//! [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
-//! [`record`]: ../subscriber/trait.Subscriber.html#method.record
-//! [`event`]:  ../subscriber/trait.Subscriber.html#method.event
-//! [`Value::record`]: trait.Value.html#method.record
-//! [`Visit`]: trait.Visit.html
+//! [span]: super::span
+//! [`Event`]: super::event::Event
+//! [`Metadata`]: super::metadata::Metadata
+//! [`Attributes`]:  super::span::Attributes
+//! [`Record`]: super::span::Record
+//! [`new_span`]: super::collect::Collect::new_span
+//! [`record`]: super::collect::Collect::record
+//! [`event`]:  super::collect::Collect::event
 use crate::callsite;
-use crate::stdlib::{
+use core::{
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
@@ -55,7 +52,7 @@ use self::private::ValidLen;
 /// As keys are defined by the _metadata_ of a span, rather than by an
 /// individual instance of a span, a key may be used to access the same field
 /// across all instances of a given span with the same metadata. Thus, when a
-/// subscriber observes a new span, it need only access a field by name _once_,
+/// collector observes a new span, it need only access a field by name _once_,
 /// and use the key for that name for all other accesses.
 #[derive(Debug)]
 pub struct Field {
@@ -100,7 +97,7 @@ pub struct Iter {
 /// [recorded], it calls the appropriate method on the provided visitor to
 /// indicate the type that value should be recorded as.
 ///
-/// When a [`Subscriber`] implementation [records an `Event`] or a
+/// When a [`Collect`] implementation [records an `Event`] or a
 /// [set of `Value`s added to a `Span`], it can pass an `&mut Visit` to the
 /// `record` method on the provided [`ValueSet`] or [`Event`]. This visitor
 /// will then be used to record all the field-value pairs present on that
@@ -179,13 +176,11 @@ pub struct Iter {
 /// <code>std::error::Error</code> trait.
 /// </pre></div>
 ///
-/// [`Value`]: trait.Value.html
-/// [recorded]: trait.Value.html#method.record
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [records an `Event`]: ../subscriber/trait.Subscriber.html#method.event
-/// [set of `Value`s added to a `Span`]: ../subscriber/trait.Subscriber.html#method.record
-/// [`Event`]: ../event/struct.Event.html
-/// [`ValueSet`]: struct.ValueSet.html
+/// [recorded]: Value::record
+/// [`Collect`]: super::collect::Collect
+/// [records an `Event`]: super::collect::Collect::event
+/// [set of `Value`s added to a `Span`]: super::collect::Collect::record
+/// [`Event`]: super::event::Event
 pub trait Visit {
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
@@ -233,7 +228,7 @@ pub trait Visit {
 /// the [visitor] passed to their `record` method in order to indicate how
 /// their data should be recorded.
 ///
-/// [visitor]: trait.Visit.html
+/// [visitor]: Visit
 pub trait Value: crate::sealed::Sealed {
     /// Visits this value with the given `Visitor`.
     fn record(&self, key: &Field, visitor: &mut dyn Visit);
@@ -448,7 +443,7 @@ impl fmt::Debug for dyn Value {
         struct NullCallsite;
         static NULL_CALLSITE: NullCallsite = NullCallsite;
         impl crate::callsite::Callsite for NullCallsite {
-            fn set_interest(&self, _: crate::subscriber::Interest) {
+            fn set_interest(&self, _: crate::collect::Interest) {
                 unreachable!("you somehow managed to register the null callsite?")
             }
 
@@ -532,8 +527,8 @@ impl Field {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// which defines this field.
     ///
-    /// [`Identifier`]: ../callsite/struct.Identifier.html
-    /// [`Callsite`]: ../callsite/trait.Callsite.html
+    /// [`Identifier`]: super::callsite::Identifier
+    /// [`Callsite`]: super::callsite::Callsite
     #[inline]
     pub fn callsite(&self) -> callsite::Identifier {
         self.fields.callsite()
@@ -598,15 +593,15 @@ impl FieldSet {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// which defines this set of fields..
     ///
-    /// [`Identifier`]: ../callsite/struct.Identifier.html
-    /// [`Callsite`]: ../callsite/trait.Callsite.html
+    /// [`Identifier`]: super::callsite::Identifier
+    /// [`Callsite`]: super::callsite::Callsite
     pub(crate) fn callsite(&self) -> callsite::Identifier {
         callsite::Identifier(self.callsite.0)
     }
 
     /// Returns the [`Field`] named `name`, or `None` if no such field exists.
     ///
-    /// [`Field`]: ../struct.Field.html
+    /// [`Field`]: super::Field
     pub fn field<Q: ?Sized>(&self, name: &Q) -> Option<Field>
     where
         Q: Borrow<str>,
@@ -727,8 +722,8 @@ impl<'a> ValueSet<'a> {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// defining the fields this `ValueSet` refers to.
     ///
-    /// [`Identifier`]: ../callsite/struct.Identifier.html
-    /// [`Callsite`]: ../callsite/trait.Callsite.html
+    /// [`Identifier`]: super::callsite::Identifier
+    /// [`Callsite`]: super::callsite::Callsite
     #[inline]
     pub fn callsite(&self) -> callsite::Identifier {
         self.fields.callsite()
@@ -736,7 +731,7 @@ impl<'a> ValueSet<'a> {
 
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
-    /// [visitor]: ../trait.Visit.html
+    /// [visitor]: super::Visit
     pub(crate) fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
@@ -833,7 +828,6 @@ impl_valid_len! {
 mod test {
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
-    use crate::stdlib::{borrow::ToOwned, string::String};
 
     struct TestCallsite1;
     static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
@@ -847,7 +841,7 @@ mod test {
     };
 
     impl crate::callsite::Callsite for TestCallsite1 {
-        fn set_interest(&self, _: crate::subscriber::Interest) {
+        fn set_interest(&self, _: crate::collect::Interest) {
             unimplemented!()
         }
 
@@ -868,7 +862,7 @@ mod test {
     };
 
     impl crate::callsite::Callsite for TestCallsite2 {
-        fn set_interest(&self, _: crate::subscriber::Interest) {
+        fn set_interest(&self, _: crate::collect::Interest) {
             unimplemented!()
         }
 
@@ -934,7 +928,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -953,7 +947,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
                 assert_eq!(field.name(), "bar")
             }
         }
@@ -962,6 +956,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn record_debug_fn() {
         let fields = TEST_META_1.fields();
         let values = &[
@@ -972,9 +967,9 @@ mod test {
         let valueset = fields.value_set(values);
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use crate::stdlib::fmt::Write;
+            use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
-        assert_eq!(result, "123".to_owned());
+        assert_eq!(result, String::from("123"));
     }
 }

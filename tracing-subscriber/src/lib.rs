@@ -1,13 +1,13 @@
 //! Utilities for implementing and composing [`tracing`] subscribers.
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
-//! scoped, structured, and async-aware diagnostics. The [`Subscriber`] trait
+//! scoped, structured, and async-aware diagnostics. The [`Collect`] trait
 //! represents the functionality necessary to collect this trace data. This
 //! crate contains tools for composing subscribers out of smaller units of
 //! behaviour, and batteries-included implementations of common subscriber
 //! functionality.
 //!
-//! `tracing-subscriber` is intended for use by both `Subscriber` authors and
+//! `tracing-subscriber` is intended for use by both `Collector` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
@@ -16,7 +16,7 @@
 //!
 //! ## Included Subscribers
 //!
-//! The following `Subscriber`s are provided for application authors:
+//! The following `Collector`s are provided for application authors:
 //!
 //! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
 //!
@@ -58,7 +58,7 @@
 //! long as doing so complies with this policy.
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
 //! [`EnvFilter`]: filter/struct.EnvFilter.html
 //! [`fmt`]: fmt/index.html
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
@@ -70,6 +70,7 @@
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
@@ -95,33 +96,26 @@
     unused_parens,
     while_true
 )]
+// Using struct update syntax when a struct has no additional fields avoids
+// a potential source change if additional fields are added to the struct in the
+// future, reducing diff noise. Allow this even though clippy considers it
+// "needless".
+#![allow(clippy::needless_update)]
+
 use tracing_core::span::Id;
 
 #[macro_use]
-macro_rules! try_lock {
-    ($lock:expr) => {
-        try_lock!($lock, else return)
-    };
-    ($lock:expr, else $els:expr) => {
-        if let Ok(l) = $lock {
-            l
-        } else if std::thread::panicking() {
-            $els
-        } else {
-            panic!("lock poisoned")
-        }
-    };
-}
+mod macros;
 
 pub mod field;
 pub mod filter;
 #[cfg(feature = "fmt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
 pub mod fmt;
-pub mod layer;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
+pub mod subscribe;
 pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;
@@ -130,26 +124,21 @@ pub mod util;
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use filter::EnvFilter;
 
-pub use layer::Layer;
+pub use subscribe::Subscribe;
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use registry::Registry;
+cfg_feature!("fmt", {
+    pub use fmt::fmt;
+    pub use fmt::Subscriber as FmtSubscriber;
+});
 
-///
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub fn registry() -> Registry {
-    Registry::default()
-}
+cfg_feature!("registry", {
+    pub use registry::Registry;
 
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::Subscriber as FmtSubscriber;
-
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::fmt;
+    ///
+    pub fn registry() -> Registry {
+        Registry::default()
+    }
+});
 
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.

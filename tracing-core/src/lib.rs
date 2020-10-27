@@ -10,7 +10,7 @@
 //!
 //! * [`Event`] represents a single event within a trace.
 //!
-//! * [`Subscriber`], the trait implemented to collect trace data.
+//! * [`Collect`], the trait implemented to collect trace data.
 //!
 //! * [`Metadata`] and [`Callsite`] provide information describing spans and
 //!   `Event`s.
@@ -18,7 +18,7 @@
 //! * [`Field`], [`FieldSet`], [`Value`], and [`ValueSet`] represent the
 //!   structured data attached to a span.
 //!
-//! * [`Dispatch`] allows spans and events to be dispatched to `Subscriber`s.
+//! * [`Dispatch`] allows spans and events to be dispatched to collectors.
 //!
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
@@ -34,29 +34,77 @@
 //! fully-featured API. However, this crate's API will change very infrequently,
 //! so it may be used when dependencies must be very stable.
 //!
-//! `Subscriber` implementations may depend on `tracing-core` rather than
+//! Collector implementations may depend on `tracing-core` rather than
 //! `tracing`, as the additional APIs provided by `tracing` are primarily useful
 //! for instrumenting libraries and applications, and are generally not
-//! necessary for `Subscriber` implementations.
+//! necessary for collector implementations.
 //!
 //! The [`tokio-rs/tracing`] repository contains less stable crates designed to
 //! be used with the `tracing` ecosystem. It includes a collection of
-//! `Subscriber` implementations, as well as utility and adapter crates.
+//! collector implementations, as well as utility and adapter crates.
+//!
+//! ### `no_std` Support
+//!
+//! In embedded systems and other bare-metal applications, `tracing-core` can be
+//! used without requiring the Rust standard library, although some features are
+//! disabled.
+//!
+//! The dependency on the standard library is controlled by two crate feature
+//! flags, "std", which enables the dependency on [`libstd`], and "alloc", which
+//! enables the dependency on [`liballoc`] (and is enabled by the "std"
+//! feature). These features are enabled by default, but `no_std` users can
+//! disable them using:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-core = { version = "0.2", default-features = false }
+//! ```
+//!
+//! To enable `liballoc` but not `std`, use:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-core = { version = "0.2", default-features = false, features = ["alloc"] }
+//! ```
+//!
+//! When both the "std" and "alloc" feature flags are disabled, `tracing-core`
+//! will not make any dynamic memory allocations at runtime, and does not
+//! require a global memory allocator.
+//!
+//! The "alloc" feature is required to enable the [`Dispatch::new`] function,
+//! which requires dynamic memory allocation to construct a collector trait
+//! object at runtime. When liballoc is disabled, new `Dispatch`s may still be
+//! created from `&'static dyn Collect` references, using
+//! [`Dispatch::from_static`].
+//!
+//! The "std" feature is required to enable the following features:
+//!
+//! * Per-thread scoped trace dispatchers ([`Dispatch::set_default`] and
+//!   [`with_default`]. Since setting a thread-local dispatcher inherently
+//!   requires a concept of threads to be available, this API is not possible
+//!   without the standard library.
+//! * Support for [constructing `Value`s from types implementing
+//!   `std::error::Error`][err]. Since the `Error` trait is defined in `std`,
+//!   it's not possible to provide this feature without `std`.
+//!
+//! All other features of `tracing-core` should behave identically with and
+//! without `std` and `alloc`.
+//!
+//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`Dispatch::new`]: crate::dispatch::Dispatch::new
+//! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
+//! [`Dispatch::set_default`]: crate::dispatch::set_default
+//! [`with_default`]: crate::dispatch::with_default
+//! [err]: crate::field::Visit::record_error
 //!
 //! ### Crate Feature Flags
 //!
 //! The following crate feature flags are available:
 //!
 //! * `std`: Depend on the Rust standard library (enabled by default).
+//! * `alloc`: Depend on [`liballoc`] (enabled by "std").
 //!
-//!   `no_std` users may disable this feature with `default-features = false`:
-//!
-//!   ```toml
-//!   [dependencies]
-//!   tracing-core = { version = "0.1.17", default-features = false }
-//!   ```
-//!
-//!   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
+//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 //!
 //! ## Supported Rust Versions
 //!
@@ -73,21 +121,22 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: span/struct.Id.html
-//! [`Event`]: event/struct.Event.html
-//! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`Metadata`]: metadata/struct.Metadata.html
-//! [`Callsite`]: callsite/trait.Callsite.html
-//! [`Field`]: field/struct.Field.html
-//! [`FieldSet`]: field/struct.FieldSet.html
-//! [`Value`]: field/trait.Value.html
-//! [`ValueSet`]: field/struct.ValueSet.html
-//! [`Dispatch`]: dispatcher/struct.Dispatch.html
+//! [`span::Id`]: span::Id
+//! [`Event`]: event::Event
+//! [`Collect`]: collect::Collect
+//! [`Metadata`]: metadata::Metadata
+//! [`Callsite`]: callsite::Callsite
+//! [`Field`]: field::Field
+//! [`FieldSet`]: field::FieldSet
+//! [`Value`]: field::Value
+//! [`ValueSet`]: field::ValueSet
+//! [`Dispatch`]: dispatch::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -114,20 +163,21 @@
     unused_parens,
     while_true
 )]
-#[cfg(not(feature = "std"))]
+
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
 /// This may be used in contexts, such as static initializers, where the
-/// [`Callsite::id`] function is not currently usable.
+/// [`Metadata::callsite`] function is not currently usable.
 ///
 /// For example:
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing_core;
 /// use tracing_core::callsite;
-/// # use tracing_core::{Metadata, subscriber::Interest};
+/// # use tracing_core::{Metadata, collect::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
 ///    // ...
@@ -146,9 +196,9 @@ extern crate alloc;
 /// # }
 /// ```
 ///
-/// [`Identifier`]: callsite/struct.Identifier.html
-/// [`Callsite`]: callsite/trait.Callsite.html
-/// [`Callsite::id`]: callsite/trait.Callsite.html#method.id
+/// [`Identifier`]: callsite::Identifier
+/// [`Callsite`]: callsite::Callsite
+/// [`Metadata::callsite`]: metadata::Metadata::callsite
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
@@ -162,7 +212,7 @@ macro_rules! identify_callsite {
 /// ```rust
 /// # #[macro_use]
 /// # extern crate tracing_core;
-/// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// # use tracing_core::{callsite::Callsite, collect::Interest};
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -186,8 +236,8 @@ macro_rules! identify_callsite {
 /// # }
 /// ```
 ///
-/// [metadata]: metadata/struct.Metadata.html
-/// [`Metadata::new`]: metadata/struct.Metadata.html#method.new
+/// [metadata]: metadata::Metadata
+/// [`Metadata::new`]: metadata::Metadata::new
 #[macro_export]
 macro_rules! metadata {
     (
@@ -244,46 +294,40 @@ macro_rules! location {
 #[macro_use]
 extern crate lazy_static;
 
-// no_std uses vendored version of lazy_static 1.4.0 (4216696) with spin
-// This can conflict when included in a project already using std lazy_static
-// Remove this module when cargo enables specifying dependencies for no_std
-#[cfg(not(feature = "std"))]
-#[macro_use]
-mod lazy_static;
-
-// Trimmed-down vendored version of spin 0.5.2 (0387621)
-// Dependency of no_std lazy_static, not required in a std build
-#[cfg(not(feature = "std"))]
-pub(crate) mod spin;
-
+// Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
 #[cfg(not(feature = "std"))]
 #[doc(hidden)]
-pub type Once = self::spin::Once<()>;
+pub type Once = crate::spin::Once<()>;
 
 #[cfg(feature = "std")]
-pub use stdlib::sync::Once;
+#[doc(hidden)]
+pub use std::sync::Once;
+
+#[cfg(not(feature = "std"))]
+// Trimmed-down vendored version of spin 0.5.2 (0387621)
+// Required for `Once` in `no_std` builds.
+pub(crate) mod spin;
 
 pub mod callsite;
-pub mod dispatcher;
+pub mod collect;
+pub mod dispatch;
 pub mod event;
 pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub(crate) mod stdlib;
-pub mod subscriber;
 
 #[doc(inline)]
 pub use self::{
     callsite::Callsite,
-    dispatcher::Dispatch,
+    collect::Collect,
+    dispatch::Dispatch,
     event::Event,
     field::Field,
     metadata::{Level, LevelFilter, Location, Metadata},
-    subscriber::Subscriber,
 };
 
-pub use self::{metadata::Kind, subscriber::Interest};
+pub use self::{collect::Interest, metadata::Kind};
 
 mod sealed {
     pub trait Sealed {}

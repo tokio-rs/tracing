@@ -4,7 +4,7 @@
 mod support;
 use support::*;
 
-use tracing::subscriber::with_default;
+use tracing::collect::with_default;
 use tracing::Level;
 use tracing_attributes::instrument;
 
@@ -19,7 +19,7 @@ fn err() -> Result<u8, TryFromIntError> {
 #[test]
 fn test() {
     let span = span::mock().named("err");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(event::mock().at_level(Level::ERROR))
@@ -27,7 +27,28 @@ fn test() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(subscriber, || err().ok());
+    with_default(collector, || err().ok());
+    handle.assert_finished();
+}
+
+#[instrument(err)]
+fn err_early_return() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)?;
+    Ok(5)
+}
+
+#[test]
+fn test_early_return() {
+    let span = span::mock().named("err_early_return");
+    let (subscriber, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(event::mock().at_level(Level::ERROR))
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(subscriber, || err_early_return().ok());
     handle.assert_finished();
 }
 
@@ -42,7 +63,7 @@ async fn err_async(polls: usize) -> Result<u8, TryFromIntError> {
 #[test]
 fn test_async() {
     let span = span::mock().named("err_async");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
@@ -57,7 +78,7 @@ fn test_async() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { err_async(2).await }).ok();
     });
     handle.assert_finished();

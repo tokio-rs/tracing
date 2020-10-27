@@ -3,6 +3,11 @@
 // registry. The registry was changed so that each time a new dispatcher is
 // added all filters are re-evaluated. The tests being run only in separate
 // threads with shared global state lets them interfere with each other
+
+// liballoc is required because the test subscriber cannot be constructed
+// statically
+#![cfg(feature = "alloc")]
+
 #[cfg(not(feature = "std"))]
 extern crate std;
 
@@ -22,13 +27,13 @@ use std::sync::{
 #[test]
 fn filters_are_not_reevaluated_for_the_same_span() {
     // Asserts that the `span!` macro caches the result of calling
-    // `Subscriber::enabled` for each span.
+    // `Collector::enabled` for each span.
     let alice_count = Arc::new(AtomicUsize::new(0));
     let bob_count = Arc::new(AtomicUsize::new(0));
     let alice_count2 = alice_count.clone();
     let bob_count2 = bob_count.clone();
 
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .with_filter(move |meta| match meta.name() {
             "alice" => {
                 alice_count2.fetch_add(1, Ordering::Relaxed);
@@ -44,7 +49,7 @@ fn filters_are_not_reevaluated_for_the_same_span() {
 
     // Since this test is in its own file anyway, we can do this. Thus, this
     // test will work even with no-std.
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::collect::set_global_default(collector).unwrap();
 
     // Enter "alice" and then "bob". The dispatcher expects to see "bob" but
     // not "alice."

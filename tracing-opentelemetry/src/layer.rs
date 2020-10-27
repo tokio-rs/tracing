@@ -5,12 +5,12 @@ use std::fmt;
 use std::marker;
 use std::time::SystemTime;
 use tracing_core::span::{self, Attributes, Id, Record};
-use tracing_core::{field, Event, Subscriber};
+use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
-use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::Layer;
+use tracing_subscriber::subscribe::Context;
+use tracing_subscriber::Subscribe;
 
 static SPAN_NAME_FIELD: &str = "otel.name";
 static SPAN_KIND_FIELD: &str = "otel.kind";
@@ -29,7 +29,7 @@ pub struct OpenTelemetryLayer<S, T> {
 
 impl<S> Default for OpenTelemetryLayer<S, api::NoopTracer>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         OpenTelemetryLayer::new(api::NoopTracer {})
@@ -43,7 +43,7 @@ where
 /// # Examples
 ///
 /// ```rust,no_run
-/// use tracing_subscriber::layer::SubscriberExt;
+/// use tracing_subscriber::subscribe::CollectorExt;
 /// use tracing_subscriber::Registry;
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
@@ -53,7 +53,7 @@ where
 /// ```
 pub fn layer<S>() -> OpenTelemetryLayer<S, api::NoopTracer>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     OpenTelemetryLayer::default()
 }
@@ -103,6 +103,51 @@ fn str_to_span_kind(s: &str) -> Option<api::SpanKind> {
 struct SpanEventVisitor<'a>(&'a mut api::Event);
 
 impl<'a> field::Visit for SpanEventVisitor<'a> {
+    /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_bool(&mut self, field: &field::Field, value: bool) {
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
+        }
+    }
+
+    /// Record events on the underlying OpenTelemetry [`Span`] from `i64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_i64(&mut self, field: &field::Field, value: i64) {
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
+        }
+    }
+
+    /// Record events on the underlying OpenTelemetry [`Span`] from `u64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_u64(&mut self, field: &field::Field, value: u64) {
+        match field.name() {
+            "message" => self.0.name = value.to_string(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(api::KeyValue::new(name, value));
+            }
+        }
+    }
+
     /// Record events on the underlying OpenTelemetry [`Span`] from `&str` values.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
@@ -140,6 +185,42 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
 struct SpanAttributeVisitor<'a>(&'a mut api::SpanBuilder);
 
 impl<'a> field::Visit for SpanAttributeVisitor<'a> {
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `bool` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_bool(&mut self, field: &field::Field, value: bool) {
+        let attribute = api::KeyValue::new(field.name(), value);
+        if let Some(attributes) = &mut self.0.attributes {
+            attributes.push(attribute);
+        } else {
+            self.0.attributes = Some(vec![attribute]);
+        }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `i64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_i64(&mut self, field: &field::Field, value: i64) {
+        let attribute = api::KeyValue::new(field.name(), value);
+        if let Some(attributes) = &mut self.0.attributes {
+            attributes.push(attribute);
+        } else {
+            self.0.attributes = Some(vec![attribute]);
+        }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `u64` values.
+    ///
+    /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
+    fn record_u64(&mut self, field: &field::Field, value: u64) {
+        let attribute = api::KeyValue::new(field.name(), value);
+        if let Some(attributes) = &mut self.0.attributes {
+            attributes.push(attribute);
+        } else {
+            self.0.attributes = Some(vec![attribute]);
+        }
+    }
+
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `&str` values.
     ///
     /// [`Span`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span/trait.Span.html
@@ -180,7 +261,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
 
 impl<S, T> OpenTelemetryLayer<S, T>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Set the [`Tracer`] that this layer will use to produce and track
@@ -194,7 +275,7 @@ where
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, sdk};
     /// use tracing_opentelemetry::OpenTelemetryLayer;
-    /// use tracing_subscriber::layer::SubscriberExt;
+    /// use tracing_subscriber::subscribe::CollectorExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter for a `trace-demo` service.
@@ -244,7 +325,7 @@ where
     ///
     /// ```rust,no_run
     /// use opentelemetry::{api::Provider, sdk};
-    /// use tracing_subscriber::layer::SubscriberExt;
+    /// use tracing_subscriber::subscribe::CollectorExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter for a `trace-demo` service.
@@ -343,9 +424,9 @@ where
     }
 }
 
-impl<S, T> Layer<S> for OpenTelemetryLayer<S, T>
+impl<S, T> Subscribe<S> for OpenTelemetryLayer<S, T>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     T: api::Tracer + PreSampledTracer + 'static,
 {
     /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`].
@@ -546,7 +627,7 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
         });
 
@@ -559,7 +640,7 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 
@@ -580,7 +661,7 @@ mod tests {
         )));
         let _g = existing_cx.attach();
 
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 

@@ -13,7 +13,7 @@ use tracing::{field, span, Event, Id, Metadata};
 /// A subscriber that is enabled but otherwise does nothing.
 struct EnabledSubscriber;
 
-impl tracing::Subscriber for EnabledSubscriber {
+impl tracing::Collect for EnabledSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)
@@ -57,7 +57,7 @@ impl<'a> field::Visit for Visitor<'a> {
     }
 }
 
-impl tracing::Subscriber for VisitingSubscriber {
+impl tracing::Collect for VisitingSubscriber {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let mut visitor = Visitor(self.0.lock().unwrap());
         span.record(&mut visitor);
@@ -95,17 +95,26 @@ impl tracing::Subscriber for VisitingSubscriber {
 const N_SPANS: usize = 100;
 
 fn criterion_benchmark(c: &mut Criterion) {
+    let mut c = c.benchmark_group("scoped/subscriber");
     c.bench_function("span_no_fields", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| span!(Level::TRACE, "span"))
         });
     });
 
     c.bench_function("enter_span", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             let span = span!(Level::TRACE, "span");
             #[allow(clippy::unit_arg)]
             b.iter(|| black_box(span.in_scope(|| {})))
+        });
+    });
+
+    c.bench_function("event", |b| {
+        tracing::collect::with_default(EnabledSubscriber, || {
+            b.iter(|| {
+                tracing::event!(Level::TRACE, "hello");
+            });
         });
     });
 
@@ -116,13 +125,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
 
         let n = black_box(N_SPANS);
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| (0..n).fold(mk_span(0), |_, i| mk_span(i as u64)))
         });
     });
 
     c.bench_function("span_with_fields", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
                 span!(
                     Level::TRACE,
@@ -138,7 +147,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("span_with_fields_record", |b| {
         let subscriber = VisitingSubscriber(Mutex::new(String::from("")));
-        tracing::subscriber::with_default(subscriber, || {
+        tracing::collect::with_default(subscriber, || {
             b.iter(|| {
                 span!(
                     Level::TRACE,
@@ -151,36 +160,41 @@ fn criterion_benchmark(c: &mut Criterion) {
             })
         });
     });
+
+    c.finish();
 }
 
 fn bench_dispatch(c: &mut Criterion) {
-    let mut group = c.benchmark_group("dispatch");
-    group.bench_function("no_dispatch_get_ref", |b| {
+    let mut group = c.benchmark_group("no/dispatch");
+    group.bench_function("get_ref", |b| {
         b.iter(|| {
-            tracing::dispatcher::get_default(|current| {
+            tracing::dispatch::get_default(|current| {
                 black_box(&current);
             })
         })
     });
-    group.bench_function("no_dispatch_get_clone", |b| {
+    group.bench_function("get_clone", |b| {
         b.iter(|| {
-            let current = tracing::dispatcher::get_default(|current| current.clone());
+            let current = tracing::dispatch::get_default(|current| current.clone());
             black_box(current);
         })
     });
+    group.finish();
+
+    let mut group = c.benchmark_group("scoped/dispatch");
     group.bench_function("get_ref", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
-                tracing::dispatcher::get_default(|current| {
+                tracing::dispatch::get_default(|current| {
                     black_box(&current);
                 })
             })
         })
     });
     group.bench_function("get_clone", |b| {
-        tracing::subscriber::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledSubscriber, || {
             b.iter(|| {
-                let current = tracing::dispatcher::get_default(|current| current.clone());
+                let current = tracing::dispatch::get_default(|current| current.clone());
                 black_box(current);
             })
         })
