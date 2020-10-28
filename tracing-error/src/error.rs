@@ -136,6 +136,42 @@ where
 
     /// Convert the inner error type of a `TracedError` while preserving the
     /// attached `SpanTrace` using the inner error's `Into` impl.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::TracedError;
+    /// # #[derive(Debug)]
+    /// # struct InnerError;
+    /// # #[derive(Debug)]
+    /// # struct OuterError(InnerError);
+    /// # impl std::fmt::Display for InnerError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Inner Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for InnerError {
+    /// # }
+    /// # impl std::fmt::Display for OuterError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Outer Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for OuterError {
+    /// #     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    /// #         Some(&self.0)
+    /// #     }
+    /// # }
+    ///
+    /// impl From<InnerError> for OuterError {
+    ///     fn from(inner: InnerError) -> Self {
+    ///         Self(inner)
+    ///     }
+    /// }
+    ///
+    /// let err: TracedError<InnerError> = InnerError.into();
+    /// let err: TracedError<OuterError> = err.err_into();
+    /// ```
     pub fn err_into<F>(self) -> TracedError<F>
     where
         E: Into<F>,
