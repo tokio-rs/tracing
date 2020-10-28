@@ -134,8 +134,8 @@ where
         TracedError::new(error, span_trace)
     }
 
-    /// Convert the inner error type of a `TracedError` while preserving the
-    /// attached `SpanTrace` using the inner error's `Into` impl.
+    /// Convert the inner error type of a `TracedError` using the inner error's `Into`
+    /// implementation, while preserving the attached `SpanTrace`.
     pub fn err_into<F>(self) -> TracedError<F>
     where
         E: Into<F>,
