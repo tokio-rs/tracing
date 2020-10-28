@@ -750,6 +750,8 @@ mod tests {
             state.assert_removed("span1");
             state.assert_removed("span2");
         });
+
+        drop(dispatch);
     }
 
     #[test]
@@ -778,6 +780,8 @@ mod tests {
             state.assert_closed("parent");
             state.assert_closed("child");
         });
+
+        drop(dispatch);
     }
 
     #[test]
@@ -809,5 +813,6 @@ mod tests {
 
             state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
+        drop(dispatch);
     }
 }
