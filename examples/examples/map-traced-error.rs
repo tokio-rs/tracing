@@ -1,4 +1,6 @@
-//!
+//! An example on composing errors inside of a `TracedError`, such that the
+//! SpanTrace captured is captured when creating the inner error, but still wraps
+//! the outer error.
 #![deny(rust_2018_idioms)]
 #![allow(clippy::try_err)]
 use std::error::Error;
