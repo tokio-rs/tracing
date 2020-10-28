@@ -711,6 +711,9 @@ mod tests {
 
         drop(span2);
         state.assert_removed("span1");
+
+        // Ensure the registry itself outlives the spans.
+        drop(dispatch)
     }
 
     #[test]
