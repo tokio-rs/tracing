@@ -19,7 +19,7 @@ use tracing_subscriber::{
 /// [`SpanTrace`]: ../struct.SpanTrace.html
 /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
 /// [default format]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/format/struct.DefaultFields.html
-pub struct ErrorLayer<S, F = DefaultFields> {
+pub struct ErrorSubscriber<S, F = DefaultFields> {
     format: F,
 
     get_context: WithContext,
@@ -33,7 +33,7 @@ pub(crate) struct WithContext(
     fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
 );
 
-impl<S, F> Subscribe<S> for ErrorLayer<S, F>
+impl<S, F> Subscribe<S> for ErrorSubscriber<S, F>
 where
     S: Collect + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
@@ -68,12 +68,12 @@ where
     }
 }
 
-impl<S, F> ErrorLayer<S, F>
+impl<S, F> ErrorSubscriber<S, F>
 where
     F: for<'writer> FormatFields<'writer> + 'static,
     S: Collect + for<'span> LookupSpan<'span>,
 {
-    /// Returns a new `ErrorLayer` with the provided [field formatter].
+    /// Returns a new `ErrorSubscriber` with the provided [field formatter].
     ///
     /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
     pub fn new(format: F) -> Self {
@@ -120,7 +120,7 @@ impl WithContext {
     }
 }
 
-impl<S> Default for ErrorLayer<S>
+impl<S> Default for ErrorSubscriber<S>
 where
     S: Collect + for<'span> LookupSpan<'span>,
 {
@@ -129,9 +129,9 @@ where
     }
 }
 
-impl<S, F: fmt::Debug> fmt::Debug for ErrorLayer<S, F> {
+impl<S, F: fmt::Debug> fmt::Debug for ErrorSubscriber<S, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ErrorLayer")
+        f.debug_struct("ErrorSubscriber")
             .field("format", &self.format)
             .field("subscriber", &format_args!("{}", type_name::<S>()))
             .finish()

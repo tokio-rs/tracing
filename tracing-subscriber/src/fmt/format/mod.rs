@@ -10,6 +10,7 @@ use crate::{
 use std::{
     fmt::{self, Write},
     iter,
+    marker::PhantomData,
 };
 use tracing_core::{
     field::{self, Field, Visit},
@@ -24,11 +25,17 @@ use ansi_term::{Colour, Style};
 
 #[cfg(feature = "json")]
 mod json;
-
-use fmt::{Debug, Display};
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use json::*;
+
+#[cfg(feature = "ansi")]
+mod pretty;
+#[cfg(feature = "ansi")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+pub use pretty::*;
+
+use fmt::{Debug, Display};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
@@ -207,6 +214,25 @@ impl<F, T> Format<F, T> {
             format: Compact,
             timer: self.timer,
             ansi: self.ansi,
+            display_target: false,
+            display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
+        }
+    }
+
+    /// Use an excessively pretty, human-readable output format.
+    ///
+    /// See [`Pretty`].
+    ///
+    /// Note that this requires the "ansi" feature to be enabled.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn pretty(self) -> Format<Pretty, T> {
+        Format {
+            format: Pretty::default(),
+            timer: self.timer,
+            ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
@@ -322,6 +348,27 @@ impl<F, T> Format<F, T> {
             ..self
         }
     }
+
+    fn format_level(&self, level: Level, writer: &mut dyn fmt::Write) -> fmt::Result
+    where
+        F: LevelNames,
+    {
+        if self.display_level {
+            let fmt_level = {
+                #[cfg(feature = "ansi")]
+                {
+                    F::format_level(level, self.ansi)
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    F::format_level(level)
+                }
+            };
+            return write!(writer, "{} ", fmt_level);
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(feature = "json")]
@@ -388,19 +435,7 @@ where
         #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
-        if self.display_level {
-            let fmt_level = {
-                #[cfg(feature = "ansi")]
-                {
-                    FmtLevel::new(meta.level(), self.ansi)
-                }
-                #[cfg(not(feature = "ansi"))]
-                {
-                    FmtLevel::new(meta.level())
-                }
-            };
-            write!(writer, "{} ", fmt_level)?;
-        }
+        self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -463,19 +498,7 @@ where
         #[cfg(not(feature = "ansi"))]
         time::write(&self.timer, writer)?;
 
-        if self.display_level {
-            let fmt_level = {
-                #[cfg(feature = "ansi")]
-                {
-                    FmtLevel::new(meta.level(), self.ansi)
-                }
-                #[cfg(not(feature = "ansi"))]
-                {
-                    FmtLevel::new(meta.level())
-                }
-            };
-            write!(writer, "{} ", fmt_level)?;
-        }
+        self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -495,32 +518,52 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let fmt_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FmtCtx::new(&ctx, event.parent(), self.ansi)
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FmtCtx::new(&ctx, event.parent())
-            }
-        };
-        write!(writer, "{}", fmt_ctx)?;
         if self.display_target {
-            write!(writer, "{}:", meta.target())?;
+            let target = meta.target();
+            #[cfg(feature = "ansi")]
+            let target = if self.ansi {
+                Style::new().bold().paint(target)
+            } else {
+                Style::new().paint(target)
+            };
+
+            write!(writer, "{}:", target)?;
         }
+
         ctx.format_fields(writer, event)?;
-        let span = ctx.ctx.current_span();
-        if let Some(id) = span.id() {
-            if let Some(span) = ctx.ctx.metadata(id) {
-                write!(writer, "{}", span.fields()).unwrap_or(());
+
+        let span = event
+            .parent()
+            .and_then(|id| ctx.ctx.span(&id))
+            .or_else(|| ctx.ctx.lookup_current());
+
+        let scope = span.into_iter().flat_map(|span| {
+            let parents = span.parents();
+            iter::once(span).chain(parents)
+        });
+        #[cfg(feature = "ansi")]
+        let dimmed = if self.ansi {
+            Style::new().dimmed()
+        } else {
+            Style::new()
+        };
+        for span in scope {
+            let exts = span.extensions();
+            if let Some(fields) = exts.get::<FormattedFields<N>>() {
+                if !fields.is_empty() {
+                    #[cfg(feature = "ansi")]
+                    let fields = dimmed.paint(fields.as_str());
+                    write!(writer, " {}", fields)?;
+                }
             }
         }
+
         writeln!(writer)
     }
 }
 
 // === impl FormatFields ===
+
 impl<'writer, M> FormatFields<'writer> for M
 where
     M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,
@@ -622,10 +665,7 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            self.record_debug(
-                field,
-                &format_args!("{} {}.source={}", value, field, source),
-            )
+            self.record_debug(field, &format_args!("{}, {}: {}", value, field, source))
         } else {
             self.record_debug(field, &format_args!("{}", value))
         }
@@ -667,74 +707,6 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
             .field("is_empty", &self.is_empty)
             .field("result", &self.result)
             .finish()
-    }
-}
-
-struct FmtCtx<'a, S, N> {
-    ctx: &'a FmtContext<'a, S, N>,
-    span: Option<&'a span::Id>,
-    #[cfg(feature = "ansi")]
-    ansi: bool,
-}
-
-impl<'a, S, N: 'a> FmtCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    #[cfg(feature = "ansi")]
-    pub(crate) fn new(
-        ctx: &'a FmtContext<'_, S, N>,
-        span: Option<&'a span::Id>,
-        ansi: bool,
-    ) -> Self {
-        Self { ctx, ansi, span }
-    }
-
-    #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'_, S, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
-    }
-
-    fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi {
-                return Style::new().bold();
-            }
-        }
-
-        Style::new()
-    }
-}
-
-impl<'a, S, N: 'a> fmt::Display for FmtCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bold = self.bold();
-        let mut seen = false;
-
-        let span = self
-            .span
-            .and_then(|id| self.ctx.ctx.span(&id))
-            .or_else(|| self.ctx.ctx.lookup_current());
-
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
-
-        for span in scope {
-            seen = true;
-            write!(f, "{}:", bold.paint(span.metadata().name()))?;
-        }
-
-        if seen {
-            f.write_char(' ')?;
-        }
-        Ok(())
     }
 }
 
@@ -875,62 +847,74 @@ impl<'a> fmt::Display for FmtThreadName<'a> {
     }
 }
 
-struct FmtLevel<'a> {
-    level: &'a Level,
-    #[cfg(feature = "ansi")]
-    ansi: bool,
-}
+trait LevelNames {
+    const TRACE_STR: &'static str;
+    const DEBUG_STR: &'static str;
+    const INFO_STR: &'static str;
+    const WARN_STR: &'static str;
+    const ERROR_STR: &'static str;
 
-impl<'a> FmtLevel<'a> {
     #[cfg(feature = "ansi")]
-    pub(crate) fn new(level: &'a Level, ansi: bool) -> Self {
-        Self { level, ansi }
+    fn format_level(level: Level, ansi: bool) -> FmtLevel<Self> {
+        FmtLevel {
+            level,
+            ansi,
+            _f: PhantomData,
+        }
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(level: &'a Level) -> Self {
-        Self { level }
-    }
-}
-
-const TRACE_STR: &str = "TRACE";
-const DEBUG_STR: &str = "DEBUG";
-const INFO_STR: &str = " INFO";
-const WARN_STR: &str = " WARN";
-const ERROR_STR: &str = "ERROR";
-
-#[cfg(not(feature = "ansi"))]
-impl<'a> fmt::Display for FmtLevel<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self.level {
-            Level::TRACE => f.pad(TRACE_STR),
-            Level::DEBUG => f.pad(DEBUG_STR),
-            Level::INFO => f.pad(INFO_STR),
-            Level::WARN => f.pad(WARN_STR),
-            Level::ERROR => f.pad(ERROR_STR),
+    fn format_level(level: Level) -> FmtLevel<Self> {
+        FmtLevel {
+            level,
+            _f: PhantomData,
         }
     }
 }
 
-#[cfg(feature = "ansi")]
-impl<'a> fmt::Display for FmtLevel<'a> {
+impl LevelNames for Full {
+    const TRACE_STR: &'static str = "TRACE";
+    const DEBUG_STR: &'static str = "DEBUG";
+    const INFO_STR: &'static str = " INFO";
+    const WARN_STR: &'static str = " WARN";
+    const ERROR_STR: &'static str = "ERROR";
+}
+impl LevelNames for Compact {
+    const TRACE_STR: &'static str = "T";
+    const DEBUG_STR: &'static str = "D";
+    const INFO_STR: &'static str = "I";
+    const WARN_STR: &'static str = "W";
+    const ERROR_STR: &'static str = "!";
+}
+
+struct FmtLevel<F: ?Sized> {
+    level: Level,
+    #[cfg(feature = "ansi")]
+    ansi: bool,
+    _f: PhantomData<fn(F)>,
+}
+
+impl<'a, F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.ansi {
-            match *self.level {
-                Level::TRACE => write!(f, "{}", Colour::Purple.paint(TRACE_STR)),
-                Level::DEBUG => write!(f, "{}", Colour::Blue.paint(DEBUG_STR)),
-                Level::INFO => write!(f, "{}", Colour::Green.paint(INFO_STR)),
-                Level::WARN => write!(f, "{}", Colour::Yellow.paint(WARN_STR)),
-                Level::ERROR => write!(f, "{}", Colour::Red.paint(ERROR_STR)),
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                return match self.level {
+                    Level::TRACE => write!(f, "{}", Colour::Purple.paint(F::TRACE_STR)),
+                    Level::DEBUG => write!(f, "{}", Colour::Blue.paint(F::DEBUG_STR)),
+                    Level::INFO => write!(f, "{}", Colour::Green.paint(F::INFO_STR)),
+                    Level::WARN => write!(f, "{}", Colour::Yellow.paint(F::WARN_STR)),
+                    Level::ERROR => write!(f, "{}", Colour::Red.paint(F::ERROR_STR)),
+                };
             }
-        } else {
-            match *self.level {
-                Level::TRACE => f.pad(TRACE_STR),
-                Level::DEBUG => f.pad(DEBUG_STR),
-                Level::INFO => f.pad(INFO_STR),
-                Level::WARN => f.pad(WARN_STR),
-                Level::ERROR => f.pad(ERROR_STR),
-            }
+        }
+
+        match self.level {
+            Level::TRACE => f.pad(F::TRACE_STR),
+            Level::DEBUG => f.pad(F::DEBUG_STR),
+            Level::INFO => f.pad(F::INFO_STR),
+            Level::WARN => f.pad(F::WARN_STR),
+            Level::ERROR => f.pad(F::ERROR_STR),
         }
     }
 }
