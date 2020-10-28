@@ -40,7 +40,7 @@ pin-project-lite = "0.1"
 futures = "0.1"
 criterion = { version = "0.3", default_features = false }
 log = "0.4"
-tokio = { version = "0.2.21", features = ["rt-core"] }
+tokio = { version = "0.3.2", features = ["rt-core"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "^0.3"
