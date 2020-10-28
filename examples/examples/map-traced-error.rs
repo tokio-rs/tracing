@@ -5,14 +5,14 @@
 #![allow(clippy::try_err)]
 use std::error::Error;
 use std::fmt;
-use tracing_error::{prelude::*, ErrorLayer, TracedError};
+use tracing_error::{prelude::*, ErrorSubscriber, TracedError};
 use tracing_subscriber::prelude::*;
 
 fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        // The `ErrorLayer` subscriber layer enables the use of `SpanTrace`.
-        .with(ErrorLayer::default())
+        .with(tracing_subscriber::fmt::subscriber())
+        // The `ErrorSubscriber` subscriber enables the use of `SpanTrace`.
+        .with(ErrorSubscriber::default())
         .init();
 
     let e = do_something().unwrap_err();
