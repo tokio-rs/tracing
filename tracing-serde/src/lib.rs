@@ -20,7 +20,7 @@
 //! `tracing` gives us machine-readable structured diagnostic
 //! information. This lets us interact with diagnostic data
 //! programmatically. With `tracing-serde`, you can implement a
-//! `Subscriber` to serialize your `tracing` types and make use of the
+//! `Collector` to serialize your `tracing` types and make use of the
 //! existing ecosystem of `serde` serializers to talk with distributed
 //! tracing systems.
 //!
@@ -61,11 +61,11 @@
 //!
 //! For the full example, please see the [examples](../examples) folder.
 //!
-//! Implement a `Subscriber` to format the serialization of `tracing`
+//! Implement a `Collector` to format the serialization of `tracing`
 //! types how you'd like.
 //!
 //! ```rust
-//! # use tracing_core::{Subscriber, Metadata, Event};
+//! # use tracing_core::{Collect, Metadata, Event};
 //! # use tracing_core::span::{Attributes, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
@@ -75,7 +75,7 @@
 //!     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 //! }
 //!
-//! impl Subscriber for JsonSubscriber {
+//! impl Collect for JsonSubscriber {
 //!
 //!     fn new_span(&self, attrs: &Attributes<'_>) -> Id {
 //!         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
@@ -105,7 +105,7 @@
 //! }
 //! ```
 //!
-//! After you implement your `Subscriber`, you can use your `tracing`
+//! After you implement your `Collector`, you can use your `tracing`
 //! subscriber (`JsonSubscriber` in the above example) to record serialized
 //! trace data.
 //!

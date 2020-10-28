@@ -6,9 +6,9 @@ use support::MultithreadedBench;
 
 /// A fake writer that doesn't actually do anything.
 ///
-/// We want to measure the subscriber's overhead, *not* the performance of
+/// We want to measure the collectors's overhead, *not* the performance of
 /// stdout/file writers. Using a no-op Write implementation lets us only measure
-/// the subscriber's overhead.
+/// the collectors's overhead.
 struct NoWriter;
 
 impl io::Write for NoWriter {
@@ -30,7 +30,7 @@ impl NoWriter {
 fn bench_new_span(c: &mut Criterion) {
     bench_thrpt(c, "new_span", |group, i| {
         group.bench_with_input(BenchmarkId::new("single_thread", i), i, |b, &i| {
-            tracing::dispatcher::with_default(&mk_dispatch(), || {
+            tracing::dispatch::with_default(&mk_dispatch(), || {
                 b.iter(|| {
                     for n in 0..i {
                         let _span = tracing::info_span!("span", n);
@@ -41,8 +41,9 @@ fn bench_new_span(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("multithreaded", i), i, |b, &i| {
             b.iter_custom(|iters| {
                 let mut total = Duration::from_secs(0);
+                let dispatch = mk_dispatch();
                 for _ in 0..iters {
-                    let bench = MultithreadedBench::new(mk_dispatch());
+                    let bench = MultithreadedBench::new(dispatch.clone());
                     let elapsed = bench
                         .thread(move || {
                             for n in 0..i {
@@ -86,16 +87,17 @@ fn bench_thrpt(c: &mut Criterion, name: &'static str, mut f: impl FnMut(&mut Gro
 }
 
 fn mk_dispatch() -> tracing::Dispatch {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    let collector = tracing_subscriber::fmt::Collector::builder()
         .with_writer(NoWriter::new)
         .finish();
-    tracing::Dispatch::new(subscriber)
+    tracing::Dispatch::new(collector)
 }
 
 fn bench_event(c: &mut Criterion) {
     bench_thrpt(c, "event", |group, i| {
         group.bench_with_input(BenchmarkId::new("root/single_threaded", i), i, |b, &i| {
-            tracing::dispatcher::with_default(&mk_dispatch(), || {
+            let dispatch = mk_dispatch();
+            tracing::dispatch::with_default(&dispatch, || {
                 b.iter(|| {
                     for n in 0..i {
                         tracing::info!(n);
@@ -106,8 +108,9 @@ fn bench_event(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("root/multithreaded", i), i, |b, &i| {
             b.iter_custom(|iters| {
                 let mut total = Duration::from_secs(0);
+                let dispatch = mk_dispatch();
                 for _ in 0..iters {
-                    let bench = MultithreadedBench::new(mk_dispatch());
+                    let bench = MultithreadedBench::new(dispatch.clone());
                     let elapsed = bench
                         .thread(move || {
                             for n in 0..i {
@@ -139,7 +142,7 @@ fn bench_event(c: &mut Criterion) {
             BenchmarkId::new("unique_parent/single_threaded", i),
             i,
             |b, &i| {
-                tracing::dispatcher::with_default(&mk_dispatch(), || {
+                tracing::dispatch::with_default(&mk_dispatch(), || {
                     let span = tracing::info_span!("unique_parent", foo = false);
                     let _guard = span.enter();
                     b.iter(|| {
@@ -156,8 +159,9 @@ fn bench_event(c: &mut Criterion) {
             |b, &i| {
                 b.iter_custom(|iters| {
                     let mut total = Duration::from_secs(0);
+                    let dispatch = mk_dispatch();
                     for _ in 0..iters {
-                        let bench = MultithreadedBench::new(mk_dispatch());
+                        let bench = MultithreadedBench::new(dispatch.clone());
                         let elapsed = bench
                             .thread_with_setup(move |start| {
                                 let span = tracing::info_span!("unique_parent", foo = false);
@@ -203,13 +207,13 @@ fn bench_event(c: &mut Criterion) {
             i,
             |b, &i| {
                 b.iter_custom(|iters| {
+                    let dispatch = mk_dispatch();
                     let mut total = Duration::from_secs(0);
                     for _ in 0..iters {
-                        let dispatch = mk_dispatch();
-                        let parent = tracing::dispatcher::with_default(&dispatch, || {
+                        let parent = tracing::dispatch::with_default(&dispatch, || {
                             tracing::info_span!("shared_parent", foo = "hello world")
                         });
-                        let bench = MultithreadedBench::new(dispatch);
+                        let bench = MultithreadedBench::new(dispatch.clone());
                         let parent2 = parent.clone();
                         bench.thread_with_setup(move |start| {
                             let _guard = parent2.enter();
@@ -240,6 +244,77 @@ fn bench_event(c: &mut Criterion) {
                             start.wait();
                             for n in 0..i {
                                 tracing::info!(n);
+                            }
+                        });
+                        let elapsed = bench.run();
+                        total += elapsed;
+                    }
+                    total
+                })
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("multi-parent/multithreaded", i),
+            i,
+            |b, &i| {
+                b.iter_custom(|iters| {
+                    let dispatch = mk_dispatch();
+                    let mut total = Duration::from_secs(0);
+                    for _ in 0..iters {
+                        let parent = tracing::dispatch::with_default(&dispatch, || {
+                            tracing::info_span!("multiparent", foo = "hello world")
+                        });
+                        let bench = MultithreadedBench::new(dispatch.clone());
+                        let parent2 = parent.clone();
+                        bench.thread_with_setup(move |start| {
+                            let _guard = parent2.enter();
+                            start.wait();
+                            let mut span = tracing::info_span!("parent");
+                            for n in 0..i {
+                                let s = tracing::info_span!(parent: &span, "parent2", n, i);
+                                s.in_scope(|| {
+                                    tracing::info!(n);
+                                });
+                                span = s;
+                            }
+                        });
+                        let parent2 = parent.clone();
+                        bench.thread_with_setup(move |start| {
+                            let _guard = parent2.enter();
+                            start.wait();
+                            let mut span = tracing::info_span!("parent");
+                            for n in 0..i {
+                                let s = tracing::info_span!(parent: &span, "parent2", n, i);
+                                s.in_scope(|| {
+                                    tracing::info!(n);
+                                });
+                                span = s;
+                            }
+                        });
+                        let parent2 = parent.clone();
+                        bench.thread_with_setup(move |start| {
+                            let _guard = parent2.enter();
+                            start.wait();
+                            let mut span = tracing::info_span!("parent");
+                            for n in 0..i {
+                                let s = tracing::info_span!(parent: &span, "parent2", n, i);
+                                s.in_scope(|| {
+                                    tracing::info!(n);
+                                });
+                                span = s;
+                            }
+                        });
+                        let parent2 = parent.clone();
+                        bench.thread_with_setup(move |start| {
+                            let _guard = parent2.enter();
+                            start.wait();
+                            let mut span = tracing::info_span!("parent");
+                            for n in 0..i {
+                                let s = tracing::info_span!(parent: &span, "parent2", n, i);
+                                s.in_scope(|| {
+                                    tracing::info!(n);
+                                });
+                                span = s;
                             }
                         });
                         let elapsed = bench.run();

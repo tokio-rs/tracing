@@ -1,10 +1,10 @@
-//! A `Subscriber` for formatting and logging `tracing` data.
+//! A Collector for formatting and logging `tracing` data.
 //!
 //! ## Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides an
-//! implementation of the [`Subscriber`] trait that records `tracing`'s `Event`s
+//! implementation of the [`Collect`] trait that records `tracing`'s `Event`s
 //! and `Span`s by formatting them as text and logging them to stdout.
 //!
 //! ## Usage
@@ -18,7 +18,7 @@
 //!
 //! *Compiler support: requires rustc 1.39+*
 //!
-//! Add the following to your executable to initialize the default subscriber:
+//! Add the following to your executable to initialize the default collector:
 //! ```rust
 //! use tracing_subscriber;
 //!
@@ -27,7 +27,7 @@
 //!
 //! ## Filtering Events with Environment Variables
 //!
-//! The default subscriber installed by `init` enables you to filter events
+//! The default collector installed by `init` enables you to filter events
 //! at runtime using environment variables (using the [`EnvFilter`]).
 //!
 //! The filter syntax is a superset of the [`env_logger`] syntax.
@@ -43,21 +43,183 @@
 //!
 //! ## Configuration
 //!
-//! You can configure a subscriber instead of using the defaults with
+//! You can configure a collector instead of using the defaults with
 //! the following functions:
 //!
-//! ### Subscriber
+//! ### Collector
 //!
-//! The [`FmtSubscriber`] formats and records `tracing` events as line-oriented logs.
+//! The [`FmtCollector`] formats and records `tracing` events as line-oriented logs.
 //! You can create one by calling:
 //!
 //! ```rust
-//! let subscriber = tracing_subscriber::fmt()
+//! let collector = tracing_subscriber::fmt()
 //!     // ... add configuration
 //!     .finish();
 //! ```
 //!
-//! You can find the configuration methods for [`FmtSubscriber`] in [`fmtBuilder`].
+//! The configuration methods for [`FmtCollector`] can be found in
+//! [`fmtBuilder`].
+//!
+//! ### Formatters
+//!
+//! The output format used by the subscriber and collector in this module is
+//! represented by implementing the [`FormatEvent`] trait, and can be
+//! customized. This module provides a number of formatter implementations:
+//!
+//! * [`format::Full`]: The default formatter. This emits human-readable,
+//!   single-line logs for each event that occurs, with the current span context
+//!   displayed before the formatted representation of the event.
+//!
+//!   For example:
+//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.59s
+//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt`
+//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#4E9A06"> INFO</font> fmt: preparing to shave yaks number_of_yaks=3
+//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#4E9A06"> INFO</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: shaving yaks
+//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=1<b>}</b>: fmt::yak_shave: hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot;
+//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=1<b>}</b>: fmt::yak_shave: yak shaved successfully
+//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: yak_events: yak=1 shaved=true
+//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: yaks_shaved=1
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=2<b>}</b>: fmt::yak_shave: hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot;
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=2<b>}</b>: fmt::yak_shave: yak shaved successfully
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: yak_events: yak=2 shaved=true
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: yaks_shaved=2
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=3<b>}</b>: fmt::yak_shave: hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot;
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#C4A000"> WARN</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=3<b>}</b>: fmt::yak_shave: could not locate yak
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: yak_events: yak=3 shaved=false
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#CC0000">ERROR</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: failed to shave yak yak=3 error=missing yak
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: yaks_shaved=2
+//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#4E9A06"> INFO</font> fmt: yak shaving completed all_yaks_shaved=false
+//!   </pre>
+//!
+//! * [`format::Compact`]: A variant of the default formatter, optimized for
+//!   short line lengths. Fields from the current span context are appended to
+//!   the fields of the formatted event, and span names are not shown; the
+//!   verbosity level is abbreviated to a single character.
+//!
+//!   For example:
+//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.51s
+//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-compact`
+//!   <font color="#AAAAAA">Oct 24 13:40:45.682 </font><font color="#4E9A06">I</font> preparing to shave yaks number_of_yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.682 </font><font color="#4E9A06">I</font> shaving yaks yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=1 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yak shaved successfully yak=1 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=1 shaved=true yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=1 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yak shaved successfully yak=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=2 shaved=true yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=3 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#C4A000">W</font> could not locate yak yak=3 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=3 shaved=false yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#CC0000">!</font> failed to shave yak yak=3 error=missing yak yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#4E9A06">I</font> yak shaving completed all_yaks_shaved=false
+//!   </pre>
+//!
+//! * [`format::Pretty`]: Emits excessively pretty, multi-line logs, optimized
+//!   for human readability. This is primarily intended to be used in local
+//!   development and debugging, or for command-line applications, where
+//!   automated analysis and compact storage of logs is less of a priority than
+//!   readability and visual appeal.
+//!
+//!   For example:
+//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.61s
+//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-pretty`
+//!   Oct 24 12:57:29.386 <font color="#4E9A06"><b>fmt_pretty</b></font><font color="#4E9A06">: preparing to shave yaks, </font><font color="#4E9A06"><b>number_of_yaks</b></font><font color="#4E9A06">: 3</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt-pretty.rs:16<font color="#AAAAAA"><i> on</i></font> main
+//!
+//!   Oct 24 12:57:29.386 <font color="#4E9A06"><b>fmt_pretty::yak_shave</b></font><font color="#4E9A06">: shaving yaks</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:38<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: hello! I&apos;m gonna shave a yak, </font><font color="#75507B"><b>excitement</b></font><font color="#75507B">: &quot;yay!&quot;</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:14<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 1
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: yak shaved successfully</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:22<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 1
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#3465A4"><b>yak_events</b></font><font color="#3465A4">: </font><font color="#3465A4"><b>yak</b></font><font color="#3465A4">: 1, </font><font color="#3465A4"><b>shaved</b></font><font color="#3465A4">: true</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:43<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: </font><font color="#75507B"><b>yaks_shaved</b></font><font color="#75507B">: 1</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:52<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: hello! I&apos;m gonna shave a yak, </font><font color="#75507B"><b>excitement</b></font><font color="#75507B">: &quot;yay!&quot;</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:14<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 2
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: yak shaved successfully</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:22<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 2
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#3465A4"><b>yak_events</b></font><font color="#3465A4">: </font><font color="#3465A4"><b>yak</b></font><font color="#3465A4">: 2, </font><font color="#3465A4"><b>shaved</b></font><font color="#3465A4">: true</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:43<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: </font><font color="#75507B"><b>yaks_shaved</b></font><font color="#75507B">: 2</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:52<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: hello! I&apos;m gonna shave a yak, </font><font color="#75507B"><b>excitement</b></font><font color="#75507B">: &quot;yay!&quot;</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:14<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 3
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#C4A000"><b>fmt_pretty::yak_shave</b></font><font color="#C4A000">: could not locate yak</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:16<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 3
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#3465A4"><b>yak_events</b></font><font color="#3465A4">: </font><font color="#3465A4"><b>yak</b></font><font color="#3465A4">: 3, </font><font color="#3465A4"><b>shaved</b></font><font color="#3465A4">: false</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:43<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#CC0000"><b>fmt_pretty::yak_shave</b></font><font color="#CC0000">: failed to shave yak, </font><font color="#CC0000"><b>yak</b></font><font color="#CC0000">: 3, </font><font color="#CC0000"><b>error</b></font><font color="#CC0000">: missing yak</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:48<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: </font><font color="#75507B"><b>yaks_shaved</b></font><font color="#75507B">: 2</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:52<font color="#AAAAAA"><i> on</i></font> main
+//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
+//!
+//!   Oct 24 12:57:29.387 <font color="#4E9A06"><b>fmt_pretty</b></font><font color="#4E9A06">: yak shaving completed, </font><font color="#4E9A06"><b>all_yaks_shaved</b></font><font color="#4E9A06">: false</font>
+//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt-pretty.rs:19<font color="#AAAAAA"><i> on</i></font> main
+//!   </pre>
+//!
+//! * [`format::Json`]: Outputs newline-delimited JSON logs. This is intended
+//!   for production use with systems where structured logs are consumed as JSON
+//!   by analysis and viewing tools. The JSON output, as seen below, is *not*
+//!   optimized for human readability.
+//!
+//!   For example:
+//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.58s
+//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-json`
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.873&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;preparing to shave yaks&quot;,&quot;number_of_yaks&quot;:3},&quot;target&quot;:&quot;fmt_json&quot;}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;shaving yaks&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;hello! I&apos;m gonna shave a yak&quot;,&quot;excitement&quot;:&quot;yay!&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;1&quot;,&quot;name&quot;:&quot;shave&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaved successfully&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;1&quot;,&quot;name&quot;:&quot;shave&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;DEBUG&quot;,&quot;fields&quot;:{&quot;yak&quot;:1,&quot;shaved&quot;:true},&quot;target&quot;:&quot;yak_events&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;yaks_shaved&quot;:1},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;hello! I&apos;m gonna shave a yak&quot;,&quot;excitement&quot;:&quot;yay!&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;2&quot;,&quot;name&quot;:&quot;shave&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaved successfully&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;2&quot;,&quot;name&quot;:&quot;shave&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;DEBUG&quot;,&quot;fields&quot;:{&quot;yak&quot;:2,&quot;shaved&quot;:true},&quot;target&quot;:&quot;yak_events&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;yaks_shaved&quot;:2},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;hello! I&apos;m gonna shave a yak&quot;,&quot;excitement&quot;:&quot;yay!&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;3&quot;,&quot;name&quot;:&quot;shave&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;WARN&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;could not locate yak&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;3&quot;,&quot;name&quot;:&quot;shave&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;DEBUG&quot;,&quot;fields&quot;:{&quot;yak&quot;:3,&quot;shaved&quot;:false},&quot;target&quot;:&quot;yak_events&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;ERROR&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;failed to shave yak&quot;,&quot;yak&quot;:3,&quot;error&quot;:&quot;missing yak&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;yaks_shaved&quot;:2},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
+//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaving completed&quot;,&quot;all_yaks_shaved&quot;:false},&quot;target&quot;:&quot;fmt_json&quot;}
+//!   </pre>
 //!
 //! ### Filters
 //!
@@ -75,69 +237,66 @@
 //!
 //! You can find the other available [`filter`]s in the documentation.
 //!
-//! ### Using Your Subscriber
+//! ### Using Your Collector
 //!
-//! Finally, once you have configured your `Subscriber`, you need to
+//! Finally, once you have configured your `Collect`, you need to
 //! configure your executable to use it.
 //!
-//! A subscriber can be installed globally using:
+//! A collector can be installed globally using:
 //! ```rust
 //! use tracing;
-//! use tracing_subscriber::FmtSubscriber;
+//! use tracing_subscriber::fmt;
 //!
-//! let subscriber = FmtSubscriber::new();
+//! let collector = fmt::Collector::new();
 //!
-//! tracing::subscriber::set_global_default(subscriber)
-//!     .map_err(|_err| eprintln!("Unable to set global default subscriber"));
+//! tracing::collect::set_global_default(collector)
+//!     .map_err(|_err| eprintln!("Unable to set global default collector"));
 //! // Note this will only fail if you try to set the global default
-//! // subscriber multiple times
+//! // collector multiple times
 //! ```
 //!
-//! ### Composing Layers
+//! ### Composing Subscribers
 //!
-//! Composing an [`EnvFilter`] `Layer` and a [format `Layer`](../fmt/struct.Layer.html):
+//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](../fmt/struct.Subscriber.html):
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
 //! use tracing_subscriber::prelude::*;
 //!
-//! let fmt_layer = fmt::layer()
+//! let fmt_subscriber = fmt::subscriber()
 //!     .with_target(false);
-//! let filter_layer = EnvFilter::try_from_default_env()
+//! let filter_subscriber = EnvFilter::try_from_default_env()
 //!     .or_else(|_| EnvFilter::try_new("info"))
 //!     .unwrap();
 //!
 //! tracing_subscriber::registry()
-//!     .with(filter_layer)
-//!     .with(fmt_layer)
+//!     .with(filter_subscriber)
+//!     .with(fmt_subscriber)
 //!     .init();
 //! ```
 //!
 //! [`EnvFilter`]: ../filter/struct.EnvFilter.html
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: ../filter/index.html
-//! [`fmtBuilder`]: ./struct.SubscriberBuilder.html
-//! [`FmtSubscriber`]: ./struct.Subscriber.html
-//! [`Subscriber`]:
-//!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
+//! [`fmtBuilder`]: ./struct.CollectorBuilder.html
+//! [`FmtCollector`]: ./struct.Collector.html
+//! [`Collect`]:
+//!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, error::Error, io};
-use tracing_core::{span, subscriber::Interest, Event, Metadata};
+use tracing_core::{collect::Interest, span, Event, Metadata};
 
-mod fmt_layer;
+mod fmt_subscriber;
 pub mod format;
 pub mod time;
 pub mod writer;
-#[allow(deprecated)]
-pub use fmt_layer::LayerBuilder;
-pub use fmt_layer::{FmtContext, FormattedFields, Layer};
+pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
-use crate::layer::Layer as _;
+use crate::subscribe::Subscribe as _;
 use crate::{
     filter::LevelFilter,
-    layer,
     registry::{LookupSpan, Registry},
-    reload,
+    reload, subscribe,
 };
 
 #[doc(inline)]
@@ -147,46 +306,46 @@ pub use self::{
     writer::{MakeWriter, TestWriter},
 };
 
-/// A `Subscriber` that logs formatted representations of `tracing` events.
+/// A `Collector` that logs formatted representations of `tracing` events.
 ///
 /// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
 #[derive(Debug)]
-pub struct Subscriber<
+pub struct Collector<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
-    inner: layer::Layered<F, Formatter<N, E, W>>,
+    inner: subscribe::Layered<F, Formatter<N, E, W>>,
 }
 
-/// A `Subscriber` that logs formatted representations of `tracing` events.
+/// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
 pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     W = fn() -> io::Stdout,
-> = layer::Layered<fmt_layer::Layer<Registry, N, E, W>, Registry>;
+> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
-/// Configures and constructs `Subscriber`s.
+/// Configures and constructs `Collector`s.
 #[derive(Debug)]
-pub struct SubscriberBuilder<
+pub struct CollectorBuilder<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
     filter: F,
-    inner: Layer<Registry, N, E, W>,
+    inner: Subscriber<Registry, N, E, W>,
 }
 
-/// Returns a new [`SubscriberBuilder`] for configuring a [formatting subscriber].
+/// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
 ///
-/// This is essentially shorthand for [`SubscriberBuilder::default()]`.
+/// This is essentially shorthand for [`CollectorBuilder::default()]`.
 ///
 /// # Examples
 ///
-/// Using [`init`] to set the default subscriber:
+/// Using [`init`] to set the default collector:
 ///
 /// ```rust
 /// tracing_subscriber::fmt().init();
@@ -201,78 +360,78 @@ pub struct SubscriberBuilder<
 ///     .with_target(false)
 ///     .with_timer(tracing_subscriber::fmt::time::uptime())
 ///     .with_level(true)
-///     // Set the subscriber as the default.
+///     // Set the collector as the default.
 ///     .init();
 /// ```
 ///
-/// [`try_init`] returns an error if the default subscriber could not be set:
+/// [`try_init`] returns an error if the default collector could not be set:
 ///
 /// ```rust
 /// use std::error::Error;
 ///
 /// fn init_subscriber() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///     tracing_subscriber::fmt()
-///         // Configure the subscriber to emit logs in JSON format.
+///         // Configure the collector to emit logs in JSON format.
 ///         .json()
-///         // Configure the subscriber to flatten event fields in the output JSON objects.
+///         // Configure the collector to flatten event fields in the output JSON objects.
 ///         .flatten_event(true)
-///         // Set the subscriber as the default, returning an error if this fails.
+///         // Set the collector as the default, returning an error if this fails.
 ///         .try_init()?;
 ///
 ///     Ok(())
 /// }
 /// ```
 ///
-/// Rather than setting the subscriber as the default, [`finish`] _returns_ the
-/// constructed subscriber, which may then be passed to other functions:
+/// Rather than setting the collector as the default, [`finish`] _returns_ the
+/// constructed collector, which may then be passed to other functions:
 ///
 /// ```rust
-/// let subscriber = tracing_subscriber::fmt()
+/// let collector = tracing_subscriber::fmt()
 ///     .with_max_level(tracing::Level::DEBUG)
 ///     .compact()
 ///     .finish();
 ///
-/// tracing::subscriber::with_default(subscriber, || {
-///     // the subscriber will only be set as the default
+/// tracing::collect::with_default(collector, || {
+///     // the collector will only be set as the default
 ///     // inside this closure...
 /// })
 /// ```
 ///
-/// [`SubscriberBuilder`]: struct.SubscriberBuilder.html
+/// [`CollectorBuilder`]: struct.CollectorBuilder.html
+/// [formatting collector]: struct.Collector.html
+/// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
+/// [`init`]: struct.CollectorBuilder.html#method.init
+/// [`try_init`]: struct.CollectorBuilder.html#method.try_init
+/// [`finish`]: struct.CollectorBuilder.html#method.finish
+pub fn fmt() -> CollectorBuilder {
+    CollectorBuilder::default()
+}
+
+/// Returns a new [formatting subscriber] that can be [composed] with other subscribers to
+/// construct a collector.
+///
+/// This is a shorthand for the equivalent [`Subscriber::default`] function.
+///
 /// [formatting subscriber]: struct.Subscriber.html
-/// [`SubscriberBuilder::default()`]: struct.SubscriberBuilder.html#method.default
-/// [`init`]: struct.SubscriberBuilder.html#method.init
-/// [`try_init`]: struct.SubscriberBuilder.html#method.try_init
-/// [`finish`]: struct.SubscriberBuilder.html#method.finish
-pub fn fmt() -> SubscriberBuilder {
-    SubscriberBuilder::default()
+/// [composed]: ../subscribe/index.html
+/// [`Subscriber::default`]: struct.Subscriber.html#method.default
+pub fn subscriber<S>() -> Subscriber<S> {
+    Subscriber::default()
 }
 
-/// Returns a new [formatting layer] that can be [composed] with other layers to
-/// construct a [`Subscriber`].
-///
-/// This is a shorthand for the equivalent [`Layer::default`] function.
-///
-/// [formatting layer]: struct.Layer.html
-/// [composed]: ../layer/index.html
-/// [`Layer::default`]: struct.Layer.html#method.default
-pub fn layer<S>() -> Layer<S> {
-    Layer::default()
-}
-
-impl Subscriber {
-    /// The maximum [verbosity level] that is enabled by a `Subscriber` by
+impl Collector {
+    /// The maximum [verbosity level] that is enabled by a `Collector` by
     /// default.
     ///
-    /// This can be overridden with the [`SubscriberBuilder::with_max_level`] method.
+    /// This can be overridden with the [`CollectorBuilder::with_max_level`] method.
     ///
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`SubscriberBuilder::with_max_level`]: struct.SubscriberBuilder.html#method.with_max_level
+    /// [`CollectorBuilder::with_max_level`]: struct.CollectorBuilder.html#method.with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
-    /// Returns a new `SubscriberBuilder` for configuring a format subscriber.
-    pub fn builder() -> SubscriberBuilder {
-        SubscriberBuilder::default()
+    /// Returns a new `CollectorBuilder` for configuring a format subscriber.
+    pub fn builder() -> CollectorBuilder {
+        CollectorBuilder::default()
     }
 
     /// Returns a new format subscriber with the default configuration.
@@ -281,22 +440,22 @@ impl Subscriber {
     }
 }
 
-impl Default for Subscriber {
+impl Default for Collector {
     fn default() -> Self {
-        SubscriberBuilder::default().finish()
+        CollectorBuilder::default().finish()
     }
 }
 
-// === impl Subscriber ===
+// === impl Collector ===
 
-impl<N, E, F, W> tracing_core::Subscriber for Subscriber<N, E, F, W>
+impl<N, E, F, W> tracing_core::Collect for Collector<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    F: layer::Layer<Formatter<N, E, W>> + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
     W: MakeWriter + 'static,
-    layer::Layered<F, Formatter<N, E, W>>: tracing_core::Subscriber,
-    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry>,
+    subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
+    fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -363,45 +522,46 @@ where
     }
 }
 
-impl<'a, N, E, F, W> LookupSpan<'a> for Subscriber<N, E, F, W>
+impl<'a, N, E, F, W> LookupSpan<'a> for Collector<N, E, F, W>
 where
-    layer::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+    subscribe::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
 {
-    type Data = <layer::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+    type Data = <subscribe::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
     }
 }
 
-// ===== impl SubscriberBuilder =====
+// ===== impl CollectorBuilder =====
 
-impl Default for SubscriberBuilder {
+impl Default for CollectorBuilder {
     fn default() -> Self {
-        SubscriberBuilder {
-            filter: Subscriber::DEFAULT_MAX_LEVEL,
+        CollectorBuilder {
+            filter: Collector::DEFAULT_MAX_LEVEL,
             inner: Default::default(),
         }
     }
 }
 
-impl<N, E, F, W> SubscriberBuilder<N, E, F, W>
+impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: layer::Layer<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry> + Send + Sync + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W>:
+        subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
-    /// Finish the builder, returning a new `FmtSubscriber`.
-    pub fn finish(self) -> Subscriber<N, E, F, W> {
-        let subscriber = self.inner.with_subscriber(Registry::default());
-        Subscriber {
-            inner: self.filter.with_subscriber(subscriber),
+    /// Finish the builder, returning a new `FmtCollector`.
+    pub fn finish(self) -> Collector<N, E, F, W> {
+        let collector = self.inner.with_collector(Registry::default());
+        Collector {
+            inner: self.filter.with_collector(collector),
         }
     }
 
-    /// Install this Subscriber as the global default if one is
+    /// Install this collector as the global default if one is
     /// not already set.
     ///
     /// If the `tracing-log` feature is enabled, this will also install
@@ -409,46 +569,46 @@ where
     ///
     /// # Errors
     /// Returns an Error if the initialization was unsuccessful, likely
-    /// because a global subscriber was already installed by another
+    /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         #[cfg(feature = "tracing-log")]
         tracing_log::LogTracer::init().map_err(Box::new)?;
 
-        tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
+        tracing_core::dispatch::set_global_default(tracing_core::dispatch::Dispatch::new(
             self.finish(),
         ))?;
         Ok(())
     }
 
-    /// Install this Subscriber as the global default.
+    /// Install this collector as the global default.
     ///
     /// If the `tracing-log` feature is enabled, this will also install
     /// the LogTracer to convert `Log` records into `tracing` `Event`s.
     ///
     /// # Panics
     /// Panics if the initialization was unsuccessful, likely because a
-    /// global subscriber was already installed by another call to `try_init`.
+    /// global collector was already installed by another call to `try_init`.
     pub fn init(self) {
-        self.try_init()
-            .expect("Unable to install global subscriber")
+        self.try_init().expect("Unable to install global collector")
     }
 }
 
-impl<N, E, F, W> Into<tracing_core::Dispatch> for SubscriberBuilder<N, E, F, W>
+impl<N, E, F, W> Into<tracing_core::Dispatch> for CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: MakeWriter + 'static,
-    F: layer::Layer<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_layer::Layer<Registry, N, E, W>: layer::Layer<Registry> + Send + Sync + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W>:
+        subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     fn into(self) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(self.finish())
     }
 }
 
-impl<N, L, T, F, W> SubscriberBuilder<N, format::Format<L, T>, F, W>
+impl<N, L, T, F, W> CollectorBuilder<N, format::Format<L, T>, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
@@ -463,16 +623,16 @@ where
     /// [`timer`]: ./time/trait.FormatTime.html
     /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
     /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
-    pub fn with_timer<T2>(self, timer: T2) -> SubscriberBuilder<N, format::Format<L, T2>, F, W> {
-        SubscriberBuilder {
+    pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_timer(timer),
         }
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> SubscriberBuilder<N, format::Format<L, ()>, F, W> {
-        SubscriberBuilder {
+    pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, ()>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.without_time(),
         }
@@ -499,13 +659,13 @@ where
     ///    described above.
     ///
     /// Note that the generated events will only be part of the log output by
-    /// this formatter; they will not be recorded by other `Subscriber`s or by
-    /// `Layer`s added to this subscriber.
+    /// this formatter; they will not be recorded by other `Collector`s or by
+    /// `Subscriber`s added to this subscriber.
     ///
     /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
     /// [time]: #method.without_time
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
-        SubscriberBuilder {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_span_events(kind),
         }
@@ -514,8 +674,8 @@ where
     /// Enable ANSI encoding for formatted events.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        SubscriberBuilder {
+    pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_ansi(ansi),
         }
@@ -525,8 +685,8 @@ where
     pub fn with_target(
         self,
         display_target: bool,
-    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_target(display_target),
         }
@@ -536,8 +696,8 @@ where
     pub fn with_level(
         self,
         display_level: bool,
-    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_level(display_level),
         }
@@ -550,8 +710,8 @@ where
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
-    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_thread_names(display_thread_names),
         }
@@ -564,38 +724,48 @@ where
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
-    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_thread_ids(display_thread_ids),
         }
     }
 
-    /// Sets the subscriber being built to use a less verbose formatter.
+    /// Sets the collector being built to use a less verbose formatter.
     ///
-    /// See [`format::Compact`](../fmt/format/struct.Compact.html).
-    pub fn compact(self) -> SubscriberBuilder<N, format::Format<format::Compact, T>, F, W>
+    /// See [`format::Compact`].
+    pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
-        SubscriberBuilder {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.compact(),
         }
     }
 
-    /// Sets the subscriber being built to use a JSON formatter.
+    /// Sets the collector being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn pretty(
+        self,
+    ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.pretty(),
+        }
+    }
+
+    /// Sets the collector being built to use a JSON formatter.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(
-        self,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
+    pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
-        SubscriberBuilder {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.json(),
         }
@@ -604,62 +774,62 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
-    /// Sets the json subscriber being built to flatten event metadata.
+impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    /// Sets the json collector being built to flatten event metadata.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.flatten_event(flatten_event),
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include the current span
+    /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_current_span(display_current_span),
         }
     }
 
-    /// Sets whether or not the JSON layer being built will include a list (from
+    /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
     /// See [`format::Json`](../fmt/format/struct.Json.html)
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
-        SubscriberBuilder {
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_span_list(display_span_list),
         }
     }
 }
 
-impl<N, E, F, W> SubscriberBuilder<N, E, reload::Layer<F>, W>
+impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
 where
-    Formatter<N, E, W>: tracing_core::Subscriber + 'static,
+    Formatter<N, E, W>: tracing_core::Collect + 'static,
 {
-    /// Returns a `Handle` that may be used to reload the constructed subscriber's
+    /// Returns a `Handle` that may be used to reload the constructed collector's
     /// filter.
     pub fn reload_handle(&self) -> reload::Handle<F> {
         self.filter.handle()
     }
 }
 
-impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
-    /// Sets the Visitor that the subscriber being built will use to record
+impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
+    /// Sets the Visitor that the collector being built will use to record
     /// fields.
     ///
     /// For example:
@@ -674,22 +844,22 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
-    /// let subscriber = tracing_subscriber::fmt()
+    /// let collector = tracing_subscriber::fmt()
     ///     .fmt_fields(formatter)
     ///     .finish();
-    /// # drop(subscriber)
+    /// # drop(collector)
     /// ```
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> SubscriberBuilder<N2, E, F, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<N2, E, F, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
-        SubscriberBuilder {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.fmt_fields(fmt_fields),
         }
     }
 
-    /// Sets the [`EnvFilter`] that the subscriber will use to determine if
+    /// Sets the [`EnvFilter`] that the collector will use to determine if
     /// a span or event is enabled.
     ///
     /// Note that this method requires the "env-filter" feature flag to be enabled.
@@ -742,19 +912,19 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     pub fn with_env_filter(
         self,
         filter: impl Into<crate::EnvFilter>,
-    ) -> SubscriberBuilder<N, E, crate::EnvFilter, W>
+    ) -> CollectorBuilder<N, E, crate::EnvFilter, W>
     where
-        Formatter<N, E, W>: tracing_core::Subscriber + 'static,
+        Formatter<N, E, W>: tracing_core::Collect + 'static,
     {
         let filter = filter.into();
-        SubscriberBuilder {
+        CollectorBuilder {
             filter,
             inner: self.inner,
         }
     }
 
     /// Sets the maximum [verbosity level] that will be enabled by the
-    /// subscriber.
+    /// collector.
     ///
     /// If the max level has already been set, or a [`EnvFilter`] was added by
     /// [`with_filter`], this replaces that configuration with the new
@@ -771,7 +941,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .with_max_level(Level::DEBUG)
     ///     .init();
     /// ```
-    /// This subscriber won't record any spans or events!
+    /// This collector won't record any spans or events!
     /// ```rust
     /// use tracing_subscriber::{fmt, filter::LevelFilter};
     ///
@@ -785,15 +955,15 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
-    ) -> SubscriberBuilder<N, E, LevelFilter, W> {
+    ) -> CollectorBuilder<N, E, LevelFilter, W> {
         let filter = filter.into();
-        SubscriberBuilder {
+        CollectorBuilder {
             filter,
             inner: self.inner,
         }
     }
 
-    /// Configures the subscriber being built to allow filter reloading at
+    /// Configures the collector being built to allow filter reloading at
     /// runtime.
     ///
     /// The returned builder will have a [`reload_handle`] method, which returns
@@ -806,73 +976,53 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// use tracing_subscriber::prelude::*;
     ///
     /// let builder = tracing_subscriber::fmt()
-    ///      // Set a max level filter on the subscriber
+    ///      // Set a max level filter on the collector
     ///     .with_max_level(Level::INFO)
     ///     .with_filter_reloading();
     ///
-    /// // Get a handle for modifying the subscriber's max level filter.
+    /// // Get a handle for modifying the collector's max level filter.
     /// let handle = builder.reload_handle();
     ///
-    /// // Finish building the subscriber, and set it as the default.
+    /// // Finish building the collector, and set it as the default.
     /// builder.finish().init();
     ///
     /// // Currently, the max level is INFO, so this event will be disabled.
     /// tracing::debug!("this is not recorded!");
     ///
     /// // Use the handle to set a new max level filter.
-    /// // (this returns an error if the subscriber has been dropped, which shouldn't
+    /// // (this returns an error if the collector has been dropped, which shouldn't
     /// // happen in this example.)
-    /// handle.reload(Level::DEBUG).expect("the subscriber should still exist");
+    /// handle.reload(Level::DEBUG).expect("the collector should still exist");
     ///
     /// // Now, the max level is INFO, so this event will be recorded.
     /// tracing::debug!("this is recorded!");
     /// ```
     ///
-    /// [`reload_handle`]: SubscriberBuilder::reload_handle
+    /// [`reload_handle`]: CollectorBuilder::reload_handle
     /// [`reload::Handle`]: crate::reload::Handle
-    pub fn with_filter_reloading(self) -> SubscriberBuilder<N, E, reload::Layer<F>, W> {
-        let (filter, _) = reload::Layer::new(self.filter);
-        SubscriberBuilder {
+    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Subscriber<F>, W> {
+        let (filter, _) = reload::Subscriber::new(self.filter);
+        CollectorBuilder {
             filter,
             inner: self.inner,
         }
     }
 
-    /// Sets the function that the subscriber being built should use to format
+    /// Sets the function that the collector being built should use to format
     /// events that occur.
-    pub fn event_format<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
+    pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
         W: MakeWriter + 'static,
     {
-        SubscriberBuilder {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.event_format(fmt_event),
         }
     }
 
-    /// Sets whether or not spans inherit their parents' field values (disabled
-    /// by default).
-    #[deprecated(since = "0.2.0", note = "this no longer does anything")]
-    pub fn inherit_fields(self, inherit_fields: bool) -> Self {
-        let _ = inherit_fields;
-        self
-    }
-
-    /// Sets the function that the subscriber being built should use to format
-    /// events that occur.
-    #[deprecated(since = "0.2.0", note = "renamed to `event_format`.")]
-    pub fn on_event<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
-    where
-        E2: FormatEvent<Registry, N> + 'static,
-        N: for<'writer> FormatFields<'writer> + 'static,
-        W: MakeWriter + 'static,
-    {
-        self.event_format(fmt_event)
-    }
-
-    /// Sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    /// Sets the [`MakeWriter`] that the collector being built will use to write events.
     ///
     /// # Examples
     ///
@@ -888,17 +1038,17 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// ```
     ///
     /// [`MakeWriter`]: trait.MakeWriter.html
-    pub fn with_writer<W2>(self, make_writer: W2) -> SubscriberBuilder<N, E, F, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
         W2: MakeWriter + 'static,
     {
-        SubscriberBuilder {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(make_writer),
         }
     }
 
-    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// Configures the collector to support [`libtest`'s output capturing][capturing] when used in
     /// unit tests.
     ///
     /// See [`TestWriter`] for additional details.
@@ -910,9 +1060,9 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///
     /// ```rust
     /// use tracing_subscriber::fmt;
-    /// use tracing::subscriber;
+    /// use tracing::collect;
     ///
-    /// subscriber::set_default(
+    /// collect::set_default(
     ///     fmt()
     ///         .with_test_writer()
     ///         .finish()
@@ -922,15 +1072,15 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
     /// [`TestWriter`]: writer/struct.TestWriter.html
-    pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
-        SubscriberBuilder {
+    pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter> {
+        CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(TestWriter::default()),
         }
     }
 }
 
-/// Install a global tracing subscriber that listens for events and
+/// Install a global tracing collector that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable],
 /// if one is not already set.
 ///
@@ -949,7 +1099,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 /// # Errors
 ///
 /// Returns an Error if the initialization was unsuccessful,
-/// likely because a global subscriber was already installed by another
+/// likely because a global collector was already installed by another
 /// call to `try_init`.
 ///
 /// [`LogTracer`]:
@@ -957,7 +1107,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    let builder = Subscriber::builder();
+    let builder = Collector::builder();
 
     #[cfg(feature = "env-filter")]
     let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
@@ -965,7 +1115,7 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     builder.try_init()
 }
 
-/// Install a global tracing subscriber that listens for events and
+/// Install a global tracing collector that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable].
 ///
 /// If the `tracing-log` feature is enabled, this will also install
@@ -979,12 +1129,12 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///
 /// # Panics
 /// Panics if the initialization was unsuccessful, likely because a
-/// global subscriber was already installed by another call to `try_init`.
+/// global collector was already installed by another call to `try_init`.
 ///
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
 pub fn init() {
-    try_init().expect("Unable to install global subscriber")
+    try_init().expect("Unable to install global collector")
 }
 
 #[cfg(test)]
@@ -995,14 +1145,14 @@ mod test {
             format::{self, Format},
             time,
             writer::MakeWriter,
-            Subscriber,
+            Collector,
         },
     };
     use std::{
         io,
         sync::{Mutex, MutexGuard, TryLockError},
     };
-    use tracing_core::dispatcher::Dispatch;
+    use tracing_core::dispatch::Dispatch;
 
     pub(crate) struct MockWriter<'a> {
         buf: &'a Mutex<Vec<u8>>,
@@ -1056,28 +1206,28 @@ mod test {
     #[test]
     fn impls() {
         let f = Format::default().with_timer(time::Uptime::default());
-        let subscriber = Subscriber::builder().event_format(f).finish();
+        let subscriber = Collector::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();
-        let subscriber = Subscriber::builder().event_format(f).finish();
+        let subscriber = Collector::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default().compact();
-        let subscriber = Subscriber::builder().event_format(f).finish();
+        let subscriber = Collector::builder().event_format(f).finish();
         let _dispatch = Dispatch::new(subscriber);
     }
 
     #[test]
     fn subscriber_downcasts() {
-        let subscriber = Subscriber::builder().finish();
+        let subscriber = Collector::builder().finish();
         let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<Subscriber>().is_some());
+        assert!(dispatch.downcast_ref::<Collector>().is_some());
     }
 
     #[test]
     fn subscriber_downcasts_to_parts() {
-        let subscriber = Subscriber::new();
+        let subscriber = Collector::new();
         let dispatch = Dispatch::new(subscriber);
         assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
@@ -1087,7 +1237,7 @@ mod test {
     #[test]
     fn is_lookup_span() {
         fn assert_lookup_span<T: for<'a> crate::registry::LookupSpan<'a>>(_: T) {}
-        let subscriber = Subscriber::new();
+        let subscriber = Collector::new();
         assert_lookup_span(subscriber)
     }
 }

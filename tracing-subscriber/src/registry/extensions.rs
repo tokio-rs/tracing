@@ -64,9 +64,9 @@ impl<'a> ExtensionsMut<'a> {
     /// Insert a type into this `Extensions`.
     ///
     /// Note that extensions are _not_
-    /// `Layer`-specific—they are _span_-specific. This means that
+    /// `Subscriber`-specific—they are _span_-specific. This means that
     /// other layers can access and mutate extensions that
-    /// a different Layer recorded. For example, an application might
+    /// a different Subscriber recorded. For example, an application might
     /// have a layer that records execution timings, alongside a layer
     /// that reports spans and events to a distributed
     /// tracing system that requires timestamps for spans.
@@ -75,7 +75,7 @@ impl<'a> ExtensionsMut<'a> {
     ///
     /// Therefore, extensions should generally be newtypes, rather than common
     /// types like [`String`](https://doc.rust-lang.org/std/string/struct.String.html), to avoid accidental
-    /// cross-`Layer` clobbering.
+    /// cross-`Subscriber` clobbering.
     ///
     /// ## Panics
     ///
@@ -107,20 +107,20 @@ impl<'a> ExtensionsMut<'a> {
 /// A type map of span extensions.
 ///
 /// [ExtensionsInner] is used by [Data] to store and
-/// span-specific data. A given [Layer] can read and write
+/// span-specific data. A given [Subscriber] can read and write
 /// data that it is interested in recording and emitting.
 #[derive(Default)]
 pub(crate) struct ExtensionsInner {
-    // If extensions are never used, no need to carry around an empty HashMap.
-    // That's 3 words. Instead, this is only 1 word.
-    map: Option<Box<AnyMap>>,
+    map: AnyMap,
 }
 
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
     #[inline]
     pub(crate) fn new() -> ExtensionsInner {
-        ExtensionsInner { map: None }
+        ExtensionsInner {
+            map: AnyMap::default(),
+        }
     }
 
     /// Insert a type into this `Extensions`.
@@ -129,7 +129,6 @@ impl ExtensionsInner {
     /// be returned.
     pub(crate) fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         self.map
-            .get_or_insert_with(|| Box::new(HashMap::default()))
             .insert(TypeId::of::<T>(), Box::new(val))
             .and_then(|boxed| {
                 #[allow(warnings)]
@@ -145,16 +144,14 @@ impl ExtensionsInner {
     /// Get a reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get<T: 'static>(&self) -> Option<&T> {
         self.map
-            .as_ref()
-            .and_then(|map| map.get(&TypeId::of::<T>()))
+            .get(&TypeId::of::<T>())
             .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
     }
 
     /// Get a mutable reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
-            .as_mut()
-            .and_then(|map| map.get_mut(&TypeId::of::<T>()))
+            .get_mut(&TypeId::of::<T>())
             .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
     }
 
@@ -162,43 +159,109 @@ impl ExtensionsInner {
     ///
     /// If a extension of this type existed, it will be returned.
     pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
-        self.map
-            .as_mut()
-            .and_then(|map| map.remove(&TypeId::of::<T>()))
-            .and_then(|boxed| {
-                #[allow(warnings)]
-                {
-                    (boxed as Box<Any + 'static>)
-                        .downcast()
-                        .ok()
-                        .map(|boxed| *boxed)
-                }
-            })
+        self.map.remove(&TypeId::of::<T>()).and_then(|boxed| {
+            #[allow(warnings)]
+            {
+                (boxed as Box<Any + 'static>)
+                    .downcast()
+                    .ok()
+                    .map(|boxed| *boxed)
+            }
+        })
+    }
+
+    /// Clear the `ExtensionsInner` in-place, dropping any elements in the map but
+    /// retaining allocated capacity.
+    ///
+    /// This permits the hash map allocation to be pooled by the registry so
+    /// that future spans will not need to allocate new hashmaps.
+    pub(crate) fn clear(&mut self) {
+        self.map.clear();
     }
 }
 
 impl fmt::Debug for ExtensionsInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Extensions").finish()
+        f.debug_struct("Extensions")
+            .field("len", &self.map.len())
+            .field("capacity", &self.map.capacity())
+            .finish()
     }
 }
 
-#[test]
-fn test_extensions() {
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[derive(Debug, PartialEq)]
     struct MyType(i32);
 
-    let mut extensions = ExtensionsInner::new();
+    #[test]
+    fn test_extensions() {
+        let mut extensions = ExtensionsInner::new();
 
-    extensions.insert(5i32);
-    extensions.insert(MyType(10));
+        extensions.insert(5i32);
+        extensions.insert(MyType(10));
 
-    assert_eq!(extensions.get(), Some(&5i32));
-    assert_eq!(extensions.get_mut(), Some(&mut 5i32));
+        assert_eq!(extensions.get(), Some(&5i32));
+        assert_eq!(extensions.get_mut(), Some(&mut 5i32));
 
-    assert_eq!(extensions.remove::<i32>(), Some(5i32));
-    assert!(extensions.get::<i32>().is_none());
+        assert_eq!(extensions.remove::<i32>(), Some(5i32));
+        assert!(extensions.get::<i32>().is_none());
 
-    assert_eq!(extensions.get::<bool>(), None);
-    assert_eq!(extensions.get(), Some(&MyType(10)));
+        assert_eq!(extensions.get::<bool>(), None);
+        assert_eq!(extensions.get(), Some(&MyType(10)));
+    }
+
+    #[test]
+    fn clear_retains_capacity() {
+        let mut extensions = ExtensionsInner::new();
+        extensions.insert(5i32);
+        extensions.insert(MyType(10));
+        extensions.insert(true);
+
+        assert_eq!(extensions.map.len(), 3);
+        let prev_capacity = extensions.map.capacity();
+        extensions.clear();
+
+        assert_eq!(
+            extensions.map.len(),
+            0,
+            "after clear(), extensions map should have length 0"
+        );
+        assert_eq!(
+            extensions.map.capacity(),
+            prev_capacity,
+            "after clear(), extensions map should retain prior capacity"
+        );
+    }
+
+    #[test]
+    fn clear_drops_elements() {
+        use std::sync::Arc;
+        struct DropMePlease(Arc<()>);
+        struct DropMeTooPlease(Arc<()>);
+
+        let mut extensions = ExtensionsInner::new();
+        let val1 = DropMePlease(Arc::new(()));
+        let val2 = DropMeTooPlease(Arc::new(()));
+
+        let val1_dropped = Arc::downgrade(&val1.0);
+        let val2_dropped = Arc::downgrade(&val2.0);
+        extensions.insert(val1);
+        extensions.insert(val2);
+
+        assert!(val1_dropped.upgrade().is_some());
+        assert!(val2_dropped.upgrade().is_some());
+
+        extensions.clear();
+        assert!(
+            val1_dropped.upgrade().is_none(),
+            "after clear(), val1 should be dropped"
+        );
+        assert!(
+            val2_dropped.upgrade().is_none(),
+            "after clear(), val2 should be dropped"
+        );
+    }
 }

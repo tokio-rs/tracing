@@ -2,7 +2,7 @@
 //!
 //! This module provides the [`LogTracer`] type which implements `log`'s [logger
 //! interface] by recording log records as `tracing` `Event`s. This is intended for
-//! use in conjunction with a `tracing` `Subscriber` to consume events from
+//! use in conjunction with a `tracing` `Collector` to consume events from
 //! dependencies that emit [`log`] records within a trace context.
 //!
 //! # Usage
@@ -10,7 +10,7 @@
 //! To create and initialize a `LogTracer` with the default configurations, use:
 //!
 //! * [`init`] if you want to convert all logs, regardless of log level,
-//!   allowing the tracing `Subscriber` to perform any filtering
+//!   allowing the tracing `Collector` to perform any filtering
 //! * [`init_with_filter`] to convert all logs up to a specified log level
 //!
 //! In addition, a [builder] is available for cases where more advanced
@@ -28,7 +28,7 @@
 //! [ignore]: struct.Builder.html#method.ignore_crate
 use crate::{format_trace, AsTrace};
 pub use log::SetLoggerError;
-use tracing_core::dispatcher;
+use tracing_core::dispatch;
 
 /// A simple "logger" that converts all log records into `tracing` `Event`s.
 #[derive(Debug)]
@@ -134,7 +134,7 @@ impl LogTracer {
     /// # }
     /// ```
     ///
-    /// This will forward all logs to `tracing` and lets the current `Subscriber`
+    /// This will forward all logs to `tracing` and lets the current `Collector`
     /// determine if they are enabled.
     ///
     /// The [`builder`] function can be used to customize the `LogTracer` before
@@ -174,7 +174,7 @@ impl log::Log for LogTracer {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let enabled = dispatcher::get_default(|dispatch| {
+        let enabled = dispatch::get_default(|dispatch| {
             // TODO: can we cache this for each log record, so we can get
             // similar to the callsite cache?
             dispatch.enabled(&record.as_trace())
