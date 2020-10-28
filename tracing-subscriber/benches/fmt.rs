@@ -96,12 +96,8 @@ fn mk_dispatch() -> tracing::Dispatch {
 fn bench_event(c: &mut Criterion) {
     bench_thrpt(c, "event", |group, i| {
         group.bench_with_input(BenchmarkId::new("root/single_threaded", i), i, |b, &i| {
-<<<<<<< HEAD
-            tracing::dispatch::with_default(mk_dispatch(), || {
-=======
             let dispatch = mk_dispatch();
-            tracing::dispatch::with_default(&dispatch, || {
->>>>>>> upstream/master
+            tracing::dispatch::with_default(dispatch, || {
                 b.iter(|| {
                     for n in 0..i {
                         tracing::info!(n);
@@ -146,11 +142,7 @@ fn bench_event(c: &mut Criterion) {
             BenchmarkId::new("unique_parent/single_threaded", i),
             i,
             |b, &i| {
-<<<<<<< HEAD
                 tracing::dispatch::with_default(mk_dispatch(), || {
-=======
-                tracing::dispatch::with_default(&mk_dispatch(), || {
->>>>>>> upstream/master
                     let span = tracing::info_span!("unique_parent", foo = false);
                     let _guard = span.enter();
                     b.iter(|| {
@@ -215,15 +207,10 @@ fn bench_event(c: &mut Criterion) {
             i,
             |b, &i| {
                 b.iter_custom(|iters| {
-                    let dispatch = mk_dispatch();
                     let mut total = Duration::from_secs(0);
                     for _ in 0..iters {
-<<<<<<< HEAD
                         let dispatch = mk_dispatch();
                         let parent = tracing::dispatch::with_default(dispatch.clone(), || {
-=======
-                        let parent = tracing::dispatch::with_default(&dispatch, || {
->>>>>>> upstream/master
                             tracing::info_span!("shared_parent", foo = "hello world")
                         });
                         let bench = MultithreadedBench::new(dispatch.clone());
@@ -274,7 +261,7 @@ fn bench_event(c: &mut Criterion) {
                     let dispatch = mk_dispatch();
                     let mut total = Duration::from_secs(0);
                     for _ in 0..iters {
-                        let parent = tracing::dispatch::with_default(&dispatch, || {
+                        let parent = tracing::dispatch::with_default(dispatch.clone(), || {
                             tracing::info_span!("multiparent", foo = "hello world")
                         });
                         let bench = MultithreadedBench::new(dispatch.clone());
