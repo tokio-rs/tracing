@@ -64,6 +64,32 @@ impl<E> TracedError<E>
 where
     E: std::error::Error + Send + Sync + 'static,
 {
+    /// Construct a TracedError given both the SpanTrace and the inner Error
+    pub fn new(error: E, span_trace: SpanTrace) -> Self {
+        // # SAFETY
+        //
+        // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
+        // of this struct's methods safe. This saves a function pointer that is parameterized on the Error type
+        // being stored inside the ErrorImpl. This lets the object_ref function safely cast a type
+        // erased `ErrorImpl` back to its original type, which is needed in order to forward our
+        // error/display/debug impls to the internal error type from the type erased error type.
+        //
+        // The repr(C) is necessary to ensure that the struct is layed out in the order we
+        // specified it, so that we can safely access the vtable and spantrace fields through a type
+        // erased pointer to the original object.
+        let vtable = &ErrorVTable {
+            object_ref: object_ref::<E>,
+        };
+
+        TracedError {
+            inner: ErrorImpl {
+                vtable,
+                span_trace,
+                error,
+            },
+        }
+    }
+
     /// Convert the inner error type of a `TracedError` while preserving the
     /// attached `SpanTrace`.
     ///
@@ -101,31 +127,21 @@ where
         O: FnOnce(E) -> F,
         F: std::error::Error + Send + Sync + 'static,
     {
-        // # SAFETY
-        //
-        // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
-        // of this struct's methods safe. This saves a function pointer that is parameterized on the Error type
-        // being stored inside the ErrorImpl. This lets the object_ref function safely cast a type
-        // erased `ErrorImpl` back to its original type, which is needed in order to forward our
-        // error/display/debug impls to the internal error type from the type erased error type.
-        //
-        // The repr(C) is necessary to ensure that the struct is layed out in the order we
-        // specified it, so that we can safely access the vtable and spantrace fields through a type
-        // erased pointer to the original object.
-        let vtable = &ErrorVTable {
-            object_ref: object_ref::<F>,
-        };
         let span_trace = self.inner.span_trace;
         let error = self.inner.error;
         let error = op(error);
 
-        TracedError {
-            inner: ErrorImpl {
-                vtable,
-                span_trace,
-                error,
-            },
-        }
+        TracedError::new(error, span_trace)
+    }
+
+    /// Convert the inner error type of a `TracedError` while preserving the
+    /// attached `SpanTrace` using the inner error's `Into` impl.
+    pub fn err_into<F>(self) -> TracedError<F>
+    where
+        E: Into<F>,
+        F: std::error::Error + Send + Sync + 'static,
+    {
+        self.map(Into::into)
     }
 }
 
@@ -134,28 +150,7 @@ where
     E: Error + Send + Sync + 'static,
 {
     fn from(error: E) -> Self {
-        // # SAFETY
-        //
-        // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
-        // of this struct's methods safe. This saves a function pointer that is parameterized on the Error type
-        // being stored inside the ErrorImpl. This lets the object_ref function safely cast a type
-        // erased `ErrorImpl` back to its original type, which is needed in order to forward our
-        // error/display/debug impls to the internal error type from the type erased error type.
-        //
-        // The repr(C) is necessary to ensure that the struct is layed out in the order we
-        // specified it so that we can safely access the vtable and spantrace fields thru a type
-        // erased pointer to the original object.
-        let vtable = &ErrorVTable {
-            object_ref: object_ref::<E>,
-        };
-
-        Self {
-            inner: ErrorImpl {
-                vtable,
-                span_trace: SpanTrace::capture(),
-                error,
-            },
-        }
+        TracedError::new(error, SpanTrace::capture())
     }
 }
 
