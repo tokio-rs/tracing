@@ -260,19 +260,6 @@ where
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
-        Subscriber {
-            fmt_event: self.fmt_event.with_ansi(ansi),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
-        }
-    }
-
     /// Sets whether or not an event's target is displayed.
     pub fn with_target(self, display_target: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
@@ -342,19 +329,29 @@ where
             _inner: self._inner,
         }
     }
-
-    /// Sets the subscriber being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn pretty(self) -> Subscriber<S, format::Pretty, format::Format<format::Pretty, T>, W> {
-        Subscriber {
-            fmt_event: self.fmt_event.pretty(),
-            fmt_fields: format::Pretty::default(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+    cfg_feature!("ansi", {
+        /// Sets the subscriber being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
+        pub fn pretty(self) -> Subscriber<S, format::Pretty, format::Format<format::Pretty, T>, W> {
+            Subscriber {
+                fmt_event: self.fmt_event.pretty(),
+                fmt_fields: format::Pretty::default(),
+                fmt_span: self.fmt_span,
+                make_writer: self.make_writer,
+                _inner: self._inner,
+            }
         }
-    }
+
+        /// Enable ANSI encoding for formatted events.
+        pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+            Subscriber {
+                fmt_event: self.fmt_event.with_ansi(ansi),
+                fmt_fields: self.fmt_fields,
+                fmt_span: self.fmt_span,
+                make_writer: self.make_writer,
+                _inner: self._inner,
+            }
+        }
+    });
 
     /// Sets the subscriber being built to use a [JSON formatter](../fmt/format/struct.Json.html).
     ///
