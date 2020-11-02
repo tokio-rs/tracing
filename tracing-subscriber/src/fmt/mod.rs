@@ -423,7 +423,7 @@ impl Collector {
     ///
     /// This can be overridden with the [`CollectorBuilder::with_max_level`] method.
     ///
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [verbosity level]: tracing_core::Level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
     /// Returns a new `CollectorBuilder` for configuring a format subscriber.
@@ -616,7 +616,6 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`time`]: mod@time
     /// [`timer`]: time::FormatTime
     /// [`ChronoUtc`]: time::ChronoUtc
     /// [`ChronoLocal`]: time::ChronoLocal
@@ -659,7 +658,7 @@ where
     /// this formatter; they will not be recorded by other `Collector`s or by
     /// `Subscriber`s added to this subscriber.
     ///
-    /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
+    /// [lifecycle]: tracing::span#the-span-lifecycle
     /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
@@ -945,7 +944,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .with_max_level(LevelFilter::OFF)
     ///     .finish();
     /// ```
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [verbosity level]: tracing_core::Level
     /// [`EnvFilter`]: super::filter::EnvFilter
     pub fn with_max_level(
         self,

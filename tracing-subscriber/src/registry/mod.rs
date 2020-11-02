@@ -211,7 +211,7 @@ where
 
     /// Returns a list of [fields] defined by the span.
     ///
-    /// [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
+    /// [fields]: tracing_core::field
     pub fn fields(&self) -> &FieldSet {
         self.data.metadata().fields()
     }

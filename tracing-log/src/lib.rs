@@ -92,11 +92,8 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
-//! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
-//! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-//! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+//! [`tracing::Collector`]: tracing::Collect
+//! [`Collect`]: tracing::Collect
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(
@@ -376,7 +373,6 @@ impl AsTrace for log::Level {
 /// regardless of the source of its source.
 ///
 /// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
-/// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
 pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes

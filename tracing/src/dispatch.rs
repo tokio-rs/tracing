@@ -133,11 +133,6 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Collect`]: struct.Collect.html
-//! [`with_default`]: fn.with_default.html
-//! [`set_global_default`]: fn.set_global_default.html
-//! [`get_default`]: fn.get_default.html
-//! [`Dispatch`]: struct.Dispatch.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatch::set_default;

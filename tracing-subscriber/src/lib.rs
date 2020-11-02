@@ -57,10 +57,8 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-//! [`fmt`]: mod@fmt
-//! [`registry`]: mod@registry
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
+//! [`Collect`]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
@@ -159,7 +157,7 @@ impl CurrentSpan {
     /// executing, or `None` if it is not inside of a span.
     ///
     ///
-    /// [`Id`]: https://docs.rs/tracing/latest/tracing/span/struct.Id.html
+    /// [`Id`]: tracing::span::Id
     pub fn id(&self) -> Option<Id> {
         self.current.with(|current| current.last().cloned())?
     }

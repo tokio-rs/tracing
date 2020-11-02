@@ -20,7 +20,7 @@
 //! default.
 //!
 //! [`log`]: https://docs.rs/log/0.4.8/log/
-//! [logger interface]: https://docs.rs/log/0.4.8/log/trait.Log.html
+//! [logger interface]: log::Log
 //! [`init`]: LogTracer.html#method.init
 //! [`init_with_filter`]: LogTracer.html#method.init_with_filter
 //! [builder]: LogTracer::builder()
