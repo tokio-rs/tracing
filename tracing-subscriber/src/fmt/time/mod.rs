@@ -18,7 +18,7 @@ mod datetime;
 ///
 /// The full list of provided implementations can be found in [`time`].
 ///
-/// [`time`]: ./index.html
+/// [`time`]: self
 pub trait FormatTime {
     /// Measure and write out the current time.
     ///

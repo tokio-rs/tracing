@@ -538,7 +538,6 @@ impl Dispatch {
     /// initialization of statics.
     ///
     /// [collector]: super::collect::Collect
-    /// [`Dispatch::new`]: Dispatch::new
     /// [`lazy_static`]: https://crates.io/crates/lazy_static
     pub fn from_static(collector: &'static (dyn Collect + Send + Sync)) -> Self {
         #[cfg(feature = "alloc")]

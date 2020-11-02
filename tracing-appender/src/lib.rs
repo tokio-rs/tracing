@@ -10,7 +10,7 @@
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
-//! [file_appender]: ./rolling/struct.RollingFileAppender.html
+//! [file_appender]: rolling::RollingFileAppender
 //! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage
@@ -21,9 +21,9 @@
 //! ```
 //!
 //! This crate can be used in a few ways to record spans/events:
-//!  - Using a [`RollingFileAppender`][rolling_struct] to perform writes to a log file. This will block on writes.
+//!  - Using a [`RollingFileAppender`] to perform writes to a log file. This will block on writes.
 //!  - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
-//!  - Using a combination of [`NonBlocking`][non_blocking] and [`RollingFileAppender`][rolling_struct] to allow writes to a log file
+//!  - Using a combination of [`NonBlocking`] and [`RollingFileAppender`] to allow writes to a log file
 //! without blocking.
 //!
 //! ## Rolling File Appender
@@ -88,12 +88,11 @@
 //!
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
-//! [non_blocking]: ./non_blocking/index.html
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
-//! [guard]: ./non_blocking/struct.WorkerGuard.html
-//! [rolling]: ./rolling/index.html
+//! [non_blocking]: mod@non_blocking
+//! [guard]: non_blocking::WorkerGuard
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-//! [rolling_struct]: ./rolling/struct.RollingFileAppender.html
+//! [`RollingFileAppender`]: rolling::RollingFileAppender
 //! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //!
 //! ## Non-Blocking Rolling File Appender
@@ -165,9 +164,7 @@ mod worker;
 
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
-/// See the [`non_blocking` module's docs][non_blocking]'s for more details.
-///
-/// [non_blocking]: ./non_blocking/index.html
+/// See the [`non_blocking` module's docs][mod@non_blocking]'s for more details.
 ///
 /// # Examples
 ///

@@ -54,14 +54,10 @@
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
 //! require the root collector to be a registry.
 //!
-//! [`Subscribe`]: ../layer/trait.serSubscribe.html
-//! [`Collect`]:
-//!     https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
-//! [`Registry`]: struct.Registry.html
-//! [ctx]: ../layer/struct.Context.html
-//! [lookup]: ../layer/struct.Context.html#method.span
-//! [`LookupSpan`]: trait.LookupSpan.html
-//! [`SpanData`]: trait.SpanData.html
+//! [`Subscribe`]: crate::subscribe::Subscribe
+//! [`Collect`]: tracing_core::collect::Collect
+//! [ctx]: crate::subscribe::Context
+//! [lookup]: crate::subscribe::Context::span()
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
@@ -85,9 +81,9 @@ pub use sharded::Registry;
 /// implement this trait; if they do, any [`Subscriber`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`span()`] method.
 ///
-/// [`Subscriber`]: ../layer/trait.Subscriber.html
-/// [`Context`]: ../layer/struct.Context.html
-/// [`span()`]: ../layer/struct.Context.html#method.span
+/// [`Subscriber`]: crate::Subscribe
+/// [`Context`]: crate::subscribe::Context
+/// [`span()`]: crate::subscribe::Context::span()
 pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;
@@ -106,7 +102,6 @@ pub trait LookupSpan<'a> {
     /// capable of performing more sophisiticated queries.
     /// </pre></div>
     ///
-    /// [`SpanData`]: trait.SpanData.html
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
@@ -118,9 +113,7 @@ pub trait LookupSpan<'a> {
     /// rather than the [`span_data`] method; while _implementors_ of this trait
     /// should only implement `span_data`.
     ///
-    /// [`SpanRef`]: struct.SpanRef.html
-    /// [`SpanData`]: trait.SpanData.html
-    /// [`span_data`]: #method.span_data
+    /// [`span_data`]: LookupSpan::span_data()
     fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
     where
         Self: Sized,
@@ -163,8 +156,8 @@ pub trait SpanData<'a> {
 /// provides additional methods for querying the registry based on values from
 /// the span.
 ///
-/// [span data]: trait.SpanData.html
-/// [registry]: trait.LookupSpan.html
+/// [span data]: SpanData
+/// [registry]: LookupSpan
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
@@ -175,7 +168,6 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 ///
 /// This is returned by the [`SpanRef::parents`] method.
 ///
-/// [`SpanRef::parents`]: struct.SpanRef.html#method.parents
 #[derive(Debug)]
 pub struct Parents<'a, R> {
     registry: &'a R,
@@ -187,7 +179,7 @@ pub struct Parents<'a, R> {
 ///
 /// For additonal details, see [`SpanRef::from_root`].
 ///
-/// [`Span::from_root`]: struct.SpanRef.html#method.from_root
+/// [`Span::from_root`]: SpanRef::from_root()
 pub struct FromRoot<'a, R: LookupSpan<'a>> {
     #[cfg(feature = "smallvec")]
     inner: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,

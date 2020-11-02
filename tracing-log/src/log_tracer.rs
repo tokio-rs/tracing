@@ -19,13 +19,12 @@
 //! such as when a crate emits both `tracing` diagnostics _and_ log records by
 //! default.
 //!
-//! [`LogTracer`]: struct.LogTracer.html
 //! [`log`]: https://docs.rs/log/0.4.8/log/
 //! [logger interface]: https://docs.rs/log/0.4.8/log/trait.Log.html
-//! [`init`]: struct.LogTracer.html#method.init.html
-//! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter.html
-//! [builder]: struct.LogTracer.html#method.builder
-//! [ignore]: struct.Builder.html#method.ignore_crate
+//! [`init`]: LogTracer.html#method.init
+//! [`init_with_filter`]: LogTracer.html#method.init_with_filter
+//! [builder]: LogTracer::builder()
+//! [ignore]: Builder::ignore_crate()
 use crate::{format_trace, AsTrace};
 pub use log::SetLoggerError;
 use tracing_core::dispatch;
@@ -93,7 +92,7 @@ impl LogTracer {
     /// # }
     /// ```
     ///
-    /// [`init`]: #method.init
+    /// [`init`]: LogTracer::init()
     /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
         Self {
@@ -109,7 +108,7 @@ impl LogTracer {
     /// The [`builder`] function can be used to customize the `LogTracer` before
     /// initializing it.
     ///
-    /// [`builder`]: #method.builder
+    /// [`builder`]: LogTracer::builder()
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn init_with_filter(level: log::LevelFilter) -> Result<(), SetLoggerError> {
@@ -143,8 +142,8 @@ impl LogTracer {
     /// If you know in advance you want to filter some log levels,
     /// use [`builder`] or [`init_with_filter`] instead.
     ///
-    /// [`init_with_filter`]: #method.init_with_filter
-    /// [`builder`]: #method.builder
+    /// [`init_with_filter`]: LogTracer::init_with_filter()
+    /// [`builder`]: LogTracer::builder()
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn init() -> Result<(), SetLoggerError> {
@@ -197,7 +196,6 @@ impl log::Log for LogTracer {
 impl Builder {
     /// Returns a new `Builder` to construct a [`LogTracer`].
     ///
-    /// [`LogTracer`]: struct.LogTracer.html
     pub fn new() -> Self {
         Self::default()
     }

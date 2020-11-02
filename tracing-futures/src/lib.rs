@@ -55,8 +55,6 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [collector]: https://docs.rs/tracing/latest/tracing/collect/index.html
-//! [`Instrument`]: trait.Instrument.html
-//! [`WithCollector`]: trait.WithCollector.html
 //! [`futures`]: https://crates.io/crates/futures
 //!
 //! ## Supported Rust Versions
