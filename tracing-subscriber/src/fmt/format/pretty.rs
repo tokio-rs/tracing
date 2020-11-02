@@ -11,7 +11,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field},
-    Subscriber, Event, Level,
+    Event, Level, Subscriber,
 };
 
 #[cfg(feature = "tracing-log")]
