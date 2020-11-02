@@ -158,10 +158,10 @@
 //! ```
 //!
 //! [`in_current_span()`]: InstrumentResult::in_current_span
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-//! [collector]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-//! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
+//! [span]: mod@tracing::span
+//! [events]: tracing::Event
+//! [collector]: tracing::Collect
+//! [subscriber layer]: tracing_subscriber::subscribe::Subscribe
 //! [`tracing`]: https://docs.rs/tracing
 //! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 //!

@@ -22,9 +22,9 @@ use opentelemetry::{api, sdk};
 ///
 /// [`OpenTelemetrySpanExt::set_parent`]: crate::OpenTelemetrySpanExt::set_parent
 /// [`OpenTelemetrySpanExt::context`]: crate::OpenTelemetrySpanExt::context
-/// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
-/// [`SpanBuilder`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/struct.SpanBuilder.html
-/// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
+/// [`Tracer`]: opentelemetry::api::trace::tracer::Tracer
+/// [`SpanBuilder`]: opentelemetry::api::trace::tracer::SpanBuilder
+/// [`SpanContext`]: opentelemetry::api::trace::span_context::SpanContext
 pub trait PreSampledTracer {
     /// Produce a pre-sampled span context for the given span builder.
     fn sampled_span_context(&self, builder: &mut api::SpanBuilder) -> api::SpanContext;

@@ -119,8 +119,8 @@ pub struct WorkerGuard {
 /// crate. Therefore, it can be used with the [`tracing_subscriber::fmt`][fmt] module
 /// or with any other subscriber/layer implementation that uses the `MakeWriter` trait.
 ///
-/// [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-/// [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+/// [make_writer]: tracing_subscriber::fmt::MakeWriter
+/// [fmt]: mod@tracing_subscriber::fmt
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: Arc<AtomicU64>,

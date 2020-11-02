@@ -27,9 +27,8 @@ pub struct Pretty {
 
 /// The [visitor] produced by [`Pretty`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`DefaultFields`]: struct.DefaultFields.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: field::Visit
+/// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct PrettyVisitor<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,

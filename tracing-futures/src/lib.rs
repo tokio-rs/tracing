@@ -53,8 +53,8 @@
 //! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [collector]: https://docs.rs/tracing/latest/tracing/collect/index.html
+//! [span]: mod@tracing::span
+//! [collector]: tracing::collect
 //! [`futures`]: https://crates.io/crates/futures
 //!
 //! ## Supported Rust Versions
@@ -118,7 +118,7 @@ pub mod executor;
 /// Extension trait allowing futures, streams, sinks, and executors to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [span]: mod@tracing::span
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
@@ -147,7 +147,7 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
+    /// [entered]: tracing::span::Span::enter()
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
@@ -182,8 +182,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.current
-    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
+    /// [current]: tracing::span::Span::current()
+    /// [entered]: tracing::span::Span::enter()
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -193,7 +193,7 @@ pub trait Instrument: Sized {
 /// Extension trait allowing futures, streams, and sinks to be instrumented with
 /// a `tracing` [collector].
 ///
-/// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
+/// [collector]: tracing::collect::Collect
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithCollector: Sized {
@@ -205,8 +205,8 @@ pub trait WithCollector: Sized {
     /// When the wrapped type is an executor, the subscriber will be set as the
     /// default for any futures spawned on that executor.
     ///
-    /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [collector]: tracing::collect::Collect
+    /// [default]: tracing::dispatch#setting-the-default-collector
     fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
@@ -228,8 +228,8 @@ pub trait WithCollector: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [collector]: https://docs.rs/tracing/latest/tracing/collect/trait.Collect.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [collector]: tracing::collect::Collect
+    /// [default]: tracing::dispatch#setting-the-default-collector
     #[inline]
     fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {

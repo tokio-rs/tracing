@@ -187,13 +187,12 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`Interest::never()`] from its [`register_callsite`] method, filter
 /// evaluation will short-circuit and the span or event will be disabled.
 ///
-/// [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
-/// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
+/// [`Collect`]: tracing_core::collect::Collect
+/// [span IDs]: tracing_core::span::Id
 /// [the current span]: Context::current_span()
 /// [`register_callsite`]: Subscribe::register_callsite()
 /// [`enabled`]: Subscribe::enabled()
 /// [`on_enter`]: Subscribe::on_enter()
-/// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
 pub trait Subscribe<C>
 where
     C: Collect,
@@ -201,7 +200,7 @@ where
 {
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite, similarly
-    /// to [`Collector::register_callsite`].
+    /// to [`Collect::register_callsite`].
     ///
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
@@ -212,7 +211,7 @@ where
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.enabled">
-    /// <code>Subscriber::enabled</code></a>) determine whether a span or event is
+    /// <code>Subscribe::enabled</code></a>) determine whether a span or event is
     /// globally enabled, <em>not</em> whether the individual subscriber will be
     /// notified about that span or event. This is intended to be used
     /// by subscribers that implement filtering for the entire stack. Subscribers which do
@@ -233,12 +232,9 @@ where
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Collector::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-    /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
+    /// [`Interest`]: tracing_core::Interest
+    /// [`Collect::register_callsite`]: tracing_core::Collect::register_callsite()
     /// [`self.enabled`]: Subscribe::enabled()
-    /// [`Subscriber::enabled`]: Subscribe::enabled()
     /// [`on_event`]: Subscribe::on_event()
     /// [`on_enter`]: Subscribe::on_enter()
     /// [`on_exit`]: Subscribe::on_exit()
@@ -280,7 +276,7 @@ where
     /// See [the trait-level documentation] for more information on filtering
     /// with `Subscriber`s.
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
+    /// [`Interest`]: tracing_core::Interest
     /// [`on_event`]: Layer::on_event()
     /// [`on_enter`]: Layer::on_enter()
     /// [`on_exit`]: Layer::on_exit()
@@ -485,7 +481,7 @@ where
     ///     .with_collector(MyCollector::new());
     ///```
     ///
-    /// [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
+    /// [`Collect`]: tracing_core::Collect
     fn with_collector(self, inner: C) -> Layered<Self, C>
     where
         Self: Sized,
@@ -552,7 +548,7 @@ pub struct Context<'a, S> {
 /// [subscriber]s.
 ///
 /// [subscriber]: super::subscribe::Subscribe
-/// [collector]: https://docs.rs/tracing-core/latest/tracing_core/trait.Collect.html
+/// [collector]: tracing_core::Collect
 #[derive(Clone, Debug)]
 pub struct Layered<S, I, C = I> {
     subscriber: S,
@@ -976,8 +972,8 @@ where
     ///   check whether the event would be enabled. This allows `Collectors`s to
     ///   elide constructing the event if it would not be recorded.
     ///
-    /// [register]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html#method.register_callsite
-    /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html#method.enabled
+    /// [register]: tracing_core::collect::Collect::register_callsite()
+    /// [`enabled`]: tracing_core::collect::Collect::enabled()
     /// [`Context::enabled`]: Layered::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
