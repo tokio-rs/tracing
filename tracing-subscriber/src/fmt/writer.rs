@@ -16,7 +16,7 @@ use std::{fmt::Debug, io};
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 /// [`fmt::Collector`]: super::super::fmt::Collector
 /// [`fmt::Subscriber`]: super::super::fmt::Subscriber
-/// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
+/// [`Event`]: tracing_core::event::Event
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
 /// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
 pub trait MakeWriter {
@@ -127,7 +127,7 @@ impl MakeWriter for TestWriter {
 /// }
 /// ```
 ///
-/// [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
+/// [`Collect`]: tracing::Collect
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 pub struct BoxMakeWriter {
     inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,

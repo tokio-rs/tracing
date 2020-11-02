@@ -53,7 +53,7 @@ impl<D, V> VisitDelimited<D, V> {
     /// Returns a new [`Visit`] implementation that wraps `inner` so that
     /// each formatted field is separated by the provided `delimiter`.
     ///
-    /// [`Visit`]: https://docs.rs/tracing-core/0.1.6/tracing_core/field/trait.Visit.html
+    /// [`Visit`]: tracing_core::field::Visit
     pub fn new(delimiter: D, inner: V) -> Self {
         Self {
             delimiter,

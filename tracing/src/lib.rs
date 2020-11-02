@@ -49,7 +49,7 @@
 //! # }
 //!```
 //!
-//! The [`span` module][span]'s documentation provides further details on how to
+//! The [`span` module][mod@span]'s documentation provides further details on how to
 //! use spans.
 //!
 //! <div class="information">
@@ -416,13 +416,13 @@
 //! Specifying a formatted message in this manner does not allocate by default.
 //!
 //! [struct initializers]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-the-field-init-shorthand-when-variables-and-fields-have-the-same-name
-//! [target]: struct.Metadata.html#method.target
-//! [parent span]: span/struct.Attributes.html#method.parent
-//! [determined contextually]: span/struct.Attributes.html#method.is_contextual
+//! [target]: Metadata::target()
+//! [parent span]: span::Attributes::parent()
+//! [determined contextually]: span::Attributes::is_contextual()
 //! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 //! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
 //! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
-//! [`Empty`]: field/struct.Empty.html
+//! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
 //!
@@ -436,19 +436,18 @@
 //! These are intended both as a shorthand, and for compatibility with the [`log`]
 //! crate (see the next section).
 //!
-//! [`span!`]: macro.span.html
-//! [`event!`]: macro.event.html
-//! [`trace!`]: macro.trace.html
-//! [`debug!`]: macro.debug.html
-//! [`info!`]: macro.info.html
-//! [`warn!`]: macro.warn.html
-//! [`error!`]: macro.error.html
-//! [`trace_span!`]: macro.trace_span.html
-//! [`debug_span!`]: macro.debug_span.html
-//! [`info_span!`]: macro.info_span.html
-//! [`warn_span!`]: macro.warn_span.html
-//! [`error_span!`]: macro.error_span.html
-//! [`Level`]: struct.Level.html
+//! [`span!`]: span!
+//! [`event!`]: event!
+//! [`trace!`]: trace!
+//! [`debug!`]: debug!
+//! [`info!`]: info!
+//! [`warn!`]: warn!
+//! [`error!`]: error!
+//! [`trace_span!`]: trace_span!
+//! [`debug_span!`]: debug_span!
+//! [`info_span!`]: info_span!
+//! [`warn_span!`]: warn_span!
+//! [`error_span!`]: error_span!
 //!
 //! ### For `log` Users
 //!
@@ -849,7 +848,6 @@
 //! long as doing so complies with this policy.
 //!
 //! [`log`]: https://docs.rs/log/0.4.6/log/
-//! [span]: mod@span
 //! [spans]: mod@span
 //! [`Span`]: span::Span
 //! [`in_scope`]: span::Span::in_scope
@@ -861,8 +859,6 @@
 //! [`exit`]: collect::Collect::exit
 //! [`enabled`]: collect::Collect::enabled
 //! [metadata]: Metadata
-//! [`field::display`]: field::display
-//! [`field::debug`]: field::debug
 //! [`set_global_default`]: collect::set_global_default
 //! [`with_default`]: collect::with_default
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
@@ -873,8 +869,8 @@
 //! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
 //! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
-//! [static verbosity level]: level_filters/index.html#compile-time-filters
-//! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
+//! [static verbosity level]: level_filters#compile-time-filters
+//! [instrument]: tracing_attributes::instrument
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]

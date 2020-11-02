@@ -89,11 +89,11 @@ use tracing_core::{
 ///
 /// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
-/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
-/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
-/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
-/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
+/// [`Span`]: tracing_core::span
+/// [fields]: tracing_core::Field
+/// [`Event`]: tracing_core::Event
+/// [`level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
@@ -199,7 +199,7 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+    /// [`Level`]: tracing_core::Level
     ///
     /// # Examples
     ///
