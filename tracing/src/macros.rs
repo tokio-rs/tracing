@@ -3,7 +3,7 @@
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -139,9 +139,9 @@ macro_rules! span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
-/// [attributes]: self#configuring-attributes
-/// [Fields]: self#recording-fields
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
 /// [`span!`]: span!
 ///
 /// # Examples
@@ -220,9 +220,9 @@ macro_rules! trace_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
-/// [attributes]: self#configuring-attributes
-/// [Fields]: self#recording-fields
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
 /// [`span!`]: span!
 ///
 /// # Examples
@@ -301,9 +301,9 @@ macro_rules! debug_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
-/// [attributes]: self#configuring-attributes
-/// [Fields]: self#recording-fields
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
 /// [`span!`]: span!
 ///
 /// # Examples
@@ -382,9 +382,9 @@ macro_rules! info_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
-/// [attributes]: self#configuring-attributes
-/// [Fields]: self#recording-fields
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
 /// [`span!`]: span!
 ///
 /// # Examples
@@ -462,9 +462,9 @@ macro_rules! warn_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
-/// [attributes]: self#configuring-attributes
-/// [Fields]: self#recording-fields
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
 /// [`span!`]: span!
 ///
 /// # Examples
@@ -544,7 +544,7 @@ macro_rules! error_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -807,7 +807,7 @@ macro_rules! event {
 /// this macro.
 ///
 /// [`event!`]: event!
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1007,7 +1007,7 @@ macro_rules! trace {
 /// this macro.
 ///
 /// [`event!`]: event!
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1208,7 +1208,7 @@ macro_rules! debug {
 /// this macro.
 ///
 /// [`event!`]: event!
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1420,7 +1420,7 @@ macro_rules! info {
 /// this macro.
 ///
 /// [`event!`]: event!
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1625,7 +1625,7 @@ macro_rules! warn {
 /// this macro.
 ///
 /// [`event!`]: event!
-/// [lib]: self#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///

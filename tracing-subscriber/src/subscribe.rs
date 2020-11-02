@@ -193,7 +193,6 @@ use std::{any::TypeId, marker::PhantomData};
 /// [`register_callsite`]: Subscribe::register_callsite()
 /// [`enabled`]: Subscribe::enabled()
 /// [`on_enter`]: Subscribe::on_enter()
-/// [`Interest::never()`]: tracing_core::subscriber::Interest::never()
 pub trait Subscribe<C>
 where
     C: Collect,
@@ -201,7 +200,7 @@ where
 {
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite, similarly
-    /// to [`Collector::register_callsite`].
+    /// to [`Collect::register_callsite`].
     ///
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
@@ -212,7 +211,7 @@ where
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.enabled">
-    /// <code>Subscriber::enabled</code></a>) determine whether a span or event is
+    /// <code>Subscribe::enabled</code></a>) determine whether a span or event is
     /// globally enabled, <em>not</em> whether the individual subscriber will be
     /// notified about that span or event. This is intended to be used
     /// by subscribers that implement filtering for the entire stack. Subscribers which do
@@ -234,11 +233,8 @@ where
     /// [`Interest::always()`].
     ///
     /// [`Interest`]: tracing_core::Interest
-    /// [`Collector::register_callsite`]: tracing_core::Subscriber::register_callsite()
-    /// [`Interest::never()`]: tracing_core::subscriber::Interest::never()
-    /// [`Interest::always()`]: tracing_core::subscriber::Interest::always()
+    /// [`Collect::register_callsite`]: tracing_core::Collect::register_callsite()
     /// [`self.enabled`]: Subscribe::enabled()
-    /// [`Subscriber::enabled`]: Subscribe::enabled()
     /// [`on_event`]: Subscribe::on_event()
     /// [`on_enter`]: Subscribe::on_enter()
     /// [`on_exit`]: Subscribe::on_exit()

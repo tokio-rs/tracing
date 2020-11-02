@@ -247,7 +247,7 @@ where
     /// this formatter; they will not be recorded by other `Collector`s or by
     /// `Subscriber`s added to this subscriber.
     ///
-    /// [lifecycle]: tracing::span#the-span-lifecycle
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
     /// [time]: Subscriber::without_time()
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {

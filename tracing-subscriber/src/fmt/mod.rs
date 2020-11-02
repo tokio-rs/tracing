@@ -616,6 +616,7 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
+    /// [`time`]: mod@time
     /// [`timer`]: time::FormatTime
     /// [`ChronoUtc`]: time::ChronoUtc
     /// [`ChronoLocal`]: time::ChronoLocal
@@ -658,7 +659,7 @@ where
     /// this formatter; they will not be recorded by other `Collector`s or by
     /// `Subscriber`s added to this subscriber.
     ///
-    /// [lifecycle]: tracing::span#the-span-lifecycle
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
     /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {

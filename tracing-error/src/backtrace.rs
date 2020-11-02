@@ -55,8 +55,8 @@ use tracing::{Metadata, Span};
 ///
 /// [`tracing`]: https://docs.rs/tracing
 /// [`Backtrace`]: https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html
-/// [span]: tracing::span
-/// [parents]: tracing::span#span-relationships
+/// [span]: mod@tracing::span
+/// [parents]: mod@tracing::span#span-relationships
 /// [fields]: tracing::field
 /// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/

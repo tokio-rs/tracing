@@ -92,8 +92,9 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`tracing::Collector`]: tracing::Collect
-//! [`Collect`]: tracing::Collect
+//! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
+//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
+//! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(

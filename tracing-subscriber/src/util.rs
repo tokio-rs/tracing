@@ -14,8 +14,8 @@ use tracing_core::dispatch::{self, Dispatch};
 /// `Collector`, may implement `Into<Dispatch>`, and will also receive an
 /// implementation of this trait.
 ///
-/// [default subscriber]: tracing::dispatcher#setting-the-default-subscriber
-/// [trace dispatcher]: tracing::dispatcher
+/// [default subscriber]: tracing::dispatch#setting-the-default-collector
+/// [trace dispatcher]: tracing::dispatch
 pub trait SubscriberInitExt
 where
     Self: Into<Dispatch>,
@@ -27,7 +27,7 @@ where
     /// a [`log`] compatibility layer. This allows the subscriber to consume
     /// `log::Record`s as though they were `tracing` `Event`s.
     ///
-    /// [default subscriber]: tracing::dispatcher#setting-the-default-subscriber
+    /// [default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
     fn set_default(self) -> dispatch::DefaultGuard {
         #[cfg(feature = "tracing-log")]
@@ -47,7 +47,7 @@ where
     /// been set, or if a `log` logger has already been set (when the
     /// "tracing-log" feature is enabled).
     ///
-    /// [global default subscriber]: tracing::dispatcher#setting-the-default-subscriber
+    /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
     fn try_init(self) -> Result<(), TryInitError> {
         #[cfg(feature = "tracing-log")]
@@ -69,7 +69,7 @@ where
     /// or if a `log` logger has already been set (when the "tracing-log"
     /// feature is enabled).
     ///
-    /// [global default subscriber]: tracing::dispatcher#setting-the-default-subscriber
+    /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
     fn init(self) {
         self.try_init()

@@ -515,7 +515,7 @@ impl Span {
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Collector`]: super::collector::Collector::current()
+    /// [considered by the `Collector`]: super::collect::Collect::current_span()
     pub fn current() -> Span {
         dispatch::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -558,8 +558,8 @@ impl Span {
     /// Enters this span, returning a guard that will exit the span when dropped.
     ///
     /// If this span is enabled by the current collector, then this function will
-    /// call [`Collector::enter`] with the span's [`Id`], and dropping the guard
-    /// will call [`Collector::exit`]. If the span is disabled, this does
+    /// call [`Collect::enter`] with the span's [`Id`], and dropping the guard
+    /// will call [`Collect::exit`]. If the span is disabled, this does
     /// nothing.
     ///
     /// <div class="information">
@@ -691,7 +691,7 @@ impl Span {
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [instrument]: crate::Instrument
-    /// [attr]: super::super::instrument
+    /// [attr]: macro@crate::instrument
     ///
     /// # Examples
     ///
@@ -750,8 +750,8 @@ impl Span {
     /// info!("i'm outside the span!")
     /// ```
     ///
-    /// [`Collector::enter`]: super::collector::Collector::enter()
-    /// [`Collector::exit`]: super::collector::Collector::exit()
+    /// [`Collect::enter`]: super::collect::Collect::enter()
+    /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
     pub fn enter(&self) -> Entered<'_> {
         if let Some(ref inner) = self.inner.as_ref() {

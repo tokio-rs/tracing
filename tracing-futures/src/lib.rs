@@ -53,7 +53,7 @@
 //! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: tracing::span
+//! [span]: mod@tracing::span
 //! [collector]: tracing::collect
 //! [`futures`]: https://crates.io/crates/futures
 //!
@@ -118,7 +118,7 @@ pub mod executor;
 /// Extension trait allowing futures, streams, sinks, and executors to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]: tracing::span
+/// [span]: mod@tracing::span
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
@@ -206,7 +206,7 @@ pub trait WithCollector: Sized {
     /// default for any futures spawned on that executor.
     ///
     /// [collector]: tracing::collect::Collect
-    /// [default]: tracing::dispatcher#setting-the-default-subscriber
+    /// [default]: tracing::dispatch#setting-the-default-collector
     fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
@@ -229,7 +229,7 @@ pub trait WithCollector: Sized {
     /// spawning a new future.
     ///
     /// [collector]: tracing::collect::Collect
-    /// [default]: tracing::dispatcher#setting-the-default-subscriber
+    /// [default]: tracing::dispatch#setting-the-default-collector
     #[inline]
     fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {

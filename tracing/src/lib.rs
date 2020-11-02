@@ -49,7 +49,7 @@
 //! # }
 //!```
 //!
-//! The [`span` module][span]'s documentation provides further details on how to
+//! The [`span` module][mod@span]'s documentation provides further details on how to
 //! use spans.
 //!
 //! <div class="information">
@@ -868,7 +868,7 @@
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
-//! [`FmtSubscriber`]: tracing_subscriber::fmt::Subscriber
+//! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 //! [static verbosity level]: level_filters#compile-time-filters
 //! [instrument]: tracing_attributes::instrument
 //! [flags]: #crate-feature-flags

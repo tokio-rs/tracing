@@ -54,7 +54,6 @@ where
 ///
 /// [`Span`]: super::span::Span
 /// [`Event`]: :../event/struct.Event.html
-/// [`DefaultGuard`]: super::dispatcher::DefaultGuard
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the collector."]

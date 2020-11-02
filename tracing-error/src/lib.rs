@@ -158,10 +158,10 @@
 //! ```
 //!
 //! [`in_current_span()`]: InstrumentResult::in_current_span
-//! [span]: tracing::span
+//! [span]: mod@tracing::span
 //! [events]: tracing::Event
 //! [collector]: tracing::Collect
-//! [subscriber layer]: tracing_subscriber::layer::Layer
+//! [subscriber layer]: tracing_subscriber::subscribe::Subscribe
 //! [`tracing`]: https://docs.rs/tracing
 //! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 //!

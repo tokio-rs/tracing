@@ -15,7 +15,7 @@
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [subscriber]: tracing_subscriber::subscriber::Subscriber
+//! [subscriber]: tracing_subscriber::subscribe::Subscribe
 //! [journald]: https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html
 //!
 //! ## Supported Rust Versions

@@ -15,7 +15,7 @@ use tracing_subscriber::{
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [subscriber]: tracing_subscriber::subscriber::Subscribe
+/// [subscriber]: tracing_subscriber::subscribe::Subscribe
 /// [`SpanTrace`]: super::SpanTrace
 /// [field formatter]: tracing_subscriber::fmt::FormatFields
 /// [default format]: tracing_subscriber::fmt::format::DefaultFields

@@ -133,6 +133,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
+//! [`Collect`]: tracing_core::Collect
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatch::set_default;
