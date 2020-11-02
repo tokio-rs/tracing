@@ -1,3 +1,20 @@
+# 0.2.15 (November 2, 2020)
+
+### Fixed
+
+- **fmt**: Fixed wrong lifetime parameters on `FormatFields` impl for
+  `FmtContext` ([#1082])
+
+### Added
+
+- **fmt**: `format::Pretty`, an aesthetically pleasing, human-readable event
+  formatter for local development and user-facing CLIs ([#1080])
+- **fmt**: `FmtContext::field_format`, which returns the subscriber's field
+  formatter ([#1082])
+
+[#1082]: https://github.com/tokio-rs/tracing/pull/1082
+[#1080]: https://github.com/tokio-rs/tracing/pull/1080
+
 # 0.2.14 (October 22, 2020)
 
 ### Fixed
