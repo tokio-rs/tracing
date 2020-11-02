@@ -274,3 +274,26 @@ jobs:
         args: --root ${{ runner.tool_cache }}/cargo-audit --force cargo-audit
     - run: echo "${{ runner.tool_cache }}/cargo-audit/bin" >> $GITHUB_PATH
     - run: cargo audit
+
+  cargo-deadlinks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        default: true
+        profile: minimal
+    - name: Build the documentation
+      uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --all-features
+      env:
+        RUSTDOCFLAGS: --cfg docsrs
+    - name: Install cargo-deadlinks
+      run: wget https://github.com/deadlinks/cargo-deadlinks/releases/download/0.4.2/deadlinks-linux
+    - run: chmod +x deadlinks-linux
+    # Only check links for this crate, since we can't control our dependencies
+    # FIXME(deadlinks#89): this is hacky
+    - run: ls -d tracing* | tr - _ | xargs -i -n1 ./deadlinks-linux deadlinks --dir target/doc/{}
