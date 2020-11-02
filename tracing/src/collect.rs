@@ -14,7 +14,7 @@ pub use tracing_core::dispatch::DefaultGuard;
 ///
 /// [`Span`]: super::span::Span
 /// [`Collect`]: super::collect::Collect
-/// [`Event`]: :../event/struct.Event.html
+/// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, S>(collector: S, f: impl FnOnce() -> T) -> T
@@ -34,7 +34,6 @@ where
 /// executables try to set them later.
 ///
 /// [span]: super::span
-/// [`Event`]: super::event::Event
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
 pub fn set_global_default<S>(collector: S) -> Result<(), SetGlobalDefaultError>
@@ -53,7 +52,7 @@ where
 /// tagged that span, instead.
 ///
 /// [`Span`]: super::span::Span
-/// [`Event`]: :../event/struct.Event.html
+/// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the collector."]
