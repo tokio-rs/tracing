@@ -388,7 +388,7 @@ pub trait Collect: 'static {
     /// inside of a `try_close` function may cause a double panic, if the span
     /// was dropped due to a thread unwinding.
     ///
-    /// [span ID]: super::span::Id
+    /// [`span ID`]: super::span::Id
     /// [`clone_span`]: Collect::clone_span
     /// [`drop_span`]: Collect::drop_span
     fn try_close(&self, id: span::Id) -> bool {
