@@ -409,7 +409,7 @@ impl LevelFilter {
     /// if it is [`OFF`].
     ///
     /// [`Level`]: super::Level
-    /// [`OFF`]: #associatedconstant.OFF
+    /// [`OFF`]: LevelFilter::OFF
     pub const fn into_level(self) -> Option<Level> {
         self.0
     }

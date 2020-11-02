@@ -121,7 +121,6 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: span::Id
 //! [`Event`]: event::Event
 //! [`Collect`]: collect::Collect
 //! [`Metadata`]: metadata::Metadata

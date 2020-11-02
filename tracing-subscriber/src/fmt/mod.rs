@@ -275,11 +275,11 @@
 //!     .init();
 //! ```
 //!
-//! [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//! [`EnvFilter`]: super::filter::EnvFilter
 //! [`env_logger`]: https://docs.rs/env_logger/
-//! [`filter`]: ../filter/index.html
-//! [`fmtBuilder`]: ./struct.CollectorBuilder.html
-//! [`FmtCollector`]: ./struct.Collector.html
+//! [`filter`]: super::filter
+//! [`fmtBuilder`]: CollectorBuilder
+//! [`FmtCollector`]: Collector
 //! [`Collect`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -397,12 +397,11 @@ pub struct CollectorBuilder<
 /// })
 /// ```
 ///
-/// [`CollectorBuilder`]: struct.CollectorBuilder.html
-/// [formatting collector]: struct.Collector.html
-/// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
-/// [`init`]: struct.CollectorBuilder.html#method.init
-/// [`try_init`]: struct.CollectorBuilder.html#method.try_init
-/// [`finish`]: struct.CollectorBuilder.html#method.finish
+/// [formatting collector]: Collector
+/// [`CollectorBuilder::default()`]: CollectorBuilder::default()
+/// [`init`]: CollectorBuilder::init()
+/// [`try_init`]: CollectorBuilder::try_init()
+/// [`finish`]: CollectorBuilder::finish()
 pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
@@ -412,9 +411,8 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///
-/// [formatting subscriber]: struct.Subscriber.html
-/// [composed]: ../subscribe/index.html
-/// [`Subscriber::default`]: struct.Subscriber.html#method.default
+/// [formatting subscriber]: Subscriber
+/// [composed]: super::subscribe
 pub fn subscriber<S>() -> Subscriber<S> {
     Subscriber::default()
 }
@@ -426,7 +424,6 @@ impl Collector {
     /// This can be overridden with the [`CollectorBuilder::with_max_level`] method.
     ///
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`CollectorBuilder::with_max_level`]: struct.CollectorBuilder.html#method.with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
     /// Returns a new `CollectorBuilder` for configuring a format subscriber.
@@ -619,10 +616,10 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`time`]: ./time/index.html
-    /// [`timer`]: ./time/trait.FormatTime.html
-    /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
-    /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
+    /// [`time`]: mod@time
+    /// [`timer`]: time::FormatTime
+    /// [`ChronoUtc`]: time::ChronoUtc
+    /// [`ChronoLocal`]: time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
@@ -663,7 +660,7 @@ where
     /// `Subscriber`s added to this subscriber.
     ///
     /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
-    /// [time]: #method.without_time
+    /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
             filter: self.filter,
@@ -905,8 +902,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .try_init()?;
     /// # Ok(())}
     /// ```
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_max_level`]: #method.with_max_level
+    /// [`EnvFilter`]: super::filter::EnvFilter
+    /// [`with_max_level`]: CollectorBuilder::with_max_level()
     #[cfg(feature = "env-filter")]
     #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
     pub fn with_env_filter(
@@ -926,9 +923,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// Sets the maximum [verbosity level] that will be enabled by the
     /// collector.
     ///
-    /// If the max level has already been set, or a [`EnvFilter`] was added by
-    /// [`with_filter`], this replaces that configuration with the new
-    /// maximum level.
+    /// If the max level has already been set, this replaces that configuration
+    /// with the new maximum level.
     ///
     /// # Examples
     ///
@@ -950,8 +946,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .finish();
     /// ```
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_filter`]: #method.with_filter
+    /// [`EnvFilter`]: super::filter::EnvFilter
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
@@ -1037,7 +1032,6 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .init();
     /// ```
     ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
         W2: MakeWriter + 'static,
@@ -1071,7 +1065,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer/struct.TestWriter.html
+    /// [`TestWriter`]: writer::TestWriter
     pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter> {
         CollectorBuilder {
             filter: self.filter,

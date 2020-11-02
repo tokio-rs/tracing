@@ -37,12 +37,9 @@ use tracing_core::{
 /// highly optimized for concurrent access.
 ///
 /// [slab]: https://docs.rs/crate/sharded-slab/
-/// [`Collect`]:
-///     https://docs.rs/crate/tracing-core/latest/tracing_core/collect/trait.Collect.html
-/// [`Subscriber`]: ../trait.Subscriber.html
-/// [added]: ../trait.Subscriber.html#method.with_subscriber
-/// [`LookupSpan`]: trait.LookupSpan.html
-/// [extensions]: extensions/index.html
+/// [`Subscriber`]: crate::Subscribe
+/// [added]: crate::FmtSubscriber::with_collector()
+/// [extensions]: super::Extensions
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
@@ -58,9 +55,8 @@ pub struct Registry {
 /// [`Subscriber`s], such as formatted fields, metrics, or distributed traces should
 /// be stored in the [extensions] typemap.
 ///
-/// [`Registry`]: struct.Registry.html
-/// [`Subscriber`s]: ../layer/trait.Subscriber.html
-/// [extensions]: struct.Extensions.html
+/// [`Subscriber`s]: crate::Subscribe
+/// [extensions]: Extensions
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Debug)]
@@ -127,7 +123,6 @@ fn id_to_idx(id: &Id) -> usize {
 ///    greater than 0, `CloseGuard` decrements the counter by one and
 ///    _does not_ remove the span from the [`Registry`].
 ///
-/// [`Registry`]: ./struct.Registry.html
 pub(crate) struct CloseGuard<'a> {
     id: Id,
     registry: &'a Registry,
@@ -143,7 +138,6 @@ impl Registry {
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
     ///
-    /// [`CloseGuard`]: ./struct.CloseGuard.html
     pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
         CLOSE_COUNT.with(|count| {
             let c = count.get();
@@ -162,7 +156,6 @@ thread_local! {
     /// track how many layers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
-    /// [`CloseGuard`]: ./struct.CloseGuard.html
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
 }
 

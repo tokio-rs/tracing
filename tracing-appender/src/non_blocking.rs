@@ -19,7 +19,7 @@
 //! tracing_appender::non_blocking(std::io::stdout())
 //! # }
 //! ```
-//! [builder]: ./struct.NonBlockingBuilder.html#method.default
+//! [builder]: NonBlockingBuilder::default()
 //!
 //! <br/> This function returns a tuple of `NonBlocking` and `WorkerGuard`.
 //! `NonBlocking` implements [`MakeWriter`] which integrates with `tracing_subscriber`.
@@ -33,7 +33,7 @@
 //!
 //! See [`WorkerGuard`][worker_guard] for examples of using the guard.
 //!
-//! [worker_guard]: ./struct.WorkerGuard.html
+//! [worker_guard]: WorkerGuard
 //!
 //! # Examples
 //!
@@ -65,7 +65,7 @@ use tracing_subscriber::fmt::MakeWriter;
 /// backpressure will be exerted on senders, causing them to block their
 /// respective threads until there is available capacity.
 ///
-/// [non-blocking]: ./struct.NonBlocking.html
+/// [non-blocking]: NonBlocking
 /// Recommended to be a power of 2.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
@@ -78,7 +78,6 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// terminates abruptly (such as through an uncaught `panic` or a `std::process::exit`), some spans
 /// or events may not be written.
 ///
-/// [`NonBlocking`]: ./struct.NonBlocking.html
 /// Since spans/events and events recorded near a crash are often necessary for diagnosing the failure,
 /// `WorkerGuard` provides a mechanism to ensure that _all_ buffered logs are flushed to their output.
 /// `WorkerGuard` should be assigned in the `main` function or whatever the entrypoint of the program is.
@@ -135,8 +134,8 @@ impl NonBlocking {
     /// The returned `NonBlocking` writer will have the [default configuration][default] values.
     /// Other configurations can be specified using the [builder] interface.
     ///
-    /// [default]: ./struct.NonBlockingBuilder.html#method.default
-    /// [builder]: ./struct.NonBlockingBuilder.html
+    /// [default]: NonBlockingBuilder::default()
+    /// [builder]: NonBlockingBuilder
     pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().finish(writer)
     }
@@ -170,7 +169,7 @@ impl NonBlocking {
 
 /// A builder for [`NonBlocking`][non-blocking].
 ///
-/// [non-blocking]: ./struct.NonBlocking.html
+/// [non-blocking]: NonBlocking
 #[derive(Debug)]
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
