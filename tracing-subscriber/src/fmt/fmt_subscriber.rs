@@ -738,14 +738,14 @@ impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
     }
 }
 
-impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
+impl<'cx, 'writer, S, N> FormatFields<'writer> for FmtContext<'cx, S, N>
 where
     S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
         &self,
-        writer: &'a mut dyn fmt::Write,
+        writer: &'writer mut dyn fmt::Write,
         fields: R,
     ) -> fmt::Result {
         self.fmt_fields.format_fields(writer, fields)
@@ -832,6 +832,17 @@ where
         S: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.scope()
+    }
+
+    /// Returns the [field formatter] configured by the subscriber invoking
+    /// `format_event`.
+    ///
+    /// The event formatter may use the returned field formatter to format the
+    /// fields of any events it records.
+    ///
+    /// [field formatter]: FormatFields
+    pub fn field_format(&self) -> &N {
+        self.fmt_fields
     }
 }
 
