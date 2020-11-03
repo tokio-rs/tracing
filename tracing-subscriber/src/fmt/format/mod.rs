@@ -46,8 +46,8 @@ use fmt::{Debug, Display};
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
-/// [`fmt::Collector`]: ../struct.Collector.html
-/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Collector`]: super::Collector
+/// [`fmt::Subscriber`]: super::Subscriber
 pub trait FormatEvent<S, N>
 where
     S: Collect + for<'a> LookupSpan<'a>,
@@ -79,12 +79,12 @@ where
 }
 /// A type that can format a [set of fields] to a `fmt::Write`.
 ///
-/// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
+/// `FormatFields` is primarily used in the context of [`fmt::Subscriber`]. Each
 /// time a span or event with fields is recorded, the subscriber will format
 /// those fields with its associated `FormatFields` implementation.
 ///
-/// [set of fields]: ../field/trait.RecordFields.html
-/// [`FmtSubscriber`]: ../fmt/struct.Collector.html
+/// [set of fields]: RecordFields
+/// [`fmt::Subscriber`]: super::Subscriber
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided `writer`, returning a result.
     fn format_fields<R: RecordFields>(
@@ -137,7 +137,6 @@ pub fn json() -> Format<Json> {
 /// Returns a [`FormatFields`] implementation that formats fields using the
 /// provided function or closure.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
     F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -148,14 +147,12 @@ where
 /// A [`FormatFields`] implementation that formats fields by calling a function
 /// or closure.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
 /// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`FieldFn`]: struct.FieldFn.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: super::super::field::Visit
+/// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct FieldFnVisitor<'a, F> {
     f: F,
     writer: &'a mut dyn fmt::Write,
@@ -255,7 +252,6 @@ impl<F, T> Format<F, T> {
     /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
-    /// [`Format::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
@@ -277,10 +273,9 @@ impl<F, T> Format<F, T> {
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`time`]: ./time/index.html
-    /// [`timer`]: ./time/trait.FormatTime.html
-    /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
-    /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
+    /// [`timer`]: time::FormatTime
+    /// [`ChronoUtc`]: time::ChronoUtc
+    /// [`ChronoLocal`]: time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
@@ -581,7 +576,6 @@ where
 }
 /// The default [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
 pub struct DefaultFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -591,9 +585,8 @@ pub struct DefaultFields {
 
 /// The [visitor] produced by [`DefaultFields`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`DefaultFields`]: struct.DefaultFields.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: super::super::field::Visit
+/// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct DefaultVisitor<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,
@@ -603,7 +596,6 @@ pub struct DefaultVisitor<'a> {
 impl DefaultFields {
     /// Returns a new default [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: trait.FormatFields.html
     pub fn new() -> Self {
         Self { _private: () }
     }

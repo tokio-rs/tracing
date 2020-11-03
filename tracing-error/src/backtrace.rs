@@ -55,12 +55,12 @@ use tracing::{Metadata, Span};
 ///
 /// [`tracing`]: https://docs.rs/tracing
 /// [`Backtrace`]: https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html
-/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-/// [parents]: https://docs.rs/tracing/latest/tracing/span/index.html#span-relationships
-/// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
+/// [span]: mod@tracing::span
+/// [parents]: mod@tracing::span#span-relationships
+/// [fields]: tracing::field
 /// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/
-/// [`with_spans`]: #method.with_spans
+/// [`with_spans`]: SpanTrace::with_spans()
 #[derive(Clone)]
 pub struct SpanTrace {
     span: Span,
@@ -111,8 +111,8 @@ impl SpanTrace {
     /// indicate whether to continue iterating over spans; if it returns
     /// `false`, no additional spans will be visited.
     ///
-    /// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
-    /// [`Metadata`]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html
+    /// [fields]: tracing::field
+    /// [`Metadata`]: tracing::Metadata
     pub fn with_spans(&self, f: impl FnMut(&'static Metadata<'static>, &str) -> bool) {
         self.span.with_collector(|(id, s)| {
             if let Some(getcx) = s.downcast_ref::<WithContext>() {
