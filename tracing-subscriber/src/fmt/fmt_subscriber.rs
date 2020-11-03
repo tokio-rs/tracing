@@ -56,7 +56,7 @@ use tracing_core::{
 /// # tracing::collect::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// [`Subscriber`]: ../layer/trait.Subscriber.html
+/// [`Subscriber`]: subscribe::Subscribe
 #[derive(Debug)]
 pub struct Subscriber<
     S,
@@ -104,9 +104,8 @@ where
     /// # use tracing_subscriber::Subscribe as _;
     /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
-    /// [`FormatEvent`]: ./format/trait.FormatEvent.html
-    /// [`FmtContext`]: ./struct.FmtContext.html
-    /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+    /// [`FormatEvent`]: format::FormatEvent
+    /// [`Event`]: tracing::Event
     pub fn event_format<E2>(self, e: E2) -> Subscriber<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
@@ -140,8 +139,8 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
-    /// [`MakeWriter`]: ../fmt/trait.MakeWriter.html
-    /// [`Subscriber`]: ../layer/trait.Subscriber.html
+    /// [`MakeWriter`]: super::writer::MakeWriter
+    /// [`Subscriber`]: super::Subscriber
     pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<S, N, E, W2>
     where
         W2: MakeWriter + 'static,
@@ -176,7 +175,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer/struct.TestWriter.html
+    /// [`TestWriter`]: super::writer::TestWriter
     pub fn with_test_writer(self) -> Subscriber<S, N, E, TestWriter> {
         Subscriber {
             fmt_fields: self.fmt_fields,
@@ -199,10 +198,10 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`time`]: ./time/index.html
-    /// [`timer`]: ./time/trait.FormatTime.html
-    /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
-    /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
+    /// [`time`]: mod@super::time
+    /// [`timer`]: super::time::FormatTime
+    /// [`ChronoUtc`]: super::time::ChronoUtc
+    /// [`ChronoLocal`]: super::time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> Subscriber<S, N, format::Format<L, T2>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_timer(timer),
@@ -248,8 +247,8 @@ where
     /// this formatter; they will not be recorded by other `Collector`s or by
     /// `Subscriber`s added to this subscriber.
     ///
-    /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
-    /// [time]: #method.without_time
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
+    /// [time]: Subscriber::without_time()
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {
             fmt_event: self.fmt_event,
@@ -368,7 +367,6 @@ where
     /// - [`Subscriber::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
-    /// [`Subscriber::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
@@ -489,7 +487,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: ../registry/struct.Extensions.html
+/// [extensions]: crate::registry::Extensions
 #[derive(Default)]
 pub struct FormattedFields<E> {
     _format_event: PhantomData<fn(E)>,
@@ -737,14 +735,14 @@ impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
     }
 }
 
-impl<'a, S, N> FormatFields<'a> for FmtContext<'a, S, N>
+impl<'cx, 'writer, S, N> FormatFields<'writer> for FmtContext<'cx, S, N>
 where
     S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
         &self,
-        writer: &'a mut dyn fmt::Write,
+        writer: &'writer mut dyn fmt::Write,
         fields: R,
     ) -> fmt::Result {
         self.fmt_fields.format_fields(writer, fields)
@@ -789,7 +787,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: SpanRef
     #[inline]
     pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
     where
@@ -812,7 +810,7 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
     where
@@ -825,12 +823,23 @@ where
     /// current context, starting the root of the trace tree and ending with
     /// the current span.
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: SpanRef
     pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.scope()
+    }
+
+    /// Returns the [field formatter] configured by the subscriber invoking
+    /// `format_event`.
+    ///
+    /// The event formatter may use the returned field formatter to format the
+    /// fields of any events it records.
+    ///
+    /// [field formatter]: FormatFields
+    pub fn field_format(&self) -> &N {
+        self.fmt_fields
     }
 }
 

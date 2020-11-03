@@ -18,7 +18,7 @@ mod datetime;
 ///
 /// The full list of provided implementations can be found in [`time`].
 ///
-/// [`time`]: ./index.html
+/// [`time`]: self
 pub trait FormatTime {
     /// Measure and write out the current time.
     ///
@@ -111,10 +111,10 @@ impl From<Instant> for Uptime {
     }
 }
 
-#[cfg(feature = "chrono")]
-impl FormatTime for SystemTime {
+impl FormatTime for Uptime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        write!(w, "{}", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
+        let e = self.epoch.elapsed();
+        write!(w, "{:4}.{:09}s", e.as_secs(), e.subsec_nanos())
     }
 }
 
@@ -129,31 +129,27 @@ impl FormatTime for SystemTime {
     }
 }
 
-impl FormatTime for Uptime {
-    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        let e = self.epoch.elapsed();
-        write!(w, "{:4}.{:09}s", e.as_secs(), e.subsec_nanos())
-    }
-}
-
-/// The RFC 3339 format is used by default and using
-/// this struct allows chrono to bypass the parsing
-/// used when a custom format string is provided
-#[cfg(feature = "chrono")]
-#[derive(Debug, Clone, Eq, PartialEq)]
-enum ChronoFmtType {
-    Rfc3339,
-    Custom(String),
-}
-
-#[cfg(feature = "chrono")]
-impl Default for ChronoFmtType {
-    fn default() -> Self {
-        ChronoFmtType::Rfc3339
-    }
-}
-
 cfg_feature!("chrono", {
+    impl FormatTime for SystemTime {
+        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+            write!(w, "{}", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
+        }
+    }
+
+    /// The RFC 3339 format is used by default and using
+    /// this struct allows chrono to bypass the parsing
+    /// used when a custom format string is provided
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    enum ChronoFmtType {
+        Rfc3339,
+        Custom(String),
+    }
+
+    impl Default for ChronoFmtType {
+        fn default() -> Self {
+            ChronoFmtType::Rfc3339
+        }
+    }
     /// Retrieve and print the current UTC time.
     #[derive(Debug, Clone, Eq, PartialEq, Default)]
     pub struct ChronoUtc {
@@ -177,7 +173,6 @@ cfg_feature!("chrono", {
         /// See [`chrono::format::strftime`]
         /// for details on the supported syntax.
         ///
-        /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
         pub fn with_format(format_string: String) -> Self {
             ChronoUtc {
                 format: ChronoFmtType::Custom(format_string),
@@ -218,7 +213,6 @@ cfg_feature!("chrono", {
         /// See [`chrono::format::strftime`]
         /// for details on the supported syntax.
         ///
-        /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
         pub fn with_format(format_string: String) -> Self {
             ChronoLocal {
                 format: ChronoFmtType::Custom(format_string),
