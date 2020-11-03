@@ -159,11 +159,8 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
-pub type Formatter<
-    N = format::DefaultFields,
-    E = format::Format,
-    W = fn() -> io::Stdout,
-> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
+    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
