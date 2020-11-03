@@ -61,7 +61,7 @@ use tracing_core::{
 pub struct Subscriber<
     S,
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     W = fn() -> io::Stdout,
 > {
     make_writer: W,

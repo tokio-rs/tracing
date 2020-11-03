@@ -150,7 +150,7 @@ pub use self::{
 #[derive(Debug)]
 pub struct Collector<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -161,7 +161,7 @@ pub struct Collector<
 /// This type only logs formatted events; it does not perform any filtering.
 pub type Formatter<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     W = fn() -> io::Stdout,
 > = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
@@ -169,7 +169,7 @@ pub type Formatter<
 #[derive(Debug)]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
