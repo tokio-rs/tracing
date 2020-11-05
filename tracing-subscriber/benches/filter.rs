@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::Duration;
 use tracing::{dispatch::Dispatch, span, Event, Id, Metadata};
-use tracing_subscriber::{prelude::*, EnvFilter, reload};
+use tracing_subscriber::{prelude::*, reload, EnvFilter};
 
 mod support;
 use support::MultithreadedBench;
@@ -153,7 +153,7 @@ fn bench_static(c: &mut Criterion) {
         let collector = EnabledSubscriber.with(reloadeable_filter);
         criterion::black_box(h);
         tracing::collect::with_default(collector, || {
-                b.iter(|| {
+            b.iter(|| {
                 tracing::debug!(target: "static_filter", "hi");
             })
         });
@@ -176,7 +176,7 @@ fn bench_static(c: &mut Criterion) {
         let collector = EnabledSubscriber.with(reloadeable_filter);
         criterion::black_box(h);
         tracing::collect::with_default(collector, || {
-                b.iter(|| {
+            b.iter(|| {
                 tracing::trace!(target: "static_filter", "hi");
             })
         });
@@ -218,7 +218,7 @@ fn bench_static(c: &mut Criterion) {
         let collector = EnabledSubscriber.with(reloadeable_filter);
         criterion::black_box(h);
         tracing::collect::with_default(collector, || {
-                b.iter(|| {
+            b.iter(|| {
                 tracing::info!(target: "static_filter", "hi");
             })
         });
