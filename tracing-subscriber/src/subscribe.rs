@@ -451,7 +451,7 @@ where
         }
     }
 
-    /// Composes this subscriber with the given collecto, returning a
+    /// Composes this subscriber with the given collector, returning a
     /// `Layered` struct that implements [`Collect`].
     ///
     /// The returned `Layered` subscriber will call the methods on this subscriber
@@ -517,7 +517,7 @@ where
 
 /// Extension trait adding a `with(Subscriber)` combinator to `Collector`s.
 pub trait CollectorExt: Collect + crate::sealed::Sealed {
-    /// Wraps `self` with the provided `layer`.
+    /// Wraps `self` with the provided `subscriber`.
     fn with<S>(self, subscriber: S) -> Layered<S, Self>
     where
         S: Subscribe<Self>,

@@ -17,9 +17,9 @@ pub use tracing_core::dispatch::DefaultGuard;
 /// [`Event`]: :../event/struct.Event.html
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub fn with_default<T, S>(collector: S, f: impl FnOnce() -> T) -> T
+pub fn with_default<T, C>(collector: C, f: impl FnOnce() -> T) -> T
 where
-    S: Collect + Send + Sync + 'static,
+    C: Collect + Send + Sync + 'static,
 {
     crate::dispatch::with_default(&crate::Dispatch::new(collector), f)
 }
