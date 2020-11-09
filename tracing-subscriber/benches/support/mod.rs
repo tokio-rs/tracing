@@ -1,4 +1,5 @@
 use std::{
+    io,
     sync::{Arc, Barrier},
     thread,
     time::{Duration, Instant},
@@ -45,5 +46,27 @@ impl MultithreadedBench {
         let t0 = Instant::now();
         self.end.wait();
         t0.elapsed()
+    }
+}
+/// A fake writer that doesn't actually do anything.
+///
+/// We want to measure the collectors's overhead, *not* the performance of
+/// stdout/file writers. Using a no-op Write implementation lets us only measure
+/// the collectors's overhead.
+pub(super) struct NoWriter;
+
+impl io::Write for NoWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl NoWriter {
+    pub(super) fn new() -> Self {
+        Self
     }
 }

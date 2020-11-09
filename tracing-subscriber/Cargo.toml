@@ -88,3 +88,7 @@ harness = false
 [[bench]]
 name = "enter"
 harness = false
+
+[[bench]]
+name = "reload"
+harness = false
