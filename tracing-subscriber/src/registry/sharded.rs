@@ -19,51 +19,49 @@ use tracing_core::{
     Collect, Event, Interest, Metadata,
 };
 
-/// A shared, reusable store for spans.
-///
-/// A `Registry` is a [`Collect`] around which multiple subscribers
-/// implementing various behaviors may be [added]. Unlike other types
-/// implementing `Collect`, `Registry` does not actually record traces itself:
-/// instead, it collects and stores span data that is exposed to any `Subscriber`s
-/// wrapping it through implementations of the [`LookupSpan`] trait.
-/// The `Registry` is responsible for storing span metadata, recording
-/// relationships between spans, and tracking which spans are active and whicb
-/// are closed. In addition, it provides a mechanism for `Subscriber`s to store
-/// user-defined per-span data, called [extensions], in the registry. This
-/// allows `Subscriber`-specific data to benefit from the `Registry`'s
-/// high-performance concurrent storage.
-///
-/// This registry is implemented using a [lock-free sharded slab][slab], and is
-/// highly optimized for concurrent access.
-///
-/// [slab]: https://docs.rs/crate/sharded-slab/
-/// [`Subscriber`]: crate::Subscribe
-/// [added]: crate::FmtSubscriber::with_collector()
-/// [extensions]: super::Extensions
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-#[derive(Debug)]
-pub struct Registry {
-    spans: Pool<DataInner>,
-    current_spans: ThreadLocal<RefCell<SpanStack>>,
-}
+cfg_feature!("registry", {
+    /// A shared, reusable store for spans.
+    ///
+    /// A `Registry` is a [`Collect`] around which multiple subscribers
+    /// implementing various behaviors may be [added]. Unlike other types
+    /// implementing `Collect`, `Registry` does not actually record traces itself:
+    /// instead, it collects and stores span data that is exposed to any `Subscriber`s
+    /// wrapping it through implementations of the [`LookupSpan`] trait.
+    /// The `Registry` is responsible for storing span metadata, recording
+    /// relationships between spans, and tracking which spans are active and whicb
+    /// are closed. In addition, it provides a mechanism for `Subscriber`s to store
+    /// user-defined per-span data, called [extensions], in the registry. This
+    /// allows `Subscriber`-specific data to benefit from the `Registry`'s
+    /// high-performance concurrent storage.
+    ///
+    /// This registry is implemented using a [lock-free sharded slab][slab], and is
+    /// highly optimized for concurrent access.
+    ///
+    /// [slab]: https://docs.rs/crate/sharded-slab/
+    /// [`Subscriber`]: crate::Subscribe
+    /// [added]: crate::FmtSubscriber::with_collector()
+    /// [extensions]: super::Extensions
+    #[derive(Debug)]
+    pub struct Registry {
+        spans: Pool<DataInner>,
+        current_spans: ThreadLocal<RefCell<SpanStack>>,
+    }
 
-/// Span data stored in a [`Registry`].
-///
-/// The registry stores well-known data defined by tracing: span relationships,
-/// metadata and reference counts. Additional user-defined data provided by
-/// [`Subscriber`s], such as formatted fields, metrics, or distributed traces should
-/// be stored in the [extensions] typemap.
-///
-/// [`Subscriber`s]: crate::Subscribe
-/// [extensions]: Extensions
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-#[derive(Debug)]
-pub struct Data<'a> {
-    /// Immutable reference to the pooled `DataInner` entry.
-    inner: Ref<'a, DataInner>,
-}
+    /// Span data stored in a [`Registry`].
+    ///
+    /// The registry stores well-known data defined by tracing: span relationships,
+    /// metadata and reference counts. Additional user-defined data provided by
+    /// [`Subscriber`s], such as formatted fields, metrics, or distributed traces should
+    /// be stored in the [extensions] typemap.
+    ///
+    /// [`Subscriber`s]: crate::Subscribe
+    /// [extensions]: Extensions
+    #[derive(Debug)]
+    pub struct Data<'a> {
+        /// Immutable reference to the pooled `DataInner` entry.
+        inner: Ref<'a, DataInner>,
+    }
+});
 
 /// Stored data associated with a span.
 ///
