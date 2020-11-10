@@ -1,5 +1,5 @@
 use crate::layer::WithContext;
-use opentelemetry::api::{trace as otel, trace::TraceContextExt, Context, KeyValue};
+use opentelemetry::{trace as otel, trace::TraceContextExt, Context, KeyValue};
 use std::time::SystemTime;
 
 /// Utility functions to allow tracing [`Span`]s to accept and return
@@ -17,7 +17,7 @@ pub trait OpenTelemetrySpanExt {
     /// # Examples
     ///
     /// ```rust
-    /// use opentelemetry::api::{propagation::TextMapPropagator, trace::TraceContextExt};
+    /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
     /// use opentelemetry::sdk::propagation::B3Propagator;
     /// use tracing_opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
@@ -50,11 +50,11 @@ pub trait OpenTelemetrySpanExt {
     /// # Examples
     ///
     /// ```rust
-    /// use opentelemetry::api;
+    /// use opentelemetry::Context;
     /// use tracing_opentelemetry::OpenTelemetrySpanExt;
     /// use tracing::Span;
     ///
-    /// fn make_request(cx: api::Context) {
+    /// fn make_request(cx: Context) {
     ///     // perform external request after injecting context
     ///     // e.g. if the request's headers impl `opentelemetry::api::propagation::Inject`
     ///     // then `propagator.inject_context(cx, request.headers_mut())`
@@ -78,31 +78,31 @@ impl OpenTelemetrySpanExt for tracing::Span {
         self.with_subscriber(move |(id, subscriber)| {
             if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
                 get_context.with_context(subscriber, id, move |builder, _tracer| {
-                    builder.parent_reference = cx.remote_span_reference().cloned()
+                    builder.parent_context = cx.remote_span_context().cloned()
                 });
             }
         });
     }
 
     fn context(&self) -> Context {
-        let mut span_reference = None;
+        let mut span_context = None;
         self.with_subscriber(|(id, subscriber)| {
             if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
                 get_context.with_context(subscriber, id, |builder, tracer| {
-                    span_reference = Some(tracer.sampled_span_reference(builder));
+                    span_context = Some(tracer.sampled_span_context(builder));
                 })
             }
         });
 
-        let span_reference = span_reference.unwrap_or_else(otel::SpanReference::empty_context);
-        let compat_span = CompatSpan(span_reference);
+        let span_context = span_context.unwrap_or_else(otel::SpanContext::empty_context);
+        let compat_span = CompatSpan(span_context);
         Context::current_with_span(compat_span)
     }
 }
 
 /// A compatibility wrapper for an injectable OpenTelemetry span reference.
 #[derive(Debug)]
-struct CompatSpan(otel::SpanReference);
+struct CompatSpan(otel::SpanContext);
 impl otel::Span for CompatSpan {
     fn add_event_with_timestamp(
         &self,
@@ -120,8 +120,8 @@ impl otel::Span for CompatSpan {
     /// information into [`Carrier`]s.
     ///
     /// [`Carrier`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/context/propagation/trait.Carrier.html
-    fn span_reference(&self) -> otel::SpanReference {
-        self.0.clone()
+    fn span_context(&self) -> &otel::SpanContext {
+        &self.0
     }
 
     fn is_recording(&self) -> bool {

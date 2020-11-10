@@ -1,14 +1,14 @@
 use opentelemetry::sdk::propagation::B3Propagator;
-use opentelemetry::{api, api::propagation::TextMapPropagator};
+use opentelemetry::{propagation::TextMapPropagator, Context};
 use std::collections::HashMap;
 use tracing::span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;
 
-fn make_request(_cx: api::Context) {
+fn make_request(_cx: Context) {
     // perform external request after injecting context
-    // e.g. if there are request headers that impl `opentelemetry::api::Carrier`
+    // e.g. if there are request headers that impl `opentelemetry::propagation::Carrier`
     // then `propagator.inject_context(cx, request.headers_mut())`
 }
 

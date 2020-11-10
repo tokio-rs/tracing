@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::{error::Error, thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
 use tracing_subscriber::prelude::*;
@@ -14,7 +14,7 @@ fn expensive_work() -> &'static str {
     "success"
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
         .with_service_name("report_example")
         .install()?;
