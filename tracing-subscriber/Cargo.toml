@@ -73,6 +73,9 @@ maintenance = { status = "experimental" }
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[lib]
+bench = false
+
 [[bench]]
 name = "filter"
 harness = false
