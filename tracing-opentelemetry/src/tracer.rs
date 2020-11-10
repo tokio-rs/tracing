@@ -21,12 +21,11 @@ use opentelemetry::trace as otel;
 /// See the [`OpenTelemetrySpanExt::set_parent`] and
 /// [`OpenTelemetrySpanExt::context`] methods for example usage.
 ///
-/// [`Tracer`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/trait.Tracer.html
-/// [`SpanBuilder`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/tracer/struct.SpanBuilder.html
-/// [`SpanContext`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/trace/span_context/struct.SpanContext.html
-/// [`PreSampledTracer::sampled_span_context`]: trait.PreSampledTracer.html#tymethod.sampled_span_context
-/// [`OpenTelemetrySpanExt::set_parent`]: trait.OpenTelemetrySpanExt.html#tymethod.set_parent
-/// [`OpenTelemetrySpanExt::context`]: trait.OpenTelemetrySpanExt.html#tymethod.context
+/// [`OpenTelemetrySpanExt::set_parent`]: crate::OpenTelemetrySpanExt::set_parent
+/// [`OpenTelemetrySpanExt::context`]: crate::OpenTelemetrySpanExt::context
+/// [`Tracer`]: opentelemetry::api::trace::tracer::Tracer
+/// [`SpanBuilder`]: opentelemetry::api::trace::tracer::SpanBuilder
+/// [`SpanContext`]: opentelemetry::api::trace::span_context::SpanContext
 pub trait PreSampledTracer {
     /// Produce a pre-sampled span reference for the given span builder.
     fn sampled_span_context(&self, builder: &mut otel::SpanBuilder) -> otel::SpanContext;

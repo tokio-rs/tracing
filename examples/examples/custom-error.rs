@@ -3,7 +3,7 @@
 #![deny(rust_2018_idioms)]
 use std::error::Error;
 use std::fmt;
-use tracing_error::{ErrorLayer, SpanTrace};
+use tracing_error::{ErrorSubscriber, SpanTrace};
 use tracing_subscriber::prelude::*;
 #[derive(Debug)]
 struct FooError {
@@ -51,9 +51,9 @@ fn do_another_thing(
 #[tracing::instrument]
 fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        // The `ErrorLayer` subscriber layer enables the use of `SpanTrace`.
-        .with(ErrorLayer::default())
+        .with(tracing_subscriber::fmt::subscriber())
+        // The `ErrorSubscriber` subscriber layer enables the use of `SpanTrace`.
+        .with(ErrorSubscriber::default())
         .init();
     match do_something("hello world") {
         Ok(result) => println!("did something successfully: {}", result),

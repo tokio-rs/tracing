@@ -1,7 +1,7 @@
 use super::{Format, FormatEvent, FormatFields, FormatTime};
 use crate::{
     field::{RecordFields, VisitOutput},
-    fmt::fmt_layer::{FmtContext, FormattedFields},
+    fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
 use serde::ser::{SerializeMap, Serializer as _};
@@ -14,7 +14,7 @@ use std::{
 use tracing_core::{
     field::{self, Field},
     span::Record,
-    Event, Subscriber,
+    Collect, Event,
 };
 use tracing_serde::AsSerde;
 
@@ -27,7 +27,7 @@ use tracing_log::NormalizeEvent;
 ///
 /// # Example Output
 ///
-/// ```ignore,json
+/// ```json
 /// {
 ///     "timestamp":"Feb 20 11:28:15.096",
 ///     "level":"INFO",
@@ -50,9 +50,6 @@ use tracing_log::NormalizeEvent;
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
 ///
-/// [`Json::flatten_event`]: #method.flatten_event
-/// [`Json::with_current_span`]: #method.with_current_span
-/// [`Json::with_span_list`]: #method.with_span_list
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
     pub(crate) flatten_event: bool,
@@ -79,16 +76,16 @@ impl Json {
 }
 
 struct SerializableContext<'a, 'b, Span, N>(
-    &'b crate::layer::Context<'a, Span>,
+    &'b crate::subscribe::Context<'a, Span>,
     std::marker::PhantomData<N>,
 )
 where
-    Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
 impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
 where
-    Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
@@ -177,7 +174,7 @@ where
 
 impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
@@ -188,7 +185,7 @@ where
         event: &Event<'_>,
     ) -> fmt::Result
     where
-        S: Subscriber + for<'a> LookupSpan<'a>,
+        S: Collect + for<'a> LookupSpan<'a>,
     {
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -286,7 +283,6 @@ impl Default for Json {
 
 /// The JSON [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
 pub struct JsonFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -297,7 +293,6 @@ pub struct JsonFields {
 impl JsonFields {
     /// Returns a new JSON [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: trait.FormatFields.html
     pub fn new() -> Self {
         Self { _private: () }
     }
@@ -364,9 +359,8 @@ impl<'a> FormatFields<'a> for JsonFields {
 
 /// The [visitor] produced by [`JsonFields`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`JsonFields`]: struct.JsonFields.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: crate::field::Visit
+/// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
     values: BTreeMap<&'a str, serde_json::Value>,
     writer: &'a mut dyn Write,
@@ -503,7 +497,7 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 mod test {
     use crate::fmt::{test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
-    use tracing::{self, subscriber::with_default};
+    use tracing::{self, collect::with_default};
 
     use std::{fmt, sync::Mutex};
 
@@ -684,7 +678,7 @@ mod test {
     ) where
         T: crate::fmt::MakeWriter + Send + Sync + 'static,
     {
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = crate::fmt::Collector::builder()
             .json()
             .flatten_event(flatten_event)
             .with_current_span(display_current_span)

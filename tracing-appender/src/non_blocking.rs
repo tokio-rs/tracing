@@ -19,7 +19,7 @@
 //! tracing_appender::non_blocking(std::io::stdout())
 //! # }
 //! ```
-//! [builder]: ./struct.NonBlockingBuilder.html#method.default
+//! [builder]: NonBlockingBuilder::default()
 //!
 //! <br/> This function returns a tuple of `NonBlocking` and `WorkerGuard`.
 //! `NonBlocking` implements [`MakeWriter`] which integrates with `tracing_subscriber`.
@@ -33,15 +33,15 @@
 //!
 //! See [`WorkerGuard`][worker_guard] for examples of using the guard.
 //!
-//! [worker_guard]: ./struct.WorkerGuard.html
+//! [worker_guard]: WorkerGuard
 //!
 //! # Examples
 //!
 //! ``` rust
 //! # fn docs() {
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
-//! let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-//! tracing::subscriber::with_default(subscriber.finish(), || {
+//! let collector = tracing_subscriber::fmt().with_writer(non_blocking);
+//! tracing::collect::with_default(collector.finish(), || {
 //!    tracing::event!(tracing::Level::INFO, "Hello");
 //! });
 //! # }
@@ -65,7 +65,7 @@ use tracing_subscriber::fmt::MakeWriter;
 /// backpressure will be exerted on senders, causing them to block their
 /// respective threads until there is available capacity.
 ///
-/// [non-blocking]: ./struct.NonBlocking.html
+/// [non-blocking]: NonBlocking
 /// Recommended to be a power of 2.
 pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 
@@ -78,7 +78,6 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// terminates abruptly (such as through an uncaught `panic` or a `std::process::exit`), some spans
 /// or events may not be written.
 ///
-/// [`NonBlocking`]: ./struct.NonBlocking.html
 /// Since spans/events and events recorded near a crash are often necessary for diagnosing the failure,
 /// `WorkerGuard` provides a mechanism to ensure that _all_ buffered logs are flushed to their output.
 /// `WorkerGuard` should be assigned in the `main` function or whatever the entrypoint of the program is.
@@ -92,8 +91,8 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// fn main () {
 /// # fn doc() {
 ///     let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking);
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking);
+///     tracing::collect::with_default(collector.finish(), || {
 ///         // Emit some tracing events within context of the non_blocking `_guard` and tracing subscriber
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
@@ -111,7 +110,7 @@ pub struct WorkerGuard {
 /// A non-blocking writer.
 ///
 /// While the line between "blocking" and "non-blocking" IO is fuzzy, writing to a file is typically
-/// considered to be a _blocking_ operation. For an application whose `Subscriber` writes spans and events
+/// considered to be a _blocking_ operation. For an application whose `Collector` writes spans and events
 /// as they are emitted, an application might find the latency profile to be unacceptable.
 /// `NonBlocking` moves the writing out of an application's data path by sending spans and events
 /// to a dedicated logging thread.
@@ -120,8 +119,8 @@ pub struct WorkerGuard {
 /// crate. Therefore, it can be used with the [`tracing_subscriber::fmt`][fmt] module
 /// or with any other subscriber/layer implementation that uses the `MakeWriter` trait.
 ///
-/// [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-/// [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+/// [make_writer]: tracing_subscriber::fmt::MakeWriter
+/// [fmt]: mod@tracing_subscriber::fmt
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: Arc<AtomicU64>,
@@ -135,8 +134,8 @@ impl NonBlocking {
     /// The returned `NonBlocking` writer will have the [default configuration][default] values.
     /// Other configurations can be specified using the [builder] interface.
     ///
-    /// [default]: ./struct.NonBlockingBuilder.html#method.default
-    /// [builder]: ./struct.NonBlockingBuilder.html
+    /// [default]: NonBlockingBuilder::default()
+    /// [builder]: NonBlockingBuilder
     pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().finish(writer)
     }
@@ -170,7 +169,7 @@ impl NonBlocking {
 
 /// A builder for [`NonBlocking`][non-blocking].
 ///
-/// [non-blocking]: ./struct.NonBlocking.html
+/// [non-blocking]: NonBlocking
 #[derive(Debug)]
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
@@ -396,8 +395,8 @@ mod test {
         for _ in 0..10 {
             let cloned_non_blocking = non_blocking.clone();
             join_handles.push(thread::spawn(move || {
-                let subscriber = tracing_subscriber::fmt().with_writer(cloned_non_blocking);
-                tracing::subscriber::with_default(subscriber.finish(), || {
+                let collector = tracing_subscriber::fmt().with_writer(cloned_non_blocking);
+                tracing::collect::with_default(collector.finish(), || {
                     tracing::event!(tracing::Level::INFO, "Hello");
                 });
             }));

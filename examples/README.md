@@ -5,8 +5,8 @@ This directory contains a collection of examples that demonstrate the use of the
 
 - **tracing**:
   + `counters`: Implements a very simple metrics system to demonstrate how
-    subscribers can consume field values as typed data.
-  + `sloggish`: A demo `Subscriber` implementation that mimics the output of
+    collectors can consume field values as typed data.
+  + `sloggish`: A demo `Collect` implementation that mimics the output of
     `slog-term`'s `Compact` formatter.
 - **tracing-attributes**:
   + `attrs-basic`: A simple example of the `#[instrument]` attribute.
@@ -17,15 +17,15 @@ This directory contains a collection of examples that demonstrate the use of the
     record function arguments.
 - **tracing-subscriber**:
   + `fmt`: Demonstrates the use of the `fmt` module in `tracing-subscriber`,
-    which provides a subscriber implementation that logs traces to the console.
+    which provides a collector implementation that logs traces to the console.
   + `fmt-stderr`: Demonstrates overriding the output stream used by the `fmt`
-    subscriber.
-  + `fmt-custom-field`: Demonstrates overriding how the `fmt` subscriber formats
+    collector.
+  + `fmt-custom-field`: Demonstrates overriding how the `fmt` collector formats
     fields on spans and events.
-  + `fmt-custom-event`: Demonstrates overriding how the `fmt` subscriber formats
+  + `fmt-custom-event`: Demonstrates overriding how the `fmt` collector formats
     events.
   + `subscriber-filter`: Demonstrates the `tracing-subscriber::filter` module,
-    which provides a layer which adds configurable filtering to a subscriber
+    which provides a layer which adds configurable filtering to a collector
     implementation.
   + `tower-load`: Demonstrates how dynamically reloadable filters can be used to
     debug a server under load in production.
@@ -55,7 +55,7 @@ This directory contains a collection of examples that demonstrate the use of the
     simple `tower` HTTP/1.1 server.
 - **tracing-serde**:
   + `serde-yak-shave`: Demonstrates the use of `tracing-serde` by implementing a
-    subscriber that emits trace output as JSON.
+    collector that emits trace output as JSON.
 - **tracing-log**:
   + `hyper-echo`: Demonstrates how `tracing-log` can be used to record
     unstructured logs from dependencies as `tracing` events, by instrumenting

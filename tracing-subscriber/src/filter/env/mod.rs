@@ -1,4 +1,4 @@
-//! A `Layer` that enables or disables spans and events based on a set of
+//! A `Subscriber` that enables or disables spans and events based on a set of
 //! filtering directives.
 
 // these are publicly re-exported, but the compiler doesn't realize
@@ -13,19 +13,18 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    layer::{Context, Layer},
+    subscribe::{Context, Subscribe},
     sync::RwLock,
 };
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
+    collect::{Collect, Interest},
     field::Field,
-    span,
-    subscriber::{Interest, Subscriber},
-    Metadata,
+    span, Metadata,
 };
 
-/// A [`Layer`] which filters spans and events based on a set of filter
+/// A [`Subscriber`] which filters spans and events based on a set of filter
 /// directives.
 ///
 /// # Directives
@@ -88,13 +87,13 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
-/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
-/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
-/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
-/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
+/// [`Span`]: tracing_core::span
+/// [fields]: tracing_core::Field
+/// [`Event`]: tracing_core::Event
+/// [`level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
@@ -134,8 +133,6 @@ impl EnvFilter {
     /// `RUST_LOG` is the default environment variable used by
     /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
-    /// [`EnvFilter::from_default_env`]: #method.from_default_env
-    /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
@@ -202,8 +199,7 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`LevelFilter`]: ../filter/struct.LevelFilter.html
-    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+    /// [`Level`]: tracing_core::Level
     ///
     /// # Examples
     ///
@@ -367,7 +363,7 @@ impl EnvFilter {
     }
 }
 
-impl<S: Subscriber> Layer<S> for EnvFilter {
+impl<S: Collect> Subscribe<S> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -576,11 +572,11 @@ mod tests {
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 
-    struct NoSubscriber;
-    impl Subscriber for NoSubscriber {
+    struct NoCollector;
+    impl Collect for NoCollector {
         #[inline]
-        fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
-            subscriber::Interest::always()
+        fn register_callsite(&self, _: &'static Metadata<'static>) -> collect::Interest {
+            collect::Interest::always()
         }
         fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xDEAD)
@@ -607,7 +603,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_no_span_directive() {
-        let filter = EnvFilter::new("app=debug").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -625,7 +621,7 @@ mod tests {
 
     #[test]
     fn callsite_off() {
-        let filter = EnvFilter::new("app=off").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app=off").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -643,7 +639,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive() {
-        let filter = EnvFilter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app[mySpan]=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -662,7 +658,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive_field() {
         let filter =
-            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
+            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -681,7 +677,7 @@ mod tests {
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
         let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
-            .with_subscriber(NoSubscriber);
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",

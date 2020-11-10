@@ -1,7 +1,7 @@
-//! [`Layer`]s that control which spans and events are enabled by the wrapped
+//! [`Subscriber`]s that control which spans and events are enabled by the wrapped
 //! subscriber.
 //!
-//! [`Layer`]: ../layer/trait.Layer.html
+//! [`Subscriber`]: crate::fmt::Subscriber
 #[cfg(feature = "env-filter")]
 mod env;
 mod level;

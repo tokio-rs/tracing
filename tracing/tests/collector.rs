@@ -9,18 +9,17 @@
 #[macro_use]
 extern crate tracing;
 use tracing::{
-    span,
-    subscriber::{with_default, Interest, Subscriber},
-    Event, Level, Metadata,
+    collect::{with_default, Collect, Interest},
+    span, Event, Level, Metadata,
 };
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_macros_dont_infinite_loop() {
-    // This test ensures that an event macro within a subscriber
+    // This test ensures that an event macro within a collector
     // won't cause an infinite loop of events.
-    struct TestSubscriber;
-    impl Subscriber for TestSubscriber {
+    struct TestCollector;
+    impl Collect for TestCollector {
         fn register_callsite(&self, _: &Metadata<'_>) -> Interest {
             // Always return sometimes so that `enabled` will be called
             // (which can loop).
@@ -51,7 +50,7 @@ fn event_macros_dont_infinite_loop() {
         fn exit(&self, _: &span::Id) {}
     }
 
-    with_default(TestSubscriber, || {
+    with_default(TestCollector, || {
         event!(Level::TRACE, foo = false);
     })
 }

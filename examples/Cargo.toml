@@ -30,7 +30,7 @@ futures = "0.3"
 tokio = { version = "0.2.12", features = ["full"] }
 
 # env-logger example
-env_logger = "0.7"
+env_logger = "0.8"
 
 # tower examples
 tower = "0.3"

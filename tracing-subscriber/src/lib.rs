@@ -1,13 +1,13 @@
 //! Utilities for implementing and composing [`tracing`] subscribers.
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
-//! scoped, structured, and async-aware diagnostics. The [`Subscriber`] trait
+//! scoped, structured, and async-aware diagnostics. The [`Collect`] trait
 //! represents the functionality necessary to collect this trace data. This
 //! crate contains tools for composing subscribers out of smaller units of
 //! behaviour, and batteries-included implementations of common subscriber
 //! functionality.
 //!
-//! `tracing-subscriber` is intended for use by both `Subscriber` authors and
+//! `tracing-subscriber` is intended for use by both `Collector` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
@@ -16,7 +16,7 @@
 //!
 //! ## Included Subscribers
 //!
-//! The following `Subscriber`s are provided for application authors:
+//! The following `Collector`s are provided for application authors:
 //!
 //! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
 //!
@@ -57,16 +57,16 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
+//! [`fmt`]: mod@fmt
+//! [`registry`]: mod@registry
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-//! [`EnvFilter`]: filter/struct.EnvFilter.html
-//! [`fmt`]: fmt/index.html
+//! [`Collect`]: tracing_core::collect::Collect
+//! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
-//! [`registry`]: registry/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -96,6 +96,12 @@
     unused_parens,
     while_true
 )]
+// Using struct update syntax when a struct has no additional fields avoids
+// a potential source change if additional fields are added to the struct in the
+// future, reducing diff noise. Allow this even though clippy considers it
+// "needless".
+#![allow(clippy::needless_update)]
+
 use tracing_core::span::Id;
 
 #[macro_use]
@@ -103,10 +109,13 @@ mod macros;
 
 pub mod field;
 pub mod filter;
-pub mod layer;
+#[cfg(feature = "fmt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
+pub mod fmt;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
+pub mod subscribe;
 pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;
@@ -115,10 +124,9 @@ pub mod util;
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use filter::EnvFilter;
 
-pub use layer::Layer;
+pub use subscribe::Subscribe;
 
 cfg_feature!("fmt", {
-    pub mod fmt;
     pub use fmt::fmt;
     pub use fmt::Subscriber as FmtSubscriber;
 });
@@ -151,7 +159,7 @@ impl CurrentSpan {
     /// executing, or `None` if it is not inside of a span.
     ///
     ///
-    /// [`Id`]: https://docs.rs/tracing/latest/tracing/span/struct.Id.html
+    /// [`Id`]: tracing::span::Id
     pub fn id(&self) -> Option<Id> {
         self.current.with(|current| current.last().cloned())?
     }

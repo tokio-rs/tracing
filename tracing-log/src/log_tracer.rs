@@ -2,7 +2,7 @@
 //!
 //! This module provides the [`LogTracer`] type which implements `log`'s [logger
 //! interface] by recording log records as `tracing` `Event`s. This is intended for
-//! use in conjunction with a `tracing` `Subscriber` to consume events from
+//! use in conjunction with a `tracing` `Collector` to consume events from
 //! dependencies that emit [`log`] records within a trace context.
 //!
 //! # Usage
@@ -10,7 +10,7 @@
 //! To create and initialize a `LogTracer` with the default configurations, use:
 //!
 //! * [`init`] if you want to convert all logs, regardless of log level,
-//!   allowing the tracing `Subscriber` to perform any filtering
+//!   allowing the tracing `Collector` to perform any filtering
 //! * [`init_with_filter`] to convert all logs up to a specified log level
 //!
 //! In addition, a [builder] is available for cases where more advanced
@@ -19,16 +19,15 @@
 //! such as when a crate emits both `tracing` diagnostics _and_ log records by
 //! default.
 //!
-//! [`LogTracer`]: struct.LogTracer.html
 //! [`log`]: https://docs.rs/log/0.4.8/log/
-//! [logger interface]: https://docs.rs/log/0.4.8/log/trait.Log.html
-//! [`init`]: struct.LogTracer.html#method.init.html
-//! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter.html
-//! [builder]: struct.LogTracer.html#method.builder
-//! [ignore]: struct.Builder.html#method.ignore_crate
+//! [logger interface]: log::Log
+//! [`init`]: LogTracer.html#method.init
+//! [`init_with_filter`]: LogTracer.html#method.init_with_filter
+//! [builder]: LogTracer::builder()
+//! [ignore]: Builder::ignore_crate()
 use crate::{format_trace, AsTrace};
 pub use log::SetLoggerError;
-use tracing_core::dispatcher;
+use tracing_core::dispatch;
 
 /// A simple "logger" that converts all log records into `tracing` `Event`s.
 #[derive(Debug)]
@@ -93,7 +92,7 @@ impl LogTracer {
     /// # }
     /// ```
     ///
-    /// [`init`]: #method.init
+    /// [`init`]: LogTracer::init()
     /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
         Self {
@@ -109,7 +108,7 @@ impl LogTracer {
     /// The [`builder`] function can be used to customize the `LogTracer` before
     /// initializing it.
     ///
-    /// [`builder`]: #method.builder
+    /// [`builder`]: LogTracer::builder()
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn init_with_filter(level: log::LevelFilter) -> Result<(), SetLoggerError> {
@@ -134,7 +133,7 @@ impl LogTracer {
     /// # }
     /// ```
     ///
-    /// This will forward all logs to `tracing` and lets the current `Subscriber`
+    /// This will forward all logs to `tracing` and lets the current `Collector`
     /// determine if they are enabled.
     ///
     /// The [`builder`] function can be used to customize the `LogTracer` before
@@ -143,8 +142,8 @@ impl LogTracer {
     /// If you know in advance you want to filter some log levels,
     /// use [`builder`] or [`init_with_filter`] instead.
     ///
-    /// [`init_with_filter`]: #method.init_with_filter
-    /// [`builder`]: #method.builder
+    /// [`init_with_filter`]: LogTracer::init_with_filter()
+    /// [`builder`]: LogTracer::builder()
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn init() -> Result<(), SetLoggerError> {
@@ -174,7 +173,7 @@ impl log::Log for LogTracer {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let enabled = dispatcher::get_default(|dispatch| {
+        let enabled = dispatch::get_default(|dispatch| {
             // TODO: can we cache this for each log record, so we can get
             // similar to the callsite cache?
             dispatch.enabled(&record.as_trace())
@@ -197,7 +196,6 @@ impl log::Log for LogTracer {
 impl Builder {
     /// Returns a new `Builder` to construct a [`LogTracer`].
     ///
-    /// [`LogTracer`]: struct.LogTracer.html
     pub fn new() -> Self {
         Self::default()
     }

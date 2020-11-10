@@ -5,14 +5,14 @@ use std::time::SystemTime;
 /// Utility functions to allow tracing [`Span`]s to accept and return
 /// [OpenTelemetry] [`Context`]s.
 ///
-/// [`Span`]: https://docs.rs/tracing/latest/tracing/struct.Span.html
+/// [`Span`]: tracing::Span
 /// [OpenTelemetry]: https://opentelemetry.io
-/// [`Context`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/context/struct.Context.html
+/// [`Context`]: opentelemetry::api::context::Context
 pub trait OpenTelemetrySpanExt {
     /// Associates `self` with a given OpenTelemetry trace, using the provided
     /// parent [`Context`].
     ///
-    /// [`Context`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/context/struct.Context.html
+    /// [`Context`]: opentelemetry::api::context::Context
     ///
     /// # Examples
     ///
@@ -45,7 +45,7 @@ pub trait OpenTelemetrySpanExt {
 
     /// Extracts an OpenTelemetry [`Context`] from `self`.
     ///
-    /// [`Context`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/context/struct.Context.html
+    /// [`Context`]: opentelemetry::api::context::Context
     ///
     /// # Examples
     ///
@@ -75,9 +75,9 @@ pub trait OpenTelemetrySpanExt {
 
 impl OpenTelemetrySpanExt for tracing::Span {
     fn set_parent(&self, cx: &Context) {
-        self.with_subscriber(move |(id, subscriber)| {
-            if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, move |builder, _tracer| {
+        self.with_collector(move |(id, collector)| {
+            if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                get_context.with_context(collector, id, move |builder, _tracer| {
                     builder.parent_context = cx.remote_span_context().cloned()
                 });
             }
@@ -86,9 +86,9 @@ impl OpenTelemetrySpanExt for tracing::Span {
 
     fn context(&self) -> Context {
         let mut span_context = None;
-        self.with_subscriber(|(id, subscriber)| {
-            if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, |builder, tracer| {
+        self.with_collector(|(id, collector)| {
+            if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                get_context.with_context(collector, id, |builder, tracer| {
                     span_context = Some(tracer.sampled_span_context(builder));
                 })
             }
@@ -119,7 +119,7 @@ impl otel::Span for CompatSpan {
     /// This method is used by OpenTelemetry propagators to inject span reference
     /// information into [`Carrier`]s.
     ///
-    /// [`Carrier`]: https://docs.rs/opentelemetry/latest/opentelemetry/api/context/propagation/trait.Carrier.html
+    /// [`Carrier`]: opentelemetry::api::context::propagation::Carrier
     fn span_context(&self) -> &otel::SpanContext {
         &self.0
     }

@@ -1,34 +1,34 @@
-//! Dispatches trace events to [`Subscriber`]s.
+//! Dispatches trace events to a [`Collect`].
 //!
 //! The _dispatcher_ is the component of the tracing system which is responsible
 //! for forwarding trace data from the instrumentation points that generate it
-//! to the subscriber that collects it.
+//! to the collector that collects it.
 //!
 //! # Using the Trace Dispatcher
 //!
-//! Every thread in a program using `tracing` has a _default subscriber_. When
+//! Every thread in a program using `tracing` has a _default collector_. When
 //! events occur, or spans are created, they are dispatched to the thread's
-//! current subscriber.
+//! current collector.
 //!
-//! ## Setting the Default Subscriber
+//! ## Setting the Default Collector
 //!
-//! By default, the current subscriber is an empty implementation that does
-//! nothing. To use a subscriber implementation, it must be set as the default.
+//! By default, the current collector is an empty implementation that does
+//! nothing. To use a collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
-//! [`set_global_default`]. `with_default` sets the default subscriber for the
-//! duration of a scope, while `set_global_default` sets a default subscriber
+//! [`set_global_default`]. `with_default` sets the default collector for the
+//! duration of a scope, while `set_global_default` sets a default collector
 //! for the entire process.
 //!
-//! To use either of these functions, we must first wrap our subscriber in a
-//! [`Dispatch`], a cloneable, type-erased reference to a subscriber. For
+//! To use either of these functions, we must first wrap our collector in a
+//! [`Dispatch`], a cloneable, type-erased reference to a collector. For
 //! example:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatcher, Event, Metadata,
+//! #   dispatch, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -37,24 +37,24 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
-//! use dispatcher::Dispatch;
+//! use dispatch::Dispatch;
 //!
 //! # #[cfg(feature = "alloc")]
-//! let my_subscriber = FooSubscriber::new();
+//! let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! let my_dispatch = Dispatch::new(my_subscriber);
+//! let my_dispatch = Dispatch::new(my_collector);
 //! ```
 //! Then, we can use [`with_default`] to set our `Dispatch` as the default for
 //! the duration of a block:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatcher, Event, Metadata,
+//! #   dispatch, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -63,35 +63,35 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
-//! # let my_subscriber = FooSubscriber::new();
+//! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # let my_dispatch = dispatch::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! # #[cfg(feature = "std")]
-//! dispatcher::with_default(&my_dispatch, || {
-//!     // my_subscriber is the default
+//! dispatch::with_default(&my_dispatch, || {
+//!     // my_collector is the default
 //! });
 //!
-//! // no default subscriber again
+//! // no default collector again
 //! ```
 //! It's important to note that `with_default` will not propagate the current
-//! thread's default subscriber to any threads spawned within the `with_default`
-//! block. To propagate the default subscriber to new threads, either use
+//! thread's default collector to any threads spawned within the `with_default`
+//! block. To propagate the default collector to new threads, either use
 //! `with_default` from the new thread, or use `set_global_default`.
 //!
 //! As an alternative to `with_default`, we can use [`set_global_default`] to
 //! set a `Dispatch` as the default for all threads, for the lifetime of the
 //! program. For example:
 //! ```rust
-//! # pub struct FooSubscriber;
+//! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatcher, Event, Metadata,
+//! #   dispatch, Event, Metadata,
 //! #   span::{Attributes, Id, Record}
 //! # };
-//! # impl tracing_core::Subscriber for FooSubscriber {
+//! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
@@ -100,20 +100,20 @@
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! # }
-//! # impl FooSubscriber { fn new() -> Self { FooSubscriber } }
+//! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
-//! # let my_subscriber = FooSubscriber::new();
+//! # let my_collector = FooCollector::new();
 //! # #[cfg(feature = "alloc")]
-//! # let my_dispatch = dispatcher::Dispatch::new(my_subscriber);
-//! // no default subscriber
+//! # let my_dispatch = dispatch::Dispatch::new(my_collector);
+//! // no default collector
 //!
 //! # #[cfg(feature = "alloc")]
-//! dispatcher::set_global_default(my_dispatch)
+//! dispatch::set_global_default(my_dispatch)
 //!     // `set_global_default` will return an error if the global default
-//!     // subscriber has already been set.
+//!     // collector has already been set.
 //!     .expect("global default was already set!");
 //!
-//! // `my_subscriber` is now the default
+//! // `my_collector` is now the default
 //! ```
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
@@ -126,28 +126,24 @@
 //! instead.
 //! </pre></div>
 //!
-//! ## Accessing the Default Subscriber
+//! ## Accessing the Default Collector
 //!
-//! A thread's current default subscriber can be accessed using the
+//! A thread's current default collector can be accessed using the
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: struct.Subscriber.html
-//! [`with_default`]: fn.with_default.html
-//! [`set_global_default`]: fn.set_global_default.html
-//! [`get_default`]: fn.get_default.html
-//! [`Dispatch`]: struct.Dispatch.html
+//! [`Collect`]: tracing_core::Collect
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::set_default;
+pub use tracing_core::dispatch::set_default;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::with_default;
+pub use tracing_core::dispatch::with_default;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatcher::DefaultGuard;
-pub use tracing_core::dispatcher::{
+pub use tracing_core::dispatch::DefaultGuard;
+pub use tracing_core::dispatch::{
     get_default, set_global_default, Dispatch, SetGlobalDefaultError,
 };
 
@@ -157,4 +153,4 @@ pub use tracing_core::dispatcher::{
 /// stability guarantees. If you use it, and it breaks or disappears entirely,
 /// don't say we didn;'t warn you.
 #[doc(hidden)]
-pub use tracing_core::dispatcher::has_been_set;
+pub use tracing_core::dispatch::has_been_set;
