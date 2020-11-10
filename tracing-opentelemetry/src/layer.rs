@@ -384,7 +384,7 @@ where
             // Eagerly assign span id so children have stable parent id
             .with_span_id(self.tracer.new_span_id());
 
-        // Set optional parent span reference from attrs
+        // Set optional parent span context from attrs
         builder.parent_context = self.parent_span_context(attrs, &ctx);
 
         // Ensure trace id exists so children are matched properly.

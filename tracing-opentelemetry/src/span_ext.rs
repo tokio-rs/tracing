@@ -100,7 +100,7 @@ impl OpenTelemetrySpanExt for tracing::Span {
     }
 }
 
-/// A compatibility wrapper for an injectable OpenTelemetry span reference.
+/// A compatibility wrapper for an injectable OpenTelemetry span context.
 #[derive(Debug)]
 struct CompatSpan(otel::SpanContext);
 impl otel::Span for CompatSpan {
@@ -116,7 +116,7 @@ impl otel::Span for CompatSpan {
         );
     }
 
-    /// This method is used by OpenTelemetry propagators to inject span reference
+    /// This method is used by OpenTelemetry propagators to inject span context
     /// information into [`Carrier`]s.
     ///
     /// [`Carrier`]: opentelemetry::api::context::propagation::Carrier

@@ -27,7 +27,7 @@ use opentelemetry::trace as otel;
 /// [`SpanBuilder`]: opentelemetry::api::trace::tracer::SpanBuilder
 /// [`SpanContext`]: opentelemetry::api::trace::span_context::SpanContext
 pub trait PreSampledTracer {
-    /// Produce a pre-sampled span reference for the given span builder.
+    /// Produce a pre-sampled span context for the given span builder.
     fn sampled_span_context(&self, builder: &mut otel::SpanBuilder) -> otel::SpanContext;
 
     /// Generate a new trace id.
@@ -73,7 +73,7 @@ impl PreSampledTracer for Tracer {
                         .unwrap_or_else(otel::TraceId::invalid)
                 });
 
-                // ensure sampling decision is recorded so all span references have consistent flags
+                // ensure sampling decision is recorded so all span context have consistent flags
                 let sampling_decision = if let Some(result) = builder.sampling_result.as_ref() {
                     result.decision.clone()
                 } else if let Some(provider) = self.provider().as_ref() {
