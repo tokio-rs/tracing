@@ -10,10 +10,10 @@ use std::{
 };
 use tracing::{field, span, Event, Id, Metadata};
 
-/// A subscriber that is enabled but otherwise does nothing.
-struct EnabledSubscriber;
+/// A collector that is enabled but otherwise does nothing.
+struct EnabledCollector;
 
-impl tracing::Collect for EnabledSubscriber {
+impl tracing::Collect for EnabledCollector {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let _ = span;
         Id::from_u64(0xDEAD_FACE)
@@ -45,8 +45,8 @@ impl tracing::Collect for EnabledSubscriber {
     }
 }
 
-/// Simulates a subscriber that records span data.
-struct VisitingSubscriber(Mutex<String>);
+/// Simulates a collector that records span data.
+struct VisitingCollector(Mutex<String>);
 
 struct Visitor<'a>(MutexGuard<'a, String>);
 
@@ -57,7 +57,7 @@ impl<'a> field::Visit for Visitor<'a> {
     }
 }
 
-impl tracing::Collect for VisitingSubscriber {
+impl tracing::Collect for VisitingCollector {
     fn new_span(&self, span: &span::Attributes<'_>) -> Id {
         let mut visitor = Visitor(self.0.lock().unwrap());
         span.record(&mut visitor);
@@ -97,13 +97,11 @@ const N_SPANS: usize = 100;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut c = c.benchmark_group("scoped/subscriber");
     c.bench_function("span_no_fields", |b| {
-        tracing::collect::with_default(EnabledSubscriber, || {
-            b.iter(|| span!(Level::TRACE, "span"))
-        });
+        tracing::collect::with_default(EnabledCollector, || b.iter(|| span!(Level::TRACE, "span")));
     });
 
     c.bench_function("enter_span", |b| {
-        tracing::collect::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledCollector, || {
             let span = span!(Level::TRACE, "span");
             #[allow(clippy::unit_arg)]
             b.iter(|| black_box(span.in_scope(|| {})))
@@ -111,7 +109,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("event", |b| {
-        tracing::collect::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledCollector, || {
             b.iter(|| {
                 tracing::event!(Level::TRACE, "hello");
             });
@@ -125,13 +123,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
 
         let n = black_box(N_SPANS);
-        tracing::collect::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledCollector, || {
             b.iter(|| (0..n).fold(mk_span(0), |_, i| mk_span(i as u64)))
         });
     });
 
     c.bench_function("span_with_fields", |b| {
-        tracing::collect::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledCollector, || {
             b.iter(|| {
                 span!(
                     Level::TRACE,
@@ -146,7 +144,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("span_with_fields_record", |b| {
-        let subscriber = VisitingSubscriber(Mutex::new(String::from("")));
+        let subscriber = VisitingCollector(Mutex::new(String::from("")));
         tracing::collect::with_default(subscriber, || {
             b.iter(|| {
                 span!(
@@ -183,7 +181,7 @@ fn bench_dispatch(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("scoped/dispatch");
     group.bench_function("get_ref", |b| {
-        tracing::collect::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledCollector, || {
             b.iter(|| {
                 tracing::dispatch::get_default(|current| {
                     black_box(&current);
@@ -192,7 +190,7 @@ fn bench_dispatch(c: &mut Criterion) {
         })
     });
     group.bench_function("get_clone", |b| {
-        tracing::collect::with_default(EnabledSubscriber, || {
+        tracing::collect::with_default(EnabledCollector, || {
             b.iter(|| {
                 let current = tracing::dispatch::get_default(|current| current.clone());
                 black_box(current);

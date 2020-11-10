@@ -87,13 +87,13 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
-/// [`Subscriber`]: ../layer/trait.Subscriber.html
+/// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
-/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
-/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
-/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
-/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
+/// [`Span`]: tracing_core::span
+/// [fields]: tracing_core::Field
+/// [`Event`]: tracing_core::Event
+/// [`level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
@@ -133,8 +133,6 @@ impl EnvFilter {
     /// `RUST_LOG` is the default environment variable used by
     /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
-    /// [`EnvFilter::from_default_env`]: #method.from_default_env
-    /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
@@ -201,8 +199,7 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`LevelFilter`]: ../filter/struct.LevelFilter.html
-    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+    /// [`Level`]: tracing_core::Level
     ///
     /// # Examples
     ///

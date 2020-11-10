@@ -57,16 +57,16 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
+//! [`fmt`]: mod@fmt
+//! [`registry`]: mod@registry
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Collect`]: https://docs.rs/tracing-core/latest/tracing_core/collect/trait.Collect.html
-//! [`EnvFilter`]: filter/struct.EnvFilter.html
-//! [`fmt`]: fmt/index.html
+//! [`Collect`]: tracing_core::collect::Collect
+//! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
-//! [`registry`]: registry/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -96,6 +96,12 @@
     unused_parens,
     while_true
 )]
+// Using struct update syntax when a struct has no additional fields avoids
+// a potential source change if additional fields are added to the struct in the
+// future, reducing diff noise. Allow this even though clippy considers it
+// "needless".
+#![allow(clippy::needless_update)]
+
 use tracing_core::span::Id;
 
 #[macro_use]
@@ -153,7 +159,7 @@ impl CurrentSpan {
     /// executing, or `None` if it is not inside of a span.
     ///
     ///
-    /// [`Id`]: https://docs.rs/tracing/latest/tracing/span/struct.Id.html
+    /// [`Id`]: tracing::span::Id
     pub fn id(&self) -> Option<Id> {
         self.current.with(|current| current.last().cloned())?
     }

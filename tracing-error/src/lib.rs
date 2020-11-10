@@ -14,7 +14,7 @@
 //!
 //! * [`SpanTrace`], a captured trace of the current `tracing` [span] context
 //!
-//! * [`ErrorLayer`], a [subscriber layer] which enables capturing `SpanTrace`s
+//! * [`ErrorSubscriber`], a [subscriber layer] which enables capturing `SpanTrace`s
 //!
 //! **Note**: This crate is currently experimental.
 //!
@@ -139,35 +139,29 @@
 //! ```
 //!
 //! Applications that wish to use `tracing-error`-enabled errors should
-//! construct an [`ErrorLayer`] and add it to their [collector` in order to
+//! construct an [`ErrorSubscriber`] and add it to their [collector] in order to
 //! enable capturing [`SpanTrace`]s. For example:
 //!
 //! ```rust
-//! use tracing_error::ErrorLayer;
+//! use tracing_error::ErrorSubscriber;
 //! use tracing_subscriber::prelude::*;
 //!
 //! fn main() {
 //!     let subscriber = tracing_subscriber::Registry::default()
-//!         // any number of other subscriber layers may be added before or
-//!         // after the `ErrorLayer`...
-//!         .with(ErrorLayer::default());
+//!         // any number of other collector subscribers may be added before or
+//!         // after the `ErrorSubscriber`...
+//!         .with(ErrorSubscriber::default());
 //!
 //!     // set the subscriber as the default for the application
 //!     tracing::collect::set_global_default(subscriber);
 //! }
 //! ```
 //!
-//! [`SpanTrace`]: struct.SpanTrace.html
-//! [`ErrorLayer`]: struct.ErrorLayer.html
-//! [`TracedError`]: struct.TracedError.html
-//! [`InstrumentResult`]: trait.InstrumentResult.html
-//! [`InstrumentError`]: trait.InstrumentError.html
-//! [`ExtractSpanTrace`]: trait.ExtractSpanTrace.html
-//! [`in_current_span()`]: trait.InstrumentResult.html#tymethod.in_current_span
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-//! [collector]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-//! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
+//! [`in_current_span()`]: InstrumentResult::in_current_span
+//! [span]: mod@tracing::span
+//! [events]: tracing::Event
+//! [collector]: tracing::Collect
+//! [subscriber layer]: tracing_subscriber::subscribe::Subscribe
 //! [`tracing`]: https://docs.rs/tracing
 //! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 //!
@@ -222,7 +216,7 @@ mod layer;
 pub use self::backtrace::{SpanTrace, SpanTraceStatus};
 #[cfg(feature = "traced-error")]
 pub use self::error::{ExtractSpanTrace, InstrumentError, InstrumentResult, TracedError};
-pub use self::layer::ErrorLayer;
+pub use self::layer::ErrorSubscriber;
 
 #[cfg(feature = "traced-error")]
 #[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]

@@ -12,9 +12,9 @@ pub use tracing_core::dispatch::DefaultGuard;
 /// executing, new spans or events are dispatched to the collector that
 /// tagged that span, instead.
 ///
-/// [`Span`]: ../span/struct.Span.html
-/// [`Collect`]: ../collect/trait.Collect.html
-/// [`Event`]: :../event/struct.Event.html
+/// [`Span`]: super::span::Span
+/// [`Collect`]: super::collect::Collect
+/// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, C>(collector: C, f: impl FnOnce() -> T) -> T
@@ -33,8 +33,7 @@ where
 /// Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
 /// executables try to set them later.
 ///
-/// [span]: ../span/index.html
-/// [`Event`]: ../event/struct.Event.html
+/// [span]: super::span
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
 pub fn set_global_default<S>(collector: S) -> Result<(), SetGlobalDefaultError>
@@ -52,9 +51,8 @@ where
 /// executing, new spans or events are dispatched to the collector that
 /// tagged that span, instead.
 ///
-/// [`Span`]: ../span/struct.Span.html
-/// [`Event`]: :../event/struct.Event.html
-/// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
+/// [`Span`]: super::span::Span
+/// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the collector."]

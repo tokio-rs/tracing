@@ -87,17 +87,11 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-//! [`init`]: struct.LogTracer.html#method.init
-//! [`init_with_filter`]: struct.LogTracer.html#method.init_with_filter
-//! [`AsTrace`]: trait.AsTrace.html
-//! [`AsLog`]: trait.AsLog.html
-//! [`LogTracer`]: struct.LogTracer.html
-//! [`env_logger`]: env_logger/index.html
+//! [`init`]: LogTracer::init()
+//! [`init_with_filter`]: LogTracer::init_with_filter()
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
-//! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
 //! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
@@ -380,8 +374,6 @@ impl AsTrace for log::Level {
 /// regardless of the source of its source.
 ///
 /// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
-/// [`AsTrace`]: trait.AsTrace.html
-/// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
 pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes
