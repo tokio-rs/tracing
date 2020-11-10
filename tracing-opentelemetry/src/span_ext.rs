@@ -117,9 +117,9 @@ impl otel::Span for CompatSpan {
     }
 
     /// This method is used by OpenTelemetry propagators to inject span context
-    /// information into [`Carrier`]s.
+    /// information into [`Injector`]s.
     ///
-    /// [`Carrier`]: opentelemetry::api::context::propagation::Carrier
+    /// [`Injector`]: opentelemetry::propagation::Injector
     fn span_context(&self) -> &otel::SpanContext {
         &self.0
     }

@@ -1,5 +1,5 @@
 use opentelemetry::sdk::propagation::B3Propagator;
-use opentelemetry::{propagation::TextMapPropagator, Context};
+use opentelemetry::{global, Context};
 use std::collections::HashMap;
 use tracing::span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -8,7 +8,7 @@ use tracing_subscriber::Registry;
 
 fn make_request(_cx: Context) {
     // perform external request after injecting context
-    // e.g. if there are request headers that impl `opentelemetry::propagation::Carrier`
+    // e.g. if there are request headers that impl `opentelemetry::propagation::Injector`
     // then `propagator.inject_context(cx, request.headers_mut())`
 }
 
@@ -23,14 +23,15 @@ fn build_example_carrier() -> HashMap<String, String> {
 }
 
 fn main() {
+    // Set a format for propagating context. This MUST be provided as it is a no-op by default.
+    global::set_text_map_propagator(B3Propagator::new());
     let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 
-    // Propagator can be swapped with trace context propagator binary propagator, etc.
-    let propagator = B3Propagator::new();
-
     tracing::collect::with_default(subscriber, || {
-        // Extract from request headers, or any type that impls `opentelemetry::api::Carrier`
-        let parent_context = propagator.extract(&build_example_carrier());
+        // Extract context from request headers
+        let parent_context = global::get_text_map_propagator(|propagator| {
+            propagator.extract(&build_example_carrier())
+        });
 
         // Generate tracing span as usual
         let app_root = span!(tracing::Level::INFO, "app_start");
