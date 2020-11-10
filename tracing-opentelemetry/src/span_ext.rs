@@ -7,12 +7,12 @@ use std::time::SystemTime;
 ///
 /// [`Span`]: tracing::Span
 /// [OpenTelemetry]: https://opentelemetry.io
-/// [`Context`]: opentelemetry::api::context::Context
+/// [`Context`]: opentelemetry::Context
 pub trait OpenTelemetrySpanExt {
     /// Associates `self` with a given OpenTelemetry trace, using the provided
     /// parent [`Context`].
     ///
-    /// [`Context`]: opentelemetry::api::context::Context
+    /// [`Context`]: opentelemetry::Context
     ///
     /// # Examples
     ///
@@ -45,7 +45,7 @@ pub trait OpenTelemetrySpanExt {
 
     /// Extracts an OpenTelemetry [`Context`] from `self`.
     ///
-    /// [`Context`]: opentelemetry::api::context::Context
+    /// [`Context`]: opentelemetry::Context
     ///
     /// # Examples
     ///
@@ -56,7 +56,7 @@ pub trait OpenTelemetrySpanExt {
     ///
     /// fn make_request(cx: Context) {
     ///     // perform external request after injecting context
-    ///     // e.g. if the request's headers impl `opentelemetry::api::propagation::Inject`
+    ///     // e.g. if the request's headers impl `opentelemetry::propagation::Injector`
     ///     // then `propagator.inject_context(cx, request.headers_mut())`
     /// }
     ///

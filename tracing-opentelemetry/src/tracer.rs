@@ -23,9 +23,9 @@ use opentelemetry::trace as otel;
 ///
 /// [`OpenTelemetrySpanExt::set_parent`]: crate::OpenTelemetrySpanExt::set_parent
 /// [`OpenTelemetrySpanExt::context`]: crate::OpenTelemetrySpanExt::context
-/// [`Tracer`]: opentelemetry::api::trace::tracer::Tracer
-/// [`SpanBuilder`]: opentelemetry::api::trace::tracer::SpanBuilder
-/// [`SpanContext`]: opentelemetry::api::trace::span_context::SpanContext
+/// [`Tracer`]: opentelemetry::trace::Tracer
+/// [`SpanBuilder`]: opentelemetry::trace::SpanBuilder
+/// [`SpanContext`]: opentelemetry::trace::SpanContext
 pub trait PreSampledTracer {
     /// Produce a pre-sampled span context for the given span builder.
     fn sampled_span_context(&self, builder: &mut otel::SpanBuilder) -> otel::SpanContext;
