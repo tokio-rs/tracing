@@ -3,7 +3,7 @@ use opentelemetry::{trace as otel, trace::TraceContextExt, Context as OtelContex
 use std::any::TypeId;
 use std::fmt;
 use std::marker;
-use std::time::SystemTime;
+use std::time::{SystemTime, Instant};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -22,7 +22,7 @@ static SPAN_KIND_FIELD: &str = "otel.kind";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetryLayer<S, T> {
     tracer: T,
-
+    span_timings_enabled: bool,
     get_context: WithContext,
     _registry: marker::PhantomData<S>,
 }
@@ -268,6 +268,7 @@ where
     pub fn new(tracer: T) -> Self {
         OpenTelemetryLayer {
             tracer,
+            span_timings_enabled: true,
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
         }
@@ -304,9 +305,16 @@ where
     {
         OpenTelemetryLayer {
             tracer,
+            span_timings_enabled: self.span_timings_enabled,
             get_context: WithContext(OpenTelemetryLayer::<S, Tracer>::get_context),
             _registry: self._registry,
         }
+    }
+
+    /// Sets whether or not spans metadata should include the _busy time_ (total time for which it was entered),
+    /// and _idle time_ (total time the span existed but was not entered).
+    pub fn with_span_timings(self, span_timings_enabled: bool) -> Self {
+        Self { span_timings_enabled, ..self }
     }
 
     /// Retrieve the parent OpenTelemetry [`SpanContext`] from the current
@@ -377,6 +385,10 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
+        if self.span_timings_enabled && extensions.get_mut::<Timings>().is_none() {
+            extensions.insert(Timings::new());
+        }
+
         let mut builder = self
             .tracer
             .span_builder(attrs.metadata().name())
@@ -400,6 +412,28 @@ where
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
         extensions.insert(builder);
+    }
+
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut extensions = span.extensions_mut();
+
+        if let Some(timings) = extensions.get_mut::<Timings>() {
+            let now = Instant::now();
+            timings.idle += (now - timings.last).as_nanos() as u64;
+            timings.last = now;
+        }
+    }
+
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut extensions = span.extensions_mut();
+
+        if let Some(timings) = extensions.get_mut::<Timings>() {
+            let now = Instant::now();
+            timings.busy += (now - timings.last).as_nanos() as u64;
+            timings.last = now;
+        }
     }
 
     /// Record OpenTelemetry [`attributes`] for the given values.
@@ -487,7 +521,21 @@ where
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
+
         if let Some(builder) = extensions.remove::<otel::SpanBuilder>() {
+            // Append busy/idle timings when enabled.
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let mut timings_attributes = vec![
+                    api::KeyValue::new("busy_ns", timings.busy),
+                    api::KeyValue::new("idle_ns", timings.idle),
+                ];
+
+                match builder.attributes {
+                    Some(ref mut attributes) => attributes.append(&mut timings_attributes),
+                    None => builder.attributes = Some(timings_attributes),
+                }
+            }
+
             // Assign end time, build and start span, drop span to export
             builder.with_end_time(SystemTime::now()).start(&self.tracer);
         }
@@ -503,6 +551,18 @@ where
             }
             _ => None,
         }
+    }
+}
+
+struct Timings {
+    idle: u64,
+    busy: u64,
+    last: Instant,
+}
+
+impl Timings {
+    fn new() -> Self {
+        Self { idle: 0, busy: 0, last: Instant::now() }
     }
 }
 
@@ -607,5 +667,20 @@ mod tests {
 
         let recorded_trace_id = tracer.0.lock().unwrap().as_ref().unwrap().trace_id;
         assert_eq!(recorded_trace_id, Some(trace_id))
+    }
+
+    #[test]
+    fn includes_timings() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()).with_span_timings(true));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer.0.lock().unwrap().as_ref().unwrap().attributes.as_ref().unwrap().clone();
+        let keys = attributes.iter().map(|attr| attr.key.as_str()).collect::<Vec<&str>>();
+        assert!(keys.contains(&"idle_ns"));
+        assert!(keys.contains(&"busy_ns"));
     }
 }
