@@ -3,7 +3,7 @@ use opentelemetry::{trace as otel, trace::TraceContextExt, Context as OtelContex
 use std::any::TypeId;
 use std::fmt;
 use std::marker;
-use std::time::{SystemTime, Instant};
+use std::time::{Instant, SystemTime};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -314,7 +314,10 @@ where
     /// Sets whether or not spans metadata should include the _busy time_ (total time for which it was entered),
     /// and _idle time_ (total time the span existed but was not entered).
     pub fn with_span_timings(self, span_timings_enabled: bool) -> Self {
-        Self { span_timings_enabled, ..self }
+        Self {
+            span_timings_enabled,
+            ..self
+        }
     }
 
     /// Retrieve the parent OpenTelemetry [`SpanContext`] from the current
@@ -562,7 +565,11 @@ struct Timings {
 
 impl Timings {
     fn new() -> Self {
-        Self { idle: 0, busy: 0, last: Instant::now() }
+        Self {
+            idle: 0,
+            busy: 0,
+            last: Instant::now(),
+        }
     }
 }
 
@@ -672,14 +679,27 @@ mod tests {
     #[test]
     fn includes_timings() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()).with_span_timings(true));
+        let subscriber = tracing_subscriber::registry()
+            .with(layer().with_tracer(tracer.clone()).with_span_timings(true));
 
         tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request");
         });
 
-        let attributes = tracer.0.lock().unwrap().as_ref().unwrap().attributes.as_ref().unwrap().clone();
-        let keys = attributes.iter().map(|attr| attr.key.as_str()).collect::<Vec<&str>>();
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+        let keys = attributes
+            .iter()
+            .map(|attr| attr.key.as_str())
+            .collect::<Vec<&str>>();
         assert!(keys.contains(&"idle_ns"));
         assert!(keys.contains(&"busy_ns"));
     }
