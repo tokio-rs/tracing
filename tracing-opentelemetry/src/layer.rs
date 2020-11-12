@@ -22,7 +22,7 @@ static SPAN_KIND_FIELD: &str = "otel.kind";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetryLayer<S, T> {
     tracer: T,
-    span_timings_enabled: bool,
+    tracked_inactivity: bool,
     get_context: WithContext,
     _registry: marker::PhantomData<S>,
 }
@@ -268,7 +268,7 @@ where
     pub fn new(tracer: T) -> Self {
         OpenTelemetryLayer {
             tracer,
-            span_timings_enabled: true,
+            tracked_inactivity: true,
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
         }
@@ -305,17 +305,18 @@ where
     {
         OpenTelemetryLayer {
             tracer,
-            span_timings_enabled: self.span_timings_enabled,
+            tracked_inactivity: self.tracked_inactivity,
             get_context: WithContext(OpenTelemetryLayer::<S, Tracer>::get_context),
             _registry: self._registry,
         }
     }
 
-    /// Sets whether or not spans metadata should include the _busy time_ (total time for which it was entered),
-    /// and _idle time_ (total time the span existed but was not entered).
-    pub fn with_span_timings(self, span_timings_enabled: bool) -> Self {
+    /// Sets whether or not spans metadata should include the _busy time_
+    /// (total time for which it was entered), and _idle time_ (total time
+    /// the span existed but was not entered).
+    pub fn with_tracked_inactivity(self, tracked_inactivity: bool) -> Self {
         Self {
-            span_timings_enabled,
+            tracked_inactivity,
             ..self
         }
     }
@@ -388,7 +389,7 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if self.span_timings_enabled && extensions.get_mut::<Timings>().is_none() {
+        if self.tracked_inactivity && extensions.get_mut::<Timings>().is_none() {
             extensions.insert(Timings::new());
         }
 
@@ -679,8 +680,11 @@ mod tests {
     #[test]
     fn includes_timings() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry()
-            .with(layer().with_tracer(tracer.clone()).with_span_timings(true));
+        let subscriber = tracing_subscriber::registry().with(
+            layer()
+                .with_tracer(tracer.clone())
+                .with_tracked_inactivity(true),
+        );
 
         tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request");
