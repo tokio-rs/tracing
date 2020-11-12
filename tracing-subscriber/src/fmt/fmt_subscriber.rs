@@ -58,12 +58,7 @@ use tracing_core::{
 ///
 /// [`Subscriber`]: subscribe::Subscribe
 #[derive(Debug)]
-pub struct Subscriber<
-    S,
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> {
+pub struct Subscriber<S, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
     make_writer: W,
     fmt_fields: N,
     fmt_event: E,
