@@ -23,7 +23,7 @@ fn build_example_carrier() -> HashMap<String, String> {
 }
 
 fn main() {
-    // Set a format for propagating context. This MUST be provided as it is a no-op by default.
+    // Set a format for propagating context. This MUST be provided, as the default is a no-op.
     global::set_text_map_propagator(B3Propagator::new());
     let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 
