@@ -26,28 +26,7 @@ jobs:
         command: check
         args: --all --bins --examples --tests --benches
 
-  cache-cargo-hack:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Fetch latest release version of cargo-hack
-      run: |
-        mkdir -p .github/caching
-        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
-    - name: Cache cargo-hack/bin
-      id: cache-cargo-hack
-      uses: actions/cache@v1
-      with:
-        path: ${{ runner.tool_cache }}/cargo-hack/bin
-        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
-    - name: Install cargo-hack
-      if: "steps.cache-cargo-hack.outputs.cache-hit != 'true'"
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: --root ${{ runner.tool_cache }}/cargo-hack --force cargo-hack
-
   cargo-hack:
-    needs: cache-cargo-hack
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -73,19 +52,9 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
-    - name: Fetch latest release version of cargo-hack
+    - name: Install cargo-hack
       run: |
-        mkdir -p .github/caching
-        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
-    - name: Restore cargo-hack/bin
-      uses: actions/cache@v1
-      with:
-        path: ${{ runner.tool_cache }}/cargo-hack/bin
-        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
-    - run: echo "${{ runner.tool_cache }}/cargo-hack/bin" >> $GITHUB_PATH
-    # if `cargo-hack` somehow doesn't exist after loading it from the cache,
-    # make *sure* it's there.
-    - run: cargo hack --help || { cargo install --force cargo-hack; }
+        curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --feature-powerset --no-dev-deps
