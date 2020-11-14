@@ -58,7 +58,7 @@ use tracing::{Metadata, Span};
 /// [parents]: mod@tracing::span#span-relationships
 /// [fields]: tracing::field
 /// [futures]: std::future::Future
-/// [`tracing-futures`]: tracing_futures
+/// [`tracing-futures`]: https://docs.rs/tracing-futures/
 /// [`with_spans`]: SpanTrace::with_spans()
 #[derive(Clone)]
 pub struct SpanTrace {

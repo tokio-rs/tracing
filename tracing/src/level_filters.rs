@@ -36,7 +36,7 @@
 //!
 //! *Compiler support: requires rustc 1.39+*
 //!
-//! [`log` crate]: log#compile-time-filters
+//! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters
 pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 
 /// The statically configured maximum trace level.

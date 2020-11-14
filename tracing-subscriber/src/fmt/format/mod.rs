@@ -376,7 +376,7 @@ impl<T> Format<Json, T> {
     /// ```ignore,json
     /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate", "message":"some message", "key": "value"}
     /// ```
-    /// See [`Json`](super::format::Json).
+    /// See [`Json`]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
@@ -387,7 +387,7 @@ impl<T> Format<Json, T> {
     /// Sets whether or not the formatter will include the current span in
     /// formatted events.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// See [`Json`]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn with_current_span(mut self, display_current_span: bool) -> Format<Json, T> {
@@ -398,7 +398,7 @@ impl<T> Format<Json, T> {
     /// Sets whether or not the formatter will include a list (from root to
     /// leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// See [`Json`]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn with_span_list(mut self, display_span_list: bool) -> Format<Json, T> {
@@ -971,7 +971,7 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 
 /// Configures what points in the span lifecycle are logged as events.
 ///
-/// See also [`with_span_events`](super::SubscriberBuilder::with_span_events()).
+/// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(FmtSpanInner);
 

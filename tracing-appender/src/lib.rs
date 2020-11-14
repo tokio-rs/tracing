@@ -11,6 +11,7 @@
 //!
 //! [msrv]: #supported-rust-versions
 //! [file_appender]: rolling::RollingFileAppender
+//! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage
 //!

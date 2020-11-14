@@ -88,7 +88,7 @@ use tracing_core::{
 ///    - at _any_ level.
 ///
 /// [`Subscriber`]: Subscribe
-/// [`env_logger`]: env_logger#enabling-logging
+/// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: tracing_core::span
 /// [fields]: tracing_core::Field
 /// [`Event`]: tracing_core::Event

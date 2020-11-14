@@ -95,7 +95,7 @@
 //! [`tracing::Collector`]: tracing::Collect
 //! [`tracing::Event`]: tracing_core::Event
 //! [`Collect`]: tracing::Collect
-//! [flags]: tracing#crate-feature-flags
+//! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

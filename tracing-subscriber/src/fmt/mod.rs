@@ -276,6 +276,7 @@
 //! ```
 //!
 //! [`EnvFilter`]: super::filter::EnvFilter
+//! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: super::filter
 //! [`fmtBuilder`]: CollectorBuilder
 //! [`FmtCollector`]: Collector

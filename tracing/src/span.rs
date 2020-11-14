@@ -401,7 +401,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: super::metadata
+    /// [metadata]: mod@super::metadata
     /// [collector]: super::collect::Collect
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
@@ -426,7 +426,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: super::metadata
+    /// [metadata]: mod@super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
@@ -450,7 +450,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: super::metadata
+    /// [metadata]: mod@super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
