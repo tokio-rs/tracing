@@ -1,6 +1,6 @@
 //! Abstractions for creating [`io::Write`] instances.
 //!
-//! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [`io::Write`]: std::io::Write
 
 use io::Write;
 use std::{fmt::Debug, io};
@@ -13,16 +13,16 @@ use std::{fmt::Debug, io};
 /// This trait is already implemented for function pointers and immutably-borrowing closures that
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
-/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+/// [`io::Write`]: std::io::Write
 /// [`fmt::Collector`]: super::super::fmt::Collector
 /// [`fmt::Subscriber`]: super::super::fmt::Subscriber
 /// [`Event`]: tracing_core::event::Event
-/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
-/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
+/// [`io::stdout`]: std::io::stdout()
+/// [`io::stderr`]: std::io::stderr()
 pub trait MakeWriter {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
-    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+    /// [`io::Write`]: std::io::Write
     /// [`make_writer`]: MakeWriter::make_writer
     type Writer: io::Write;
 
@@ -38,7 +38,7 @@ pub trait MakeWriter {
     /// [`Writer`]: MakeWriter::Writer
     /// [`fmt::Subscriber`]: super::super::fmt::Subscriber
     /// [`fmt::Collector`]: super::super::fmt::Collector
-    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+    /// [`io::Write`]: std::io::Write
     fn make_writer(&self) -> Self::Writer;
 }
 
@@ -68,9 +68,9 @@ where
 /// [`fmt::Subscriber`]: super::Subscriber
 /// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
 /// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
-/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
-/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
-/// [`print!`]: https://doc.rust-lang.org/std/macro.print.html
+/// [`io::stdout`]: std::io::stdout()
+/// [`io::stderr`]: std::io::stderr()
+/// [`print!`]: std::print!
 #[derive(Default, Debug)]
 pub struct TestWriter {
     _p: (),
@@ -128,7 +128,7 @@ impl MakeWriter for TestWriter {
 /// ```
 ///
 /// [`Collect`]: tracing::Collect
-/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+/// [`io::Write`]: std::io::Write
 pub struct BoxMakeWriter {
     inner: Box<dyn MakeWriter<Writer = Box<dyn Write>> + Send + Sync>,
 }

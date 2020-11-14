@@ -89,9 +89,7 @@
 //! the execution of your program. This representation is best created with a
 //! _flamechart_, which _does not_ sort or collapse identical stack frames.
 //!
-//! [`tracing`]: https://docs.rs/tracing
-//! [`inferno`]: https://docs.rs/inferno
-//! [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
+//! [`inferno-flamegraph`]: inferno#producing-a-flame-graph
 //!
 //! ## Supported Rust Versions
 //!

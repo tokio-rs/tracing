@@ -420,9 +420,9 @@
 //! [target]: Metadata::target()
 //! [parent span]: span::Attributes::parent()
 //! [determined contextually]: span::Attributes::is_contextual()
-//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
-//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
-//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//! [`fmt::Debug`]: std::fmt::Debug
+//! [`fmt::Display`]: std::fmt::Display
+//! [fmt]: std::fmt#usage
 //! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
@@ -668,7 +668,7 @@
 //! the application's trace tree. See [that crate's documentation][log-tracer]
 //! for details.
 //!
-//! [log-tracer]: https://docs.rs/tracing-log/latest/tracing_log/#convert-log-records-to-tracing-events
+//! [log-tracer]: tracing_log#convert-log-records-to-tracing-events
 //!
 //! ### `no_std` Support
 //!
@@ -717,7 +717,7 @@
 //! All other features of `tracing` should behave identically with and
 //! without `std` and `alloc`.
 //!
-//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`libstd`]: std
 //! [`Dispatch::new`]: crate::dispatch::Dispatch::new
 //! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
 //! [`Dispatch::set_default`]: crate::dispatch::set_default
@@ -792,12 +792,12 @@
 //! [coz]: https://github.com/plasma-umass/coz
 //! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 //! [bunyan]: https://github.com/trentm/node-bunyan
-//! [`tracing-wasm`]: https://docs.rs/tracing-wasm
+//! [`tracing-wasm`]: tracing_wasm
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 //! [`tide-tracing`]: https://crates.io/crates/tide-tracing
 //! [tide]: https://crates.io/crates/tide
 //! [`test-env-log`]: https://crates.io/crates/test-env-log
-//! [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+//! [`tracing-unwrap`]: tracing_unwrap
 //! [`diesel`]: https://crates.io/crates/diesel
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 //! [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
@@ -833,7 +833,7 @@
 //! * `std`: Depend on the Rust standard library (enabled by default).
 //! * `alloc`: Depend on [`liballoc`] (enabled by "std").
 //!
-//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
+//! [`liballoc`]: alloc
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
@@ -848,7 +848,6 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-//! [`log`]: https://docs.rs/log/0.4.6/log/
 //! [spans]: mod@span
 //! [`Span`]: span::Span
 //! [`in_scope`]: span::Span::in_scope
@@ -869,7 +868,7 @@
 //! [`tracing-timing`]: https://crates.io/crates/tracing-timing
 //! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
-//! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
+//! [`FmtSubscriber`]: tracing_subscriber::fmt::Subscriber
 //! [static verbosity level]: level_filters#compile-time-filters
 //! [instrument]: tracing_attributes::instrument
 //! [flags]: #crate-feature-flags

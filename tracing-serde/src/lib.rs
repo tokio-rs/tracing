@@ -6,7 +6,7 @@
 //! [![Documentation (master)][docs-master-badge]][docs-master-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
-//! [docs-url]: https://docs.rs/tracing-serde
+//! [docs-url]: tracing_serde
 //! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 //! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
@@ -52,14 +52,14 @@
 //! use tracing_serde::AsSerde;
 //! ```
 //!
-//! Please read the [`tracing` documentation](https://docs.rs/tracing/latest/tracing/index.html)
+//! Please read the [`tracing` documentation](tracing)
 //! for more information on how to create trace data.
 //!
 //! This crate provides the `as_serde` function, via the `AsSerde` trait,
 //! which enables serializing the `Attributes`, `Event`, `Id`, `Metadata`,
 //! and `Record` `tracing` values.
 //!
-//! For the full example, please see the [examples](../examples) folder.
+//! For the full example, please see the [examples](super::examples) folder.
 //!
 //! Implement a `Collector` to format the serialization of `tracing`
 //! types how you'd like.

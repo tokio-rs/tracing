@@ -162,8 +162,6 @@
 //! [events]: tracing::Event
 //! [collector]: tracing::Collect
 //! [subscriber layer]: tracing_subscriber::subscribe::Subscribe
-//! [`tracing`]: https://docs.rs/tracing
-//! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 //!
 //! ## Supported Rust Versions
 //!

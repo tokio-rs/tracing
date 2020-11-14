@@ -95,7 +95,7 @@
 //! [`tracing::Collector`]: tracing::Collect
 //! [`tracing::Event`]: tracing_core::Event
 //! [`Collect`]: tracing::Collect
-//! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
+//! [flags]: tracing#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -373,7 +373,7 @@ impl AsTrace for log::Level {
 /// to allow accessing its complete metadata in a consistent way,
 /// regardless of the source of its source.
 ///
-/// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
+/// [`normalized_metadata`]: NormalizeEvent#normalized_metadata
 pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes

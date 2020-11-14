@@ -67,7 +67,7 @@ pub struct Subscriber<S, N = format::DefaultFields, E = format::Format, W = fn()
 }
 
 impl<S> Subscriber<S> {
-    /// Returns a new [`Subscriber`](struct.Subscriber.html) with the default configuration.
+    /// Returns a new [`Subscriber`] with the default configuration.
     pub fn new() -> Self {
         Self::default()
     }
@@ -292,7 +292,7 @@ where
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
@@ -309,7 +309,7 @@ where
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
@@ -323,7 +323,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
+    /// Sets the subscriber being built to use a [less verbose formatter](super::fmt::format::Compact).
     pub fn compact(self) -> Subscriber<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -350,7 +350,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    /// Sets the subscriber being built to use a [JSON formatter](super::fmt::format::Json).
     ///
     /// The full format includes fields from all entered spans.
     ///
@@ -383,7 +383,7 @@ where
 impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -400,7 +400,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     /// Sets whether or not the formatter will include the current span in
     /// formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -417,7 +417,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     /// Sets whether or not the formatter will include a list (from root to leaf)
     /// of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_span_list(
         self,
         display_span_list: bool,

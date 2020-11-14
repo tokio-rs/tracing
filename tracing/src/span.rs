@@ -401,7 +401,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: super::metadata
     /// [collector]: super::collect::Collect
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
@@ -426,7 +426,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
@@ -450,7 +450,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
@@ -815,7 +815,7 @@ impl Span {
         f()
     }
 
-    /// Returns a [`Field`](../field/struct.Field.html) for the field with the
+    /// Returns a [`Field`](super::field::Field) for the field with the
     /// given `name`, if one exists,
     pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
     where
@@ -825,7 +825,7 @@ impl Span {
     }
 
     /// Returns true if this `Span` has a field for the given
-    /// [`Field`](../field/struct.Field.html) or field name.
+    /// [`Field`](super::field::Field) or field name.
     #[inline]
     pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
     where

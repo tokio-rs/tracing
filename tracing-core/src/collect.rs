@@ -440,7 +440,7 @@ pub trait Collect: 'static {
     /// with the provided `TypeId`. Failure to ensure this will result in
     /// undefined behaviour, so implementing `downcast_raw` is unsafe.
     ///
-    /// [`downcast_ref`]: #method.downcast_ref
+    /// [`downcast_ref`]: Collect::downcast_ref()
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
             Some(self as *const Self as *const ())

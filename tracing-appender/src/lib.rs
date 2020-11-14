@@ -11,7 +11,6 @@
 //!
 //! [msrv]: #supported-rust-versions
 //! [file_appender]: rolling::RollingFileAppender
-//! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage
 //!
@@ -88,7 +87,7 @@
 //!
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
-//! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [write]: std::io::Write
 //! [non_blocking]: mod@non_blocking
 //! [guard]: non_blocking::WorkerGuard
 //! [make_writer]: tracing_subscriber::fmt::MakeWriter

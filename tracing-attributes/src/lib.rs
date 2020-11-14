@@ -36,7 +36,7 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [instrument]: macro@instrument
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+//! [span]: tracing::span
 //!
 //! ## Supported Rust Versions
 //!
@@ -251,9 +251,9 @@ use syn::{
 /// Instead, you should manually rewrite any `Self` types as the type for
 /// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`.
 ///
-/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [span]: tracing::span
 /// [`tracing`]: https://github.com/tokio-rs/tracing
-/// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+/// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,
