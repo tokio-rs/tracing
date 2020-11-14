@@ -526,12 +526,12 @@ where
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if let Some(builder) = extensions.remove::<otel::SpanBuilder>() {
+        if let Some(mut builder) = extensions.remove::<otel::SpanBuilder>() {
             // Append busy/idle timings when enabled.
             if let Some(timings) = extensions.get_mut::<Timings>() {
                 let mut timings_attributes = vec![
-                    api::KeyValue::new("busy_ns", timings.busy),
-                    api::KeyValue::new("idle_ns", timings.idle),
+                    KeyValue::new("busy_ns", timings.busy.to_string()),
+                    KeyValue::new("idle_ns", timings.idle.to_string()),
                 ];
 
                 match builder.attributes {
