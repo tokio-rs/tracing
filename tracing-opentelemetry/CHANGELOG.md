@@ -1,3 +1,15 @@
+# 0.9.0 (November 13, 2020)
+
+### Added
+
+- Track busy/idle timings as attributes via `with_tracked_inactivity` (#1096)
+
+### Breaking Changes
+
+- Upgrade to `v0.10.0` of `opentelemetry` (#1049)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.10.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/master/opentelemetry/CHANGELOG.md#v0100).
+
 # 0.8.0 (October 13, 2020)
 
 ### Added
