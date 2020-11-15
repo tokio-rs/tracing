@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         // Essentially here we're executing a new task to run concurrently,
         // which will allow all of our clients to be processed concurrently.
 
-        tokio::spawn(async move {
+        let fut = async move {
             let mut buf = [0; 1024];
 
             // In a loop, read data from the socket and write the data back.
@@ -115,8 +115,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 
                 info!(message = "echo'd data", %peer_addr, size = n);
             }
-        })
-        .instrument(info_span!("echo", %peer_addr))
-        .await?;
+        }
+        .instrument(info_span!("echo", %peer_addr));
+        tokio::spawn(fut);
     }
 }
