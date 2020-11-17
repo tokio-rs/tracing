@@ -245,6 +245,14 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
 ///
 /// To use a `Rotation`, pick one of the following options:
 ///
+/// ### Minutely Rotation
+/// ```rust
+/// # fn docs() {
+/// use tracing_appender::rolling::Rotation;
+/// let rotation = tracing_appender::rolling::Rotation::MINUTELY;
+/// # }
+/// ```
+///
 /// ### Hourly Rotation
 /// ```rust
 /// # fn docs() {
