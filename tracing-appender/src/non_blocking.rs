@@ -61,7 +61,7 @@ use tracing_subscriber::fmt::MakeWriter;
 /// The default maximum number of buffered log lines.
 ///
 /// If [`NonBlocking`][non-blocking] is lossy, it will drop spans/events at capacity.
-/// capacity. If [`NonBlocking`][non-blocking] is _not_ lossy,
+/// If [`NonBlocking`][non-blocking] is _not_ lossy,
 /// backpressure will be exerted on senders, causing them to block their
 /// respective threads until there is available capacity.
 ///
