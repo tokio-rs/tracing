@@ -14,7 +14,7 @@ pub use tracing_core::dispatch::DefaultGuard;
 ///
 /// [`Span`]: super::span::Span
 /// [`Collect`]: super::collect::Collect
-// /// [`Event`]: :../event/struct.Event.html
+/// [`Event`]: super::event::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, S>(collector: S, f: impl FnOnce() -> T) -> T
@@ -55,7 +55,7 @@ where
 ///
 /// [`Span`]: super::span::Span
 /// [`Collect`]: super::collect::Collect
-/// [`Event`]: :../event/struct.Event.html
+/// [`Event`]: super::event::Event
 /// [`DefaultGuard`]: super::dispatch::DefaultGuard
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]

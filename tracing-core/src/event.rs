@@ -17,8 +17,8 @@ use crate::{field, Metadata};
 ///   associated with an event should be in the event's fields rather than in
 ///   the textual message, as the fields are more structured.
 ///
-/// [span]: ../span
-/// [fields]: ../field
+/// [span]: super::span
+/// [fields]: super::field
 #[derive(Debug)]
 pub struct Event<'a> {
     fields: &'a field::ValueSet<'a>,

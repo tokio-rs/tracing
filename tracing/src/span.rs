@@ -79,11 +79,12 @@
 //! <div class="information">
 //!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
-//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
-//!     guard is held across an await point. See
-//!     <a href="struct.Span.html#in-asynchronous-code">the method documentation</a>
-//!     for details.
+//!
+//!  **Warning**: In asynchronous code that uses async/await syntax,
+//!  [`Span::enter`] may produce incorrect traces if the returned drop
+//!  guard is held across an await point. See
+//!  [the method documentation][Span#in-asynchronous-code] for details.
+//!
 //! </pre></div>
 //!
 //! `in_scope` takes a closure or function pointer and executes it inside the
@@ -400,7 +401,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: mod@super::metadata
     /// [collector]: super::collect::Collect
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
@@ -425,7 +426,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: mod@super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
@@ -449,7 +450,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: mod@super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
@@ -567,15 +568,17 @@ impl Span {
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: The returned
-    /// <a href="../struct.Entered.html"><code>Entered</code></a> guard does not
-    /// implement <code>Send</code>. Dropping the guard will exit <em>this</em> span,
+    ///
+    /// **Note**: The returned [`Entered`] guard guard does not
+    /// implement `Send`. Dropping the guard will exit *this* span,
     /// and if the guard is sent to another thread and dropped there, that thread may
-    /// never have entered this span. Thus, <code>Entered</code> should not be sent
-    /// between threads.</pre></div>
+    /// never have entered this span. Thus, `Entered` should not be sent
+    /// between threads.
+    ///
+    /// </pre></div>
     ///
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
-    /// `Span::enter` should be used very carefully or avoided entirely. Holding
+    /// [`Span::enter`] should be used very carefully or avoided entirely. Holding
     /// the drop guard returned by `Span::enter` across `.await` points will
     /// result in incorrect traces.
     ///
@@ -812,7 +815,7 @@ impl Span {
         f()
     }
 
-    /// Returns a [`Field`](../field/struct.Field.html) for the field with the
+    /// Returns a [`Field`](super::field::Field) for the field with the
     /// given `name`, if one exists,
     pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
     where
@@ -822,7 +825,7 @@ impl Span {
     }
 
     /// Returns true if this `Span` has a field for the given
-    /// [`Field`](../field/struct.Field.html) or field name.
+    /// [`Field`](super::field::Field) or field name.
     #[inline]
     pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
     where
@@ -874,12 +877,14 @@ impl Span {
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: The fields associated with a span are part of its
-    /// <a href="../struct.Metadata.html"><code>Metadata</code></a>.
-    /// The <a href="../struct.Metadata.html"><code>Metadata</code></a>. describing a particular
+    ///
+    /// **Note**: The fields associated with a span are part of its [`Metadata`].
+    /// The [`Metadata`] describing a particular
     /// span is constructed statically when the span is created and cannot be extended later to
     /// add new fields. Therefore, you cannot record a value for a field that was not specified
-    /// when the span was created:</pre></div>
+    /// when the span was created:
+    ///
+    /// </pre></div>
     ///
     /// ```
     /// use tracing::{trace_span, field};

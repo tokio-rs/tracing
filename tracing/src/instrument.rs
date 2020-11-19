@@ -9,7 +9,7 @@ use pin_project_lite::pin_project;
 /// Extension trait allowing futures to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]:  ../struct.Span.html
+/// [span]:  super::Span
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.

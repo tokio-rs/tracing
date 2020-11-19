@@ -90,7 +90,7 @@
 //! All other features of `tracing-core` should behave identically with and
 //! without `std` and `alloc`.
 //!
-//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`libstd`]: std
 //! [`Dispatch::new`]: crate::dispatch::Dispatch::new
 //! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
 //! [`Dispatch::set_default`]: crate::dispatch::set_default
@@ -104,7 +104,7 @@
 //! * `std`: Depend on the Rust standard library (enabled by default).
 //! * `alloc`: Depend on [`liballoc`] (enabled by "std").
 //!
-//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
+//! [`liballoc`]: alloc
 //!
 //! ## Supported Rust Versions
 //!

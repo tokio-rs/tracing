@@ -210,17 +210,15 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This method (and <a href="#method.enabled">
-    /// <code>Subscribe::enabled</code></a>) determine whether a span or event is
-    /// globally enabled, <em>not</em> whether the individual subscriber will be
-    /// notified about that span or event. This is intended to be used
-    /// by subscribers that implement filtering for the entire stack. Subscribers which do
-    /// not wish to be notified about certain spans or events but do not wish to
-    /// globally disable them should ignore those spans or events in their
-    /// <a href="#method.on_event"><code>on_event</code></a>,
-    /// <a href="#method.on_enter"><code>on_enter</code></a>,
-    /// <a href="#method.on_exit"><code>on_exit</code></a>, and other notification
-    /// methods.
+    ///
+    /// **Note**: This method (and [`Subscribe::enabled`]) determine whether a span or event is
+    /// globally enabled, *not* whether the individual subscriber will be notified about that
+    /// span or event.  This is intended to be used by subscribers that implement filtering for
+    /// the entire stack. Subscribers which do not wish to be notified about certain spans or
+    /// events but do not wish to globally disable them should ignore those spans or events in
+    /// their [on_event][Self::on_event], [on_enter][Self::on_enter], [on_exit][Self::on_exit],
+    /// and other notification methods.
+    ///
     /// </pre></div>
     ///
     /// See [the trait-level documentation] for more information on filtering
@@ -259,17 +257,17 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This method (and <a href="#method.register_callsite">
-    /// <code>Subscriber::register_callsite</code></a>) determine whether a span or event is
-    /// globally enabled, <em>not</em> whether the individual layer will be
+    ///
+    /// **Note**: This method (and [`register_callsite`][Self::register_callsite])
+    /// determine whether a span or event is
+    /// globally enabled, *not* whether the individual layer will be
     /// notified about that span or event. This is intended to be used
     /// by layers that implement filtering for the entire stack. Layers which do
     /// not wish to be notified about certain spans or events but do not wish to
     /// globally disable them should ignore those spans or events in their
-    /// <a href="#method.on_event"><code>on_event</code></a>,
-    /// <a href="#method.on_enter"><code>on_enter</code></a>,
-    /// <a href="#method.on_exit"><code>on_exit</code></a>, and other notification
-    /// methods.
+    /// [on_event][Self::on_event], [on_enter][Self::on_enter], [on_exit][Self::on_exit],
+    /// and other notification methods.
+    ///
     /// </pre></div>
     ///
     ///
@@ -1007,10 +1005,10 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped collector to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
+    ///
+    /// **Note**: This requires the wrapped collector to implement the [`LookupSpan`] trait.
+    /// See the documentation on [`Context`]'s declaration for details.
+    ///
     /// </pre></div>
     ///
     /// [stored data]: super::registry::SpanRef
@@ -1031,10 +1029,10 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the [`LookupSpan`] trait.
+    /// See the documentation on [`Context`]'s declaration for details.
+    ///
     /// </pre></div>
     #[inline]
     #[cfg(feature = "registry")]
@@ -1056,10 +1054,10 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped collector to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the [`LookupSpan`] trait.
+    /// See the documentation on [`Context`]'s declaration for details.
+    ///
     /// </pre></div>
     ///
     /// [stored data]: super::registry::SpanRef
@@ -1093,10 +1091,10 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
+    ///
+    /// **Note**: This requires the wrapped subscriber to implement the [`LookupSpan`] trait.
+    /// See the documentation on [`Context`]'s declaration for details.
+    ///
     /// </pre></div>
     ///
     /// [stored data]: super::registry::SpanRef
