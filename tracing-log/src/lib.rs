@@ -102,7 +102,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
