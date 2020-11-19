@@ -59,7 +59,6 @@
 //!
 //! [`fmt`]: mod@fmt
 //! [`registry`]: mod@registry
-//! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Collect`]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log

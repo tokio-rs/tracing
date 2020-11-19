@@ -6,7 +6,7 @@
 //! [![Documentation (master)][docs-master-badge]][docs-master-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
-//! [docs-url]: https://docs.rs/tracing-serde
+//! [docs-url]: crate
 //! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 //! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
