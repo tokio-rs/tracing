@@ -1,4 +1,6 @@
-//! A composable abstraction for building `Collector`s.
+//! A composable abstraction for building [collector]s.
+//!
+//! [collector]: tracing_core::Collect
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
@@ -13,15 +15,17 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// The [`Collect`] trait in `tracing-core` represents the _complete_ set of
 /// functionality required to consume `tracing` instrumentation. This means that
-/// a single `Collector` instance is a self-contained implementation of a
+/// a single [collector] instance is a self-contained implementation of a
 /// complete strategy for collecting traces; but it _also_ means that the
-/// `Collector` trait cannot easily be composed with other `Collector`s.
+/// `Collect` trait cannot easily be composed with other `Collect`s.
 ///
 /// In particular, collectors are responsible for generating [span IDs] and
 /// assigning them to spans. Since these IDs must uniquely identify a span
 /// within the context of the current trace, this means that there may only be
-/// a single `Collector` for a given thread at any point in time &mdash;
+/// a single [collector] for a given thread at any point in time &mdash;
 /// otherwise, there would be no authoritative source of span IDs.
+///
+/// [collector]: tracing_core::Collect
 ///
 /// On the other hand, the majority of the [`Collect`] trait's functionality
 /// is composable: any number of collectors may _observe_ events, span entry
@@ -437,7 +441,7 @@ where
         }
     }
 
-    /// Composes this subscriber with the given collecto, returning a
+    /// Composes this subscriber with the given collector, returning a
     /// `Layered` struct that implements [`Collect`].
     ///
     /// The returned `Layered` subscriber will call the methods on this subscriber
