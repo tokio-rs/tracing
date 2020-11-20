@@ -40,7 +40,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// particular `Collect` implementation, or additional trait bounds may be
 /// added to constrain what types implementing `Collect` a subscriber can wrap.
 ///
-/// Subscribers may be added to a `Collect` by using the [`CollectorExt::with`]
+/// Subscribers may be added to a `Collect` by using the [`CollectExt::with`]
 /// method, which is provided by `tracing-subscriber`'s [prelude]. This method
 /// returns a [`Layered`] struct that implements `Collect` by composing the
 /// subscriber with the collector.
@@ -143,8 +143,8 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// The [`Subscribe::with_collector` method][with-col] constructs the `Layered`
 /// type from a `Subscribe` and `Collect`, and is called by
-/// [`CollectorExt::with`]. In general, it is more idiomatic to use
-/// `CollectorExt::with`, and treat `Subscribe::with_collector` as an
+/// [`CollectExt::with`]. In general, it is more idiomatic to use
+/// `CollectExt::with`, and treat `Subscribe::with_collector` as an
 /// implementation detail, as `with_collector` calls must be nested, leading to
 /// less clear code for the reader. However, subscribers which wish to perform
 /// additional behavior when composed with a subscriber may provide their own
@@ -501,8 +501,8 @@ where
     }
 }
 
-/// Extension trait adding a `with(Subscriber)` combinator to `Collector`s.
-pub trait CollectorExt: Collect + crate::sealed::Sealed {
+/// Extension trait adding a `with(Subscriber)` combinator to `Collect`.
+pub trait CollectExt: Collect + crate::sealed::Sealed {
     /// Wraps `self` with the provided `layer`.
     fn with<S>(self, subscriber: S) -> Layered<S, Self>
     where
@@ -921,10 +921,10 @@ where
 //     }
 // }
 
-// === impl CollectorExt ===
+// === impl CollectExt ===
 
 impl<C: Collect> crate::sealed::Sealed for C {}
-impl<C: Collect> CollectorExt for C {}
+impl<C: Collect> CollectExt for C {}
 
 // === impl Context ===
 

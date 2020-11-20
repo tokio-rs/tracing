@@ -43,7 +43,7 @@ where
 /// # Examples
 ///
 /// ```rust,no_run
-/// use tracing_subscriber::subscribe::CollectorExt;
+/// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing_subscriber::Registry;
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
@@ -249,7 +249,7 @@ where
     ///
     /// ```no_run
     /// use tracing_opentelemetry::OpenTelemetryLayer;
-    /// use tracing_subscriber::subscribe::CollectorExt;
+    /// use tracing_subscriber::subscribe::CollectExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
@@ -283,7 +283,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// use tracing_subscriber::subscribe::CollectorExt;
+    /// use tracing_subscriber::subscribe::CollectExt;
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
