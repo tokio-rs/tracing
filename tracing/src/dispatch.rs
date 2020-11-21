@@ -120,10 +120,11 @@
 //! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default</code>)
-//! requires the Rust standard library. <code>no_std</code> users should
-//! use <a href="fn.set_global_default.html"><code>set_global_default</code></a>
-//! instead.
+//!
+//! **Note**: The thread-local scoped dispatcher (`with_default`)
+//! requires the Rust standard library. `no_std` users should
+//! use [`set_global_default()`] instead.
+//!
 //! </pre></div>
 //!
 //! ## Accessing the Default Collector
@@ -133,11 +134,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Collect`]: struct.Collect.html
-//! [`with_default`]: fn.with_default.html
-//! [`set_global_default`]: fn.set_global_default.html
-//! [`get_default`]: fn.get_default.html
-//! [`Dispatch`]: struct.Dispatch.html
+//! [`Collect`]: tracing_core::Collect
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatch::set_default;

@@ -1,6 +1,7 @@
 //! Abstractions for creating [`io::Write`] instances.
 //!
-//! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [`io::Write`]: std::io::Write
+
 use std::{
     fmt::Debug,
     io::{self, Write},
@@ -81,18 +82,19 @@ use std::{
 /// # }
 /// ```
 ///
-/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-/// [`fmt::Collector`]: ../../fmt/struct.Collector.html
-/// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
-/// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
-/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
-/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
-/// [mutex]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
+/// [`io::Write`]: std::io::Write
+/// [`fmt::Collector`]: super::super::fmt::Collector
+/// [`fmt::Subscriber`]: super::super::fmt::Subscriber
+/// [`Event`]: tracing_core::event::Event
+/// [`io::stdout`]: std::io::stdout()
+/// [`io::stderr`]: std::io::stderr()
+/// [mutex]: std::sync::Mutex
 pub trait MakeWriter<'a> {
+
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
-    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-    /// [`make_writer`]: #tymethod.make_writer
+    /// [`io::Write`]: std::io::Write
+    /// [`make_writer`]: MakeWriter::make_writer
     type Writer: io::Write;
 
     /// Returns an instance of [`Writer`].
@@ -104,11 +106,10 @@ pub trait MakeWriter<'a> {
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
     /// [`MakeWriter`] to improve performance.
     ///
-    /// [`Writer`]: #associatedtype.Writer
-    /// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
-    /// [`fmt::Collector`]: ../../fmt/struct.Collector.html
-    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-    /// [`MakeWriter`]: trait.MakeWriter.html
+    /// [`Writer`]: MakeWriter::Writer
+    /// [`fmt::Subscriber`]: super::super::fmt::Subscriber
+    /// [`fmt::Collector`]: super::super::fmt::Collector
+    /// [`io::Write`]: std::io::Write
     fn make_writer(&'a self) -> Self::Writer;
 }
 
@@ -138,13 +139,13 @@ pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 /// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
 /// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
 ///
-/// [`fmt::Collector`]: ../struct.Collector.html
-/// [`fmt::Subscriber`]: ../struct.Subscriber.html
+/// [`fmt::Collector`]: super::Collector
+/// [`fmt::Subscriber`]: super::Subscriber
 /// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
 /// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
-/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
-/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
-/// [`print!`]: https://doc.rust-lang.org/std/macro.print.html
+/// [`io::stdout`]: std::io::stdout()
+/// [`io::stderr`]: std::io::stderr()
+/// [`print!`]: std::print!
 #[derive(Default, Debug)]
 pub struct TestWriter {
     _p: (),
@@ -174,9 +175,8 @@ pub struct TestWriter {
 /// }
 /// ```
 ///
-/// [`MakeWriter`]: trait.MakeWriter.html
-/// [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+/// [`Collect`]: tracing::Collect
+/// [`io::Write`]: std::io::Write
 pub struct BoxMakeWriter {
     inner: Box<dyn for<'a> MakeWriter<'a, Writer = Box<dyn Write + 'a>> + Send + Sync>,
 }
@@ -227,7 +227,6 @@ impl<'a> MakeWriter<'a> for TestWriter {
 impl BoxMakeWriter {
     /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn new<M>(make_writer: M) -> Self
     where
         M: for<'a> MakeWriter<'a> + Send + Sync + 'static,

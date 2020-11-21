@@ -18,7 +18,7 @@ mod datetime;
 ///
 /// The full list of provided implementations can be found in [`time`].
 ///
-/// [`time`]: ./index.html
+/// [`time`]: self
 pub trait FormatTime {
     /// Measure and write out the current time.
     ///
@@ -180,7 +180,6 @@ impl ChronoUtc {
     /// See [`chrono::format::strftime`]
     /// for details on the supported syntax.
     ///
-    /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
     pub fn with_format(format_string: String) -> Self {
         ChronoUtc {
             format: ChronoFmtType::Custom(format_string),
@@ -227,7 +226,6 @@ impl ChronoLocal {
     /// See [`chrono::format::strftime`]
     /// for details on the supported syntax.
     ///
-    /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
     pub fn with_format(format_string: String) -> Self {
         ChronoLocal {
             format: ChronoFmtType::Custom(format_string),
@@ -241,8 +239,8 @@ impl FormatTime for ChronoLocal {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
         let time = chrono::Local::now();
         match self.format {
-            ChronoFmtType::Rfc3339 => write!(w, "{} ", time.to_rfc3339()),
-            ChronoFmtType::Custom(ref format_str) => write!(w, "{} ", time.format(format_str)),
+            ChronoFmtType::Rfc3339 => write!(w, "{}", time.to_rfc3339()),
+            ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
         }
     }
 }

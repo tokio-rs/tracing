@@ -91,6 +91,32 @@
 //!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#4E9A06"> INFO</font> fmt: yak shaving completed all_yaks_shaved=false
 //!   </pre>
 //!
+//! * [`format::Compact`]: A variant of the default formatter, optimized for
+//!   short line lengths. Fields from the current span context are appended to
+//!   the fields of the formatted event, and span names are not shown; the
+//!   verbosity level is abbreviated to a single character.
+//!
+//!   For example:
+//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.51s
+//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-compact`
+//!   <font color="#AAAAAA">Oct 24 13:40:45.682 </font><font color="#4E9A06">I</font> preparing to shave yaks number_of_yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.682 </font><font color="#4E9A06">I</font> shaving yaks yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=1 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yak shaved successfully yak=1 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=1 shaved=true yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=1 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yak shaved successfully yak=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=2 shaved=true yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=3 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#C4A000">W</font> could not locate yak yak=3 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=3 shaved=false yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#CC0000">!</font> failed to shave yak yak=3 error=missing yak yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=2 yaks=3
+//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#4E9A06">I</font> yak shaving completed all_yaks_shaved=false
+//!   </pre>
+//!
 //! * [`format::Pretty`]: Emits excessively pretty, multi-line logs, optimized
 //!   for human readability. This is primarily intended to be used in local
 //!   development and debugging, or for command-line applications, where
@@ -231,7 +257,7 @@
 //!
 //! ### Composing Subscribers
 //!
-//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](../fmt/struct.Subscriber.html):
+//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
@@ -249,11 +275,11 @@
 //!     .init();
 //! ```
 //!
-//! [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//! [`EnvFilter`]: super::filter::EnvFilter
 //! [`env_logger`]: https://docs.rs/env_logger/
-//! [`filter`]: ../filter/index.html
-//! [`fmtBuilder`]: ./struct.CollectorBuilder.html
-//! [`FmtCollector`]: ./struct.Collector.html
+//! [`filter`]: super::filter
+//! [`fmtBuilder`]: CollectorBuilder
+//! [`FmtCollector`]: Collector
 //! [`Collect`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -286,7 +312,7 @@ pub use self::{
 #[derive(Debug)]
 pub struct Collector<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -295,17 +321,14 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
-pub type Formatter<
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
+    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -371,12 +394,11 @@ pub struct CollectorBuilder<
 /// })
 /// ```
 ///
-/// [`CollectorBuilder`]: struct.CollectorBuilder.html
-/// [formatting collector]: struct.Collector.html
-/// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
-/// [`init`]: struct.CollectorBuilder.html#method.init
-/// [`try_init`]: struct.CollectorBuilder.html#method.try_init
-/// [`finish`]: struct.CollectorBuilder.html#method.finish
+/// [formatting collector]: Collector
+/// [`CollectorBuilder::default()`]: CollectorBuilder::default()
+/// [`init`]: CollectorBuilder::init()
+/// [`try_init`]: CollectorBuilder::try_init()
+/// [`finish`]: CollectorBuilder::finish()
 pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
@@ -386,9 +408,8 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// This is a shorthand for the equivalent [`Subscriber::default`] function.
 ///
-/// [formatting subscriber]: struct.Subscriber.html
-/// [composed]: ../subscribe/index.html
-/// [`Subscriber::default`]: struct.Subscriber.html#method.default
+/// [formatting subscriber]: Subscriber
+/// [composed]: super::subscribe
 pub fn subscriber<S>() -> Subscriber<S> {
     Subscriber::default()
 }
@@ -399,8 +420,7 @@ impl Collector {
     ///
     /// This can be overridden with the [`CollectorBuilder::with_max_level`] method.
     ///
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`CollectorBuilder::with_max_level`]: struct.CollectorBuilder.html#method.with_max_level
+    /// [verbosity level]: tracing_core::Level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
     /// Returns a new `CollectorBuilder` for configuring a format subscriber.
@@ -593,10 +613,10 @@ where
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`time`]: ./time/index.html
-    /// [`timer`]: ./time/trait.FormatTime.html
-    /// [`ChronoUtc`]: ./time/struct.ChronoUtc.html
-    /// [`ChronoLocal`]: ./time/struct.ChronoLocal.html
+    /// [`time`]: mod@time
+    /// [`timer`]: time::FormatTime
+    /// [`ChronoUtc`]: time::ChronoUtc
+    /// [`ChronoLocal`]: time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
@@ -636,8 +656,8 @@ where
     /// this formatter; they will not be recorded by other `Collector`s or by
     /// `Subscriber`s added to this subscriber.
     ///
-    /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
-    /// [time]: #method.without_time
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
+    /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
             filter: self.filter,
@@ -645,7 +665,7 @@ where
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
+    /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
@@ -680,7 +700,7 @@ where
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
@@ -694,7 +714,7 @@ where
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
@@ -732,7 +752,7 @@ where
 
     /// Sets the collector being built to use a JSON formatter.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
@@ -751,7 +771,7 @@ where
 impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
     /// Sets the json collector being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -765,7 +785,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -779,7 +799,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -879,8 +899,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .try_init()?;
     /// # Ok(())}
     /// ```
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_max_level`]: #method.with_max_level
+    /// [`EnvFilter`]: super::filter::EnvFilter
+    /// [`with_max_level`]: CollectorBuilder::with_max_level()
     #[cfg(feature = "env-filter")]
     #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
     pub fn with_env_filter(
@@ -900,9 +920,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// Sets the maximum [verbosity level] that will be enabled by the
     /// collector.
     ///
-    /// If the max level has already been set, or a [`EnvFilter`] was added by
-    /// [`with_filter`], this replaces that configuration with the new
-    /// maximum level.
+    /// If the max level has already been set, this replaces that configuration
+    /// with the new maximum level.
     ///
     /// # Examples
     ///
@@ -923,9 +942,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .with_max_level(LevelFilter::OFF)
     ///     .finish();
     /// ```
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_filter`]: #method.with_filter
+    /// [verbosity level]: tracing_core::Level
+    /// [`EnvFilter`]: super::filter::EnvFilter
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
@@ -1011,7 +1029,6 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .init();
     /// ```
     ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
@@ -1045,7 +1062,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer/struct.TestWriter.html
+    /// [`TestWriter`]: writer::TestWriter
     pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter> {
         CollectorBuilder {
             filter: self.filter,

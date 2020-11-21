@@ -6,7 +6,7 @@
 //! [![Documentation (master)][docs-master-badge]][docs-master-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
-//! [docs-url]: https://docs.rs/tracing-serde
+//! [docs-url]: crate
 //! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 //! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
@@ -146,7 +146,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     // missing_docs, // TODO: add documentation

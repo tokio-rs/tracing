@@ -34,7 +34,7 @@ tracing-core = { path = "../tracing-core", version = "0.2", default-features = f
 log = { version = "0.4", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
 cfg-if = "1.0.0"
-pin-project-lite = "0.1"
+pin-project-lite = "0.2"
 
 [dev-dependencies]
 futures = "0.1"

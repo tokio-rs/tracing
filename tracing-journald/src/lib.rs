@@ -10,12 +10,12 @@
 //! [`tracing-subscriber::Subscriber`][subscriber] implementation for logging `tracing` spans
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
-//!  
+//!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/subscriber/trait.Subscriber.html
+//! [subscriber]: tracing_subscriber::subscribe::Subscribe
 //! [journald]: https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html
 //!
 //! ## Supported Rust Versions
@@ -37,7 +37,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
 use std::{fmt, io, io::Write};

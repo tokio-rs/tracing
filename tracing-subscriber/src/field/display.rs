@@ -18,7 +18,7 @@ impl<V> Messages<V> {
     /// Returns a new [`MakeVisitor`] implementation that will wrap `inner` so
     /// that any strings named `message` are formatted using `fmt::Display`.
     ///
-    /// [`MakeVisitor`]: ../trait.MakeVisitor.html
+    /// [`MakeVisitor`]: super::MakeVisitor
     pub fn new(inner: V) -> Self {
         Messages(inner)
     }

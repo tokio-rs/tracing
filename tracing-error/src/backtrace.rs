@@ -53,14 +53,13 @@ use tracing::{Metadata, Span};
 /// Additionally, if custom formatting is desired, the [`with_spans`] method can
 /// be used to visit each span in the trace, formatting them in order.
 ///
-/// [`tracing`]: https://docs.rs/tracing
-/// [`Backtrace`]: https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html
-/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-/// [parents]: https://docs.rs/tracing/latest/tracing/span/index.html#span-relationships
-/// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
-/// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
+/// [`Backtrace`]: std::backtrace::Backtrace
+/// [span]: mod@tracing::span
+/// [parents]: mod@tracing::span#span-relationships
+/// [fields]: tracing::field
+/// [futures]: std::future::Future
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/
-/// [`with_spans`]: #method.with_spans
+/// [`with_spans`]: SpanTrace::with_spans()
 #[derive(Clone)]
 pub struct SpanTrace {
     span: Span,
@@ -111,8 +110,8 @@ impl SpanTrace {
     /// indicate whether to continue iterating over spans; if it returns
     /// `false`, no additional spans will be visited.
     ///
-    /// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
-    /// [`Metadata`]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html
+    /// [fields]: tracing::field
+    /// [`Metadata`]: tracing::Metadata
     pub fn with_spans(&self, f: impl FnMut(&'static Metadata<'static>, &str) -> bool) {
         self.span.with_collector(|(id, s)| {
             if let Some(getcx) = s.downcast_ref::<WithContext>() {
@@ -152,7 +151,7 @@ pub struct SpanTraceStatus(SpanTraceStatusInner);
 
 impl SpanTraceStatus {
     /// Formatting a SpanTrace is not supported, likely because there is no
-    /// ErrorLayer or the ErrorLayer is from a different version of
+    /// ErrorSubscriber or the ErrorSubscriber is from a different version of
     /// tracing_error
     pub const UNSUPPORTED: SpanTraceStatus = SpanTraceStatus(SpanTraceStatusInner::Unsupported);
 
@@ -265,14 +264,14 @@ impl fmt::Debug for SpanTrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ErrorLayer;
+    use crate::ErrorSubscriber;
     use tracing::collect::with_default;
     use tracing::{span, Level};
     use tracing_subscriber::{prelude::*, registry::Registry};
 
     #[test]
     fn capture_supported() {
-        let collector = Registry::default().with(ErrorLayer::default());
+        let collector = Registry::default().with(ErrorSubscriber::default());
 
         with_default(collector, || {
             let span = span!(Level::ERROR, "test span");
@@ -288,7 +287,7 @@ mod tests {
 
     #[test]
     fn capture_empty() {
-        let collector = Registry::default().with(ErrorLayer::default());
+        let collector = Registry::default().with(ErrorSubscriber::default());
 
         with_default(collector, || {
             let span_trace = SpanTrace::capture();

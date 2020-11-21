@@ -89,10 +89,7 @@
 //! the execution of your program. This representation is best created with a
 //! _flamechart_, which _does not_ sort or collapse identical stack frames.
 //!
-//! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
-//! [`FlameLayer`]: struct.FlameLayer.html
-//! [`FlushGuard`]: struct.FlushGuard.html
 //! [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
 //!
 //! ## Supported Rust Versions
@@ -114,7 +111,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -212,8 +208,7 @@ thread_local! {
 /// will flush the writer when it is dropped. If necessary, it can also be used to manually
 /// flush the writer.
 ///
-/// [`flush_on_drop`]: struct.FlameSubscriber.html#method.flush_on_drop
-/// [`FlushGuard`]: struct.FlushGuard.html
+/// [`flush_on_drop`]: FlameSubscriber::flush_on_drop()
 #[derive(Debug)]
 pub struct FlameSubscriber<C, W> {
     out: Arc<Mutex<W>>,
