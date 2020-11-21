@@ -23,7 +23,7 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 
 [features]
 
-default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log", "json"]
+default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log"]
 env-filter = ["matchers", "regex", "lazy_static"]
 fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
