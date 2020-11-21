@@ -447,7 +447,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
     fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
 {
@@ -542,7 +542,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
@@ -592,7 +592,7 @@ impl<N, E, F, W> Into<tracing_core::Dispatch> for CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
@@ -1006,7 +1006,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
-        W: MakeWriter + 'static,
+        W: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1031,7 +1031,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
-        W2: MakeWriter + 'static,
+        W2: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1141,16 +1141,16 @@ mod test {
     };
     use std::{
         io,
-        sync::{Mutex, MutexGuard, TryLockError},
+        sync::{Arc, Mutex, MutexGuard, TryLockError},
     };
     use tracing_core::dispatch::Dispatch;
 
-    pub(crate) struct MockWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    pub(crate) struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
         }
 
@@ -1161,12 +1161,12 @@ mod test {
             }
         }
 
-        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'_, Vec<u8>>> {
             self.buf.try_lock().map_err(Self::map_error)
         }
     }
 
-    impl<'a> io::Write for MockWriter<'a> {
+    impl io::Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             self.buf()?.write(buf)
         }
@@ -1176,21 +1176,35 @@ mod test {
         }
     }
 
-    pub(crate) struct MockMakeWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    #[derive(Clone, Default)]
+    pub(crate) struct MockMakeWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockMakeWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockMakeWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
+        }
+
+        pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
+            self.buf.lock().unwrap()
+        }
+
+        pub(crate) fn get_string(&self) -> String {
+            let mut buf = self.buf.lock().expect("lock shouldn't be poisoned");
+            let string = std::str::from_utf8(&buf[..])
+                .expect("formatter should not have produced invalid utf-8")
+                .to_owned();
+            buf.clear();
+            string
         }
     }
 
-    impl<'a> MakeWriter for MockMakeWriter<'a> {
-        type Writer = MockWriter<'a>;
+    impl<'a> MakeWriter<'a> for MockMakeWriter {
+        type Writer = MockWriter;
 
-        fn make_writer(&self) -> Self::Writer {
-            MockWriter::new(self.buf)
+        fn make_writer(&'a self) -> Self::Writer {
+            MockWriter::new(self.buf.clone())
         }
     }
 
