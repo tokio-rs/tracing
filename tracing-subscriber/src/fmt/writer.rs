@@ -90,7 +90,6 @@ use std::{
 /// [`io::stderr`]: std::io::stderr()
 /// [mutex]: std::sync::Mutex
 pub trait MakeWriter<'a> {
-
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
     /// [`io::Write`]: std::io::Write
