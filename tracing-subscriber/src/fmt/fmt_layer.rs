@@ -110,7 +110,7 @@ impl<S, N, E, W> Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     /// Sets the [event formatter][`FormatEvent`] that the layer will use to
     /// format events.
@@ -171,7 +171,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// [`Layer`]: ../layer/trait.Layer.html
     pub fn with_writer<W2>(self, make_writer: W2) -> Layer<S, N, E, W2>
     where
-        W2: MakeWriter + 'static,
+        W2: for<'writer> MakeWriter<'writer> + 'static,
     {
         Layer {
             fmt_fields: self.fmt_fields,
@@ -477,7 +477,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     /// Builds a [`Layer`] with the provided configuration.
     ///
@@ -508,7 +508,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
     fn make_ctx<'a>(&'a self, ctx: Context<'a, S>) -> FmtContext<'a, S, N> {
@@ -589,7 +589,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
@@ -923,9 +923,7 @@ mod test {
     };
     use crate::Registry;
     use format::FmtSpan;
-    use lazy_static::lazy_static;
     use regex::Regex;
-    use std::sync::Mutex;
     use tracing::subscriber::with_default;
     use tracing_core::dispatcher::Dispatch;
 
@@ -982,13 +980,9 @@ mod test {
 
     #[test]
     fn synthesize_span_none() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -999,19 +993,15 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!("", actual.as_str());
     }
 
     #[test]
     fn synthesize_span_active() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1022,7 +1012,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
@@ -1032,13 +1022,9 @@ mod test {
 
     #[test]
     fn synthesize_span_close() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1049,7 +1035,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
             actual.as_str()
@@ -1058,13 +1044,9 @@ mod test {
 
     #[test]
     fn synthesize_span_close_no_timing() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1076,7 +1058,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close\n",
             actual.as_str()
@@ -1085,13 +1067,9 @@ mod test {
 
     #[test]
     fn synthesize_span_full() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1102,7 +1080,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: new\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
@@ -1114,23 +1092,19 @@ mod test {
 
     #[test]
     fn make_writer_based_on_meta() {
-        lazy_static! {
-            static ref BUF1: Mutex<Vec<u8>> = Mutex::new(vec![]);
-            static ref BUF2: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-        struct MakeByTarget<'a> {
-            make_writer1: MockMakeWriter<'a>,
-            make_writer2: MockMakeWriter<'a>,
+        struct MakeByTarget {
+            make_writer1: MockMakeWriter,
+            make_writer2: MockMakeWriter,
         }
 
-        impl<'a> MakeWriter for MakeByTarget<'a> {
-            type Writer = MockWriter<'a>;
+        impl<'a> MakeWriter<'a> for MakeByTarget {
+            type Writer = MockWriter;
 
-            fn make_writer(&self) -> Self::Writer {
+            fn make_writer(&'a self) -> Self::Writer {
                 self.make_writer1.make_writer()
             }
 
-            fn make_writer_for(&self, meta: &Metadata<'_>) -> Self::Writer {
+            fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
                 if meta.target() == "writer2" {
                     return self.make_writer2.make_writer();
                 }
@@ -1138,8 +1112,8 @@ mod test {
             }
         }
 
-        let make_writer1 = MockMakeWriter::new(&BUF1);
-        let make_writer2 = MockMakeWriter::new(&BUF2);
+        let make_writer1 = MockMakeWriter::default();
+        let make_writer2 = MockMakeWriter::default();
 
         let make_writer = MakeByTarget {
             make_writer1: make_writer1.clone(),

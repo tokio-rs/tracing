@@ -519,9 +519,9 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 mod test {
     use super::*;
     use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, SubscriberBuilder};
-    use lazy_static::lazy_static;
-    use std::{fmt, sync::Mutex};
     use tracing::{self, subscriber::with_default};
+
+    use std::fmt;
 
     struct MockTime;
     impl FormatTime for MockTime {
@@ -536,17 +536,13 @@ mod test {
 
     #[test]
     fn json() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
         let subscriber = subscriber()
             .flatten_event(false)
             .with_current_span(true)
             .with_span_list(true);
-        test_json(expected, subscriber, &BUF, || {
+        test_json(expected, subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -555,17 +551,14 @@ mod test {
 
     #[test]
     fn json_flattened_event() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"message\":\"some json test\"}\n";
+
         let subscriber = subscriber()
             .flatten_event(true)
             .with_current_span(true)
             .with_span_list(true);
-        test_json(expected, subscriber, &BUF, || {
+        test_json(expected, subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -574,17 +567,13 @@ mod test {
 
     #[test]
     fn json_disabled_current_span_event() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
         let subscriber = subscriber()
             .flatten_event(false)
             .with_current_span(false)
             .with_span_list(true);
-        test_json(expected, subscriber, &BUF, || {
+        test_json(expected, subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -593,17 +582,13 @@ mod test {
 
     #[test]
     fn json_disabled_span_list_event() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
         let subscriber = subscriber()
             .flatten_event(false)
             .with_current_span(true)
             .with_span_list(false);
-        test_json(expected, subscriber, &BUF, || {
+        test_json(expected, subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -612,17 +597,13 @@ mod test {
 
     #[test]
     fn json_nested_span() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3},{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
         let subscriber = subscriber()
             .flatten_event(false)
             .with_current_span(true)
             .with_span_list(true);
-        test_json(expected, subscriber, &BUF, || {
+        test_json(expected, subscriber, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             let span = tracing::span!(
@@ -638,17 +619,13 @@ mod test {
 
     #[test]
     fn json_no_span() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
         let subscriber = subscriber()
             .flatten_event(false)
             .with_current_span(true)
             .with_span_list(true);
-        test_json(expected, subscriber, &BUF, || {
+        test_json(expected, subscriber, || {
             tracing::info!("some json test");
         });
     }
@@ -657,17 +634,17 @@ mod test {
     fn record_works() {
         // This test reproduces issue #707, where using `Span::record` causes
         // any events inside the span to be ignored.
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
 
-        let buffer = MockMakeWriter::new(&BUF);
-        let subscriber = crate::fmt().json().with_writer(buffer.clone()).finish();
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt()
+            .json()
+            .with_writer(make_writer.clone())
+            .finish();
 
         with_default(subscriber, || {
             tracing::info!("an event outside the root span");
             assert_eq!(
-                parse_as_json(&buffer)["fields"]["message"],
+                parse_as_json(&make_writer)["fields"]["message"],
                 "an event outside the root span"
             );
 
@@ -677,7 +654,7 @@ mod test {
 
             tracing::info!("an event inside the root span");
             assert_eq!(
-                parse_as_json(&buffer)["fields"]["message"],
+                parse_as_json(&make_writer)["fields"]["message"],
                 "an event inside the root span"
             );
         });
@@ -685,11 +662,7 @@ mod test {
 
     #[test]
     fn json_span_event_show_correct_context() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
-        let buffer = MockMakeWriter::new(&BUF);
+        let buffer = MockMakeWriter::default();
         let subscriber = subscriber()
             .with_writer(buffer.clone())
             .flatten_event(false)
@@ -748,11 +721,7 @@ mod test {
     fn json_span_event_with_no_fields() {
         // Check span events serialize correctly.
         // Discussion: https://github.com/tokio-rs/tracing/issues/829#issuecomment-661984255
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-        }
-
-        let buffer = MockMakeWriter::new(&BUF);
+        let buffer = MockMakeWriter::default();
         let subscriber = subscriber()
             .with_writer(buffer.clone())
             .flatten_event(false)
@@ -776,7 +745,7 @@ mod test {
         });
     }
 
-    fn parse_as_json(buffer: &MockMakeWriter<'_>) -> serde_json::Value {
+    fn parse_as_json(buffer: &MockMakeWriter) -> serde_json::Value {
         let buf = String::from_utf8(buffer.buf().to_vec()).unwrap();
         let json = buf
             .lines()
@@ -794,10 +763,9 @@ mod test {
     fn test_json<T>(
         expected: &str,
         builder: crate::fmt::SubscriberBuilder<JsonFields, Format<Json>>,
-        buf: &'static Mutex<Vec<u8>>,
         producer: impl FnOnce() -> T,
     ) {
-        let make_writer = MockMakeWriter::new(buf);
+        let make_writer = MockMakeWriter::default();
         let subscriber = builder
             .with_writer(make_writer.clone())
             .with_timer(MockTime)
