@@ -53,7 +53,7 @@
 //! ```
 //! use opentelemetry::exporter::trace::stdout;
 //! use tracing::{error, span};
-//! use tracing_subscriber::subscribe::CollectorExt;
+//! use tracing_subscriber::subscribe::CollectExt;
 //! use tracing_subscriber::Registry;
 //!
 //! // Create a new OpenTelemetry pipeline
