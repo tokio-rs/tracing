@@ -1,31 +1,8 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::{io, time::Duration};
+use std::time::Duration;
 
 mod support;
-use support::MultithreadedBench;
-
-/// A fake writer that doesn't actually do anything.
-///
-/// We want to measure the collectors's overhead, *not* the performance of
-/// stdout/file writers. Using a no-op Write implementation lets us only measure
-/// the collectors's overhead.
-struct NoWriter;
-
-impl io::Write for NoWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-impl NoWriter {
-    fn new() -> Self {
-        Self
-    }
-}
+use support::{MultithreadedBench, NoWriter};
 
 fn bench_new_span(c: &mut Criterion) {
     bench_thrpt(c, "new_span", |group, i| {
