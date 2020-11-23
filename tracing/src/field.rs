@@ -10,13 +10,13 @@ use crate::Metadata;
 /// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: Although this is implemented for both the
-/// <a href="./struct.Field.html"><code>Field</code></a> type <em>and</em> any
-/// type that can be borrowed as an <code>&str</code>, only <code>Field</code>
-/// allows <em>O</em>(1) access.
+///
+/// **Note**: Although this is implemented for both the [`Field`] type
+/// *and* any type that can be borrowed as an `&str`, only `Field` allows *O*(1) access.
 /// Indexing a field with a string results in an iterative search that performs
 /// string comparisons. Thus, if possible, once the key for a field is known, it
 /// should be used whenever possible.
+///
 /// </pre>
 pub trait AsField: crate::sealed::Sealed {
     /// Attempts to convert `&self` into a `Field` with the specified `metadata`.

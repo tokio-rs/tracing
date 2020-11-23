@@ -45,7 +45,7 @@ mod layer {
         }
     }
 
-    // === impl Layer ===
+    // === impl Subscriber ===
     impl<S, R, G> tower_layer::Layer<S> for Layer<R, G>
     where
         S: tower_service::Service<R>,

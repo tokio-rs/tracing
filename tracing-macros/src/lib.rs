@@ -1,4 +1,3 @@
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #[doc(hidden)]
 pub use tracing;
 

@@ -1,6 +1,6 @@
 //! A rolling file appender.
 //!
-//! Creates a new log file at a fixed frequency as defined by [`Rotation`](struct.Rotation.html).
+//! Creates a new log file at a fixed frequency as defined by [`Rotation`].
 //! Logs will be written to this file for the duration of the period and will automatically roll over
 //! to the newly created log file once the time period has elapsed.
 //!
@@ -17,10 +17,6 @@
 //! will be created daily
 //! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
 //!
-//! [minutely]: fn.minutely.html
-//! [hourly]: fn.hourly.html
-//! [daily]: fn.daily.html
-//! [never]: fn.never.html
 //!
 //! # Examples
 //!
@@ -42,8 +38,8 @@ use std::path::Path;
 /// It may be used with [`NonBlocking`][non-blocking] to perform writes without
 /// blocking the current thread.
 ///
-/// [write]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
-/// [non-blocking]: ../non_blocking/struct.NonBlocking.html
+/// [write]: std::io::Write
+/// [non-blocking]: super::non_blocking::NonBlocking
 ///
 /// # Examples
 ///
@@ -61,7 +57,7 @@ impl RollingFileAppender {
     /// Creates a new `RollingFileAppender`.
     ///
     /// A `RollingFileAppender` will have a fixed rotation whose frequency is
-    /// defined by [`Rotation`](struct.Rotation.html). The `directory` and
+    /// defined by [`Rotation`]. The `directory` and
     /// `file_name_prefix` arguments determine the location and file name's _prefix_
     /// of the log file. `RollingFileAppender` will automatically append the current date
     /// and hour (UTC format) to the file name.
@@ -73,10 +69,6 @@ impl RollingFileAppender {
     /// - [`Rotation::daily()`][daily],
     /// - [`Rotation::never()`][never]
     ///
-    /// [minutely]: fn.minutely.html
-    /// [hourly]: fn.hourly.html
-    /// [daily]: fn.daily.html
-    /// [never]: fn.never.html
     ///
     /// # Examples
     /// ```rust
@@ -130,9 +122,9 @@ impl io::Write for RollingFileAppender {
 ///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -165,9 +157,9 @@ pub fn minutely(
 ///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -188,7 +180,7 @@ pub fn hourly(
 /// a non-blocking, daily file appender.
 ///
 /// A `RollingFileAppender` has a fixed rotation whose frequency is
-/// defined by [`Rotation`](struct.Rotation.html). The `directory` and
+/// defined by [`Rotation`]. The `directory` and
 /// `file_name_prefix` arguments determine the location and file name's _prefix_
 /// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
 ///
@@ -201,9 +193,9 @@ pub fn hourly(
 ///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -235,9 +227,9 @@ pub fn daily(
 ///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -252,6 +244,14 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
 /// Defines a fixed period for rolling of a log file.
 ///
 /// To use a `Rotation`, pick one of the following options:
+///
+/// ### Minutely Rotation
+/// ```rust
+/// # fn docs() {
+/// use tracing_appender::rolling::Rotation;
+/// let rotation = tracing_appender::rolling::Rotation::MINUTELY;
+/// # }
+/// ```
 ///
 /// ### Hourly Rotation
 /// ```rust

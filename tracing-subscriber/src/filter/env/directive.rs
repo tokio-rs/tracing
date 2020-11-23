@@ -9,10 +9,10 @@ use tracing_core::{span, Level, Metadata};
 // TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
 pub struct Directive {
-    target: Option<String>,
     in_span: Option<String>,
     fields: FilterVec<field::Match>,
-    level: LevelFilter,
+    pub(crate) target: Option<String>,
+    pub(crate) level: LevelFilter,
 }
 
 /// A directive which will statically enable or disable a given callsite.
@@ -181,7 +181,7 @@ impl FromStr for Directive {
                 ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])$ |
                 ^
                 (?: # target name or span name
-                    (?P<target>[\w:]+)|(?P<span>\[[^\]]*\])
+                    (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
                 ){1,2}
                 (?: # level or nothing
                     =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])?
@@ -1018,5 +1018,14 @@ mod test {
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::DEBUG);
         assert_eq!(dirs[2].in_span, Some("baz".to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_dash_in_target_name() {
+        let dirs = parse_directives("target-name=info");
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target-name".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
     }
 }

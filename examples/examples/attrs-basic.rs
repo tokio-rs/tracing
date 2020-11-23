@@ -14,7 +14,7 @@ fn main() {
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter("attrs_basic=trace")
         .finish();
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collect::with_default(subscriber, || {
         let num_recs = 1;
 
         let span = span!(Level::TRACE, "get_band_rec", ?num_recs);

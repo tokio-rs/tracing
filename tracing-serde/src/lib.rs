@@ -6,7 +6,7 @@
 //! [![Documentation (master)][docs-master-badge]][docs-master-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
-//! [docs-url]: https://docs.rs/tracing-serde
+//! [docs-url]: crate
 //! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 //! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
@@ -20,7 +20,7 @@
 //! `tracing` gives us machine-readable structured diagnostic
 //! information. This lets us interact with diagnostic data
 //! programmatically. With `tracing-serde`, you can implement a
-//! `Subscriber` to serialize your `tracing` types and make use of the
+//! `Collector` to serialize your `tracing` types and make use of the
 //! existing ecosystem of `serde` serializers to talk with distributed
 //! tracing systems.
 //!
@@ -61,11 +61,11 @@
 //!
 //! For the full example, please see the [examples](../examples) folder.
 //!
-//! Implement a `Subscriber` to format the serialization of `tracing`
+//! Implement a `Collector` to format the serialization of `tracing`
 //! types how you'd like.
 //!
 //! ```rust
-//! # use tracing_core::{Subscriber, Metadata, Event};
+//! # use tracing_core::{Collect, Metadata, Event};
 //! # use tracing_core::span::{Attributes, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
@@ -75,7 +75,7 @@
 //!     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 //! }
 //!
-//! impl Subscriber for JsonSubscriber {
+//! impl Collect for JsonSubscriber {
 //!
 //!     fn new_span(&self, attrs: &Attributes<'_>) -> Id {
 //!         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
@@ -105,9 +105,24 @@
 //! }
 //! ```
 //!
-//! After you implement your `Subscriber`, you can use your `tracing`
+//! After you implement your `Collector`, you can use your `tracing`
 //! subscriber (`JsonSubscriber` in the above example) to record serialized
 //! trace data.
+//!
+//! ##  Crate Feature Flags
+//!
+//! The following crate feature flags are available:
+//!
+//! * `std`: Depend on the Rust standard library (enabled by default).
+//!
+//!   `no_std` users may disable this feature with `default-features = false`:
+//!
+//!   ```toml
+//!   [dependencies]
+//!   tracing-serde = { version = "0.2", default-features = false }
+//!   ```
+//
+//!   **Note**:`tracing-serde`'s `no_std` support requires `liballoc`.
 //!
 //! ## Supported Rust Versions
 //!
@@ -128,9 +143,9 @@
 #![doc(html_root_url = "https://docs.rs/tracing-serde/0.1.2")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     // missing_docs, // TODO: add documentation
@@ -153,7 +168,10 @@
     unused_parens,
     while_true
 )]
-use std::fmt;
+// Support using tracing-serde without the standard library!
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::fmt;
 
 use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},

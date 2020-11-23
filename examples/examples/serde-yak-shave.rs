@@ -2,10 +2,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tracing::debug;
 use tracing_core::{
+    collect::Collect,
     event::Event,
     metadata::Metadata,
     span::{Attributes, Id, Record},
-    subscriber::Subscriber,
 };
 use tracing_serde::AsSerde;
 
@@ -18,7 +18,7 @@ pub struct JsonSubscriber {
     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 }
 
-impl Subscriber for JsonSubscriber {
+impl Collect for JsonSubscriber {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let json = json!({
         "enabled": {
@@ -85,7 +85,7 @@ fn main() {
         next_id: AtomicUsize::new(1),
     };
 
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collect::with_default(subscriber, || {
         let number_of_yaks = 3;
         debug!("preparing to shave {} yaks", number_of_yaks);
 
