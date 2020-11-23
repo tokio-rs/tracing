@@ -1,3 +1,11 @@
+# 0.1.22 (November 23, 2020)
+
+### Changed
+
+- Updated `pin-project-lite` dependency to 0.2 ([#1108])
+
+[#1108]: https://github.com/tokio-rs/tracing/pull/1108
+
 # 0.1.21 (September 28, 2020)
 
 ### Fixed
@@ -24,7 +32,7 @@ Thanks to @nagisa, and new contributors @SecurityInsanity, @froydnj, @jyn514 and
 
 [#994]: https://github.com/tokio-rs/tracing/pull/994
 [#992]: https://github.com/tokio-rs/tracing/pull/992
-[#987]: https://github.com/tokio-rs/tracing/pull/987 
+[#987]: https://github.com/tokio-rs/tracing/pull/987
 [#980]: https://github.com/tokio-rs/tracing/pull/980
 [#981]: https://github.com/tokio-rs/tracing/pull/981
 [#964]: https://github.com/tokio-rs/tracing/pull/964
