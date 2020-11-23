@@ -92,9 +92,9 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`tracing::Collector`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
-//! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+//! [`tracing::Collector`]: tracing::Collect
+//! [`tracing::Event`]: tracing_core::Event
+//! [`Collect`]: tracing::Collect
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(
@@ -102,7 +102,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -373,7 +373,7 @@ impl AsTrace for log::Level {
 /// to allow accessing its complete metadata in a consistent way,
 /// regardless of the source of its source.
 ///
-/// [`normalized_metadata`]: trait.NormalizeEvent.html#normalized_metadata
+/// [`normalized_metadata`]: NormalizeEvent#normalized_metadata
 pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes

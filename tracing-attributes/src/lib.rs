@@ -58,7 +58,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -253,7 +252,7 @@ use syn::{
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`tracing`]: https://github.com/tokio-rs/tracing
-/// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+/// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,

@@ -58,12 +58,7 @@ use tracing_core::{
 ///
 /// [`Subscriber`]: subscribe::Subscribe
 #[derive(Debug)]
-pub struct Subscriber<
-    S,
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> {
+pub struct Subscriber<S, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
     make_writer: W,
     fmt_fields: N,
     fmt_event: E,
@@ -72,7 +67,7 @@ pub struct Subscriber<
 }
 
 impl<S> Subscriber<S> {
-    /// Returns a new [`Subscriber`](struct.Subscriber.html) with the default configuration.
+    /// Returns a new [`Subscriber`] with the default configuration.
     pub fn new() -> Self {
         Self::default()
     }
@@ -83,7 +78,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W>
 where
     S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     /// Sets the [event formatter][`FormatEvent`] that the layer will use to
     /// format events.
@@ -143,7 +138,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// [`Subscriber`]: super::Subscriber
     pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<S, N, E, W2>
     where
-        W2: MakeWriter + 'static,
+        W2: for<'writer> MakeWriter<'writer> + 'static,
     {
         Subscriber {
             fmt_fields: self.fmt_fields,
@@ -259,7 +254,7 @@ where
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
+    /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
@@ -297,7 +292,7 @@ where
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
@@ -314,7 +309,7 @@ where
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
@@ -328,7 +323,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
+    /// Sets the subscriber being built to use a [less verbose formatter](format::Compact).
     pub fn compact(self) -> Subscriber<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -355,7 +350,7 @@ where
         }
     }
 
-    /// Sets the subscriber being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    /// Sets the subscriber being built to use a [JSON formatter](format::Json).
     ///
     /// The full format includes fields from all entered spans.
     ///
@@ -388,7 +383,7 @@ where
 impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`]
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -405,7 +400,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     /// Sets whether or not the formatter will include the current span in
     /// formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`]
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -422,7 +417,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     /// Sets whether or not the formatter will include a list (from root to leaf)
     /// of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`]
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -471,7 +466,7 @@ where
     S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
     fn make_ctx<'a>(&'a self, ctx: Context<'a, S>) -> FmtContext<'a, S, N> {
@@ -552,7 +547,7 @@ where
     S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
 {
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
@@ -868,14 +863,12 @@ mod test {
         self,
         format::{self, test::MockTime, Format},
         subscribe::Subscribe as _,
-        test::MockWriter,
+        test::MockMakeWriter,
         time,
     };
     use crate::Registry;
     use format::FmtSpan;
-    use lazy_static::lazy_static;
     use regex::Regex;
-    use std::sync::Mutex;
     use tracing::collect::with_default;
     use tracing_core::dispatch::Dispatch;
 
@@ -934,13 +927,9 @@ mod test {
 
     #[test]
     fn synthesize_span_none() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -951,19 +940,15 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!("", actual.as_str());
     }
 
     #[test]
     fn synthesize_span_active() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -974,7 +959,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n",
@@ -984,13 +969,9 @@ mod test {
 
     #[test]
     fn synthesize_span_close() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1001,7 +982,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
             actual.as_str()
@@ -1010,13 +991,9 @@ mod test {
 
     #[test]
     fn synthesize_span_close_no_timing() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1028,7 +1005,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
@@ -1037,13 +1014,9 @@ mod test {
 
     #[test]
     fn synthesize_span_full() {
-        lazy_static! {
-            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
-        }
-
-        let make_writer = || MockWriter::new(&BUF);
+        let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
-            .with_writer(make_writer)
+            .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
@@ -1054,7 +1027,7 @@ mod test {
             let span1 = tracing::info_span!("span1", x = 42);
             let _e = span1.enter();
         });
-        let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
+        let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
             "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: new\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
