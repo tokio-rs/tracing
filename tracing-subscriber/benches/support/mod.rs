@@ -13,6 +13,7 @@ pub(super) struct MultithreadedBench {
     dispatch: Dispatch,
 }
 
+#[allow(dead_code)]
 impl MultithreadedBench {
     pub(super) fn new(dispatch: Dispatch) -> Self {
         Self {
@@ -55,6 +56,7 @@ impl MultithreadedBench {
 /// the collectors's overhead.
 pub(super) struct NoWriter;
 
+#[allow(dead_code)]
 impl io::Write for NoWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         Ok(buf.len())
@@ -65,6 +67,7 @@ impl io::Write for NoWriter {
     }
 }
 
+#[allow(dead_code)]
 impl NoWriter {
     pub(super) fn new() -> Self {
         Self

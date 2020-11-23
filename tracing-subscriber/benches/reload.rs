@@ -25,7 +25,7 @@ fn mk_builder(
         .add_directive("moar=warn".parse().unwrap())
         .add_directive(LevelFilter::INFO.into());
 
-    let builder = Collector::builder()
+    Collector::builder()
         .with_env_filter(filter)
         .with_writer(NoWriter::new as _)
         .with_timer(ChronoLocal::with_format(
@@ -34,8 +34,7 @@ fn mk_builder(
         .with_ansi(true)
         .with_target(true)
         .with_level(true)
-        .with_thread_names(true);
-    builder
+        .with_thread_names(true)
 }
 
 fn bench_reload(c: &mut Criterion) {
