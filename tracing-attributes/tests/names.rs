@@ -4,16 +4,16 @@ use support::*;
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 fn default_name() {}
 
-#[instrument(name = "my_name")]
+#[instrument(name = "my_name", level = "info")]
 fn custom_name() {}
 
 // XXX: it's weird that we support both of these forms, but apparently we
 // managed to release a version that accepts both syntax, so now we have to
 // support it! yay!
-#[instrument("my_other_name")]
+#[instrument("my_other_name", level = "info")]
 fn custom_name_no_equals() {}
 
 #[test]

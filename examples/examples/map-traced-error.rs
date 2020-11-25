@@ -37,12 +37,12 @@ fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "info")]
 fn do_something() -> Result<(), TracedError<OuterError>> {
     do_the_real_stuff().map_err(TracedError::err_into)
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "info")]
 fn do_the_real_stuff() -> Result<(), TracedError<InnerError>> {
     Err(InnerError).map_err(TracedError::from)
 }

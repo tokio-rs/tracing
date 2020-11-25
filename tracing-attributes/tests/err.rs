@@ -11,7 +11,7 @@ use tracing_attributes::instrument;
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
 
-#[instrument(err)]
+#[instrument(err, level = "info")]
 fn err() -> Result<u8, TryFromIntError> {
     u8::try_from(1234)
 }
@@ -31,7 +31,7 @@ fn test() {
     handle.assert_finished();
 }
 
-#[instrument(err)]
+#[instrument(err, level = "info")]
 fn err_early_return() -> Result<u8, TryFromIntError> {
     u8::try_from(1234)?;
     Ok(5)
@@ -52,7 +52,7 @@ fn test_early_return() {
     handle.assert_finished();
 }
 
-#[instrument(err)]
+#[instrument(err, level = "info")]
 async fn err_async(polls: usize) -> Result<u8, TryFromIntError> {
     let future = PollN::new_ok(polls);
     tracing::trace!(awaiting = true);

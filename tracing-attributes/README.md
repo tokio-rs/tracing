@@ -57,7 +57,7 @@ with a `tracing` [span]. For example:
 ```rust
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 pub fn my_function(my_arg: usize) {
     // ...
 }

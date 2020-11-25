@@ -26,7 +26,7 @@
 //! ```
 //! use tracing_attributes::instrument;
 //!
-//! #[instrument]
+//! #[instrument(level = "info")]
 //! pub fn my_function(my_arg: usize) {
 //!     // ...
 //! }
@@ -101,7 +101,6 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
-/// Unless overriden, a span with `info` level will be generated.
 /// The generated span's name will be the name of the function. Any arguments
 /// to that function will be recorded as fields using [`fmt::Debug`]. To skip
 /// recording a function's or method's argument, pass the argument's name
@@ -125,7 +124,7 @@ use syn::{
 /// Instrumenting a function:
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument]
+/// #[instrument(level = "info")]
 /// pub fn my_function(my_arg: usize) {
 ///     // This event will be recorded inside a span named `my_function` with the
 ///     // field `my_arg`.
@@ -133,18 +132,10 @@ use syn::{
 ///     // ...
 /// }
 /// ```
-/// Setting the level for the generated span:
-/// ```
-/// # use tracing_attributes::instrument;
-/// #[instrument(level = "debug")]
-/// pub fn my_function() {
-///     // ...
-/// }
-/// ```
 /// Overriding the generated span's name:
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(name = "my_name")]
+/// #[instrument(name = "my_name", level = "info")]
 /// pub fn my_function() {
 ///     // ...
 /// }
@@ -152,7 +143,7 @@ use syn::{
 /// Overriding the generated span's target:
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(target = "my_target")]
+/// #[instrument(target = "my_target", "new_load", level = "info")]
 /// pub fn my_function() {
 ///     // ...
 /// }
@@ -164,7 +155,7 @@ use syn::{
 /// # use tracing_attributes::instrument;
 /// struct NonDebug;
 ///
-/// #[instrument(skip(non_debug))]
+/// #[instrument(skip(non_debug), level = "info")]
 /// fn my_function(arg: usize, non_debug: NonDebug) {
 ///     // ...
 /// }
@@ -174,7 +165,7 @@ use syn::{
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(fields(foo="bar", id=1, show=true))]
+/// #[instrument(fields(foo="bar", id=1, show=true), level = "info")]
 /// fn my_function(arg: usize) {
 ///     // ...
 /// }
@@ -185,7 +176,7 @@ use syn::{
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err)]
+/// #[instrument(err, level = "info")]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
@@ -195,7 +186,7 @@ use syn::{
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument]
+/// #[instrument(level = "info")]
 /// pub async fn my_function() -> Result<(), ()> {
 ///     // ...
 ///     # Ok(())
@@ -221,7 +212,7 @@ use syn::{
 ///
 /// #[async_trait]
 /// impl Foo for FooImpl {
-///     #[instrument(fields(value = self.0, tmp = std::any::type_name::<Self>()))]
+///     #[instrument(fields(value = self.0, tmp = std::any::type_name::<Self>()), level = "debug")]
 ///     async fn foo(&self, arg: usize) {}
 /// }
 /// ```
@@ -244,7 +235,7 @@ use syn::{
 ///
 /// #[async_trait]
 /// impl Bar for BarImpl {
-///     #[instrument(fields(tmp = std::any::type_name::<Self>()))]
+///     #[instrument(fields(tmp = std::any::type_name::<Self>()), level = "debug")]
 ///     async fn bar() {}
 /// }
 /// ```
@@ -546,7 +537,12 @@ impl InstrumentArgs {
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
                 )
             },
-            None => quote!(tracing::Level::INFO),
+            None => quote! {
+                compile_error!(
+                    "no verbosity level specified, expected one of \"trace\", \
+                     \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
+                )
+            },
         }
     }
 

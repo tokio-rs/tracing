@@ -4,10 +4,10 @@ use support::*;
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 fn default_target() {}
 
-#[instrument(target = "my_target")]
+#[instrument(target = "my_target", level = "info")]
 fn custom_target() {}
 
 mod my_mod {
@@ -15,10 +15,10 @@ mod my_mod {
 
     pub const MODULE_PATH: &str = module_path!();
 
-    #[instrument]
+    #[instrument(level = "info")]
     pub fn default_target() {}
 
-    #[instrument(target = "my_other_target")]
+    #[instrument(target = "my_other_target", level = "info")]
     pub fn custom_target() {}
 }
 

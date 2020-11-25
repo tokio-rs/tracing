@@ -6,29 +6,29 @@ use crate::support::span::NewSpan;
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
-#[instrument(fields(foo = "bar", dsa = true, num = 1))]
+#[instrument(fields(foo = "bar", dsa = true, num = 1), level = "info")]
 fn fn_no_param() {}
 
-#[instrument(fields(foo = "bar"))]
+#[instrument(fields(foo = "bar"), level = "info")]
 fn fn_param(param: u32) {}
 
-#[instrument(fields(foo = "bar", empty))]
+#[instrument(fields(foo = "bar", empty), level = "info")]
 fn fn_empty_field() {}
 
-#[instrument(fields(len = s.len()))]
+#[instrument(fields(len = s.len()), level = "info")]
 fn fn_expr_field(s: &str) {}
 
-#[instrument(fields(s.len = s.len(), s.is_empty = s.is_empty()))]
+#[instrument(fields(s.len = s.len(), s.is_empty = s.is_empty()), level = "info")]
 fn fn_two_expr_fields(s: &str) {
     let _ = s;
 }
 
-#[instrument(fields(%s, s.len = s.len()))]
+#[instrument(fields(%s, s.len = s.len()), level = "info")]
 fn fn_clashy_expr_field(s: &str) {
     let _ = s;
 }
 
-#[instrument(fields(s = "s"))]
+#[instrument(fields(s = "s"), level = "info")]
 fn fn_clashy_expr_field2(s: &str) {
     let _ = s;
 }
@@ -39,7 +39,7 @@ struct HasField {
 }
 
 impl HasField {
-    #[instrument(fields(my_field = self.my_field), skip(self))]
+    #[instrument(fields(my_field = self.my_field), skip(self), level = "info")]
     fn self_expr_field(&self) {}
 }
 

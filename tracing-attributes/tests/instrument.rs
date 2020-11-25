@@ -137,7 +137,7 @@ fn generics() {
     #[derive(Debug)]
     struct Foo;
 
-    #[instrument]
+    #[instrument(level = "info")]
     fn my_fn<S, T: std::fmt::Debug>(arg1: S, arg2: T)
     where
         S: std::fmt::Debug,
@@ -173,7 +173,7 @@ fn methods() {
     struct Foo;
 
     impl Foo {
-        #[instrument]
+        #[instrument(level = "info")]
         fn my_fn(&self, arg1: usize) {}
     }
 
