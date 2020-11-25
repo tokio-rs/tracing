@@ -89,7 +89,6 @@
 //! the execution of your program. This representation is best created with a
 //! _flamechart_, which _does not_ sort or collapse identical stack frames.
 //!
-//! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
 //! [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
 //!
@@ -112,7 +111,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     missing_docs,

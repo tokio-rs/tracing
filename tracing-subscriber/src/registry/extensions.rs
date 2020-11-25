@@ -74,7 +74,7 @@ impl<'a> ExtensionsMut<'a> {
     /// should be able to reuse timestamp _x_.
     ///
     /// Therefore, extensions should generally be newtypes, rather than common
-    /// types like [`String`](https://doc.rust-lang.org/std/string/struct.String.html), to avoid accidental
+    /// types like [`String`](std::string::String), to avoid accidental
     /// cross-`Subscriber` clobbering.
     ///
     /// ## Panics

@@ -61,7 +61,7 @@ use tracing_subscriber::fmt::MakeWriter;
 /// The default maximum number of buffered log lines.
 ///
 /// If [`NonBlocking`][non-blocking] is lossy, it will drop spans/events at capacity.
-/// capacity. If [`NonBlocking`][non-blocking] is _not_ lossy,
+/// If [`NonBlocking`][non-blocking] is _not_ lossy,
 /// backpressure will be exerted on senders, causing them to block their
 /// respective threads until there is available capacity.
 ///
@@ -235,10 +235,10 @@ impl std::io::Write for NonBlocking {
     }
 }
 
-impl MakeWriter for NonBlocking {
+impl<'a> MakeWriter<'a> for NonBlocking {
     type Writer = NonBlocking;
 
-    fn make_writer(&self) -> Self::Writer {
+    fn make_writer(&'a self) -> Self::Writer {
         self.clone()
     }
 }

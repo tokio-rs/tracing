@@ -62,18 +62,16 @@ use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
 mod extensions;
-#[cfg(feature = "registry")]
-mod sharded;
-#[cfg(feature = "registry")]
-mod stack;
+
+cfg_feature!("registry", {
+    mod sharded;
+    mod stack;
+
+    pub use sharded::Data;
+    pub use sharded::Registry;
+});
 
 pub use extensions::{Extensions, ExtensionsMut};
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use sharded::Data;
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use sharded::Registry;
 
 /// Provides access to stored span data.
 ///
@@ -88,18 +86,20 @@ pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;
 
-    /// Returns the [`SpanData`] for a given `Id`, if it exists.
+    /// Returns the [`SpanData`] for a given [`Id`], if it exists.
     ///
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: users of the <code>LookupSpan</code> trait should
-    /// typically call the <a href="#method.span"><code>span</code></a> method rather
-    /// than this method. The <code>span</code> method is implemented by
-    /// <em>calling</em> <code>span_data</code>, but returns a reference which is
-    /// capable of performing more sophisiticated queries.
+    ///
+    /// **Note**: users of the `LookupSpan` trait should
+    /// typically call the [`span`][Self::span] method rather
+    /// than this method. The `span` method is implemented by
+    /// *calling* `span_data`, but returns a reference which is
+    /// capable of performing more sophisticated queries.
+    ///
     /// </pre></div>
     ///
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
