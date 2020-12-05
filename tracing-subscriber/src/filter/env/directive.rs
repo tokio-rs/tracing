@@ -178,13 +178,17 @@ impl FromStr for Directive {
         lazy_static! {
             static ref DIRECTIVE_RE: Regex = Regex::new(
                 r"(?x)
-                ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])$ |
+                ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
+                 #                 ^^^.
+                 #                     `note: we match log level names case-insensitively
                 ^
                 (?: # target name or span name
                     (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
                 ){1,2}
                 (?: # level or nothing
-                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])?
+                    =(?P<level>(?i:trace|debug|info|warn|error|off|[0-5]))?
+                     #          ^^^.
+                     #              `note: we match log level names case-insensitively
                 )?
                 $
                 "
