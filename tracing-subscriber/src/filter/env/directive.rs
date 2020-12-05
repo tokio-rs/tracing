@@ -832,6 +832,32 @@ mod test {
     }
 
     #[test]
+    fn parse_directives_ralith_uc() {
+        let dirs = parse_directives("common=INFO,server=DEBUG");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[1].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_ralith_mixed() {
+        let dirs = parse_directives("common=iNfo,server=dEbUg");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[1].in_span, None);
+    }
+
+    #[test]
     fn parse_directives_valid() {
         let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
         assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
@@ -1001,6 +1027,39 @@ mod test {
         assert_eq!(dirs[1].target, Some("crate2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::DEBUG);
         assert_eq!(dirs[1].in_span, None);
+    }
+
+    // helper function for tests below
+    fn test_parse_bare_level(directive_to_test: &str, level_expected: LevelFilter) {
+        let dirs = parse_directives(directive_to_test);
+        assert_eq!(
+            dirs.len(),
+            1,
+            "\ninput: \"{}\"; parsed: {:#?}",
+            directive_to_test,
+            dirs
+        );
+        assert_eq!(dirs[0].target, None);
+        assert_eq!(dirs[0].level, level_expected);
+        assert_eq!(dirs[0].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_lc() {
+        // test parse_directives with no crate, in isolation, all lowercase
+        test_parse_bare_level("warn", LevelFilter::WARN);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_uc() {
+        // test parse_directives with no crate, in isolation, all uppercase
+        test_parse_bare_level("WARN", LevelFilter::WARN);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_mixed() {
+        // test parse_directives with no crate, in isolation, mixed case
+        test_parse_bare_level("wArN", LevelFilter::WARN);
     }
 
     #[test]
