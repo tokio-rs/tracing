@@ -24,7 +24,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all --bins --examples --tests --benches
+        args: --all --bins --tests --benches
 
   cargo-hack:
     runs-on: ubuntu-latest
