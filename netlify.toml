@@ -3,7 +3,7 @@
   rustup install nightly --profile minimal \
   && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
   """
-  publish = "target/doc"
+  publish = "$NETLIFY_CACHE_DIR/target/doc"
 
 [[redirects]]
   from = "/"
