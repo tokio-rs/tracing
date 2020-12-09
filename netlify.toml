@@ -1,5 +1,5 @@
 [build]
-  command = "rustup install nightly && cargo +nightly doc --no-deps"
+  command = "rustup install nightly --profile minimal && cargo +nightly doc --no-deps"
   environment = { RUSTDOCFLAGS= "--cfg docsrs" }
   publish = "target/doc"
 
