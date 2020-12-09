@@ -1,9 +1,9 @@
 [build]
-  command = """
-  rustup install nightly --profile minimal \
-  && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps --target-dir=lying-to-netlify
-  """
-  publish = "lying-to-netlify/docs"
+  # command = """
+  # rustup install nightly --profile minimal \
+  # && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
+  # """
+  publish = "/opt/buildhome/cache/target/docs"
 
 [[redirects]]
   from = "/"
