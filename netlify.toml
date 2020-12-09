@@ -4,7 +4,7 @@
   # && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
   # """
   command = "tree -d /opt/repo"
-  publish = "/opt/repo/target/docs"
+  publish = "/opt/build/repo/target/docs"
 
 [[redirects]]
   from = "/"
