@@ -50,3 +50,6 @@ Cargo.lock
 
 
 # End of https://www.gitignore.io/api/rust,macos,visualstudiocode
+
+# Local Netlify folder
+.netlify
