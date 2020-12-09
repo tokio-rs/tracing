@@ -3,7 +3,8 @@
   # rustup install nightly --profile minimal \
   # && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
   # """
-  publish = "/opt/buildhome/cache/target/docs"
+  command = "tree -d /opt/repo"
+  publish = "/opt/repo/target/docs"
 
 [[redirects]]
   from = "/"
