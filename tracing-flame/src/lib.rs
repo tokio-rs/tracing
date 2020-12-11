@@ -323,7 +323,7 @@ where
     }
 
     /// Configures whether or not display file and line
-    pub fn width_file_and_line(mut self, enabled: bool) -> Self {
+    pub fn with_file_and_line(mut self, enabled: bool) -> Self {
         self.config.file_and_line = enabled;
         self
     }
