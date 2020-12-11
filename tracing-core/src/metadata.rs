@@ -870,4 +870,11 @@ mod tests {
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }
     }
+
+    #[test]
+    fn parse_level_filter_error_ctor_empty() {
+        match ParseLevelFilterError::empty() {
+            ParseLevelFilterError(()) => (),
+        }
+    }
 }
