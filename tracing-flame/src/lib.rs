@@ -316,13 +316,13 @@ where
         self
     }
 
-    /// Configures whether or not display module path
+    /// Configures whether or not module paths should be included in the output.
     pub fn with_module_path(mut self, enabled: bool) -> Self {
         self.config.module_path = enabled;
         self
     }
 
-    /// Configures whether or not display file and line
+    /// Configures whether or not file and line should be included in the output
     pub fn with_file_and_line(mut self, enabled: bool) -> Self {
         self.config.file_and_line = enabled;
         self
