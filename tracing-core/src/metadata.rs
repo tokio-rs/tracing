@@ -579,6 +579,13 @@ impl fmt::Display for ParseLevelFilterError {
 #[cfg(feature = "std")]
 impl std::error::Error for ParseLevelFilterError {}
 
+impl ParseLevelFilterError {
+    /// Constructor to create an empty [`ParseLevelFilterError`].
+    pub fn empty() -> Self {
+        ParseLevelFilterError(())
+    }
+}
+
 // ==== Level and LevelFilter comparisons ====
 
 // /!\ BIG, IMPORTANT WARNING /!\
