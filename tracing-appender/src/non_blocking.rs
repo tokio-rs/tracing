@@ -105,6 +105,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 pub struct WorkerGuard {
     guard: Option<JoinHandle<()>>,
     sender: Sender<Msg>,
+    shutdown: Sender<()>,
 }
 
 /// A non-blocking writer.
@@ -147,8 +148,11 @@ impl NonBlocking {
     ) -> (NonBlocking, WorkerGuard) {
         let (sender, receiver) = bounded(buffered_lines_limit);
 
-        let worker = Worker::new(receiver, writer);
-        let worker_guard = WorkerGuard::new(worker.worker_thread(), sender.clone());
+        let (shutdown_sender, shutdown_receiver) = bounded(0);
+
+        let worker = Worker::new(receiver, writer, shutdown_receiver);
+        let worker_guard =
+            WorkerGuard::new(worker.worker_thread(), sender.clone(), shutdown_sender);
 
         (
             Self {
@@ -244,10 +248,11 @@ impl<'a> MakeWriter<'a> for NonBlocking {
 }
 
 impl WorkerGuard {
-    fn new(handle: JoinHandle<()>, sender: Sender<Msg>) -> Self {
+    fn new(handle: JoinHandle<()>, sender: Sender<Msg>, shutdown: Sender<()>) -> Self {
         WorkerGuard {
             guard: Some(handle),
             sender,
+            shutdown,
         }
     }
 }
@@ -258,7 +263,14 @@ impl Drop for WorkerGuard {
             .sender
             .send_timeout(Msg::Shutdown, Duration::from_millis(100))
         {
-            Ok(_) | Err(SendTimeoutError::Disconnected(_)) => (),
+            Ok(_) => {
+                // Attempt to wait for `Worker` to flush all messages before dropping. This happens
+                // when the `Worker` calls `recv()` on a zero-capacity channel. Use `send_timeout`
+                // so that drop is not blocked indefinitely.
+                // TODO: Make timeout configurable.
+                let _ = self.shutdown.send_timeout((), Duration::from_millis(1000));
+            }
+            Err(SendTimeoutError::Disconnected(_)) => (),
             Err(SendTimeoutError::Timeout(e)) => println!(
                 "Failed to send shutdown signal to logging worker. Error: {:?}",
                 e
