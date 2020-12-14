@@ -34,7 +34,7 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: ../struct.Span.html#method.enter
+    /// [entered]: super::Span::enter()
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
@@ -68,8 +68,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: ../struct.Span.html#method.current
-    /// [entered]: ../struct.Span.html#method.enter
+    /// [current]: super::Span::current()
+    /// [entered]: super::Span::enter()
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -85,8 +85,8 @@ pub trait WithCollector: Sized {
     ///
     /// The attached collector will be set as the [default] when the returned `Future` is polled.
     ///
-    /// [`Collect`]: ../trait.Collect.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatch/index.html#setting-the-default-collector
+    /// [`Collect`]: super::Collect
+    /// [default]: crate::dispatch#setting-the-default-collector
     fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
@@ -108,7 +108,7 @@ pub trait WithCollector: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatch/index.html#setting-the-default-collector
+    /// [default]: crate::dispatch#setting-the-default-collector
     #[inline]
     fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {

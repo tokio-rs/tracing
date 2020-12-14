@@ -24,7 +24,7 @@
 //! - A string literal providing the span's name.
 //! - Finally, between zero and 32 arbitrary key/value fields.
 //!
-//! [`target`]: ../struct.Metadata.html#method.target
+//! [`target`]: super::Metadata::target()
 //!
 //! For example:
 //! ```rust
@@ -293,25 +293,23 @@
 //! much time was spent in each individual iteration, we would enter a new span
 //! on every iteration.
 //!
-//! [fields]: ../field/index.html
-//! [Metadata]: ../struct.Metadata.html
-//! [`Id`]: struct.Id.html
-//! [verbosity level]: ../struct.Level.html
-//! [`span!`]: ../macro.span.html
-//! [`trace_span!`]: ../macro.trace_span.html
-//! [`debug_span!`]: ../macro.debug_span.html
-//! [`info_span!`]: ../macro.info_span.html
-//! [`warn_span!`]: ../macro.warn_span.html
-//! [`error_span!`]: ../macro.error_span.html
-//! [`clone_span`]: ../collect/trait.Collect.html#method.clone_span
-//! [`drop_span`]: ../collect/trait.Collect.html#method.drop_span
-//! [`exit`]: ../collect/trait.Collect.html#tymethod.exit
-//! [collector]: ../collect/trait.Collect.html
-//! [`Attributes`]: struct.Attributes.html
-//! [`enter`]: struct.Span.html#method.enter
-//! [`in_scope`]: struct.Span.html#method.in_scope
-//! [`follows_from`]: struct.Span.html#method.follows_from
-//! [guard]: struct.Entered.html
+//! [fields]: super::field
+//! [Metadata]: super::Metadata
+//! [verbosity level]: super::Level
+//! [`span!`]: super::span!
+//! [`trace_span!`]: super::trace_span!
+//! [`debug_span!`]: super::debug_span!
+//! [`info_span!`]: super::info_span!
+//! [`warn_span!`]: super::warn_span!
+//! [`error_span!`]: super::error_span!
+//! [`clone_span`]: super::collect::Collect::clone_span()
+//! [`drop_span`]: super::collect::Collect::drop_span()
+//! [`exit`]: super::collect::Collect::exit
+//! [collector]: super::collect::Collect
+//! [`enter`]: Span::enter()
+//! [`in_scope`]: Span::in_scope()
+//! [`follows_from`]: Span::follows_from()
+//! [guard]: Entered
 //! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 
@@ -375,7 +373,7 @@ pub(crate) struct Inner {
 ///
 /// This is returned by the [`Span::enter`] function.
 ///
-/// [`Span::enter`]: ../struct.Span.html#method.enter
+/// [`Span::enter`]: super::Span::enter()
 #[derive(Debug)]
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
@@ -403,9 +401,9 @@ impl Span {
     /// annotations may be added to it.
     ///
     /// [metadata]: ../metadata
-    /// [collector]: ../collect/trait.Collect.html
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [collector]: super::collect::Collect
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from()
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatch::get_default(|dispatch| Self::new_with(meta, values, dispatch))
     }
@@ -428,8 +426,8 @@ impl Span {
     /// annotations may be added to it.
     ///
     /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from()
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatch::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
     }
@@ -452,8 +450,8 @@ impl Span {
     /// annotations may be added to it.
     ///
     /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         meta: &'static Metadata<'static>,
@@ -517,7 +515,7 @@ impl Span {
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Collector`]: ../collector/trait.Collector.html#method.current
+    /// [considered by the `Collector`]: super::collect::Collect::current_span()
     pub fn current() -> Span {
         dispatch::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -560,8 +558,8 @@ impl Span {
     /// Enters this span, returning a guard that will exit the span when dropped.
     ///
     /// If this span is enabled by the current collector, then this function will
-    /// call [`Collector::enter`] with the span's [`Id`], and dropping the guard
-    /// will call [`Collector::exit`]. If the span is disabled, this does
+    /// call [`Collect::enter`] with the span's [`Id`], and dropping the guard
+    /// will call [`Collect::exit`]. If the span is disabled, this does
     /// nothing.
     ///
     /// <div class="information">
@@ -625,7 +623,7 @@ impl Span {
     ///       // This is okay! The span has already been exited before we reach
     ///       // the await point.
     ///       some_other_async_function(some_value).await;
-    ///  
+    ///
     ///       // ...
     ///   }
     ///   ```
@@ -634,7 +632,7 @@ impl Span {
     ///   attaching a span to a future (async function or block). This will
     ///   enter the span _every_ time the future is polled, and exit it whenever
     ///   the future yields.
-    ///   
+    ///
     ///   `Instrument` can be used with an async block inside an async function:
     ///   ```ignore
     ///   # use tracing::info_span;
@@ -681,20 +679,19 @@ impl Span {
     ///   # async fn some_other_async_function() {}
     ///   #[tracing::instrument(level = "info")]
     ///   async fn my_async_function() {
-    ///   
+    ///
     ///       // This is correct! If we yield here, the span will be exited,
     ///       // and re-entered when we resume.
     ///       some_other_async_function().await;
     ///
     ///       // ...
-    ///    
+    ///
     ///   }
     ///   ```
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
-    /// [`Span::in_scope`]: #method.in_scope
-    /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
-    /// [attr]: ../../attr.instrument.html
+    /// [instrument]: crate::Instrument
+    /// [attr]: macro@crate::instrument
     ///
     /// # Examples
     ///
@@ -753,9 +750,9 @@ impl Span {
     /// info!("i'm outside the span!")
     /// ```
     ///
-    /// [`Collector::enter`]: ../collector/trait.Collector.html#method.enter
-    /// [`Collector::exit`]: ../collector/trait.Collector.html#method.exit
-    /// [`Id`]: ../struct.Id.html
+    /// [`Collect::enter`]: super::collect::Collect::enter()
+    /// [`Collect::exit`]: super::collect::Collect::exit()
+    /// [`Id`]: super::Id
     pub fn enter(&self) -> Entered<'_> {
         if let Some(ref inner) = self.inner.as_ref() {
             inner.collector.enter(&inner.id);
@@ -904,8 +901,8 @@ impl Span {
     /// span.record("parting", &"you will be remembered");
     /// ```
     ///
-    /// [`field::Empty`]: ../field/struct.Empty.html
-    /// [`Metadata`]: ../struct.Metadata.html
+    /// [`field::Empty`]: super::field::Empty
+    /// [`Metadata`]: super::Metadata
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
     where
         Q: field::AsField,
@@ -950,7 +947,7 @@ impl Span {
     ///
     /// See also [`is_none`].
     ///
-    /// [`is_none`]: #method.is_none
+    /// [`is_none`]: Span::is_none()
     #[inline]
     pub fn is_disabled(&self) -> bool {
         self.inner.is_none()
@@ -964,8 +961,7 @@ impl Span {
     /// rather than constructed by `Span::none`, this method will return
     /// `false`, while `is_disabled` will return `true`.
     ///
-    /// [`Span::none`]: #method.none
-    /// [`is_disabled`]: #method.is_disabled
+    /// [`is_disabled`]: Span::is_disabled()
     #[inline]
     pub fn is_none(&self) -> bool {
         self.is_disabled() && self.meta.is_none()

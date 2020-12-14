@@ -38,7 +38,6 @@ pub struct Record<'a> {
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
 /// [the `Collector` considers]: super::collect::Collect::current_span
-/// [`Id`]: Id
 /// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]
 pub struct Current {

@@ -15,10 +15,10 @@ use tracing_subscriber::{
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/subscriber/trait.Subscribe.html
-/// [`SpanTrace`]: ../struct.SpanTrace.html
-/// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
-/// [default format]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/format/struct.DefaultFields.html
+/// [subscriber]: tracing_subscriber::subscribe::Subscribe
+/// [`SpanTrace`]: super::SpanTrace
+/// [field formatter]: tracing_subscriber::fmt::FormatFields
+/// [default format]: tracing_subscriber::fmt::format::DefaultFields
 pub struct ErrorSubscriber<S, F = DefaultFields> {
     format: F,
 
@@ -75,7 +75,7 @@ where
 {
     /// Returns a new `ErrorSubscriber` with the provided [field formatter].
     ///
-    /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
+    /// [field formatter]: tracing_subscriber::fmt::FormatFields
     pub fn new(format: F) -> Self {
         Self {
             format,

@@ -18,7 +18,7 @@ mod datetime;
 ///
 /// The full list of provided implementations can be found in [`time`].
 ///
-/// [`time`]: ./index.html
+/// [`time`]: self
 pub trait FormatTime {
     /// Measure and write out the current time.
     ///
@@ -180,7 +180,6 @@ impl ChronoUtc {
     /// See [`chrono::format::strftime`]
     /// for details on the supported syntax.
     ///
-    /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
     pub fn with_format(format_string: String) -> Self {
         ChronoUtc {
             format: ChronoFmtType::Custom(format_string),
@@ -227,7 +226,6 @@ impl ChronoLocal {
     /// See [`chrono::format::strftime`]
     /// for details on the supported syntax.
     ///
-    /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
     pub fn with_format(format_string: String) -> Self {
         ChronoLocal {
             format: ChronoFmtType::Custom(format_string),

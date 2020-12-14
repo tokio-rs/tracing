@@ -17,10 +17,6 @@
 //! will be created daily
 //! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
 //!
-//! [minutely]: fn.minutely.html
-//! [hourly]: fn.hourly.html
-//! [daily]: fn.daily.html
-//! [never]: fn.never.html
 //!
 //! # Examples
 //!
@@ -43,7 +39,7 @@ use std::path::Path;
 /// blocking the current thread.
 ///
 /// [write]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
-/// [non-blocking]: ../non_blocking/struct.NonBlocking.html
+/// [non-blocking]: super::non_blocking::NonBlocking
 ///
 /// # Examples
 ///
@@ -73,10 +69,6 @@ impl RollingFileAppender {
     /// - [`Rotation::daily()`][daily],
     /// - [`Rotation::never()`][never]
     ///
-    /// [minutely]: fn.minutely.html
-    /// [hourly]: fn.hourly.html
-    /// [daily]: fn.daily.html
-    /// [never]: fn.never.html
     ///
     /// # Examples
     /// ```rust
