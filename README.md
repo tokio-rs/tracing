@@ -249,7 +249,7 @@ attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
 [`tracing-futures`]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
 [`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
