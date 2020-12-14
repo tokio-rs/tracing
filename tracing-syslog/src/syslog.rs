@@ -1,7 +1,6 @@
 use std::{borrow::Cow, ffi::CStr};
 use tracing_core::{
     field::{Field, Visit},
-    span::{Attributes, Id, Record},
     Collect, Event, Level,
 };
 use tracing_subscriber::{
@@ -182,10 +181,6 @@ impl<C> Subscribe<C> for Syslog
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
-    fn new_span(&self, _attrs: &Attributes, _id: &Id, _ctx: Context<C>) {}
-
-    fn on_record(&self, _id: &Id, _values: &Record, _ctx: Context<C>) {}
-
     fn on_event(&self, event: &Event, _ctx: Context<C>) {
         use std::cell::RefCell;
         thread_local! { static BUF: RefCell<Vec<u8>> = RefCell::new(Vec::with_capacity(256)) }
