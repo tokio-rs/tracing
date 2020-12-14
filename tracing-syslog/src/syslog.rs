@@ -114,36 +114,43 @@ impl Default for Facility {
 }
 
 /// `syslog` severity.
-#[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 #[repr(i32)]
 pub enum Severity {
     /// System is unusable.
-    LOG_EMERG = libc::LOG_EMERG,
+    #[doc(alias = "LOG_EMERG")]
+    Emergency = libc::LOG_EMERG,
     /// Action must be taken immediately.
-    LOG_ALERT = libc::LOG_ALERT,
+    #[doc(alias = "LOG_ALERT")]
+    Alert = libc::LOG_ALERT,
     /// Critical conditions.
-    LOG_CRIT = libc::LOG_CRIT,
+    #[doc(alias = "LOG_CRIT")]
+    Critical = libc::LOG_CRIT,
     /// Error conditions.
-    LOG_ERR = libc::LOG_ERR,
+    #[doc(alias = "LOG_ERR")]
+    Error = libc::LOG_ERR,
     /// Warning conditions.
-    LOG_WARNING = libc::LOG_WARNING,
+    #[doc(alias = "LOG_WARNING")]
+    Warning = libc::LOG_WARNING,
     /// Normal, but significant, condition.
-    LOG_NOTICE = libc::LOG_NOTICE,
+    #[doc(alias = "LOG_NOTICE")]
+    Notice = libc::LOG_NOTICE,
     /// Informational message.
-    LOG_INFO = libc::LOG_INFO,
+    #[doc(alias = "LOG_INFO")]
+    Info = libc::LOG_INFO,
     /// Debug-level message.
-    LOG_DEBUG = libc::LOG_DEBUG,
+    #[doc(alias = "LOG_DEBUG")]
+    Debug = libc::LOG_DEBUG,
 }
 
 impl From<Level> for Severity {
     fn from(level: Level) -> Self {
         match level {
-            Level::ERROR => Self::LOG_ERR,
-            Level::WARN => Self::LOG_WARNING,
-            Level::INFO => Self::LOG_NOTICE,
-            Level::DEBUG => Self::LOG_INFO,
-            Level::TRACE => Self::LOG_DEBUG,
+            Level::ERROR => Self::Error,
+            Level::WARN => Self::Warning,
+            Level::INFO => Self::Notice,
+            Level::DEBUG => Self::Info,
+            Level::TRACE => Self::Debug,
         }
     }
 }
