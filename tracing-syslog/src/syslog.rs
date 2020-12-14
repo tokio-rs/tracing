@@ -4,8 +4,8 @@ use tracing_core::{
     Collect, Event, Level,
 };
 use tracing_subscriber::{
-    registry::{LookupSpan, Registry},
-    subscribe::{CollectExt, Context, Subscribe},
+    registry::LookupSpan,
+    subscribe::{Context, Subscribe},
 };
 
 /// `syslog` options.
@@ -150,16 +150,19 @@ fn syslog(priority: Priority, msg: &CStr) {
     unsafe { libc::syslog(priority.0, "%s\0".as_ptr().cast(), msg.as_ptr()) }
 }
 
-/// Creates a `syslog`-backed [`tracing_core::Collect`].
-pub fn logger(
-    identity: impl Into<Cow<'static, CStr>>,
-    options: Options,
-    facility: Facility,
-) -> impl Collect {
-    Registry::default().with(Syslog::new(identity, options, facility))
-}
-
-/// [`tracing_subscriber::Subscribe`] that logs to `syslog`.
+/// [`Subscriber`](tracing_subscriber::Subscribe) that logs to `syslog`.
+///
+/// # Examples
+/// Initializing a global [`Collector`](tracing_core::Collect) that logs to `syslog` with
+/// an identity of `example-program` and the default `syslog` options and facility:
+/// ```
+/// use tracing_syslog::Syslog;
+/// use tracing_subscriber::{Registry, subscribe::CollectExt};
+/// let identity = std::ffi::CStr::from_bytes_with_nul(b"example-program\0").unwrap();
+/// let (options, facility) = Default::default();
+/// let collector = Registry::default().with(Syslog::new(identity, options, facility));
+/// tracing::collect::set_global_default(collector).unwrap();
+/// ```
 pub struct Syslog {
     /// Identity e.g. program name. Referenced by syslog, so we store it here to
     /// ensure it lives until we are done logging.
@@ -169,7 +172,17 @@ pub struct Syslog {
 }
 
 impl Syslog {
-    /// Creates a new `syslog` logger.
+    /// Creates a [`Subscriber`](tracing_subscriber::Subscribe) that logs to `syslog`.
+    ///
+    /// # Examples
+    /// Creating a `syslog` subscriber with an identity of `example-program` and
+    /// the default `syslog` options and facility:
+    /// ```
+    /// use tracing_syslog::Syslog;
+    /// let identity = std::ffi::CStr::from_bytes_with_nul(b"example-program\0").unwrap();
+    /// let (options, facility) = Default::default();
+    /// let subscriber = Syslog::new(identity, options, facility);
+    /// ```
     pub fn new(
         identity: impl Into<Cow<'static, CStr>>,
         options: Options,

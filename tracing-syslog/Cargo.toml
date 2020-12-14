@@ -17,3 +17,6 @@ keywords = ["tracing", "syslog"]
 libc = "0.2"
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
+
+[dev-dependencies]
+tracing = { path = "../tracing", version = "0.2" }
