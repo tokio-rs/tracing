@@ -110,7 +110,11 @@ impl Default for Facility {
 /// `syslog` severity.
 #[derive(Copy, Clone)]
 #[repr(i32)]
-pub enum Severity {
+// There are more `syslog` severities than `tracing` levels, so some severities
+// aren't used. They're included here for completeness and so the level mapping
+// could easily change to include them.
+#[allow(dead_code)]
+enum Severity {
     /// System is unusable.
     #[doc(alias = "LOG_EMERG")]
     Emergency = libc::LOG_EMERG,
@@ -175,7 +179,7 @@ fn syslog(priority: Priority, msg: &CStr) {
 ///
 /// # Level Mapping
 ///
-/// `tracing` [`Level`](tracing_core::Level)s are mapped to `syslog` [`Severity`]s as follows:
+/// `tracing` [`Level`](tracing_core::Level)s are mapped to `syslog` severities as follows:
 ///
 /// ```raw
 /// Level::ERROR => Severity::LOG_ERR,
