@@ -134,6 +134,12 @@ impl Priority {
 }
 
 fn syslog(priority: Priority, msg: &CStr) {
+    // SAFETY: the second argument must be a valid pointer to a nul-terminated
+    // format string and formatting placeholders e.g. %s must correspond to
+    // one of the variable-length arguments. By construction, the format string
+    // is nul-terminated, and the only string formatting placeholder corresponds
+    // to `msg.as_ptr()`, which is a valid, nul-terminated string in C world
+    // because `msg` is a `CStr`.
     unsafe { libc::syslog(priority.0, "%s\0".as_ptr().cast(), msg.as_ptr()) }
 }
 
