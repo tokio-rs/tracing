@@ -9,6 +9,13 @@ use tracing_subscriber::{
 };
 
 /// `syslog` options.
+///
+/// # Examples
+/// ```
+/// use tracing_syslog::Options;
+/// // Log PID with messages and log to stderr as well as `syslog`.
+/// let opts = Options::LOG_PID | Options::LOG_PERROR;
+/// ```
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Options(libc::c_int);
 
