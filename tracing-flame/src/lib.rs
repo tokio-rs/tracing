@@ -322,7 +322,7 @@ where
         self
     }
 
-    /// Configures whether or not file and line should be included in the output
+    /// Configures whether or not file and line should be included in the output.
     pub fn with_file_and_line(mut self, enabled: bool) -> Self {
         self.config.file_and_line = enabled;
         self
