@@ -45,9 +45,6 @@ impl std::ops::BitOr for Options {
 #[derive(Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum Facility {
-    /// Kernel messages (these can't be generated from user processes).
-    #[doc(alias = "LOG_KERN")]
-    Kern = libc::LOG_KERN,
     /// Generic user-level messages.
     #[doc(alias = "LOG_USER")]
     User = libc::LOG_USER,
@@ -60,9 +57,6 @@ pub enum Facility {
     /// Security/authorization messages.
     #[doc(alias = "LOG_AUTH")]
     Auth = libc::LOG_AUTH,
-    /// Messages generated internally by `syslogd(8)`.
-    #[doc(alias = "LOG_SYSLOG")]
-    Syslog = libc::LOG_SYSLOG,
     /// Line printer subsystem.
     #[doc(alias = "LOG_LPR")]
     Lpr = libc::LOG_LPR,
