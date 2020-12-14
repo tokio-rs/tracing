@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::{borrow::Cow, ffi::CStr};
 use tracing_core::{
     field::{Field, Visit},
     span::{Attributes, Id, Record},
@@ -139,22 +139,31 @@ fn syslog(priority: Priority, msg: &CStr) {
 }
 
 /// Creates a `syslog`-backed [`tracing_core::Collect`].
-pub fn logger(identity: CString, options: Options, facility: Facility) -> impl Collect {
+pub fn logger(
+    identity: impl Into<Cow<'static, CStr>>,
+    options: Options,
+    facility: Facility,
+) -> impl Collect {
     Registry::default().with(Syslog::new(identity, options, facility))
 }
 
 /// [`tracing_subscriber::Subscribe`] that logs to `syslog`.
 pub struct Syslog {
-    /// Identity e.g. program name. Used by syslog, so we store it here to
+    /// Identity e.g. program name. Referenced by syslog, so we store it here to
     /// ensure it lives until we are done logging.
     #[allow(dead_code)]
-    identity: CString,
+    identity: Cow<'static, CStr>,
     facility: Facility,
 }
 
 impl Syslog {
     /// Creates a new `syslog` logger.
-    pub fn new(identity: CString, options: Options, facility: Facility) -> Self {
+    pub fn new(
+        identity: impl Into<Cow<'static, CStr>>,
+        options: Options,
+        facility: Facility,
+    ) -> Self {
+        let identity = identity.into();
         // SAFETY: identity will remain alive until the returned struct's fields
         // are dropped, by which point `closelog` will have been called by the
         // `Drop` implementation.
