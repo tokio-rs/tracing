@@ -13,6 +13,10 @@ categories = [
 ]
 keywords = ["tracing", "syslog"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 libc = "0.2"
 tracing-core = { path = "../tracing-core", version = "0.2" }

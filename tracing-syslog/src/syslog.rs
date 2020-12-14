@@ -46,58 +46,58 @@ impl std::ops::BitOr for Options {
 #[repr(i32)]
 pub enum Facility {
     /// Generic user-level messages.
-    #[doc(alias = "LOG_USER")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_USER"))]
     User = libc::LOG_USER,
     /// Mail subsystem.
-    #[doc(alias = "LOG_MAIL")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_MAIL"))]
     Mail = libc::LOG_MAIL,
     /// System daemons without separate facility value.
-    #[doc(alias = "LOG_DAEMON")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_DAEMON"))]
     Daemon = libc::LOG_DAEMON,
     /// Security/authorization messages.
-    #[doc(alias = "LOG_AUTH")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_AUTH"))]
     Auth = libc::LOG_AUTH,
     /// Line printer subsystem.
-    #[doc(alias = "LOG_LPR")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LPR"))]
     Lpr = libc::LOG_LPR,
     /// USENET news subsystem.
-    #[doc(alias = "LOG_NEWS")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_NEWS"))]
     News = libc::LOG_NEWS,
     /// UUCP subsystem.
-    #[doc(alias = "LOG_UUCP")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_UUCP"))]
     Uucp = libc::LOG_UUCP,
     /// Clock daemon (`cron` and `at`).
-    #[doc(alias = "LOG_CRON")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_CRON"))]
     Cron = libc::LOG_CRON,
     /// Security/authorization messages (private).
-    #[doc(alias = "LOG_AUTHPRIV")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_AUTHPRIV"))]
     AuthPriv = libc::LOG_AUTHPRIV,
     /// FTP daemon.
-    #[doc(alias = "LOG_FTP")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_FTP"))]
     Ftp = libc::LOG_FTP,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL0")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL0"))]
     Local0 = libc::LOG_LOCAL0,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL1")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL1"))]
     Local1 = libc::LOG_LOCAL1,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL2")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL2"))]
     Local2 = libc::LOG_LOCAL2,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL3")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL3"))]
     Local3 = libc::LOG_LOCAL3,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL4")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL4"))]
     Local4 = libc::LOG_LOCAL4,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL5")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL5"))]
     Local5 = libc::LOG_LOCAL5,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL6")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL6"))]
     Local6 = libc::LOG_LOCAL6,
     /// Reserved for local use.
-    #[doc(alias = "LOG_LOCAL7")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_LOCAL7"))]
     Local7 = libc::LOG_LOCAL7,
 }
 
@@ -116,28 +116,28 @@ impl Default for Facility {
 #[allow(dead_code)]
 enum Severity {
     /// System is unusable.
-    #[doc(alias = "LOG_EMERG")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_EMERG"))]
     Emergency = libc::LOG_EMERG,
     /// Action must be taken immediately.
-    #[doc(alias = "LOG_ALERT")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_ALERT"))]
     Alert = libc::LOG_ALERT,
     /// Critical conditions.
-    #[doc(alias = "LOG_CRIT")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_CRIT"))]
     Critical = libc::LOG_CRIT,
     /// Error conditions.
-    #[doc(alias = "LOG_ERR")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_ERR"))]
     Error = libc::LOG_ERR,
     /// Warning conditions.
-    #[doc(alias = "LOG_WARNING")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_WARNING"))]
     Warning = libc::LOG_WARNING,
     /// Normal, but significant, condition.
-    #[doc(alias = "LOG_NOTICE")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_NOTICE"))]
     Notice = libc::LOG_NOTICE,
     /// Informational message.
-    #[doc(alias = "LOG_INFO")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_INFO"))]
     Info = libc::LOG_INFO,
     /// Debug-level message.
-    #[doc(alias = "LOG_DEBUG")]
+    #[cfg_attr(docsrs, doc(alias = "LOG_DEBUG"))]
     Debug = libc::LOG_DEBUG,
 }
 
