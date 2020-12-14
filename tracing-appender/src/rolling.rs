@@ -333,7 +333,10 @@ pub fn daily(
 /// ```
 ///
 /// This will result in a log file located at `/some/path/non-rolling.log`.
-pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> io::Result<RollingFileAppender> {
+pub fn never(
+    directory: impl AsRef<Path>,
+    file_name: impl AsRef<Path>,
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::NEVER, directory, file_name)
 }
 
@@ -599,7 +602,8 @@ mod test {
 
     fn test_appender(rotation: Rotation, file_prefix: &str) {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
-        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix).expect("Failed to initialize appender");
+        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix)
+            .expect("Failed to initialize appender");
 
         let expected_value = "Hello";
         write_to_log(&mut appender, expected_value);
