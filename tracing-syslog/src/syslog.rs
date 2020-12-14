@@ -42,55 +42,74 @@ impl std::ops::BitOr for Options {
 }
 
 /// `syslog` facility.
-#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum Facility {
     /// Kernel messages (these can't be generated from user processes).
-    LOG_KERN = libc::LOG_KERN,
+    #[doc(alias = "LOG_KERN")]
+    Kern = libc::LOG_KERN,
     /// Generic user-level messages.
-    LOG_USER = libc::LOG_USER,
+    #[doc(alias = "LOG_USER")]
+    User = libc::LOG_USER,
     /// Mail subsystem.
-    LOG_MAIL = libc::LOG_MAIL,
+    #[doc(alias = "LOG_MAIL")]
+    Mail = libc::LOG_MAIL,
     /// System daemons without separate facility value.
-    LOG_DAEMON = libc::LOG_DAEMON,
+    #[doc(alias = "LOG_DAEMON")]
+    Daemon = libc::LOG_DAEMON,
     /// Security/authorization messages.
-    LOG_AUTH = libc::LOG_AUTH,
+    #[doc(alias = "LOG_AUTH")]
+    Auth = libc::LOG_AUTH,
     /// Messages generated internally by `syslogd(8)`.
-    LOG_SYSLOG = libc::LOG_SYSLOG,
+    #[doc(alias = "LOG_SYSLOG")]
+    Syslog = libc::LOG_SYSLOG,
     /// Line printer subsystem.
-    LOG_LPR = libc::LOG_LPR,
+    #[doc(alias = "LOG_LPR")]
+    Lpr = libc::LOG_LPR,
     /// USENET news subsystem.
-    LOG_NEWS = libc::LOG_NEWS,
+    #[doc(alias = "LOG_NEWS")]
+    News = libc::LOG_NEWS,
     /// UUCP subsystem.
-    LOG_UUCP = libc::LOG_UUCP,
+    #[doc(alias = "LOG_UUCP")]
+    Uucp = libc::LOG_UUCP,
     /// Clock daemon (`cron` and `at`).
-    LOG_CRON = libc::LOG_CRON,
+    #[doc(alias = "LOG_CRON")]
+    Cron = libc::LOG_CRON,
     /// Security/authorization messages (private).
-    LOG_AUTHPRIV = libc::LOG_AUTHPRIV,
+    #[doc(alias = "LOG_AUTHPRIV")]
+    AuthPriv = libc::LOG_AUTHPRIV,
     /// FTP daemon.
-    LOG_FTP = libc::LOG_FTP,
+    #[doc(alias = "LOG_FTP")]
+    Ftp = libc::LOG_FTP,
     /// Reserved for local use.
-    LOG_LOCAL0 = libc::LOG_LOCAL0,
+    #[doc(alias = "LOG_LOCAL0")]
+    Local0 = libc::LOG_LOCAL0,
     /// Reserved for local use.
-    LOG_LOCAL1 = libc::LOG_LOCAL1,
+    #[doc(alias = "LOG_LOCAL1")]
+    Local1 = libc::LOG_LOCAL1,
     /// Reserved for local use.
-    LOG_LOCAL2 = libc::LOG_LOCAL2,
+    #[doc(alias = "LOG_LOCAL2")]
+    Local2 = libc::LOG_LOCAL2,
     /// Reserved for local use.
-    LOG_LOCAL3 = libc::LOG_LOCAL3,
+    #[doc(alias = "LOG_LOCAL3")]
+    Local3 = libc::LOG_LOCAL3,
     /// Reserved for local use.
-    LOG_LOCAL4 = libc::LOG_LOCAL4,
+    #[doc(alias = "LOG_LOCAL4")]
+    Local4 = libc::LOG_LOCAL4,
     /// Reserved for local use.
-    LOG_LOCAL5 = libc::LOG_LOCAL5,
+    #[doc(alias = "LOG_LOCAL5")]
+    Local5 = libc::LOG_LOCAL5,
     /// Reserved for local use.
-    LOG_LOCAL6 = libc::LOG_LOCAL6,
+    #[doc(alias = "LOG_LOCAL6")]
+    Local6 = libc::LOG_LOCAL6,
     /// Reserved for local use.
-    LOG_LOCAL7 = libc::LOG_LOCAL7,
+    #[doc(alias = "LOG_LOCAL7")]
+    Local7 = libc::LOG_LOCAL7,
 }
 
 impl Default for Facility {
     fn default() -> Self {
-        Self::LOG_USER
+        Self::User
     }
 }
 
