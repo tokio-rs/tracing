@@ -1,4 +1,4 @@
-//! `syslog` logging support for [`tracing`] backed by `libc`'s
+//! `syslog` logging support for `tracing` backed by `libc`'s
 //! [`syslog()`](libc::syslog) function.
 //!
 //! See [`Syslog`] for documentation and examples.

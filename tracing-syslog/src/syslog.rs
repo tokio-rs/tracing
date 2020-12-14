@@ -155,7 +155,7 @@ fn syslog(priority: Priority, msg: &CStr) {
 ///
 /// # Level Mapping
 ///
-/// [`tracing::Level`]s are mapped to `syslog` [`Severity`]s as follows:
+/// `tracing` [`Level`](tracing_core::Level)s are mapped to `syslog` [`Severity`]s as follows:
 ///
 /// ```raw
 /// Level::ERROR => Severity::LOG_ERR,
@@ -166,7 +166,7 @@ fn syslog(priority: Priority, msg: &CStr) {
 /// ```
 ///
 /// **Note:** the mapping is lossless, but the corresponding `syslog` severity
-/// names differ from [`tracing`]'s level names towards the bottom. `syslog`
+/// names differ from `tracing`'s level names towards the bottom. `syslog`
 /// does not have a level lower than `LOG_DEBUG`, so this is unavoidable.
 ///
 /// # Examples
