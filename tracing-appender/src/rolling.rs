@@ -127,22 +127,22 @@ impl RollingFileAppender {
     /// ```rust
     /// # fn docs() {
     /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
-    /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
+    /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log").unwrap();
     /// # }
     /// ```
     pub fn new(
         rotation: Rotation,
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
-    ) -> RollingFileAppender {
+    ) -> io::Result<RollingFileAppender> {
         let now = OffsetDateTime::now_utc();
-        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix);
-        Self {
+        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix)?;
+        Ok(Self {
             state,
             writer,
             #[cfg(test)]
             now: Box::new(OffsetDateTime::now_utc),
-        }
+        })
     }
 
     #[inline]
@@ -215,7 +215,7 @@ impl fmt::Debug for RollingFileAppender {
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log").unwrap();
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -231,7 +231,7 @@ impl fmt::Debug for RollingFileAppender {
 pub fn minutely(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::MINUTELY, directory, file_name_prefix)
 }
 
@@ -250,7 +250,7 @@ pub fn minutely(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log").unwrap();
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -266,7 +266,7 @@ pub fn minutely(
 pub fn hourly(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::HOURLY, directory, file_name_prefix)
 }
 
@@ -286,7 +286,7 @@ pub fn hourly(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log").unwrap();
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -302,7 +302,7 @@ pub fn hourly(
 pub fn daily(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
@@ -320,7 +320,7 @@ pub fn daily(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log");
+///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log").unwrap();
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -333,7 +333,7 @@ pub fn daily(
 /// ```
 ///
 /// This will result in a log file located at `/some/path/non-rolling.log`.
-pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> RollingFileAppender {
+pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::NEVER, directory, file_name)
 }
 
@@ -599,7 +599,7 @@ mod test {
 
     fn test_appender(rotation: Rotation, file_prefix: &str) {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
-        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix);
+        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix).expect("Failed to initialize appender");
 
         let expected_value = "Hello";
         write_to_log(&mut appender, expected_value);
