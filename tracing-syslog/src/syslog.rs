@@ -272,9 +272,7 @@ where
             msg.as_ref().expect("logs free of interior nul-terminators");
             // ... but in non-debug mode, just print an error
             #[cfg(not(debug_assertions))]
-            if let Err(e) = msg.as_ref() {
-                eprintln!("log contained interior nul byte: {}", res);
-            }
+            let msg = msg.map_err(|res| eprintln!("log contained interior nul byte: {}", res));
 
             // Send the message to `syslog` if the message is valid
             if let Ok(msg) = msg {
