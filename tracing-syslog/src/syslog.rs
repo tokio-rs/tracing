@@ -264,11 +264,23 @@ where
             // Append nul-terminator
             buf.push(0);
 
-            // Log message
-            let priority = Priority::new(self.facility, *event.metadata().level());
-            let msg =
-                CStr::from_bytes_with_nul(&buf).expect("logs free of interior nul-terminators");
-            syslog(priority, &msg);
+            // Parse log message as C string
+            let msg = CStr::from_bytes_with_nul(&buf);
+
+            // In debug mode, panic when log message contains interior nul
+            #[cfg(debug_assertions)]
+            msg.as_ref().expect("logs free of interior nul-terminators");
+            // ... but in non-debug mode, just print an error
+            #[cfg(not(debug_assertions))]
+            if let Err(e) = msg.as_ref() {
+                eprintln!("log contained interior nul byte: {}", res);
+            }
+
+            // Send the message to `syslog` if the message is valid
+            if let Ok(msg) = msg {
+                let priority = Priority::new(self.facility, *event.metadata().level());
+                syslog(priority, msg)
+            }
 
             // Clear buffer
             buf.clear();
