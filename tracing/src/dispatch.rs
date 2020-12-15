@@ -13,7 +13,10 @@
 //! ## Setting the Default Collector
 //!
 //! By default, the current collector is an empty implementation that does
-//! nothing. To use a collector implementation, it must be set as the default.
+//! nothing. Trace data provided to this "do nothing" implementation is
+//! immediately discarded, and is not available for any purpose.
+//!
+//! To use another collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
 //! [`set_global_default`]. `with_default` sets the default collector for the
 //! duration of a scope, while `set_global_default` sets a default collector
