@@ -215,7 +215,7 @@ impl fmt::Debug for RollingFileAppender {
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log").unwrap();
+///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log").expect("Unable to create a rolling appender");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
