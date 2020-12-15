@@ -698,7 +698,7 @@ where
 
             let ctx = self.make_ctx(ctx);
             if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
+                let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
