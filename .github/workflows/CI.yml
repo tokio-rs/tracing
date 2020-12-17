@@ -65,10 +65,6 @@ jobs:
       matrix:
         featureset:
         - ""
-        - async-await
-        - async-await std
-        - async-await log-always
-        - async-await std log-always
         - log-always
         - std log-always
         - std
