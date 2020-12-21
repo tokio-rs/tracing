@@ -777,7 +777,7 @@
 //!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
-//!  - [`tracing-elastic-apm`] provides Elastic APM support layer
+//!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -804,6 +804,7 @@
 //! [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 //! [Tracy]: https://github.com/wolfpld/tracy
 //! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+//! [Elastic APM]: https://www.elastic.co/apm
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
