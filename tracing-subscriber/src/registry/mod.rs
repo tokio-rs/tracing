@@ -173,6 +173,11 @@ pub trait SpanData<'a> {
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    ///
+    /// This method acquires a read lock to the extensions that will be held as
+    /// long as the returned value lives. To prevent deadlocks, never acquire
+    /// extensions of multiple spans (e.g. of the parent and the active one) at
+    /// the same time.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions(&self) -> Extensions<'_>;
@@ -181,6 +186,11 @@ pub trait SpanData<'a> {
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    ///
+    /// This method acquires a write lock to the extensions that will be held as
+    /// long as the returned value lives. To prevent deadlocks, never acquire
+    /// extensions of multiple spans (e.g. of the parent and the active one) at
+    /// the same time.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
