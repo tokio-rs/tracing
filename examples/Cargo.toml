@@ -40,7 +40,7 @@ tower-make = "0.3"
 http = "0.2"
 hyper = "0.13.2"
 rand = "0.7"
-bytes = "0.5"
+bytes = "1.0"
 clap = "2.33"
 
 # sloggish example
