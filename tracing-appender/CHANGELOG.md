@@ -1,3 +1,14 @@
+# 0.1.2 (December 28, 2020)
+
+### Changed
+
+- **non_blocking**: Updated `crossbeam-channel` dependency to 0.5 (#1031)
+
+### Fixed
+
+- **non_blocking**: Fixed a race condition when logging on shutdown (#1125)
+- Several documentation improvements (#1109, #1110, #941, #953)
+
 # 0.1.1 (July 20, 2020)
 
 ### Added
