@@ -1,4 +1,4 @@
-use opentelemetry::sdk::propagation::B3Propagator;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 use opentelemetry::{global, Context};
 use std::collections::HashMap;
 use tracing::span;
@@ -15,8 +15,8 @@ fn make_request(_cx: Context) {
 fn build_example_carrier() -> HashMap<String, String> {
     let mut carrier = HashMap::new();
     carrier.insert(
-        "X-B3".to_string(),
-        "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-1".to_string(),
+        "traceparent".to_string(),
+        "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01".to_string(),
     );
 
     carrier
@@ -24,7 +24,7 @@ fn build_example_carrier() -> HashMap<String, String> {
 
 fn main() {
     // Set a format for propagating context. This MUST be provided, as the default is a no-op.
-    global::set_text_map_propagator(B3Propagator::new());
+    global::set_text_map_propagator(TraceContextPropagator::new());
     let subscriber = Registry::default().with(tracing_opentelemetry::layer());
 
     tracing::collect::with_default(subscriber, || {
@@ -37,7 +37,7 @@ fn main() {
         let app_root = span!(tracing::Level::INFO, "app_start");
 
         // Assign parent trace from external context
-        app_root.set_parent(&parent_context);
+        app_root.set_parent(parent_context);
 
         // To include tracing context in client requests from _this_ app,
         // use `context` to extract the current OpenTelemetry context.
