@@ -223,6 +223,12 @@ struct Config {
 
     /// Don't include thread_id
     threads_collapsed: bool,
+
+    /// Don't display module_path
+    module_path: bool,
+
+    /// Don't display file and line
+    file_and_line: bool,
 }
 
 impl Default for Config {
@@ -230,6 +236,8 @@ impl Default for Config {
         Self {
             empty_samples: true,
             threads_collapsed: false,
+            module_path: true,
+            file_and_line: true,
         }
     }
 }
@@ -305,6 +313,18 @@ where
     /// span may be split up across many threads.
     pub fn with_threads_collapsed(mut self, enabled: bool) -> Self {
         self.config.threads_collapsed = enabled;
+        self
+    }
+
+    /// Configures whether or not module paths should be included in the output.
+    pub fn with_module_path(mut self, enabled: bool) -> Self {
+        self.config.module_path = enabled;
+        self
+    }
+
+    /// Configures whether or not file and line should be included in the output.
+    pub fn with_file_and_line(mut self, enabled: bool) -> Self {
+        self.config.file_and_line = enabled;
         self
     }
 }
@@ -390,7 +410,7 @@ where
 
         for parent in parents {
             stack += "; ";
-            write(&mut stack, parent).expect("expected: write to String never fails");
+            write(&mut stack, parent, &self.config).expect("expected: write to String never fails");
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
@@ -432,14 +452,14 @@ where
 
         for parent in parents {
             expect!(
-                write(&mut stack, parent),
+                write(&mut stack, parent, &self.config),
                 "expected: write to String never fails"
             );
             stack += "; ";
         }
 
         expect!(
-            write(&mut stack, first),
+            write(&mut stack, first, &self.config),
             "expected: write to String never fails"
         );
         expect!(
@@ -469,22 +489,26 @@ where
     }
 }
 
-fn write<C>(dest: &mut String, span: SpanRef<'_, C>) -> fmt::Result
+fn write<C>(dest: &mut String, span: SpanRef<'_, C>, config: &Config) -> fmt::Result
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
-    if let Some(module_path) = span.metadata().module_path() {
-        write!(dest, "{}::", module_path)?;
+    if config.module_path {
+        if let Some(module_path) = span.metadata().module_path() {
+            write!(dest, "{}::", module_path)?;
+        }
     }
 
     write!(dest, "{}", span.name())?;
 
-    if let Some(file) = span.metadata().file() {
-        write!(dest, ":{}", file)?;
-    }
+    if config.file_and_line {
+        if let Some(file) = span.metadata().file() {
+            write!(dest, ":{}", file)?;
+        }
 
-    if let Some(line) = span.metadata().line() {
-        write!(dest, ":{}", line)?;
+        if let Some(line) = span.metadata().line() {
+            write!(dest, ":{}", line)?;
+        }
     }
 
     Ok(())
