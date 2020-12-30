@@ -348,7 +348,7 @@ In particular, the following crates are likely to be of interest:
   dependencies which use `log`. Note that if you're using
   `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
   `tracing-log` directly.
-* [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
+- [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
   systems into a trace and emits them to [OpenTelemetry]-compatible distributed
   tracing systems for processing and visualization.
 
