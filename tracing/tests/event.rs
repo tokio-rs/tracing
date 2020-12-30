@@ -306,6 +306,27 @@ fn debug_shorthand() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn both_shorthands() {
+    let (collector, handle) = collector::mock()
+        .event(
+            event::mock().with_fields(
+                field::mock("display_field")
+                    .with_value(&"hello world" as &dyn fmt::Display)
+                    .and(field::mock("debug_field").with_value(&"hello world" as &dyn fmt::Debug))
+                    .only(),
+            ),
+        )
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        event!(Level::TRACE, display_field = %"hello world", debug_field = ?"hello world");
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn downcast_field() {
     use tracing::field::Value;
 
@@ -332,25 +353,49 @@ fn downcast_field() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
-fn both_shorthands() {
+fn fields_specialize() {
+    use std::fmt;
+    #[derive(Debug)]
+    pub struct Foo {}
+    impl fmt::Display for Foo {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Display::fmt("foo", f)
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct Bar {}
+
     let (collector, handle) = collector::mock()
+        .event(event::mock().with_fields(field::mock("my_field").with_value(1u64).only()))
+        .event(event::mock().with_fields(field::mock("my_field").with_value(1i64).only()))
+        .event(event::mock().with_fields(field::mock("my_field").with_value("a string").only()))
         .event(
             event::mock().with_fields(
-                field::mock("display_field")
-                    .with_value(&"hello world" as &dyn fmt::Display)
-                    .and(field::mock("debug_field").with_value(&"hello world" as &dyn fmt::Debug))
+                field::mock("my_field")
+                    .with_value(&Foo {} as &dyn fmt::Display)
+                    .only(),
+            ),
+        )
+        .event(
+            event::mock().with_fields(
+                field::mock("my_field")
+                    .with_value(&Bar {} as &dyn fmt::Debug)
                     .only(),
             ),
         )
         .done()
         .run_with_handle();
     with_default(collector, || {
-        event!(Level::TRACE, display_field = %"hello world", debug_field = ?"hello world");
+        event!(Level::TRACE, my_field = 1u64);
+        event!(Level::TRACE, my_field = 1i64);
+        event!(Level::TRACE, my_field = "a string");
+        event!(Level::TRACE, my_field = Foo {});
+        event!(Level::TRACE, my_field = Bar {});
     });
 
     handle.assert_finished();
 }
-
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child() {

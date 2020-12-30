@@ -767,3 +767,48 @@ fn both_shorthands() {
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn fields_specialize() {
+    #[derive(Debug)]
+    pub struct Foo {}
+    impl fmt::Display for Foo {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Display::fmt("foo", f)
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct Bar {}
+
+    let (collector, handle) = collector::mock()
+        .new_span(span::mock().with_field(field::mock("my_field").with_value(1u64).only()))
+        .new_span(span::mock().with_field(field::mock("my_field").with_value(1i64).only()))
+        .new_span(span::mock().with_field(field::mock("my_field").with_value("a string").only()))
+        .new_span(
+            span::mock().with_field(
+                field::mock("my_field")
+                    .with_value(&Foo {} as &dyn fmt::Display)
+                    .only(),
+            ),
+        )
+        .new_span(
+            span::mock().with_field(
+                field::mock("my_field")
+                    .with_value(&Bar {} as &dyn fmt::Debug)
+                    .only(),
+            ),
+        )
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        span!(Level::TRACE, "my_span", my_field = 1u64);
+        span!(Level::TRACE, "my_span", my_field = 1i64);
+        span!(Level::TRACE, "my_span", my_field = "a string");
+        span!(Level::TRACE, "my_span", my_field = Foo {});
+        span!(Level::TRACE, "my_span", my_field = Bar {});
+    });
+
+    handle.assert_finished();
+}

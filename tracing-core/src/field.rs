@@ -111,7 +111,7 @@ enum ValueKind<'a> {
     U64(u64),
     I64(i64),
     Str(&'a str),
-    Display(&'a dyn fmt::Display),
+    Display(&'a dyn DisplayDebug),
     Debug(&'a dyn fmt::Debug),
     #[cfg(feature = "std")]
     Error(&'a (dyn Error + 'static)),
@@ -349,9 +349,12 @@ impl<'a> Value<'a> {
     }
 
     #[inline]
-    pub fn display<T: fmt::Display>(val: &'a T) -> Self {
+    pub fn display<T>(val: &'a T) -> Self
+    where
+        T: fmt::Display + fmt::Debug,
+    {
         Self {
-            inner: ValueKind::Display(val as &'a dyn fmt::Display),
+            inner: ValueKind::Display(val as &'a dyn DisplayDebug),
         }
     }
 
@@ -394,8 +397,8 @@ impl<'a> Value<'a> {
     pub fn as_display(&self) -> Option<&dyn fmt::Display> {
         match self.inner {
             ValueKind::Empty => None,
-            ValueKind::Display(val) => Some(val),
-            ValueKind::DisplayAny(val, _) => Some(val),
+            ValueKind::Display(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::DisplayAny(ref val, _) => Some(val as &dyn fmt::Display),
             #[cfg(feature = "std")]
             ValueKind::ErrorAny(_, _) | ValueKind::Error(_) => Some(self as &dyn fmt::Display),
             ValueKind::Bool(ref val) => Some(val as &dyn fmt::Display),
@@ -486,7 +489,7 @@ impl fmt::Debug for Value<'_> {
             ValueKind::Empty => Ok(()),
             ValueKind::DisplayAny(val, _) => fmt::Display::fmt(val, f),
             ValueKind::DebugAny(val, _) => fmt::Debug::fmt(val, f),
-            ValueKind::Display(val) => fmt::Display::fmt(val, f),
+            ValueKind::Display(val) => fmt::Debug::fmt(val, f),
             ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
             #[cfg(feature = "std")]
             ValueKind::Error(val) => fmt::Debug::fmt(val, f),
@@ -567,6 +570,9 @@ where
     }
 }
 
+trait DisplayDebug: fmt::Display + fmt::Debug {}
+impl<T: fmt::Display + fmt::Debug> DisplayDebug for T {}
+
 // ===== impl Value =====
 
 macro_rules! impl_values {
@@ -618,7 +624,7 @@ macro_rules! ty_to_nonzero {
 
 macro_rules! impl_one_into_value {
     ($value_ty:tt, |$this:ident| $op:expr) => {
-        impl<'a> From<$value_ty> for Value<'a> {
+        impl From<$value_ty> for Value<'_> {
             #[inline]
             fn from($this: $value_ty) -> Self {
                 Self::from($op)
@@ -711,21 +717,21 @@ impl<'a> From<fmt::Arguments<'a>> for Value<'a> {
     }
 }
 
-impl<'a, T> From<&'_ T> for Value<'a>
-where
-    Value<'a>: From<T>,
-    T: Copy,
-{
-    #[inline]
-    fn from(val: &T) -> Self {
-        Value::from(*val)
-    }
-}
-
 impl<'a> From<&'_ Value<'a>> for Value<'a> {
     #[inline]
     fn from(val: &Value<'a>) -> Self {
         Value { inner: val.inner }
+    }
+}
+
+impl<T> From<&'_ T> for Value<'_>
+where
+    T: Copy,
+    Self: From<T>,
+{
+    #[inline]
+    fn from(val: &T) -> Self {
+        Self::from(*val)
     }
 }
 

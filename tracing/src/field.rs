@@ -26,10 +26,6 @@ pub trait AsField: crate::sealed::Sealed {
     fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field>;
 }
 
-pub trait AsValue<'a> {
-    fn as_value(self) -> Value<'a>;
-}
-
 // ===== impl AsField =====
 
 impl AsField for Field {
@@ -65,33 +61,57 @@ impl crate::sealed::Sealed for Field {}
 impl<'a> crate::sealed::Sealed for &'a Field {}
 impl crate::sealed::Sealed for str {}
 
-pub(crate) mod convert {
+pub(crate) mod specialize {
     use super::Value;
-    use std::fmt::Debug;
-    pub trait AsValuePrimitive<'a>
+    use std::fmt::{Debug, Display};
+
+    pub struct Specialize<T>(pub T);
+
+    pub trait AsValuePrimitive<'a> {
+        fn as_value(&'a self) -> Value<'a>;
+    }
+
+    impl<'a, T> AsValuePrimitive<'a> for &&Specialize<&'a T>
     where
-        &'a Self: Into<Value<'a>>,
-        Self: 'a,
+        Value<'a>: From<&'a T>,
     {
+        #[inline]
         fn as_value(&'a self) -> Value<'a> {
-            self.into()
+            println!(
+                "-> dispatching AsValuePrimitive<{}>",
+                std::any::type_name::<T>()
+            );
+            Value::from(&self.0)
         }
     }
 
-    impl<'a, T> AsValuePrimitive<'a> for T
-    where
-        &'a T: Into<Value<'a>>,
-        T: 'a,
-    {
-    }
-
-    pub trait AsValueDebug<'a>: Debug {
+    pub trait AsValueDisplay<'a> {
         fn as_value(&self) -> Value<'a>;
     }
 
-    impl<'a, T: Debug> AsValueDebug<'a> for &'a T {
+    impl<'a, T: Display + Debug> AsValueDisplay<'a> for &Specialize<&'a T> {
+        #[inline]
         fn as_value(&self) -> Value<'a> {
-            Value::debug(*self)
+            println!(
+                "-> dispatching AsValueDisplay<{}>",
+                std::any::type_name::<T>()
+            );
+            Value::display(self.0)
+        }
+    }
+
+    pub trait AsValueDebug<'a> {
+        fn as_value(&self) -> Value<'a>;
+    }
+
+    impl<'a, T: Debug> AsValueDebug<'a> for Specialize<&'a T> {
+        #[inline]
+        fn as_value(&self) -> Value<'a> {
+            println!(
+                "-> dispatching AsValueDebug<{}>",
+                std::any::type_name::<T>()
+            );
+            Value::debug(self.0)
         }
     }
 }

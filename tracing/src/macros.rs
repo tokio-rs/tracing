@@ -1963,19 +1963,19 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = &$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$val).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$val)).as_value() },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$val).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$val)).as_value() },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$($k).+).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$($k).+)).as_value() },
             $($rest)*
         )
     };
@@ -2003,12 +2003,12 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = &$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$val).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$val)).as_value() },
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$val).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$val)).as_value() },
         )
     };
 
@@ -2024,7 +2024,7 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$($k).+).as_value() }
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$($k).+)).as_value() }
         )
     };
 
@@ -2043,7 +2043,7 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$val).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$val)).as_value() },
             $($rest)*
         )
     };
@@ -2059,7 +2059,7 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$val).as_value() },
+            @ { $($out),*, (&&&$crate::__macro_support::Specialize(&$val)).as_value() },
         )
     };
 

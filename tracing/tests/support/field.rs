@@ -123,7 +123,7 @@ impl Expect {
                     MockValueKind::Any => {}
                     expected => assert!(
                         expected == value,
-                        "\nexpected {} to contain:\n\t`{}{}`\nbut got:\n\t`{}{}`",
+                        "\nexpected {} to contain:\n\t`{}{}`\nbut got:\n\t`{} = {}`",
                         ctx,
                         name,
                         mock,
@@ -159,12 +159,12 @@ impl Expect {
 impl fmt::Display for MockValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.value {
-            MockValueKind::I64(v) => write!(f, "i64 = {:?}", v),
-            MockValueKind::U64(v) => write!(f, "u64 = {:?}", v),
-            MockValueKind::Bool(v) => write!(f, "bool = {:?}", v),
-            MockValueKind::Str(ref v) => write!(f, "&str = {:?}", v),
-            MockValueKind::Debug(ref v) => write!(f, "&fmt::Debug = {}", v),
-            MockValueKind::Display(ref v) => write!(f, "&fmt::Display = {}", v),
+            MockValueKind::I64(v) => write!(f, ": i64 = {:?}", v),
+            MockValueKind::U64(v) => write!(f, ": u64 = {:?}", v),
+            MockValueKind::Bool(v) => write!(f, ": bool = {:?}", v),
+            MockValueKind::Str(ref v) => write!(f, ": &str = {:?}", v),
+            MockValueKind::Debug(ref v) => write!(f, ": &fmt::Debug = {}", v),
+            MockValueKind::Display(ref v) => write!(f, ": &fmt::Display = {}", v),
             MockValueKind::Any => write!(f, "_ = _"),
         }
     }

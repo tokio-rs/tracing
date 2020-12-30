@@ -957,13 +957,16 @@ pub mod __macro_support {
     use core::sync::atomic::{AtomicUsize, Ordering};
     use tracing_core::Once;
     pub mod as_value {
-        pub use crate::field::convert::{AsValueDebug as _, AsValuePrimitive as _};
+        pub use crate::field::specialize::{
+            AsValueDebug as _, AsValueDisplay as _, AsValuePrimitive as _,
+        };
 
         // #[cfg(feature = "std")]
         // pub use crate::field::convert::AsErrorValue as _;
         // pub use crate::stdlib::borrow::Borrow as _;
     }
 
+    pub use crate::field::specialize::Specialize;
     pub trait BorrowOnce {
         fn borrow_once(&self) -> &Self;
     }
