@@ -42,6 +42,7 @@ enum MockValueKind {
     Str(String),
     Debug(String),
     Display(String),
+    Error(String),
     Any,
 }
 
@@ -132,7 +133,7 @@ impl Expect {
                     ),
                 };
                 if let Some(downcasts) = mock.downcasts_to {
-                    downcasts.check(value, ctx)
+                    downcasts.check(value, name)
                 }
             }
             None if self.only => panic!(
@@ -163,8 +164,9 @@ impl fmt::Display for MockValue {
             MockValueKind::U64(v) => write!(f, ": u64 = {:?}", v),
             MockValueKind::Bool(v) => write!(f, ": bool = {:?}", v),
             MockValueKind::Str(ref v) => write!(f, ": &str = {:?}", v),
-            MockValueKind::Debug(ref v) => write!(f, ": &fmt::Debug = {}", v),
-            MockValueKind::Display(ref v) => write!(f, ": &fmt::Display = {}", v),
+            MockValueKind::Debug(ref v) => write!(f, ": &dyn fmt::Debug = {}", v),
+            MockValueKind::Display(ref v) => write!(f, ": &dyn fmt::Display = {}", v),
+            MockValueKind::Error(ref v) => write!(f, ": &dyn Error = {:?}", v),
             MockValueKind::Any => write!(f, "_ = _"),
         }
     }
@@ -184,6 +186,10 @@ impl PartialEq<Value<'_>> for MockValueKind {
                 .as_display()
                 .iter()
                 .any(|actual| expected == &format!("{}", actual)),
+            MockValueKind::Error(expected) => actual
+                .as_error()
+                .iter()
+                .any(|actual| expected == &format!("{:?}", actual)),
             MockValueKind::Any => true,
         }
     }
@@ -260,6 +266,16 @@ impl From<&'_ dyn fmt::Display> for MockValue {
         }
     }
 }
+
+impl From<&'_ (dyn std::error::Error + 'static)> for MockValue {
+    fn from(v: &(dyn std::error::Error + 'static)) -> Self {
+        Self {
+            value: MockValueKind::Error(format!("{:?}", v)),
+            downcasts_to: None,
+        }
+    }
+}
+
 impl From<fmt::Arguments<'_>> for MockValue {
     fn from(v: fmt::Arguments<'_>) -> Self {
         Self {

@@ -236,7 +236,7 @@ where
             None => {}
             Some(Expect::Event(mut expected)) => {
                 let spans = self.spans.lock().unwrap();
-                expected.check(event);
+                expected.check(event, &self.name);
                 match expected.parent {
                     Some(Parent::ExplicitRoot) => {
                         assert!(

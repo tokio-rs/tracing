@@ -11,7 +11,9 @@ extern crate tracing;
 mod support;
 
 use self::support::*;
+use std::error::Error;
 use std::fmt;
+use std::io;
 use tracing::{collect::with_default, Level};
 
 macro_rules! event_without_message {
@@ -353,49 +355,83 @@ fn downcast_field() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
-fn fields_specialize() {
-    use std::fmt;
-    #[derive(Debug)]
-    pub struct Foo {}
-    impl fmt::Display for Foo {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Display::fmt("foo", f)
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct Bar {}
+fn errors_specialize() {
+    let error = std::io::Error::new(io::ErrorKind::Other, "something bad happened");
 
     let (collector, handle) = collector::mock()
-        .event(event::mock().with_fields(field::mock("my_field").with_value(1u64).only()))
-        .event(event::mock().with_fields(field::mock("my_field").with_value(1i64).only()))
-        .event(event::mock().with_fields(field::mock("my_field").with_value("a string").only()))
         .event(
             event::mock().with_fields(
-                field::mock("my_field")
-                    .with_value(&Foo {} as &dyn fmt::Display)
+                field::mock("error")
+                    .with_value(&error as &(dyn Error + 'static))
                     .only(),
             ),
         )
         .event(
             event::mock().with_fields(
-                field::mock("my_field")
-                    .with_value(&Bar {} as &dyn fmt::Debug)
+                field::mock("borrowed_error")
+                    .with_value(&error as &(dyn Error + 'static))
+                    .only(),
+            ),
+        )
+        .event(
+            event::mock().with_fields(
+                field::mock("display_error")
+                    .with_value(&error as &dyn fmt::Display)
+                    .only(),
+            ),
+        )
+        .event(
+            event::mock().with_fields(
+                field::mock("boxed_error")
+                    .with_value(&error as &(dyn Error + 'static))
                     .only(),
             ),
         )
         .done()
         .run_with_handle();
     with_default(collector, || {
-        event!(Level::TRACE, my_field = 1u64);
-        event!(Level::TRACE, my_field = 1i64);
-        event!(Level::TRACE, my_field = "a string");
-        event!(Level::TRACE, my_field = Foo {});
-        event!(Level::TRACE, my_field = Bar {});
+        event!(Level::ERROR, error);
+        event!(Level::ERROR, borrowed_error = &error);
+        event!(Level::ERROR, display_error = %error);
+        let boxed_error: Box<(dyn Error + 'static)> = Box::new(error);
+        event!(Level::ERROR, boxed_error);
     });
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn errors_downcast() {
+    let error = std::io::Error::new(io::ErrorKind::Other, "something bad happened");
+
+    let (collector, handle) = collector::mock()
+        .event(
+            event::mock().with_fields(
+                field::mock("error")
+                    .with_value(&error as &(dyn Error + 'static))
+                    .downcasts_to::<std::io::Error>()
+                    .only(),
+            ),
+        )
+        .event(
+            event::mock().with_fields(
+                field::mock("borrowed_error")
+                    .with_value(&error as &(dyn Error + 'static))
+                    .downcasts_to::<std::io::Error>()
+                    .only(),
+            ),
+        )
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        event!(Level::ERROR, error);
+        event!(Level::ERROR, borrowed_error = &error);
+    });
+
+    handle.assert_finished();
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn explicit_child() {

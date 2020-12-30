@@ -368,20 +368,20 @@ impl<'a> Value<'a> {
     #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn any_error<T: Any + Error + 'static>(val: &'a T) -> Self {
+    pub fn error<T: Error + 'static>(val: &'a T) -> Self {
         Self {
             inner: ValueKind::ErrorAny(val as &'a (dyn Error + 'static), TypeId::of::<T>()),
         }
     }
 
-    #[inline]
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn error(val: &'a (dyn Error + 'static)) -> Self {
-        Self {
-            inner: ValueKind::Error(val),
-        }
-    }
+    // #[inline]
+    // #[cfg(feature = "std")]
+    // #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    // pub fn error(val: &'a (dyn Error + 'static)) -> Self {
+    //     Self {
+    //         inner: ValueKind::Error(val),
+    //     }
+    // }
 
     #[inline]
     #[cfg(feature = "std")]
@@ -571,7 +571,7 @@ where
 }
 
 trait DisplayDebug: fmt::Display + fmt::Debug {}
-impl<T: fmt::Display + fmt::Debug> DisplayDebug for T {}
+impl<T: ?Sized + fmt::Display + fmt::Debug> DisplayDebug for T {}
 
 // ===== impl Value =====
 
@@ -630,6 +630,14 @@ macro_rules! impl_one_into_value {
                 Self::from($op)
             }
         }
+
+        // impl From<&$value_ty> for Value<'_> {
+        //     #[inline]
+        //     fn from($this: &$value_ty) -> Self {
+        //         let $this = *$this;
+        //         Self::from($op)
+        //     }
+        // }
     }; // (nonzero, $value_ty:tt, $op:expr) => {
        //     // This `use num::*;` is reported as unused because it gets emitted
        //     // for every single invocation of this macro, so there are multiple `use`s.
@@ -735,29 +743,39 @@ where
     }
 }
 
-// #[cfg(feature = "std")]
-// impl<'a> From<&'a Box<dyn Error + 'static>> for Value<'a> {
-//     #[inline]
-//     fn from(err: &'a Box<dyn Error + 'static>) -> Self {
-//         Self::error(err.as_ref())
-//     }
-// }
+#[cfg(feature = "std")]
+macro_rules! impl_value_error_as_ref {
+    ($($t:ty),+) => {
+        $(
+            #[cfg(feature = "std")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+            impl<'a> From<&'a $t> for Value<'a> {
+                #[inline]
+                fn from(err: &'a $t) -> Self {
+                    Self {
+                        inner: ValueKind::Error(err.as_ref()),
+                    }
+                }
+            }
+        )+
+    }
+}
 
-// #[cfg(feature = "std")]
-// impl<'a> From<&'a Box<dyn Error + Send + 'static>> for Value<'a> {
-//     #[inline]
-//     fn from(err: &'a Box<dyn Error + Send + 'static>) -> Self {
-//         Self::error(err.as_ref())
-//     }
-// }
+#[cfg(feature = "std")]
+impl_value_error_as_ref! {
+    Box<dyn Error + 'static>,
+    Box<dyn Error + Send + 'static>,
+    Box<dyn Error + Sync + 'static>,
+    Box<dyn Error + Send + Sync + 'static>,
+    std::sync::Arc<dyn Error + Send + 'static>,
+    std::sync::Arc<dyn Error + Sync + 'static>,
+    std::sync::Arc<dyn Error + Send + Sync + 'static>,
+    std::rc::Rc<dyn Error + 'static>,
+    std::rc::Rc<dyn Error + Send + 'static>,
+    std::rc::Rc<dyn Error + Sync + 'static>,
+    std::rc::Rc<dyn Error + Send + Sync + 'static>
+}
 
-// #[cfg(feature = "std")]
-// impl<'a> From<&'a Box<dyn Error + Send + Sync + 'static>> for Value<'a> {
-//     #[inline]
-//     fn from(err: &'a Box<dyn Error + Send + Sync + 'static>) -> Self {
-//         Self::error(err.as_ref())
-//     }
-// }
 // ===== impl Value =====
 
 // impl_values! {

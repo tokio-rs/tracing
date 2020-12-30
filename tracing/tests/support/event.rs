@@ -78,7 +78,7 @@ impl MockEvent {
         }
     }
 
-    pub(in crate::support) fn check(&mut self, event: &tracing::Event<'_>) {
+    pub(in crate::support) fn check(&mut self, event: &tracing::Event<'_>, test_name: &str) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata
@@ -87,6 +87,7 @@ impl MockEvent {
         if let Some(ref mut expected_fields) = self.fields {
             let ctx = name.to_string();
             for (field, value) in event {
+                println!("[{}] -> {}={:?}", test_name, field, value);
                 expected_fields.compare_or_panic(field.name(), value, &ctx);
             }
             expected_fields.assert_done(&ctx);

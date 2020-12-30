@@ -961,31 +961,11 @@ pub mod __macro_support {
             AsValueDebug as _, AsValueDisplay as _, AsValuePrimitive as _,
         };
 
-        // #[cfg(feature = "std")]
-        // pub use crate::field::convert::AsErrorValue as _;
-        // pub use crate::stdlib::borrow::Borrow as _;
+        #[cfg(feature = "std")]
+        pub use crate::field::specialize::AsValueError as _;
     }
 
     pub use crate::field::specialize::Specialize;
-    pub trait BorrowOnce {
-        fn borrow_once(&self) -> &Self;
-    }
-
-    impl<T> BorrowOnce for T {
-        fn borrow_once(&self) -> &Self {
-            self
-        }
-    }
-
-    pub trait BorrowOnceRef<'a, T: ?Sized> {
-        fn borrow_once(self) -> &'a T;
-    }
-
-    impl<'a, T: ?Sized> BorrowOnceRef<'a, T> for &'a T {
-        fn borrow_once(self) -> &'a T {
-            self
-        }
-    }
 
     /// Callsite implementation used by macro-generated code.
     ///
