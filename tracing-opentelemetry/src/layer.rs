@@ -321,36 +321,35 @@ where
         }
     }
 
-    /// Retrieve the parent OpenTelemetry [`SpanContext`] from the current
-    /// tracing [`span`] through the [`Registry`]. This [`SpanContext`]
-    /// links spans to their parent for proper hierarchical visualization.
+    /// Retrieve the parent OpenTelemetry [`Context`] from the current tracing
+    /// [`span`] through the [`Registry`]. This [`Context`] links spans to their
+    /// parent for proper hierarchical visualization.
     ///
-    /// [`SpanContext`]: opentelemetry::trace::SpanContext
+    /// [`Context`]: opentelemetry::Context
     /// [`span`]: tracing::Span
     /// [`Registry`]: tracing_subscriber::Registry
-    fn parent_span_context(
-        &self,
-        attrs: &Attributes<'_>,
-        ctx: &Context<'_, S>,
-    ) -> Option<otel::SpanContext> {
+    fn parent_context(&self, attrs: &Attributes<'_>, ctx: &Context<'_, S>) -> OtelContext {
         // If a span is specified, it _should_ exist in the underlying `Registry`.
         if let Some(parent) = attrs.parent() {
             let span = ctx.span(parent).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             extensions
                 .get_mut::<otel::SpanBuilder>()
-                .map(|builder| self.tracer.sampled_span_context(builder))
+                .map(|builder| self.tracer.sampled_context(builder))
+                .unwrap_or_default()
         // Else if the span is inferred from context, look up any available current span.
         } else if attrs.is_contextual() {
-            ctx.lookup_current().and_then(|span| {
-                let mut extensions = span.extensions_mut();
-                extensions
-                    .get_mut::<otel::SpanBuilder>()
-                    .map(|builder| self.tracer.sampled_span_context(builder))
-            })
+            ctx.lookup_current()
+                .and_then(|span| {
+                    let mut extensions = span.extensions_mut();
+                    extensions
+                        .get_mut::<otel::SpanBuilder>()
+                        .map(|builder| self.tracer.sampled_context(builder))
+                })
+                .unwrap_or_else(OtelContext::current)
         // Explicit root spans should have no parent context.
         } else {
-            None
+            OtelContext::new()
         }
     }
 
@@ -401,17 +400,22 @@ where
             .with_span_id(self.tracer.new_span_id());
 
         // Set optional parent span context from attrs
-        builder.parent_context = self.parent_span_context(attrs, &ctx);
+        builder.parent_context = Some(self.parent_context(attrs, &ctx));
 
-        // Ensure trace id exists so children are matched properly.
-        if builder.parent_context.is_none() {
-            let cx = OtelContext::current();
-            let existing_otel_span_context = cx.span().span_context();
-            if existing_otel_span_context.is_valid() {
-                builder.trace_id = Some(existing_otel_span_context.trace_id());
-            } else {
-                builder.trace_id = Some(self.tracer.new_trace_id());
-            }
+        // Ensure trace id exists so spans are associated with the proper trace.
+        //
+        // Parent contexts are in 4 possible states, first two require a new
+        // trace ids, second two have existing trace ids:
+        //   * Empty - explicit new tracing root span, needs new id
+        //   * A parent context containing no active or remote span, needs new id
+        //   * A parent context containing an active span, defer to that span's trace
+        //   * A parent context containing a remote span context, defer to remote trace
+        let needs_trace_id = builder.parent_context.as_ref().map_or(true, |cx| {
+            !cx.has_active_span() && cx.remote_span_context().is_none()
+        });
+
+        if needs_trace_id {
+            builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -466,7 +470,12 @@ where
             .get_mut::<otel::SpanBuilder>()
             .expect("Missing SpanBuilder span extensions");
 
-        let follows_context = self.tracer.sampled_span_context(follows_builder);
+        let follows_context = self
+            .tracer
+            .sampled_context(follows_builder)
+            .span()
+            .span_context()
+            .clone();
         let follows_link = otel::Link::new(follows_context, Vec::new());
         if let Some(ref mut links) = builder.links {
             links.push(follows_link);
@@ -588,21 +597,21 @@ mod tests {
         fn invalid(&self) -> Self::Span {
             otel::NoopSpan::new()
         }
-        fn start_from_context(&self, _name: &str, _context: &OtelContext) -> Self::Span {
+        fn start_with_context(&self, _name: &str, _context: OtelContext) -> Self::Span {
             self.invalid()
         }
         fn span_builder(&self, name: &str) -> otel::SpanBuilder {
             otel::SpanBuilder::from_name(name.to_string())
         }
-        fn build_with_context(&self, builder: otel::SpanBuilder, _cx: &OtelContext) -> Self::Span {
+        fn build(&self, builder: otel::SpanBuilder) -> Self::Span {
             *self.0.lock().unwrap() = Some(builder);
             self.invalid()
         }
     }
 
     impl PreSampledTracer for TestTracer {
-        fn sampled_span_context(&self, _builder: &mut otel::SpanBuilder) -> otel::SpanContext {
-            otel::SpanContext::empty_context()
+        fn sampled_context(&self, _builder: &mut otel::SpanBuilder) -> OtelContext {
+            OtelContext::new()
         }
         fn new_trace_id(&self) -> otel::TraceId {
             otel::TraceId::invalid()
@@ -673,8 +682,19 @@ mod tests {
             tracing::debug_span!("request", otel.kind = "Server");
         });
 
-        let recorded_trace_id = tracer.0.lock().unwrap().as_ref().unwrap().trace_id;
-        assert_eq!(recorded_trace_id, Some(trace_id))
+        let recorded_trace_id = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .parent_context
+            .as_ref()
+            .unwrap()
+            .span()
+            .span_context()
+            .trace_id();
+        assert_eq!(recorded_trace_id, trace_id)
     }
 
     #[test]
