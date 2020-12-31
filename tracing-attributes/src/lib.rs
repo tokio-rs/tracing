@@ -468,8 +468,7 @@ fn gen_body(
         quote_spanned!(block.span()=>
             let __tracing_attr_span = #span;
             let __tracing_attr_guard = __tracing_attr_span.enter();
-            let f = move || #return_type { #block };
-            match f() {
+            match move || #return_type { #block }() {
                 Ok(x) => Ok(x),
                 Err(e) => {
                     tracing::error!(error = %e);
