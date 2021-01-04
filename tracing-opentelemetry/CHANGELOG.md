@@ -1,3 +1,15 @@
+# 0.10.0 (December 30, 2020)
+
+### Breaking Changes
+
+- Upgrade to `v0.11.0` of `opentelemetry` (#1161)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.11.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/master/opentelemetry/CHANGELOG.md#v0110).
+- Update `OpenTelemetrySpanExt::set_parent` to take a context by value as it is
+  now stored and propagated. (#1161)
+- Rename `PreSampledTracer::sampled_span_context` to
+  `PreSampledTracer::sampled_context` as it now returns a full otel context. (#1161)
+
 # 0.9.0 (November 13, 2020)
 
 ### Added
