@@ -43,7 +43,7 @@ lazy_static = { optional = true, version = "1" }
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
 ansi_term = { version = "0.12", optional = true }
-chrono = { version = "0.4", optional = true }
+chrono = { version = "0.4.16", optional = true, default-features = false, features = ["clock", "std"] }
 
 # only required by the json feature
 serde_json = { version = "1.0", optional = true }
