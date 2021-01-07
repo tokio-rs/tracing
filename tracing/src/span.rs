@@ -556,6 +556,7 @@ impl Span {
 
         span
     }
+
     /// Enters this span, returning a guard that will exit the span when dropped.
     ///
     /// If this span is enabled by the current collector, then this function will
@@ -761,7 +762,7 @@ impl Span {
             inner.collector.enter(&inner.id);
         }
 
-        if_log_enabled! { *meta.level(), {
+        if_log_enabled! { crate::Level::TRACE, {
             if let Some(ref meta) = self.meta {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
             }
@@ -940,7 +941,7 @@ impl Span {
                 } else {
                     _meta.target()
                 };
-                self.log(target, level_to_log!(*meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
             }}
         }
 
@@ -1149,7 +1150,7 @@ impl Drop for Span {
         }
 
         if let Some(ref _meta) = self.meta {
-            if_log_enabled! { Level::TRACE, {
+            if_log_enabled! { crate::Level::TRACE, {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
@@ -1252,7 +1253,7 @@ impl<'a> Drop for Entered<'a> {
         }
 
         if let Some(ref _meta) = self.span.meta {
-            if_log_enabled! { Level::TRACE, {
+            if_log_enabled! { crate::Level::TRACE, {
                 self.span.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
             }}
         }
