@@ -34,7 +34,7 @@ tokio = { version = "0.2.12", features = ["full"] }
 env_logger = "0.8"
 
 # tower examples
-tower = "0.3"
+tower = "0.4"
 tower-util = "0.3.1"
 tower-make = "0.3"
 http = "0.2"
