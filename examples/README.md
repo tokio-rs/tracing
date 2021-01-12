@@ -24,6 +24,8 @@ This directory contains a collection of examples that demonstrate the use of the
     fields on spans and events.
   + `fmt-custom-event`: Demonstrates overriding how the `fmt` subscriber formats
     events.
+  + `fmt-multiple-writers.rs`: demonstrates how `fmt::Layer` can write
+    to multiple destinations (in this instance, stdout and a file) simultaneously.
   + `subscriber-filter`: Demonstrates the `tracing-subscriber::filter` module,
     which provides a layer which adds configurable filtering to a subscriber
     implementation.
