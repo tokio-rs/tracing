@@ -46,6 +46,67 @@ use fmt::{Debug, Display};
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
+/// # Example implementation
+///
+/// ```rust
+/// use std::fmt::{self, Write};
+/// use tracing_core::{Collect, Event};
+/// use tracing_subscriber::fmt::{FormatEvent, FormatFields, FmtContext, FormattedFields};
+/// use tracing_subscriber::registry::LookupSpan;
+///
+/// struct MyFormatter;
+///
+/// impl<S, N> FormatEvent<S, N> for MyFormatter
+/// where
+///     S: Collect + for<'a> LookupSpan<'a>,
+///     N: for<'a> FormatFields<'a> + 'static,
+/// {
+///     fn format_event(
+///         &self,
+///         ctx: &FmtContext<'_, S, N>,
+///         writer: &mut dyn fmt::Write,
+///         event: &Event<'_>,
+///     ) -> fmt::Result {
+///         // Write level and target
+///         let level = *event.metadata().level();
+///         let target = event.metadata().target();
+///         write!(
+///             writer,
+///             "{} {}: ",
+///             level,
+///             target,
+///         )?;
+///
+///         // Write spans and fields of each span
+///         ctx.visit_spans(|span| {
+///             write!(writer, "{}", span.name())?;
+///
+///             let ext = span.extensions();
+///             let fields = &ext
+///                 .get::<FormattedFields<N>>()
+///                 .expect("will never be `None`");
+///             if !fields.is_empty() {
+///                 write!(writer, "{{{}}}", fields)?;
+///             }
+///             write!(writer, ": ")?;
+///
+///             Ok(())
+///         })?;
+///
+///         // Write fields on the event
+///         ctx.field_format().format_fields(writer, event)?;
+///
+///         writeln!(writer)
+///     }
+/// }
+/// ```
+///
+/// That will result in events printed like so:
+///
+/// ```text
+/// DEBUG yak_shaving::shaver: some-span{field-on-span=foo}: started shaving yak
+/// ```
+///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
 pub trait FormatEvent<S, N>
