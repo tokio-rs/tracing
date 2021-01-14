@@ -67,7 +67,8 @@ async-await = []
 
 alloc = ["tracing-core/alloc"]
 std = ["tracing-core/std", "alloc"]
-log-always = ["log"]
+logging = ["log"]
+log-always = ["logging"]
 attributes = ["tracing-attributes"]
 
 [[bench]]

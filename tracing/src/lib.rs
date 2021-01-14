@@ -910,7 +910,7 @@
 #[macro_use]
 extern crate cfg_if;
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 #[doc(hidden)]
 pub use log;
 
@@ -1049,13 +1049,13 @@ pub mod __macro_support {
         }
 
         #[inline]
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         pub fn disabled_span(&self) -> crate::Span {
             crate::Span::new_disabled(self.meta)
         }
 
         #[inline]
-        #[cfg(not(feature = "log"))]
+        #[cfg(not(feature = "logging"))]
         pub fn disabled_span(&self) -> crate::Span {
             crate::Span::none()
         }

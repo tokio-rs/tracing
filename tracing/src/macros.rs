@@ -2149,7 +2149,7 @@ macro_rules! fieldset {
 
 }
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! level_to_log {
@@ -2172,14 +2172,14 @@ macro_rules! __tracing_stringify {
     };
 }
 
-#[cfg(not(feature = "log"))]
+#[cfg(not(feature = "logging"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {};
 }
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __mk_format_string {
@@ -2227,7 +2227,7 @@ macro_rules! __mk_format_string {
     }
 }
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __mk_format_args {
@@ -2294,7 +2294,7 @@ macro_rules! __mk_format_args {
     };
 }
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
@@ -2322,7 +2322,7 @@ macro_rules! __tracing_log {
     };
 }
 
-#[cfg(not(feature = "log"))]
+#[cfg(not(feature = "logging"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {
@@ -2337,7 +2337,7 @@ macro_rules! if_log_enabled {
     };
 }
 
-#[cfg(all(feature = "log", not(feature = "log-always")))]
+#[cfg(all(feature = "logging", not(feature = "log-always")))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {
@@ -2356,7 +2356,7 @@ macro_rules! if_log_enabled {
     };
 }
 
-#[cfg(all(feature = "log", feature = "log-always"))]
+#[cfg(all(feature = "logging", feature = "log-always"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {

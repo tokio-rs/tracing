@@ -383,10 +383,10 @@ pub struct Entered<'a> {
 }
 
 /// `log` target for all span lifecycle (creation/enter/exit/close) records.
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 const LIFECYCLE_LOG_TARGET: &str = "tracing::span";
 /// `log` target for span activity (enter/exit) records.
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 const ACTIVITY_LOG_TARGET: &str = "tracing::span::active";
 
 // ===== impl Span =====
@@ -1030,7 +1030,7 @@ impl Span {
         self.meta
     }
 
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
         if let Some(ref meta) = self.meta {
@@ -1259,10 +1259,10 @@ impl<'a> Drop for Entered<'a> {
     }
 }
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 struct FmtValues<'a>(&'a Record<'a>);
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 impl<'a> fmt::Display for FmtValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
@@ -1275,10 +1275,10 @@ impl<'a> fmt::Display for FmtValues<'a> {
     }
 }
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 struct FmtAttrs<'a>(&'a Attributes<'a>);
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 impl<'a> fmt::Display for FmtAttrs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = Ok(());
