@@ -310,12 +310,15 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     // if `compare_exchange` returns Result::Ok(_), then `new` has been set and
     // `current`—now the prior value—has been returned in the `Ok()` branch.
-    if let Ok(_) = GLOBAL_INIT.compare_exchange(
-        UNINITIALIZED,
-        INITIALIZING,
-        Ordering::SeqCst,
-        Ordering::SeqCst,
-    ) {
+    if GLOBAL_INIT
+        .compare_exchange(
+            UNINITIALIZED,
+            INITIALIZING,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_ok()
+    {
         #[cfg(feature = "alloc")]
         let collector = {
             let collector = match dispatcher.collector {
