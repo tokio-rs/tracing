@@ -235,7 +235,7 @@ mod inner {
 
 impl PartialEq for Identifier {
     fn eq(&self, other: &Identifier) -> bool {
-        std::ptr::eq(self.0 as *const _, other.0 as *const _)
+        core::ptr::eq(self.0 as *const _, other.0 as *const _)
     }
 }
 
