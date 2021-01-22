@@ -30,4 +30,4 @@ tracing-log = { path = "../tracing-log", version = "0.2", default-features = fal
 
 [dev-dependencies]
 async-trait = "0.1"
-opentelemetry-jaeger = "0.10"
+opentelemetry-jaeger = "0.11"
