@@ -536,7 +536,7 @@ impl MockHandle {
 }
 
 impl Expect {
-    fn bad<'a>(&self, name: impl AsRef<str>, what: fmt::Arguments<'a>) {
+    fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
         let name = name.as_ref();
         match self {
             Expect::Event(e) => panic!("[{}] expected event {}, but {} instead", name, e, what,),
