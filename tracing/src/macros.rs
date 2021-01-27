@@ -2348,7 +2348,7 @@ macro_rules! if_log_enabled {
         $crate::if_log_enabled! { $if_log else {} }
     };
     ($if_log:block else $else_block:block) => {
-        if !$crate::dispatcher::has_been_set() {
+        if !$crate::dispatch::has_been_set() {
             $if_log
         } else {
             $else_block
