@@ -19,7 +19,6 @@
 //! such as when a crate emits both `tracing` diagnostics _and_ log records by
 //! default.
 //!
-//! [`log`]: https://docs.rs/log/0.4.8/log/
 //! [logger interface]: log::Log
 //! [`init`]: LogTracer.html#method.init
 //! [`init_with_filter`]: LogTracer.html#method.init_with_filter

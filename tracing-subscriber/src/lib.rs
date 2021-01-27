@@ -59,7 +59,6 @@
 //!
 //! [`fmt`]: mod@fmt
 //! [`registry`]: mod@registry
-//! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Collect`]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
@@ -73,7 +72,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,

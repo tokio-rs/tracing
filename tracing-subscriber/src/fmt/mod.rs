@@ -257,7 +257,7 @@
 //!
 //! ### Composing Subscribers
 //!
-//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](../fmt/struct.Subscriber.html):
+//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
@@ -312,7 +312,7 @@ pub use self::{
 #[derive(Debug)]
 pub struct Collector<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -321,17 +321,14 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
-pub type Formatter<
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
+    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -450,7 +447,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
     fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
 {
@@ -545,7 +542,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
@@ -595,7 +592,7 @@ impl<N, E, F, W> Into<tracing_core::Dispatch> for CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
@@ -668,7 +665,7 @@ where
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
+    /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
@@ -703,7 +700,7 @@ where
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
@@ -717,7 +714,7 @@ where
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
@@ -755,7 +752,7 @@ where
 
     /// Sets the collector being built to use a JSON formatter.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
@@ -774,7 +771,7 @@ where
 impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
     /// Sets the json collector being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -788,7 +785,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -802,7 +799,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -1009,7 +1006,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
-        W: MakeWriter + 'static,
+        W: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1034,7 +1031,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
-        W2: MakeWriter + 'static,
+        W2: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1144,16 +1141,16 @@ mod test {
     };
     use std::{
         io,
-        sync::{Mutex, MutexGuard, TryLockError},
+        sync::{Arc, Mutex, MutexGuard, TryLockError},
     };
     use tracing_core::dispatch::Dispatch;
 
-    pub(crate) struct MockWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    pub(crate) struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
         }
 
@@ -1164,12 +1161,12 @@ mod test {
             }
         }
 
-        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'_, Vec<u8>>> {
             self.buf.try_lock().map_err(Self::map_error)
         }
     }
 
-    impl<'a> io::Write for MockWriter<'a> {
+    impl io::Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             self.buf()?.write(buf)
         }
@@ -1179,21 +1176,35 @@ mod test {
         }
     }
 
-    pub(crate) struct MockMakeWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    #[derive(Clone, Default)]
+    pub(crate) struct MockMakeWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockMakeWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockMakeWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
+        }
+
+        pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
+            self.buf.lock().unwrap()
+        }
+
+        pub(crate) fn get_string(&self) -> String {
+            let mut buf = self.buf.lock().expect("lock shouldn't be poisoned");
+            let string = std::str::from_utf8(&buf[..])
+                .expect("formatter should not have produced invalid utf-8")
+                .to_owned();
+            buf.clear();
+            string
         }
     }
 
-    impl<'a> MakeWriter for MockMakeWriter<'a> {
-        type Writer = MockWriter<'a>;
+    impl<'a> MakeWriter<'a> for MockMakeWriter {
+        type Writer = MockWriter;
 
-        fn make_writer(&self) -> Self::Writer {
-            MockWriter::new(self.buf)
+        fn make_writer(&'a self) -> Self::Writer {
+            MockWriter::new(self.buf.clone())
         }
     }
 

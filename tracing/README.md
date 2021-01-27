@@ -348,6 +348,9 @@ In particular, the following crates are likely to be of interest:
   dependencies which use `log`. Note that if you're using
   `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
   `tracing-log` directly.
+- [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
+  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
+  tracing systems for processing and visualization.
 
 Additionally, there are also several third-party crates which are not
 maintained by the `tokio` project. These include:
@@ -355,8 +358,6 @@ maintained by the `tokio` project. These include:
 - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
   It provides a subscriber that records the time elapsed between pairs of
   `tracing` events and generates histograms.
-- [`tracing-opentelemetry`] provides a subscriber for emitting traces to
-  [OpenTelemetry]-compatible distributed tracing systems.
 - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
 - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor

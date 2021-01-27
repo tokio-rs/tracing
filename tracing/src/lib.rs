@@ -55,11 +55,12 @@
 //! <div class="information">
 //!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
-//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
-//!     guard is held across an await point. See
-//!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
-//!     for details.
+//!
+//!  **Warning**: In asynchronous code that uses async/await syntax,
+//!  `Span::enter` may produce incorrect traces if the returned drop
+//!  guard is held across an await point. See
+//!  [the method documentation][Span#in-asynchronous-code] for details.
+//!
 //! </pre></div>
 //!
 //! ## Events
@@ -419,9 +420,9 @@
 //! [target]: Metadata::target()
 //! [parent span]: span::Attributes::parent()
 //! [determined contextually]: span::Attributes::is_contextual()
-//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
-//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
-//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//! [`fmt::Debug`]: std::fmt::Debug
+//! [`fmt::Display`]: std::fmt::Display
+//! [fmt]: std::fmt#usage
 //! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
@@ -716,7 +717,7 @@
 //! All other features of `tracing` should behave identically with and
 //! without `std` and `alloc`.
 //!
-//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`libstd`]: std
 //! [`Dispatch::new`]: crate::dispatch::Dispatch::new
 //! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
 //! [`Dispatch::set_default`]: crate::dispatch::set_default
@@ -776,6 +777,7 @@
 //!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
+//!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -801,6 +803,8 @@
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 //! [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 //! [Tracy]: https://github.com/wolfpld/tracy
+//! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+//! [Elastic APM]: https://www.elastic.co/apm
 //!
 //! <div class="information">
 //!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
@@ -873,7 +877,7 @@
 //! [instrument]: tracing_attributes::instrument
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing/0.1.21")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

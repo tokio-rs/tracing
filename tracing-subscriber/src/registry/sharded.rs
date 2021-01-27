@@ -28,7 +28,7 @@ cfg_feature!("registry", {
     /// instead, it collects and stores span data that is exposed to any `Subscriber`s
     /// wrapping it through implementations of the [`LookupSpan`] trait.
     /// The `Registry` is responsible for storing span metadata, recording
-    /// relationships between spans, and tracking which spans are active and whicb
+    /// relationships between spans, and tracking which spans are active and which
     /// are closed. In addition, it provides a mechanism for `Subscriber`s to store
     /// user-defined per-span data, called [extensions], in the registry. This
     /// allows `Subscriber`-specific data to benefit from the `Registry`'s
