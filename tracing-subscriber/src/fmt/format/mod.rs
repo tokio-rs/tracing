@@ -46,7 +46,7 @@ use fmt::{Debug, Display};
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
-/// # Example implementation
+/// # Examples
 ///
 /// ```rust
 /// use std::fmt::{self, Write};
@@ -101,7 +101,7 @@ use fmt::{Debug, Display};
 /// }
 /// ```
 ///
-/// That will result in events printed like so:
+/// This formatter will print events like this:
 ///
 /// ```text
 /// DEBUG yak_shaving::shaver: some-span{field-on-span=foo}: started shaving yak
