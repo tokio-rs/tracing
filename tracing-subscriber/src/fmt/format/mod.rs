@@ -84,7 +84,10 @@ use fmt::{Debug, Display};
 ///             let ext = span.extensions();
 ///
 ///             // `FormattedFields` is a a formatted representation of the span's
-///             // fields which are stored in its extensions
+///             // fields, which is stored in its extensions by the `fmt` layer's
+///             // `new_span` method. The fields will have been formatted
+///             // by the same field formatter that's provided to the event 
+///             // formatter in the `FmtContext`.
 ///             let fields = &ext
 ///                 .get::<FormattedFields<N>>()
 ///                 .expect("will never be `None`");
