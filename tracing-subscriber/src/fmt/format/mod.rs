@@ -82,9 +82,13 @@ use fmt::{Debug, Display};
 ///             write!(writer, "{}", span.name())?;
 ///
 ///             let ext = span.extensions();
+///
+///             // `FormattedFields` is a a formatted representation of the span's
+///             // fields which are stored in its extensions
 ///             let fields = &ext
 ///                 .get::<FormattedFields<N>>()
 ///                 .expect("will never be `None`");
+///
 ///             if !fields.is_empty() {
 ///                 write!(writer, "{{{}}}", fields)?;
 ///             }
