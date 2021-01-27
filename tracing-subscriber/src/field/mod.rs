@@ -1,7 +1,7 @@
 //! Utilities for working with [fields] and [field visitors].
 //!
-//! [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
-//! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
+//! [fields]: tracing_core::field
+//! [field visitors]: tracing_core::field::Visit
 use std::{fmt, io};
 pub use tracing_core::field::Visit;
 use tracing_core::{
@@ -22,7 +22,7 @@ pub mod display;
 /// data to, configuration variables that determine the visitor's behavior, or
 /// `()` when no input is required to produce a visitor.
 ///
-/// [visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
+/// [visitors]: tracing_core::field::Visit
 pub trait MakeVisitor<T> {
     /// The visitor type produced by this `MakeVisitor`.
     type Visitor: Visit;
@@ -33,7 +33,7 @@ pub trait MakeVisitor<T> {
 
 /// A [visitor] that produces output once it has visited a set of fields.
 ///
-/// [visitor]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
+/// [visitor]: tracing_core::field::Visit
 pub trait VisitOutput<Out>: Visit {
     /// Completes the visitor, returning any output.
     ///
@@ -82,10 +82,10 @@ pub trait VisitOutput<Out>: Visit {
 ///     r.record(&mut visitor);
 /// }
 /// ```
-/// [visitor]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
-/// [attr]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Attributes.html
-/// [rec]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Record.html
-/// [event]: https://docs.rs/tracing-core/latest/tracing_core/event/struct.Event.html
+/// [visitor]: tracing_core::field::Visit
+/// [attr]: tracing_core::span::Attributes
+/// [rec]: tracing_core::span::Record
+/// [event]: tracing_core::event::Event
 pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
     /// Record all the fields in `self` with the provided `visitor`.
     fn record(&self, visitor: &mut dyn Visit);
@@ -309,7 +309,7 @@ pub(in crate::field) mod test_util {
     };
 
     impl Callsite for TestCallsite1 {
-        fn set_interest(&self, _: tracing_core::subscriber::Interest) {
+        fn set_interest(&self, _: tracing_core::collect::Interest) {
             unimplemented!()
         }
 

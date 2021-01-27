@@ -1,3 +1,7 @@
+// liballoc is required because the test subscriber cannot be constructed
+// statically
+#![cfg(feature = "alloc")]
+
 mod support;
 
 use self::support::*;
@@ -8,12 +12,12 @@ use tracing::Level;
 fn max_level_hints() {
     // This test asserts that when a subscriber provides us with the global
     // maximum level that it will enable (by implementing the
-    // `Subscriber::max_level_hint` method), we will never call
-    // `Subscriber::enabled` for events above that maximum level.
+    // `Collector::max_level_hint` method), we will never call
+    // `Collector::enabled` for events above that maximum level.
     //
     // In this case, we test that by making the `enabled` method assert that no
     // `Metadata` for spans or events at the `TRACE` or `DEBUG` levels.
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .with_max_level_hint(Level::INFO)
         .with_filter(|meta| {
             assert!(
@@ -28,7 +32,7 @@ fn max_level_hints() {
         .done()
         .run_with_handle();
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::collect::set_global_default(collector).unwrap();
 
     tracing::info!("doing a thing that you might care about");
     tracing::debug!("charging turboencabulator with interocitor");

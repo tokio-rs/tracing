@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 pub(crate) use tracing_core::span::Id;
 
 #[derive(Debug)]
@@ -15,19 +13,18 @@ struct ContextId {
 #[derive(Debug, Default)]
 pub(crate) struct SpanStack {
     stack: Vec<ContextId>,
-    ids: HashSet<Id>,
 }
 
 impl SpanStack {
-    pub(crate) fn push(&mut self, id: Id) {
-        let duplicate = self.ids.contains(&id);
-        if !duplicate {
-            self.ids.insert(id.clone());
-        }
-        self.stack.push(ContextId { id, duplicate })
+    #[inline]
+    pub(crate) fn push(&mut self, id: Id) -> bool {
+        let duplicate = self.stack.iter().any(|i| i.id == id);
+        self.stack.push(ContextId { id, duplicate });
+        !duplicate
     }
 
-    pub(crate) fn pop(&mut self, expected_id: &Id) -> Option<Id> {
+    #[inline]
+    pub(crate) fn pop(&mut self, expected_id: &Id) -> bool {
         if let Some((idx, _)) = self
             .stack
             .iter()
@@ -35,14 +32,10 @@ impl SpanStack {
             .rev()
             .find(|(_, ctx_id)| ctx_id.id == *expected_id)
         {
-            let ContextId { id, duplicate } = self.stack.remove(idx);
-            if !duplicate {
-                self.ids.remove(&id);
-            }
-            Some(id)
-        } else {
-            None
+            let ContextId { id: _, duplicate } = self.stack.remove(idx);
+            return !duplicate;
         }
+        false
     }
 
     #[inline]
@@ -65,7 +58,7 @@ mod tests {
         let id = Id::from_u64(1);
         stack.push(id.clone());
 
-        assert_eq!(Some(id.clone()), stack.pop(&id));
+        assert!(stack.pop(&id));
     }
 
     #[test]
@@ -75,6 +68,6 @@ mod tests {
         stack.push(Id::from_u64(2));
 
         let id = Id::from_u64(1);
-        assert_eq!(Some(id.clone()), stack.pop(&id));
+        assert!(stack.pop(&id));
     }
 }

@@ -4,6 +4,10 @@
 // added all filters are re-evaluated. The tests being run only in separate
 // threads with shared global state lets them interfere with each other
 
+// liballoc is required because the test subscriber cannot be constructed
+// statically
+#![cfg(feature = "alloc")]
+
 #[cfg(not(feature = "std"))]
 extern crate std;
 
@@ -33,7 +37,7 @@ fn filter_caching_is_lexically_scoped() {
     let count = Arc::new(AtomicUsize::new(0));
     let count2 = count.clone();
 
-    let subscriber = subscriber::mock()
+    let subscriber = collector::mock()
         .with_filter(move |meta| match meta.name() {
             "emily" | "frank" => {
                 count2.fetch_add(1, Ordering::Relaxed);
@@ -45,7 +49,7 @@ fn filter_caching_is_lexically_scoped() {
 
     // Since this test is in its own file anyway, we can do this. Thus, this
     // test will work even with no-std.
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::collect::set_global_default(subscriber).unwrap();
 
     // Call the function once. The filter should be re-evaluated.
     assert!(my_great_function());

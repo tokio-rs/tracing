@@ -34,6 +34,11 @@ mod parking_lot_impl {
         }
 
         #[inline]
+        pub(crate) fn get_mut(&mut self) -> LockResult<&mut T> {
+            Ok(self.inner.get_mut())
+        }
+
+        #[inline]
         pub(crate) fn read<'a>(&'a self) -> LockResult<RwLockReadGuard<'a, T>> {
             Ok(self.inner.read())
         }

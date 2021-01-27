@@ -40,7 +40,7 @@ The crate provides:
 
 * [`Event`] represents a single event within a trace.
 
-* [`Subscriber`], the trait implemented to collect trace data.
+* [`Collect`], the trait implemented to collect trace data.
 
 * [`Metadata`] and [`Callsite`] provide information describing spans and
   events.
@@ -87,7 +87,7 @@ The following crate feature flags are available:
 [`tracing`]: ../tracing
 [`span::Id`]: https://docs.rs/tracing-core/0.1.17/tracing_core/span/struct.Id.html
 [`Event`]: https://docs.rs/tracing-core/0.1.17/tracing_core/event/struct.Event.html
-[`Subscriber`]: https://docs.rs/tracing-core/0.1.17/tracing_core/subscriber/trait.Subscriber.html
+[`Collect`]: https://docs.rs/tracing-core/0.1.17/tracing_core/collect/trait.Collect.html
 [`Metadata`]: https://docs.rs/tracing-core/0.1.17/tracing_core/metadata/struct.Metadata.html
 [`Callsite`]: https://docs.rs/tracing-core/0.1.17/tracing_core/callsite/trait.Callsite.html
 [`Field`]: https://docs.rs/tracing-core/0.1.17/tracing_core/field/struct.Field.html

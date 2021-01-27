@@ -1,10 +1,7 @@
 [build]
-  command = """
-  curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly --profile minimal \
-  && source $HOME/.cargo/env \
-  && RUSTDOCFLAGS=\"--cfg docsrs\" cargo +nightly doc --no-deps
-  """
-  publish = "target/doc"
+  command = "rustup install nightly --profile minimal && cargo doc --no-deps && cp -r target/doc _netlify_out"
+  environment = { RUSTDOCFLAGS= "--cfg docsrs" }
+  publish = "_netlify_out"
 
 [[redirects]]
   from = "/"

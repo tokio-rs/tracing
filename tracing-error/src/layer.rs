@@ -1,25 +1,25 @@
 use std::any::{type_name, TypeId};
 use std::fmt;
 use std::marker::PhantomData;
-use tracing::{span, Dispatch, Metadata, Subscriber};
+use tracing::{span, Collect, Dispatch, Metadata};
 use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
 use tracing_subscriber::{
     fmt::FormattedFields,
-    layer::{self, Layer},
     registry::LookupSpan,
+    subscribe::{self, Subscribe},
 };
 
-/// A subscriber [`Layer`] that enables capturing [`SpanTrace`]s.
+/// A [subscriber] that enables capturing [`SpanTrace`]s.
 ///
 /// Optionally, this type may be constructed with a [field formatter] to use
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [`Layer`]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/layer/trait.Layer.html
-/// [`SpanTrace`]: ../struct.SpanTrace.html
-/// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
-/// [default format]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/format/struct.DefaultFields.html
-pub struct ErrorLayer<S, F = DefaultFields> {
+/// [subscriber]: tracing_subscriber::subscribe::Subscribe
+/// [`SpanTrace`]: super::SpanTrace
+/// [field formatter]: tracing_subscriber::fmt::FormatFields
+/// [default format]: tracing_subscriber::fmt::format::DefaultFields
+pub struct ErrorSubscriber<S, F = DefaultFields> {
     format: F,
 
     get_context: WithContext,
@@ -33,14 +33,19 @@ pub(crate) struct WithContext(
     fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
 );
 
-impl<S, F> Layer<S> for ErrorLayer<S, F>
+impl<S, F> Subscribe<S> for ErrorSubscriber<S, F>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn new_span(
+        &self,
+        attrs: &span::Attributes<'_>,
+        id: &span::Id,
+        ctx: subscribe::Context<'_, S>,
+    ) {
         let span = ctx.span(id).expect("span must already exist!");
         if span.extensions().get::<FormattedFields<F>>().is_some() {
             return;
@@ -63,14 +68,14 @@ where
     }
 }
 
-impl<S, F> ErrorLayer<S, F>
+impl<S, F> ErrorSubscriber<S, F>
 where
     F: for<'writer> FormatFields<'writer> + 'static,
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
-    /// Returns a new `ErrorLayer` with the provided [field formatter].
+    /// Returns a new `ErrorSubscriber` with the provided [field formatter].
     ///
-    /// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
+    /// [field formatter]: tracing_subscriber::fmt::FormatFields
     pub fn new(format: F) -> Self {
         Self {
             format,
@@ -115,18 +120,18 @@ impl WithContext {
     }
 }
 
-impl<S> Default for ErrorLayer<S>
+impl<S> Default for ErrorSubscriber<S>
 where
-    S: Subscriber + for<'span> LookupSpan<'span>,
+    S: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         Self::new(DefaultFields::default())
     }
 }
 
-impl<S, F: fmt::Debug> fmt::Debug for ErrorLayer<S, F> {
+impl<S, F: fmt::Debug> fmt::Debug for ErrorSubscriber<S, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ErrorLayer")
+        f.debug_struct("ErrorSubscriber")
             .field("format", &self.format)
             .field("subscriber", &format_args!("{}", type_name::<S>()))
             .finish()

@@ -24,30 +24,9 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all --bins --examples --tests --benches
-
-  cache-cargo-hack:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Fetch latest release version of cargo-hack
-      run: |
-        mkdir -p .github/caching
-        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
-    - name: Cache cargo-hack/bin
-      id: cache-cargo-hack
-      uses: actions/cache@v1
-      with:
-        path: ${{ runner.tool_cache }}/cargo-hack/bin
-        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
-    - name: Install cargo-hack
-      if: "steps.cache-cargo-hack.outputs.cache-hit != 'true'"
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: --root ${{ runner.tool_cache }}/cargo-hack --force cargo-hack
+        args: --all --bins --tests --benches
 
   cargo-hack:
-    needs: cache-cargo-hack
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -73,19 +52,9 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
-    - name: Fetch latest release version of cargo-hack
+    - name: Install cargo-hack
       run: |
-        mkdir -p .github/caching
-        curl -sL https://api.github.com/repos/taiki-e/cargo-hack/releases/latest | jq -r '.name' > .github/caching/cargo-hack.lock
-    - name: Restore cargo-hack/bin
-      uses: actions/cache@v1
-      with:
-        path: ${{ runner.tool_cache }}/cargo-hack/bin
-        key: cargo-hack-bin-${{ hashFiles('.github/caching/cargo-hack.lock') }}
-    - run: echo "::add-path::${{ runner.tool_cache }}/cargo-hack/bin"
-    # if `cargo-hack` somehow doesn't exist after loading it from the cache,
-    # make *sure* it's there.
-    - run: cargo hack --help || { cargo install --force cargo-hack; }
+        curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --feature-powerset --no-dev-deps
@@ -145,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.42.0]
+        rust: [stable, beta, nightly]
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
@@ -158,6 +127,32 @@ jobs:
       with:
         command: test
         args: --all
+
+  test-msrv:
+    # Test against the minimum supported Rust version
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.42.0
+        profile: minimal
+        override: true
+    # We can't use `cargo test --all`, as that will also compile the examples.
+    # We don't guarantee the examples will work on the MSRV, because they have
+    # external dependencies which may not comply with our MSRV policy, but don't
+    # actually impact users on our MSRV.
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --lib --tests
+    - name: Run doctests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --workspace --doc
 
   test-build-wasm:
     needs: check
@@ -282,26 +277,3 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --bins --examples --tests --benches -- -D warnings
-
-  cargo-audit:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@main
-    - name: Fetch latest release version of cargo-audit
-      run: |
-        mkdir -p .github/caching
-        cargo search cargo-audit | grep '^cargo-audit' | awk '{gsub(/"/,"",$3); print $3}' > .github/caching/cargo-audit.lock
-    - name: Cache cargo-audit/bin
-      id: cache-cargo-audit
-      uses: actions/cache@v1
-      with:
-        path: ${{ runner.tool_cache }}/cargo-audit/bin
-        key: cargo-audit-bin-${{ hashFiles('.github/caching/cargo-audit.lock') }}
-    - name: Install cargo-audit
-      if: "steps.cache-cargo-audit.outputs.cache-hit != 'true'"
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: --root ${{ runner.tool_cache }}/cargo-audit --force cargo-audit
-    - run: echo "::add-path::${{ runner.tool_cache }}/cargo-audit/bin"
-    - run: cargo audit

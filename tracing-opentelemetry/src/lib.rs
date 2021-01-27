@@ -43,29 +43,31 @@
 //! ### Stability Status
 //!
 //! The OpenTelemetry specification is currently in beta so some breaking
-//! may still occur on the path to 1.0. You can follow the changes via the
-//! [spec repository] to track progress toward stabilization.
+//! changes may still occur on the path to 1.0. You can follow the changes via
+//! the [spec repository] to track progress toward stabilization.
 //!
 //! [spec repository]: https://github.com/open-telemetry/opentelemetry-specification
 //!
 //! ## Examples
 //!
 //! ```
-//! use opentelemetry::{api::Provider, sdk};
+//! use opentelemetry::sdk::export::trace::stdout;
 //! use tracing::{error, span};
-//! use tracing_subscriber::layer::SubscriberExt;
+//! use tracing_subscriber::subscribe::CollectExt;
 //! use tracing_subscriber::Registry;
 //!
-//! // Create a new tracer
-//! let tracer = sdk::Provider::default().get_tracer("service_name");
+//! // Create a new OpenTelemetry pipeline
+//! let (tracer, _uninstall) = stdout::new_pipeline().install();
 //!
-//! // Create a new OpenTelemetry tracing layer
+//! // Create a tracing layer with the configured tracer
 //! let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 //!
+//! // Use the tracing subscriber `Registry`, or any other subscriber
+//! // that impls `LookupSpan`
 //! let subscriber = Registry::default().with(telemetry);
 //!
 //! // Trace executed code
-//! tracing::subscriber::with_default(subscriber, || {
+//! tracing::collect::with_default(subscriber, || {
 //!     // Spans will be sent to the configured OpenTelemetry exporter
 //!     let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
 //!     let _enter = root.enter();
@@ -90,14 +92,14 @@
 //!
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.7.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.11.0")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 
-/// Implementation of the trace::Layer as a source of OpenTelemetry data.
+/// Implementation of the trace::Subscriber as a source of OpenTelemetry data.
 mod layer;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;
