@@ -51,7 +51,7 @@
 //! ## Examples
 //!
 //! ```
-//! use opentelemetry::exporter::trace::stdout;
+//! use opentelemetry::sdk::export::trace::stdout;
 //! use tracing::{error, span};
 //! use tracing_subscriber::subscribe::CollectExt;
 //! use tracing_subscriber::Registry;
@@ -92,7 +92,7 @@
 //!
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.9.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.11.0")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
