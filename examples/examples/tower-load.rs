@@ -308,14 +308,16 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         .layer(request_span::layer(req_span))
         .timeout(Duration::from_millis(200))
         .service(Client::new());
-    let mut interval = time::interval(Duration::from_millis(50));
+    let interval = tokio::time::interval(Duration::from_millis(50));
+    let mut interval = tokio_stream::wrappers::IntervalStream::new(interval);
+
     while interval.next().await.is_some() {
         let authority = format!("{}", addr);
         let mut svc = svc.clone().ready_oneshot().await?;
 
         let f = async move {
             let sleep = rand::thread_rng().gen_range(0, 25);
-            time::delay_for(Duration::from_millis(sleep)).await;
+            time::sleep(Duration::from_millis(sleep)).await;
 
             let (len, uri) = gen_uri(&authority);
             let req = Request::get(&uri[..])
