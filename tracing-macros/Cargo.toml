@@ -17,10 +17,10 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 
 [dependencies]
-tracing = "0.1.20"
+tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-tracing-subscriber = "0.2"
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
 
 [badges]
 maintenance = { status = "experimental" }
