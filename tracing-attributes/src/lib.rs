@@ -105,7 +105,7 @@ use syn::{
 /// will be [`INFO`], although these properties can be overridden. Any arguments
 /// to that function will be recorded as fields using [`fmt::Debug`].
 ///
-/// ## Overriding Span Attributes
+/// # Overriding Span Attributes
 ///
 /// To change the [name] of the generated span, add a `name` argument to the
 /// `#[instrument]` macro, followed by an equals sign and a string literal. For
@@ -152,16 +152,51 @@ use syn::{
 /// }
 /// ```
 ///
-/// ## Customizing Fields
+/// # Skipping Fields
 ///
 /// To skip recording one or more arguments to a function or method, pass
 /// the argument's name inside the `skip()` argument on the `#[instrument]`
-/// macro. For example, `skip` can be used when an argument to an instrumented
-/// function does not implement [`fmt::Debug`], or to exclude an argument with a
-/// verbose or costly `Debug` implementation. Note that:
+/// macro. This can be used when an argument to an instrumented function does
+/// not implement [`fmt::Debug`], or to exclude an argument with a verbose or
+/// costly `Debug` implementation. Note that:
 ///
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
+///
+/// ## Examples
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// // This type doesn't implement `fmt::Debug`!
+/// struct NonDebug;
+///
+/// // `arg` will be recorded, while `non_debug` will not.
+/// #[instrument(skip(non_debug))]
+/// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+/// ```
+///
+/// Skipping the `self` parameter:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[derive(Debug)]
+/// struct MyType {
+///    data: [u8; 4096]
+/// }
+///
+/// impl MyType {
+///     // Suppose we don't want to print an entire kilobyte of `data`
+///     // every time this is called...
+///     #[instrument(skip(self))]
+///     pub fn my_method(&mut self, an_interesting_argument: usize) {
+///          // ... do something (hopefully, using all that `data`!)
+///     }
+/// }
+/// ```
+///
+/// # Adding Fields
 ///
 /// Additional fields (key-value pairs with arbitrary data) may be added to the
 /// generated span using the `fields` argument on the `#[instrument]` macro. Any
@@ -173,6 +208,88 @@ use syn::{
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
 /// will result in a compile error.
+///
+/// ## Examples
+///
+/// Adding a new field based on the value of an argument:
+///
+/// ```
+/// # use tracing::instrument;
+///
+/// // This will record a field named "i" with the value of `i` *and* a field
+/// // named "next" with the value of `i` + 1.
+/// #[instrument(fields(next = i + 1))]
+/// pub fn my_function(i: usize) {
+///     // ...
+/// }
+/// ```
+///
+/// Recording specific properties of a struct as their own fields:
+///
+/// ```
+/// # mod http {
+/// #   pub struct Error;
+/// #   pub struct Response<B> { _b: std::marker::PhantomData<B> }
+/// #   pub struct Request<B> { _b: B }
+/// #   impl Request<B> {
+/// #       pub fn uri(&self) -> &str { "fake" }
+/// #       pub fn method(&self) -> &str { "GET" }
+/// #   }
+/// # }
+///
+/// // This will record the request's URI and HTTP method as their own separate
+/// // fields.
+/// #[instrument(fields(http.uri = req.uri(), http.method = req.method()))]
+/// pub fn handle_request<B>(req: http::Request<B>) -> http::Response<B> {
+///     // ... handle the request ...
+///     # http::Response { _b: std::marker::PhantomData }
+/// }
+/// ```
+///
+/// This can be used in conjunction with `skip` to record only some fields of a
+/// struct:
+/// ```
+/// # use tracing_attributes::instrument;
+/// // Remember the struct with the very large `data` field from the earlier
+/// // example? Now it also has a `name`, which we might want to include in
+/// // our span.
+/// #[derive(Debug)]
+/// struct MyType {
+///    name: &'static str,
+///    data: [u8; 4096]
+/// }
+///
+/// impl MyType {
+///     // This will skip the `data` field, but will include `self.name`,
+///     // formatted using `fmt::Display`.
+///     #[instrument(skip(self), fields(self.name = %self.name))]
+///     pub fn my_method(&mut self, an_interesting_argument: usize) {
+///          // ... do something (hopefully, using all that `data`!)
+///     }
+/// }
+/// ```
+///
+/// Adding an empty field to be recorded later:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+///
+/// // This function does a very interesting and important mathematical calculation.
+/// // Suppose we want to record both the inputs to the calculation *and* its result...
+/// #[instrument(fields(result))]
+/// pub fn do_calculation(input_1: usize, input_2: usize) -> usize {
+///     // Rerform the calculation.
+///     let result = input_1 + input_2;
+///
+///     // Record the result as part of the current span.
+///     tracing::Span::current().record("result", &result);
+///
+///     // Now, the result will also be included on this event!
+///     tracing::info!("calculation complete!");
+///     
+///     // ... etc ...
+/// }
+/// ```
 ///
 /// # Examples
 ///
