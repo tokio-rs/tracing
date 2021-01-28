@@ -309,9 +309,9 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         .timeout(Duration::from_millis(200))
         .service(Client::new());
     let interval = tokio::time::interval(Duration::from_millis(50));
-    let mut interval = tokio_stream::wrappers::IntervalStream::new(interval);
 
-    while interval.next().await.is_some() {
+    loop {
+        interval.tick().await;
         let authority = format!("{}", addr);
         let mut svc = svc.clone().ready_oneshot().await?;
 
