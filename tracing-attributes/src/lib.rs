@@ -100,22 +100,22 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
-/// Unless overriden, a span with `info` level will be generated.
-/// The generated span's name will be the name of the function. Any arguments
-/// to that function will be recorded as fields using [`fmt::Debug`]. To skip
-/// recording a function's or method's argument, pass the argument's name
-/// to the `skip` argument on the `#[instrument]` macro. For example,
-/// `skip` can be used when an argument to an instrumented function does
-/// not implement [`fmt::Debug`], or to exclude an argument with a verbose
+/// By default, the generated span's name will be the name of the function, and
+/// the span's level will be [`INFO`], although these properties can be
+/// overridden. Any arguments to that function will be recorded as fields using
+/// [`fmt::Debug`]. To skip recording a function's or method's argument, pass
+/// the argument's name to the `skip` argument on the `#[instrument]` macro. For
+/// example, `skip` can be used when an argument to an instrumented function
+/// does not implement [`fmt::Debug`], or to exclude an argument with a verbose
 /// or costly Debug implementation. Note that:
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
-/// You can also pass additional fields (key-value pairs with arbitrary data)
-/// to the generated span. This is achieved using the `fields` argument on the
-/// `#[instrument]` macro. You can use a string, integer or boolean literal as
-/// a value for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported.
+/// Additional fields (key-value pairs with arbitrary data) may be added to the
+/// generated span using the `fields` argument on the `#[instrument]` macro. Any
+/// Rust expression can be used as a field value in this manner. These
+/// expressions will be evaluated at the beginning of the function's body, sso
+/// arguments to the function may be used in these expressions.
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
 /// will result in a compile error.
@@ -251,6 +251,7 @@ use syn::{
 /// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`.
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [`INFO`]: https://docs.rs/tracing/latest/tracing//struct.Level.html#associatedconstant.INFO
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
