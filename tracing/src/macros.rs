@@ -45,7 +45,7 @@ macro_rules! span {
                 )
             } else {
                 let span = CALLSITE.disabled_span();
-                $crate::if_log_enabled! {{
+                $crate::if_log_enabled! { $lvl, {
                     span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
                 }};
                 span
@@ -75,7 +75,7 @@ macro_rules! span {
                 )
             } else {
                 let span = CALLSITE.disabled_span();
-                $crate::if_log_enabled! {{
+                $crate::if_log_enabled! { $lvl, {
                     span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
                 }};
                 span
@@ -2295,10 +2295,10 @@ macro_rules! __mk_format_args {
 #[macro_export]
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $($field:tt)+ ) => {
-        $crate::if_log_enabled! {{
+        $crate::if_log_enabled! { $level, {
             use $crate::log;
             let level = $crate::level_to_log!($level);
-            if level <= log::STATIC_MAX_LEVEL && level <= log::max_level() {
+            if level <= log::max_level() {
                 let log_meta = log::Metadata::builder()
                     .level(level)
                     .target($target)
@@ -2322,13 +2322,13 @@ macro_rules! __tracing_log {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {
-    ($e:expr;) => {
-        $crate::if_log_enabled! { $e }
+    ($lvl:expr, $e:expr;) => {
+        $crate::if_log_enabled! { $lvl, $e }
     };
-    ($if_log:block) => {
-        $crate::if_log_enabled! { $if_log else {} }
+    ($lvl:expr, $if_log:block) => {
+        $crate::if_log_enabled! { $lvl, $if_log else {} }
     };
-    ($if_log:block else $else_block:block) => {
+    ($lvl:expr, $if_log:block else $else_block:block) => {
         $else_block
     };
 }
@@ -2337,15 +2337,19 @@ macro_rules! if_log_enabled {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {
-    ($e:expr;) => {
-        $crate::if_log_enabled! { $e }
+    ($lvl:expr, $e:expr;) => {
+        $crate::if_log_enabled! { $lvl, $e }
     };
-    ($if_log:block) => {
-        $crate::if_log_enabled! { $if_log else {} }
+    ($lvl:expr, $if_log:block) => {
+        $crate::if_log_enabled! { $lvl, $if_log else {} }
     };
-    ($if_log:block else $else_block:block) => {
-        if !$crate::dispatcher::has_been_set() {
-            $if_log
+    ($lvl:expr, $if_log:block else $else_block:block) => {
+        if $crate::level_to_log!($lvl) <= $crate::log::STATIC_MAX_LEVEL {
+            if !$crate::dispatcher::has_been_set() {
+                $if_log
+            } else {
+                $else_block
+            }
         } else {
             $else_block
         }
@@ -2356,14 +2360,18 @@ macro_rules! if_log_enabled {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! if_log_enabled {
-    ($e:expr;) => {
-        $crate::if_log_enabled! { $e }
+    ($lvl:expr, $e:expr;) => {
+        $crate::if_log_enabled! { $lvl, $e }
     };
-    ($if_log:block) => {
-        $crate::if_log_enabled! { $if_log else {} }
+    ($lvl:expr, $if_log:block) => {
+        $crate::if_log_enabled! { $lvl, $if_log else {} }
     };
-    ($if_log:block else $else_block:block) => {
-        #[allow(unused_braces)]
-        $if_log
+    ($lvl:expr, $if_log:block else $else_block:block) => {
+        if $crate::level_to_log!($lvl) <= $crate::log::STATIC_MAX_LEVEL {
+            #[allow(unused_braces)]
+            $if_log
+        } else {
+            $else_block
+        }
     };
 }
