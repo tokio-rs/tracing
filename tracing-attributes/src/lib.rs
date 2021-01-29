@@ -128,7 +128,7 @@ use syn::{
 ///
 /// ```
 /// pub mod my_module {
-///     # use tracing_attributes::Instrument;
+///     # use tracing_attributes::instrument;
 ///     // The generated span's target will be "my_crate::some_special_target",
 ///     // rather than "my_crate::my_module".
 ///     #[instrument(target = "my_crate::some_special_target")]
@@ -214,7 +214,7 @@ use syn::{
 /// Adding a new field based on the value of an argument:
 ///
 /// ```
-/// # use tracing::instrument;
+/// # use tracing_attributes::instrument;
 ///
 /// // This will record a field named "i" with the value of `i` *and* a field
 /// // named "next" with the value of `i` + 1.
@@ -229,13 +229,19 @@ use syn::{
 /// ```
 /// # mod http {
 /// #   pub struct Error;
-/// #   pub struct Response<B> { _b: std::marker::PhantomData<B> }
+/// #   pub struct Response<B> { pub(super) _b: std::marker::PhantomData<B> }
 /// #   pub struct Request<B> { _b: B }
-/// #   impl Request<B> {
+/// #   impl<B> std::fmt::Debug for Request<B> {
+/// #       fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+/// #           f.pad("request")
+/// #       }
+/// #   }
+/// #   impl<B> Request<B> {
 /// #       pub fn uri(&self) -> &str { "fake" }
 /// #       pub fn method(&self) -> &str { "GET" }
 /// #   }
 /// # }
+/// # use tracing_attributes::instrument;
 ///
 /// // This will record the request's URI and HTTP method as their own separate
 /// // fields.
@@ -286,8 +292,9 @@ use syn::{
 ///
 ///     // Now, the result will also be included on this event!
 ///     tracing::info!("calculation complete!");
-///     
+///
 ///     // ... etc ...
+///     # 0
 /// }
 /// ```
 ///
