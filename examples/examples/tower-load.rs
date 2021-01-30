@@ -26,7 +26,6 @@
 use bytes::Bytes;
 use futures::{
     future::{self, Ready},
-    stream::StreamExt,
     Future,
 };
 use http::{header, Method, Request, Response, StatusCode};
@@ -308,7 +307,7 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         .layer(request_span::layer(req_span))
         .timeout(Duration::from_millis(200))
         .service(Client::new());
-    let interval = tokio::time::interval(Duration::from_millis(50));
+    let mut interval = tokio::time::interval(Duration::from_millis(50));
 
     loop {
         interval.tick().await;
@@ -363,8 +362,6 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         .instrument(span!(target: "gen", Level::INFO, "generated_request", remote.addr=%addr));
         tokio::spawn(f);
     }
-
-    Ok(())
 }
 
 fn req_span<A>(req: &Request<A>) -> Span {
