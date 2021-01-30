@@ -585,6 +585,7 @@ impl Timings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use opentelemetry::trace::SpanKind;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
@@ -656,7 +657,7 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = "Server");
+            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
@@ -678,7 +679,7 @@ mod tests {
         let _g = existing_cx.attach();
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = "Server");
+            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
         let recorded_trace_id = tracer
