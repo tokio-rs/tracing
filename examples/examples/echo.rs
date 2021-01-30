@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
-    let mut listener = TcpListener::bind(&addr).await?;
+    let listener = TcpListener::bind(&addr).await?;
     // Use `fmt::Debug` impl for `addr` using the `%` symbol
     info!(message = "Listening on", %addr);
 
