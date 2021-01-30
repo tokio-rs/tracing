@@ -116,7 +116,7 @@ async fn main() -> Result<(), Error> {
     let server_addr = matches.value_of("server_addr").unwrap_or("127.0.0.1:3000");
     let server_addr = server_addr.parse::<SocketAddr>()?;
 
-    let mut listener = TcpListener::bind(&listen_addr).await?;
+    let listener = TcpListener::bind(&listen_addr).await?;
 
     info!("Listening on: {}", listen_addr);
     info!("Proxying to: {}", server_addr);
