@@ -21,7 +21,7 @@ edition = "2018"
 
 [dependencies]
 crossbeam-channel = "0.5.0"
-chrono = "0.4.11"
+chrono = { version = "0.4.16", default-features = false, features = ["clock", "std"] }
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"

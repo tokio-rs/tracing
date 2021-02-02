@@ -28,19 +28,17 @@ tracing-journald = { path = "../tracing-journald" }
 serde_json = "1.0"
 
 futures = "0.3"
-tokio = { version = "0.2.12", features = ["full"] }
+tokio = { version = "1.1", features = ["full"] }
 
 # env-logger example
 env_logger = "0.8"
 
 # tower examples
-tower = "0.3"
-tower-util = "0.3.1"
-tower-make = "0.3"
+tower = { version = "0.4.4", features = ["full"] }
 http = "0.2"
-hyper = "0.13.2"
+hyper = { version = "0.14", features = ["full"] }
 rand = "0.7"
-bytes = "0.5"
+bytes = "1"
 clap = "2.33"
 
 # sloggish example
@@ -53,5 +51,5 @@ inferno = "0.10.0"
 tempdir = "0.3.7"
 
 # opentelemetry example
-opentelemetry = { version = "0.11", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.10"
+opentelemetry = { version = "0.12", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.11"
