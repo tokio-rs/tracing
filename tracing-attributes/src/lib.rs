@@ -100,28 +100,208 @@ use syn::{
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
-/// Unless overriden, a span with `info` level will be generated.
-/// The generated span's name will be the name of the function. Any arguments
-/// to that function will be recorded as fields using [`fmt::Debug`]. To skip
-/// recording a function's or method's argument, pass the argument's name
-/// to the `skip` argument on the `#[instrument]` macro. For example,
-/// `skip` can be used when an argument to an instrumented function does
-/// not implement [`fmt::Debug`], or to exclude an argument with a verbose
-/// or costly Debug implementation. Note that:
+/// By default, the generated span's [name] will be the name of the function,
+/// the span's [target] will be the current module path, and the span's [level]
+/// will be [`INFO`], although these properties can be overridden. Any arguments
+/// to that function will be recorded as fields using [`fmt::Debug`].
+///
+/// # Overriding Span Attributes
+///
+/// To change the [name] of the generated span, add a `name` argument to the
+/// `#[instrument]` macro, followed by an equals sign and a string literal. For
+/// example:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+///
+/// // The generated span's name will be "my_span" rather than "my_function".
+/// #[instrument(name = "my_span")]
+/// pub fn my_function() {
+///     // ... do something incredibly interesting and important ...
+/// }
+/// ```
+///
+/// To override the [target] of the generated span, add a `target` argument to
+/// the `#[instrument]` macro, followed by an equals sign and a string literal
+/// for the new target. The [module path] is still recorded separately. For
+/// example:
+///
+/// ```
+/// pub mod my_module {
+///     # use tracing_attributes::instrument;
+///     // The generated span's target will be "my_crate::some_special_target",
+///     // rather than "my_crate::my_module".
+///     #[instrument(target = "my_crate::some_special_target")]
+///     pub fn my_function() {
+///         // ... all kinds of neat code in here ...
+///     }
+/// }
+/// ```
+///
+/// Finally, to override the [level] of the generated span, add a `level`
+/// argument, followed by an equals sign and a string literal with the name of
+/// the desired level. Level names are not case sensitive. For example:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// // The span's level will be TRACE rather than INFO.
+/// #[instrument(level = "trace")]
+/// pub fn my_function() {
+///     // ... I have written a truly marvelous implementation of this function,
+///     // which this example is too narrow to contain ...
+/// }
+/// ```
+///
+/// # Skipping Fields
+///
+/// To skip recording one or more arguments to a function or method, pass
+/// the argument's name inside the `skip()` argument on the `#[instrument]`
+/// macro. This can be used when an argument to an instrumented function does
+/// not implement [`fmt::Debug`], or to exclude an argument with a verbose or
+/// costly `Debug` implementation. Note that:
+///
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
-/// You can also pass additional fields (key-value pairs with arbitrary data)
-/// to the generated span. This is achieved using the `fields` argument on the
-/// `#[instrument]` macro. You can use a string, integer or boolean literal as
-/// a value for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported.
+/// ## Examples
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// // This type doesn't implement `fmt::Debug`!
+/// struct NonDebug;
+///
+/// // `arg` will be recorded, while `non_debug` will not.
+/// #[instrument(skip(non_debug))]
+/// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+/// ```
+///
+/// Skipping the `self` parameter:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[derive(Debug)]
+/// struct MyType {
+///    data: Vec<u8>, // Suppose this buffer is often quite long...
+/// }
+///
+/// impl MyType {
+///     // Suppose we don't want to print an entire kilobyte of `data`
+///     // every time this is called...
+///     #[instrument(skip(self))]
+///     pub fn my_method(&mut self, an_interesting_argument: usize) {
+///          // ... do something (hopefully, using all that `data`!)
+///     }
+/// }
+/// ```
+///
+/// # Adding Fields
+///
+/// Additional fields (key-value pairs with arbitrary data) may be added to the
+/// generated span using the `fields` argument on the `#[instrument]` macro. Any
+/// Rust expression can be used as a field value in this manner. These
+/// expressions will be evaluated at the beginning of the function's body, sso
+/// arguments to the function may be used in these expressions. Field names may
+/// also be specified *without* values. Doing so will result in an [empty field]
+/// whose value may be recorded later within the function body.
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
 /// will result in a compile error.
 ///
+/// ## Examples
+///
+/// Adding a new field based on the value of an argument:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+///
+/// // This will record a field named "i" with the value of `i` *and* a field
+/// // named "next" with the value of `i` + 1.
+/// #[instrument(fields(next = i + 1))]
+/// pub fn my_function(i: usize) {
+///     // ...
+/// }
+/// ```
+///
+/// Recording specific properties of a struct as their own fields:
+///
+/// ```
+/// # mod http {
+/// #   pub struct Error;
+/// #   pub struct Response<B> { pub(super) _b: std::marker::PhantomData<B> }
+/// #   pub struct Request<B> { _b: B }
+/// #   impl<B> std::fmt::Debug for Request<B> {
+/// #       fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+/// #           f.pad("request")
+/// #       }
+/// #   }
+/// #   impl<B> Request<B> {
+/// #       pub fn uri(&self) -> &str { "fake" }
+/// #       pub fn method(&self) -> &str { "GET" }
+/// #   }
+/// # }
+/// # use tracing_attributes::instrument;
+///
+/// // This will record the request's URI and HTTP method as their own separate
+/// // fields.
+/// #[instrument(fields(http.uri = req.uri(), http.method = req.method()))]
+/// pub fn handle_request<B>(req: http::Request<B>) -> http::Response<B> {
+///     // ... handle the request ...
+///     # http::Response { _b: std::marker::PhantomData }
+/// }
+/// ```
+///
+/// This can be used in conjunction with `skip` to record only some fields of a
+/// struct:
+/// ```
+/// # use tracing_attributes::instrument;
+/// // Remember the struct with the very large `data` field from the earlier
+/// // example? Now it also has a `name`, which we might want to include in
+/// // our span.
+/// #[derive(Debug)]
+/// struct MyType {
+///    name: &'static str,
+///    data: Vec<u8>,
+/// }
+///
+/// impl MyType {
+///     // This will skip the `data` field, but will include `self.name`,
+///     // formatted using `fmt::Display`.
+///     #[instrument(skip(self), fields(self.name = %self.name))]
+///     pub fn my_method(&mut self, an_interesting_argument: usize) {
+///          // ... do something (hopefully, using all that `data`!)
+///     }
+/// }
+/// ```
+///
+/// Adding an empty field to be recorded later:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+///
+/// // This function does a very interesting and important mathematical calculation.
+/// // Suppose we want to record both the inputs to the calculation *and* its result...
+/// #[instrument(fields(result))]
+/// pub fn do_calculation(input_1: usize, input_2: usize) -> usize {
+///     // Rerform the calculation.
+///     let result = input_1 + input_2;
+///
+///     // Record the result as part of the current span.
+///     tracing::Span::current().record("result", &result);
+///
+///     // Now, the result will also be included on this event!
+///     tracing::info!("calculation complete!");
+///
+///     // ... etc ...
+///     # 0
+/// }
+/// ```
+///
 /// # Examples
+///
 /// Instrumenting a function:
+///
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument]
@@ -169,7 +349,7 @@ use syn::{
 /// }
 /// ```
 ///
-/// To add an additional context to the span, you can pass key-value pairs to `fields`:
+/// To add an additional context to the span, pass key-value pairs to `fields`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
@@ -251,7 +431,12 @@ use syn::{
 /// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`.
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-/// [`tracing`]: https://github.com/tokio-rs/tracing
+/// [name]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html#method.name
+/// [target]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html#method.target
+/// [level]: https://docs.rs/tracing/latest/tracing/struct.Level.html
+/// [module path]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html#method.module_path
+/// [`INFO`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.INFO
+/// [empty field]: https://docs.rs/tracing/latest/tracing/field/struct.Empty.html
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
 pub fn instrument(
