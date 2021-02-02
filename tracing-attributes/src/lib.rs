@@ -183,7 +183,7 @@ use syn::{
 /// # use tracing_attributes::instrument;
 /// #[derive(Debug)]
 /// struct MyType {
-///    data: [u8; 4096]
+///    data: Vec<u8>, // Suppose this buffer is often quite long...
 /// }
 ///
 /// impl MyType {
@@ -262,7 +262,7 @@ use syn::{
 /// #[derive(Debug)]
 /// struct MyType {
 ///    name: &'static str,
-///    data: [u8; 4096]
+///    data: Vec<u8>,
 /// }
 ///
 /// impl MyType {
