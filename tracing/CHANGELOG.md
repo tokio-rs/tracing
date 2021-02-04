@@ -1,3 +1,40 @@
+# 0.1.23 (February 4, 2021)
+
+### Fixed
+
+- **attributes**: Compiler error when using `#[instrument(err)]` on functions
+  with mutable parameters ([#1167])
+- **attributes**: Missing function visibility modifier when using
+  `#[instrument]` with `async-trait` ([#977])
+- **attributes** Removed unused `syn` features ([#928])
+- **log**: Fixed an issue where the `tracing` macros would generate code for
+  events whose levels are disabled statically by the `log` crate's
+  `static_max_level_XXX` features ([#1175])
+- Fixed deprecations and clippy lints ([#1195])
+- Several documentation fixes and improvements ([#941], [#965], [#981], [#1146],
+  [#1215])
+  
+### Changed
+
+- **attributes**: `tracing-futures` dependency is no longer required when using
+  `#[instrument]` on async functions ([#808])
+- **attributes**: Updated `tracing-attributes` minimum dependency to v0.1.12
+  ([#1222])
+
+Thanks to @nagisa, @Txuritan, @TaKO8Ki, @okready, and @krojew for contributing
+to this release!
+
+[#1167]: https://github.com/tokio-rs/tracing/pull/1167
+[#977]: https://github.com/tokio-rs/tracing/pull/977
+[#965]: https://github.com/tokio-rs/tracing/pull/965
+[#981]: https://github.com/tokio-rs/tracing/pull/981
+[#1215]: https://github.com/tokio-rs/tracing/pull/1215
+[#808]: https://github.com/tokio-rs/tracing/pull/808
+[#941]: https://github.com/tokio-rs/tracing/pull/941
+[#1146]: https://github.com/tokio-rs/tracing/pull/1146
+[#1175]: : https://github.com/tokio-rs/tracing/pull/1175
+[#1195]: https://github.com/tokio-rs/tracing/pull/1195
+[#1222]: https://github.com/tokio-rs/tracing/pull/1222
 # 0.1.22 (November 23, 2020)
 
 ### Changed
