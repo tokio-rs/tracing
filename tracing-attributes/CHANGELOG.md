@@ -1,3 +1,28 @@
+# 0.1.12 (February 4, 2021)
+
+### Fixed
+
+- Compiler error when using `#[instrument(err)]` on functions with mutable
+  parameters ([#1167])
+- Missing function visibility modifier when using `#[instrument]` with
+  `async-trait` ([#977])
+- Multiple documentation fixes and improvements ([#965], [#981], [#1215])
+
+### Changed
+
+- `tracing-futures` dependency is no longer required when using `#[instrument]`
+  on async functions ([#808])
+
+Thanks to @nagisa, @Txuritan, @TaKO8Ki, and @okready for contributing to this
+release!
+
+[#1167]: https://github.com/tokio-rs/tracing/pull/1167
+[#977]: https://github.com/tokio-rs/tracing/pull/977
+[#965]: https://github.com/tokio-rs/tracing/pull/965
+[#981]: https://github.com/tokio-rs/tracing/pull/981
+[#1215]: https://github.com/tokio-rs/tracing/pull/1215
+[#808]: https://github.com/tokio-rs/tracing/pull/808
+
 # 0.1.11 (August 18, 2020)
 
 ### Fixed
@@ -5,7 +30,7 @@
 - Corrected wrong minimum supported Rust version note in docs (#941)
 - Removed unused `syn` features (#928)
 
-Thanks to new contributor @jhpratt for contributing to this release!`
+Thanks to new contributor @jhpratt for contributing to this release!
 
 # 0.1.10 (August 10, 2020)
 
