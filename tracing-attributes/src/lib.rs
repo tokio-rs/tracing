@@ -631,6 +631,7 @@ fn gen_body(
                 let __tracing_attr_span = #span;
                 tracing::Instrument::instrument(async move {
                     match async move { #block }.await {
+                        #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
                             tracing::error!(error = %e);
@@ -653,7 +654,8 @@ fn gen_body(
         quote_spanned!(block.span()=>
             let __tracing_attr_span = #span;
             let __tracing_attr_guard = __tracing_attr_span.enter();
-            match { #block } {
+            match move || #return_type #block () {
+                #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
                     tracing::error!(error = %e);
