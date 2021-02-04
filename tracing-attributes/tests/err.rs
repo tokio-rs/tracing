@@ -83,3 +83,57 @@ fn test_async() {
     });
     handle.assert_finished();
 }
+
+#[instrument(err)]
+fn err_mut(out: &mut u8) -> Result<(), TryFromIntError> {
+    *out = u8::try_from(1234)?;
+    Ok(())
+}
+
+#[test]
+fn test_mut() {
+    let span = span::mock().named("err_mut");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(event::mock().at_level(Level::ERROR))
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(collector, || err_mut(&mut 0).ok());
+    handle.assert_finished();
+}
+
+#[instrument(err)]
+async fn err_mut_async(polls: usize, out: &mut u8) -> Result<(), TryFromIntError> {
+    let future = PollN::new_ok(polls);
+    tracing::trace!(awaiting = true);
+    future.await.ok();
+    *out = u8::try_from(1234)?;
+    Ok(())
+}
+
+#[test]
+fn test_mut_async() {
+    let span = span::mock().named("err_mut_async");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            event::mock()
+                .with_fields(field::mock("awaiting").with_value(&true))
+                .at_level(Level::TRACE),
+        )
+        .exit(span.clone())
+        .enter(span.clone())
+        .event(event::mock().at_level(Level::ERROR))
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        block_on_future(async { err_mut_async(2, &mut 0).await }).ok();
+    });
+    handle.assert_finished();
+}
