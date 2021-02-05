@@ -338,7 +338,7 @@ pub struct CollectorBuilder<
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
 ///
-/// This is essentially shorthand for [`CollectorBuilder::default()]`.
+/// This is essentially shorthand for [`CollectorBuilder::default()`].
 ///
 /// # Examples
 ///

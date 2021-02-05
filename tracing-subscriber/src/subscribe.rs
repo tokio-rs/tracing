@@ -68,7 +68,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// }
 ///
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-/// impl Collect for MySubscriber {
+/// impl Collect for MyCollector {
 ///     // ...
 /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 /// #   fn record(&self, _: &Id, _: &Record) {}
@@ -85,7 +85,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// # fn new() -> Self { Self { }}
 /// # }
 ///
-/// let collector = MySubscriber::new()
+/// let collector = MyCollector::new()
 ///     .with(MySubscriber::new());
 ///
 /// tracing::collect::set_global_default(collector);
