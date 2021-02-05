@@ -32,9 +32,10 @@ to this release!
 [#808]: https://github.com/tokio-rs/tracing/pull/808
 [#941]: https://github.com/tokio-rs/tracing/pull/941
 [#1146]: https://github.com/tokio-rs/tracing/pull/1146
-[#1175]: : https://github.com/tokio-rs/tracing/pull/1175
+[#1175]: https://github.com/tokio-rs/tracing/pull/1175
 [#1195]: https://github.com/tokio-rs/tracing/pull/1195
 [#1222]: https://github.com/tokio-rs/tracing/pull/1222
+
 # 0.1.22 (November 23, 2020)
 
 ### Changed
