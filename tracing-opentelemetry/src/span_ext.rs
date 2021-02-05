@@ -1,4 +1,4 @@
-use crate::layer::WithContext;
+use crate::subscriber::WithContext;
 use opentelemetry::Context;
 
 /// Utility functions to allow tracing [`Span`]s to accept and return

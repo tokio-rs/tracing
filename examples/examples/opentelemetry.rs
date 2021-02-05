@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
         .with_service_name("report_example")
         .install()?;
-    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let opentelemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
     tracing_subscriber::registry()
         .with(opentelemetry)
         .try_init()?;
