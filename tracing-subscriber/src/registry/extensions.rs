@@ -133,7 +133,7 @@ impl ExtensionsInner {
             .and_then(|boxed| {
                 #[allow(warnings)]
                 {
-                    (boxed as Box<Any + 'static>)
+                    (boxed as Box<dyn Any + 'static>)
                         .downcast()
                         .ok()
                         .map(|boxed| *boxed)
@@ -162,7 +162,7 @@ impl ExtensionsInner {
         self.map.remove(&TypeId::of::<T>()).and_then(|boxed| {
             #[allow(warnings)]
             {
-                (boxed as Box<Any + 'static>)
+                (boxed as Box<dyn Any + 'static>)
                     .downcast()
                     .ok()
                     .map(|boxed| *boxed)
