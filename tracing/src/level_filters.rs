@@ -49,7 +49,7 @@
 //!
 //! [`log`]: https://docs.rs/log/
 //! [`log` crate]: https://docs.rs/log/latest/log/#compile-time-filters
-//! [f]: : https://docs.rs/tracing/latest/tracing/#emitting-log-records
+//! [f]: https://docs.rs/tracing/latest/tracing/#emitting-log-records
 pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 
 /// The statically configured maximum trace level.

@@ -874,7 +874,7 @@ impl Registrar {
 #[cfg(feature = "std")]
 impl State {
     /// Replaces the current default dispatcher on this thread with the provided
-    /// dispatcher.Any
+    /// dispatcher.
     ///
     /// Dropping the returned `ResetGuard` will reset the default dispatcher to
     /// the previous value.
