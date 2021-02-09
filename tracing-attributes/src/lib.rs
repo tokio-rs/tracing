@@ -201,10 +201,12 @@ use syn::{
 /// Additional fields (key-value pairs with arbitrary data) may be added to the
 /// generated span using the `fields` argument on the `#[instrument]` macro. Any
 /// Rust expression can be used as a field value in this manner. These
-/// expressions will be evaluated at the beginning of the function's body, sso
+/// expressions will be evaluated at the beginning of the function's body, so
 /// arguments to the function may be used in these expressions. Field names may
 /// also be specified *without* values. Doing so will result in an [empty field]
 /// whose value may be recorded later within the function body.
+///
+/// This supports the same [field syntax] as the `span!` and `event!` macros.
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
 /// will result in a compile error.
@@ -437,6 +439,7 @@ use syn::{
 /// [module path]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html#method.module_path
 /// [`INFO`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.INFO
 /// [empty field]: https://docs.rs/tracing/latest/tracing/field/struct.Empty.html
+/// [field syntax]: https://docs.rs/tracing/latest/tracing/#recording-fields
 /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 #[proc_macro_attribute]
 pub fn instrument(
