@@ -469,7 +469,7 @@ fn gen_body(
         quote_spanned!(block.span()=>
             let __tracing_attr_span = #span;
             let __tracing_attr_guard = __tracing_attr_span.enter();
-            match move || #return_type #block () {
+            match (move || #block)() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
