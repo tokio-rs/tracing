@@ -137,3 +137,34 @@ fn test_mut_async() {
     });
     handle.assert_finished();
 }
+
+#[test]
+fn impl_trait_return_type() {
+    // Reproduces https://github.com/tokio-rs/tracing/issues/1227
+
+    #[instrument(err)]
+    fn returns_impl_trait(x: usize) -> Result<impl Iterator<Item = usize>, String> {
+        Ok(0..x)
+    }
+
+    let span = span::mock().named("returns_impl_trait");
+
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span.clone()
+                .with_field(field::mock("x").with_value(&format_args!("10")).only()),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        for _ in returns_impl_trait(10).unwrap() {
+            // nop
+        }
+    });
+
+    handle.assert_finished();
+}
