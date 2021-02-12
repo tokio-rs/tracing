@@ -192,7 +192,7 @@
 //!
 //! ## Using the Macros
 //!
-//! The [`span!`] and [`event!`] macros as well as the `#[tracing::instrument]` attribute
+//! The [`span!`] and [`event!`] macros as well as the `#[instrument]` attribute
 //! use fairly similar syntax, with some exceptions.
 //!
 //! ### Configuring Attributes
