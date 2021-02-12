@@ -32,7 +32,7 @@
 //! use tracing_log::LogTracer;
 //! use log;
 //!
-//! # fn main() -> Result<(), Box<Error>> {
+//! # fn main() -> Result<(), Box<dyn Error>> {
 //! LogTracer::init()?;
 //!
 //! // will be available for Subscribers as a tracing Event
