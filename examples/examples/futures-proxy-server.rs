@@ -7,7 +7,7 @@
 //!
 //! You can showcase this by running this in one terminal:
 //!
-//!     cargo run --example proxy_server -- --log_format=(plain|json)
+//!     cargo run --example futures-proxy-server -- --log_format=(plain|json)
 //!
 //! This in another terminal
 //!
