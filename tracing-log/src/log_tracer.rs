@@ -53,7 +53,7 @@ impl LogTracer {
     /// use tracing_log::LogTracer;
     /// use log;
     ///
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # fn main() -> Result<(), Box<dyn Error>> {
     /// LogTracer::builder()
     ///     .ignore_crate("foo") // suppose the `foo` crate is using `tracing`'s log feature
     ///     .with_max_level(log::LevelFilter::Info)
@@ -80,7 +80,7 @@ impl LogTracer {
     /// use tracing_log::LogTracer;
     /// use log;
     ///
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let logger = LogTracer::new();
     /// log::set_boxed_logger(Box::new(logger))?;
     /// log::set_max_level(log::LevelFilter::Trace);
@@ -123,7 +123,7 @@ impl LogTracer {
     /// use tracing_log::LogTracer;
     /// use log;
     ///
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # fn main() -> Result<(), Box<dyn Error>> {
     /// LogTracer::init()?;
     ///
     /// // will be available for Subscribers as a tracing Event

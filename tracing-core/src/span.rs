@@ -37,7 +37,7 @@ pub struct Record<'a> {
 /// - "none", indicating that the current context is known to not be in a span,
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
-/// [the `Collector` considers]: super::collect::Collect::current_span
+/// [the collector considers]: super::collect::Collect::current_span
 /// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]
 pub struct Current {

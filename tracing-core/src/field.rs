@@ -154,7 +154,7 @@ pub struct Iter {
 ///         self.sum += value as i64;
 ///     }
 ///
-///     fn record_debug(&mut self, _field: &Field, _value: &fmt::Debug) {
+///     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
 ///         // Do nothing
 ///     }
 /// }
