@@ -1,3 +1,21 @@
+# 0.2.5 (February 16, 2021)
+
+### Changed
+
+- Updated `pin-project` dependency to 1.0 ([#1038])
+
+### Fixed
+
+- Several documentation fixes and improvements ([#832], [#911], [#913], [#941],
+  [#953], [#981])
+
+[#1038]: https://github.com/tokio-rs/tracing/pulls/1038
+[#832]: https://github.com/tokio-rs/tracing/pulls/832
+[#911]: https://github.com/tokio-rs/tracing/pulls/911
+[#913]: https://github.com/tokio-rs/tracing/pulls/913
+[#941]: https://github.com/tokio-rs/tracing/pulls/941
+[#953]: https://github.com/tokio-rs/tracing/pulls/953
+[#981]: https://github.com/tokio-rs/tracing/pulls/981
 # 0.2.4 (April 21, 2020)
 
 ### Fixed
