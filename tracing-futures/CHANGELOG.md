@@ -14,7 +14,8 @@
 [#911]: https://github.com/tokio-rs/tracing/pulls/911
 [#913]: https://github.com/tokio-rs/tracing/pulls/913
 [#941]: https://github.com/tokio-rs/tracing/pulls/941
-
+[#953]: https://github.com/tokio-rs/tracing/pulls/953
+[#981]: https://github.com/tokio-rs/tracing/pulls/981
 # 0.2.4 (April 21, 2020)
 
 ### Fixed
