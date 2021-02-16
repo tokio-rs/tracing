@@ -388,6 +388,7 @@ fn gen_body(
 
         let level = args.level();
         let target = args.target();
+        let parent = args.parent();
 
         // filter out skipped fields
         let mut quoted_fields: Vec<_> = param_names
@@ -427,6 +428,7 @@ fn gen_body(
 
         quote!(tracing::span!(
             target: #target,
+            parent: #parent,
             #level,
             #span_name,
             #(#quoted_fields,)*
@@ -506,6 +508,7 @@ struct InstrumentArgs {
     skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
+    parent: Option<Parent>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -556,6 +559,15 @@ impl InstrumentArgs {
             quote!(#target)
         } else {
             quote!(module_path!())
+        }
+    }
+
+    fn parent(&self) -> impl ToTokens {
+        if let Some(ref parent) = self.parent {
+            let value = &parent.value;
+            quote!(#value)
+        } else {
+            quote!(&tracing::Span::current())
         }
     }
 
@@ -632,6 +644,11 @@ impl Parse for InstrumentArgs {
             } else if lookahead.peek(kw::err) {
                 let _ = input.parse::<kw::err>()?;
                 args.err = true;
+            } else if lookahead.peek(kw::parent) {
+                if args.parent.is_some() {
+                    return Err(input.error("expected only a single `parent` argument"));
+                }
+                args.parent = Some(input.parse()?);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -807,6 +824,20 @@ impl Parse for Level {
     }
 }
 
+#[derive(Debug)]
+struct Parent {
+    value: Expr,
+}
+
+impl Parse for Parent {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _ = input.parse::<kw::parent>()?;
+        let _ = input.parse::<Token![=]>()?;
+        let value = input.parse::<Expr>()?;
+        Ok(Self { value })
+    }
+}
+
 fn param_names(pat: Pat) -> Box<dyn Iterator<Item = Ident>> {
     match pat {
         Pat::Ident(PatIdent { ident, .. }) => Box::new(iter::once(ident)),
@@ -837,6 +868,7 @@ mod kw {
     syn::custom_keyword!(target);
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
+    syn::custom_keyword!(parent);
 }
 
 // Get the AST of the inner function we need to hook, if it was generated
