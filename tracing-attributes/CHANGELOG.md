@@ -1,3 +1,13 @@
+
+# 0.1.13 (February 17, 2021)
+
+### Fixed
+
+- Compiler error when using `#[instrument(err)]` on functions which return `impl
+  Trait` ([#1236])
+
+[#1236]: https://github.com/tokio-rs/tracing/pull/1236
+
 # 0.1.12 (February 4, 2021)
 
 ### Fixed
