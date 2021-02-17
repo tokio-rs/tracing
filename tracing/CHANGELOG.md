@@ -1,3 +1,18 @@
+# 0.1.24 (February 17, 2021)
+
+### Fixed
+
+- **attributes**: Compiler error when using `#[instrument(err)]` on functions
+  which return `impl Trait` ([#1236])
+- Fixed broken match arms in event macros ([#1239])
+- Documentation improvements ([#1232])
+
+Thanks to @bkchr and @lfranke for contributing to this release!
+
+[#1236]: https://github.com/tokio-rs/tracing/pull/1236
+[#1239]: https://github.com/tokio-rs/tracing/pull/1239
+[#1232]: https://github.com/tokio-rs/tracing/pull/1232
+
 # 0.1.23 (February 4, 2021)
 
 ### Fixed
