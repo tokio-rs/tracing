@@ -59,7 +59,7 @@
 //!
 //! Note that logger implementations that convert log records to trace events
 //! should not be used with `Collector`s that convert trace events _back_ into
-//! log records (such as the `TraceLogger`), as doing so will result in the
+//! log records, as doing so will result in the
 //! event recursing between the collector and the logger forever (or, in real
 //! life, probably overflowing the call stack).
 //!
