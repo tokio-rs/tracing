@@ -39,7 +39,7 @@ fn bench_fields(c: &mut Criterion) {
             black_box(tracing::span!(
                 Level::TRACE,
                 "span",
-                foo = tracing::field::display(format!("bar {:?}", 2))
+                foo = %format!("bar {:?}", 2)
             ));
         })
     });
@@ -47,7 +47,7 @@ fn bench_fields(c: &mut Criterion) {
         b.iter(|| {
             tracing::event!(
                 Level::TRACE,
-                foo = tracing::field::display(format!("bar {:?}", 2))
+                foo = %format!("bar {:?}", 2)
             );
         })
     });

@@ -959,6 +959,16 @@ pub mod __macro_support {
     use core::fmt;
     use core::sync::atomic::{AtomicUsize, Ordering};
     use tracing_core::Once;
+    pub mod as_value {
+        pub use crate::field::specialize::{
+            AsValueDebug as _, AsValueDisplay as _, AsValuePrimitive as _,
+        };
+
+        #[cfg(feature = "std")]
+        pub use crate::field::specialize::AsValueError as _;
+    }
+
+    pub use crate::field::specialize::Specialize;
 
     /// Callsite implementation used by macro-generated code.
     ///

@@ -37,12 +37,17 @@
 //! [`event`]:  super::collect::Collect::event
 use crate::callsite;
 use core::{
+    any::{Any, TypeId},
     borrow::Borrow,
     fmt,
     hash::{Hash, Hasher},
-    num,
+    iter, num,
     ops::Range,
+    slice,
 };
+
+#[cfg(feature = "std")]
+use std::error::Error;
 
 use self::private::ValidLen;
 
@@ -79,7 +84,7 @@ pub struct FieldSet {
 
 /// A set of fields and values for a span.
 pub struct ValueSet<'a> {
-    values: &'a [(&'a Field, Option<&'a (dyn Value + 'a)>)],
+    values: &'a [Value<'a>],
     fields: &'a FieldSet,
 }
 
@@ -88,6 +93,33 @@ pub struct ValueSet<'a> {
 pub struct Iter {
     idxs: Range<usize>,
     fields: FieldSet,
+}
+pub struct Values<'set, 'values> {
+    values: iter::Enumerate<slice::Iter<'set, Value<'values>>>,
+    fields: &'set FieldSet,
+}
+
+#[derive(Clone)]
+pub struct Value<'a> {
+    inner: ValueKind<'a>,
+}
+
+#[derive(Copy, Clone)]
+enum ValueKind<'a> {
+    Empty,
+    Bool(bool),
+    U64(u64),
+    I64(i64),
+    Str(&'a str),
+    Display(&'a dyn DisplayDebug),
+    Debug(&'a dyn fmt::Debug),
+    #[cfg(feature = "std")]
+    Error(&'a (dyn Error + 'static)),
+    #[cfg(feature = "std")]
+    ErrorAny(&'a (dyn Error + 'static), TypeId),
+    DebugAny(&'a dyn fmt::Debug, TypeId),
+    DisplayAny(&'a dyn fmt::Display, TypeId),
+    Args(fmt::Arguments<'a>),
 }
 
 /// Visits typed values.
@@ -222,45 +254,297 @@ pub trait Visit {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug);
 }
 
-/// A field value of an erased type.
-///
-/// Implementors of `Value` may call the appropriate typed recording methods on
-/// the [visitor] passed to their `record` method in order to indicate how
-/// their data should be recorded.
-///
-/// [visitor]: Visit
-pub trait Value: crate::sealed::Sealed {
-    /// Visits this value with the given `Visitor`.
-    fn record(&self, key: &Field, visitor: &mut dyn Visit);
-}
+// /// A field value of an erased type.
+// ///
+// /// Implementors of `Value` may call the appropriate typed recording methods on
+// /// the [visitor] passed to their `record` method in order to indicate how
+// /// their data should be recorded.
+// ///
+// /// [visitor]: trait.Visit.html
+// pub trait Value: crate::sealed::Sealed {
+//     /// Visits this value with the given `Visitor`.
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit);
+// }
 
-/// A `Value` which serializes using `fmt::Display`.
-///
-/// Uses `record_debug` in the `Value` implementation to
-/// avoid an unnecessary evaluation.
-#[derive(Clone)]
-pub struct DisplayValue<T: fmt::Display>(T);
+// /// A `Value` which serializes using `fmt::Display`.
+// ///
+// /// Uses `record_debug` in the `Value` implementation to
+// /// avoid an unnecessary evaluation.
+// #[derive(Clone)]
+// pub struct DisplayValue<T: fmt::Display>(T);
 
-/// A `Value` which serializes as a string using `fmt::Debug`.
-#[derive(Clone)]
-pub struct DebugValue<T: fmt::Debug>(T);
+// /// A `Value` which serializes as a string using `fmt::Debug`.
+// #[derive(Clone)]
+// pub struct DebugValue<T: fmt::Debug>(T);
 
 /// Wraps a type implementing `fmt::Display` as a `Value` that can be
 /// recorded using its `Display` implementation.
-pub fn display<T>(t: T) -> DisplayValue<T>
+pub fn display<T>(t: &T) -> Value<'_>
 where
-    T: fmt::Display,
+    T: Any + fmt::Display,
 {
-    DisplayValue(t)
+    Value::any_display(t)
 }
 
 /// Wraps a type implementing `fmt::Debug` as a `Value` that can be
 /// recorded using its `Debug` implementation.
-pub fn debug<T>(t: T) -> DebugValue<T>
+pub fn debug<T>(t: &T) -> Value<'_>
 where
-    T: fmt::Debug,
+    T: Any + fmt::Debug,
 {
-    DebugValue(t)
+    Value::any(t)
+}
+
+// ===== impl Value =====
+
+macro_rules! gen_primitives {
+    ($(
+        $(#[$m:meta])* ValueKind::$variant:ident($ty:ty) as $as_:ident
+    ),+ $(,)?) => {
+        impl<'a> Value<'a> {
+            $(
+                $(#[$m])*
+                #[inline]
+                pub fn $as_(&self) -> Option<$ty> {
+                    match self.inner {
+                        ValueKind::$variant(val) => Some(val),
+                        _ => None,
+                    }
+                }
+            )+
+        }
+        $(
+            impl<'a> From<$ty> for Value<'a> {
+                #[inline]
+                fn from(val: $ty) -> Self {
+                    Self {
+                        inner: ValueKind::$variant(val),
+                    }
+                }
+            }
+        )+
+    };
+}
+
+impl<'a> Value<'a> {
+    #[inline]
+    pub fn empty() -> Self {
+        Self {
+            inner: ValueKind::Empty,
+        }
+    }
+
+    #[inline]
+    pub fn any_display<T: Any + fmt::Display>(val: &'a T) -> Self {
+        Self {
+            inner: ValueKind::DisplayAny(val as &'a dyn fmt::Display, TypeId::of::<T>()),
+        }
+    }
+
+    #[inline]
+    pub fn any<T: Any + fmt::Debug>(val: &'a T) -> Self {
+        Self {
+            inner: ValueKind::DebugAny(val as &'a dyn fmt::Debug, TypeId::of::<T>()),
+        }
+    }
+
+    #[inline]
+    pub fn display<T>(val: &'a T) -> Self
+    where
+        T: fmt::Display + fmt::Debug,
+    {
+        Self {
+            inner: ValueKind::Display(val as &'a dyn DisplayDebug),
+        }
+    }
+
+    #[inline]
+    pub fn debug<T: fmt::Debug>(val: &'a T) -> Self {
+        Self {
+            inner: ValueKind::Debug(val as &'a dyn fmt::Debug),
+        }
+    }
+
+    #[inline]
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub fn error<T: Error + 'static>(val: &'a T) -> Self {
+        Self {
+            inner: ValueKind::ErrorAny(val as &'a (dyn Error + 'static), TypeId::of::<T>()),
+        }
+    }
+
+    // #[inline]
+    // #[cfg(feature = "std")]
+    // #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    // pub fn error(val: &'a (dyn Error + 'static)) -> Self {
+    //     Self {
+    //         inner: ValueKind::Error(val),
+    //     }
+    // }
+
+    #[inline]
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub fn as_error(&self) -> Option<&(dyn Error + 'static)> {
+        match self.inner {
+            ValueKind::Error(val) => Some(val),
+            ValueKind::ErrorAny(val, _) => Some(val),
+            _ => None,
+        }
+    }
+
+    pub fn as_display(&self) -> Option<&dyn fmt::Display> {
+        match self.inner {
+            ValueKind::Empty => None,
+            ValueKind::Display(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::DisplayAny(ref val, _) => Some(val as &dyn fmt::Display),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(_, _) | ValueKind::Error(_) => Some(self as &dyn fmt::Display),
+            ValueKind::Bool(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::U64(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::I64(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::Str(ref val) => Some(val as &dyn fmt::Display),
+            ValueKind::Args(ref val) => Some(val as &dyn fmt::Display),
+            _ => None,
+        }
+    }
+
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        let target = TypeId::of::<T>();
+        match self.inner {
+            ValueKind::Empty => None,
+            ValueKind::Bool(ref val) if target == TypeId::of::<bool>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::U64(ref val) if target == TypeId::of::<u64>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::I64(ref val) if target == TypeId::of::<i64>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::Str(val) if target == TypeId::of::<str>() => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, actual) if actual == target => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::DebugAny(val, actual) if actual == target => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            ValueKind::DisplayAny(val, actual) if actual == target => {
+                Some(unsafe { &*(val as *const _ as *const T) })
+            }
+            _ => None,
+        }
+    }
+
+    pub fn is<T: Any>(&self) -> bool {
+        let target = TypeId::of::<T>();
+        match self.inner {
+            ValueKind::Empty => target == TypeId::of::<Empty>(),
+            ValueKind::Bool(_) => target == TypeId::of::<bool>(),
+            ValueKind::U64(_) => target == TypeId::of::<u64>(),
+            ValueKind::I64(_) => target == TypeId::of::<i64>(),
+            ValueKind::Str(_) => target == TypeId::of::<str>(),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(_, actual) => actual == target,
+            ValueKind::DebugAny(_, actual) => actual == target,
+            ValueKind::DisplayAny(_, actual) => actual == target,
+            _ => false,
+        }
+    }
+
+    pub fn is_some(&self) -> bool {
+        match self.inner {
+            ValueKind::Empty => false,
+            _ => true,
+        }
+    }
+
+    pub(crate) fn record(&self, field: &Field, visitor: &mut dyn Visit) {
+        match self.inner {
+            ValueKind::Empty => return,
+            ValueKind::Bool(val) => visitor.record_bool(field, val),
+            ValueKind::U64(val) => visitor.record_u64(field, val),
+            ValueKind::I64(val) => visitor.record_i64(field, val),
+            ValueKind::Str(val) => visitor.record_str(field, val),
+            ValueKind::Display(val) => visitor.record_debug(field, &format_args!("{}", val)),
+            ValueKind::Debug(val) => visitor.record_debug(field, val),
+            #[cfg(feature = "std")]
+            ValueKind::Error(val) => visitor.record_error(field, val),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, _) => visitor.record_error(field, val),
+            ValueKind::DisplayAny(val, _) => visitor.record_debug(field, &format_args!("{}", val)),
+            ValueKind::DebugAny(val, _) => visitor.record_debug(field, val),
+            ValueKind::Args(val) => visitor.record_debug(field, &val),
+        }
+    }
+}
+
+impl fmt::Debug for Value<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.inner {
+            ValueKind::Empty => Ok(()),
+            ValueKind::DisplayAny(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::DebugAny(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Display(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
+            #[cfg(feature = "std")]
+            ValueKind::Error(val) => fmt::Debug::fmt(val, f),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Bool(ref val) => fmt::Debug::fmt(val, f),
+            ValueKind::U64(ref val) => fmt::Debug::fmt(val, f),
+            ValueKind::I64(ref val) => fmt::Debug::fmt(val, f),
+            ValueKind::Str(val) => fmt::Debug::fmt(val, f),
+            ValueKind::Args(ref val) => fmt::Debug::fmt(val, f),
+        }
+    }
+}
+
+impl fmt::Display for Value<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.inner {
+            ValueKind::Empty => Ok(()),
+            ValueKind::DisplayAny(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::DebugAny(val, _) => fmt::Debug::fmt(val, f),
+            ValueKind::Display(val) => fmt::Display::fmt(val, f),
+            ValueKind::Debug(val) => fmt::Debug::fmt(val, f),
+            #[cfg(feature = "std")]
+            ValueKind::Error(val) => fmt::Display::fmt(val, f),
+            #[cfg(feature = "std")]
+            ValueKind::ErrorAny(val, _) => fmt::Display::fmt(val, f),
+            ValueKind::Bool(ref val) => fmt::Display::fmt(val, f),
+            ValueKind::U64(ref val) => fmt::Display::fmt(val, f),
+            ValueKind::I64(ref val) => fmt::Display::fmt(val, f),
+            ValueKind::Str(val) => fmt::Display::fmt(val, f),
+            ValueKind::Args(ref val) => fmt::Display::fmt(val, f),
+        }
+    }
+}
+
+impl Default for Value<'_> {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+gen_primitives! {
+    /// Returns `Some` if this value is a `bool`, or `None` otherwise.
+    ValueKind::Bool(bool) as as_bool,
+
+    /// Returns `Some` if this value is a `u64`, or `None` otherwise.
+    ValueKind::U64(u64) as as_u64,
+
+    /// Returns `Some` if this value is an `i64`, or `None` otherwise.
+    ValueKind::I64(i64) as as_i64,
+
+    /// Returns `Some` if this value is a `str`, or `None` otherwise.
+    ValueKind::Str(&'a str) as as_str,
+
+    // ValueKind::Error(&'a (dyn Error + 'static)) as as_error,
 }
 
 // ===== impl Visit =====
@@ -285,6 +569,9 @@ where
         (self)(field, value)
     }
 }
+
+trait DisplayDebug: fmt::Display + fmt::Debug {}
+impl<T: ?Sized + fmt::Display + fmt::Debug> DisplayDebug for T {}
 
 // ===== impl Value =====
 
@@ -335,191 +622,299 @@ macro_rules! ty_to_nonzero {
     };
 }
 
-macro_rules! impl_one_value {
-    (bool, $op:expr, $record:ident) => {
-        impl_one_value!(normal, bool, $op, $record);
-    };
-    ($value_ty:tt, $op:expr, $record:ident) => {
-        impl_one_value!(normal, $value_ty, $op, $record);
-        impl_one_value!(nonzero, $value_ty, $op, $record);
-    };
-    (normal, $value_ty:tt, $op:expr, $record:ident) => {
-        impl $crate::sealed::Sealed for $value_ty {}
-        impl $crate::field::Value for $value_ty {
-            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
-                visitor.$record(key, $op(*self))
+macro_rules! impl_one_into_value {
+    ($value_ty:tt, |$this:ident| $op:expr) => {
+        impl From<$value_ty> for Value<'_> {
+            #[inline]
+            fn from($this: $value_ty) -> Self {
+                Self::from($op)
             }
         }
-    };
-    (nonzero, $value_ty:tt, $op:expr, $record:ident) => {
-        // This `use num::*;` is reported as unused because it gets emitted
-        // for every single invocation of this macro, so there are multiple `use`s.
-        // All but the first are useless indeed.
-        // We need this import because we can't write a path where one part is
-        // the `ty_to_nonzero!($value_ty)` invocation.
-        #[allow(clippy::useless_attribute, unused)]
-        use num::*;
-        impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
-        impl $crate::field::Value for ty_to_nonzero!($value_ty) {
-            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
-                visitor.$record(key, $op(self.get()))
-            }
-        }
-    };
+
+        // impl From<&$value_ty> for Value<'_> {
+        //     #[inline]
+        //     fn from($this: &$value_ty) -> Self {
+        //         let $this = *$this;
+        //         Self::from($op)
+        //     }
+        // }
+    }; // (nonzero, $value_ty:tt, $op:expr) => {
+       //     // This `use num::*;` is reported as unused because it gets emitted
+       //     // for every single invocation of this macro, so there are multiple `use`s.
+       //     // All but the first are useless indeed.
+       //     // We need this import because we can't write a path where one part is
+       //     // the `ty_to_nonzero!($value_ty)` invocation.
+       //     #[allow(clippy::useless_attribute, unused)]
+       //     use num::*;
+       //     impl<'a> From<$value_ty> for Value<'a> {
+       //         fn from(val: $value_ty) -> Self {
+       //             Self::from($op(val.get()))
+       //         }
+       //     }
+       // };
 }
 
 macro_rules! impl_value {
-    ( $record:ident( $( $value_ty:tt ),+ ) ) => {
+    ( $( $value_ty:ty  ),+ |$this:ident| $op:expr ) => {
         $(
-            impl_one_value!($value_ty, |this: $value_ty| this, $record);
+            impl_one_into_value! { $value_ty, |$this| $op }
         )+
     };
-    ( $record:ident( $( $value_ty:tt ),+ as $as_ty:ty) ) => {
+    ( $( $value_ty:ty ),+ as $as_ty:ty ) => {
         $(
-            impl_one_value!($value_ty, |this: $value_ty| this as $as_ty, $record);
+            impl_one_into_value! { $value_ty, |this| this as $as_ty }
         )+
     };
+}
+
+impl_value! { usize, u32, u16, u8 as u64 }
+impl_value! { isize, i32, i16, i8 as i64 }
+// impl_value! { &'a usize, &'a u64, &'a u32, &'a u16, &'a u8 |val| *val as u64 }
+// impl_value! { &'a isize, &'a i64, &'a i32, &'a i16, &'a i8 |val| *val as i64 }
+// impl_value! { &'a bool |val| *val }
+impl_value! {
+    num::NonZeroUsize,
+    num::NonZeroU64,
+    num::NonZeroU32,
+    num::NonZeroU16,
+    num::NonZeroU8
+    |val| val.get() as u64
+}
+impl_value! {
+    num::NonZeroIsize,
+    num::NonZeroI64,
+    num::NonZeroI32,
+    num::NonZeroI16,
+    num::NonZeroI8
+    |val| val.get() as i64
+}
+
+impl<'a, T> From<num::Wrapping<T>> for Value<'a>
+where
+    Self: From<T>,
+{
+    #[inline]
+    fn from(num::Wrapping(val): num::Wrapping<T>) -> Self {
+        Self::from(val)
+    }
+}
+
+impl From<&'_ Empty> for Value<'_> {
+    #[inline]
+    fn from(_: &Empty) -> Self {
+        Self::empty()
+    }
+}
+
+impl<'a, T> From<Option<T>> for Value<'a>
+where
+    Self: From<T>,
+{
+    #[inline]
+    fn from(val: Option<T>) -> Self {
+        val.map(Value::from).unwrap_or_else(Value::empty)
+    }
+}
+
+impl<'a> From<fmt::Arguments<'a>> for Value<'a> {
+    #[inline]
+    fn from(val: fmt::Arguments<'a>) -> Self {
+        Value {
+            inner: ValueKind::Args(val),
+        }
+    }
+}
+
+impl<'a> From<&'_ Value<'a>> for Value<'a> {
+    #[inline]
+    fn from(val: &Value<'a>) -> Self {
+        Value { inner: val.inner }
+    }
+}
+
+impl<T> From<&'_ T> for Value<'_>
+where
+    T: Copy,
+    Self: From<T>,
+{
+    #[inline]
+    fn from(val: &T) -> Self {
+        Self::from(*val)
+    }
+}
+
+#[cfg(feature = "std")]
+macro_rules! impl_value_error_as_ref {
+    ($($t:ty),+) => {
+        $(
+            #[cfg(feature = "std")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+            impl<'a> From<&'a $t> for Value<'a> {
+                #[inline]
+                fn from(err: &'a $t) -> Self {
+                    Self {
+                        inner: ValueKind::Error(err.as_ref()),
+                    }
+                }
+            }
+        )+
+    }
+}
+
+#[cfg(feature = "std")]
+impl_value_error_as_ref! {
+    Box<dyn Error + 'static>,
+    Box<dyn Error + Send + 'static>,
+    Box<dyn Error + Sync + 'static>,
+    Box<dyn Error + Send + Sync + 'static>,
+    std::sync::Arc<dyn Error + Send + 'static>,
+    std::sync::Arc<dyn Error + Sync + 'static>,
+    std::sync::Arc<dyn Error + Send + Sync + 'static>,
+    std::rc::Rc<dyn Error + 'static>,
+    std::rc::Rc<dyn Error + Send + 'static>,
+    std::rc::Rc<dyn Error + Sync + 'static>,
+    std::rc::Rc<dyn Error + Send + Sync + 'static>
 }
 
 // ===== impl Value =====
 
-impl_values! {
-    record_u64(u64),
-    record_u64(usize, u32, u16, u8 as u64),
-    record_i64(i64),
-    record_i64(isize, i32, i16, i8 as i64),
-    record_bool(bool)
-}
+// impl_values! {
+//     record_u64(u64),
+//     record_u64(usize, u32, u16, u8 as u64),
+//     record_i64(i64),
+//     record_i64(isize, i32, i16, i8 as i64),
+//     record_bool(bool)
+// }
 
-impl<T: crate::sealed::Sealed> crate::sealed::Sealed for Wrapping<T> {}
-impl<T: crate::field::Value> crate::field::Value for Wrapping<T> {
-    fn record(&self, key: &crate::field::Field, visitor: &mut dyn crate::field::Visit) {
-        self.0.record(key, visitor)
-    }
-}
+// impl<T: crate::sealed::Sealed> crate::sealed::Sealed for Wrapping<T> {}
+// impl<T: crate::field::Value> crate::field::Value for Wrapping<T> {
+//     fn record(&self, key: &crate::field::Field, visitor: &mut dyn crate::field::Visit) {
+//         self.0.record(key, visitor)
+//     }
+// }
 
-impl crate::sealed::Sealed for str {}
+// impl crate::sealed::Sealed for str {}
 
-impl Value for str {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_str(key, &self)
-    }
-}
+// impl Value for str {
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+//         visitor.record_str(key, &self)
+//     }
+// }
 
-#[cfg(feature = "std")]
-impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
+// #[cfg(feature = "std")]
+// impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
 
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl Value for dyn std::error::Error + 'static {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_error(key, self)
-    }
-}
+// #[cfg(feature = "std")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+// impl Value for dyn std::error::Error + 'static {
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+//         visitor.record_error(key, self)
+//     }
+// }
 
-impl<'a, T: ?Sized> crate::sealed::Sealed for &'a T where T: Value + crate::sealed::Sealed + 'a {}
+// impl<'a, T: ?Sized> crate::sealed::Sealed for &'a T where T: Value + crate::sealed::Sealed + 'a {}
 
-impl<'a, T: ?Sized> Value for &'a T
-where
-    T: Value + 'a,
-{
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        (*self).record(key, visitor)
-    }
-}
+// impl<'a, T: ?Sized> Value for &'a T
+// where
+//     T: Value + 'a,
+// {
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+//         (*self).record(key, visitor)
+//     }
+// }
 
-impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
+// impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
 
-impl<'a> Value for fmt::Arguments<'a> {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_debug(key, self)
-    }
-}
+// impl<'a> Value for fmt::Arguments<'a> {
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+//         visitor.record_debug(key, self)
+//     }
+// }
 
-impl fmt::Debug for dyn Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // We are only going to be recording the field value, so we don't
-        // actually care about the field name here.
-        struct NullCallsite;
-        static NULL_CALLSITE: NullCallsite = NullCallsite;
-        impl crate::callsite::Callsite for NullCallsite {
-            fn set_interest(&self, _: crate::collect::Interest) {
-                unreachable!("you somehow managed to register the null callsite?")
-            }
+// impl fmt::Debug for dyn Value {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         // We are only going to be recording the field value, so we don't
+//         // actually care about the field name here.
+//         struct NullCallsite;
+//         static NULL_CALLSITE: NullCallsite = NullCallsite;
+//         impl crate::callsite::Callsite for NullCallsite {
+//             fn set_interest(&self, _: crate::subscriber::Interest) {
+//                 unreachable!("you somehow managed to register the null callsite?")
+//             }
 
-            fn metadata(&self) -> &crate::Metadata<'_> {
-                unreachable!("you somehow managed to access the null callsite?")
-            }
-        }
+//             fn metadata(&self) -> &crate::Metadata<'_> {
+//                 unreachable!("you somehow managed to access the null callsite?")
+//             }
+//         }
 
-        static FIELD: Field = Field {
-            i: 0,
-            fields: FieldSet::new(&[], crate::identify_callsite!(&NULL_CALLSITE)),
-        };
+//         static FIELD: Field = Field {
+//             i: 0,
+//             fields: FieldSet::new(&[], crate::identify_callsite!(&NULL_CALLSITE)),
+//         };
 
-        let mut res = Ok(());
-        self.record(&FIELD, &mut |_: &Field, val: &dyn fmt::Debug| {
-            res = write!(f, "{:?}", val);
-        });
-        res
-    }
-}
+//         let mut res = Ok(());
+//         self.record(&FIELD, &mut |_: &Field, val: &dyn fmt::Debug| {
+//             res = write!(f, "{:?}", val);
+//         });
+//         res
+//     }
+// }
 
-impl fmt::Display for dyn Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
+// impl fmt::Display for dyn Value {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         fmt::Debug::fmt(self, f)
+//     }
+// }
 
-// ===== impl DisplayValue =====
+// // ===== impl DisplayValue =====
 
-impl<T: fmt::Display> crate::sealed::Sealed for DisplayValue<T> {}
+// impl<T: fmt::Display> crate::sealed::Sealed for DisplayValue<T> {}
 
-impl<T> Value for DisplayValue<T>
-where
-    T: fmt::Display,
-{
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_debug(key, &format_args!("{}", self.0))
-    }
-}
+// impl<T> Value for DisplayValue<T>
+// where
+//     T: fmt::Display,
+// {
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+//         visitor.record_debug(key, &format_args!("{}", self.0))
+//     }
+// }
 
-impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+// impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "{}", self.0)
+//     }
+// }
 
-impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
+// impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         fmt::Display::fmt(&self.0, f)
+//     }
+// }
 
-// ===== impl DebugValue =====
+// // ===== impl DebugValue =====
 
-impl<T: fmt::Debug> crate::sealed::Sealed for DebugValue<T> {}
+// impl<T: fmt::Debug> crate::sealed::Sealed for DebugValue<T> {}
 
-impl<T: fmt::Debug> Value for DebugValue<T>
-where
-    T: fmt::Debug,
-{
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_debug(key, &self.0)
-    }
-}
+// impl<T: fmt::Debug> Value for DebugValue<T>
+// where
+//     T: fmt::Debug,
+// {
+//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+//         visitor.record_debug(key, &self.0)
+//     }
+// }
 
-impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
+// impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "{:?}", self.0)
+//     }
+// }
 
-impl crate::sealed::Sealed for Empty {}
-impl Value for Empty {
-    #[inline]
-    fn record(&self, _: &Field, _: &mut dyn Visit) {}
-}
+// impl crate::sealed::Sealed for Empty {}
+// impl Value for Empty {
+//     #[inline]
+//     fn record(&self, _: &Field, _: &mut dyn Visit) {}
+// }
 
 // ===== impl Field =====
 
@@ -537,6 +932,11 @@ impl Field {
     /// Returns a string representing the name of the field.
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
+    }
+
+    #[doc(hidden)] // XXX(eliza): do we want to commit to this? i doubt it.
+    pub fn index(&self) -> usize {
+        self.i
     }
 }
 
@@ -733,14 +1133,12 @@ impl<'a> ValueSet<'a> {
     ///
     /// [visitor]: super::Visit
     pub(crate) fn record(&self, visitor: &mut dyn Visit) {
-        let my_callsite = self.callsite();
-        for (field, value) in self.values {
-            if field.callsite() != my_callsite {
+        for (field, value) in self {
+            if let ValueKind::Empty = value.inner {
                 continue;
             }
-            if let Some(value) = value {
-                value.record(field, visitor);
-            }
+
+            value.record(&field, visitor)
         }
     }
 
@@ -749,49 +1147,82 @@ impl<'a> ValueSet<'a> {
         field.callsite() == self.callsite()
             && self
                 .values
-                .iter()
-                .any(|(key, val)| *key == field && val.is_some())
+                .get(field.i)
+                .map(Value::is_some)
+                .unwrap_or(false)
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub(crate) fn is_empty(&self) -> bool {
-        let my_callsite = self.callsite();
-        self.values
-            .iter()
-            .all(|(key, val)| val.is_none() || key.callsite() != my_callsite)
+        !self.values.iter().any(Value::is_some)
     }
 
     pub(crate) fn field_set(&self) -> &FieldSet {
         self.fields
     }
+
+    pub fn iter<'b>(&'b self) -> Values<'b, 'a> {
+        Values {
+            values: self.values.iter().enumerate(),
+            fields: &self.fields,
+        }
+    }
 }
 
 impl<'a> fmt::Debug for ValueSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_struct("ValueSet"), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .field("callsite", &self.callsite())
-            .finish()
+        let mut dbg = f.debug_struct("ValueSet");
+        for (key, value) in self {
+            if let ValueKind::Empty = value.inner {
+                continue;
+            }
+            dbg.field(&key.name(), value);
+        }
+        dbg.finish()
     }
 }
 
 impl<'a> fmt::Display for ValueSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_map(), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .finish()
+        let mut dbg = f.debug_map();
+        for (key, value) in self {
+            if let ValueKind::Empty = value.inner {
+                continue;
+            }
+            dbg.entry(&format_args!("{}", key), value);
+        }
+        dbg.finish()
+    }
+}
+
+impl<'set, 'values> IntoIterator for &'set ValueSet<'values> {
+    type IntoIter = Values<'set, 'values>;
+    type Item = (Field, &'set Value<'values>);
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'set, 'values> Iterator for Values<'set, 'values>
+where
+    'values: 'set,
+{
+    type Item = (Field, &'set Value<'values>);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let (i, value) = self.values.next()?;
+            if !value.is_some() {
+                continue;
+            }
+            let field = Field {
+                i,
+                fields: FieldSet {
+                    callsite: self.fields.callsite.clone(),
+                    names: self.fields.names,
+                },
+            };
+            return Some((field, value));
+        }
     }
 }
 
@@ -807,14 +1238,13 @@ mod private {
     /// elements, to ensure the array is small enough to always be allocated on the
     /// stack. This trait is only implemented by arrays of an appropriate length,
     /// ensuring that the correct size arrays are used at compile-time.
-    pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (dyn Value + 'a)>)]> {}
+    pub trait ValidLen<'a>: Borrow<[Value<'a>]> {}
 }
 
 macro_rules! impl_valid_len {
     ( $( $len:tt ),+ ) => {
         $(
-            impl<'a> private::ValidLen<'a> for
-                [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
+            impl<'a> private::ValidLen<'a> for [Value<'a>; $len] {}
         )+
     }
 }
@@ -824,152 +1254,152 @@ impl_valid_len! {
     21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::metadata::{Kind, Level, Metadata};
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//     use crate::metadata::{Kind, Level, Metadata};
 
-    struct TestCallsite1;
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
-    static TEST_META_1: Metadata<'static> = metadata! {
-        name: "field_test1",
-        target: module_path!(),
-        level: Level::INFO,
-        fields: &["foo", "bar", "baz"],
-        callsite: &TEST_CALLSITE_1,
-        kind: Kind::SPAN,
-    };
+//     struct TestCallsite1;
+//     static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
+//     static TEST_META_1: Metadata<'static> = metadata! {
+//         name: "field_test1",
+//         target: module_path!(),
+//         level: Level::INFO,
+//         fields: &["foo", "bar", "baz"],
+//         callsite: &TEST_CALLSITE_1,
+//         kind: Kind::SPAN,
+//     };
 
-    impl crate::callsite::Callsite for TestCallsite1 {
-        fn set_interest(&self, _: crate::collect::Interest) {
-            unimplemented!()
-        }
+//     impl crate::callsite::Callsite for TestCallsite1 {
+//         fn set_interest(&self, _: crate::collect::Interest) {
+//             unimplemented!()
+//         }
 
-        fn metadata(&self) -> &Metadata<'_> {
-            &TEST_META_1
-        }
-    }
+//         fn metadata(&self) -> &Metadata<'_> {
+//             &TEST_META_1
+//         }
+//     }
 
-    struct TestCallsite2;
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2;
-    static TEST_META_2: Metadata<'static> = metadata! {
-        name: "field_test2",
-        target: module_path!(),
-        level: Level::INFO,
-        fields: &["foo", "bar", "baz"],
-        callsite: &TEST_CALLSITE_2,
-        kind: Kind::SPAN,
-    };
+//     struct TestCallsite2;
+//     static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2;
+//     static TEST_META_2: Metadata<'static> = metadata! {
+//         name: "field_test2",
+//         target: module_path!(),
+//         level: Level::INFO,
+//         fields: &["foo", "bar", "baz"],
+//         callsite: &TEST_CALLSITE_2,
+//         kind: Kind::SPAN,
+//     };
 
-    impl crate::callsite::Callsite for TestCallsite2 {
-        fn set_interest(&self, _: crate::collect::Interest) {
-            unimplemented!()
-        }
+//     impl crate::callsite::Callsite for TestCallsite2 {
+//         fn set_interest(&self, _: crate::collect::Interest) {
+//             unimplemented!()
+//         }
 
-        fn metadata(&self) -> &Metadata<'_> {
-            &TEST_META_2
-        }
-    }
+//         fn metadata(&self) -> &Metadata<'_> {
+//             &TEST_META_2
+//         }
+//     }
 
-    #[test]
-    fn value_set_with_no_values_is_empty() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), None),
-            (&fields.field("bar").unwrap(), None),
-            (&fields.field("baz").unwrap(), None),
-        ];
-        let valueset = fields.value_set(values);
-        assert!(valueset.is_empty());
-    }
+//     #[test]
+//     fn value_set_with_no_values_is_empty() {
+//         let fields = TEST_META_1.fields();
+//         let values = &[
+//             (&fields.field("foo").unwrap(), None),
+//             (&fields.field("bar").unwrap(), None),
+//             (&fields.field("baz").unwrap(), None),
+//         ];
+//         let valueset = fields.value_set(values);
+//         assert!(valueset.is_empty());
+//     }
 
-    #[test]
-    fn empty_value_set_is_empty() {
-        let fields = TEST_META_1.fields();
-        let valueset = fields.value_set(&[]);
-        assert!(valueset.is_empty());
-    }
+//     #[test]
+//     fn empty_value_set_is_empty() {
+//         let fields = TEST_META_1.fields();
+//         let valueset = fields.value_set(&[]);
+//         assert!(valueset.is_empty());
+//     }
 
-    #[test]
-    fn value_sets_with_fields_from_other_callsites_are_empty() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
-        ];
-        let valueset = TEST_META_2.fields().value_set(values);
-        assert!(valueset.is_empty())
-    }
+//     #[test]
+//     fn value_sets_with_fields_from_other_callsites_are_empty() {
+//         let fields = TEST_META_1.fields();
+//         let values = &[
+//             (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
+//             (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
+//             (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
+//         ];
+//         let valueset = TEST_META_2.fields().value_set(values);
+//         assert!(valueset.is_empty())
+//     }
 
-    #[test]
-    fn sparse_value_sets_are_not_empty() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), None),
-            (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
-            (&fields.field("baz").unwrap(), None),
-        ];
-        let valueset = fields.value_set(values);
-        assert!(!valueset.is_empty());
-    }
+//     #[test]
+//     fn sparse_value_sets_are_not_empty() {
+//         let fields = TEST_META_1.fields();
+//         let values = &[
+//             (&fields.field("foo").unwrap(), None),
+//             (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
+//             (&fields.field("baz").unwrap(), None),
+//         ];
+//         let valueset = fields.value_set(values);
+//         assert!(!valueset.is_empty());
+//     }
 
-    #[test]
-    fn fields_from_other_callsets_are_skipped() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), None),
-            (
-                &TEST_META_2.fields().field("bar").unwrap(),
-                Some(&57 as &dyn Value),
-            ),
-            (&fields.field("baz").unwrap(), None),
-        ];
+//     #[test]
+//     fn fields_from_other_callsets_are_skipped() {
+//         let fields = TEST_META_1.fields();
+//         let values = &[
+//             (&fields.field("foo").unwrap(), None),
+//             (
+//                 &TEST_META_2.fields().field("bar").unwrap(),
+//                 Some(&57 as &dyn Value),
+//             ),
+//             (&fields.field("baz").unwrap(), None),
+//         ];
 
-        struct MyVisitor;
-        impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
-                assert_eq!(field.callsite(), TEST_META_1.callsite())
-            }
-        }
-        let valueset = fields.value_set(values);
-        valueset.record(&mut MyVisitor);
-    }
+//         struct MyVisitor;
+//         impl Visit for MyVisitor {
+//             fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
+//                 assert_eq!(field.callsite(), TEST_META_1.callsite())
+//             }
+//         }
+//         let valueset = fields.value_set(values);
+//         valueset.record(&mut MyVisitor);
+//     }
 
-    #[test]
-    fn empty_fields_are_skipped() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&Empty as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&Empty as &dyn Value)),
-        ];
+//     #[test]
+//     fn empty_fields_are_skipped() {
+//         let fields = TEST_META_1.fields();
+//         let values = &[
+//             (&fields.field("foo").unwrap(), Some(&Empty as &dyn Value)),
+//             (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
+//             (&fields.field("baz").unwrap(), Some(&Empty as &dyn Value)),
+//         ];
 
-        struct MyVisitor;
-        impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
-                assert_eq!(field.name(), "bar")
-            }
-        }
-        let valueset = fields.value_set(values);
-        valueset.record(&mut MyVisitor);
-    }
+//         struct MyVisitor;
+//         impl Visit for MyVisitor {
+//             fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
+//                 assert_eq!(field.name(), "bar")
+//             }
+//         }
+//         let valueset = fields.value_set(values);
+//         valueset.record(&mut MyVisitor);
+//     }
 
-    #[test]
-    #[cfg(feature = "std")]
-    fn record_debug_fn() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
-        ];
-        let valueset = fields.value_set(values);
-        let mut result = String::new();
-        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use core::fmt::Write;
-            write!(&mut result, "{:?}", value).unwrap();
-        });
-        assert_eq!(result, String::from("123"));
-    }
-}
+//     #[test]
+//     #[cfg(feature = "std")]
+//     fn record_debug_fn() {
+//         let fields = TEST_META_1.fields();
+//         let values = &[
+//             (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
+//             (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
+//             (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
+//         ];
+//         let valueset = fields.value_set(values);
+//         let mut result = String::new();
+//         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+//             use core::fmt::Write;
+//             write!(&mut result, "{:?}", value).unwrap();
+//         });
+//         assert_eq!(result, String::from("123"));
+//     }
+// }

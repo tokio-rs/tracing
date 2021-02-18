@@ -249,19 +249,10 @@ pub(in crate::field) mod test_util {
         pub(crate) fn with<T>(f: impl FnOnce(Attributes<'_>) -> T) -> T {
             let fieldset = TEST_META_1.fields();
             let values = &[
-                (
-                    &fieldset.field("question").unwrap(),
-                    Some(&"life, the universe, and everything" as &dyn Value),
-                ),
-                (&fieldset.field("question.answer").unwrap(), None),
-                (
-                    &fieldset.field("tricky").unwrap(),
-                    Some(&true as &dyn Value),
-                ),
-                (
-                    &fieldset.field("can_you_do_it").unwrap(),
-                    Some(&true as &dyn Value),
-                ),
+                Value::from("life, the universe, and everything"),
+                Value::empty(),
+                Value::from(true),
+                Value::from(true),
             ];
             let valueset = fieldset.value_set(values);
             let attrs = tracing_core::span::Attributes::new(&TEST_META_1, &valueset);
@@ -273,24 +264,7 @@ pub(in crate::field) mod test_util {
         pub(crate) fn with<T>(f: impl FnOnce(Attributes<'_>) -> T) -> T {
             let fieldset = TEST_META_1.fields();
             let none = tracing_core::field::debug(&Option::<&str>::None);
-            let values = &[
-                (
-                    &fieldset.field("question").unwrap(),
-                    Some(&none as &dyn Value),
-                ),
-                (
-                    &fieldset.field("question.answer").unwrap(),
-                    Some(&42 as &dyn Value),
-                ),
-                (
-                    &fieldset.field("tricky").unwrap(),
-                    Some(&true as &dyn Value),
-                ),
-                (
-                    &fieldset.field("can_you_do_it").unwrap(),
-                    Some(&false as &dyn Value),
-                ),
-            ];
+            let values = &[none, Value::from(42), Value::from(true), Value::from(false)];
             let valueset = fieldset.value_set(values);
             let attrs = tracing_core::span::Attributes::new(&TEST_META_1, &valueset);
             f(attrs)

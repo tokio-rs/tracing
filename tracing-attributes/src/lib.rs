@@ -408,7 +408,7 @@ fn gen_body(
                     true
                 }
             })
-            .map(|(user_name, real_name)| quote!(#user_name = tracing::field::debug(&#real_name)))
+            .map(|(user_name, real_name)| quote!(#user_name = ?#real_name))
             .collect();
 
         // when async-trait is in use, replace instances of "self" with "_self" inside the fields values

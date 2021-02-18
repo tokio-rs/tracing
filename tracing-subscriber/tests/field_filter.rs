@@ -85,7 +85,7 @@ fn record_after_created() {
         .exit(span::mock().named("span"))
         .record(
             span::mock().named("span"),
-            field::mock("enabled").with_value(&true),
+            field::mock("enabled").with_value(true),
         )
         .enter(span::mock().named("span"))
         .event(event::mock().at_level(Level::DEBUG))
