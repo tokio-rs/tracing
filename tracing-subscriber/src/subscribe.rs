@@ -38,7 +38,7 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// Since `Subscribe` does not implement a complete strategy for collecting
 /// traces, it must be composed with a `Collect` in order to be used. The
-/// `Subscribe` trait is generic over a type parameter (called `S` in the trait
+/// `Subscribe` trait is generic over a type parameter (called `C` in the trait
 /// definition), representing the types of `Collect` they can be composed
 /// with. Thus, a subscriber may be implemented that will only compose with a
 /// particular `Collect` implementation, or additional trait bounds may be
