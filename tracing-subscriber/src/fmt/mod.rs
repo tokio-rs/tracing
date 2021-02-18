@@ -566,12 +566,9 @@ where
     /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        use crate::util::SubscriberInitExt;
+        self.finish().try_init()?;
 
-        tracing_core::dispatch::set_global_default(tracing_core::dispatch::Dispatch::new(
-            self.finish(),
-        ))?;
         Ok(())
     }
 
