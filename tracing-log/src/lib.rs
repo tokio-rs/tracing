@@ -380,6 +380,39 @@ impl AsTrace for log::Level {
     }
 }
 
+impl crate::sealed::Sealed for log::LevelFilter {}
+
+impl AsTrace for log::LevelFilter {
+    type Trace = tracing_core::LevelFilter;
+    #[inline]
+    fn as_trace(&self) -> tracing_core::LevelFilter {
+        match self {
+            log::LevelFilter::Off => tracing_core::LevelFilter::OFF,
+            log::LevelFilter::Error => tracing_core::LevelFilter::ERROR,
+            log::LevelFilter::Warn => tracing_core::LevelFilter::WARN,
+            log::LevelFilter::Info => tracing_core::LevelFilter::INFO,
+            log::LevelFilter::Debug => tracing_core::LevelFilter::DEBUG,
+            log::LevelFilter::Trace => tracing_core::LevelFilter::TRACE,
+        }
+    }
+}
+
+impl crate::sealed::Sealed for tracing_core::LevelFilter {}
+
+impl AsLog for tracing_core::LevelFilter {
+    type Log = log::LevelFilter;
+    #[inline]
+    fn as_log(&self) -> Self::Log {
+        match *self {
+            tracing_core::LevelFilter::OFF => log::LevelFilter::Off,
+            tracing_core::LevelFilter::ERROR => log::LevelFilter::Error,
+            tracing_core::LevelFilter::WARN => log::LevelFilter::Warn,
+            tracing_core::LevelFilter::INFO => log::LevelFilter::Info,
+            tracing_core::LevelFilter::DEBUG => log::LevelFilter::Debug,
+            tracing_core::LevelFilter::TRACE => log::LevelFilter::Trace,
+        }
+    }
+}
 /// Extends log `Event`s to provide complete `Metadata`.
 ///
 /// In `tracing-log`, an `Event` produced by a log (through [`AsTrace`]) has an hard coded

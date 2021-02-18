@@ -2,6 +2,8 @@
 //! ergonomic.
 use std::{error::Error, fmt};
 use tracing_core::dispatcher::{self, Dispatch};
+#[cfg(feature = "tracing-log")]
+use tracing_log::AsLog;
 
 /// Extension trait adding utility methods for subscriber initialization.
 ///
@@ -50,10 +52,19 @@ where
     /// [global default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
     fn try_init(self) -> Result<(), TryInitError> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(TryInitError::new)?;
-
         dispatcher::set_global_default(self.into()).map_err(TryInitError::new)?;
+
+        // Since we are setting the global default subscriber, we can
+        // opportunistically go ahead and set its global max level hint as
+        // the max level for the `log` crate as well. This should make
+        // skipping `log` diagnostics much faster.
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::builder()
+            // Note that we must call this *after* setting the global default
+            // subscriber, so that we get its max level hint.
+            .with_max_level(tracing_core::LevelFilter::current().as_log())
+            .init()
+            .map_err(TryInitError::new)?;
 
         Ok(())
     }
