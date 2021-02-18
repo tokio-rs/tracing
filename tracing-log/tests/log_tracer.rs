@@ -16,6 +16,7 @@ struct OwnedMetadata {
     module_path: Option<String>,
     file: Option<String>,
     line: Option<u32>,
+    column: Option<u32>,
 }
 
 struct TestSubscriber(Arc<State>);
@@ -43,6 +44,7 @@ impl Collect for TestSubscriber {
                 module_path: normalized.module_path().map(String::from),
                 file: normalized.file().map(String::from),
                 line: normalized.line(),
+                column: normalized.column(),
             }),
         )
     }
@@ -76,6 +78,7 @@ fn normalized_metadata() {
                 module_path: None,
                 file: None,
                 line: None,
+                column: None,
             }),
         );
 
@@ -98,6 +101,7 @@ fn normalized_metadata() {
                 module_path: Some("log_tracer".to_string()),
                 file: Some("server.rs".to_string()),
                 line: Some(144),
+                column: None,
             }),
         );
 

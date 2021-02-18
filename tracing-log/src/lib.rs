@@ -134,7 +134,7 @@ use tracing_core::{
     collect, dispatch,
     field::{self, Field, Visit},
     identify_callsite,
-    metadata::{Kind, Level},
+    metadata::{Kind, Level, Location},
     Event, Metadata,
 };
 
@@ -220,6 +220,7 @@ struct Fields {
     module: field::Field,
     file: field::Field,
     line: field::Field,
+    column: field::Field,
 }
 
 static FIELD_NAMES: &[&str] = &[
@@ -228,6 +229,7 @@ static FIELD_NAMES: &[&str] = &[
     "log.module_path",
     "log.file",
     "log.line",
+    "log.column",
 ];
 
 impl Fields {
@@ -238,12 +240,14 @@ impl Fields {
         let module = fieldset.field("log.module_path").unwrap();
         let file = fieldset.field("log.file").unwrap();
         let line = fieldset.field("log.line").unwrap();
+        let column = fieldset.field("log.column").unwrap();
         Fields {
             message,
             target,
             module,
             file,
             line,
+            column,
         }
     }
 }
@@ -256,9 +260,7 @@ macro_rules! log_cs {
             "log event",
             "log",
             $level,
-            None,
-            None,
-            None,
+            Location::new(None, None, None, None),
             field::FieldSet::new(FIELD_NAMES, identify_callsite!(&CALLSITE)),
             Kind::EVENT,
         );
@@ -318,9 +320,7 @@ impl<'a> AsTrace for log::Record<'a> {
             "log record",
             self.target(),
             self.level().as_trace(),
-            self.file(),
-            self.line(),
-            self.module_path(),
+            Location::new(self.file(), self.line(), None, self.module_path()),
             field::FieldSet::new(FIELD_NAMES, cs_id),
             Kind::EVENT,
         )
@@ -398,9 +398,12 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
                 "log event",
                 fields.target.unwrap_or("log"),
                 *original.level(),
-                fields.file,
-                fields.line.map(|l| l as u32),
-                fields.module_path,
+                Location::new(
+                    fields.file,
+                    fields.line.map(|l| l as u32),
+                    fields.column.map(|l| l as u32),
+                    fields.module_path,
+                ),
                 field::FieldSet::new(&["message"], original.callsite()),
                 Kind::EVENT,
             ))
@@ -419,6 +422,7 @@ struct LogVisitor<'a> {
     module_path: Option<&'a str>,
     file: Option<&'a str>,
     line: Option<u64>,
+    column: Option<u64>,
     fields: &'static Fields,
 }
 
@@ -432,6 +436,7 @@ impl<'a> LogVisitor<'a> {
             module_path: None,
             file: None,
             line: None,
+            column: None,
             fields,
         }
     }
@@ -443,6 +448,8 @@ impl<'a> Visit for LogVisitor<'a> {
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field == &self.fields.line {
             self.line = Some(value);
+        } else if field == &self.fields.column {
+            self.column = Some(value);
         }
     }
 

@@ -268,11 +268,22 @@ macro_rules! metadata {
             $name,
             $target,
             $level,
-            Some(file!()),
-            Some(line!()),
-            Some(module_path!()),
+            $crate::location!(),
             $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
             $kind,
+        )
+    };
+}
+
+/// Statically construct new location in source code
+#[macro_export]
+macro_rules! location {
+    () => {
+        $crate::metadata::Location::new(
+            Some(file!()),
+            Some(line!()),
+            Some(column!()),
+            Some(module_path!()),
         )
     };
 }
@@ -312,7 +323,7 @@ pub use self::{
     dispatch::Dispatch,
     event::Event,
     field::Field,
-    metadata::{Level, LevelFilter, Metadata},
+    metadata::{Level, LevelFilter, Location, Metadata},
 };
 
 pub use self::{collect::Interest, metadata::Kind};
