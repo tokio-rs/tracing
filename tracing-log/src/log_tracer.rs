@@ -158,7 +158,17 @@ impl Default for LogTracer {
 
 impl log::Log for LogTracer {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        // First, check the log record against the current max level enabled by
+        // the current `tracing` subscriber.
+        if metadata.level().as_trace() > tracing_core::LevelFilter::current() {
+            // If the log record's level is above that, disable it.
+            return false;
+        }
+
+        // Okay, it wasn't disabled by the max level — do we have any specific
+        // modules to ignore?
         if self.ignore_crates.is_empty() {
+            // If we don't, just enable it.
             return true;
         }
 
