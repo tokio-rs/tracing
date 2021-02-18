@@ -547,12 +547,9 @@ where
     /// because a global subscriber was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        use crate::util::SubscriberInitExt;
+        self.finish().try_init()?;
 
-        tracing_core::dispatcher::set_global_default(tracing_core::dispatcher::Dispatch::new(
-            self.finish(),
-        ))?;
         Ok(())
     }
 
