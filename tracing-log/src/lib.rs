@@ -368,6 +368,7 @@ impl crate::sealed::Sealed for log::Level {}
 
 impl AsTrace for log::Level {
     type Trace = tracing_core::Level;
+    #[inline]
     fn as_trace(&self) -> tracing_core::Level {
         match self {
             log::Level::Error => tracing_core::Level::ERROR,
