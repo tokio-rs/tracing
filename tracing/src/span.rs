@@ -812,7 +812,7 @@ impl Span {
     ///
     /// ```
     /// # use tracing::info_span;
-    /// let _span = info_span!("something_interesting").entered()
+    /// let _span = info_span!("something_interesting").entered();
     /// ```
     /// rather than:
     /// ```
