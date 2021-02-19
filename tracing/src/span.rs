@@ -852,13 +852,13 @@ impl Span {
     /// returning the un-entered span:
     ///
     /// ```
-    /// # use tracing::Level;
+    /// # use tracing::{Level, span};
     /// let span = span!(Level::INFO, "doing_something").entered();
     ///
     /// // code here is within the span
     ///
     /// // explicitly exit the span, returning it
-    /// let span = span.exit()
+    /// let span = span.exit();
     ///
     /// // code here is no longer within the span
     ///
@@ -871,6 +871,7 @@ impl Span {
     /// Guards need not be explicitly dropped:
     ///
     /// ```
+    /// # use tracing::trace_span;
     /// fn my_function() -> String {
     ///     // enter a span for the duration of this function.
     ///     let span = trace_span!("my_function").entered();
