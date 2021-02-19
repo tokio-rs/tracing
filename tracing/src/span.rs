@@ -788,6 +788,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
+    #[inline]
     pub fn enter(&self) -> Entered<'_> {
         self.do_enter();
         Entered {
@@ -797,6 +798,7 @@ impl Span {
     }
 
     /// An owned version of [`Entered`].
+    #[inline]
     pub fn entered(self) -> EnteredSpan {
         self.do_enter();
         EnteredSpan {
