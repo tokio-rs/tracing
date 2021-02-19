@@ -507,6 +507,11 @@ where
         self.inner.try_close(id)
     }
 
+    #[inline]
+    fn max_level_hint(&self) -> Option<tracing_core::LevelFilter> {
+        self.inner.max_level_hint()
+    }
+
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
             Some(self as *const Self as *const ())
@@ -566,12 +571,9 @@ where
     /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        use crate::util::SubscriberInitExt;
+        self.finish().try_init()?;
 
-        tracing_core::dispatch::set_global_default(tracing_core::dispatch::Dispatch::new(
-            self.finish(),
-        ))?;
         Ok(())
     }
 
