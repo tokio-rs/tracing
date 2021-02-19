@@ -797,7 +797,113 @@ impl Span {
         }
     }
 
-    /// An owned version of [`Entered`].
+    /// Enters this span, consuming it and returning a [guard][`EnteredSpan`]
+    /// that will exit the span when dropped.
+    ///
+    /// If this span is enabled by the current collector, then this function will
+    /// call [`Collect::enter`] with the span's [`Id`], and dropping the guard
+    /// will call [`Collect::exit`]. If the span is disabled, this does
+    /// nothing.
+    ///
+    /// This is similar to the [`Span::enter`] method, except that it moves the
+    /// span by value into the returned guard, rather than borrowing it.
+    /// Therefore, this method can be used to create and enter a span in a
+    /// single expression, without requiring a `let`-binding. For example:
+    ///
+    /// ```
+    /// # use tracing::info_span;
+    /// let _span = info_span!("something_interesting").entered()
+    /// ```
+    /// rather than:
+    /// ```
+    /// # use tracing::info_span;
+    /// let span = info_span!("something_interesting");
+    /// let _e = span.enter();
+    /// ```
+    ///
+    /// Furthermore, `entered` may be used when the span must be stored in some
+    /// other struct or be passed to a function while remaining entered.
+    ///
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///
+    /// **Note**: The returned [`EnteredSpan`] guard does not
+    /// implement `Send`. Dropping the guard will exit *this* span,
+    /// and if the guard is sent to another thread and dropped there, that thread may
+    /// never have entered this span. Thus, `EnteredSpan`s should not be sent
+    /// between threads.
+    ///
+    /// </pre></div>
+    ///
+    /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
+    /// [`Span::entered`] should be used very carefully or avoided entirely. Holding
+    /// the drop guard returned by `Span::entered` across `.await` points will
+    /// result in incorrect traces. See the documentation for the
+    /// [`Span::enter`] method for details.
+    ///
+    /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
+    ///
+    /// # Examples
+    ///
+    /// The returned guard can be [explicitly exited][EnteredSpan::exit],
+    /// returning the un-entered span:
+    ///
+    /// ```
+    /// # use tracing::Level;
+    /// let span = span!(Level::INFO, "doing_something").entered();
+    ///
+    /// // code here is within the span
+    ///
+    /// // explicitly exit the span, returning it
+    /// let span = span.exit()
+    ///
+    /// // code here is no longer within the span
+    ///
+    /// // enter the span again
+    /// let span = span.entered();
+    ///
+    /// // now we are inside the span once again
+    /// ```
+    ///
+    /// Guards need not be explicitly dropped:
+    ///
+    /// ```
+    /// fn my_function() -> String {
+    ///     // enter a span for the duration of this function.
+    ///     let span = trace_span!("my_function").entered();
+    ///
+    ///     // anything happening in functions we call is still inside the span...
+    ///     my_other_function();
+    ///
+    ///     // returning from the function drops the guard, exiting the span.
+    ///     return "Hello world".to_owned();
+    /// }
+    ///
+    /// fn my_other_function() {
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// Since the [`EnteredSpan`] guard can dereference to the [`Span`] itself,
+    /// the span may still be accessed while entered. For example:
+    ///
+    /// ```rust
+    /// # use tracing::info_span;
+    /// use tracing::field;
+    ///
+    /// // create the span with an empty field, and enter it.
+    /// let span = info_span!("my_span", some_field = field::Empty).entered();
+    ///
+    /// // we can still record a value for the field while the span is entered.
+    /// span.record("some_field", &"hello world!");
+    /// ```
+    ///
+    /// [`Collect::enter`]: super::collect::Collect::enter()
+    /// [`Collect::exit`]: super::collect::Collect::exit()
+    /// [`Id`]: super::Id
     #[inline]
     pub fn entered(self) -> EnteredSpan {
         self.do_enter();
