@@ -165,9 +165,9 @@ pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
 pub(crate) fn dispatch_record(record: &log::Record<'_>) {
     dispatch::get_default(|dispatch| {
         let filter_meta = record.as_trace();
-        if !dispatch::get_default(|dispatch| dispatch.enabled(&filter_meta)) {
+        if !dispatch.enabled(&filter_meta) {
             return;
-        };
+        }
 
         let (_, keys, meta) = loglevel_to_cs(record.level());
 
