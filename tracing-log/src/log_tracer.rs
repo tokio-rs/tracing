@@ -24,7 +24,7 @@
 //! [`init_with_filter`]: LogTracer.html#method.init_with_filter
 //! [builder]: LogTracer::builder()
 //! [ignore]: Builder::ignore_crate()
-use crate::{format_trace, AsTrace};
+use crate::AsTrace;
 pub use log::SetLoggerError;
 use tracing_core::dispatch;
 
