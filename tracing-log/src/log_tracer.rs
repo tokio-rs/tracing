@@ -24,7 +24,7 @@
 //! [`init_with_filter`]: LogTracer.html#method.init_with_filter
 //! [builder]: LogTracer::builder()
 //! [ignore]: Builder::ignore_crate()
-use crate::{format_trace, AsTrace};
+use crate::AsTrace;
 pub use log::SetLoggerError;
 use tracing_core::dispatch;
 
@@ -167,34 +167,23 @@ impl log::Log for LogTracer {
 
         // Okay, it wasn't disabled by the max level — do we have any specific
         // modules to ignore?
-        if self.ignore_crates.is_empty() {
-            // If we don't, just enable it.
-            return true;
+        if !self.ignore_crates.is_empty() {
+            // If we are ignoring certain module paths, ensure that the metadata
+            // does not start with one of those paths.
+            let target = metadata.target();
+            for ignored in &self.ignore_crates[..] {
+                if target.starts_with(ignored) {
+                    return false;
+                }
+            }
         }
 
-        // If we are ignoring certain module paths, ensure that the metadata
-        // does not start with one of those paths.
-        let target = metadata.target();
-        !self
-            .ignore_crates
-            .iter()
-            .any(|ignored| target.starts_with(ignored))
+        // Finally, check if the current `tracing` dispatcher cares about this.
+        dispatch::get_default(|dispatch| dispatch.enabled(&metadata.as_trace()))
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let enabled = dispatch::get_default(|dispatch| {
-            // TODO: can we cache this for each log record, so we can get
-            // similar to the callsite cache?
-            dispatch.enabled(&record.as_trace())
-        });
-
-        if enabled {
-            // TODO: if the record is enabled, we'll get the current dispatcher
-            // twice --- once to check if enabled, and again to dispatch the event.
-            // If we could construct events without dispatching them, we could
-            // re-use the dispatcher reference...
-            format_trace(record).unwrap();
-        }
+        crate::dispatch_record(record);
     }
 
     fn flush(&self) {}
