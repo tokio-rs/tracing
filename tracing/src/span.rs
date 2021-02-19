@@ -322,6 +322,8 @@ use core::{
     cmp, fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,
+    mem,
+    ops::Deref,
 };
 
 /// Trait implemented by types which have a span `Id`.
@@ -379,7 +381,36 @@ pub(crate) struct Inner {
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
     span: &'a Span,
-    _not_send: PhantomData<*mut ()>,
+
+    /// ```compile_fail
+    /// use tracing::span::*;
+    /// trait AssertSend: Send {}
+    ///
+    /// impl AssertSend for Entered<'_> {}
+    /// ```
+    _not_send: PhantomNotSend,
+}
+
+/// An owned version of [`Entered`], a guard representing a span which has been
+/// entered and is currently executing.
+///
+/// When the guard is dropped, the span will be exited.
+///
+/// This is returned by the [`Span::entered`] function.
+///
+/// [`Span::entered`]: super::Span::entered()
+#[derive(Debug)]
+#[must_use = "once a span has been entered, it should be exited"]
+pub struct EnteredSpan {
+    span: Span,
+
+    /// ```compile_fail
+    /// use tracing::span::*;
+    /// trait AssertSend: Send {}
+    ///
+    /// impl AssertSend for EnteredSpan {}
+    /// ```
+    _not_send: PhantomNotSend,
 }
 
 /// `log` target for all span lifecycle (creation/enter/exit/close) records.
@@ -758,7 +789,25 @@ impl Span {
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
     pub fn enter(&self) -> Entered<'_> {
-        if let Some(ref inner) = self.inner.as_ref() {
+        self.do_enter();
+        Entered {
+            span: self,
+            _not_send: PhantomNotSend,
+        }
+    }
+
+    /// An owned version of [`Entered`].
+    pub fn entered(self) -> EnteredSpan {
+        self.do_enter();
+        EnteredSpan {
+            span: self,
+            _not_send: PhantomNotSend,
+        }
+    }
+
+    #[inline]
+    fn do_enter(&self) {
+        if let Some(inner) = self.inner.as_ref() {
             inner.collector.enter(&inner.id);
         }
 
@@ -767,11 +816,23 @@ impl Span {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
             }
         }}
+    }
 
-        Entered {
-            span: self,
-            _not_send: PhantomData,
+    // Called from [`Entered`] and [`EnteredSpan`] drops.
+    //
+    // Running this behaviour on drop rather than with an explicit function
+    // call means that spans may still be exited when unwinding.
+    #[inline]
+    fn do_exit(&self) {
+        if let Some(inner) = self.inner.as_ref() {
+            inner.collector.exit(&inner.id);
         }
+
+        if_log_enabled! { crate::Level::TRACE, {
+            if let Some(ref _meta) = self.meta {
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+            }
+        }}
     }
 
     /// Executes the given function in the context of this span.
@@ -1223,42 +1284,65 @@ impl Clone for Inner {
 
 // ===== impl Entered =====
 
-/// # Safety
-///
-/// Technically, `Entered` _can_ implement both `Send` *and* `Sync` safely. It
-/// doesn't, because it has a `PhantomData<*mut ()>` field, specifically added
-/// in order to make it `!Send`.
+impl EnteredSpan {
+    /// Exits this span, returning the underlying [`Span`].
+    #[inline]
+    pub fn exit(mut self) -> Span {
+        // One does not simply move out of a struct with `Drop`.
+        let span = mem::replace(&mut self.span, Span::none());
+        span.do_exit();
+        span
+    }
+}
+
+impl Deref for EnteredSpan {
+    type Target = Span;
+
+    #[inline]
+    fn deref(&self) -> &Span {
+        &self.span
+    }
+}
+
+impl<'a> Drop for Entered<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        self.span.do_exit()
+    }
+}
+
+impl Drop for EnteredSpan {
+    #[inline]
+    fn drop(&mut self) {
+        self.span.do_exit()
+    }
+}
+
+/// Technically, `Entered` (or `EnteredSpan`) _can_ implement both `Send` *and*
+/// `Sync` safely. It doesn't, because it has a `PhantomNotSend` field,
+/// specifically added in order to make it `!Send`.
 ///
 /// Sending an `Entered` guard between threads cannot cause memory unsafety.
 /// However, it *would* result in incorrect behavior, so we add a
-/// `PhantomData<*mut ()>` to prevent it from being sent between threads. This
-/// is because it must be *dropped* on the same thread that it was created;
+/// `PhantomNotSend` to prevent it from being sent between threads. This is
+/// because it must be *dropped* on the same thread that it was created;
 /// otherwise, the span will never be exited on the thread where it was entered,
 /// and it will attempt to exit the span on a thread that may never have entered
 /// it. However, we still want them to be `Sync` so that a struct holding an
 /// `Entered` guard can be `Sync`.
 ///
 /// Thus, this is totally safe.
-unsafe impl<'a> Sync for Entered<'a> {}
-
-impl<'a> Drop for Entered<'a> {
-    #[inline]
-    fn drop(&mut self) {
-        // Dropping the guard exits the span.
-        //
-        // Running this behaviour on drop rather than with an explicit function
-        // call means that spans may still be exited when unwinding.
-        if let Some(inner) = self.span.inner.as_ref() {
-            inner.collector.exit(&inner.id);
-        }
-
-        if let Some(ref _meta) = self.span.meta {
-            if_log_enabled! { crate::Level::TRACE, {
-                self.span.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
-            }}
-        }
-    }
+#[derive(Debug)]
+struct PhantomNotSend {
+    ghost: PhantomData<*mut ()>,
 }
+#[allow(non_upper_case_globals)]
+const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
+
+/// # Safety
+///
+/// Trivially safe, as `PhantomNotSend` doesn't have any API.
+unsafe impl Sync for PhantomNotSend {}
 
 #[cfg(feature = "log")]
 struct FmtValues<'a>(&'a Record<'a>);
@@ -1301,4 +1385,6 @@ mod test {
 
     trait AssertSync: Sync {}
     impl AssertSync for Span {}
+    impl AssertSync for Entered<'_> {}
+    impl AssertSync for EnteredSpan {}
 }

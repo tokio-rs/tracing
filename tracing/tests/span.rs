@@ -299,6 +299,44 @@ fn enter() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn entered() {
+    let (collector, handle) = collector::mock()
+        .enter(span::mock().named("foo"))
+        .event(event::mock())
+        .exit(span::mock().named("foo"))
+        .drop_span(span::mock().named("foo"))
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        let _span = span!(Level::TRACE, "foo").entered();
+        debug!("dropping guard...");
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn entered_api() {
+    let (collector, handle) = collector::mock()
+        .enter(span::mock().named("foo"))
+        .event(event::mock())
+        .exit(span::mock().named("foo"))
+        .drop_span(span::mock().named("foo"))
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        let span = span!(Level::TRACE, "foo").entered();
+        let _derefs_to_span = span.id();
+        debug!("exiting span...");
+        let _: Span = span.exit();
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn moved_field() {
     let (collector, handle) = collector::mock()
         .new_span(
