@@ -542,8 +542,8 @@ pub trait CollectExt: Collect + crate::sealed::Sealed {
 /// [collector]: tracing_core::Collect
 /// [stored data]: super::registry::SpanRef
 #[derive(Debug)]
-pub struct Context<'a, S> {
-    subscriber: Option<&'a S>,
+pub struct Context<'a, C> {
+    subscriber: Option<&'a C>,
 }
 
 /// A [collector] composed of a collector wrapped by one or more
