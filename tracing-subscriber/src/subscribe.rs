@@ -537,7 +537,7 @@ pub trait CollectExt: Collect + crate::sealed::Sealed {
 /// [stored data]: super::registry::SpanRef
 #[derive(Debug)]
 pub struct Context<'a, C> {
-    subscriber: Option<&'a C>,
+    collector: Option<&'a C>,
 }
 
 /// A [collector] composed of a collector wrapped by one or more
@@ -907,7 +907,7 @@ where
 {
     fn ctx(&self) -> Context<'_, C> {
         Context {
-            subscriber: Some(&self.inner),
+            collector: Some(&self.inner),
         }
     }
 }
@@ -933,7 +933,7 @@ where
     /// Returns the wrapped subscriber's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
-        self.subscriber
+        self.collector
             .map(Collect::current_span)
             // TODO: this would be more correct as "unknown", so perhaps
             // `tracing-core` should make `Current::unknown()` public?
@@ -943,11 +943,11 @@ where
     /// Returns whether the wrapped subscriber would enable the current span.
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.subscriber
-            .map(|subscriber| subscriber.enabled(metadata))
+        self.collector
+            .map(|collector| collector.enabled(metadata))
             // If this context is `None`, we are registering a callsite, so
             // return `true` so that the subscriber does not incorrectly assume that
-            // the inner subscriber has disabled this metadata.
+            // the inner collector has disabled this metadata.
             // TODO(eliza): would it be more correct for this to return an `Option`?
             .unwrap_or(true)
     }
@@ -973,8 +973,8 @@ where
     /// [`Context::enabled`]: Layered::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        if let Some(ref subscriber) = self.subscriber {
-            subscriber.event(event);
+        if let Some(ref collector) = self.collector {
+            collector.event(event);
         }
     }
 
@@ -989,7 +989,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        let span = self.subscriber.as_ref()?.span(id)?;
+        let span = self.collector.as_ref()?.span(id)?;
         Some(span.metadata())
     }
 
@@ -1017,7 +1017,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref()?.span(id)
+        self.collector.as_ref()?.span(id)
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
@@ -1039,7 +1039,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref().and_then(|s| s.span(id)).is_some()
+        self.collector.as_ref().and_then(|s| s.span(id)).is_some()
     }
 
     /// Returns [stored data] for the span that the wrapped collector considers
@@ -1066,10 +1066,10 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        let subscriber = self.subscriber.as_ref()?;
-        let current = subscriber.current_span();
+        let collector = self.collector.as_ref()?;
+        let current = collector.current_span();
         let id = current.id()?;
-        let span = subscriber.span(&id);
+        let span = collector.span(&id);
         debug_assert!(
             span.is_some(),
             "the subscriber should have data for the current span ({:?})!",
@@ -1112,15 +1112,15 @@ where
 
 impl<'a, C> Context<'a, C> {
     pub(crate) fn none() -> Self {
-        Self { subscriber: None }
+        Self { collector: None }
     }
 }
 
 impl<'a, C> Clone for Context<'a, C> {
     #[inline]
     fn clone(&self) -> Self {
-        let subscriber = self.subscriber.as_ref().copied();
-        Context { subscriber }
+        let collector = self.collector.as_ref().copied();
+        Context { collector }
     }
 }
 
