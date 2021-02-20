@@ -1,3 +1,26 @@
+# 0.2.16 (February 19, 2020)
+
+### Fixed
+
+- **env-filter**: Fixed directives where the level is in mixed case (such as
+  `Info`) failing to parse ([#1126])
+- **fmt**: Fixed `fmt::Subscriber` not providing a max-level hint ([#1251])
+- `tracing-subscriber` no longer enables `tracing` and `tracing-core`'s default
+  features ([#1144])
+  
+### Changed
+
+- **chrono**: Updated `chrono` dependency to 0.4.16 ([#1189])
+- **log**: Updated `tracing-log` dependency to 0.1.2
+
+Thanks to @salewski, @taiki-e, @davidpdrsn and @markdingram for contributing to
+this release!
+
+[#1126]: https://github.com/tokio-rs/tracing/pull/1126
+[#1251]: https://github.com/tokio-rs/tracing/pull/1251
+[#1144]: https://github.com/tokio-rs/tracing/pull/1144
+[#1189]: https://github.com/tokio-rs/tracing/pull/1189
+
 # 0.2.15 (November 2, 2020)
 
 ### Fixed
