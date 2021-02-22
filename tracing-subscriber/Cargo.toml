@@ -65,6 +65,7 @@ criterion = { version = "0.3", default_features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.3", default-features = false, features = ["std-future", "std"] }
 tokio = { version = "0.2", features = ["rt-core", "macros"] }
+env_logger = "0.8"
 
 [badges]
 maintenance = { status = "experimental" }
@@ -94,4 +95,8 @@ harness = false
 
 [[bench]]
 name = "reload"
+harness = false
+
+[[bench]]
+name = "compare_io"
 harness = false
