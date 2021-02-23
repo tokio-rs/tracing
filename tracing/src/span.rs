@@ -57,13 +57,12 @@
 //!
 //! A thread of execution is said to _enter_ a span when it begins executing,
 //! and _exit_ the span when it switches to another context. Spans may be
-//! entered through the [`enter`] and [`in_scope`] methods.
+//! entered through the [`enter`], [`entered`], and [`in_scope`] methods.
 //!
-//! The `enter` method enters a span, returning a [guard] that exits the span
+//! The [`enter`] method enters a span, returning a [guard] that exits the span
 //! when dropped
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{span, Level};
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var);
 //!
@@ -86,11 +85,28 @@
 //!     for details.
 //! </pre></div>
 //!
-//! `in_scope` takes a closure or function pointer and executes it inside the
-//! span.
+//! The [`entered`] method is analogous to [`enter`], but moves the span into
+//! the returned guard, rather than borrowing it. This allows creating and
+//! entering a span in a single expression:
+//!
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{span, Level};
+//! // Create a span and enter it, returning a guard:
+//! let span = span!(Level::INFO, "my_span").entered();
+//!
+//! // We are now inside the span! Like `enter()`, the guard returned by
+//! // `entered()` will exit the span when it is dropped...
+//!
+//! // ...but, it can also be exited explicitly, returning the `Span`
+//! // struct:
+//! let span = span.exit();
+//! ```
+//!
+//! Finally, [`in_scope`] takes a closure or function pointer and executes it
+//! inside the span:
+//!
+//! ```
+//! # use tracing::{span, Level};
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var = &my_var);
 //!
@@ -309,6 +325,7 @@
 //! [`Subscriber`]: ../subscriber/trait.Subscriber.html
 //! [`Attributes`]: struct.Attributes.html
 //! [`enter`]: struct.Span.html#method.enter
+//! [`entered`]: struct.Span.html#method.entered
 //! [`in_scope`]: struct.Span.html#method.in_scope
 //! [`follows_from`]: struct.Span.html#method.follows_from
 //! [guard]: struct.Entered.html
