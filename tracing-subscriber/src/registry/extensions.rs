@@ -65,12 +65,12 @@ impl<'a> ExtensionsMut<'a> {
     ///
     /// Note that extensions are _not_
     /// `Subscriber`-specific—they are _span_-specific. This means that
-    /// other layers can access and mutate extensions that
+    /// other subscribers can access and mutate extensions that
     /// a different Subscriber recorded. For example, an application might
-    /// have a layer that records execution timings, alongside a layer
+    /// have a subscriber that records execution timings, alongside a subscriber
     /// that reports spans and events to a distributed
     /// tracing system that requires timestamps for spans.
-    /// Ideally, if one layer records a timestamp _x_, the other layer
+    /// Ideally, if one subscriber records a timestamp _x_, the other subscriber
     /// should be able to reuse timestamp _x_.
     ///
     /// Therefore, extensions should generally be newtypes, rather than common
