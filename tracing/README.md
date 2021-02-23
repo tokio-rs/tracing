@@ -174,8 +174,7 @@ pub fn shave_all(yaks: usize) -> usize {
     //
     // local variables (`yaks`) can be used as field values
     // without an assignment, similar to struct initializers.
-    let span = span!(Level::TRACE, "shaving_yaks", yaks);
-    let _enter = span.enter();
+    let _span_ = span!(Level::TRACE, "shaving_yaks", yaks).entered();
 
     info!("shaving yaks");
 
@@ -212,11 +211,17 @@ If you are instrumenting code that make use of
 [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html)
 or async/await, be sure to use the
 [`tracing-futures`](https://docs.rs/tracing-futures) crate. This is needed
-because the following example _will not_ work:
+because the following examples _will not_ work:
 
 ```rust
 async {
     let _s = span.enter();
+    // ...
+}
+```
+```rust
+async {
+    let _s = tracing::span!(...).entered();
     // ...
 }
 ```

@@ -495,8 +495,7 @@
 //!     //
 //!     // local variables (`yaks`) can be used as field values
 //!     // without an assignment, similar to struct initializers.
-//!     let span = span!(Level::TRACE, "shaving_yaks", yaks);
-//!     let _enter = span.enter();
+//!     let _span = span!(Level::TRACE, "shaving_yaks", yaks).entered();
 //!
 //!     info!("shaving yaks");
 //!
