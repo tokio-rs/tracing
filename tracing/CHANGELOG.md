@@ -1,3 +1,14 @@
+# 0.1.25 (February 23, 2021)
+
+### Added
+
+- `Span::entered` method for entering a span and moving it into a guard by value
+  rather than borrowing it ([#1252])
+
+Thanks to @matklad for contributing to this release!
+
+[#1252]: https://github.com/tokio-rs/tracing/pull/1252
+
 # 0.1.24 (February 17, 2021)
 
 ### Fixed
