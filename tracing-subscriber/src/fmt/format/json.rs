@@ -33,7 +33,7 @@ use tracing_log::NormalizeEvent;
 ///     "level":"INFO",
 ///     "fields":{"message":"some message","key":"value"}
 ///     "target":"mycrate",
-///     "span":{name":"leaf"},
+///     "span":{"name":"leaf"},
 ///     "spans":[{"name":"root"},{"name":"leaf"}],
 /// }
 /// ```
