@@ -5,7 +5,7 @@
 //! This module provides the [`Registry`] type, a [`Collect`] implementation
 //! which tracks per-span data and exposes it to subscribers. When a `Registry`
 //! is used as the base `Collect` of a `Subscribe` stack, the
-//! [`subscriber::Context`][ctx] type will provide methods allowing subscribers to
+//! [`subscribe::Context`][ctx] type will provide methods allowing subscribers to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
 //! [`LookupSpan`] and [`Collect`] themselves (with [`SpanData`] implemented

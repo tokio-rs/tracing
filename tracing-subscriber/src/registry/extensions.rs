@@ -64,7 +64,7 @@ impl<'a> ExtensionsMut<'a> {
     /// Insert a type into this `Extensions`.
     ///
     /// Note that extensions are _not_
-    /// `Subscriber`-specific—they are _span_-specific. This means that
+    /// [subscriber]-specific—they are _span_-specific. This means that
     /// other subscribers can access and mutate extensions that
     /// a different Subscriber recorded. For example, an application might
     /// have a subscriber that records execution timings, alongside a subscriber
@@ -80,6 +80,8 @@ impl<'a> ExtensionsMut<'a> {
     /// ## Panics
     ///
     /// If `T` is already present in `Extensions`, then this method will panic.
+    ///
+    /// [subscriber]: crate::subscribe::Subscribe
     pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) {
         assert!(self.replace(val).is_none())
     }

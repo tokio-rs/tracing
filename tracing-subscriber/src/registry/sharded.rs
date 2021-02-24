@@ -104,19 +104,19 @@ fn id_to_idx(id: &Id) -> usize {
 /// processed an `on_close` event.
 ///
 /// This is needed to enable a [`Registry`]-backed Subscriber to access span
-/// data after the `Subscriber` has received the `on_close` callback.
+/// data after the subscriber has received the `on_close` callback.
 ///
-/// Once all `Subscriber`s have processed this event, the [`Registry`] knows
+/// Once all subscribers have processed this event, the [`Registry`] knows
 /// that is able to safely remove the span tracked by `id`. `CloseGuard`
 /// accomplishes this through a two-step process:
 /// 1. Whenever a [`Registry`]-backed `Subscriber::on_close` method is
 ///    called, `Registry::start_close` is closed.
 ///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
 ///    by 1 and returns a `CloseGuard`.
-/// 2. The `CloseGuard` is dropped at the end of `Subscriber::on_close`. On
+/// 2. The `CloseGuard` is dropped at the end of `Subscribe::on_close`. On
 ///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
 ///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
-///    `id` from the registry, as all `Subscribers` that might have seen the
+///    `id` from the registry, as all subscribers that might have seen the
 ///    `on_close` notification have processed it. If `CLOSE_COUNT` is
 ///    greater than 0, `CloseGuard` decrements the counter by one and
 ///    _does not_ remove the span from the [`Registry`].
@@ -408,7 +408,7 @@ impl Clear for DataInner {
         if self.parent.is_some() {
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
-            // determine whether to call the `Subscriber`'s `on_close` callback ---
+            // determine whether to call the subscriber's `on_close` callback ---
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the subscribers wouldn't see the close notification.
