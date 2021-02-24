@@ -104,19 +104,19 @@ fn id_to_idx(id: &Id) -> usize {
 /// processed an `on_close` event.
 ///
 /// This is needed to enable a [`Registry`]-backed Subscriber to access span
-/// data after the `Subscriber` has recieved the `on_close` callback.
+/// data after the subscriber has received the `on_close` callback.
 ///
-/// Once all `Subscriber`s have processed this event, the [`Registry`] knows
+/// Once all subscribers have processed this event, the [`Registry`] knows
 /// that is able to safely remove the span tracked by `id`. `CloseGuard`
 /// accomplishes this through a two-step process:
 /// 1. Whenever a [`Registry`]-backed `Subscriber::on_close` method is
 ///    called, `Registry::start_close` is closed.
 ///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
 ///    by 1 and returns a `CloseGuard`.
-/// 2. The `CloseGuard` is dropped at the end of `Subscriber::on_close`. On
+/// 2. The `CloseGuard` is dropped at the end of `Subscribe::on_close`. On
 ///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
 ///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
-///    `id` from the registry, as all `Layers` that might have seen the
+///    `id` from the registry, as all subscribers that might have seen the
 ///    `on_close` notification have processed it. If `CLOSE_COUNT` is
 ///    greater than 0, `CloseGuard` decrements the counter by one and
 ///    _does not_ remove the span from the [`Registry`].
@@ -151,7 +151,7 @@ impl Registry {
 
 thread_local! {
     /// `CLOSE_COUNT` is the thread-local counter used by `CloseGuard` to
-    /// track how many layers have processed the close.
+    /// track how many subscribers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
@@ -194,14 +194,14 @@ impl Collect for Registry {
     }
 
     /// This is intentionally not implemented, as recording fields
-    /// on a span is the responsibility of layers atop of this registry.
+    /// on a span is the responsibility of subscribers atop of this registry.
     #[inline]
     fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
     /// This is intentionally not implemented, as recording events
-    /// is the responsibility of layers atop of this registry.
+    /// is the responsibility of subscribers atop of this registry.
     fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
@@ -408,10 +408,10 @@ impl Clear for DataInner {
         if self.parent.is_some() {
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
-            // determine whether to call the `Layer`'s `on_close` callback ---
+            // determine whether to call the subscriber's `on_close` callback ---
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
-            // itself directly, the layers wouldn't see the close notification.
+            // itself directly, the subscribers wouldn't see the close notification.
             let subscriber = dispatch::get_default(Dispatch::clone);
             if let Some(parent) = self.parent.take() {
                 let _ = subscriber.try_close(parent);
@@ -457,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    fn single_layer_can_access_closed_span() {
+    fn single_subscriber_can_access_closed_span() {
         let subscriber = AssertionSubscriber.with_collector(Registry::default());
 
         with_default(subscriber, || {
@@ -467,7 +467,7 @@ mod tests {
     }
 
     #[test]
-    fn multiple_layers_can_access_closed_span() {
+    fn multiple_subscribers_can_access_closed_span() {
         let subscriber = AssertionSubscriber
             .and_then(AssertionSubscriber)
             .with_collector(Registry::default());
@@ -478,7 +478,7 @@ mod tests {
         });
     }
 
-    struct CloseLayer {
+    struct CloseSubscriber {
         inner: Arc<Mutex<CloseState>>,
     }
 
@@ -494,7 +494,7 @@ mod tests {
 
     struct SetRemoved(Arc<()>);
 
-    impl<S> Subscribe<S> for CloseLayer
+    impl<S> Subscribe<S> for CloseSubscriber
     where
         S: Collect + for<'a> LookupSpan<'a>,
     {
@@ -506,7 +506,7 @@ mod tests {
                 lock.open
                     .insert(span.name(), Arc::downgrade(&is_removed))
                     .is_none(),
-                "test layer saw multiple spans with the same name, the test is probably messed up"
+                "test subscriber saw multiple spans with the same name, the test is probably messed up"
             );
             let mut extensions = span.extensions_mut();
             extensions.insert(SetRemoved(is_removed));
@@ -533,7 +533,7 @@ mod tests {
         }
     }
 
-    impl CloseLayer {
+    impl CloseSubscriber {
         fn new() -> (Self, CloseHandle) {
             let state = Arc::new(Mutex::new(CloseState::default()));
             (
@@ -648,9 +648,9 @@ mod tests {
 
     #[test]
     fn spans_are_removed_from_registry() {
-        let (close_layer, state) = CloseLayer::new();
+        let (close_subscriber, state) = CloseSubscriber::new();
         let subscriber = AssertionSubscriber
-            .and_then(close_layer)
+            .and_then(close_subscriber)
             .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
@@ -676,9 +676,9 @@ mod tests {
 
     #[test]
     fn spans_are_only_closed_when_the_last_ref_drops() {
-        let (close_layer, state) = CloseLayer::new();
+        let (close_subscriber, state) = CloseSubscriber::new();
         let subscriber = AssertionSubscriber
-            .and_then(close_layer)
+            .and_then(close_subscriber)
             .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
@@ -709,9 +709,9 @@ mod tests {
 
     #[test]
     fn span_enter_guards_are_dropped_out_of_order() {
-        let (close_layer, state) = CloseLayer::new();
+        let (close_subscriber, state) = CloseSubscriber::new();
         let subscriber = AssertionSubscriber
-            .and_then(close_layer)
+            .and_then(close_subscriber)
             .with_collector(Registry::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
@@ -749,8 +749,8 @@ mod tests {
         // a child span's handle, the parent will remain open until child
         // closes, and will then be closed.
 
-        let (close_layer, state) = CloseLayer::new();
-        let subscriber = close_layer.with_collector(Registry::default());
+        let (close_subscriber, state) = CloseSubscriber::new();
+        let subscriber = close_subscriber.with_collector(Registry::default());
 
         let dispatch = dispatch::Dispatch::new(subscriber);
 
@@ -776,8 +776,8 @@ mod tests {
         // This test asserts that, when a span is kept open by a child which
         // is *itself* kept open by a child, closing the grandchild will close
         // both the parent *and* the grandparent.
-        let (close_layer, state) = CloseLayer::new();
-        let subscriber = close_layer.with_collector(Registry::default());
+        let (close_subscriber, state) = CloseSubscriber::new();
+        let subscriber = close_subscriber.with_collector(Registry::default());
 
         let dispatch = dispatch::Dispatch::new(subscriber);
 
