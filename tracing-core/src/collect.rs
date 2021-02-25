@@ -463,7 +463,7 @@ impl dyn Collect {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         unsafe {
             let raw = self.downcast_raw(TypeId::of::<T>())?;
-            Some(&*(raw.cast::<T>().as_ptr()))
+            Some(&*(raw.cast().as_ptr()))
         }
     }
 }
