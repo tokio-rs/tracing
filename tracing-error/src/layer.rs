@@ -62,12 +62,10 @@ where
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
-            id if id == TypeId::of::<Self>() => {
-                Some(NonNull::new_unchecked(self as *const _ as *mut ()))
+            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
+            id if id == TypeId::of::<WithContext>() => {
+                Some(NonNull::from(&self.get_context).cast())
             }
-            id if id == TypeId::of::<WithContext>() => Some(NonNull::new_unchecked(
-                &self.get_context as *const _ as *mut (),
-            )),
             _ => None,
         }
     }

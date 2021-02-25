@@ -514,7 +514,7 @@ where
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(NonNull::new_unchecked(self as *const Self as *mut ()))
+            Some(NonNull::from(self).cast())
         } else {
             self.inner.downcast_raw(id)
         }

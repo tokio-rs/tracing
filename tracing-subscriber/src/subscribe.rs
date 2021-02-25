@@ -498,7 +498,7 @@ where
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(NonNull::new_unchecked(self as *const Self as *mut ()))
+            Some(NonNull::from(self).cast())
         } else {
             None
         }
@@ -696,7 +696,7 @@ where
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            return Some(NonNull::new_unchecked(self as *const Self as *mut ()));
+            return Some(NonNull::from(self).cast());
         }
         self.subscriber
             .downcast_raw(id)
@@ -790,7 +790,7 @@ where
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            return Some(NonNull::new_unchecked(self as *const Self as *mut ()));
+            return Some(NonNull::from(self).cast());
         }
         self.subscriber
             .downcast_raw(id)
@@ -887,7 +887,7 @@ where
     #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(NonNull::new_unchecked(self as *const Self as *mut ()))
+            Some(NonNull::from(self).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }

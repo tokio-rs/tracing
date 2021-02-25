@@ -715,18 +715,10 @@ where
         // as well as to the layer's type itself. The potential use-cases for
         // this *may* be somewhat niche, though...
         match () {
-            _ if id == TypeId::of::<Self>() => {
-                Some(NonNull::new_unchecked(self as *const Self as *mut ()))
-            }
-            _ if id == TypeId::of::<E>() => Some(NonNull::new_unchecked(
-                &self.fmt_event as *const E as *mut (),
-            )),
-            _ if id == TypeId::of::<N>() => Some(NonNull::new_unchecked(
-                &self.fmt_fields as *const N as *mut (),
-            )),
-            _ if id == TypeId::of::<W>() => Some(NonNull::new_unchecked(
-                &self.make_writer as *const W as *mut (),
-            )),
+            _ if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
+            _ if id == TypeId::of::<E>() => Some(NonNull::from(&self.fmt_event).cast()),
+            _ if id == TypeId::of::<N>() => Some(NonNull::from(&self.fmt_fields).cast()),
+            _ if id == TypeId::of::<W>() => Some(NonNull::from(&self.make_writer).cast()),
             _ => None,
         }
     }
