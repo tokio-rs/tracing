@@ -244,7 +244,7 @@ impl Current {
 
     /// Constructs a new `Current` that indicates the collector does not
     /// track a current span.
-    pub(crate) fn unknown() -> Self {
+    pub fn unknown() -> Self {
         Self {
             inner: CurrentInner::Unknown,
         }
