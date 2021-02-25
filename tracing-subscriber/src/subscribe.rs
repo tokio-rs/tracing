@@ -9,7 +9,7 @@ use tracing_core::{
 
 #[cfg(feature = "registry")]
 use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 
 /// A composable handler for `tracing` events.
 ///
@@ -496,9 +496,9 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             None
         }
@@ -694,9 +694,9 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+            return Some(NonNull::from(self).cast());
         }
         self.subscriber
             .downcast_raw(id)
@@ -788,9 +788,9 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+            return Some(NonNull::from(self).cast());
         }
         self.subscriber
             .downcast_raw(id)
@@ -885,9 +885,9 @@ where
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }

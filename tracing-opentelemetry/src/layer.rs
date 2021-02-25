@@ -1,9 +1,9 @@
 use crate::PreSampledTracer;
 use opentelemetry::{trace as otel, trace::TraceContextExt, Context as OtelContext, Key, KeyValue};
-use std::any::TypeId;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
+use std::{any::TypeId, ptr::NonNull};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -556,11 +556,11 @@ where
 
     // SAFETY: this is safe because the `WithContext` function pointer is valid
     // for the lifetime of `&self`.
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
-            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
             id if id == TypeId::of::<WithContext>() => {
-                Some(&self.get_context as *const _ as *const ())
+                Some(NonNull::from(&self.get_context).cast())
             }
             _ => None,
         }
