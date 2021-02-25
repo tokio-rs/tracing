@@ -80,22 +80,18 @@
     unused_parens,
     while_true
 )]
-// TODO: once `tracing` bumps its MSRV to 1.42, remove this allow.
-#![allow(unused)]
-extern crate proc_macro;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::iter;
 
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt as _};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, AttributeArgs, Block, Expr, ExprCall, FieldPat,
-    FnArg, Ident, Item, ItemFn, Lit, LitInt, LitStr, Meta, MetaList, MetaNameValue, NestedMeta,
-    Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path, Signature,
-    Stmt, Token,
+    punctuated::Punctuated, spanned::Spanned, Block, Expr, ExprCall, FieldPat, FnArg, Ident, Item,
+    ItemFn, LitInt, LitStr, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct,
+    PatType, Path, Signature, Stmt, Token,
 };
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
@@ -390,7 +386,7 @@ fn gen_body(
         let target = args.target();
 
         // filter out skipped fields
-        let mut quoted_fields: Vec<_> = param_names
+        let quoted_fields: Vec<_> = param_names
             .into_iter()
             .filter(|(param, _)| {
                 if args.skips.contains(param) {
@@ -541,7 +537,7 @@ impl InstrumentArgs {
             Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
             Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
             Some(Level::Path(ref pat)) => quote!(#pat),
-            Some(lit) => quote! {
+            Some(_) => quote! {
                 compile_error!(
                     "unknown verbosity level, expected one of \"trace\", \
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
@@ -898,7 +894,7 @@ fn get_async_trait_function(block: &Block, block_is_async: bool) -> Option<&Item
                     return None;
                 }
                 // is the argument to Box::pin a function call itself?
-                if let Expr::Call(ExprCall { func, args, .. }) = &outside_args[0] {
+                if let Expr::Call(ExprCall { func, .. }) = &outside_args[0] {
                     if let Expr::Path(inside_path) = func.as_ref() {
                         // "stringify" the path of the function called
                         let func_name = path_to_string(&inside_path.path);
