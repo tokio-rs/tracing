@@ -1,6 +1,9 @@
-use std::any::{type_name, TypeId};
 use std::fmt;
 use std::marker::PhantomData;
+use std::{
+    any::{type_name, TypeId},
+    ptr::NonNull,
+};
 use tracing::{span, Collect, Dispatch, Metadata};
 use tracing_subscriber::fmt::format::{DefaultFields, FormatFields};
 use tracing_subscriber::{
@@ -57,11 +60,11 @@ where
         }
     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
-            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
             id if id == TypeId::of::<WithContext>() => {
-                Some(&self.get_context as *const _ as *const ())
+                Some(NonNull::from(&self.get_context).cast())
             }
             _ => None,
         }

@@ -2,6 +2,7 @@
 use crate::{span, Event, LevelFilter, Metadata};
 
 use core::any::{Any, TypeId};
+use core::ptr::NonNull;
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -417,7 +418,7 @@ pub trait Collect: 'static {
     // === Downcasting methods ================================================
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
-    /// `*const` pointer to that type. Otherwise, returns `None`.
+    /// [`NonNull`] pointer to that type. Otherwise, returns `None`.
     ///
     /// If you wish to downcast a `Collector`, it is strongly advised to use
     /// the safe API provided by [`downcast_ref`] instead.
@@ -436,14 +437,15 @@ pub trait Collect: 'static {
     /// # Safety
     ///
     /// The [`downcast_ref`] method expects that the pointer returned by
-    /// `downcast_raw` is non-null and points to a valid instance of the type
+    /// `downcast_raw` points to a valid instance of the type
     /// with the provided `TypeId`. Failure to ensure this will result in
     /// undefined behaviour, so implementing `downcast_raw` is unsafe.
     ///
     /// [`downcast_ref`]: #method.downcast_ref
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    /// [`NonNull`]: core::ptr::NonNull
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const Self as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             None
         }
@@ -461,11 +463,7 @@ impl dyn Collect {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         unsafe {
             let raw = self.downcast_raw(TypeId::of::<T>())?;
-            if raw.is_null() {
-                None
-            } else {
-                Some(&*(raw as *const _))
-            }
+            Some(&*(raw.cast().as_ptr()))
         }
     }
 }
