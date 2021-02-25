@@ -1,15 +1,3 @@
-//! A simple example demonstrating how one might implement a custom
-//! subscriber.
-//!
-//! This subscriber implements a tree-structured logger similar to
-//! the "compact" formatter in [`slog-term`]. The demo mimics the
-//! example output in the screenshot in the [`slog` README].
-//!
-//! Note that this logger isn't ready for actual production use.
-//! Several corners were cut to make the example simple.
-//!
-//! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
-//! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 use ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
@@ -63,7 +51,7 @@ impl CurrentSpanPerThread {
     }
 }
 
-pub struct SloggishSubscriber {
+pub struct SloggishCollector {
     // TODO: this can probably be unified with the "stack" that's used for
     // printing?
     current: CurrentSpanPerThread,
@@ -147,7 +135,7 @@ impl<'a> Visit for Event<'a> {
     }
 }
 
-impl SloggishSubscriber {
+impl SloggishCollector {
     pub fn new(indent_amount: usize) -> Self {
         Self {
             current: CurrentSpanPerThread::new(),
@@ -194,7 +182,7 @@ impl SloggishSubscriber {
     }
 }
 
-impl Collect for SloggishSubscriber {
+impl Collect for SloggishCollector {
     fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }
