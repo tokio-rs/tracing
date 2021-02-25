@@ -140,13 +140,13 @@ async fn main() -> Result<(), Error> {
 fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let filter = tracing_subscriber::EnvFilter::from_default_env()
         .add_directive("proxy_server=trace".parse()?);
-    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
+    let builder = tracing_subscriber::fmt().with_env_filter(filter);
     match value_t!(matches, "log_format", LogFormat).unwrap_or(LogFormat::Plain) {
         LogFormat::Json => {
-            subscriber.json().try_init()?;
+            builder.json().try_init()?;
         }
         LogFormat::Plain => {
-            subscriber.try_init()?;
+            builder.try_init()?;
         }
     }
     Ok(())
