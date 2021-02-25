@@ -1,7 +1,7 @@
 //! A simple example demonstrating how one might implement a custom
-//! subscriber.
+//! collector.
 //!
-//! This subscriber implements a tree-structured logger similar to
+//! This collector implements a tree-structured logger similar to
 //! the "compact" formatter in [`slog-term`]. The demo mimics the
 //! example output in the screenshot in the [`slog` README].
 //!
@@ -14,12 +14,13 @@
 
 use tracing::{debug, info, span, warn, Level};
 
-mod sloggish_subscriber;
-use self::sloggish_subscriber::SloggishSubscriber;
+use self::sloggish_collector::SloggishCollector;
+
+mod sloggish_collector;
 
 fn main() {
-    let subscriber = SloggishSubscriber::new(2);
-    tracing::collect::set_global_default(subscriber).unwrap();
+    let collector = SloggishCollector::new(2);
+    tracing::collect::set_global_default(collector).unwrap();
 
     let app_span = span!(Level::TRACE, "", version = %5.0);
     let _e = app_span.enter();

@@ -5,7 +5,7 @@
 //! This module provides the [`Registry`] type, a [`Collect`] implementation
 //! which tracks per-span data and exposes it to subscribers. When a `Registry`
 //! is used as the base `Collect` of a `Subscribe` stack, the
-//! [`layer::Context`][ctx] type will provide methods allowing subscribers to
+//! [`subscribe::Context`][ctx] type will provide methods allowing subscribers to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
 //! [`LookupSpan`] and [`Collect`] themselves (with [`SpanData`] implemented
@@ -15,20 +15,20 @@
 //! ```rust
 //! use tracing_subscriber::{registry::Registry, Subscribe, prelude::*};
 //! # use tracing_core::Collect;
-//! # pub struct FooLayer {}
-//! # pub struct BarLayer {}
-//! # impl<S: Collect> Subscribe<S> for FooLayer {}
-//! # impl<S: Collect> Subscribe<S> for BarLayer {}
-//! # impl FooLayer {
+//! # pub struct FooSubscriber {}
+//! # pub struct BarSubscriber {}
+//! # impl<S: Collect> Subscribe<S> for FooSubscriber {}
+//! # impl<S: Collect> Subscribe<S> for BarSubscriber {}
+//! # impl FooSubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
-//! # impl BarLayer {
+//! # impl BarSubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
 //!
 //! let subscriber = Registry::default()
-//!     .with(FooLayer::new())
-//!     .with(BarLayer::new());
+//!     .with(FooSubscriber::new())
+//!     .with(BarSubscriber::new());
 //! ```
 //!
 //! If a type implementing `Subscribe` depends on the functionality of a `Registry`
@@ -39,11 +39,11 @@
 //! use tracing_subscriber::{registry, Subscribe};
 //! use tracing_core::Collect;
 //!
-//! pub struct MyLayer {
+//! pub struct MySubscriber {
 //!     // ...
 //! }
 //!
-//! impl<S> Subscribe<S> for MyLayer
+//! impl<S> Subscribe<S> for MySubscriber
 //! where
 //!     S: Collect + for<'a> registry::LookupSpan<'a>,
 //! {
@@ -107,7 +107,7 @@ pub trait LookupSpan<'a> {
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
     ///
     /// A `SpanRef` is similar to [`SpanData`], but it allows performing
-    /// additional lookups against the registryr that stores the wrapped data.
+    /// additional lookups against the registry that stores the wrapped data.
     ///
     /// In general, _users_ of the `LookupSpan` trait should use this method
     /// rather than the [`span_data`] method; while _implementors_ of this trait
