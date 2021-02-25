@@ -540,6 +540,7 @@
 //! ```
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # use tracing_core::span::Current;
 //! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -548,6 +549,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector {
 //! #   fn new() -> Self { FooCollector }
@@ -582,6 +584,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # use tracing_core::span::Current;
 //! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -590,6 +593,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector {
 //! #   fn new() -> Self { FooCollector }

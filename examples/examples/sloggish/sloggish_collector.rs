@@ -3,6 +3,7 @@ use tracing::{
     field::{Field, Visit},
     Collect, Id, Level,
 };
+use tracing_core::span::Current;
 
 use std::{
     cell::RefCell,
@@ -264,5 +265,9 @@ impl Collect for SloggishCollector {
     fn try_close(&self, _id: tracing::Id) -> bool {
         // TODO: GC unneeded spans.
         false
+    }
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
     }
 }

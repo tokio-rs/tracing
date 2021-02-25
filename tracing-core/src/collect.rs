@@ -400,20 +400,16 @@ pub trait Collect: 'static {
 
     /// Returns a type representing this collector's view of the current span.
     ///
-    /// If collectors track a current span, they should override this function
-    /// to return [`Current::new`] if the thread from which this method is
-    /// called is inside a span, or [`Current::none`] if the thread is not
-    /// inside a span.
+    /// If collectors track a current span, they should return [`Current::new`]
+    /// if the thread from which this method is called is inside a span,
+    /// or [`Current::none`] if the thread is not inside a span.
     ///
-    /// By default, this returns a value indicating that the collector
-    /// does **not** track what span is current. If the collector does not
-    /// implement a current span, it should not override this method.
+    /// If the collector does not implement a current span, it should
+    /// return [`Current:unknown`].
     ///
     /// [`Current::new`]: super::span::Current::new
     /// [`Current::none`]: super::span::Current::none
-    fn current_span(&self) -> span::Current {
-        span::Current::unknown()
-    }
+    fn current_span(&self) -> span::Current;
 
     // === Downcasting methods ================================================
 

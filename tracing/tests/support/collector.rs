@@ -520,6 +520,10 @@ where
             }
         }
     }
+
+    fn current_span(&self) -> tracing_core::span::Current {
+        todo!()
+    }
 }
 
 impl MockHandle {
