@@ -36,6 +36,7 @@ enum Expect {
 struct SpanState {
     name: &'static str,
     refs: usize,
+    meta: &'static Metadata<'static>,
 }
 
 struct Running<F: Fn(&Metadata<'_>) -> bool> {
@@ -390,6 +391,7 @@ where
             SpanState {
                 name: meta.name(),
                 refs: 1,
+                meta,
             },
         );
         id
@@ -522,7 +524,15 @@ where
     }
 
     fn current_span(&self) -> tracing_core::span::Current {
-        todo!()
+        let stack = self.current.lock().unwrap();
+        match stack.last() {
+            Some(id) => {
+                let spans = self.spans.lock().unwrap();
+                let state = spans.get(id).expect("state for current span");
+                tracing_core::span::Current::new(id.clone(), state.meta)
+            }
+            None => tracing_core::span::Current::none(),
+        }
     }
 }
 
