@@ -317,6 +317,16 @@ impl<L, S> Handle<L, S> {
         drop(lock);
 
         callsite::rebuild_interest_cache();
+
+        // If the `log` crate compatibility feature is in use, set `log`'s max
+        // level as well, in case the max `tracing` level changed. We do this
+        // *after* rebuilding the interest cache, as that's when the `tracing`
+        // max level filter is re-computed.
+        #[cfg(feature = "tracing-log")]
+        tracing_log::log::set_max_level(tracing_log::AsLog::as_log(
+            &crate::filter::LevelFilter::current(),
+        ));
+
         Ok(())
     }
 
