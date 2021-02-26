@@ -5,7 +5,10 @@ use crate::{
     subscribe::{self, Context, Scope},
 };
 use format::{FmtSpan, TimingDisplay};
-use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
+use std::{
+    any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
+    time::Instant,
+};
 use tracing_core::{
     field,
     span::{Attributes, Id, Record},
@@ -706,16 +709,16 @@ where
         });
     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         // This `downcast_raw` impl allows downcasting a `fmt` layer to any of
         // its components (event formatter, field formatter, and `MakeWriter`)
         // as well as to the layer's type itself. The potential use-cases for
         // this *may* be somewhat niche, though...
         match () {
-            _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
-            _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
-            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
-            _ if id == TypeId::of::<W>() => Some(&self.make_writer as *const W as *const ()),
+            _ if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
+            _ if id == TypeId::of::<E>() => Some(NonNull::from(&self.fmt_event).cast()),
+            _ if id == TypeId::of::<N>() => Some(NonNull::from(&self.fmt_fields).cast()),
+            _ if id == TypeId::of::<W>() => Some(NonNull::from(&self.make_writer).cast()),
             _ => None,
         }
     }
