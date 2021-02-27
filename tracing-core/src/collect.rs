@@ -409,6 +409,7 @@ pub trait Collect: 'static {
     ///
     /// [`Current::new`]: super::span::Current::new
     /// [`Current::none`]: super::span::Current::none
+    /// [`Current::unknown`]: super::span::Current::unknown
     fn current_span(&self) -> span::Current;
 
     // === Downcasting methods ================================================
