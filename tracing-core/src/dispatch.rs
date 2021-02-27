@@ -859,7 +859,7 @@ impl Collect for NoCollector {
     fn exit(&self, _span: &span::Id) {}
 
     fn current_span(&self) -> span::Current {
-        span::Current::unknown()
+        span::Current::none()
     }
 }
 
