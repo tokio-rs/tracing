@@ -142,7 +142,7 @@ pub trait MakeWriter<'a> {
     /// might write some values to the writer before or after providing it to
     /// the caller.
     ///
-    /// For example, we ight want to write data from spans and events at the
+    /// For example, we might want to write data from spans and events at the
     /// [`ERROR`] and [`WARN`] levels to `stderr`, and data from spans or events
     /// at lower levels to stdout:
     ///
@@ -163,7 +163,7 @@ pub trait MakeWriter<'a> {
     ///     Stderr(StderrLock<'a>),
     /// }
     ///
-    /// impl io::Write for StdioLock {
+    /// impl<'a> io::Write for StdioLock<'a> {
     ///     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     ///         match self {
     ///             StdioLock::Stdout(lock) => lock.write(buf),
