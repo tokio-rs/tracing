@@ -1041,40 +1041,89 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 ///
 /// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct FmtSpan(FmtSpanInner);
+pub struct FmtSpan(u8);
 
 impl FmtSpan {
-    /// spans are ignored (this is the default)
-    pub const NONE: FmtSpan = FmtSpan(FmtSpanInner::None);
-    /// one event per enter/exit of a span
-    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpanInner::Active);
+    /// one event when span is created
+    pub const NEW: FmtSpan = FmtSpan(1 << 0);
+    /// one event per enter of a span
+    pub const ENTER: FmtSpan = FmtSpan(1 << 1);
+    /// one event per exit of a span
+    pub const EXIT: FmtSpan = FmtSpan(1 << 2);
     /// one event when the span is dropped
-    pub const CLOSE: FmtSpan = FmtSpan(FmtSpanInner::Close);
-    /// events at all points (new, enter, exit, drop)
-    pub const FULL: FmtSpan = FmtSpan(FmtSpanInner::Full);
-}
+    pub const CLOSE: FmtSpan = FmtSpan(1 << 3);
 
-impl Debug for FmtSpan {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            FmtSpanInner::None => f.write_str("FmtSpan::NONE"),
-            FmtSpanInner::Active => f.write_str("FmtSpan::ACTIVE"),
-            FmtSpanInner::Close => f.write_str("FmtSpan::CLOSE"),
-            FmtSpanInner::Full => f.write_str("FmtSpan::FULL"),
-        }
+    /// spans are ignored (this is the default)
+    pub const NONE: FmtSpan = FmtSpan(0);
+    /// one event per enter/exit of a span
+    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpan::ENTER.0 | FmtSpan::EXIT.0);
+    /// events at all points (new, enter, exit, drop)
+    pub const FULL: FmtSpan =
+        FmtSpan(FmtSpan::NEW.0 | FmtSpan::ENTER.0 | FmtSpan::EXIT.0 | FmtSpan::CLOSE.0);
+
+    /// Check whether or not a certain flag is set for this [`FmtSpan`]
+    fn contains(&self, other: FmtSpan) -> bool {
+        self.clone() & other.clone() == other
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-enum FmtSpanInner {
-    /// spans are ignored (this is the default)
-    None,
-    /// one event per enter/exit of a span
-    Active,
-    /// one event when the span is dropped
-    Close,
-    /// events at all points (new, enter, exit, drop)
-    Full,
+macro_rules! impl_fmt_span_bit_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait for FmtSpan {
+            type Output = FmtSpan;
+
+            fn $func(self, rhs: Self) -> Self::Output {
+                FmtSpan(self.0 $op rhs.0)
+            }
+        }
+    };
+}
+
+macro_rules! impl_fmt_span_bit_assign_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait for FmtSpan {
+            fn $func(&mut self, rhs: Self) {
+                *self = FmtSpan(self.0 $op rhs.0)
+            }
+        }
+    };
+}
+
+impl_fmt_span_bit_op!(BitAnd, bitand, &);
+impl_fmt_span_bit_op!(BitOr, bitor, |);
+impl_fmt_span_bit_op!(BitXor, bitxor, ^);
+
+impl_fmt_span_bit_assign_op!(BitAndAssign, bitand_assign, &);
+impl_fmt_span_bit_assign_op!(BitOrAssign, bitor_assign, |);
+impl_fmt_span_bit_assign_op!(BitXorAssign, bitxor_assign, ^);
+
+impl Debug for FmtSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut wrote_flag = false;
+        let mut write_flags = |flag, flag_str| -> fmt::Result {
+            if self.contains(flag) {
+                if wrote_flag {
+                    f.write_str(" | ")?;
+                }
+
+                f.write_str(flag_str)?;
+                wrote_flag = true;
+            }
+
+            Ok(())
+        };
+
+        if FmtSpan::NONE | self.clone() == FmtSpan::NONE {
+            f.write_str("FmtSpan::NONE")?;
+        } else {
+            write_flags(FmtSpan::NEW, "FmtSpan::NEW")?;
+            write_flags(FmtSpan::ENTER, "FmtSpan::ENTER")?;
+            write_flags(FmtSpan::EXIT, "FmtSpan::EXIT")?;
+            write_flags(FmtSpan::CLOSE, "FmtSpan::CLOSE")?;
+        }
+
+        Ok(())
+    }
 }
 
 pub(super) struct FmtSpanConfig {
@@ -1096,13 +1145,16 @@ impl FmtSpanConfig {
         }
     }
     pub(super) fn trace_new(&self) -> bool {
-        matches!(self.kind, FmtSpan::FULL)
+        self.kind.contains(FmtSpan::NEW)
     }
-    pub(super) fn trace_active(&self) -> bool {
-        matches!(self.kind, FmtSpan::ACTIVE | FmtSpan::FULL)
+    pub(super) fn trace_enter(&self) -> bool {
+        self.kind.contains(FmtSpan::ENTER)
+    }
+    pub(super) fn trace_exit(&self) -> bool {
+        self.kind.contains(FmtSpan::EXIT)
     }
     pub(super) fn trace_close(&self) -> bool {
-        matches!(self.kind, FmtSpan::CLOSE | FmtSpan::FULL)
+        self.kind.contains(FmtSpan::CLOSE)
     }
 }
 
@@ -1149,7 +1201,7 @@ pub(super) mod test {
         dispatch::{set_default, Dispatch},
     };
 
-    use super::TimingDisplay;
+    use super::{FmtSpan, TimingDisplay};
     use std::fmt;
 
     pub(crate) struct MockTime;
@@ -1283,5 +1335,32 @@ pub(super) mod test {
         assert_eq!(fmt(12345678901), "12.3s");
         assert_eq!(fmt(123456789012), "123s");
         assert_eq!(fmt(1234567890123), "1235s");
+    }
+
+    #[test]
+    fn fmt_span_combinations() {
+        let f = FmtSpan::NONE;
+        assert_eq!(f.contains(FmtSpan::NEW), false);
+        assert_eq!(f.contains(FmtSpan::ENTER), false);
+        assert_eq!(f.contains(FmtSpan::EXIT), false);
+        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+
+        let f = FmtSpan::ACTIVE;
+        assert_eq!(f.contains(FmtSpan::NEW), false);
+        assert_eq!(f.contains(FmtSpan::ENTER), true);
+        assert_eq!(f.contains(FmtSpan::EXIT), true);
+        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+
+        let f = FmtSpan::FULL;
+        assert_eq!(f.contains(FmtSpan::NEW), true);
+        assert_eq!(f.contains(FmtSpan::ENTER), true);
+        assert_eq!(f.contains(FmtSpan::EXIT), true);
+        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+
+        let f = FmtSpan::NEW | FmtSpan::CLOSE;
+        assert_eq!(f.contains(FmtSpan::NEW), true);
+        assert_eq!(f.contains(FmtSpan::ENTER), false);
+        assert_eq!(f.contains(FmtSpan::EXIT), false);
+        assert_eq!(f.contains(FmtSpan::CLOSE), true);
     }
 }
