@@ -241,7 +241,7 @@ impl<'a> PrettyVisitor<'a> {
         Self { style, ..self }
     }
 
-    fn write_padded(&mut self, value: &dyn fmt::Debug) {
+    fn write_padded(&mut self, value: &impl fmt::Debug) {
         let padding = if self.is_empty {
             self.is_empty = false;
             ""
