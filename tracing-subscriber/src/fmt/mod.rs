@@ -308,7 +308,7 @@ pub use self::{
 
 /// A `Collector` that logs formatted representations of `tracing` events.
 ///
-/// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
+/// This consists of an inner `Formatter` wrapped in a subscriber that performs filtering.
 #[derive(Debug)]
 pub struct Collector<
     N = format::DefaultFields,

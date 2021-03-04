@@ -171,15 +171,15 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// As well as strategies for handling trace events, the `Subscriber` trait may also
 /// be used to represent composable _filters_. This allows the determination of
 /// what spans and events should be recorded to be decoupled from _how_ they are
-/// recorded: a filtering layer can be applied to other layers or
-/// subscribers. A `Subscriber` that implements a filtering strategy should override the
+/// recorded: a filtering subscriber can be applied to other subscribers or
+/// collectors. A `Subscriber` that implements a filtering strategy should override the
 /// [`register_callsite`] and/or [`enabled`] methods. It may also choose to implement
 /// methods such as [`on_enter`], if it wishes to filter trace events based on
 /// the current span context.
 ///
 /// Note that the [`Subscribe::register_callsite`] and [`Subscribe::enabled`] methods
 /// determine whether a span or event is enabled *globally*. Thus, they should
-/// **not** be used to indicate whether an individual layer wishes to record a
+/// **not** be used to indicate whether an individual subscriber wishes to record a
 /// particular span or event. Instead, if a subscriber is only interested in a subset
 /// of trace data, but does *not* wish to disable other spans and events for the
 /// rest of the subscriber stack should ignore those spans and events in its
@@ -229,7 +229,7 @@ where
     /// with `Subscriber`s.
     ///
     /// Subscribers may also implement this method to perform any behaviour that
-    /// should be run once per callsite. If the layer wishes to use
+    /// should be run once per callsite. If the subscriber wishes to use
     /// `register_callsite` for per-callsite behaviour, but does not want to
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
@@ -237,10 +237,7 @@ where
     /// [`Interest`]: tracing_core::Interest
     /// [`Collect::register_callsite`]: tracing_core::Collect::register_callsite()
     /// [`self.enabled`]: Subscribe::enabled()
-    /// [`on_event`]: Subscribe::on_event()
-    /// [`on_enter`]: Subscribe::on_enter()
-    /// [`on_exit`]: Subscribe::on_exit()
-    /// [the trait-level documentation]: #filtering-with-layers
+    /// [the trait-level documentation]: #filtering-with-subscribers
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata, Context::none()) {
             Interest::always()
@@ -264,7 +261,7 @@ where
     ///
     /// **Note**: This method (and [`register_callsite`][Self::register_callsite])
     /// determine whether a span or event is
-    /// globally enabled, *not* whether the individual layer will be
+    /// globally enabled, *not* whether the individual subscriber will be
     /// notified about that span or event. This is intended to be used
     /// by layers that implement filtering for the entire stack. Layers which do
     /// not wish to be notified about certain spans or events but do not wish to
@@ -279,16 +276,13 @@ where
     /// with `Subscriber`s.
     ///
     /// [`Interest`]: tracing_core::Interest
-    /// [`on_event`]: Layer::on_event()
-    /// [`on_enter`]: Layer::on_enter()
-    /// [`on_exit`]: Layer::on_exit()
-    /// [the trait-level documentation]: #filtering-with-layers
+    /// [the trait-level documentation]: #filtering-with-subscribers
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
         true
     }
 
-    /// Notifies this layer that a new span was constructed with the given
+    /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         let _ = (attrs, id, ctx);
@@ -507,7 +501,7 @@ where
 
 /// Extension trait adding a `with(Subscriber)` combinator to `Collect`.
 pub trait CollectExt: Collect + crate::sealed::Sealed {
-    /// Wraps `self` with the provided `layer`.
+    /// Wraps `self` with the provided `subscriber`.
     fn with<S>(self, subscriber: S) -> Layered<S, Self>
     where
         S: Subscribe<Self>,
@@ -1274,14 +1268,14 @@ pub(crate) mod tests {
             .and_then(StringSubscriber2("subscriber_2".into()))
             .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
-        let layer =
+        let subscriber =
             Collect::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
-        assert_eq!(&layer.0, "subscriber_1");
-        let layer =
+        assert_eq!(&subscriber.0, "subscriber_1");
+        let subscriber =
             Collect::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
-        assert_eq!(&layer.0, "subscriber_2");
-        let layer =
+        assert_eq!(&subscriber.0, "subscriber_2");
+        let subscriber =
             Collect::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
-        assert_eq!(&layer.0, "subscriber_3");
+        assert_eq!(&subscriber.0, "subscriber_3");
     }
 }
