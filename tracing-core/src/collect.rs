@@ -96,7 +96,7 @@ pub trait Collect: 'static {
     /// never be enabled unless a new collector expresses interest in it.
     ///
     /// `Collector`s which require their filters to be run every time an event
-    /// occurs or a span is entered::exited should return `Interest::sometimes`.
+    /// occurs or a span is entered/exited should return `Interest::sometimes`.
     /// If a collector returns `Interest::sometimes`, then its' [`enabled`] method
     /// will be called every time an event or span is created from that callsite.
     ///
@@ -135,7 +135,7 @@ pub trait Collect: 'static {
     /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
     /// [`enabled`]: Self::enabled
-    /// [`rebuild_interest_cache`]: super::callsite::fn.rebuild_interest_cache.html
+    /// [`rebuild_interest_cache`]: super::callsite::rebuild_interest_cache
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
             Interest::always()
@@ -186,7 +186,7 @@ pub trait Collect: 'static {
     /// level changes.
     ///
     /// [level]: super::Level
-    /// [rebuild]: super::callsite::fn.rebuild_interest_cache.html
+    /// [rebuild]: super::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
