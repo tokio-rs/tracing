@@ -935,6 +935,7 @@ trait LevelNames {
     }
 }
 
+#[cfg(feature = "ansi")]
 impl LevelNames for Pretty {
     const TRACE_STR: &'static str = "TRACE";
     const DEBUG_STR: &'static str = "DEBUG";
