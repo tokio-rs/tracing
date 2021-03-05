@@ -270,6 +270,14 @@ impl<'a> PrettyVisitor<'a> {
         };
         self.result = write!(self.writer, "{}{:?}", padding, value);
     }
+
+    fn bold(&self) -> Style {
+        if self.ansi {
+            self.style.bold()
+        } else {
+            Style::new()
+        }
+    }
 }
 
 impl<'a> field::Visit for PrettyVisitor<'a> {
@@ -287,11 +295,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            let bold = if self.ansi {
-                self.style.bold()
-            } else {
-                Style::new()
-            };
+            let bold = self.bold();
             self.record_debug(
                 field,
                 &format_args!(
@@ -312,11 +316,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         if self.result.is_err() {
             return;
         }
-        let bold = if self.ansi {
-            self.style.bold()
-        } else {
-            Style::new()
-        };
+        let bold = self.bold();
         match field.name() {
             "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
             // Skip fields that are actually log metadata that have already been handled
