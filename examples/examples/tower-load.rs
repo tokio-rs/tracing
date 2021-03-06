@@ -300,7 +300,7 @@ fn gen_uri(authority: &str) -> (usize, String) {
     (len, format!("http://{}/{}", authority, letter))
 }
 
-#[tracing::instrument(target = "gen", "load_gen")]
+#[tracing::instrument(target = "gen", "load_gen", level = "info")]
 async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
     let svc = ServiceBuilder::new()
         .buffer(5)

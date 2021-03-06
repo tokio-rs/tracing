@@ -81,7 +81,7 @@ impl SpanTrace {
     ///
     /// # fn some_error_condition() -> bool { true }
     ///
-    /// #[tracing::instrument]
+    /// #[tracing::instrument(level = "info")]
     /// pub fn my_function(arg: &str) -> Result<(), MyError> {
     ///     if some_error_condition() {
     ///         return Err(MyError {

@@ -164,7 +164,7 @@
 //! # // that it should only be run with cfg(feature = "attributes")
 //! use tracing::{Level, event, instrument};
 //!
-//! #[instrument]
+//! #[instrument(level = "info")]
 //! pub fn my_function(my_arg: usize) {
 //!     // This event will be recorded inside a span named `my_function` with the
 //!     // field `my_arg`.
@@ -467,7 +467,7 @@
 //! // the `#[tracing::instrument]` attribute creates and enters a span
 //! // every time the instrumented function is called. The span is named after the
 //! // the function or method. Parameters passed to the function are recorded as fields.
-//! #[tracing::instrument]
+//! #[tracing::instrument(level = "info")]
 //! pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
 //!     // this creates an event at the DEBUG level with two fields:
 //!     // - `excitement`, with the key "excitement" and the value "yay!"

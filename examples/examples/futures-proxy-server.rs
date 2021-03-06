@@ -36,7 +36,7 @@ use tracing::{debug, debug_span, info, instrument, warn, Instrument as _};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-#[instrument]
+#[instrument(level = "info")]
 async fn transfer(mut inbound: TcpStream, proxy_addr: SocketAddr) -> Result<(), Error> {
     let mut outbound = TcpStream::connect(&proxy_addr).await?;
 

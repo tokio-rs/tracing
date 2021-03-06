@@ -7,7 +7,7 @@ use support::*;
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 async fn test_async_fn(polls: usize) -> Result<(), ()> {
     let future = PollN::new_ok(polls);
     tracing::trace!(awaiting = true);
@@ -34,12 +34,12 @@ fn async_fn_only_enters_for_polls() {
 
 #[test]
 fn async_fn_nested() {
-    #[instrument]
+    #[instrument(level = "info")]
     async fn test_async_fns_nested() {
         test_async_fns_nested_other().await
     }
 
-    #[instrument]
+    #[instrument(level = "info")]
     async fn test_async_fns_nested_other() {
         tracing::trace!(nested = true);
     }
@@ -94,7 +94,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestA for TestImpl {
-        #[instrument]
+        #[instrument(level = "info")]
         async fn foo(&mut self, v: usize) {
             self.baz().await;
             self.0 = v;
@@ -104,7 +104,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestB for TestImpl {
-        #[instrument]
+        #[instrument(level = "info")]
         async fn bar(&self) {
             tracing::trace!(val = self.0);
         }
@@ -112,7 +112,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestC for TestImpl {
-        #[instrument(skip(self))]
+        #[instrument(skip(self), level = "info")]
         async fn baz(&self) {
             tracing::trace!(val = self.0);
         }
@@ -172,7 +172,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), test=%v+5))]
+        #[instrument(fields(val=self.foo(), test=%v+5), level = "info")]
         async fn call(&mut self, v: usize) {}
     }
 
@@ -216,13 +216,13 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
     #[async_trait]
     impl Test for TestImpl {
         // instrumenting this is currently not possible, see https://github.com/tokio-rs/tracing/issues/864#issuecomment-667508801
-        //#[instrument(fields(Self=std::any::type_name::<Self>()))]
+        //#[instrument(fields(Self=std::any::type_name::<Self>()), level = "info")]
         async fn call() {}
 
-        #[instrument(fields(Self=std::any::type_name::<Self>()))]
+        #[instrument(fields(Self=std::any::type_name::<Self>()), level = "info")]
         async fn call_with_self(&self) {}
 
-        #[instrument(fields(Self=std::any::type_name::<Self>()))]
+        #[instrument(fields(Self=std::any::type_name::<Self>()), level = "info")]
         async fn call_with_mut_self(&mut self) {}
     }
 

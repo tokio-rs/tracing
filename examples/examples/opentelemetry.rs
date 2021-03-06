@@ -3,7 +3,7 @@ use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
 use tracing_subscriber::prelude::*;
 
-#[instrument]
+#[instrument(level = "info")]
 #[inline]
 fn expensive_work() -> &'static str {
     span!(tracing::Level::INFO, "expensive_step_1")

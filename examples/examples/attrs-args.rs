@@ -3,7 +3,7 @@
 use tracing::{debug, info};
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 fn nth_fibonacci(n: u64) -> u64 {
     if n == 0 || n == 1 {
         debug!("Base case");
@@ -14,7 +14,7 @@ fn nth_fibonacci(n: u64) -> u64 {
     }
 }
 
-#[instrument]
+#[instrument(level = "info")]
 fn fibonacci_seq(to: u64) -> Vec<u64> {
     let mut sequence = vec![];
 

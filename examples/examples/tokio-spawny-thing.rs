@@ -12,7 +12,7 @@ use tracing::{debug, info, instrument, span, Instrument as _, Level};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-#[instrument]
+#[instrument(level = "info")]
 async fn parent_task(subtasks: usize) -> Result<(), Error> {
     info!("spawning subtasks...");
     let subtasks = (1..=subtasks)

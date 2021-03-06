@@ -129,7 +129,7 @@ use tracing::{debug, error, info, span, warn, Level};
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
 // the function or method. Parameters passed to the function are recorded as fields.
-#[tracing::instrument]
+#[tracing::instrument(level = "info")]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
     // - `excitement`, with the key "excitement" and the value "yay!"
@@ -199,7 +199,7 @@ use tracing::{info, instrument};
 use tokio::{io::AsyncWriteExt, net::TcpStream};
 use std::io;
 
-#[instrument]
+#[instrument(level = "info")]
 async fn write(stream: &mut TcpStream) -> io::Result<usize> {
     let result = stream.write(b"hello world\n").await;
     info!("wrote to stream; success={:?}", result.is_ok());

@@ -3,7 +3,7 @@
 use tracing::{debug, span, Level};
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 #[inline]
 fn suggest_band() -> String {
     debug!("Suggesting a band.");

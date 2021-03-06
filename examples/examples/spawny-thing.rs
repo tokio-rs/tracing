@@ -12,7 +12,7 @@ use std::error::Error;
 use tracing::{debug, info};
 use tracing_attributes::instrument;
 
-#[instrument]
+#[instrument(level = "info")]
 async fn parent_task(subtasks: usize) {
     info!("spawning subtasks...");
     let subtasks = (1..=subtasks)
@@ -29,7 +29,7 @@ async fn parent_task(subtasks: usize) {
     info!(sum);
 }
 
-#[instrument]
+#[instrument(level = "info")]
 async fn subtask(number: usize) -> usize {
     info!("polling subtask...");
     number

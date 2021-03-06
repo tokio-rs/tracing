@@ -26,13 +26,13 @@ impl fmt::Display for FooError {
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "info")]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
     // Results can be instrumented with a `SpanTrace` via the `InstrumentResult` trait
     do_another_thing(42, false).in_current_span()
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "info")]
 fn do_another_thing(
     answer: usize,
     will_succeed: bool,
@@ -41,7 +41,7 @@ fn do_another_thing(
     Err(FooError::new("something broke, lol").in_current_span())
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "info")]
 fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::subscriber())
