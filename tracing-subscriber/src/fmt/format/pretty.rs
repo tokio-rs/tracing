@@ -234,6 +234,49 @@ impl<'writer> FormatFields<'writer> for Pretty {
     }
 }
 
+// === impl PrettyFields ===
+
+/// An excessively pretty, human-readable [`MakeVisitor`] implementation.
+///
+/// [`MakeVisitor`]: crate::field::MakeVisitor
+#[derive(Debug)]
+pub struct PrettyFields {
+    ansi: bool,
+    // reserve the ability to add fields to this without causing a breaking
+    // change in the future.
+    _private: (),
+}
+
+impl Default for PrettyFields {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PrettyFields {
+    /// Returns a new default [`PrettyFields`] implementation.
+    pub fn new() -> Self {
+        Self {
+            ansi: true,
+            _private: (),
+        }
+    }
+
+    /// Enable ANSI encoding for formatted fields.
+    pub fn with_ansi(self, ansi: bool) -> Self {
+        Self { ansi, ..self }
+    }
+}
+
+impl<'a> MakeVisitor<&'a mut dyn Write> for PrettyFields {
+    type Visitor = PrettyVisitor<'a>;
+
+    #[inline]
+    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
+        PrettyVisitor::new(target, true).with_ansi(self.ansi)
+    }
+}
+
 // === impl PrettyVisitor ===
 
 impl<'a> PrettyVisitor<'a> {
