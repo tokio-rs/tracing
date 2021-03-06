@@ -111,10 +111,10 @@ impl From<Instant> for Uptime {
     }
 }
 
-#[cfg(feature = "chrono")]
-impl FormatTime for SystemTime {
+impl FormatTime for Uptime {
     fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        write!(w, "{}", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
+        let e = self.epoch.elapsed();
+        write!(w, "{:4}.{:09}s", e.as_secs(), e.subsec_nanos())
     }
 }
 
@@ -129,121 +129,107 @@ impl FormatTime for SystemTime {
     }
 }
 
-impl FormatTime for Uptime {
-    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        let e = self.epoch.elapsed();
-        write!(w, "{:4}.{:09}s", e.as_secs(), e.subsec_nanos())
-    }
-}
-
-/// The RFC 3339 format is used by default and using
-/// this struct allows chrono to bypass the parsing
-/// used when a custom format string is provided
-#[cfg(feature = "chrono")]
-#[derive(Debug, Clone, Eq, PartialEq)]
-enum ChronoFmtType {
-    Rfc3339,
-    Custom(String),
-}
-
-#[cfg(feature = "chrono")]
-impl Default for ChronoFmtType {
-    fn default() -> Self {
-        ChronoFmtType::Rfc3339
-    }
-}
-
-/// Retrieve and print the current UTC time.
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct ChronoUtc {
-    format: ChronoFmtType,
-}
-
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-impl ChronoUtc {
-    /// Format the time using the [`RFC 3339`] format
-    /// (a subset of [`ISO 8601`]).
-    ///
-    /// [`RFC 3339`]: https://tools.ietf.org/html/rfc3339
-    /// [`ISO 8601`]: https://en.wikipedia.org/wiki/ISO_8601
-    pub fn rfc3339() -> Self {
-        ChronoUtc {
-            format: ChronoFmtType::Rfc3339,
+cfg_feature!("chrono", {
+    impl FormatTime for SystemTime {
+        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+            write!(w, "{}", chrono::Local::now().format("%b %d %H:%M:%S%.3f"))
         }
     }
 
-    /// Format the time using the given format string.
-    ///
-    /// See [`chrono::format::strftime`]
-    /// for details on the supported syntax.
-    ///
-    pub fn with_format(format_string: String) -> Self {
-        ChronoUtc {
-            format: ChronoFmtType::Custom(format_string),
+    /// The RFC 3339 format is used by default and using
+    /// this struct allows chrono to bypass the parsing
+    /// used when a custom format string is provided
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    enum ChronoFmtType {
+        Rfc3339,
+        Custom(String),
+    }
+
+    impl Default for ChronoFmtType {
+        fn default() -> Self {
+            ChronoFmtType::Rfc3339
         }
     }
-}
-
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-impl FormatTime for ChronoUtc {
-    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        let time = chrono::Utc::now();
-        match self.format {
-            ChronoFmtType::Rfc3339 => write!(w, "{}", time.to_rfc3339()),
-            ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
-        }
+    /// Retrieve and print the current UTC time.
+    #[derive(Debug, Clone, Eq, PartialEq, Default)]
+    pub struct ChronoUtc {
+        format: ChronoFmtType,
     }
-}
 
-/// Retrieve and print the current local time.
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct ChronoLocal {
-    format: ChronoFmtType,
-}
+    impl ChronoUtc {
+        /// Format the time using the [`RFC 3339`] format
+        /// (a subset of [`ISO 8601`]).
+        ///
+        /// [`RFC 3339`]: https://tools.ietf.org/html/rfc3339
+        /// [`ISO 8601`]: https://en.wikipedia.org/wiki/ISO_8601
+        pub fn rfc3339() -> Self {
+            ChronoUtc {
+                format: ChronoFmtType::Rfc3339,
+            }
+        }
 
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-impl ChronoLocal {
-    /// Format the time using the [`RFC 3339`] format
-    /// (a subset of [`ISO 8601`]).
-    ///
-    /// [`RFC 3339`]: https://tools.ietf.org/html/rfc3339
-    /// [`ISO 8601`]: https://en.wikipedia.org/wiki/ISO_8601
-    pub fn rfc3339() -> Self {
-        ChronoLocal {
-            format: ChronoFmtType::Rfc3339,
+        /// Format the time using the given format string.
+        ///
+        /// See [`chrono::format::strftime`]
+        /// for details on the supported syntax.
+        ///
+        pub fn with_format(format_string: String) -> Self {
+            ChronoUtc {
+                format: ChronoFmtType::Custom(format_string),
+            }
         }
     }
 
-    /// Format the time using the given format string.
-    ///
-    /// See [`chrono::format::strftime`]
-    /// for details on the supported syntax.
-    ///
-    pub fn with_format(format_string: String) -> Self {
-        ChronoLocal {
-            format: ChronoFmtType::Custom(format_string),
+    impl FormatTime for ChronoUtc {
+        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+            let time = chrono::Utc::now();
+            match self.format {
+                ChronoFmtType::Rfc3339 => write!(w, "{}", time.to_rfc3339()),
+                ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
+            }
         }
     }
-}
 
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-impl FormatTime for ChronoLocal {
-    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
-        let time = chrono::Local::now();
-        match self.format {
-            ChronoFmtType::Rfc3339 => write!(w, "{}", time.to_rfc3339()),
-            ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
+    /// Retrieve and print the current local time.
+    #[derive(Debug, Clone, Eq, PartialEq, Default)]
+    pub struct ChronoLocal {
+        format: ChronoFmtType,
+    }
+
+    impl ChronoLocal {
+        /// Format the time using the [`RFC 3339`] format
+        /// (a subset of [`ISO 8601`]).
+        ///
+        /// [`RFC 3339`]: https://tools.ietf.org/html/rfc3339
+        /// [`ISO 8601`]: https://en.wikipedia.org/wiki/ISO_8601
+        pub fn rfc3339() -> Self {
+            ChronoLocal {
+                format: ChronoFmtType::Rfc3339,
+            }
+        }
+
+        /// Format the time using the given format string.
+        ///
+        /// See [`chrono::format::strftime`]
+        /// for details on the supported syntax.
+        ///
+        pub fn with_format(format_string: String) -> Self {
+            ChronoLocal {
+                format: ChronoFmtType::Custom(format_string),
+            }
         }
     }
-}
+
+    impl FormatTime for ChronoLocal {
+        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+            let time = chrono::Local::now();
+            match self.format {
+                ChronoFmtType::Rfc3339 => write!(w, "{}", time.to_rfc3339()),
+                ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
+            }
+        }
+    }
+});
 
 #[inline(always)]
 #[cfg(feature = "ansi")]

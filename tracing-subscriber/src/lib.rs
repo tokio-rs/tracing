@@ -108,9 +108,6 @@ mod macros;
 
 pub mod field;
 pub mod filter;
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub mod fmt;
 pub mod prelude;
 pub mod registry;
 pub mod reload;
@@ -119,9 +116,13 @@ pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-pub use filter::EnvFilter;
+cfg_feature!("fmt", {
+    pub mod fmt;
+});
+
+cfg_feature!("env-filter", {
+    pub use filter::EnvFilter;
+});
 
 pub use subscribe::Subscribe;
 
