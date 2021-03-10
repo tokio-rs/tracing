@@ -1,4 +1,15 @@
 
+# 0.1.14 (March 10, 2021)
+
+### Fixed
+
+- Compatibility between `#[instrument]` and `async-trait` v0.1.43 and newer
+  ([#1228])
+
+Thanks to @nightmared for lots of hard work on this fix!
+
+[#1228]: https://github.com/tokio-rs/tracing/pull/1228
+
 # 0.1.13 (February 17, 2021)
 
 ### Fixed
