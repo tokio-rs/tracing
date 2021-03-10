@@ -274,7 +274,6 @@ pub fn instrument(
                             fun,
                             args,
                             instrumented_function_name,
-                            Vec::new(),
                             internal_fun.self_type,
                         ));
                     }
@@ -288,14 +287,11 @@ pub fn instrument(
                             true,
                             args,
                             instrumented_function_name,
-                            Vec::new(),
                             None,
                         );
                         let async_attrs = &async_expr.attrs;
-                        // we use liballoc to allow for no_std environments
                         out_stmts.push(quote! {
-                            extern crate alloc;
-                            alloc::boxed::Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                            Box::pin(#(#async_attrs) * async move { #instrumented_block })
                         });
                     }
                 }
@@ -314,16 +310,15 @@ pub fn instrument(
         )
         .into()
     } else {
-        gen_function(&input, args, instrumented_function_name, Vec::new(), None).into()
+        gen_function(&input, args, instrumented_function_name, None).into()
     }
 }
 
-// given an existing function, generate an instrumented version of that function
+/// Given an existing function, generate an instrumented version of that function
 fn gen_function(
     input: &ItemFn,
     args: InstrumentArgs,
     instrumented_function_name: String,
-    variables_rebindings: Vec<(Ident, Ident)>,
     self_type: Option<syn::TypePath>,
 ) -> proc_macro2::TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
@@ -362,7 +357,6 @@ fn gen_function(
         asyncness.is_some(),
         args,
         instrumented_function_name,
-        variables_rebindings,
         self_type,
     );
 
@@ -377,14 +371,13 @@ fn gen_function(
     )
 }
 
-// Instrument a block
-fn gen_block<'a>(
-    block: &'a Block,
-    params: &'a Punctuated<FnArg, Token![,]>,
+/// Instrument a block
+fn gen_block(
+    block: &Block,
+    params: &Punctuated<FnArg, Token![,]>,
     async_context: bool,
     mut args: InstrumentArgs,
     instrumented_function_name: String,
-    variables_rebindings: Vec<(Ident, Ident)>,
     self_type: Option<syn::TypePath>,
 ) -> proc_macro2::TokenStream {
     let err = args.err;
@@ -410,7 +403,7 @@ fn gen_block<'a>(
             })
             // Little dance with new (user-exposed) names and old (internal)
             // names of identifiers. That way, we could do the following
-            // even though async_trait used to rewrite "self" as "_self":
+            // even though async_trait (<=0.1.43) rewrites "self" as "_self":
             // ```
             // #[async_trait]
             // impl Foo for FooImpl {
@@ -424,14 +417,7 @@ fn gen_block<'a>(
                 if self_type.is_some() && x == "_self" {
                     (Ident::new("self", x.span()), x)
                 } else {
-                    match variables_rebindings.iter().find(|(_, old)| old == &x) {
-                        Some((new, old)) => {
-                            // this inversion of 'old' and 'new' is deliberate, in order to
-                            // compensate for async-trait renaming variables
-                            (old.clone(), new.clone())
-                        }
-                        None => (x.clone(), x),
-                    }
+                    (x.clone(), x)
                 }
             })
             .collect();
@@ -469,14 +455,14 @@ fn gen_block<'a>(
             .map(|(user_name, real_name)| quote!(#user_name = tracing::field::debug(&#real_name)))
             .collect();
 
-        // replace every use of a variable by its original name
+        // replace every use of a variable with its original name
         if let Some(Fields(ref mut fields)) = args.fields {
             let mut replacer = IdentAndTypesRenamer {
                 idents: param_names,
                 types: Vec::new(),
             };
 
-            // when an old version of async-trait is in use, replace instances
+            // when async-trait <=0.1.43 is in use, replace instances
             // of the "Self" type inside the fields values
             if let Some(self_type) = self_type {
                 replacer.types.push(("Self", self_type));
@@ -959,23 +945,15 @@ fn get_async_trait_info(block: &Block, block_is_async: bool) -> Option<AsyncTrai
     };
 
     // is it a call to `Box::pin()`?
-    const BOX_PIN_NAMES: [&str; 6] = [
-        "Box::pin",
-        "std::boxed::Box::pin",
-        "::std::boxed::Box::pin",
-        "alloc::boxed::Box::pin",
-        "::alloc::boxed::Box::pin",
-        "boxed::Box::pin",
-    ];
     let path = match outside_func.as_ref() {
         Expr::Path(path) => &path.path,
         _ => return None,
     };
-    if !BOX_PIN_NAMES.contains(&path_to_string(path).as_str()) {
+    if !path_to_string(path).ends_with("Box::pin") {
         return None;
     }
 
-    // Does the call takes an argument? If it doesn't,
+    // Does the call take an argument? If it doesn't,
     // it's not gonna compile anyway, but that's no reason
     // to (try to) perform an out of bounds access
     if outside_args.is_empty() {
@@ -1009,13 +987,9 @@ fn get_async_trait_info(block: &Block, block_is_async: bool) -> Option<AsyncTrai
 
     // Was that function defined inside of the current block?
     // If so, retrieve the statement where it was declared and the function itself
-    let (stmt_func_declaration, func) = match inside_funs
+    let (stmt_func_declaration, func) = inside_funs
         .into_iter()
-        .find(|(_, fun)| fun.sig.ident == func_name)
-    {
-        Some((stmt, fun)) => (stmt, fun),
-        None => return None,
-    };
+        .find(|(_, fun)| fun.sig.ident == func_name)?;
 
     // If "_self" is present as an argument, we store its type to be able to rewrite "Self" (the
     // parameter type) with the type of "_self"
@@ -1061,10 +1035,10 @@ fn path_to_string(path: &Path) -> String {
     res
 }
 
-// A visitor struct to replace idents and types in some piece
-// of code (e.g. the "self" and "Self" tokens in user-supplied
-// fields expressions when the function is generated by an old
-// version of async-trait).
+/// A visitor struct to replace idents and types in some piece
+/// of code (e.g. the "self" and "Self" tokens in user-supplied
+/// fields expressions when the function is generated by an old
+/// version of async-trait).
 struct IdentAndTypesRenamer<'a> {
     types: Vec<(&'a str, TypePath)>,
     idents: Vec<(Ident, Ident)>,
