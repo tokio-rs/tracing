@@ -34,15 +34,14 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "1"
-syn = { version = "1", default-features = false, features = ["full", "parsing", "printing", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
+syn = { version = "1", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
 quote = "1"
-
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
 tokio-test = { version = "0.2.0" }
 tracing-core = { path = "../tracing-core", version = "0.2"}
-async-trait = "0.1"
+async-trait = "0.1.44"
 
 [badges]
 maintenance = { status = "experimental" }
