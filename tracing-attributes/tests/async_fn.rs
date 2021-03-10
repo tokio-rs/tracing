@@ -172,18 +172,19 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), test=%v+5))]
-        async fn call(&mut self, v: usize) {}
+        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
+        async fn call(&mut self, _v: usize) {}
     }
 
     let span = span::mock().named("call");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("v")
+                field::mock("_v")
                     .with_value(&tracing::field::debug(5))
                     .and(field::mock("test").with_value(&tracing::field::debug(10)))
-                    .and(field::mock("val").with_value(&42u64)),
+                    .and(field::mock("val").with_value(&42u64))
+                    .and(field::mock("val2").with_value(&42u64)),
             ),
         )
         .enter(span.clone())
