@@ -52,10 +52,10 @@ use tracing_core::{
 /// use tracing_subscriber::prelude::*;
 ///
 /// let fmt = format().with_timer(time::Uptime::default());
-/// let fmt_layer = fmt::subscriber()
+/// let fmt_subscriber = fmt::subscriber()
 ///     .event_format(fmt)
 ///     .with_target(false);
-/// # let subscriber = fmt_layer.with_collector(tracing_subscriber::registry::Registry::default());
+/// # let subscriber = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
 /// # tracing::collect::set_global_default(subscriber).unwrap();
 /// ```
 ///
@@ -76,14 +76,14 @@ impl<S> Subscriber<S> {
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type parameters.
+// This needs to be a separate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Subscriber<S, N, E, W>
 where
     S: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    /// Sets the [event formatter][`FormatEvent`] that the layer will use to
+    /// Sets the [event formatter][`FormatEvent`] that the subscriber will use to
     /// format events.
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]
@@ -96,11 +96,11 @@ where
     /// ```rust
     /// use tracing_subscriber::fmt::{self, format};
     ///
-    /// let layer = fmt::subscriber()
+    /// let fmt_subscriber = fmt::subscriber()
     ///     .event_format(format().compact());
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
@@ -118,7 +118,7 @@ where
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type parameters.
+// This needs to be a separate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// Sets the [`MakeWriter`] that the [`Subscriber`] being built will use to write events.
     ///
@@ -130,11 +130,11 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::subscriber()
+    /// let fmt_subscriber = fmt::subscriber()
     ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
     /// [`MakeWriter`]: super::writer::MakeWriter
@@ -165,11 +165,11 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::subscriber()
+    /// let fmt_subscriber = fmt::subscriber()
     ///     .with_test_writer();
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
@@ -249,11 +249,8 @@ where
     /// [time]: Subscriber::without_time()
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {
-            fmt_event: self.fmt_event,
-            fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.with_kind(kind),
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -263,10 +260,7 @@ where
     pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_ansi(ansi),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -274,10 +268,7 @@ where
     pub fn with_target(self, display_target: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_target(display_target),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -285,10 +276,7 @@ where
     pub fn with_level(self, display_level: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_level(display_level),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -302,10 +290,7 @@ where
     ) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -319,10 +304,7 @@ where
     ) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_names(display_thread_names),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -384,7 +366,7 @@ where
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
-    /// Sets the JSON layer being built to flatten event metadata.
+    /// Sets the JSON subscriber being built to flatten event metadata.
     ///
     /// See [`format::Json`]
     pub fn flatten_event(
@@ -394,9 +376,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -411,9 +391,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -428,15 +406,13 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 }
 
 impl<S, N, E, W> Subscriber<S, N, E, W> {
-    /// Sets the field formatter that the layer being built will use to record
+    /// Sets the field formatter that the subscriber being built will use to record
     /// fields.
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<S, N2, E, W>
     where
@@ -527,7 +503,7 @@ impl<E> Deref for FormattedFields<E> {
     }
 }
 
-// === impl FmtLayer ===
+// === impl FmtSubscriber ===
 
 macro_rules! with_event_from_span {
     ($id:ident, $span:ident, $($field:literal = $value:expr),*, |$event:ident| $code:block) => {
@@ -710,9 +686,9 @@ where
     }
 
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
-        // This `downcast_raw` impl allows downcasting a `fmt` layer to any of
+        // This `downcast_raw` impl allows downcasting a `fmt` subscriber to any of
         // its components (event formatter, field formatter, and `MakeWriter`)
-        // as well as to the layer's type itself. The potential use-cases for
+        // as well as to the subscriber's type itself. The potential use-cases for
         // this *may* be somewhat niche, though...
         match () {
             _ if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
@@ -894,7 +870,7 @@ mod test {
     }
 
     #[test]
-    fn fmt_layer_downcasts() {
+    fn fmt_subscriber_downcasts() {
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
         let subscriber = fmt.with_collector(Registry::default());
@@ -906,7 +882,7 @@ mod test {
     }
 
     #[test]
-    fn fmt_layer_downcasts_to_parts() {
+    fn fmt_subscriber_downcasts_to_parts() {
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
         let subscriber = fmt.with_collector(Registry::default());

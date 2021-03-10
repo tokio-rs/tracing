@@ -39,9 +39,9 @@ use fmt::{Debug, Display};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`]. Each time an event is
-/// dispatched to [`fmt::Collector`] or [`fmt::Subscriber`], the subscriber or layer forwards it to
-/// its associated `FormatEvent` to emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`].
+/// Each time an event is dispatched to [`fmt::Collector`] or [`fmt::Subscriber`],
+/// the collector or subscriber forwards it to its associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
@@ -191,11 +191,14 @@ pub trait FormatFields<'writer> {
 ///     .event_format(format)
 ///     .init();
 /// ```
+/// [event formatter]: FormatEvent
 pub fn format() -> Format {
     Format::default()
 }
 
 /// Returns the default configuration for a JSON [event formatter].
+///
+/// [event formatter]: FormatEvent
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub fn json() -> Format<Json> {

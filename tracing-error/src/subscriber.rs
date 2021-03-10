@@ -41,7 +41,7 @@ where
     S: Collect + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
 {
-    /// Notifies this layer that a new span was constructed with the given
+    /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
     fn new_span(
         &self,

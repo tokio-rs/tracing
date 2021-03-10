@@ -26,7 +26,7 @@ where
     /// guard that will unset it when dropped.
     ///
     /// If the "tracing-log" feature flag is enabled, this will also initialize
-    /// a [`log`] compatibility layer. This allows the subscriber to consume
+    /// a [`log`] compatibility subscriber. This allows the subscriber to consume
     /// `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// [default subscriber]: tracing::dispatch#setting-the-default-collector
@@ -42,7 +42,7 @@ where
     /// scope, returning an error if one is already set.
     ///
     /// If the "tracing-log" feature flag is enabled, this will also attempt to
-    /// initialize a [`log`] compatibility layer. This allows the subscriber to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
     /// consume `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// This method returns an error if a global default subscriber has already
@@ -73,7 +73,7 @@ where
     /// scope, panicking if this fails.
     ///
     /// If the "tracing-log" feature flag is enabled, this will also attempt to
-    /// initialize a [`log`] compatibility layer. This allows the subscriber to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
     /// consume `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// This method panics if a global default subscriber has already been set,

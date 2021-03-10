@@ -118,7 +118,7 @@ pub struct WorkerGuard {
 ///
 /// This struct implements [`MakeWriter`][make_writer] from the `tracing-subscriber`
 /// crate. Therefore, it can be used with the [`tracing_subscriber::fmt`][fmt] module
-/// or with any other subscriber/layer implementation that uses the `MakeWriter` trait.
+/// or with any other collector/subscriber implementation that uses the `MakeWriter` trait.
 ///
 /// [make_writer]: tracing_subscriber::fmt::MakeWriter
 /// [fmt]: mod@tracing_subscriber::fmt
