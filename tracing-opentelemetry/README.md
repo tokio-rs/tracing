@@ -33,18 +33,18 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 ## Overview
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information. This crate provides a layer
-that connects spans from multiple systems into a trace and emits them to
-[OpenTelemetry]-compatible distributed tracing systems for processing and
-visualization.
+structured, event-based diagnostic information. This crate provides a 
+subscriber that connects spans from multiple systems into a trace and 
+emits them to [OpenTelemetry]-compatible distributed tracing systems 
+for processing and visualization.
 
 The crate provides the following types:
 
-* [`OpenTelemetryLayer`] adds OpenTelemetry context to all `tracing` [span]s.
+* [`OpenTelemetrySubscriber`] adds OpenTelemetry context to all `tracing` [span]s.
 * [`OpenTelemetrySpanExt`] allows OpenTelemetry parent trace information to be
   injected and extracted from a `tracing` [span].
 
-[`OpenTelemetryLayer`]: https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/struct.OpenTelemetryLayer.html
+[`OpenTelemetrySubscriber`]: https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/struct.OpenTelemetrySubscriber.html
 [`OpenTelemetrySpanExt`]: https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/trait.OpenTelemetrySpanExt.html
 [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 [`tracing`]: https://crates.io/crates/tracing
@@ -61,22 +61,22 @@ The crate provides the following types:
 ```rust
 use opentelemetry::exporter::trace::stdout;
 use tracing::{error, span};
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::subscriber::SubscriberExt;
 use tracing_subscriber::Registry;
 
 fn main() {
     // Install a new OpenTelemetry trace pipeline
     let (tracer, _uninstall) = stdout::new_pipeline().install();
 
-    // Create a tracing layer with the configured tracer
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    // Create a tracing subscriber with the configured tracer
+    let telemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
 
     // Use the tracing subscriber `Registry`, or any other subscriber
     // that impls `LookupSpan`
-    let subscriber = Registry::default().with(telemetry);
+    let collector = Registry::default().with(telemetry);
 
     // Trace executed code
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collect::with_default(collector, || {
         // Spans will be sent to the configured OpenTelemetry exporter
         let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
         let _enter = root.enter();
