@@ -662,8 +662,8 @@ where
     /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_span_events(kind),
+            ..self
         }
     }
 
@@ -672,8 +672,8 @@ where
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_ansi(ansi),
+            ..self
         }
     }
 
@@ -683,8 +683,8 @@ where
         display_target: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_target(display_target),
+            ..self
         }
     }
 
@@ -694,8 +694,8 @@ where
         display_level: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_level(display_level),
+            ..self
         }
     }
 
@@ -708,8 +708,8 @@ where
         display_thread_names: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_names(display_thread_names),
+            ..self
         }
     }
 
@@ -722,8 +722,8 @@ where
         display_thread_ids: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_ids(display_thread_ids),
+            ..self
         }
     }
 

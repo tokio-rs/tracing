@@ -249,11 +249,8 @@ where
     /// [time]: Subscriber::without_time()
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {
-            fmt_event: self.fmt_event,
-            fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.with_kind(kind),
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -263,10 +260,7 @@ where
     pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_ansi(ansi),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -274,10 +268,7 @@ where
     pub fn with_target(self, display_target: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_target(display_target),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -285,10 +276,7 @@ where
     pub fn with_level(self, display_level: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_level(display_level),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -302,10 +290,7 @@ where
     ) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -319,10 +304,7 @@ where
     ) -> Subscriber<S, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_names(display_thread_names),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -394,9 +376,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -411,9 +391,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -428,9 +406,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 }
