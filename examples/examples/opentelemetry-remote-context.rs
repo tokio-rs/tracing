@@ -25,7 +25,7 @@ fn build_example_carrier() -> HashMap<String, String> {
 fn main() {
     // Set a format for propagating context. This MUST be provided, as the default is a no-op.
     global::set_text_map_propagator(TraceContextPropagator::new());
-    let subscriber = Registry::default().with(tracing_opentelemetry::layer());
+    let subscriber = Registry::default().with(tracing_opentelemetry::subscriber());
 
     tracing::collect::with_default(subscriber, || {
         // Extract context from request headers
