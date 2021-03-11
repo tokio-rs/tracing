@@ -8,7 +8,7 @@ use format::{FmtSpan, TimingDisplay};
 use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
 use tracing_core::{
     field,
-    span::{Attributes, Id, Record},
+    span::{Attributes, Current, Id, Record},
     Event, Metadata, Subscriber,
 };
 
@@ -854,6 +854,11 @@ where
         S: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.scope()
+    }
+
+    /// Returns the current span for this formatter.
+    pub fn current_span(&self) -> Current {
+        self.ctx.current_span()
     }
 
     /// Returns the [field formatter] configured by the subscriber invoking
