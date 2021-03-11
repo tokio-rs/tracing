@@ -4,6 +4,7 @@
 mod support;
 use support::*;
 
+use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
@@ -261,6 +262,48 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
             TestImpl::call().await;
             TestImpl.call_with_self().await;
             TestImpl.call_with_mut_self().await
+        });
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn out_of_scope_fields() {
+    // Reproduces tokio-rs/tracing#1296
+
+    struct Thing {
+        metrics: Arc<()>,
+    }
+
+    impl Thing {
+        #[instrument(skip(self, req), fields(app_id))]
+        fn call(&mut self, req: ()) -> Pin<Box<dyn Future<Output = ()> + Send + Sync>> {
+            // ...
+            let metrics = self.metrics.clone();
+            // ...
+            Box::pin(async move {
+                // ...
+                metrics // cannot find value `metrics` in this scope
+            })
+        }
+    }
+
+    let span = span::mock().named("call");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(async {
+            let mut my_thing = Thing {
+                metrics: Arc::new(()),
+            };
+            my_thing.call(()).await;
         });
     });
 
