@@ -37,6 +37,14 @@ pub struct PrettyVisitor<'a> {
     result: fmt::Result,
 }
 
+/// An excessively pretty, human-readable [`MakeVisitor`] implementation.
+///
+/// [`MakeVisitor`]: crate::field::MakeVisitor
+#[derive(Debug)]
+pub struct PrettyFields {
+    ansi: bool,
+}
+
 // === impl Pretty ===
 
 impl Default for Pretty {
@@ -235,17 +243,6 @@ impl<'writer> FormatFields<'writer> for Pretty {
 }
 
 // === impl PrettyFields ===
-
-/// An excessively pretty, human-readable [`MakeVisitor`] implementation.
-///
-/// [`MakeVisitor`]: crate::field::MakeVisitor
-#[derive(Debug)]
-pub struct PrettyFields {
-    ansi: bool,
-    // reserve the ability to add fields to this without causing a breaking
-    // change in the future.
-    _private: (),
-}
 
 impl Default for PrettyFields {
     fn default() -> Self {
