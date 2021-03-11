@@ -253,9 +253,7 @@ impl Default for PrettyFields {
 impl PrettyFields {
     /// Returns a new default [`PrettyFields`] implementation.
     pub fn new() -> Self {
-        Self {
-            ansi: true,
-        }
+        Self { ansi: true }
     }
 
     /// Enable ANSI encoding for formatted fields.
