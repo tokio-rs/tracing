@@ -293,6 +293,23 @@ impl<F, T> Format<F, T> {
     /// See [`Pretty`].
     ///
     /// Note that this requires the "ansi" feature to be enabled.
+    ///
+    /// # Options
+    ///
+    /// [`Format::with_ansi`] can be used to disable ANSI terminal escape codes (which enable
+    /// formatting such as colors, bold, italic, etc) in event formatting. However, a field
+    /// formatter must be manually provided to avoid ANSI in the formatting of parent spans, like
+    /// so:
+    ///
+    /// ```
+    /// # use tracing_subscriber::fmt::format;
+    /// tracing_subscriber::fmt()
+    ///    .pretty()
+    ///    .with_ansi(false)
+    ///    .fmt_fields(format::PrettyFields::new().with_ansi(false))
+    ///    // ... other settings ...
+    ///    .init();
+    /// ```
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(self) -> Format<Pretty, T> {
