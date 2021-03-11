@@ -33,8 +33,17 @@ pub struct Pretty {
 pub struct PrettyVisitor<'a> {
     writer: &'a mut dyn Write,
     is_empty: bool,
+    ansi: bool,
     style: Style,
     result: fmt::Result,
+}
+
+/// An excessively pretty, human-readable [`MakeVisitor`] implementation.
+///
+/// [`MakeVisitor`]: crate::field::MakeVisitor
+#[derive(Debug)]
+pub struct PrettyFields {
+    ansi: bool,
 }
 
 // === impl Pretty ===
@@ -99,30 +108,40 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         write!(writer, "  ")?;
-        time::write(&self.timer, writer, true)?;
+        time::write(&self.timer, writer, self.ansi)?;
 
-        let style = if self.display_level {
+        let style = if self.display_level && self.ansi {
             Pretty::style_for(meta.level())
         } else {
             Style::new()
         };
 
+        if self.display_level {
+            write!(writer, "{}", super::FmtLevel::new(meta.level(), self.ansi))?;
+        }
+
         if self.display_target {
-            let bold = style.bold();
+            let target_style = if self.ansi { style.bold() } else { style };
             write!(
                 writer,
                 "{}{}{}: ",
-                bold.prefix(),
+                target_style.prefix(),
                 meta.target(),
-                bold.infix(style)
+                target_style.infix(style)
             )?;
         }
-        let mut v = PrettyVisitor::new(writer, true).with_style(style);
+        let mut v = PrettyVisitor::new(writer, true)
+            .with_style(style)
+            .with_ansi(self.ansi);
         event.record(&mut v);
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = Style::new().dimmed().italic();
+        let dimmed = if self.ansi {
+            Style::new().dimmed().italic()
+        } else {
+            Style::new()
+        };
         let thread = self.display_thread_name || self.display_thread_id;
         if let (true, Some(file), Some(line)) =
             (self.format.display_location, meta.file(), meta.line())
@@ -157,7 +176,11 @@ where
             writer.write_char('\n')?;
         }
 
-        let bold = Style::new().bold();
+        let bold = if self.ansi {
+            Style::new().bold()
+        } else {
+            Style::new()
+        };
         let span = event
             .parent()
             .and_then(|id| ctx.span(&id))
@@ -220,6 +243,35 @@ impl<'writer> FormatFields<'writer> for Pretty {
     }
 }
 
+// === impl PrettyFields ===
+
+impl Default for PrettyFields {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PrettyFields {
+    /// Returns a new default [`PrettyFields`] implementation.
+    pub fn new() -> Self {
+        Self { ansi: true }
+    }
+
+    /// Enable ANSI encoding for formatted fields.
+    pub fn with_ansi(self, ansi: bool) -> Self {
+        Self { ansi, ..self }
+    }
+}
+
+impl<'a> MakeVisitor<&'a mut dyn Write> for PrettyFields {
+    type Visitor = PrettyVisitor<'a>;
+
+    #[inline]
+    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
+        PrettyVisitor::new(target, true).with_ansi(self.ansi)
+    }
+}
+
 // === impl PrettyVisitor ===
 
 impl<'a> PrettyVisitor<'a> {
@@ -233,6 +285,7 @@ impl<'a> PrettyVisitor<'a> {
         Self {
             writer,
             is_empty,
+            ansi: true,
             style: Style::default(),
             result: Ok(()),
         }
@@ -240,6 +293,10 @@ impl<'a> PrettyVisitor<'a> {
 
     pub(crate) fn with_style(self, style: Style) -> Self {
         Self { style, ..self }
+    }
+
+    pub(crate) fn with_ansi(self, ansi: bool) -> Self {
+        Self { ansi, ..self }
     }
 
     fn write_padded(&mut self, value: &impl fmt::Debug) {
@@ -250,6 +307,14 @@ impl<'a> PrettyVisitor<'a> {
             ", "
         };
         self.result = write!(self.writer, "{}{:?}", padding, value);
+    }
+
+    fn bold(&self) -> Style {
+        if self.ansi {
+            self.style.bold()
+        } else {
+            Style::new()
+        }
     }
 }
 
@@ -268,7 +333,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            let bold = self.style.bold();
+            let bold = self.bold();
             self.record_debug(
                 field,
                 &format_args!(
@@ -289,7 +354,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         if self.result.is_err() {
             return;
         }
-        let bold = self.style.bold();
+        let bold = self.bold();
         match field.name() {
             "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
             // Skip fields that are actually log metadata that have already been handled
@@ -333,6 +398,7 @@ impl<'a> fmt::Debug for PrettyVisitor<'a> {
             .field("is_empty", &self.is_empty)
             .field("result", &self.result)
             .field("style", &self.style)
+            .field("ansi", &self.ansi)
             .finish()
     }
 }
