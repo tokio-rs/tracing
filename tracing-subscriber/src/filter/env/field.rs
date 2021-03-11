@@ -157,7 +157,7 @@ impl fmt::Display for ValueMatch {
 impl FromStr for MatchPattern {
     type Err = matchers::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let matcher = s.parse::<Pattern>()?;
+        let matcher = Pattern::new_anchored(s)?;
         Ok(Self {
             matcher,
             pattern: s.to_owned().into(),

@@ -57,7 +57,7 @@
 //! let (tracer, _uninstall) = stdout::new_pipeline().install();
 //!
 //! // Create a tracing layer with the configured tracer
-//! let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+//! let telemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
 //!
 //! // Use the tracing subscriber `Registry`, or any other subscriber
 //! // that impls `LookupSpan`
@@ -96,13 +96,13 @@
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 
-/// Implementation of the trace::Subscriber as a source of OpenTelemetry data.
-mod layer;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;
+/// Implementation of the trace::Subscriber as a source of OpenTelemetry data.
+mod subscriber;
 /// Protocols for OpenTelemetry Tracers that are compatible with Tracing
 mod tracer;
 
-pub use layer::{layer, OpenTelemetryLayer};
 pub use span_ext::OpenTelemetrySpanExt;
+pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;

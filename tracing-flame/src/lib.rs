@@ -180,7 +180,7 @@ thread_local! {
 /// samples.
 ///
 /// The output of `FlameSubscriber` emulates the output of commands like `perf` once
-/// they've been collapsed by `inferno-flamegraph`. The output of this layer
+/// they've been collapsed by `inferno-flamegraph`. The output of this subscriber
 /// should look similar to the output of the following commands:
 ///
 /// ```sh
@@ -266,7 +266,7 @@ where
     /// provided writer.
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
-        // LAST_EVENT when constructing the layer
+        // LAST_EVENT when constructing the subscriber
         let _unused = *START;
         Self {
             out: Arc::new(Mutex::new(writer)),
@@ -378,9 +378,9 @@ where
             })
             .map_err(Error)?;
         let writer = BufWriter::new(file);
-        let layer = Self::new(writer);
-        let guard = layer.flush_on_drop();
-        Ok((layer, guard))
+        let subscriber = Self::new(writer);
+        let guard = subscriber.flush_on_drop();
+        Ok((subscriber, guard))
     }
 }
 

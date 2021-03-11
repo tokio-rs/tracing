@@ -12,7 +12,7 @@ use opentelemetry::{
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tracing::Collect;
-use tracing_opentelemetry::{layer, OpenTelemetrySpanExt};
+use tracing_opentelemetry::{subscriber, OpenTelemetrySpanExt};
 use tracing_subscriber::prelude::*;
 
 #[test]
@@ -113,7 +113,7 @@ fn test_tracer() -> (Tracer, TracerProvider, TestExporter, impl Collect) {
         .with_simple_exporter(exporter.clone())
         .build();
     let tracer = provider.get_tracer("test", None);
-    let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+    let subscriber = tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
 
     (tracer, provider, exporter, subscriber)
 }

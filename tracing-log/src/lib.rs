@@ -65,7 +65,7 @@
 //!
 //! If the logging of trace events generated from log records produced by the
 //! `log` crate is desired, either the `log` crate should not be used to
-//! implement this logging, or an additional layer of filtering will be
+//! implement this logging, or an additional subscriber of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
 //! # Feature Flags

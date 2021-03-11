@@ -233,11 +233,7 @@ impl Collect for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert!(
-            refs != 0,
-            "tried to clone a span ({:?}) that already closed",
-            id
-        );
+        assert_ne!(refs, 0, "tried to clone a span ({:?}) that already closed", id);
         id.clone()
     }
 

@@ -177,7 +177,7 @@ pub struct Parents<'a, R> {
 /// An iterator over a span's parents, starting with the root of the trace
 /// tree.
 ///
-/// For additonal details, see [`SpanRef::from_root`].
+/// For additional details, see [`SpanRef::from_root`].
 ///
 /// [`Span::from_root`]: SpanRef::from_root()
 pub struct FromRoot<'a, R: LookupSpan<'a>> {
