@@ -1124,7 +1124,6 @@ impl Default for FmtSpanConfig {
     }
 }
 
-#[repr(transparent)]
 pub(super) struct TimingDisplay(pub(super) u64);
 impl Display for TimingDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
