@@ -11,7 +11,7 @@ use std::{
 };
 use tracing_core::{
     field,
-    span::{Attributes, Id, Record},
+    span::{Attributes, Current, Id, Record},
     Collect, Event, Metadata,
 };
 
@@ -806,6 +806,11 @@ where
         S: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.scope()
+    }
+
+    /// Returns the current span for this formatter.
+    pub fn current_span(&self) -> Current {
+        self.ctx.current_span()
     }
 
     /// Returns the [field formatter] configured by the subscriber invoking
