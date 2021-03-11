@@ -255,7 +255,6 @@ impl PrettyFields {
     pub fn new() -> Self {
         Self {
             ansi: true,
-            _private: (),
         }
     }
 
