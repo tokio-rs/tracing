@@ -241,12 +241,14 @@ impl<'a> PrettyVisitor<'a> {
         Self { style, ..self }
     }
 
-    fn maybe_pad(&mut self) {
-        if self.is_empty {
+    fn write_padded(&mut self, value: &impl fmt::Debug) {
+        let padding = if self.is_empty {
             self.is_empty = false;
+            ""
         } else {
-            self.result = write!(self.writer, ", ");
-        }
+            ", "
+        };
+        self.result = write!(self.writer, "{}{:?}", padding, value);
     }
 }
 
@@ -287,28 +289,25 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             return;
         }
         let bold = self.style.bold();
-        self.maybe_pad();
-        self.result = match field.name() {
-            "message" => write!(self.writer, "{}{:?}", self.style.prefix(), value,),
+        match field.name() {
+            "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => Ok(()),
-            name if name.starts_with("r#") => write!(
-                self.writer,
+            name if name.starts_with("log.") => self.result = Ok(()),
+            name if name.starts_with("r#") => self.write_padded(&format_args!(
                 "{}{}{}: {:?}",
                 bold.prefix(),
                 &name[2..],
                 bold.infix(self.style),
                 value
-            ),
-            name => write!(
-                self.writer,
+            )),
+            name => self.write_padded(&format_args!(
                 "{}{}{}: {:?}",
                 bold.prefix(),
                 name,
                 bold.infix(self.style),
                 value
-            ),
+            )),
         };
     }
 }
