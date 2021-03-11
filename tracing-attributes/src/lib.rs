@@ -455,39 +455,45 @@ pub fn instrument(
     // the future instead of the wrapper
     if let Some(internal_fun) = get_async_trait_info(&input.block, input.sig.asyncness.is_some()) {
         // let's rewrite some statements!
-        let mut out_stmts = Vec::with_capacity(input.block.stmts.len());
-        for stmt in &input.block.stmts {
-            if stmt == internal_fun.source_stmt {
-                match internal_fun.kind {
-                    // async-trait <= 0.1.43
-                    AsyncTraitKind::Function(fun) => {
-                        out_stmts.push(gen_function(
-                            fun,
-                            args,
-                            instrumented_function_name,
-                            internal_fun.self_type,
-                        ));
-                    }
-                    // async-trait >= 0.1.44
-                    AsyncTraitKind::Async(async_expr) => {
-                        // fallback if we couldn't find the '__async_trait' binding, might be
-                        // useful for crates exhibiting the same behaviors as async-trait
-                        let instrumented_block = gen_block(
-                            &async_expr.block,
-                            &input.sig.inputs,
-                            true,
-                            args,
-                            instrumented_function_name,
-                            None,
-                        );
-                        let async_attrs = &async_expr.attrs;
-                        out_stmts.push(quote! {
-                            Box::pin(#(#async_attrs) * async move { #instrumented_block })
-                        });
+        let mut out_stmts: Vec<TokenStream> = input
+            .block
+            .stmts
+            .iter()
+            .map(|stmt| stmt.to_token_stream())
+            .collect();
+
+        if let Some((iter, _stmt)) = input
+            .block
+            .stmts
+            .iter()
+            .enumerate()
+            .find(|(_iter, stmt)| *stmt == internal_fun.source_stmt)
+        {
+            // instrument the future by rewriting the corresponding statement
+            out_stmts[iter] = match internal_fun.kind {
+                // async-trait <= 0.1.43
+                AsyncTraitKind::Function(fun) => gen_function(
+                    fun,
+                    args,
+                    instrumented_function_name.as_str(),
+                    internal_fun.self_type.as_ref(),
+                ),
+                // async-trait >= 0.1.44
+                AsyncTraitKind::Async(async_expr) => {
+                    let instrumented_block = gen_block(
+                        &async_expr.block,
+                        &input.sig.inputs,
+                        true,
+                        args,
+                        instrumented_function_name.as_str(),
+                        None,
+                    );
+                    let async_attrs = &async_expr.attrs;
+                    quote! {
+                        Box::pin(#(#async_attrs) * async move { #instrumented_block })
                     }
                 }
-                break;
-            }
+            };
         }
 
         let vis = &input.vis;
@@ -501,7 +507,7 @@ pub fn instrument(
         )
         .into()
     } else {
-        gen_function(&input, args, instrumented_function_name, None).into()
+        gen_function(&input, args, instrumented_function_name.as_str(), None).into()
     }
 }
 
@@ -509,8 +515,8 @@ pub fn instrument(
 fn gen_function(
     input: &ItemFn,
     args: InstrumentArgs,
-    instrumented_function_name: String,
-    self_type: Option<syn::TypePath>,
+    instrumented_function_name: &str,
+    self_type: Option<&syn::TypePath>,
 ) -> proc_macro2::TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
@@ -568,8 +574,8 @@ fn gen_block(
     params: &Punctuated<FnArg, Token![,]>,
     async_context: bool,
     mut args: InstrumentArgs,
-    instrumented_function_name: String,
-    self_type: Option<syn::TypePath>,
+    instrumented_function_name: &str,
+    self_type: Option<&syn::TypePath>,
 ) -> proc_macro2::TokenStream {
     let err = args.err;
 
@@ -656,7 +662,7 @@ fn gen_block(
             // when async-trait <=0.1.43 is in use, replace instances
             // of the "Self" type inside the fields values
             if let Some(self_type) = self_type {
-                replacer.types.push(("Self", self_type));
+                replacer.types.push(("Self", self_type.clone()));
             }
 
             for e in fields.iter_mut().filter_map(|f| f.value.as_mut()) {
