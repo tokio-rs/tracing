@@ -303,6 +303,7 @@ impl<F, T> Format<F, T> {
     /// so:
     ///
     /// ```
+    /// # use tracing_subscriber::fmt::format;
     /// tracing_subscriber::fmt()
     ///    .pretty()
     ///    .with_ansi(false)
