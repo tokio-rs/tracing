@@ -642,17 +642,32 @@ where
     /// - `FmtSpan::NONE`: No events will be synthesized when spans are
     ///    created, entered, exited, or closed. Data from spans will still be
     ///    included as the context for formatted events. This is the default.
-    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
-    ///    or exited.
+    /// - `FmtSpan::NEW`: An event will be synthesized when spans are created.
+    /// - `FmtSpan::ENTER`: An event will be synthesized when spans are entered.
+    /// - `FmtSpan::EXIT`: An event will be synthesized when spans are exited.
     /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
     ///    [timestamps are enabled][time] for this formatter, the generated
     ///    event will contain fields with the span's _busy time_ (the total
     ///    time for which it was entered) and _idle time_ (the total time that
     ///    the span existed but was not entered).
+    /// - `FmtSpan::ACTIVE`: An event will be synthesized when spans are entered
+    ///    or exited.
     /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
     ///    created, entered, exited, or closed. If timestamps are enabled, the
     ///    close event will contain the span's busy and idle time, as
     ///    described above.
+    ///
+    /// The options can be enabled in any combination. For instance, the following
+    /// will synthesize events whenever spans are created and closed:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format::FmtSpan;
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let subscriber = fmt()
+    ///     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+    ///     .finish();
+    /// ```
     ///
     /// Note that the generated events will only be part of the log output by
     /// this formatter; they will not be recorded by other `Collector`s or by
@@ -662,8 +677,8 @@ where
     /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_span_events(kind),
+            ..self
         }
     }
 
@@ -672,8 +687,8 @@ where
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_ansi(ansi),
+            ..self
         }
     }
 
@@ -683,8 +698,8 @@ where
         display_target: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_target(display_target),
+            ..self
         }
     }
 
@@ -694,8 +709,8 @@ where
         display_level: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_level(display_level),
+            ..self
         }
     }
 
@@ -708,8 +723,8 @@ where
         display_thread_names: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_names(display_thread_names),
+            ..self
         }
     }
 
@@ -722,8 +737,8 @@ where
         display_thread_ids: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_ids(display_thread_ids),
+            ..self
         }
     }
 
