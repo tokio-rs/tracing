@@ -356,21 +356,19 @@ where
                     }
                     .start_merge_parent_fields(&mut serializer)?;
                 }
+            } else if self.format.merge_parent_fields.0 {
+                serializer.serialize_entry(
+                    "fields",
+                    &MergeParentFieldsMap {
+                        event,
+                        ctx,
+                        namespace: self.format.merge_parent_fields.1,
+                        phantom: format_field_marker,
+                    },
+                )?;
             } else {
-                if self.format.merge_parent_fields.0 {
-                    serializer.serialize_entry(
-                        "fields",
-                        &MergeParentFieldsMap {
-                            event,
-                            ctx,
-                            namespace: self.format.merge_parent_fields.1,
-                            phantom: format_field_marker,
-                        },
-                    )?;
-                } else {
-                    use tracing_serde::fields::AsMap;
-                    serializer.serialize_entry("fields", &event.field_map())?;
-                }
+                use tracing_serde::fields::AsMap;
+                serializer.serialize_entry("fields", &event.field_map())?;
             };
 
             if self.display_target {
