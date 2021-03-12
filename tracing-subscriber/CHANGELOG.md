@@ -1,3 +1,29 @@
+# 0.2.17 (March 12, 2020)
+
+### Fixed
+
+- **fmt**: `Pretty` formatter now honors `with_ansi(false)` to disable ANSI
+  terminal formatting ([#1240])
+- **fmt**: Fixed extra padding when using `Pretty` formatter ([#1275])
+- **chrono**: Removed extra trailing space with `ChronoLocal` time formatter
+  ([#1103])
+
+### Added
+
+- **fmt**: Added `FmtContext::current_span()` method, returning the current span
+  ([#1290])
+- **fmt**: `FmtSpan` variants may now be combined using the `|` operator for
+  more granular control over what span events are generated ([#1277])
+
+Thanks to new contributors @cratelyn, @dignati, and @zicklag, as well as @Folyd,
+@matklad, and @najamelan, for contributing to this release!
+
+[#1240]: https://github.com/tokio-rs/tracing/pull/1240
+[#1275]: https://github.com/tokio-rs/tracing/pull/1275
+[#1103]: https://github.com/tokio-rs/tracing/pull/1103
+[#1290]: https://github.com/tokio-rs/tracing/pull/1290
+[#1277]: https://github.com/tokio-rs/tracing/pull/1277
+
 # 0.2.16 (February 19, 2020)
 
 ### Fixed
