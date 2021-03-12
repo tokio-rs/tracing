@@ -493,6 +493,17 @@ impl<T> Format<Json, T> {
         self.format.with_span_list(display_span_list);
         self
     }
+
+    /// Sets whether or not the formatter will merge events' parent spans fields
+    /// into the `fields` of this event
+    ///
+    /// See [`format::Json`]
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn merge_parent_fields(mut self, merge_parent_fields: bool) -> Format<Json, T> {
+        self.format.merge_parent_fields(merge_parent_fields);
+        self
+    }
 }
 
 impl<S, N, T> FormatEvent<S, N> for Format<Full, T>

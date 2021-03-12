@@ -4,13 +4,17 @@ use crate::{
     fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
-use serde::ser::{SerializeMap, Serializer as _};
+use serde::{
+    ser::{SerializeMap, Serializer as SerdeSerializer},
+    Serialize,
+};
 use serde_json::Serializer;
 use std::{
     collections::BTreeMap,
     fmt::{self, Write},
     io,
 };
+use tracing::Id;
 use tracing_core::{
     field::{self, Field},
     span::Record,
@@ -55,6 +59,7 @@ pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) merge_parent_fields: bool,
 }
 
 impl Json {
@@ -72,6 +77,12 @@ impl Json {
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
+    }
+
+    /// If set to `true`, formatted events will contain every field of their parent
+    /// spans (prefixed by the span name and a `.`) as well as their own.
+    pub fn merge_parent_fields(&mut self, merge_parent_fields: bool) {
+        self.merge_parent_fields = merge_parent_fields;
     }
 }
 
@@ -96,32 +107,49 @@ where
         let mut serializer = serializer_o.serialize_seq(None)?;
 
         for span in self.0.scope() {
-            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+            serializer.serialize_element(&SerializableSpan(&span, None, self.1))?;
         }
 
         serializer.end()
     }
 }
 
+struct Key<'a> {
+    prefix: Option<&'static str>,
+    key: &'a str,
+}
+
+impl<'a> Serialize for Key<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: SerdeSerializer,
+    {
+        if let Some(prefix) = self.prefix {
+            return serializer.collect_str(&format_args!("{}.{}", prefix, self.key));
+        }
+
+        serializer.serialize_str(self.key)
+    }
+}
+
 struct SerializableSpan<'a, 'b, Span, N>(
     &'b crate::registry::SpanRef<'a, Span>,
+    Option<&'static str>,
     std::marker::PhantomData<N>,
 )
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+impl<'a, 'b, Span, N> SerializableSpan<'a, 'b, Span, N>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    fn serialize_formatted_fields<SerMap>(&self, map: &mut SerMap) -> Result<(), SerMap::Error>
     where
-        Ser: serde::ser::Serializer,
+        SerMap: SerializeMap,
     {
-        let mut serializer = serializer.serialize_map(None)?;
-
         let ext = self.0.extensions();
         let data = ext
             .get::<FormattedFields<N>>()
@@ -135,7 +163,11 @@ where
         match serde_json::from_str::<serde_json::Value>(&data) {
             Ok(serde_json::Value::Object(fields)) => {
                 for field in fields {
-                    serializer.serialize_entry(&field.0, &field.1)?;
+                    map.serialize_key(&Key {
+                        key: &field.0,
+                        prefix: self.1,
+                    })
+                    .and_then(|_| map.serialize_value(&field.1))?;
                 }
             }
             // We have fields for this span which are valid JSON but not an object.
@@ -149,8 +181,8 @@ where
             // crash the program, let's log the field found but also an
             // message saying it's type  is invalid
             Ok(value) => {
-                serializer.serialize_entry("field", &value)?;
-                serializer.serialize_entry("field_error", "field was no a valid object")?
+                map.serialize_entry("field", &value)?;
+                map.serialize_entry("field_error", "field was no a valid object")?
             }
             // We have previously recorded fields for this span
             // should be valid JSON. However, they appear to *not*
@@ -165,10 +197,85 @@ where
             // If we *aren't* in debug mode, it's probably best not
             // crash the program, but let's at least make sure it's clear
             // that the fields are not supposed to be missing.
-            Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
+            Err(e) => map.serialize_entry("field_error", &format!("{}", e))?,
         };
+        Ok(())
+    }
+}
+
+impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+where
+    Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::ser::Serializer,
+    {
+        let mut serializer = serializer.serialize_map(None)?;
+
+        self.serialize_formatted_fields(&mut serializer)?;
+
         serializer.serialize_entry("name", self.0.metadata().name())?;
         serializer.end()
+    }
+}
+
+struct CoalescedFieldMap<'a, S, N> {
+    event: &'a Event<'a>,
+    ctx: &'a FmtContext<'a, S, N>,
+    phantom: std::marker::PhantomData<N>,
+}
+
+impl<'a, S, N> CoalescedFieldMap<'a, S, N>
+where
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn merge_parent_fields<SerMap>(
+        &self,
+        map: &mut SerMap,
+        id: Option<&Id>,
+    ) -> Result<(), SerMap::Error>
+    where
+        SerMap: SerializeMap,
+    {
+        if let Some(id) = id {
+            if let Some(span) = self.ctx.span(id) {
+                SerializableSpan(&span, Some(span.name()), self.phantom)
+                    .serialize_formatted_fields(map)?;
+                self.merge_parent_fields(map, span.parent_id())?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a, S, N> Serialize for CoalescedFieldMap<'a, S, N>
+where
+    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: SerdeSerializer,
+    {
+        let map = serializer.serialize_map(None)?;
+        let mut visitor = tracing_serde::SerdeMapVisitor::new(map);
+        self.event.record(&mut visitor);
+        let mut map = visitor.take_serializer()?;
+        let current = self.ctx.ctx.current_span();
+        self.merge_parent_fields(
+            &mut map,
+            self.event.parent().or_else(|| {
+                if self.event.is_contextual() {
+                    current.id()
+                } else {
+                    None
+                }
+            }),
+        )?;
+        map.end()
     }
 }
 
@@ -220,8 +327,19 @@ where
 
                 serializer = visitor.take_serializer()?;
             } else {
-                use tracing_serde::fields::AsMap;
-                serializer.serialize_entry("fields", &event.field_map())?;
+                if self.format.merge_parent_fields {
+                    serializer.serialize_entry(
+                        "fields",
+                        &CoalescedFieldMap {
+                            event,
+                            ctx,
+                            phantom: format_field_marker,
+                        },
+                    )?;
+                } else {
+                    use tracing_serde::fields::AsMap;
+                    serializer.serialize_entry("fields", &event.field_map())?;
+                }
             };
 
             if self.display_target {
@@ -231,7 +349,7 @@ where
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
                     serializer
-                        .serialize_entry("span", &SerializableSpan(span, format_field_marker))
+                        .serialize_entry("span", &SerializableSpan(span, None, format_field_marker))
                         .unwrap_or(());
                 }
             }
@@ -277,6 +395,7 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            merge_parent_fields: false,
         }
     }
 }
