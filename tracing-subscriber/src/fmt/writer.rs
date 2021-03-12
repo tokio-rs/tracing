@@ -171,7 +171,7 @@ pub trait MakeWriter<'a> {
     ///         }
     ///     }
     ///
-    ///     fn write_all(&mut self, buf: &[u8]) -> io::Result<usize> {
+    ///     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
     ///         // ...
     ///         # match self {
     ///         #     StdioLock::Stdout(lock) => lock.write_all(buf),
@@ -202,7 +202,7 @@ pub trait MakeWriter<'a> {
     ///         // Here's where we can implement our special behavior. We'll
     ///         // check if the metadata's verbosity level is WARN or ERROR,
     ///         // and return stderr in that case.
-    ///         if meta.level() <= Level::WARN {
+    ///         if meta.level() <= &Level::WARN {
     ///             return StdioLock::Stderr(self.stderr.lock());
     ///         }
     ///
