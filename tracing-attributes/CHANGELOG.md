@@ -1,3 +1,13 @@
+# 0.1.15 (March 12, 2021)
+
+### Fixed
+
+- `#[instrument]` on functions returning `Box::pin`ned futures incorrectly
+  skipping function bodies prior to returning a future ([#1297])
+
+Thanks to @nightmared for contributing to this release!
+
+[#1297]: https://github.com/tokio-rs/tracing/pull/1297
 
 # 0.1.14 (March 10, 2021)
 
