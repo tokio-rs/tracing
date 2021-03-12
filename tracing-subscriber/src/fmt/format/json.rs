@@ -14,10 +14,9 @@ use std::{
     fmt::{self, Write},
     io,
 };
-use tracing::Id;
 use tracing_core::{
     field::{self, Field},
-    span::Record,
+    span::{Id, Record},
     Collect, Event,
 };
 use tracing_serde::AsSerde;
