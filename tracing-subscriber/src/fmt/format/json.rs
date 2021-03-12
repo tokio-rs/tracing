@@ -683,9 +683,12 @@ mod test {
     #[test]
     fn json_merged_parent_fields() {
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"fields\":{\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"span\":{\"answer\":42,\"number\":3,\"name\":\"json_span\"}}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"fields\":{\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true},\"target\":\"tracing_subscriber::fmt::format::json::test\"}\n";
 
-        let collector = collector().with_span_list(false).merge_parent_fields(true);
+        let collector = collector()
+            .with_current_span(false)
+            .with_span_list(false)
+            .merge_parent_fields(true);
         test_json(expected, collector, || {
             let parent = tracing::span!(tracing::Level::INFO, "parent", is_parent = true);
             let _parent_guard = parent.enter();
@@ -698,9 +701,10 @@ mod test {
     #[test]
     fn json_merged_parent_fields_flattened() {
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true,\"target\":\"tracing_subscriber::fmt::format::json::test\",\"span\":{\"answer\":42,\"number\":3,\"name\":\"json_span\"}}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true,\"target\":\"tracing_subscriber::fmt::format::json::test\"}\n";
 
         let collector = collector()
+            .with_current_span(false)
             .with_span_list(false)
             .flatten_event(true)
             .merge_parent_fields(true);
