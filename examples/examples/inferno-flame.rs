@@ -10,12 +10,12 @@ use tracing_subscriber::{prelude::*, registry::Registry};
 
 static PATH: &str = "flame.folded";
 
-fn setup_global_subscriber(dir: &Path) -> impl Drop {
+fn setup_global_collector(dir: &Path) -> impl Drop {
     let (flame_layer, _guard) = FlameSubscriber::with_file(dir.join(PATH)).unwrap();
 
-    let subscriber = Registry::default().with(flame_layer);
+    let collector = Registry::default().with(flame_layer);
 
-    tracing::collect::set_global_default(subscriber).unwrap();
+    tracing::collect::set_global_default(collector).unwrap();
 
     _guard
 }
@@ -34,7 +34,7 @@ fn make_flamegraph(dir: &Path) {
 fn main() {
     // setup the flame layer
     let tmp_dir = TempDir::new("flamegraphs").unwrap();
-    let guard = setup_global_subscriber(tmp_dir.path());
+    let guard = setup_global_collector(tmp_dir.path());
 
     // do a bunch of span entering and exiting to simulate a program running
     span!(Level::ERROR, "outer").in_scope(|| {

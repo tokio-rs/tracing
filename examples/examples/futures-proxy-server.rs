@@ -7,7 +7,7 @@
 //!
 //! You can showcase this by running this in one terminal:
 //!
-//!     cargo run --example proxy_server -- --log_format=(plain|json)
+//!     cargo run --example futures-proxy-server -- --log_format=(plain|json)
 //!
 //! This in another terminal
 //!
@@ -116,7 +116,7 @@ async fn main() -> Result<(), Error> {
     let server_addr = matches.value_of("server_addr").unwrap_or("127.0.0.1:3000");
     let server_addr = server_addr.parse::<SocketAddr>()?;
 
-    let mut listener = TcpListener::bind(&listen_addr).await?;
+    let listener = TcpListener::bind(&listen_addr).await?;
 
     info!("Listening on: {}", listen_addr);
     info!("Proxying to: {}", server_addr);
@@ -140,13 +140,13 @@ async fn main() -> Result<(), Error> {
 fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let filter = tracing_subscriber::EnvFilter::from_default_env()
         .add_directive("proxy_server=trace".parse()?);
-    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
+    let builder = tracing_subscriber::fmt().with_env_filter(filter);
     match value_t!(matches, "log_format", LogFormat).unwrap_or(LogFormat::Plain) {
         LogFormat::Json => {
-            subscriber.json().try_init()?;
+            builder.json().try_init()?;
         }
         LogFormat::Plain => {
-            subscriber.try_init()?;
+            builder.try_init()?;
         }
     }
     Ok(())

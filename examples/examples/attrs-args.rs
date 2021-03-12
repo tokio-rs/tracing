@@ -27,11 +27,11 @@ fn fibonacci_seq(to: u64) -> Vec<u64> {
 }
 
 fn main() {
-    let subscriber = tracing_subscriber::fmt()
+    let collector = tracing_subscriber::fmt()
         .with_env_filter("attrs_args=trace")
         .finish();
 
-    tracing::collect::with_default(subscriber, || {
+    tracing::collect::with_default(collector, || {
         let n = 5;
         let sequence = fibonacci_seq(n);
         info!("The first {} fibonacci numbers are {:?}", n, sequence);

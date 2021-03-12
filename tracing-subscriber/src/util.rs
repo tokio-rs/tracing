@@ -2,6 +2,8 @@
 //! ergonomic.
 use std::{error::Error, fmt};
 use tracing_core::dispatch::{self, Dispatch};
+#[cfg(feature = "tracing-log")]
+use tracing_log::AsLog;
 
 /// Extension trait adding utility methods for subscriber initialization.
 ///
@@ -24,7 +26,7 @@ where
     /// guard that will unset it when dropped.
     ///
     /// If the "tracing-log" feature flag is enabled, this will also initialize
-    /// a [`log`] compatibility layer. This allows the subscriber to consume
+    /// a [`log`] compatibility subscriber. This allows the subscriber to consume
     /// `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// [default subscriber]: tracing::dispatch#setting-the-default-collector
@@ -40,7 +42,7 @@ where
     /// scope, returning an error if one is already set.
     ///
     /// If the "tracing-log" feature flag is enabled, this will also attempt to
-    /// initialize a [`log`] compatibility layer. This allows the subscriber to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
     /// consume `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// This method returns an error if a global default subscriber has already
@@ -50,10 +52,19 @@ where
     /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
     fn try_init(self) -> Result<(), TryInitError> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(TryInitError::new)?;
-
         dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
+
+        // Since we are setting the global default subscriber, we can
+        // opportunistically go ahead and set its global max level hint as
+        // the max level for the `log` crate as well. This should make
+        // skipping `log` diagnostics much faster.
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::builder()
+            // Note that we must call this *after* setting the global default
+            // subscriber, so that we get its max level hint.
+            .with_max_level(tracing_core::LevelFilter::current().as_log())
+            .init()
+            .map_err(TryInitError::new)?;
 
         Ok(())
     }
@@ -62,7 +73,7 @@ where
     /// scope, panicking if this fails.
     ///
     /// If the "tracing-log" feature flag is enabled, this will also attempt to
-    /// initialize a [`log`] compatibility layer. This allows the subscriber to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
     /// consume `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// This method panics if a global default subscriber has already been set,

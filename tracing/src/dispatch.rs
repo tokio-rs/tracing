@@ -13,7 +13,10 @@
 //! ## Setting the Default Collector
 //!
 //! By default, the current collector is an empty implementation that does
-//! nothing. To use a collector implementation, it must be set as the default.
+//! nothing. Trace data provided to this "do nothing" implementation is
+//! immediately discarded, and is not available for any purpose.
+//!
+//! To use another collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
 //! [`set_global_default`]. `with_default` sets the default collector for the
 //! duration of a scope, while `set_global_default` sets a default collector
@@ -152,6 +155,6 @@ pub use tracing_core::dispatch::{
 ///
 /// This function is *not* considered part of `tracing`'s public API, and has no
 /// stability guarantees. If you use it, and it breaks or disappears entirely,
-/// don't say we didn;'t warn you.
+/// don't say we didn't warn you.
 #[doc(hidden)]
 pub use tracing_core::dispatch::has_been_set;

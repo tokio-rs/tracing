@@ -17,7 +17,7 @@ use tracing_core::Metadata;
 /// This trait is already implemented for function pointers and
 /// immutably-borrowing closures that return an instance of [`io::Write`], such
 /// as [`io::stdout`] and [`io::stderr`]. Additionally, it is implemented for
-/// [`std::sync::Mutex`][mutex] when the tyoe inside the mutex implements
+/// [`std::sync::Mutex`][mutex] when the type inside the mutex implements
 /// [`io::Write`].
 ///
 /// The [`MakeWriter::make_writer_for`] method takes [`Metadata`] describing a
@@ -223,7 +223,7 @@ pub trait MakeWriter<'a> {
     }
 }
 
-/// A type implementing [`io::Write`] for a [`MutexGuard`] where tyhe type
+/// A type implementing [`io::Write`] for a [`MutexGuard`] where the type
 /// inside the [`Mutex`] implements [`io::Write`].
 ///
 /// This is used by the [`MakeWriter`] implementation for [`Mutex`], because

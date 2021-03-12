@@ -33,10 +33,23 @@
 //! [dependencies]
 //! tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_warn"] }
 //! ```
+//! ## Notes
 //!
-//! *Compiler support: requires rustc 1.39+*
+//! Please note that `tracing`'s static max level features do *not* control the
+//! [`log`] records that may be emitted when [`tracing`'s "log" feature flag][f] is
+//! enabled. This is to allow `tracing` to be disabled entirely at compile time
+//! while still emitting `log` records --- such as when a library using
+//! `tracing` is used by an application using `log` that doesn't want to
+//! generate any `tracing`-related code, but does want to collect `log` records.
 //!
-//! [`log` crate]: https://docs.rs/log/0.4.6/log/#compile-time-filters
+//! This means that if the "log" feature is in use, some code may be generated
+//! for `log` records emitted by disabled `tracing` events. If this is not
+//! desirable, `log` records may be disabled separately using [`log`'s static
+//! max level features][`log` crate].
+//!
+//! [`log`]: https://docs.rs/log/
+//! [`log` crate]: https://docs.rs/log/latest/log/#compile-time-filters
+//! [f]: https://docs.rs/tracing/latest/tracing/#emitting-log-records
 pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 
 /// The statically configured maximum trace level.

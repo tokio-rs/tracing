@@ -39,12 +39,80 @@ use fmt::{Debug, Display};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`]. Each time an event is
-/// dispatched to [`fmt::Collector`] or [`fmt::Subscriber`], the subscriber or layer forwards it to
-/// its associated `FormatEvent` to emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`].
+/// Each time an event is dispatched to [`fmt::Collector`] or [`fmt::Subscriber`],
+/// the collector or subscriber forwards it to its associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::fmt::{self, Write};
+/// use tracing_core::{Collect, Event};
+/// use tracing_subscriber::fmt::{FormatEvent, FormatFields, FmtContext, FormattedFields};
+/// use tracing_subscriber::registry::LookupSpan;
+///
+/// struct MyFormatter;
+///
+/// impl<S, N> FormatEvent<S, N> for MyFormatter
+/// where
+///     S: Collect + for<'a> LookupSpan<'a>,
+///     N: for<'a> FormatFields<'a> + 'static,
+/// {
+///     fn format_event(
+///         &self,
+///         ctx: &FmtContext<'_, S, N>,
+///         writer: &mut dyn fmt::Write,
+///         event: &Event<'_>,
+///     ) -> fmt::Result {
+///         // Write level and target
+///         let level = *event.metadata().level();
+///         let target = event.metadata().target();
+///         write!(
+///             writer,
+///             "{} {}: ",
+///             level,
+///             target,
+///         )?;
+///
+///         // Write spans and fields of each span
+///         ctx.visit_spans(|span| {
+///             write!(writer, "{}", span.name())?;
+///
+///             let ext = span.extensions();
+///
+///             // `FormattedFields` is a a formatted representation of the span's
+///             // fields, which is stored in its extensions by the `fmt` layer's
+///             // `new_span` method. The fields will have been formatted
+///             // by the same field formatter that's provided to the event
+///             // formatter in the `FmtContext`.
+///             let fields = &ext
+///                 .get::<FormattedFields<N>>()
+///                 .expect("will never be `None`");
+///
+///             if !fields.is_empty() {
+///                 write!(writer, "{{{}}}", fields)?;
+///             }
+///             write!(writer, ": ")?;
+///
+///             Ok(())
+///         })?;
+///
+///         // Write fields on the event
+///         ctx.field_format().format_fields(writer, event)?;
+///
+///         writeln!(writer)
+///     }
+/// }
+/// ```
+///
+/// This formatter will print events like this:
+///
+/// ```text
+/// DEBUG yak_shaving::shaver: some-span{field-on-span=foo}: started shaving yak
+/// ```
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
@@ -123,11 +191,14 @@ pub trait FormatFields<'writer> {
 ///     .event_format(format)
 ///     .init();
 /// ```
+/// [event formatter]: FormatEvent
 pub fn format() -> Format {
     Format::default()
 }
 
 /// Returns the default configuration for a JSON [event formatter].
+///
+/// [event formatter]: FormatEvent
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub fn json() -> Format<Json> {
@@ -223,6 +294,23 @@ impl<F, T> Format<F, T> {
     /// See [`Pretty`].
     ///
     /// Note that this requires the "ansi" feature to be enabled.
+    ///
+    /// # Options
+    ///
+    /// [`Format::with_ansi`] can be used to disable ANSI terminal escape codes (which enable
+    /// formatting such as colors, bold, italic, etc) in event formatting. However, a field
+    /// formatter must be manually provided to avoid ANSI in the formatting of parent spans, like
+    /// so:
+    ///
+    /// ```
+    /// # use tracing_subscriber::fmt::format;
+    /// tracing_subscriber::fmt()
+    ///    .pretty()
+    ///    .with_ansi(false)
+    ///    .fmt_fields(format::PrettyFields::new().with_ansi(false))
+    ///    // ... other settings ...
+    ///    .init();
+    /// ```
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(self) -> Format<Pretty, T> {
@@ -864,6 +952,15 @@ trait LevelNames {
     }
 }
 
+#[cfg(feature = "ansi")]
+impl LevelNames for Pretty {
+    const TRACE_STR: &'static str = "TRACE";
+    const DEBUG_STR: &'static str = "DEBUG";
+    const INFO_STR: &'static str = " INFO";
+    const WARN_STR: &'static str = " WARN";
+    const ERROR_STR: &'static str = "ERROR";
+}
+
 impl LevelNames for Full {
     const TRACE_STR: &'static str = "TRACE";
     const DEBUG_STR: &'static str = "DEBUG";
@@ -973,40 +1070,89 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 ///
 /// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct FmtSpan(FmtSpanInner);
+pub struct FmtSpan(u8);
 
 impl FmtSpan {
-    /// spans are ignored (this is the default)
-    pub const NONE: FmtSpan = FmtSpan(FmtSpanInner::None);
-    /// one event per enter/exit of a span
-    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpanInner::Active);
+    /// one event when span is created
+    pub const NEW: FmtSpan = FmtSpan(1 << 0);
+    /// one event per enter of a span
+    pub const ENTER: FmtSpan = FmtSpan(1 << 1);
+    /// one event per exit of a span
+    pub const EXIT: FmtSpan = FmtSpan(1 << 2);
     /// one event when the span is dropped
-    pub const CLOSE: FmtSpan = FmtSpan(FmtSpanInner::Close);
-    /// events at all points (new, enter, exit, drop)
-    pub const FULL: FmtSpan = FmtSpan(FmtSpanInner::Full);
-}
+    pub const CLOSE: FmtSpan = FmtSpan(1 << 3);
 
-impl Debug for FmtSpan {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            FmtSpanInner::None => f.write_str("FmtSpan::NONE"),
-            FmtSpanInner::Active => f.write_str("FmtSpan::ACTIVE"),
-            FmtSpanInner::Close => f.write_str("FmtSpan::CLOSE"),
-            FmtSpanInner::Full => f.write_str("FmtSpan::FULL"),
-        }
+    /// spans are ignored (this is the default)
+    pub const NONE: FmtSpan = FmtSpan(0);
+    /// one event per enter/exit of a span
+    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpan::ENTER.0 | FmtSpan::EXIT.0);
+    /// events at all points (new, enter, exit, drop)
+    pub const FULL: FmtSpan =
+        FmtSpan(FmtSpan::NEW.0 | FmtSpan::ENTER.0 | FmtSpan::EXIT.0 | FmtSpan::CLOSE.0);
+
+    /// Check whether or not a certain flag is set for this [`FmtSpan`]
+    fn contains(&self, other: FmtSpan) -> bool {
+        self.clone() & other.clone() == other
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-enum FmtSpanInner {
-    /// spans are ignored (this is the default)
-    None,
-    /// one event per enter/exit of a span
-    Active,
-    /// one event when the span is dropped
-    Close,
-    /// events at all points (new, enter, exit, drop)
-    Full,
+macro_rules! impl_fmt_span_bit_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait for FmtSpan {
+            type Output = FmtSpan;
+
+            fn $func(self, rhs: Self) -> Self::Output {
+                FmtSpan(self.0 $op rhs.0)
+            }
+        }
+    };
+}
+
+macro_rules! impl_fmt_span_bit_assign_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait for FmtSpan {
+            fn $func(&mut self, rhs: Self) {
+                *self = FmtSpan(self.0 $op rhs.0)
+            }
+        }
+    };
+}
+
+impl_fmt_span_bit_op!(BitAnd, bitand, &);
+impl_fmt_span_bit_op!(BitOr, bitor, |);
+impl_fmt_span_bit_op!(BitXor, bitxor, ^);
+
+impl_fmt_span_bit_assign_op!(BitAndAssign, bitand_assign, &);
+impl_fmt_span_bit_assign_op!(BitOrAssign, bitor_assign, |);
+impl_fmt_span_bit_assign_op!(BitXorAssign, bitxor_assign, ^);
+
+impl Debug for FmtSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut wrote_flag = false;
+        let mut write_flags = |flag, flag_str| -> fmt::Result {
+            if self.contains(flag) {
+                if wrote_flag {
+                    f.write_str(" | ")?;
+                }
+
+                f.write_str(flag_str)?;
+                wrote_flag = true;
+            }
+
+            Ok(())
+        };
+
+        if FmtSpan::NONE | self.clone() == FmtSpan::NONE {
+            f.write_str("FmtSpan::NONE")?;
+        } else {
+            write_flags(FmtSpan::NEW, "FmtSpan::NEW")?;
+            write_flags(FmtSpan::ENTER, "FmtSpan::ENTER")?;
+            write_flags(FmtSpan::EXIT, "FmtSpan::EXIT")?;
+            write_flags(FmtSpan::CLOSE, "FmtSpan::CLOSE")?;
+        }
+
+        Ok(())
+    }
 }
 
 pub(super) struct FmtSpanConfig {
@@ -1028,13 +1174,16 @@ impl FmtSpanConfig {
         }
     }
     pub(super) fn trace_new(&self) -> bool {
-        matches!(self.kind, FmtSpan::FULL)
+        self.kind.contains(FmtSpan::NEW)
     }
-    pub(super) fn trace_active(&self) -> bool {
-        matches!(self.kind, FmtSpan::ACTIVE | FmtSpan::FULL)
+    pub(super) fn trace_enter(&self) -> bool {
+        self.kind.contains(FmtSpan::ENTER)
+    }
+    pub(super) fn trace_exit(&self) -> bool {
+        self.kind.contains(FmtSpan::EXIT)
     }
     pub(super) fn trace_close(&self) -> bool {
-        matches!(self.kind, FmtSpan::CLOSE | FmtSpan::FULL)
+        self.kind.contains(FmtSpan::CLOSE)
     }
 }
 
@@ -1053,7 +1202,6 @@ impl Default for FmtSpanConfig {
     }
 }
 
-#[repr(transparent)]
 pub(super) struct TimingDisplay(pub(super) u64);
 impl Display for TimingDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1081,7 +1229,7 @@ pub(super) mod test {
         dispatch::{set_default, Dispatch},
     };
 
-    use super::TimingDisplay;
+    use super::{FmtSpan, TimingDisplay};
     use std::fmt;
 
     pub(crate) struct MockTime;
@@ -1215,5 +1363,32 @@ pub(super) mod test {
         assert_eq!(fmt(12345678901), "12.3s");
         assert_eq!(fmt(123456789012), "123s");
         assert_eq!(fmt(1234567890123), "1235s");
+    }
+
+    #[test]
+    fn fmt_span_combinations() {
+        let f = FmtSpan::NONE;
+        assert_eq!(f.contains(FmtSpan::NEW), false);
+        assert_eq!(f.contains(FmtSpan::ENTER), false);
+        assert_eq!(f.contains(FmtSpan::EXIT), false);
+        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+
+        let f = FmtSpan::ACTIVE;
+        assert_eq!(f.contains(FmtSpan::NEW), false);
+        assert_eq!(f.contains(FmtSpan::ENTER), true);
+        assert_eq!(f.contains(FmtSpan::EXIT), true);
+        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+
+        let f = FmtSpan::FULL;
+        assert_eq!(f.contains(FmtSpan::NEW), true);
+        assert_eq!(f.contains(FmtSpan::ENTER), true);
+        assert_eq!(f.contains(FmtSpan::EXIT), true);
+        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+
+        let f = FmtSpan::NEW | FmtSpan::CLOSE;
+        assert_eq!(f.contains(FmtSpan::NEW), true);
+        assert_eq!(f.contains(FmtSpan::ENTER), false);
+        assert_eq!(f.contains(FmtSpan::EXIT), false);
+        assert_eq!(f.contains(FmtSpan::CLOSE), true);
     }
 }

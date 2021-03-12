@@ -62,9 +62,6 @@ release_max_level_info = []
 release_max_level_debug = []
 release_max_level_trace = []
 
-# This feature flag is no longer necessary.
-async-await = []
-
 alloc = ["tracing-core/alloc"]
 std = ["tracing-core/std", "alloc"]
 log-always = ["log"]

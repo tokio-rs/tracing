@@ -1,9 +1,9 @@
 use crate::PreSampledTracer;
 use opentelemetry::{trace as otel, trace::TraceContextExt, Context as OtelContext, Key, KeyValue};
-use std::any::TypeId;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
+use std::{any::TypeId, ptr::NonNull};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -15,28 +15,28 @@ use tracing_subscriber::Subscribe;
 static SPAN_NAME_FIELD: &str = "otel.name";
 static SPAN_KIND_FIELD: &str = "otel.kind";
 
-/// An [OpenTelemetry] propagation layer for use in a project that uses
+/// An [OpenTelemetry] propagation subscriber for use in a project that uses
 /// [tracing].
 ///
 /// [OpenTelemetry]: https://opentelemetry.io
 /// [tracing]: https://github.com/tokio-rs/tracing
-pub struct OpenTelemetryLayer<S, T> {
+pub struct OpenTelemetrySubscriber<S, T> {
     tracer: T,
     tracked_inactivity: bool,
     get_context: WithContext,
     _registry: marker::PhantomData<S>,
 }
 
-impl<S> Default for OpenTelemetryLayer<S, otel::NoopTracer>
+impl<S> Default for OpenTelemetrySubscriber<S, otel::NoopTracer>
 where
     S: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
-        OpenTelemetryLayer::new(otel::NoopTracer::new())
+        OpenTelemetrySubscriber::new(otel::NoopTracer::new())
     }
 }
 
-/// Construct a layer to track spans via [OpenTelemetry].
+/// Construct a subscriber to track spans via [OpenTelemetry].
 ///
 /// [OpenTelemetry]: https://opentelemetry.io
 ///
@@ -48,14 +48,14 @@ where
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
 /// // that impls `LookupSpan`
-/// let subscriber = Registry::default().with(tracing_opentelemetry::layer());
+/// let subscriber = Registry::default().with(tracing_opentelemetry::subscriber());
 /// # drop(subscriber);
 /// ```
-pub fn layer<S>() -> OpenTelemetryLayer<S, otel::NoopTracer>
+pub fn subscriber<S>() -> OpenTelemetrySubscriber<S, otel::NoopTracer>
 where
     S: Collect + for<'span> LookupSpan<'span>,
 {
-    OpenTelemetryLayer::default()
+    OpenTelemetrySubscriber::default()
 }
 
 // this function "remembers" the types of the subscriber so that we
@@ -234,12 +234,12 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     }
 }
 
-impl<S, T> OpenTelemetryLayer<S, T>
+impl<S, T> OpenTelemetrySubscriber<S, T>
 where
     S: Collect + for<'span> LookupSpan<'span>,
     T: otel::Tracer + PreSampledTracer + 'static,
 {
-    /// Set the [`Tracer`] that this layer will use to produce and track
+    /// Set the [`Tracer`] that this subscriber will use to produce and track
     /// OpenTelemetry [`Span`]s.
     ///
     /// [`Tracer`]: opentelemetry::trace::Tracer
@@ -248,7 +248,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// use tracing_opentelemetry::OpenTelemetryLayer;
+    /// use tracing_opentelemetry::OpenTelemetrySubscriber;
     /// use tracing_subscriber::subscribe::CollectExt;
     /// use tracing_subscriber::Registry;
     ///
@@ -257,16 +257,16 @@ where
     ///     .with_service_name("trace_demo")
     ///     .install().expect("Error initializing Jaeger exporter");
     ///
-    /// // Create a layer with the configured tracer
-    /// let otel_layer = OpenTelemetryLayer::new(tracer);
+    /// // Create a subscriber with the configured tracer
+    /// let otel_subscriber = OpenTelemetrySubscriber::new(tracer);
     ///
     /// // Use the tracing subscriber `Registry`, or any other subscriber
     /// // that impls `LookupSpan`
-    /// let subscriber = Registry::default().with(otel_layer);
+    /// let subscriber = Registry::default().with(otel_subscriber);
     /// # drop(subscriber);
     /// ```
     pub fn new(tracer: T) -> Self {
-        OpenTelemetryLayer {
+        OpenTelemetrySubscriber {
             tracer,
             tracked_inactivity: true,
             get_context: WithContext(Self::get_context),
@@ -274,7 +274,7 @@ where
         }
     }
 
-    /// Set the [`Tracer`] that this layer will use to produce and track
+    /// Set the [`Tracer`] that this subscriber will use to produce and track
     /// OpenTelemetry [`Span`]s.
     ///
     /// [`Tracer`]: opentelemetry::trace::Tracer
@@ -291,22 +291,22 @@ where
     ///     .with_service_name("trace_demo")
     ///     .install().expect("Error initializing Jaeger exporter");
     ///
-    /// // Create a layer with the configured tracer
-    /// let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    /// // Create a subscriber with the configured tracer
+    /// let otel_subscriber = tracing_opentelemetry::subscriber().with_tracer(tracer);
     ///
     /// // Use the tracing subscriber `Registry`, or any other subscriber
     /// // that impls `LookupSpan`
-    /// let subscriber = Registry::default().with(otel_layer);
+    /// let subscriber = Registry::default().with(otel_subscriber);
     /// # drop(subscriber);
     /// ```
-    pub fn with_tracer<Tracer>(self, tracer: Tracer) -> OpenTelemetryLayer<S, Tracer>
+    pub fn with_tracer<Tracer>(self, tracer: Tracer) -> OpenTelemetrySubscriber<S, Tracer>
     where
         Tracer: otel::Tracer + PreSampledTracer + 'static,
     {
-        OpenTelemetryLayer {
+        OpenTelemetrySubscriber {
             tracer,
             tracked_inactivity: self.tracked_inactivity,
-            get_context: WithContext(OpenTelemetryLayer::<S, Tracer>::get_context),
+            get_context: WithContext(OpenTelemetrySubscriber::<S, Tracer>::get_context),
             _registry: self._registry,
         }
     }
@@ -321,36 +321,35 @@ where
         }
     }
 
-    /// Retrieve the parent OpenTelemetry [`SpanContext`] from the current
-    /// tracing [`span`] through the [`Registry`]. This [`SpanContext`]
-    /// links spans to their parent for proper hierarchical visualization.
+    /// Retrieve the parent OpenTelemetry [`Context`] from the current tracing
+    /// [`span`] through the [`Registry`]. This [`Context`] links spans to their
+    /// parent for proper hierarchical visualization.
     ///
-    /// [`SpanContext`]: opentelemetry::trace::SpanContext
+    /// [`Context`]: opentelemetry::Context
     /// [`span`]: tracing::Span
     /// [`Registry`]: tracing_subscriber::Registry
-    fn parent_span_context(
-        &self,
-        attrs: &Attributes<'_>,
-        ctx: &Context<'_, S>,
-    ) -> Option<otel::SpanContext> {
+    fn parent_context(&self, attrs: &Attributes<'_>, ctx: &Context<'_, S>) -> OtelContext {
         // If a span is specified, it _should_ exist in the underlying `Registry`.
         if let Some(parent) = attrs.parent() {
             let span = ctx.span(parent).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             extensions
                 .get_mut::<otel::SpanBuilder>()
-                .map(|builder| self.tracer.sampled_span_context(builder))
+                .map(|builder| self.tracer.sampled_context(builder))
+                .unwrap_or_default()
         // Else if the span is inferred from context, look up any available current span.
         } else if attrs.is_contextual() {
-            ctx.lookup_current().and_then(|span| {
-                let mut extensions = span.extensions_mut();
-                extensions
-                    .get_mut::<otel::SpanBuilder>()
-                    .map(|builder| self.tracer.sampled_span_context(builder))
-            })
+            ctx.lookup_current()
+                .and_then(|span| {
+                    let mut extensions = span.extensions_mut();
+                    extensions
+                        .get_mut::<otel::SpanBuilder>()
+                        .map(|builder| self.tracer.sampled_context(builder))
+                })
+                .unwrap_or_else(OtelContext::current)
         // Explicit root spans should have no parent context.
         } else {
-            None
+            OtelContext::new()
         }
     }
 
@@ -365,18 +364,18 @@ where
         let span = subscriber
             .span(id)
             .expect("registry should have a span for the current ID");
-        let layer = dispatch
-            .downcast_ref::<OpenTelemetryLayer<S, T>>()
-            .expect("layer should downcast to expected type; this is a bug!");
+        let subscriber = dispatch
+            .downcast_ref::<OpenTelemetrySubscriber<S, T>>()
+            .expect("subscriber should downcast to expected type; this is a bug!");
 
         let mut extensions = span.extensions_mut();
         if let Some(builder) = extensions.get_mut::<otel::SpanBuilder>() {
-            f(builder, &layer.tracer);
+            f(builder, &subscriber.tracer);
         }
     }
 }
 
-impl<S, T> Subscribe<S> for OpenTelemetryLayer<S, T>
+impl<S, T> Subscribe<S> for OpenTelemetrySubscriber<S, T>
 where
     S: Collect + for<'span> LookupSpan<'span>,
     T: otel::Tracer + PreSampledTracer + 'static,
@@ -401,17 +400,22 @@ where
             .with_span_id(self.tracer.new_span_id());
 
         // Set optional parent span context from attrs
-        builder.parent_context = self.parent_span_context(attrs, &ctx);
+        builder.parent_context = Some(self.parent_context(attrs, &ctx));
 
-        // Ensure trace id exists so children are matched properly.
-        if builder.parent_context.is_none() {
-            let cx = OtelContext::current();
-            let existing_otel_span_context = cx.span().span_context();
-            if existing_otel_span_context.is_valid() {
-                builder.trace_id = Some(existing_otel_span_context.trace_id());
-            } else {
-                builder.trace_id = Some(self.tracer.new_trace_id());
-            }
+        // Ensure trace id exists so spans are associated with the proper trace.
+        //
+        // Parent contexts are in 4 possible states, first two require a new
+        // trace ids, second two have existing trace ids:
+        //   * Empty - explicit new tracing root span, needs new id
+        //   * A parent context containing no active or remote span, needs new id
+        //   * A parent context containing an active span, defer to that span's trace
+        //   * A parent context containing a remote span context, defer to remote trace
+        let needs_trace_id = builder.parent_context.as_ref().map_or(true, |cx| {
+            !cx.has_active_span() && cx.remote_span_context().is_none()
+        });
+
+        if needs_trace_id {
+            builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -466,7 +470,12 @@ where
             .get_mut::<otel::SpanBuilder>()
             .expect("Missing SpanBuilder span extensions");
 
-        let follows_context = self.tracer.sampled_span_context(follows_builder);
+        let follows_context = self
+            .tracer
+            .sampled_context(follows_builder)
+            .span()
+            .span_context()
+            .clone();
         let follows_link = otel::Link::new(follows_context, Vec::new());
         if let Some(ref mut links) = builder.links {
             links.push(follows_link);
@@ -547,11 +556,11 @@ where
 
     // SAFETY: this is safe because the `WithContext` function pointer is valid
     // for the lifetime of `&self`.
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
-            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
             id if id == TypeId::of::<WithContext>() => {
-                Some(&self.get_context as *const _ as *const ())
+                Some(NonNull::from(&self.get_context).cast())
             }
             _ => None,
         }
@@ -577,6 +586,7 @@ impl Timings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use opentelemetry::trace::SpanKind;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
@@ -588,21 +598,21 @@ mod tests {
         fn invalid(&self) -> Self::Span {
             otel::NoopSpan::new()
         }
-        fn start_from_context(&self, _name: &str, _context: &OtelContext) -> Self::Span {
+        fn start_with_context(&self, _name: &str, _context: OtelContext) -> Self::Span {
             self.invalid()
         }
         fn span_builder(&self, name: &str) -> otel::SpanBuilder {
             otel::SpanBuilder::from_name(name.to_string())
         }
-        fn build_with_context(&self, builder: otel::SpanBuilder, _cx: &OtelContext) -> Self::Span {
+        fn build(&self, builder: otel::SpanBuilder) -> Self::Span {
             *self.0.lock().unwrap() = Some(builder);
             self.invalid()
         }
     }
 
     impl PreSampledTracer for TestTracer {
-        fn sampled_span_context(&self, _builder: &mut otel::SpanBuilder) -> otel::SpanContext {
-            otel::SpanContext::empty_context()
+        fn sampled_context(&self, _builder: &mut otel::SpanBuilder) -> OtelContext {
+            OtelContext::new()
         }
         fn new_trace_id(&self) -> otel::TraceId {
             otel::TraceId::invalid()
@@ -632,7 +642,8 @@ mod tests {
     fn dynamic_span_names() {
         let dynamic_name = "GET http://example.com".to_string();
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
 
         tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
@@ -645,10 +656,11 @@ mod tests {
     #[test]
     fn span_kind() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
 
         tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = "Server");
+            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
@@ -658,7 +670,8 @@ mod tests {
     #[test]
     fn trace_id_from_existing_context() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
         let trace_id = otel::TraceId::from_u128(42);
         let existing_cx = OtelContext::current_with_span(TestSpan(otel::SpanContext::new(
             trace_id,
@@ -670,18 +683,29 @@ mod tests {
         let _g = existing_cx.attach();
 
         tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = "Server");
+            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
-        let recorded_trace_id = tracer.0.lock().unwrap().as_ref().unwrap().trace_id;
-        assert_eq!(recorded_trace_id, Some(trace_id))
+        let recorded_trace_id = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .parent_context
+            .as_ref()
+            .unwrap()
+            .span()
+            .span_context()
+            .trace_id();
+        assert_eq!(recorded_trace_id, trace_id)
     }
 
     #[test]
     fn includes_timings() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(
-            layer()
+            subscriber()
                 .with_tracer(tracer.clone())
                 .with_tracked_inactivity(true),
         );
