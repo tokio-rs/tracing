@@ -221,13 +221,13 @@ where
     }
 }
 
-struct CoalescedFieldMap<'a, S, N> {
+struct MergeParentFieldsMap<'a, S, N> {
     event: &'a Event<'a>,
     ctx: &'a FmtContext<'a, S, N>,
     phantom: std::marker::PhantomData<N>,
 }
 
-impl<'a, S, N> CoalescedFieldMap<'a, S, N>
+impl<'a, S, N> MergeParentFieldsMap<'a, S, N>
 where
     S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -249,9 +249,26 @@ where
         }
         Ok(())
     }
+
+    fn start_merge_parent_fields<SerMap>(&self, map: &mut SerMap) -> Result<(), SerMap::Error>
+    where
+        SerMap: SerializeMap,
+    {
+        let current = self.ctx.ctx.current_span();
+        self.merge_parent_fields(
+            map,
+            self.event.parent().or_else(|| {
+                if self.event.is_contextual() {
+                    current.id()
+                } else {
+                    None
+                }
+            }),
+        )
+    }
 }
 
-impl<'a, S, N> Serialize for CoalescedFieldMap<'a, S, N>
+impl<'a, S, N> Serialize for MergeParentFieldsMap<'a, S, N>
 where
     S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -263,18 +280,10 @@ where
         let map = serializer.serialize_map(None)?;
         let mut visitor = tracing_serde::SerdeMapVisitor::new(map);
         self.event.record(&mut visitor);
+
         let mut map = visitor.take_serializer()?;
-        let current = self.ctx.ctx.current_span();
-        self.merge_parent_fields(
-            &mut map,
-            self.event.parent().or_else(|| {
-                if self.event.is_contextual() {
-                    current.id()
-                } else {
-                    None
-                }
-            }),
-        )?;
+        self.start_merge_parent_fields(&mut map)?;
+
         map.end()
     }
 }
@@ -326,11 +335,20 @@ where
                 event.record(&mut visitor);
 
                 serializer = visitor.take_serializer()?;
+
+                if self.format.merge_parent_fields {
+                    MergeParentFieldsMap {
+                        event,
+                        ctx,
+                        phantom: format_field_marker,
+                    }
+                    .start_merge_parent_fields(&mut serializer)?;
+                }
             } else {
                 if self.format.merge_parent_fields {
                     serializer.serialize_entry(
                         "fields",
-                        &CoalescedFieldMap {
+                        &MergeParentFieldsMap {
                             event,
                             ctx,
                             phantom: format_field_marker,
@@ -665,9 +683,27 @@ mod test {
     #[test]
     fn json_merged_parent_fields() {
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"fields\":{\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"span\":{\"answer\":42,\"number\":3,\"name\":\"json_span\"},\"spans\":[{\"is_parent\":true,\"name\":\"parent\"},{\"answer\":42,\"number\":3,\"name\":\"json_span\"}]}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"fields\":{\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"span\":{\"answer\":42,\"number\":3,\"name\":\"json_span\"}}\n";
 
-        let collector = collector().merge_parent_fields(true);
+        let collector = collector().with_span_list(false).merge_parent_fields(true);
+        test_json(expected, collector, || {
+            let parent = tracing::span!(tracing::Level::INFO, "parent", is_parent = true);
+            let _parent_guard = parent.enter();
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!(answer = 42, number = 4, "some json test");
+        });
+    }
+
+    #[test]
+    fn json_merged_parent_fields_flattened() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true,\"target\":\"tracing_subscriber::fmt::format::json::test\",\"span\":{\"answer\":42,\"number\":3,\"name\":\"json_span\"}}\n";
+
+        let collector = collector()
+            .with_span_list(false)
+            .flatten_event(true)
+            .merge_parent_fields(true);
         test_json(expected, collector, || {
             let parent = tracing::span!(tracing::Level::INFO, "parent", is_parent = true);
             let _parent_guard = parent.enter();
