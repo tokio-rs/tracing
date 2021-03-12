@@ -428,13 +428,18 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     /// Sets whether or not the formatter will merge events' parent spans fields
     /// into the `fields` of this event
     ///
+    /// `enable` argument enables or disables the option.
+    /// `namespace` argument sets whether or not fields should be namespaced with the
+    /// parent's span name
+    ///
     /// See [`format::Json`]
     pub fn merge_parent_fields(
         self,
-        merge_parent_fields: bool,
+        enable: bool,
+        namespace: bool,
     ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Subscriber {
-            fmt_event: self.fmt_event.merge_parent_fields(merge_parent_fields),
+            fmt_event: self.fmt_event.merge_parent_fields(enable, namespace),
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,

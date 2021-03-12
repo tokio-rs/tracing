@@ -497,11 +497,15 @@ impl<T> Format<Json, T> {
     /// Sets whether or not the formatter will merge events' parent spans fields
     /// into the `fields` of this event
     ///
+    /// `enable` argument enables or disables the option.
+    /// `namespace` argument sets whether or not fields should be namespaced with the
+    /// parent's span name
+    ///
     /// See [`format::Json`]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn merge_parent_fields(mut self, merge_parent_fields: bool) -> Format<Json, T> {
-        self.format.merge_parent_fields(merge_parent_fields);
+    pub fn merge_parent_fields(mut self, enable: bool, namespace: bool) -> Format<Json, T> {
+        self.format.merge_parent_fields(enable, namespace);
         self
     }
 }
