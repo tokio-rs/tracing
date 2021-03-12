@@ -826,6 +826,20 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
             inner: self.inner.with_span_list(display_span_list),
         }
     }
+
+    /// Sets whether or not the formatter will merge events' parent spans fields
+    /// into the `fields` of this event
+    ///
+    /// See [`format::Json`]
+    pub fn merge_parent_fields(
+        self,
+        merge_parent_fields: bool,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.merge_parent_fields(merge_parent_fields),
+        }
+    }
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>

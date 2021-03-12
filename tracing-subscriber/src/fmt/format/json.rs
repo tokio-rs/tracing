@@ -663,6 +663,21 @@ mod test {
     }
 
     #[test]
+    fn json_merged_parent_fields() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"fields\":{\"message\":\"some json test\",\"answer\":42,\"number\":4,\"json_span.answer\":42,\"json_span.number\":3,\"parent.is_parent\":true},\"target\":\"tracing_subscriber::fmt::format::json::test\",\"span\":{\"answer\":42,\"number\":3,\"name\":\"json_span\"},\"spans\":[{\"is_parent\":true,\"name\":\"parent\"},{\"answer\":42,\"number\":3,\"name\":\"json_span\"}]}\n";
+
+        let collector = collector().merge_parent_fields(true);
+        test_json(expected, collector, || {
+            let parent = tracing::span!(tracing::Level::INFO, "parent", is_parent = true);
+            let _parent_guard = parent.enter();
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!(answer = 42, number = 4, "some json test");
+        });
+    }
+
+    #[test]
     fn json_disabled_current_span_event() {
         let expected =
         "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
