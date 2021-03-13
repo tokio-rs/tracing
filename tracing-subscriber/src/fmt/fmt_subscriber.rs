@@ -436,9 +436,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
         Subscriber {
             fmt_event: self.fmt_event.merge_parent_fields(merge_parent_fields),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -455,9 +453,7 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
                 .fmt_event
                 .namespace_parent_fields(namespace_parent_fields),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 }
