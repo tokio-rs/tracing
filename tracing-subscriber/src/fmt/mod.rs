@@ -844,6 +844,17 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the formatter will namespace merged events' parent
     /// spans fields into the `fields` of this event
     ///
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: If this is set to `false`, the user is responsible for
+    /// ensuring there are no duplicated field names in the tree of parent spans. This
+    /// option does not ensure fields are unique in the resulting JSON. Most JSON parsers
+    /// do not handle duplicate fields well.
+    /// </pre></div>
+    ///
     /// See [`format::Json`]
     pub fn namespace_parent_fields(
         self,
