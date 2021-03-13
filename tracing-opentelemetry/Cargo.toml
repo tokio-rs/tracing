@@ -30,4 +30,12 @@ tracing-log = { path = "../tracing-log", version = "0.2", default-features = fal
 
 [dev-dependencies]
 async-trait = "0.1"
+criterion = { version = "0.3", default_features = false }
 opentelemetry-jaeger = "0.11"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "trace"
+harness = false
