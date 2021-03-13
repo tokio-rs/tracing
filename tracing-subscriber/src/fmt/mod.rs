@@ -830,19 +830,28 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the formatter will merge events' parent spans fields
     /// into the `fields` of this event
     ///
-    /// `enable` argument enables or disables the option.
-    /// `namespace` argument sets whether or not fields should be namespaced with the
-    /// parent's span name
-    ///
     /// See [`format::Json`]
     pub fn merge_parent_fields(
         self,
-        enable: bool,
-        namespace: bool,
+        merge_parent_fields: bool,
     ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
         CollectorBuilder {
             filter: self.filter,
-            inner: self.inner.merge_parent_fields(enable, namespace),
+            inner: self.inner.merge_parent_fields(merge_parent_fields),
+        }
+    }
+
+    /// Sets whether or not the formatter will namespace merged events' parent
+    /// spans fields into the `fields` of this event
+    ///
+    /// See [`format::Json`]
+    pub fn namespace_parent_fields(
+        self,
+        namespace_parent_fields: bool,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.namespace_parent_fields(namespace_parent_fields),
         }
     }
 }

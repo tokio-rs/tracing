@@ -16,7 +16,7 @@ use std::{
 };
 use tracing_core::{
     field::{self, Field},
-    span::{Id, Record},
+    span::Record,
     Collect, Event,
 };
 use tracing_serde::AsSerde;
@@ -58,7 +58,8 @@ pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
-    pub(crate) merge_parent_fields: (bool, bool),
+    pub(crate) merge_parent_fields: bool,
+    pub(crate) namespace_parent_fields: bool,
 }
 
 impl Json {
@@ -78,12 +79,16 @@ impl Json {
         self.display_span_list = display_span_list;
     }
 
-    /// If `enable` is set to `true`, formatted events will contain every field of their
+    /// If is set to `true`, formatted events will contain every field of their
     /// parent spans
-    /// If `namepace` is set to true, field names from parents will be prefixed with
-    /// their name.
-    pub fn merge_parent_fields(&mut self, enable: bool, namespace: bool) {
-        self.merge_parent_fields = (enable, namespace);
+    pub fn merge_parent_fields(&mut self, merge_parent_fields: bool) {
+        self.merge_parent_fields = merge_parent_fields;
+    }
+
+    /// If is set to `true`, and if merging parent fields, all fields from parents
+    /// will be namespaced with the span's name
+    pub fn namespace_parent_fields(&mut self, namespace_parent_fields: bool) {
+        self.namespace_parent_fields = namespace_parent_fields;
     }
 }
 
@@ -108,7 +113,11 @@ where
         let mut serializer = serializer_o.serialize_seq(None)?;
 
         for span in self.0.scope() {
-            serializer.serialize_element(&SerializableSpan(&span, None, self.1))?;
+            serializer.serialize_element(&SerializableSpan {
+                span: &span,
+                namespace: false,
+                _phantom: self.1,
+            })?;
         }
 
         serializer.end()
@@ -133,14 +142,16 @@ impl<'a> Serialize for Key<'a> {
     }
 }
 
-struct SerializableSpan<'a, 'b, Span, N>(
-    &'b crate::registry::SpanRef<'a, Span>,
-    Option<&'static str>,
-    std::marker::PhantomData<N>,
-)
-where
+struct SerializableSpan<
+    'a,
+    'b,
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static;
+    N: for<'writer> FormatFields<'writer> + 'static,
+> {
+    span: &'b crate::registry::SpanRef<'a, Span>,
+    namespace: bool,
+    _phantom: std::marker::PhantomData<N>,
+}
 
 impl<'a, 'b, Span, N> SerializableSpan<'a, 'b, Span, N>
 where
@@ -151,7 +162,7 @@ where
     where
         SerMap: SerializeMap,
     {
-        let ext = self.0.extensions();
+        let ext = self.span.extensions();
         let data = ext
             .get::<FormattedFields<N>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
@@ -166,7 +177,7 @@ where
                 for field in fields {
                     map.serialize_key(&Key {
                         key: &field.0,
-                        prefix: self.1,
+                        prefix: if self.namespace { Some(self.span.name()) } else { None },
                     })
                     .and_then(|_| map.serialize_value(&field.1))?;
                 }
@@ -175,7 +186,7 @@ where
             // This is probably a bug, so panic if we're in debug mode
             Ok(_) if cfg!(debug_assertions) => panic!(
                 "span '{}' had malformed fields! this is a bug.\n  error: invalid JSON object\n  fields: {:?}",
-                self.0.metadata().name(),
+                self.span.metadata().name(),
                 data
             ),
             // If we *aren't* in debug mode, it's probably best not to
@@ -191,7 +202,7 @@ where
             // panic if we're in debug mode
             Err(e) if cfg!(debug_assertions) => panic!(
                 "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
-                self.0.metadata().name(),
+                self.span.metadata().name(),
                 e,
                 data
             ),
@@ -217,7 +228,7 @@ where
 
         self.serialize_formatted_fields(&mut serializer)?;
 
-        serializer.serialize_entry("name", self.0.metadata().name())?;
+        serializer.serialize_entry("name", self.span.metadata().name())?;
         serializer.end()
     }
 }
@@ -234,47 +245,25 @@ where
     S: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    fn merge_parent_fields<SerMap>(
-        &self,
-        map: &mut SerMap,
-        id: Option<&Id>,
-    ) -> Result<(), SerMap::Error>
+    fn merge_parent_fields<SerMap>(&self, map: &mut SerMap) -> Result<(), SerMap::Error>
     where
         SerMap: SerializeMap,
     {
-        if let Some(id) = id {
-            if let Some(span) = self.ctx.span(id) {
-                SerializableSpan(
-                    &span,
-                    if self.namespace {
-                        Some(span.name())
-                    } else {
-                        None
-                    },
-                    self.phantom,
-                )
-                .serialize_formatted_fields(map)?;
-                self.merge_parent_fields(map, span.parent_id())?;
+        let current = match self.ctx.lookup_current() {
+            Some(current) => current,
+            None => return Ok(()),
+        };
+        let parents = current.parents();
+
+        for span in std::iter::once(current).chain(parents) {
+            SerializableSpan {
+                span: &span,
+                namespace: self.namespace,
+                _phantom: self.phantom,
             }
+            .serialize_formatted_fields(map)?;
         }
         Ok(())
-    }
-
-    fn start_merge_parent_fields<SerMap>(&self, map: &mut SerMap) -> Result<(), SerMap::Error>
-    where
-        SerMap: SerializeMap,
-    {
-        let current = self.ctx.ctx.current_span();
-        self.merge_parent_fields(
-            map,
-            self.event.parent().or_else(|| {
-                if self.event.is_contextual() {
-                    current.id()
-                } else {
-                    None
-                }
-            }),
-        )
     }
 }
 
@@ -292,7 +281,7 @@ where
         self.event.record(&mut visitor);
 
         let mut map = visitor.take_serializer()?;
-        self.start_merge_parent_fields(&mut map)?;
+        self.merge_parent_fields(&mut map)?;
 
         map.end()
     }
@@ -346,22 +335,22 @@ where
 
                 serializer = visitor.take_serializer()?;
 
-                if self.format.merge_parent_fields.0 {
+                if self.format.merge_parent_fields {
                     MergeParentFieldsMap {
                         event,
                         ctx,
-                        namespace: self.format.merge_parent_fields.1,
+                        namespace: self.format.namespace_parent_fields,
                         phantom: format_field_marker,
                     }
-                    .start_merge_parent_fields(&mut serializer)?;
+                    .merge_parent_fields(&mut serializer)?;
                 }
-            } else if self.format.merge_parent_fields.0 {
+            } else if self.format.merge_parent_fields {
                 serializer.serialize_entry(
                     "fields",
                     &MergeParentFieldsMap {
                         event,
                         ctx,
-                        namespace: self.format.merge_parent_fields.1,
+                        namespace: self.format.namespace_parent_fields,
                         phantom: format_field_marker,
                     },
                 )?;
@@ -377,7 +366,14 @@ where
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
                     serializer
-                        .serialize_entry("span", &SerializableSpan(span, None, format_field_marker))
+                        .serialize_entry(
+                            "span",
+                            &SerializableSpan {
+                                span,
+                                namespace: false,
+                                _phantom: format_field_marker,
+                            },
+                        )
                         .unwrap_or(());
                 }
             }
@@ -423,7 +419,8 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
-            merge_parent_fields: (false, false),
+            merge_parent_fields: false,
+            namespace_parent_fields: true,
         }
     }
 }
@@ -698,7 +695,7 @@ mod test {
         let collector = collector()
             .with_current_span(false)
             .with_span_list(false)
-            .merge_parent_fields(true, true);
+            .merge_parent_fields(true);
         test_json(expected, collector, || {
             let parent = tracing::span!(tracing::Level::INFO, "parent", is_parent = true);
             let _parent_guard = parent.enter();
@@ -716,7 +713,8 @@ mod test {
         let collector = collector()
             .with_current_span(false)
             .with_span_list(false)
-            .merge_parent_fields(true, false);
+            .merge_parent_fields(true)
+            .namespace_parent_fields(false);
         test_json(expected, collector, || {
             let parent =
                 tracing::span!(tracing::Level::INFO, "parent", foo = "bar", is_true = true);
@@ -736,7 +734,7 @@ mod test {
             .with_current_span(false)
             .with_span_list(false)
             .flatten_event(true)
-            .merge_parent_fields(true, true);
+            .merge_parent_fields(true);
         test_json(expected, collector, || {
             let parent = tracing::span!(tracing::Level::INFO, "parent", is_parent = true);
             let _parent_guard = parent.enter();
