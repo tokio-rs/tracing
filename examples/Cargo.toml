@@ -20,7 +20,7 @@ tracing-futures = { version = "0.3", path = "../tracing-futures", features = ["f
 tracing-attributes =  { path = "../tracing-attributes", version = "0.2"}
 tracing-log = { path = "../tracing-log", version = "0.2", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
-tracing-opentelemetry = { path = "../tracing-opentelemetry" }
+tracing-opentelemetry = { path = "../tracing-opentelemetry", features = ["fmt", "ansi"] }
 tracing-appender = { path = "../tracing-appender" }
 tracing-journald = { path = "../tracing-journald" }
 
