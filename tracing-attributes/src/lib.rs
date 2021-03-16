@@ -428,38 +428,8 @@ fn gen_block(
             })
             .collect();
 
-        for skip in &args.skips {
-            if !param_names.iter().map(|(user, _)| user).any(|y| y == skip) {
-                return quote_spanned! {skip.span()=>
-                    compile_error!("attempting to skip non-existent parameter")
-                };
-            }
-        }
-
         let level = args.level();
         let target = args.target();
-
-        // filter out skipped fields
-        let quoted_fields: Vec<_> = param_names
-            .iter()
-            .filter(|(param, _)| {
-                if args.skips.contains(param) {
-                    return false;
-                }
-
-                // If any parameters have the same name as a custom field, skip
-                // and allow them to be formatted by the custom field.
-                if let Some(ref fields) = args.fields {
-                    fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
-                    })
-                } else {
-                    true
-                }
-            })
-            .map(|(user_name, real_name)| quote!(#user_name = tracing::field::debug(&#real_name)))
-            .collect();
 
         // replace every use of a variable with its original name
         if let Some(Fields(ref mut fields)) = args.fields {
@@ -485,7 +455,6 @@ fn gen_block(
             target: #target,
             #level,
             #span_name,
-            #(#quoted_fields,)*
             #custom_fields
 
         ))
