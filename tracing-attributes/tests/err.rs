@@ -142,7 +142,7 @@ fn test_mut_async() {
 fn impl_trait_return_type() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/1227
 
-    #[instrument(err)]
+    #[instrument(err, fields(x = ?x))]
     fn returns_impl_trait(x: usize) -> Result<impl Iterator<Item = usize>, String> {
         Ok(0..x)
     }
