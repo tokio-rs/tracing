@@ -290,44 +290,44 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
     handle.assert_finished();
 }
 
-// #[test]
-// fn out_of_scope_fields() {
-//     // Reproduces tokio-rs/tracing#1296
-//
-//     struct Thing {
-//         metrics: Arc<()>,
-//     }
-//
-//     impl Thing {
-//         #[instrument(fields(app_id))]
-//         fn call(&mut self, _req: ()) -> Pin<Box<dyn Future<Output = Arc<()>> + Send + Sync>> {
-//             // ...
-//             let metrics = self.metrics.clone();
-//             // ...
-//             Box::pin(async move {
-//                 // ...
-//                 metrics // cannot find value `metrics` in this scope
-//             })
-//         }
-//     }
-//
-//     let span = span::mock().named("call");
-//     let (collector, handle) = collector::mock()
-//         .new_span(span.clone())
-//         .enter(span.clone())
-//         .exit(span.clone())
-//         .drop_span(span)
-//         .done()
-//         .run_with_handle();
-//
-//     with_default(collector, || {
-//         block_on_future(async {
-//             let mut my_thing = Thing {
-//                 metrics: Arc::new(()),
-//             };
-//             my_thing.call(()).await;
-//         });
-//     });
-//
-//     handle.assert_finished();
-// }
+#[test]
+fn out_of_scope_fields() {
+    // Reproduces tokio-rs/tracing#1296
+
+    struct Thing {
+        metrics: Arc<()>,
+    }
+
+    impl Thing {
+        #[instrument(fields(app_id))]
+        fn call(&mut self, _req: ()) -> Pin<Box<dyn Future<Output = Arc<()>> + Send + Sync>> {
+            // ...
+            let metrics = self.metrics.clone();
+            // ...
+            Box::pin(async move {
+                // ...
+                metrics // cannot find value `metrics` in this scope
+            })
+        }
+    }
+
+    let span = span::mock().named("call");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(async {
+            let mut my_thing = Thing {
+                metrics: Arc::new(()),
+            };
+            my_thing.call(()).await;
+        });
+    });
+
+    handle.assert_finished();
+}

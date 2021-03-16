@@ -124,47 +124,48 @@ fn fields() {
 }
 
 #[test]
-// fn fields_that_do_not_implement_debug_are_ok_as_long_as_they_are_not_captured_in_the_span() {
-//     struct UnDebug(pub u32);
-//
-//     #[instrument(target = "my_target", level = "debug", fields(arg1 = %arg1))]
-//     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
-//
-//     let span = span::mock()
-//         .named("my_fn")
-//         .at_level(Level::DEBUG)
-//         .with_target("my_target");
-//
-//     let span2 = span::mock()
-//         .named("my_fn")
-//         .at_level(Level::DEBUG)
-//         .with_target("my_target");
-//     let (collector, handle) = collector::mock()
-//         .new_span(
-//             span.clone()
-//                 .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
-//         )
-//         .enter(span.clone())
-//         .exit(span.clone())
-//         .drop_span(span)
-//         .new_span(
-//             span2
-//                 .clone()
-//                 .with_field(field::mock("arg1").with_value(&format_args!("3")).only()),
-//         )
-//         .enter(span2.clone())
-//         .exit(span2.clone())
-//         .drop_span(span2)
-//         .done()
-//         .run_with_handle();
-//
-//     with_default(collector, || {
-//         my_fn(2, UnDebug(0), UnDebug(1));
-//         my_fn(3, UnDebug(0), UnDebug(1));
-//     });
-//
-//     handle.assert_finished();
-// }
+fn fields_that_do_not_implement_debug_are_ok_as_long_as_they_are_not_captured_in_the_span() {
+    struct UnDebug(pub u32);
+
+    #[instrument(target = "my_target", level = "debug", fields(arg1 = %arg1))]
+    fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
+
+    let span = span::mock()
+        .named("my_fn")
+        .at_level(Level::DEBUG)
+        .with_target("my_target");
+
+    let span2 = span::mock()
+        .named("my_fn")
+        .at_level(Level::DEBUG)
+        .with_target("my_target");
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span.clone()
+                .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .new_span(
+            span2
+                .clone()
+                .with_field(field::mock("arg1").with_value(&format_args!("3")).only()),
+        )
+        .enter(span2.clone())
+        .exit(span2.clone())
+        .drop_span(span2)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        my_fn(2, UnDebug(0), UnDebug(1));
+        my_fn(3, UnDebug(0), UnDebug(1));
+    });
+
+    handle.assert_finished();
+}
+
 #[test]
 fn generics() {
     #[derive(Debug)]
