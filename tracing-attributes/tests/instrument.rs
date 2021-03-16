@@ -206,7 +206,7 @@ fn methods() {
     struct Foo;
 
     impl Foo {
-        #[instrument(fields(arg1 = ?arg1))]
+        #[instrument(fields(self = ?self, arg1 = ?arg1))]
         fn my_fn(&self, arg1: usize) {}
     }
 

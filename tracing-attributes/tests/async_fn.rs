@@ -173,7 +173,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
+        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5, _v=?_v))]
         async fn call(&mut self, _v: usize) {}
     }
 
