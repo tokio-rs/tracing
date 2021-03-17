@@ -633,12 +633,6 @@ impl Parse for InstrumentArgs {
                     return Err(input.error("expected only a single `level` argument"));
                 }
                 args.level = Some(input.parse()?);
-            } else if lookahead.peek(kw::skip) {
-                if !args.skips.is_empty() {
-                    return Err(input.error("expected only a single `skip` argument"));
-                }
-                let Skips(skips) = input.parse()?;
-                args.skips = skips;
             } else if lookahead.peek(kw::fields) {
                 if args.fields.is_some() {
                     return Err(input.error("expected only a single `fields` argument"));
