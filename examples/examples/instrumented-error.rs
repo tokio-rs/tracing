@@ -26,13 +26,13 @@ impl fmt::Display for FooError {
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(?foo)]
 fn do_something(foo: &str) -> Result<&'static str, impl Error + Send + Sync + 'static> {
     // Results can be instrumented with a `SpanTrace` via the `InstrumentResult` trait
     do_another_thing(42, false).in_current_span()
 }
 
-#[tracing::instrument]
+#[tracing::instrument(?answer, ?will_succeed)]
 fn do_another_thing(
     answer: usize,
     will_succeed: bool,
