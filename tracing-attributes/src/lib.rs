@@ -397,6 +397,7 @@ fn gen_block(
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
     // generate this inside a closure, so we can return early on errors.
+    #[allow(clippy::redundant_closure_call)]
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
         // below.
