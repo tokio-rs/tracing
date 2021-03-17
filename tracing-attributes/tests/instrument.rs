@@ -77,7 +77,7 @@ fn fields_are_not_automatically_included_in_the_generated_trace_span() {
 
 #[test]
 fn fields() {
-    #[instrument(target = "my_target", level = "debug", fields(arg1 = ?arg1, arg2 = ?arg2))]
+    #[instrument(target = "my_target", level = "debug", fields(?arg1, ?arg2))]
     fn my_fn(arg1: usize, arg2: bool) {}
 
     let span = span::mock()
@@ -127,7 +127,7 @@ fn fields() {
 fn fields_that_do_not_implement_debug_are_ok_as_long_as_they_are_not_captured_in_the_span() {
     struct UnDebug(pub u32);
 
-    #[instrument(target = "my_target", level = "debug", fields(arg1 = %arg1))]
+    #[instrument(target = "my_target", level = "debug", fields(%arg1))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
     let span = span::mock()
@@ -171,7 +171,7 @@ fn generics() {
     #[derive(Debug)]
     struct Foo;
 
-    #[instrument(fields(arg1 = ?arg1, arg2 = ?arg2))]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn<S, T: std::fmt::Debug>(arg1: S, arg2: T)
     where
         S: std::fmt::Debug,
@@ -207,7 +207,7 @@ fn methods() {
     struct Foo;
 
     impl Foo {
-        #[instrument(fields(self = ?self, arg1 = ?arg1))]
+        #[instrument(fields(?self, ?arg1))]
         fn my_fn(&self, arg1: usize) {}
     }
 
@@ -237,7 +237,7 @@ fn methods() {
 
 #[test]
 fn impl_trait_return_type() {
-    #[instrument(fields(x = ?x))]
+    #[instrument(fields(?x))]
     fn returns_impl_trait(x: usize) -> impl Iterator<Item = usize> {
         0..x
     }

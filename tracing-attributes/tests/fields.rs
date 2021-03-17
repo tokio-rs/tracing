@@ -9,16 +9,16 @@ use tracing_attributes::instrument;
 #[instrument(fields(foo = "bar", dsa = true, num = 1))]
 fn fn_no_param() {}
 
-#[instrument(fields(param = ?param, foo = "bar"))]
+#[instrument(fields(?param, foo = "bar"))]
 fn fn_param(param: u32) {}
 
 #[instrument(fields(foo = "bar", empty))]
 fn fn_empty_field() {}
 
-#[instrument(fields(s = ?s, len = s.len()))]
+#[instrument(fields(?s, len = s.len()))]
 fn fn_expr_field(s: &str) {}
 
-#[instrument(fields(s = ?s, s.len = s.len(), s.is_empty = s.is_empty()))]
+#[instrument(fields(?s, s.len = s.len(), s.is_empty = s.is_empty()))]
 fn fn_two_expr_fields(s: &str) {
     let _ = s;
 }

@@ -7,7 +7,7 @@ use tracing_attributes::instrument;
 #[test]
 #[ignore]
 fn destructure_tuples() {
-    #[instrument(fields(arg1 = ?arg1, arg1 = ?arg2))]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn((arg1, arg2): (usize, usize)) {}
 
     let span = span::mock().named("my_fn");
@@ -36,7 +36,7 @@ fn destructure_tuples() {
 
 #[test]
 fn destructure_nested_tuples() {
-    #[instrument(fields(arg1 = ?arg1, arg2 = ?arg2, arg3 = ?arg3, arg4 = ?arg4))]
+    #[instrument(fields(?arg1, ?arg2, ?arg3, ?arg4))]
     fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {}
 
     let span = span::mock().named("my_fn");
@@ -67,7 +67,7 @@ fn destructure_nested_tuples() {
 
 #[test]
 fn destructure_refs() {
-    #[instrument(fields(arg1 = ?arg1))]
+    #[instrument(fields(?arg1))]
     fn my_fn(&arg1: &usize) {}
 
     let span = span::mock().named("my_fn");
@@ -94,7 +94,7 @@ fn destructure_refs() {
 fn destructure_tuple_structs() {
     struct Foo(usize, usize);
 
-    #[instrument(fields(arg1 = ?arg1, arg2 = ?arg2))]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn(Foo(arg1, arg2): Foo) {}
 
     let span = span::mock().named("my_fn");
@@ -128,7 +128,7 @@ fn destructure_structs() {
         baz: usize,
     }
 
-    #[instrument(fields(arg1 = ?arg1, arg2 = ?arg2))]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn(
         Foo {
             bar: arg1,
@@ -172,7 +172,7 @@ fn destructure_everything() {
     struct Bar((usize, usize));
     struct NoDebug;
 
-    #[instrument(fields(arg1 = ?arg1, arg2 = ?arg2, arg3 = ?arg3, arg4 = ?arg4))]
+    #[instrument(fields(?arg1, ?arg2, ?arg3, ?arg4))]
     fn my_fn(
         &Foo {
             bar: Bar((arg1, arg2)),
