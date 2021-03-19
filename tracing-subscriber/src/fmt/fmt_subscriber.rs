@@ -544,28 +544,28 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
-
-        if extensions.get_mut::<FormattedFields<N>>().is_none() {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
-            }
-        }
-
-        if self.fmt_span.fmt_timing
-            && self.fmt_span.trace_close()
-            && extensions.get_mut::<Timings>().is_none()
-        {
-            extensions.insert(Timings::new());
-        }
-
         if self.fmt_span.trace_new() {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+
+            if extensions.get_mut::<FormattedFields<N>>().is_none() {
+                let mut buf = String::new();
+                if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
+                    let fmt_fields = FormattedFields {
+                        fields: buf,
+                        _format_event: PhantomData::<fn(N)>,
+                    };
+                    extensions.insert(fmt_fields);
+                }
+            }
+
+            if self.fmt_span.fmt_timing
+                && self.fmt_span.trace_close()
+                && extensions.get_mut::<Timings>().is_none()
+            {
+                extensions.insert(Timings::new());
+            }
+
             with_event_from_span!(id, span, "message" = "new", |event| {
                 drop(extensions);
                 drop(span);
@@ -575,6 +575,11 @@ where
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        if self.fmt_span.trace_none() {
+            // Ignore the whole span's fields if we are FmtSpan::NONE flag.
+            return;
+        }
+
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(FormattedFields { ref mut fields, .. }) =

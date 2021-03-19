@@ -1173,6 +1173,9 @@ impl FmtSpanConfig {
             fmt_timing: self.fmt_timing,
         }
     }
+    pub(super) fn trace_none(&self) -> bool {
+        self.kind.contains(FmtSpan::NONE)
+    }
     pub(super) fn trace_new(&self) -> bool {
         self.kind.contains(FmtSpan::NEW)
     }
