@@ -423,24 +423,28 @@ where
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        if self.tracked_inactivity {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
 
-        if let Some(timings) = extensions.get_mut::<Timings>() {
-            let now = Instant::now();
-            timings.idle += (now - timings.last).as_nanos() as u64;
-            timings.last = now;
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.idle += (now - timings.last).as_nanos() as u64;
+                timings.last = now;
+            }
         }
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        if self.tracked_inactivity {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
 
-        if let Some(timings) = extensions.get_mut::<Timings>() {
-            let now = Instant::now();
-            timings.busy += (now - timings.last).as_nanos() as u64;
-            timings.last = now;
+            if let Some(timings) = extensions.get_mut::<Timings>() {
+                let now = Instant::now();
+                timings.busy += (now - timings.last).as_nanos() as u64;
+                timings.last = now;
+            }
         }
     }
 
@@ -536,16 +540,18 @@ where
         let mut extensions = span.extensions_mut();
 
         if let Some(mut builder) = extensions.remove::<otel::SpanBuilder>() {
-            // Append busy/idle timings when enabled.
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let mut timings_attributes = vec![
-                    KeyValue::new("busy_ns", timings.busy.to_string()),
-                    KeyValue::new("idle_ns", timings.idle.to_string()),
-                ];
+            if self.tracked_inactivity {
+                // Append busy/idle timings when enabled.
+                if let Some(timings) = extensions.get_mut::<Timings>() {
+                    let mut timings_attributes = vec![
+                        KeyValue::new("busy_ns", timings.busy.to_string()),
+                        KeyValue::new("idle_ns", timings.idle.to_string()),
+                    ];
 
-                match builder.attributes {
-                    Some(ref mut attributes) => attributes.append(&mut timings_attributes),
-                    None => builder.attributes = Some(timings_attributes),
+                    match builder.attributes {
+                        Some(ref mut attributes) => attributes.append(&mut timings_attributes),
+                        None => builder.attributes = Some(timings_attributes),
+                    }
                 }
             }
 
