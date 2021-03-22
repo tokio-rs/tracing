@@ -1068,6 +1068,13 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 
 /// Configures what points in the span lifecycle are logged as events.
 ///
+/// # Notice:
+///
+/// The intention behind `FmtSpan` is to control when we emit synthesized
+/// events for the span lifecycle, not to control whether or not any data
+/// from spans is included. If you need to disable the whole span context when formatting,
+/// considering use [`CollectorBuilder::with_span_context`](super::CollectorBuilder::with_span_context()).
+///
 /// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(u8);
@@ -1158,6 +1165,7 @@ impl Debug for FmtSpan {
 pub(super) struct FmtSpanConfig {
     pub(super) kind: FmtSpan,
     pub(super) fmt_timing: bool,
+    pub(super) with_span_context: bool,
 }
 
 impl FmtSpanConfig {
@@ -1165,12 +1173,16 @@ impl FmtSpanConfig {
         Self {
             kind: self.kind,
             fmt_timing: false,
+            with_span_context: true,
         }
     }
     pub(super) fn with_kind(self, kind: FmtSpan) -> Self {
+        Self { kind, ..self }
+    }
+    pub(super) fn with_span_context(self, with_span_context: bool) -> Self {
         Self {
-            kind,
-            fmt_timing: self.fmt_timing,
+            with_span_context,
+            ..self
         }
     }
     pub(super) fn trace_new(&self) -> bool {
@@ -1198,6 +1210,7 @@ impl Default for FmtSpanConfig {
         Self {
             kind: FmtSpan::NONE,
             fmt_timing: true,
+            with_span_context: true,
         }
     }
 }

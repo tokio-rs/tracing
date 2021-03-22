@@ -269,6 +269,14 @@ where
         }
     }
 
+    /// Configures whether or not to include the span context.
+    pub fn with_span_context(self, with_span_context: bool) -> Self {
+        Subscriber {
+            fmt_span: self.fmt_span.with_span_context(with_span_context),
+            ..self
+        }
+    }
+
     /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
@@ -544,128 +552,141 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        if self.fmt_span.with_span_context {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
 
-        if extensions.get_mut::<FormattedFields<N>>().is_none() {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
+            if extensions.get_mut::<FormattedFields<N>>().is_none() {
+                let mut buf = String::new();
+                if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
+                    let fmt_fields = FormattedFields {
+                        fields: buf,
+                        _format_event: PhantomData::<fn(N)>,
+                    };
+                    extensions.insert(fmt_fields);
+                }
             }
-        }
 
-        if self.fmt_span.fmt_timing
-            && self.fmt_span.trace_close()
-            && extensions.get_mut::<Timings>().is_none()
-        {
-            extensions.insert(Timings::new());
-        }
+            if self.fmt_span.fmt_timing
+                && self.fmt_span.trace_close()
+                && extensions.get_mut::<Timings>().is_none()
+            {
+                extensions.insert(Timings::new());
+            }
 
-        if self.fmt_span.trace_new() {
-            with_event_from_span!(id, span, "message" = "new", |event| {
-                drop(extensions);
-                drop(span);
-                self.on_event(&event, ctx);
-            });
+            if self.fmt_span.trace_new() {
+                with_event_from_span!(id, span, "message" = "new", |event| {
+                    drop(extensions);
+                    drop(span);
+                    self.on_event(&event, ctx);
+                });
+            }
         }
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
-        if let Some(FormattedFields { ref mut fields, .. }) =
-            extensions.get_mut::<FormattedFields<N>>()
-        {
-            let _ = self.fmt_fields.add_fields(fields, values);
-        } else {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
+        if self.fmt_span.with_span_context {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+            if let Some(FormattedFields { ref mut fields, .. }) =
+                extensions.get_mut::<FormattedFields<N>>()
+            {
+                let _ = self.fmt_fields.add_fields(fields, values);
+            } else {
+                let mut buf = String::new();
+                if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
+                    let fmt_fields = FormattedFields {
+                        fields: buf,
+                        _format_event: PhantomData::<fn(N)>,
+                    };
+                    extensions.insert(fmt_fields);
+                }
             }
         }
     }
 
     fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
-        if self.fmt_span.trace_enter() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
-            let span = ctx.span(id).expect("Span not found, this is a bug");
-            let mut extensions = span.extensions_mut();
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.idle += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
-            }
+        if self.fmt_span.with_span_context {
+            if self.fmt_span.trace_enter()
+                || self.fmt_span.trace_close() && self.fmt_span.fmt_timing
+            {
+                let span = ctx.span(id).expect("Span not found, this is a bug");
+                let mut extensions = span.extensions_mut();
+                if let Some(timings) = extensions.get_mut::<Timings>() {
+                    let now = Instant::now();
+                    timings.idle += (now - timings.last).as_nanos() as u64;
+                    timings.last = now;
+                }
 
-            if self.fmt_span.trace_enter() {
-                with_event_from_span!(id, span, "message" = "enter", |event| {
-                    drop(extensions);
-                    drop(span);
-                    self.on_event(&event, ctx);
-                });
+                if self.fmt_span.trace_enter() {
+                    with_event_from_span!(id, span, "message" = "enter", |event| {
+                        drop(extensions);
+                        drop(span);
+                        self.on_event(&event, ctx);
+                    });
+                }
             }
         }
     }
 
     fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
-        if self.fmt_span.trace_exit() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
-            let span = ctx.span(id).expect("Span not found, this is a bug");
-            let mut extensions = span.extensions_mut();
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.busy += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
-            }
+        if self.fmt_span.with_span_context {
+            if self.fmt_span.trace_exit() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing
+            {
+                let span = ctx.span(id).expect("Span not found, this is a bug");
+                let mut extensions = span.extensions_mut();
+                if let Some(timings) = extensions.get_mut::<Timings>() {
+                    let now = Instant::now();
+                    timings.busy += (now - timings.last).as_nanos() as u64;
+                    timings.last = now;
+                }
 
-            if self.fmt_span.trace_exit() {
-                with_event_from_span!(id, span, "message" = "exit", |event| {
-                    drop(extensions);
-                    drop(span);
-                    self.on_event(&event, ctx);
-                });
+                if self.fmt_span.trace_exit() {
+                    with_event_from_span!(id, span, "message" = "exit", |event| {
+                        drop(extensions);
+                        drop(span);
+                        self.on_event(&event, ctx);
+                    });
+                }
             }
         }
     }
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-        if self.fmt_span.trace_close() {
-            let span = ctx.span(&id).expect("Span not found, this is a bug");
-            let extensions = span.extensions();
-            if let Some(timing) = extensions.get::<Timings>() {
-                let Timings {
-                    busy,
-                    mut idle,
-                    last,
-                } = *timing;
-                idle += (Instant::now() - last).as_nanos() as u64;
+        if self.fmt_span.with_span_context {
+            if self.fmt_span.trace_close() {
+                let span = ctx.span(&id).expect("Span not found, this is a bug");
+                let extensions = span.extensions();
+                if let Some(timing) = extensions.get::<Timings>() {
+                    let Timings {
+                        busy,
+                        mut idle,
+                        last,
+                    } = *timing;
+                    idle += (Instant::now() - last).as_nanos() as u64;
 
-                let t_idle = field::display(TimingDisplay(idle));
-                let t_busy = field::display(TimingDisplay(busy));
+                    let t_idle = field::display(TimingDisplay(idle));
+                    let t_busy = field::display(TimingDisplay(busy));
 
-                with_event_from_span!(
-                    id,
-                    span,
-                    "message" = "close",
-                    "time.busy" = t_busy,
-                    "time.idle" = t_idle,
-                    |event| {
+                    with_event_from_span!(
+                        id,
+                        span,
+                        "message" = "close",
+                        "time.busy" = t_busy,
+                        "time.idle" = t_idle,
+                        |event| {
+                            drop(extensions);
+                            drop(span);
+                            self.on_event(&event, ctx);
+                        }
+                    );
+                } else {
+                    with_event_from_span!(id, span, "message" = "close", |event| {
                         drop(extensions);
                         drop(span);
                         self.on_event(&event, ctx);
-                    }
-                );
-            } else {
-                with_event_from_span!(id, span, "message" = "close", |event| {
-                    drop(extensions);
-                    drop(span);
-                    self.on_event(&event, ctx);
-                });
+                    });
+                }
             }
         }
     }
