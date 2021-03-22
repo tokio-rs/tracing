@@ -1,6 +1,6 @@
 use crate::{
     field::RecordFields,
-    fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
+    fmt::{format, FormatEvent, FormatFields, MakeWriter},
     registry::{LookupSpan, SpanRef},
     subscribe::{self, Context, Scope},
 };
@@ -137,6 +137,30 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
+    /// You can use [`TestWriter`] to configure the collector to support [`libtest`'s output capturing][capturing] when used in
+    /// unit tests.
+    ///
+    /// See [`TestWriter`] for additional details.
+    ///
+    /// # Examples
+    ///
+    /// Using [`TestWriter`] to let `cargo test` capture test output. Note that we do not install it
+    /// globally as it may cause conflicts.
+    ///
+    /// ```rust
+    /// use tracing_subscriber::{fmt, fmt::TestWriter};
+    /// use tracing::collect;
+    ///
+    /// collect::set_default(
+    ///     fmt()
+    ///         .with_writer(TestWriter::default())
+    ///         .finish()
+    /// );
+    /// ```
+    ///
+    /// [capturing]:
+    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
+    /// [`TestWriter`]: writer::TestWriter
     /// [`MakeWriter`]: super::writer::MakeWriter
     /// [`Subscriber`]: super::Subscriber
     pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<S, N, E, W2>
@@ -148,38 +172,6 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             make_writer,
-            _inner: self._inner,
-        }
-    }
-
-    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
-    /// unit tests.
-    ///
-    /// See [`TestWriter`] for additional details.
-    ///
-    /// # Examples
-    ///
-    /// Using [`TestWriter`] to let `cargo test` capture test output:
-    ///
-    /// ```rust
-    /// use std::io;
-    /// use tracing_subscriber::fmt;
-    ///
-    /// let fmt_subscriber = fmt::subscriber()
-    ///     .with_test_writer();
-    /// # // this is necessary for type inference.
-    /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
-    /// ```
-    /// [capturing]:
-    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: super::writer::TestWriter
-    pub fn with_test_writer(self) -> Subscriber<S, N, E, TestWriter> {
-        Subscriber {
-            fmt_fields: self.fmt_fields,
-            fmt_event: self.fmt_event,
-            fmt_span: self.fmt_span,
-            make_writer: TestWriter::default(),
             _inner: self._inner,
         }
     }

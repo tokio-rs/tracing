@@ -1055,37 +1055,6 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
             inner: self.inner.with_writer(make_writer),
         }
     }
-
-    /// Configures the collector to support [`libtest`'s output capturing][capturing] when used in
-    /// unit tests.
-    ///
-    /// See [`TestWriter`] for additional details.
-    ///
-    /// # Examples
-    ///
-    /// Using [`TestWriter`] to let `cargo test` capture test output. Note that we do not install it
-    /// globally as it may cause conflicts.
-    ///
-    /// ```rust
-    /// use tracing_subscriber::fmt;
-    /// use tracing::collect;
-    ///
-    /// collect::set_default(
-    ///     fmt()
-    ///         .with_test_writer()
-    ///         .finish()
-    /// );
-    /// ```
-    ///
-    /// [capturing]:
-    /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer::TestWriter
-    pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter> {
-        CollectorBuilder {
-            filter: self.filter,
-            inner: self.inner.with_writer(TestWriter::default()),
-        }
-    }
 }
 
 /// Install a global tracing collector that listens for events and
