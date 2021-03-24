@@ -160,6 +160,7 @@ pub use fmt::fmt;
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.
 #[derive(Debug)]
+#[deprecated(since = "0.2.18", note = "Will be removed in v0.3")]
 pub struct CurrentSpan {
     current: thread::Local<Vec<Id>>,
 }
