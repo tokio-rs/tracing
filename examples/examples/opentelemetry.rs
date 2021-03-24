@@ -15,9 +15,9 @@ fn expensive_work() -> &'static str {
 }
 
 fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("report_example")
-        .install()?;
+        .install_simple()?;
     let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
     tracing_subscriber::registry()
         .with(opentelemetry)

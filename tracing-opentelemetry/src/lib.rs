@@ -54,7 +54,7 @@
 //! use tracing_subscriber::Registry;
 //!
 //! // Create a new OpenTelemetry pipeline
-//! let (tracer, _uninstall) = stdout::new_pipeline().install();
+//! let tracer = stdout::new_pipeline().install_simple();
 //!
 //! // Create a tracing layer with the configured tracer
 //! let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
