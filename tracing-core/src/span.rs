@@ -195,6 +195,12 @@ impl<'a> Attributes<'a> {
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
+
+    /// Returns the number of fields in this `Attributes`.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.values.field_set().len()
+    }
 }
 
 // ===== impl Record =====
