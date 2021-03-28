@@ -209,7 +209,10 @@ where
 
             let current_span = if self.format.display_current_span || self.format.display_span_list
             {
-                ctx.ctx.current_span().id().and_then(|id| ctx.ctx.span(id))
+                event
+                    .parent()
+                    .and_then(|id| ctx.ctx.span(id))
+                    .or_else(|| ctx.ctx.current_span().id().and_then(|id| ctx.ctx.span(id)))
             } else {
                 None
             };
@@ -496,7 +499,8 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fmt::{test::MockMakeWriter, time::FormatTime, CollectorBuilder};
+    use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder};
+    use regex::Regex;
     use tracing::{self, collect::with_default};
 
     use std::fmt;
@@ -651,6 +655,63 @@ mod test {
                 "an event inside the root span"
             );
         });
+    }
+
+    #[test]
+    fn json_new_exit_events_with_span() {
+        let expected_events = &[
+            (
+                FmtSpan::NEW,
+                r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"new"},"target":"tracing_subscriber::fmt::format::json::test","span":{"data":"testdata","name":"correct_span"},"spans":[]}"#,
+            ),
+            (
+                FmtSpan::EXIT,
+                r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"exit"},"target":"tracing_subscriber::fmt::format::json::test","span":{"data":"testdata","name":"correct_span"},"spans":[]}"#,
+            ),
+        ];
+
+        for expected_event in expected_events {
+            let collector = collector()
+                .flatten_event(false)
+                .with_current_span(true)
+                .with_span_list(true)
+                .with_span_events(expected_event.0.clone());
+
+            test_json(expected_event.1, collector, || {
+                tracing::info_span!("correct_span", data="testdata").in_scope(|| {});
+            });
+        }
+    }
+
+    #[test]
+    fn json_close_event_with_span() {
+        let expected = r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"close","time.busy":"timing","time.idle":"timing"},"target":"tracing_subscriber::fmt::format::json::test","span":{"data":"testdata","name":"correct_span"},"spans":[]}"#;
+
+        let make_writer = MockMakeWriter::default();
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true)
+            .with_span_events(FmtSpan::CLOSE)
+            .with_writer(make_writer.clone())
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(collector, || {
+            tracing::info_span!("correct_span", data="testdata").in_scope(|| {});
+        });
+
+        let buf = make_writer.buf();
+        let actual = std::str::from_utf8(&buf[..]).unwrap();
+
+        let timing_regex = Regex::new("([0-9.]+)[mµn]s").unwrap();
+        let without_timing_data = timing_regex.replace_all(actual, "timing").to_string();
+
+        assert_eq!(
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap(),
+            serde_json::from_str(&without_timing_data).unwrap()
+        );
     }
 
     fn test_json<T>(
