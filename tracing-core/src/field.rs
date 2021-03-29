@@ -662,7 +662,7 @@ impl FieldSet {
     {
         ValueSet {
             fields: self,
-            values: &values.borrow()[..],
+            values: values.borrow(),
         }
     }
 
