@@ -96,9 +96,9 @@ impl Id {
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Id {
-    fn into(self) -> Option<Id> {
-        Some(self.clone())
+impl<'a> From<&'a Id> for Option<Id> {
+    fn from(id: &'a Id) -> Self {
+        Some(id.clone())
     }
 }
 
