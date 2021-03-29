@@ -678,7 +678,7 @@ mod test {
                 .with_span_events(expected_event.0.clone());
 
             test_json(expected_event.1, collector, || {
-                tracing::info_span!("correct_span", data="testdata").in_scope(|| {});
+                tracing::info_span!("correct_span", data = "testdata").in_scope(|| {});
             });
         }
     }
@@ -698,7 +698,7 @@ mod test {
             .finish();
 
         with_default(collector, || {
-            tracing::info_span!("correct_span", data="testdata").in_scope(|| {});
+            tracing::info_span!("correct_span", data = "testdata").in_scope(|| {});
         });
 
         let buf = make_writer.buf();
