@@ -169,7 +169,7 @@ pub fn shave_all(yaks: usize) -> usize {
 
         if let Err(ref error) = res {
             // Like spans, events can also use the field initialization shorthand.
-            // In this instance, `yak` is the field being initalized.
+            // In this instance, `yak` is the field being initialized.
             error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
             yaks_shaved += 1;
@@ -192,7 +192,7 @@ set the default later.
 
 ### In Asynchronous Code
 
-To trace `async fn`s, the preferred method is using the [`#[instrument]`] attribute:
+To trace `async fn`s, the preferred method is using the [`#[instrument]`][instrument] attribute:
 
 ```rust
 use tracing::{info, instrument};
@@ -244,14 +244,14 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-Under the hood, the `#[instrument]` macro performs same the explicit span
+Under the hood, the [`#[instrument]`][instrument] macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
 [`tracing-futures`]: https://docs.rs/tracing-futures
 [closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
 ## Supported Rust Versions
 
