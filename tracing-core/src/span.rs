@@ -96,9 +96,9 @@ impl Id {
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Id {
-    fn into(self) -> Option<Id> {
-        Some(self.clone())
+impl<'a> From<&'a Id> for Option<Id> {
+    fn from(id: &'a Id) -> Self {
+        Some(id.clone())
     }
 }
 
@@ -298,26 +298,29 @@ impl Current {
     }
 }
 
-impl<'a> Into<Option<&'a Id>> for &'a Current {
-    fn into(self) -> Option<&'a Id> {
-        self.id()
+impl<'a> From<&'a Current> for Option<&'a Id> {
+    fn from(cur: &'a Current) -> Self {
+        cur.id()
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Current {
-    fn into(self) -> Option<Id> {
-        self.id().cloned()
+impl<'a> From<&'a Current> for Option<Id> {
+    fn from(cur: &'a Current) -> Self {
+        cur.id().cloned()
     }
 }
 
-impl Into<Option<Id>> for Current {
-    fn into(self) -> Option<Id> {
-        self.id().cloned()
+impl From<Current> for Option<Id> {
+    fn from(cur: Current) -> Self {
+        match cur.inner {
+            CurrentInner::Current { id, .. } => Some(id),
+            _ => None,
+        }
     }
 }
 
-impl<'a> Into<Option<&'static Metadata<'static>>> for &'a Current {
-    fn into(self) -> Option<&'static Metadata<'static>> {
-        self.metadata()
+impl<'a> From<&'a Current> for Option<&'static Metadata<'static>> {
+    fn from(cur: &'a Current) -> Self {
+        cur.metadata()
     }
 }

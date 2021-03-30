@@ -283,7 +283,7 @@ mod tests {
     fn sampled_context() {
         for (name, sampler, parent_cx, previous_sampling_result, is_sampled) in sampler_data() {
             let provider = TracerProvider::builder()
-                .with_config(config().with_default_sampler(sampler))
+                .with_config(config().with_sampler(sampler))
                 .build();
             let tracer = provider.get_tracer("test", None);
             let mut builder = SpanBuilder::from_name("parent".to_string());
