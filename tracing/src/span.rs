@@ -1312,9 +1312,9 @@ impl<'a> From<&'a Span> for Option<Id> {
     }
 }
 
-impl Into<Option<Id>> for Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
+impl From<Span> for Option<Id> {
+    fn from(span: Span) -> Self {
+        span.inner.as_ref().map(Inner::id)
     }
 }
 
