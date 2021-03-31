@@ -6,6 +6,10 @@
   For list of breaking changes in OpenTelemetry, see the
   [v0.13.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0130).
 
+### Changed
+
+- Improve performance when tracked inactivity is disabled (#1315)
+
 # 0.11.0 (January 25, 2021)
 
 ### Breaking Changes
