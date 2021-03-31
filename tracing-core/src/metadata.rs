@@ -366,10 +366,10 @@ impl From<Option<Level>> for LevelFilter {
     }
 }
 
-impl Into<Option<Level>> for LevelFilter {
+impl From<LevelFilter> for Option<Level> {
     #[inline]
-    fn into(self) -> Option<Level> {
-        self.into_level()
+    fn from(filter: LevelFilter) -> Self {
+        filter.into_level()
     }
 }
 

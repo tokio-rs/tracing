@@ -1300,21 +1300,21 @@ impl fmt::Debug for Span {
     }
 }
 
-impl<'a> Into<Option<&'a Id>> for &'a Span {
-    fn into(self) -> Option<&'a Id> {
-        self.inner.as_ref().map(|inner| &inner.id)
+impl<'a> From<&'a Span> for Option<&'a Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
+impl<'a> From<&'a Span> for Option<Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(Inner::id)
     }
 }
 
-impl Into<Option<Id>> for Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
+impl From<Span> for Option<Id> {
+    fn from(span: Span) -> Self {
+        span.inner.as_ref().map(Inner::id)
     }
 }
 

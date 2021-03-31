@@ -113,10 +113,10 @@ impl fmt::Display for MockSpan {
     }
 }
 
-impl Into<NewSpan> for MockSpan {
-    fn into(self) -> NewSpan {
-        NewSpan {
-            span: self,
+impl From<MockSpan> for NewSpan {
+    fn from(span: MockSpan) -> Self {
+        Self {
+            span,
             ..Default::default()
         }
     }

@@ -4,6 +4,7 @@ use tracing::{self, subscriber::with_default, Level};
 use tracing_subscriber::{filter::EnvFilter, prelude::*};
 
 #[test]
+#[cfg_attr(not(flaky_tests), ignore)]
 fn field_filter_events() {
     let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
@@ -33,6 +34,7 @@ fn field_filter_events() {
 }
 
 #[test]
+#[cfg_attr(not(flaky_tests), ignore)]
 fn field_filter_spans() {
     let filter: EnvFilter = "[{enabled=true}]=debug"
         .parse()
