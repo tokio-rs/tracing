@@ -501,7 +501,7 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::fmt::{test::MockWriter, time::FormatTime};
+    use crate::fmt::{format::FmtSpan, test::MockWriter, time::FormatTime};
     use lazy_static::lazy_static;
     use tracing::{self, subscriber::with_default};
 
@@ -670,6 +670,39 @@ mod test {
                 "an event inside the root span"
             );
         });
+    }
+
+    #[test]
+    fn json_span_event() {
+        // Check span events serialize correctly.
+        // Discussion: https://github.com/tokio-rs/tracing/issues/829#issuecomment-661984255
+        //
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+        let expected = r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"enter"},"target":"tracing_subscriber::fmt::format::json::test"}"#;
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .json()
+            .flatten_event(false)
+            .with_current_span(false)
+            .with_span_list(false)
+            .with_span_events(FmtSpan::ENTER)
+            .with_writer(make_writer)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info_span!("valid_json").in_scope(|| {});
+        });
+
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!(
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap(),
+            serde_json::from_str(actual.as_str()).unwrap()
+        );
     }
 
     #[cfg(feature = "json")]
