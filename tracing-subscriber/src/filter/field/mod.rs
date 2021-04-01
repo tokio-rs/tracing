@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::fmt::{Debug, Write};
-use std::fmt;
 use std::sync::Arc;
 
 use matcher::FieldMatcher;
@@ -8,7 +7,7 @@ use tracing_core::Field;
 
 use crate::field::{MakeVisitor, Visit, VisitFmt, VisitOutput};
 
-pub mod matcher;
+pub(crate) mod matcher;
 
 type MatchersVec = Arc<Vec<Box<dyn FieldMatcher>>>;
 
@@ -25,7 +24,7 @@ impl<T> FieldFilter<T> {
         allow: Option<Vec<Box<dyn FieldMatcher>>>,
         deny: Vec<Box<dyn FieldMatcher>>,
     ) -> Self {
-        let allow = allow.map(|v| Arc::new(v));
+        let allow = allow.map(Arc::new);
         let deny = Arc::new(deny);
 
         Self { inner, allow, deny }
