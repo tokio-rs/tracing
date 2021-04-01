@@ -165,6 +165,7 @@ pub struct CurrentSpan {
     current: thread::Local<Vec<Id>>,
 }
 
+#[allow(deprecated)]
 impl CurrentSpan {
     /// Returns a new `CurrentSpan`.
     pub fn new() -> Self {
@@ -195,6 +196,7 @@ impl CurrentSpan {
     }
 }
 
+#[allow(deprecated)]
 impl Default for CurrentSpan {
     fn default() -> Self {
         Self::new()
