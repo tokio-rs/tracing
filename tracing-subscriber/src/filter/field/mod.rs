@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use matcher::FieldMatcher;
-use tracing::field::Field;
+use tracing_core::Field;
 
 use crate::field::{MakeVisitor, Visit, VisitFmt, VisitOutput};
 

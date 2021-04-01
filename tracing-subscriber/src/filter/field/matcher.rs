@@ -1,4 +1,4 @@
-use tracing::field::Field;
+use tracing_core::Field;
 use std::fmt::Debug;
 
 pub trait FieldMatcher: Debug {
