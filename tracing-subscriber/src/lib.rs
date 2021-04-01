@@ -118,6 +118,8 @@ pub mod subscribe;
 pub(crate) mod sync;
 pub(crate) mod thread;
 pub mod util;
+#[cfg(test)]
+mod test_util;
 
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
