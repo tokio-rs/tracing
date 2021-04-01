@@ -125,8 +125,8 @@ mod tests {
     use crate::fmt::format::DefaultFields;
     use crate::test_util::{DebugVisitor, MakeDebug, TestAttrs1};
 
-    use super::*;
     use super::matcher::ExactFieldMatcher;
+    use super::*;
 
     #[test]
     fn visitor_denylist_works() {
@@ -135,7 +135,7 @@ mod tests {
 
         let deny: Vec<Box<dyn FieldMatcher>> = vec![
             Box::new(ExactFieldMatcher::new("question".to_string())),
-            Box::new(ExactFieldMatcher::new("can_you_do_it".to_string()))
+            Box::new(ExactFieldMatcher::new("can_you_do_it".to_string())),
         ];
         let mut visitor = VisitFiltered::new(inner, None, Arc::new(deny));
 
@@ -155,9 +155,9 @@ mod tests {
             Box::new(ExactFieldMatcher::new("can_you_do_it".to_string())),
             Box::new(ExactFieldMatcher::new("tricky".to_string())),
         ];
-        let allow: Vec<Box<dyn FieldMatcher>> = vec![
-            Box::new(ExactFieldMatcher::new("can_you_do_it".to_string()))
-        ];
+        let allow: Vec<Box<dyn FieldMatcher>> = vec![Box::new(ExactFieldMatcher::new(
+            "can_you_do_it".to_string(),
+        ))];
         let mut visitor = VisitFiltered::new(inner, Some(Arc::new(allow)), Arc::new(deny));
 
         TestAttrs1::with(|attrs| attrs.record(&mut visitor));

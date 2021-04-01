@@ -1,12 +1,12 @@
+use crate::field::{MakeVisitor, VisitFmt, VisitOutput};
+use core::fmt;
+use tracing::field::Visit;
+use tracing::span::Attributes;
 use tracing_core::{
     callsite::Callsite,
     field::{Field, Value},
     metadata::{Kind, Level, Metadata},
 };
-use tracing::span::Attributes;
-use tracing::field::Visit;
-use crate::field::{VisitOutput, VisitFmt, MakeVisitor};
-use core::fmt;
 
 pub(crate) struct TestAttrs1;
 pub(crate) struct TestAttrs2;

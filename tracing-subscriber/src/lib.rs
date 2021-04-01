@@ -116,10 +116,10 @@ pub mod registry;
 pub mod reload;
 pub mod subscribe;
 pub(crate) mod sync;
-pub(crate) mod thread;
-pub mod util;
 #[cfg(test)]
 mod test_util;
+pub(crate) mod thread;
+pub mod util;
 
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]

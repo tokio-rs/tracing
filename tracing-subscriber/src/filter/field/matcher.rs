@@ -1,5 +1,5 @@
-use tracing_core::Field;
 use std::fmt::Debug;
+use tracing_core::Field;
 
 pub trait FieldMatcher: Debug {
     fn matches_field(&self, field: &Field) -> bool;
@@ -12,7 +12,7 @@ pub struct ExactFieldMatcher {
 
 impl ExactFieldMatcher {
     pub fn new(name: String) -> Self {
-        Self { name, }
+        Self { name }
     }
 }
 
