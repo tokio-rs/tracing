@@ -613,31 +613,13 @@ mod test {
         // This test reproduces issue #707, where using `Span::record` causes
         // any events inside the span to be ignored.
 
-        let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt()
-            .json()
-            .with_writer(make_writer.clone())
-            .finish();
-
-        let parse_buf = || -> serde_json::Value {
-            let buf = String::from_utf8(make_writer.buf().to_vec()).unwrap();
-            let json = buf
-                .lines()
-                .last()
-                .expect("expected at least one line to be written!");
-            match serde_json::from_str(&json) {
-                Ok(v) => v,
-                Err(e) => panic!(
-                    "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",
-                    e, json
-                ),
-            }
-        };
+        let buffer = MockMakeWriter::default();
+        let subscriber = crate::fmt().json().with_writer(buffer.clone()).finish();
 
         with_default(subscriber, || {
             tracing::info!("an event outside the root span");
             assert_eq!(
-                parse_buf()["fields"]["message"],
+                parse_as_json(&buffer)["fields"]["message"],
                 "an event outside the root span"
             );
 
@@ -647,7 +629,7 @@ mod test {
 
             tracing::info!("an event inside the root span");
             assert_eq!(
-                parse_buf()["fields"]["message"],
+                parse_as_json(&buffer)["fields"]["message"],
                 "an event inside the root span"
             );
         });
@@ -658,16 +640,43 @@ mod test {
         // Check span events serialize correctly.
         // Discussion: https://github.com/tokio-rs/tracing/issues/829#issuecomment-661984255
         //
-        let expected = r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"enter"},"target":"tracing_subscriber::fmt::format::json::test"}"#;
-        let collector = collector()
+        let buffer = MockMakeWriter::default();
+        let subscriber = collector()
+            .with_writer(buffer.clone())
             .flatten_event(false)
             .with_current_span(false)
             .with_span_list(false)
-            .with_span_events(FmtSpan::ENTER);
+            .with_span_events(FmtSpan::FULL)
+            .finish();
 
-        test_json(expected, collector, || {
-            tracing::info_span!("valid_json").in_scope(|| {});
+        with_default(subscriber, || {
+            let span = tracing::info_span!("valid_json");
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "new");
+
+            let _enter = span.enter();
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "enter");
+
+            drop(_enter);
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "exit");
+
+            drop(span);
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "close");
         });
+    }
+
+    fn parse_as_json(buffer: &MockMakeWriter) -> serde_json::Value {
+        let buf = String::from_utf8(buffer.buf().to_vec()).unwrap();
+        let json = buf
+            .lines()
+            .last()
+            .expect("expected at least one line to be written!");
+        match serde_json::from_str(&json) {
+            Ok(v) => v,
+            Err(e) => panic!(
+                "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",
+                e, json
+            ),
+        }
     }
 
     fn test_json<T>(
