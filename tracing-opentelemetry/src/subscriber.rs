@@ -108,7 +108,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_bool(&mut self, field: &field::Field, value: bool) {
         match field.name() {
-            "message" => self.0.name = value.to_string(),
+            "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -123,7 +123,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_i64(&mut self, field: &field::Field, value: i64) {
         match field.name() {
-            "message" => self.0.name = value.to_string(),
+            "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -138,7 +138,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
         match field.name() {
-            "message" => self.0.name = value.to_string(),
+            "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -156,7 +156,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         match field.name() {
-            "message" => self.0.name = format!("{:?}", value),
+            "message" => self.0.name = format!("{:?}", value).into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -201,7 +201,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
         if field.name() == SPAN_NAME_FIELD {
-            self.0.name = value.to_string();
+            self.0.name = value.to_string().into();
         } else if field.name() == SPAN_KIND_FIELD {
             self.0.span_kind = str_to_span_kind(value);
         } else {
@@ -220,7 +220,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         if field.name() == SPAN_NAME_FIELD {
-            self.0.name = format!("{:?}", value);
+            self.0.name = format!("{:?}", value).into();
         } else if field.name() == SPAN_KIND_FIELD {
             self.0.span_kind = str_to_span_kind(&format!("{:?}", value));
         } else {
@@ -253,9 +253,10 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_pipeline()
     ///     .with_service_name("trace_demo")
-    ///     .install().expect("Error initializing Jaeger exporter");
+    ///     .install_simple()
+    ///     .expect("Error initializing Jaeger exporter");
     ///
     /// // Create a subscriber with the configured tracer
     /// let otel_subscriber = OpenTelemetrySubscriber::new(tracer);
@@ -287,9 +288,10 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_pipeline()
     ///     .with_service_name("trace_demo")
-    ///     .install().expect("Error initializing Jaeger exporter");
+    ///     .install_simple()
+    ///     .expect("Error initializing Jaeger exporter");
     ///
     /// // Create a subscriber with the configured tracer
     /// let otel_subscriber = tracing_opentelemetry::subscriber().with_tracer(tracer);
@@ -423,23 +425,31 @@ where
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if !self.tracked_inactivity {
+            return;
+        }
+
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
             let now = Instant::now();
-            timings.idle += (now - timings.last).as_nanos() as u64;
+            timings.idle += (now - timings.last).as_nanos() as i64;
             timings.last = now;
         }
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if !self.tracked_inactivity {
+            return;
+        }
+
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
             let now = Instant::now();
-            timings.busy += (now - timings.last).as_nanos() as u64;
+            timings.busy += (now - timings.last).as_nanos() as i64;
             timings.last = now;
         }
     }
@@ -536,16 +546,18 @@ where
         let mut extensions = span.extensions_mut();
 
         if let Some(mut builder) = extensions.remove::<otel::SpanBuilder>() {
-            // Append busy/idle timings when enabled.
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let mut timings_attributes = vec![
-                    KeyValue::new("busy_ns", timings.busy.to_string()),
-                    KeyValue::new("idle_ns", timings.idle.to_string()),
-                ];
+            if self.tracked_inactivity {
+                // Append busy/idle timings when enabled.
+                if let Some(timings) = extensions.get_mut::<Timings>() {
+                    let busy_ns = KeyValue::new("busy_ns", timings.busy);
+                    let idle_ns = KeyValue::new("idle_ns", timings.idle);
 
-                match builder.attributes {
-                    Some(ref mut attributes) => attributes.append(&mut timings_attributes),
-                    None => builder.attributes = Some(timings_attributes),
+                    if let Some(ref mut attributes) = builder.attributes {
+                        attributes.push(busy_ns);
+                        attributes.push(idle_ns);
+                    } else {
+                        builder.attributes = Some(vec![busy_ns, idle_ns]);
+                    }
                 }
             }
 
@@ -568,8 +580,8 @@ where
 }
 
 struct Timings {
-    idle: u64,
-    busy: u64,
+    idle: i64,
+    busy: i64,
     last: Instant,
 }
 
@@ -650,7 +662,7 @@ mod tests {
         });
 
         let recorded_name = tracer.0.lock().unwrap().as_ref().map(|b| b.name.clone());
-        assert_eq!(recorded_name, Some(dynamic_name))
+        assert_eq!(recorded_name, Some(dynamic_name.into()))
     }
 
     #[test]

@@ -501,6 +501,7 @@ mod test {
     use super::*;
     use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder};
     use regex::Regex;
+
     use tracing::{self, collect::with_default};
 
     use std::fmt;
@@ -712,6 +713,22 @@ mod test {
                 .unwrap(),
             serde_json::from_str(&without_timing_data).unwrap()
         );
+    }
+
+    fn json_span_event() {
+        // Check span events serialize correctly.
+        // Discussion: https://github.com/tokio-rs/tracing/issues/829#issuecomment-661984255
+        //
+        let expected = r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"enter"},"target":"tracing_subscriber::fmt::format::json::test"}"#;
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(false)
+            .with_span_list(false)
+            .with_span_events(FmtSpan::ENTER);
+
+        test_json(expected, collector, || {
+            tracing::info_span!("valid_json").in_scope(|| {});
+        });
     }
 
     fn test_json<T>(

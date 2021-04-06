@@ -21,7 +21,7 @@ impl<'a> Serialize for SerializeFieldMap<'a, Event<'_>> {
     where
         S: Serializer,
     {
-        let len = self.0.metadata().fields().len();
+        let len = self.0.fields().count();
         let serializer = serializer.serialize_map(Some(len))?;
         let mut visitor = SerdeMapVisitor::new(serializer);
         self.0.record(&mut visitor);
