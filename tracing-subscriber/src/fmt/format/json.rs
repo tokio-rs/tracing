@@ -500,7 +500,6 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 mod test {
     use super::*;
     use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder};
-    use regex::Regex;
 
     use tracing::{self, collect::with_default};
 
@@ -641,63 +640,64 @@ mod test {
     }
 
     #[test]
-    fn json_new_exit_events_with_span() {
-        let expected_events = &[
-            (
-                FmtSpan::NEW,
-                r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"new"},"target":"tracing_subscriber::fmt::format::json::test","span":{"data":"testdata","name":"correct_span"},"spans":[]}"#,
-            ),
-            (
-                FmtSpan::EXIT,
-                r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"exit"},"target":"tracing_subscriber::fmt::format::json::test","span":{"data":"testdata","name":"correct_span"},"spans":[]}"#,
-            ),
-        ];
+    fn json_span_event_show_correct_context() {
+        let buffer = MockMakeWriter::default();
+        let subscriber = collector()
+            .with_writer(buffer.clone())
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(false)
+            .with_span_events(FmtSpan::FULL)
+            .finish();
 
-        for expected_event in expected_events {
-            let collector = collector()
-                .flatten_event(false)
-                .with_current_span(true)
-                .with_span_list(true)
-                .with_span_events(expected_event.0.clone());
+        with_default(subscriber, || {
+            let context = "parent";
+            let parent_span = tracing::info_span!("parent_span", context);
 
-            test_json(expected_event.1, collector, || {
-                tracing::info_span!("correct_span", data = "testdata").in_scope(|| {});
-            });
-        }
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "new");
+            assert_eq!(event["span"]["context"], "parent");
+
+            let _parent_enter = parent_span.enter();
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "enter");
+            assert_eq!(event["span"]["context"], "parent");
+
+            let context = "child";
+            let child_span = tracing::info_span!("child_span", context);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "new");
+            assert_eq!(event["span"]["context"], "child");
+
+            let _child_enter = child_span.enter();
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "enter");
+            assert_eq!(event["span"]["context"], "child");
+
+            drop(_child_enter);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "exit");
+            assert_eq!(event["span"]["context"], "child");
+
+            drop(child_span);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "close");
+            assert_eq!(event["span"]["context"], "child");
+
+            drop(_parent_enter);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "exit");
+            assert_eq!(event["span"]["context"], "parent");
+
+            drop(parent_span);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "close");
+            assert_eq!(event["span"]["context"], "parent");
+        });
     }
 
     #[test]
-    fn json_close_event_with_span() {
-        let expected = r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"close","time.busy":"timing","time.idle":"timing"},"target":"tracing_subscriber::fmt::format::json::test","span":{"data":"testdata","name":"correct_span"},"spans":[]}"#;
-
-        let make_writer = MockMakeWriter::default();
-        let collector = collector()
-            .flatten_event(false)
-            .with_current_span(true)
-            .with_span_list(true)
-            .with_span_events(FmtSpan::CLOSE)
-            .with_writer(make_writer.clone())
-            .with_timer(MockTime)
-            .finish();
-
-        with_default(collector, || {
-            tracing::info_span!("correct_span", data = "testdata").in_scope(|| {});
-        });
-
-        let buf = make_writer.buf();
-        let actual = std::str::from_utf8(&buf[..]).unwrap();
-
-        let timing_regex = Regex::new("([0-9.]+)[mµn]s").unwrap();
-        let without_timing_data = timing_regex.replace_all(actual, "timing").to_string();
-
-        assert_eq!(
-            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
-                .unwrap(),
-            serde_json::from_str(&without_timing_data).unwrap()
-        );
-    }
-
-    fn json_span_event() {
+    fn json_span_event_with_no_fields() {
         // Check span events serialize correctly.
         // Discussion: https://github.com/tokio-rs/tracing/issues/829#issuecomment-661984255
         //
