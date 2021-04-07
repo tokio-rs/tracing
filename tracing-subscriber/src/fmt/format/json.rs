@@ -211,8 +211,8 @@ where
             {
                 event
                     .parent()
-                    .and_then(|id| ctx.ctx.span(id))
-                    .or_else(|| ctx.ctx.current_span().id().and_then(|id| ctx.ctx.span(id)))
+                    .and_then(|id| ctx.span(id))
+                    .or_else(|| ctx.lookup_current())
             } else {
                 None
             };
