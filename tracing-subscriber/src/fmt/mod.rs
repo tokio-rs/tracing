@@ -1176,6 +1176,7 @@ mod test {
         }
     }
 
+    #[derive(Clone)]
     pub(crate) struct MockMakeWriter<'a> {
         buf: &'a Mutex<Vec<u8>>,
     }
@@ -1183,6 +1184,10 @@ mod test {
     impl<'a> MockMakeWriter<'a> {
         pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
             Self { buf }
+        }
+
+        pub(crate) fn buf(&self) -> MutexGuard<'a, Vec<u8>> {
+            self.buf.lock().unwrap()
         }
     }
 
