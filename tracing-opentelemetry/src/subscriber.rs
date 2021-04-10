@@ -12,8 +12,10 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::subscribe::Context;
 use tracing_subscriber::Subscribe;
 
-static SPAN_NAME_FIELD: &str = "otel.name";
-static SPAN_KIND_FIELD: &str = "otel.kind";
+const SPAN_NAME_FIELD: &str = "otel.name";
+const SPAN_KIND_FIELD: &str = "otel.kind";
+const SPAN_STATUS_CODE_FIELD: &str = "otel.status_code";
+const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 
 /// An [OpenTelemetry] propagation subscriber for use in a project that uses
 /// [tracing].
@@ -85,18 +87,22 @@ impl WithContext {
 }
 
 fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
-    if s.eq_ignore_ascii_case("SERVER") {
-        Some(otel::SpanKind::Server)
-    } else if s.eq_ignore_ascii_case("CLIENT") {
-        Some(otel::SpanKind::Client)
-    } else if s.eq_ignore_ascii_case("PRODUCER") {
-        Some(otel::SpanKind::Producer)
-    } else if s.eq_ignore_ascii_case("CONSUMER") {
-        Some(otel::SpanKind::Consumer)
-    } else if s.eq_ignore_ascii_case("INTERNAL") {
-        Some(otel::SpanKind::Internal)
-    } else {
-        None
+    match s.to_ascii_lowercase().as_str() {
+        "server" => Some(otel::SpanKind::Server),
+        "client" => Some(otel::SpanKind::Client),
+        "producer" => Some(otel::SpanKind::Producer),
+        "consumer" => Some(otel::SpanKind::Consumer),
+        "internal" => Some(otel::SpanKind::Internal),
+        _ => None,
+    }
+}
+
+fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
+    match s.to_ascii_lowercase().as_str() {
+        "unset" => Some(otel::StatusCode::Unset),
+        "ok" => Some(otel::StatusCode::Ok),
+        "error" => Some(otel::StatusCode::Error),
+        _ => None,
     }
 }
 
@@ -200,16 +206,18 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
-        if field.name() == SPAN_NAME_FIELD {
-            self.0.name = value.to_string().into();
-        } else if field.name() == SPAN_KIND_FIELD {
-            self.0.span_kind = str_to_span_kind(value);
-        } else {
-            let attribute = KeyValue::new(field.name(), value.to_string());
-            if let Some(attributes) = &mut self.0.attributes {
-                attributes.push(attribute);
-            } else {
-                self.0.attributes = Some(vec![attribute]);
+        match field.name() {
+            SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
+            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
+            SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
+            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
+            default => {
+                let attribute = KeyValue::new(default, value.to_string());
+                if let Some(attributes) = &mut self.0.attributes {
+                    attributes.push(attribute);
+                } else {
+                    self.0.attributes = Some(vec![attribute]);
+                }
             }
         }
     }
@@ -219,16 +227,22 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
-        if field.name() == SPAN_NAME_FIELD {
-            self.0.name = format!("{:?}", value).into();
-        } else if field.name() == SPAN_KIND_FIELD {
-            self.0.span_kind = str_to_span_kind(&format!("{:?}", value));
-        } else {
-            let attribute = Key::new(field.name()).string(format!("{:?}", value));
-            if let Some(attributes) = &mut self.0.attributes {
-                attributes.push(attribute);
-            } else {
-                self.0.attributes = Some(vec![attribute]);
+        match field.name() {
+            SPAN_NAME_FIELD => self.0.name = format!("{:?}", value).into(),
+            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&format!("{:?}", value)),
+            SPAN_STATUS_CODE_FIELD => {
+                self.0.status_code = str_to_status_code(&format!("{:?}", value))
+            }
+            SPAN_STATUS_MESSAGE_FIELD => {
+                self.0.status_message = Some(format!("{:?}", value).into())
+            }
+            default => {
+                let attribute = Key::new(default).string(format!("{:?}", value));
+                if let Some(attributes) = &mut self.0.attributes {
+                    attributes.push(attribute);
+                } else {
+                    self.0.attributes = Some(vec![attribute]);
+                }
             }
         }
     }
@@ -677,6 +691,69 @@ mod tests {
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
         assert_eq!(recorded_kind, Some(otel::SpanKind::Server))
+    }
+
+    #[test]
+    fn span_status_code_ok() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
+        });
+        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
+        assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
+    }
+
+    #[test]
+    fn span_status_code_error() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Error);
+        });
+        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
+        assert_eq!(recorded_status_code, Some(otel::StatusCode::Error))
+    }
+
+    #[test]
+    fn span_status_code_unset() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Unset);
+        });
+        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
+        assert_eq!(recorded_status_code, Some(otel::StatusCode::Unset))
+    }
+
+    #[test]
+    fn span_status_message() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        let message = "message";
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.status_message = message);
+        });
+
+        let recorded_status_message = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .status_message
+            .clone();
+
+        assert_eq!(recorded_status_message, Some(message.to_string()))
     }
 
     #[test]
