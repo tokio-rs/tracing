@@ -694,7 +694,7 @@ mod tests {
     }
 
     #[test]
-    fn span_status_code_ok() {
+    fn span_status_code() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber =
             tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
@@ -704,32 +704,6 @@ mod tests {
         });
         let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
         assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
-    }
-
-    #[test]
-    fn span_status_code_error() {
-        let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber =
-            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
-
-        tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Error);
-        });
-        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
-        assert_eq!(recorded_status_code, Some(otel::StatusCode::Error))
-    }
-
-    #[test]
-    fn span_status_code_unset() {
-        let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber =
-            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
-
-        tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Unset);
-        });
-        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
-        assert_eq!(recorded_status_code, Some(otel::StatusCode::Unset))
     }
 
     #[test]
