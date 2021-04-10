@@ -211,8 +211,8 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
             SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
             SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
-            default => {
-                let attribute = KeyValue::new(default, value.to_string());
+            _ => {
+                let attribute = KeyValue::new(field.name(), value.to_string());
                 if let Some(attributes) = &mut self.0.attributes {
                     attributes.push(attribute);
                 } else {
@@ -236,8 +236,8 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_STATUS_MESSAGE_FIELD => {
                 self.0.status_message = Some(format!("{:?}", value).into())
             }
-            default => {
-                let attribute = Key::new(default).string(format!("{:?}", value));
+            _ => {
+                let attribute = Key::new(field.name()).string(format!("{:?}", value));
                 if let Some(attributes) = &mut self.0.attributes {
                     attributes.push(attribute);
                 } else {
