@@ -87,21 +87,21 @@ impl WithContext {
 }
 
 fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
-    match s.to_ascii_lowercase().as_str() {
-        "server" => Some(otel::SpanKind::Server),
-        "client" => Some(otel::SpanKind::Client),
-        "producer" => Some(otel::SpanKind::Producer),
-        "consumer" => Some(otel::SpanKind::Consumer),
-        "internal" => Some(otel::SpanKind::Internal),
+    match s {
+        s if s.eq_ignore_ascii_case("server") => Some(otel::SpanKind::Server),
+        s if s.eq_ignore_ascii_case("client") => Some(otel::SpanKind::Client),
+        s if s.eq_ignore_ascii_case("producer") => Some(otel::SpanKind::Producer),
+        s if s.eq_ignore_ascii_case("consumer") => Some(otel::SpanKind::Consumer),
+        s if s.eq_ignore_ascii_case("internal") => Some(otel::SpanKind::Internal),
         _ => None,
     }
 }
 
 fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
-    match s.to_ascii_lowercase().as_str() {
-        "unset" => Some(otel::StatusCode::Unset),
-        "ok" => Some(otel::StatusCode::Ok),
-        "error" => Some(otel::StatusCode::Error),
+    match s {
+        s if s.eq_ignore_ascii_case("unset") => Some(otel::StatusCode::Unset),
+        s if s.eq_ignore_ascii_case("ok") => Some(otel::StatusCode::Ok),
+        s if s.eq_ignore_ascii_case("error") => Some(otel::StatusCode::Error),
         _ => None,
     }
 }
