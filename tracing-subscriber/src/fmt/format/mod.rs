@@ -1239,6 +1239,22 @@ pub(super) mod test {
         }
     }
 
+    #[test]
+    fn disable_everything() {
+        // This test reproduces https://github.com/tokio-rs/tracing/issues/1354
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_thread_names(false);
+        #[cfg(feature = "ansi")]
+        let subscriber = subscriber.with_ansi(false);
+        run_test(subscriber, make_writer, "hello\n")
+    }
+
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
