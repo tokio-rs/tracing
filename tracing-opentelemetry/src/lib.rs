@@ -23,8 +23,11 @@
 //! Setting this field is useful if you want to display non-static information
 //! in your span name.
 //! * `otel.kind`: Set the span kind to one of the supported OpenTelemetry [span kinds].
+//! * `otel.status_code`: Set the span status code to one of the supported OpenTelemetry [span status codes].
+//! * `otel.status_message`: Set the span status message.
 //!
 //! [span kinds]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/enum.SpanKind.html
+//! [span status codes]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/enum.StatusCode.html
 //!
 //! ### Semantic Conventions
 //!
@@ -89,7 +92,7 @@
 //!
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.11.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.12.0")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
