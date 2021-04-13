@@ -223,7 +223,7 @@ impl otel::Span for CompatSpan {
 
     fn set_status(&self, _code: otel::StatusCode, _message: String) {
         #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead.");
+        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` with `otel.status_code` and `otel.status_message` instead.");
     }
 
     fn update_name(&self, _new_name: String) {
