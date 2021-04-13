@@ -253,6 +253,7 @@ pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
+    pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
@@ -265,6 +266,7 @@ impl Default for Format<Full, SystemTime> {
             format: Full,
             timer: SystemTime,
             ansi: true,
+            display_timestamp: true,
             display_target: true,
             display_level: true,
             display_thread_id: false,
@@ -283,6 +285,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: false,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -319,6 +322,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -348,6 +352,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -370,6 +375,7 @@ impl<F, T> Format<F, T> {
             timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -382,6 +388,7 @@ impl<F, T> Format<F, T> {
             format: self.format,
             timer: (),
             ansi: self.ansi,
+            display_timestamp: false,
             display_target: self.display_target,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
@@ -452,6 +459,21 @@ impl<F, T> Format<F, T> {
 
         Ok(())
     }
+
+    #[inline]
+    fn format_timestamp(&self, writer: &mut dyn fmt::Write) -> fmt::Result
+    where
+        T: FormatTime,
+    {
+        if self.display_timestamp {
+            #[cfg(feature = "ansi")]
+            time::write(&self.timer, writer, self.ansi)?;
+            #[cfg(not(feature = "ansi"))]
+            time::write(&self.timer, writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(feature = "json")]
@@ -513,11 +535,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
 
+        self.format_timestamp(writer)?;
         self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
@@ -576,11 +595,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
 
+        self.format_timestamp(writer)?;
         self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
