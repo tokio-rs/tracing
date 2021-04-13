@@ -1,5 +1,5 @@
 //! Formatters for logging `tracing` events.
-use super::time::{self, FormatTime, SystemTime};
+use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_subscriber::FmtContext,
@@ -465,14 +465,25 @@ impl<F, T> Format<F, T> {
     where
         T: FormatTime,
     {
-        if self.display_timestamp {
-            #[cfg(feature = "ansi")]
-            time::write(&self.timer, writer, self.ansi)?;
-            #[cfg(not(feature = "ansi"))]
-            time::write(&self.timer, writer)?;
+        // If timestamps are disabled, do nothing.
+        if !self.display_timestamp {
+            return Ok(());
         }
 
-        Ok(())
+        // If ANSI color codes are enabled, format the timestamp with ANSI
+        // colors.
+        #[cfg(feature = "ansi")]
+        if self.ansi {
+            let style = Style::new().dimmed();
+            write!(writer, "{}", style.prefix())?;
+            self.timer.format_time(writer)?;
+            write!(writer, "{} ", style.suffix())?;
+            return Ok(());
+        }
+
+        // Otherwise, just format the timestamp without ANSI formatting.
+        self.timer.format_time(writer)?;
+        writer.write_char(' ')
     }
 }
 
