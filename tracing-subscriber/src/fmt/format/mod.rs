@@ -473,12 +473,14 @@ impl<F, T> Format<F, T> {
         // If ANSI color codes are enabled, format the timestamp with ANSI
         // colors.
         #[cfg(feature = "ansi")]
-        if self.ansi {
-            let style = Style::new().dimmed();
-            write!(writer, "{}", style.prefix())?;
-            self.timer.format_time(writer)?;
-            write!(writer, "{} ", style.suffix())?;
-            return Ok(());
+        {
+            if self.ansi {
+                let style = Style::new().dimmed();
+                write!(writer, "{}", style.prefix())?;
+                self.timer.format_time(writer)?;
+                write!(writer, "{} ", style.suffix())?;
+                return Ok(());
+            }
         }
 
         // Otherwise, just format the timestamp without ANSI formatting.
