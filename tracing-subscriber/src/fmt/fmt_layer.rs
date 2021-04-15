@@ -1070,7 +1070,7 @@ mod test {
         });
         let actual = sanitize_timings(String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap());
         assert_eq!(
-            " span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close\n",
+            "span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close\n",
             actual.as_str()
         );
     }
