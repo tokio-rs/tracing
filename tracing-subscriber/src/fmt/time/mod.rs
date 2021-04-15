@@ -1,6 +1,4 @@
 //! Formatters for event timestamps.
-#[cfg(feature = "ansi")]
-use ansi_term::Style;
 use std::fmt;
 use std::time::Instant;
 
@@ -245,32 +243,4 @@ impl FormatTime for ChronoLocal {
             ChronoFmtType::Custom(ref format_str) => write!(w, "{}", time.format(format_str)),
         }
     }
-}
-
-#[inline(always)]
-#[cfg(feature = "ansi")]
-pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write, with_ansi: bool) -> fmt::Result
-where
-    T: FormatTime,
-{
-    if with_ansi {
-        let style = Style::new().dimmed();
-        write!(writer, "{}", style.prefix())?;
-        timer.format_time(writer)?;
-        write!(writer, "{}", style.suffix())?;
-    } else {
-        timer.format_time(writer)?;
-    }
-    writer.write_char(' ')?;
-    Ok(())
-}
-
-#[inline(always)]
-#[cfg(not(feature = "ansi"))]
-pub(crate) fn write<T>(timer: T, writer: &mut dyn fmt::Write) -> fmt::Result
-where
-    T: FormatTime,
-{
-    timer.format_time(writer)?;
-    write!(writer, " ")
 }

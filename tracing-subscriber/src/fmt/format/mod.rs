@@ -1,5 +1,5 @@
 //! Formatters for logging `tracing` events.
-use super::time::{self, FormatTime, SystemTime};
+use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_layer::FmtContext,
@@ -252,6 +252,7 @@ pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
+    pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
@@ -264,6 +265,7 @@ impl Default for Format<Full, SystemTime> {
             format: Full,
             timer: SystemTime,
             ansi: true,
+            display_timestamp: true,
             display_target: true,
             display_level: true,
             display_thread_id: false,
@@ -282,6 +284,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -318,6 +321,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -348,6 +352,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -371,6 +376,7 @@ impl<F, T> Format<F, T> {
             timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -383,6 +389,7 @@ impl<F, T> Format<F, T> {
             format: self.format,
             timer: (),
             ansi: self.ansi,
+            display_timestamp: false,
             display_target: self.display_target,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
@@ -431,6 +438,34 @@ impl<F, T> Format<F, T> {
             display_thread_name,
             ..self
         }
+    }
+
+    #[inline]
+    fn format_timestamp(&self, writer: &mut dyn fmt::Write) -> fmt::Result
+    where
+        T: FormatTime,
+    {
+        // If timestamps are disabled, do nothing.
+        if !self.display_timestamp {
+            return Ok(());
+        }
+
+        // If ANSI color codes are enabled, format the timestamp with ANSI
+        // colors.
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                let style = Style::new().dimmed();
+                write!(writer, "{}", style.prefix())?;
+                self.timer.format_time(writer)?;
+                write!(writer, "{} ", style.suffix())?;
+                return Ok(());
+            }
+        }
+
+        // Otherwise, just format the timestamp without ANSI formatting.
+        self.timer.format_time(writer)?;
+        writer.write_char(' ')
     }
 }
 
@@ -493,10 +528,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
+
+        self.format_timestamp(writer)?;
 
         if self.display_level {
             let fmt_level = {
@@ -568,10 +601,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
+
+        self.format_timestamp(writer)?;
 
         if self.display_level {
             let fmt_level = {
@@ -1270,6 +1301,32 @@ pub(super) mod test {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
             write!(w, "fake time")
         }
+    }
+
+    #[test]
+    fn disable_everything() {
+        // This test reproduces https://github.com/tokio-rs/tracing/issues/1354
+        lazy_static! {
+            static ref BUF: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+
+        let make_writer = || MockWriter::new(&BUF);
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_thread_names(false);
+        #[cfg(feature = "ansi")]
+        let subscriber = subscriber.with_ansi(false);
+
+        with_default(subscriber.finish(), || {
+            tracing::info!("hello");
+        });
+
+        let actual = String::from_utf8(BUF.try_lock().unwrap().to_vec()).unwrap();
+        assert_eq!("hello\n", actual.as_str());
     }
 
     #[cfg(feature = "ansi")]

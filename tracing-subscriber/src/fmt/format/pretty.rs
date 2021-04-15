@@ -108,7 +108,8 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         write!(writer, "  ")?;
-        time::write(&self.timer, writer, self.ansi)?;
+
+        self.format_timestamp(writer)?;
 
         let style = if self.display_level && self.ansi {
             Pretty::style_for(meta.level())

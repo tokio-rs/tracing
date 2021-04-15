@@ -691,10 +691,9 @@ mod tests {
     #[test]
     fn span_status_code() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber =
-            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        tracing::collect::with_default(subscriber, || {
+        tracing::subscriber::with_default(subscriber, || {
             tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
         });
         let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
@@ -704,12 +703,11 @@ mod tests {
     #[test]
     fn span_status_message() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber =
-            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
         let message = "message";
 
-        tracing::collect::with_default(subscriber, || {
+        tracing::subscriber::with_default(subscriber, || {
             tracing::debug_span!("request", otel.status_message = message);
         });
 
