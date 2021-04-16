@@ -430,6 +430,12 @@ impl<'a> field::Visit for JsonVisitor<'a> {
             .insert(&field.name(), serde_json::Value::from(value));
     }
 
+    /// Visit an unsigned 64-bit integer value.
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.values
+            .insert(&field.name(), serde_json::Value::from(value));
+    }
+
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.values

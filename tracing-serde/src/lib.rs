@@ -402,6 +402,12 @@ where
         }
     }
 
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_entry(field.name(), &value)
+        }
+    }
+
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
             self.state = self.serializer.serialize_entry(field.name(), &value)
@@ -443,6 +449,12 @@ where
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_field(field.name(), &value)
+        }
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
         if self.state.is_ok() {
             self.state = self.serializer.serialize_field(field.name(), &value)
         }
