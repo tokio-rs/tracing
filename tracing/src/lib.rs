@@ -187,7 +187,7 @@
 //! # mod serde_json {
 //! #    pub(crate) fn from_slice(buf: &[u8]) -> Result<(), ()> { Ok(()) }
 //! # }
-//! # let buf = &[];
+//! # let buf: [u8; 0] = [];
 //! let json = info_span!("json.parse").in_scope(|| serde_json::from_slice(&buf))?;
 //! # let _ = json; // suppress unused variable warning
 //! # Ok(())
