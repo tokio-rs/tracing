@@ -1,7 +1,9 @@
 //! Spans represent periods of time in the execution of a program.
+use core::num::NonZeroU64;
+
+use crate::field::FieldSet;
 use crate::parent::Parent;
 use crate::{field, Metadata};
-use core::num::NonZeroU64;
 
 /// Identifies a span within the context of a collector.
 ///
@@ -194,6 +196,21 @@ impl<'a> Attributes<'a> {
     /// Returns true if this set of `Attributes` contains _no_ values.
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
+    }
+
+    /// Returns the set of all [fields] defined by this span's [`Metadata`].
+    ///
+    /// Note that the [`FieldSet`] returned by this method includes *all* the
+    /// fields declared by this span, not just those with values that are recorded
+    /// as part of this set of `Attributes`. Other fields with values not present in
+    /// this `Attributes`' value set may [record] values later.
+    ///
+    /// [fields]: crate::field
+    /// [record]: Attributes::record()
+    /// [`Metadata`]: crate::metadata::Metadata
+    /// [`FieldSet`]: crate::field::FieldSet
+    pub fn fields(&self) -> &FieldSet {
+        self.values.field_set()
     }
 }
 
