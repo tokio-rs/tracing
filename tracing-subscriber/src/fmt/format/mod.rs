@@ -361,14 +361,15 @@ impl<F, T> Format<F, T> {
 
     /// Use the given [`timer`] for log message timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See [`time` module] for the provided timer implementations.
     ///
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`timer`]: super::time::FormatTime
+    /// [`time` module]: mod@super::time
+    /// [`ChronoUtc`]: super::time::ChronoUtc
+    /// [`ChronoLocal`]: super::time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
