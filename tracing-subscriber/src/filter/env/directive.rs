@@ -195,7 +195,7 @@ impl FromStr for Directive {
             )
             .unwrap();
             static ref SPAN_PART_RE: Regex =
-                Regex::new(r#"(?P<name>\w+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
+                Regex::new(r#"(?P<name>[\w-]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
             static ref FIELD_FILTER_RE: Regex =
                 // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
                 // characters. We should fix that.
@@ -1090,5 +1090,14 @@ mod test {
         assert_eq!(dirs[0].target, Some("target-name".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_with_dash_in_span_name() {
+        let dirs = parse_directives("target[span-name]=info");
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
     }
 }
