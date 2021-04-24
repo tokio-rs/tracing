@@ -1094,10 +1094,23 @@ mod test {
 
     #[test]
     fn parse_directives_with_dash_in_span_name() {
+        // Reproduces https://github.com/tokio-rs/tracing/issues/1367
+
         let dirs = parse_directives("target[span-name]=info");
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_special_characters_in_span_name() {
+        let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~";
+
+        let dirs = parse_directives(format!("target[{}]=info", span_name));
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some(span_name.to_string()));
     }
 }
