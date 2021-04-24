@@ -195,7 +195,7 @@ impl FromStr for Directive {
             )
             .unwrap();
             static ref SPAN_PART_RE: Regex =
-                Regex::new(r#"(?P<name>[\w-]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
+                Regex::new(r#"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
             static ref FIELD_FILTER_RE: Regex =
                 // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
                 // characters. We should fix that.
