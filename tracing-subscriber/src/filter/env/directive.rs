@@ -1105,12 +1105,20 @@ mod test {
 
     #[test]
     fn parse_directives_with_special_characters_in_span_name() {
-        let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~";
+        let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~[}";
 
         let dirs = parse_directives(format!("target[{}]=info", span_name));
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, Some(span_name.to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_invalid_span_chars() {
+        let invalid_span_name = "]{";
+
+        let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
+        assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
     }
 }
