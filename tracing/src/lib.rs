@@ -779,6 +779,7 @@
 //!    [OpenTelemetry]-compatible distributed tracing systems.
 //!  - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
 //!  - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
+//!  - [`tracing-actix-web`] provides `tracing` integration for the `actix-web` web framework.
 //!  - [`tracing-actix`] provides `tracing` integration for the `actix` actor
 //!    framework.
 //!  - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
@@ -807,6 +808,7 @@
 //! [`tracing-honeycomb`]: https://crates.io/crates/tracing-honeycomb
 //! [`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 //! [honeycomb.io]: https://www.honeycomb.io/
+//! [`tracing-actix-web`]: https://crates.io/crates/tracing-actix-web
 //! [`tracing-actix`]: https://crates.io/crates/tracing-actix
 //! [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 //! [`tracing-coz`]: https://crates.io/crates/tracing-coz
