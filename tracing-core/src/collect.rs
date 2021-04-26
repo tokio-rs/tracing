@@ -555,3 +555,58 @@ impl Interest {
         }
     }
 }
+
+impl Collect for Box<dyn Collect + 'static> {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        (&**self).enabled(metadata)
+    }
+
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        (&**self).new_span(span)
+    }
+
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        (&**self).record(span, values)
+    }
+
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        (&**self).record_follows_from(span, follows)
+    }
+
+    fn event(&self, event: &Event<'_>) {
+        (&**self).event(event)
+    }
+
+    fn enter(&self, span: &span::Id) {
+        (&**self).enter(span)
+    }
+
+    fn exit(&self, span: &span::Id) {
+        (&**self).exit(span)
+    }
+
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        (&**self).register_callsite(metadata)
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        (&**self).max_level_hint()
+    }
+
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        (&**self).clone_span(id)
+    }
+
+    #[allow(deprecated)]
+    fn drop_span(&self, id: span::Id) {
+        (&**self).drop_span(id)
+    }
+
+    fn try_close(&self, id: span::Id) -> bool {
+        (&**self).try_close(id)
+    }
+
+    fn current_span(&self) -> span::Current {
+        (&**self).current_span()
+    }
+}
