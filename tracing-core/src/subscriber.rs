@@ -1,7 +1,10 @@
 //! Subscribers collect and record trace data.
 use crate::{span, Event, LevelFilter, Metadata};
 
-use crate::stdlib::any::{Any, TypeId};
+use crate::stdlib::{
+    any::{Any, TypeId},
+    boxed::Box,
+};
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -557,5 +560,82 @@ impl Interest {
         } else {
             Interest::sometimes()
         }
+    }
+}
+
+impl Subscriber for Box<dyn Subscriber + Send + Sync + 'static> {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.as_ref().register_callsite(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().enabled(metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.as_ref().max_level_hint()
+    }
+
+    #[inline]
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        self.as_ref().new_span(span)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.as_ref().record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn enter(&self, span: &span::Id) {
+        self.as_ref().enter(span)
+    }
+
+    #[inline]
+    fn exit(&self, span: &span::Id) {
+        self.as_ref().exit(span)
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.as_ref().clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.as_ref().try_close(id)
+    }
+
+    #[inline]
+    #[allow(deprecated)]
+    fn drop_span(&self, id: span::Id) {
+        self.as_ref().try_close(id);
+    }
+
+    #[inline]
+    fn current_span(&self) -> span::Current {
+        self.as_ref().current_span()
+    }
+
+    #[inline]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        if id == TypeId::of::<Self>() {
+            return Some(self as *const Self as *const _);
+        }
+
+        self.as_ref().downcast_raw(id)
     }
 }
