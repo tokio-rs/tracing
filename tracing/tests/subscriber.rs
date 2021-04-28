@@ -9,10 +9,15 @@
 #[macro_use]
 extern crate tracing;
 use tracing::{
-    span,
+    field::display,
+    span::{Attributes, Id, Record},
     subscriber::{with_default, Interest, Subscriber},
     Event, Level, Metadata,
 };
+
+mod support;
+
+use self::support::*;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
@@ -33,25 +38,98 @@ fn event_macros_dont_infinite_loop() {
             true
         }
 
-        fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-            span::Id::from_u64(0xAAAA)
+        fn new_span(&self, _: &Attributes<'_>) -> Id {
+            Id::from_u64(0xAAAA)
         }
 
-        fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+        fn record(&self, _: &Id, _: &Record<'_>) {}
 
-        fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+        fn record_follows_from(&self, _: &Id, _: &Id) {}
 
         fn event(&self, event: &Event<'_>) {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
             event!(Level::TRACE, baz = false);
         }
 
-        fn enter(&self, _: &span::Id) {}
+        fn enter(&self, _: &Id) {}
 
-        fn exit(&self, _: &span::Id) {}
+        fn exit(&self, _: &Id) {}
     }
 
     with_default(TestSubscriber, || {
         event!(Level::TRACE, foo = false);
     })
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn boxed_subscriber() {
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span::mock().named("foo").with_field(
+                field::mock("bar")
+                    .with_value(&display("hello from my span"))
+                    .only(),
+            ),
+        )
+        .enter(span::mock().named("foo"))
+        .exit(span::mock().named("foo"))
+        .drop_span(span::mock().named("foo"))
+        .done()
+        .run_with_handle();
+    let subscriber: Box<dyn Subscriber + Send + Sync + 'static> = Box::new(subscriber);
+
+    with_default(subscriber, || {
+        let from = "my span";
+        let span = span!(
+            Level::TRACE,
+            "foo",
+            bar = format_args!("hello from {}", from)
+        );
+        span.in_scope(|| {});
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn arced_subscriber() {
+    use std::sync::Arc;
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span::mock().named("foo").with_field(
+                field::mock("bar")
+                    .with_value(&display("hello from my span"))
+                    .only(),
+            ),
+        )
+        .enter(span::mock().named("foo"))
+        .exit(span::mock().named("foo"))
+        .drop_span(span::mock().named("foo"))
+        .event(
+            event::mock()
+                .with_fields(field::mock("message").with_value(&display("hello from my event"))),
+        )
+        .done()
+        .run_with_handle();
+    let subscriber: Arc<dyn Subscriber + Send + Sync + 'static> = Arc::new(subscriber);
+
+    // Test using a clone of the `Arc`ed subscriber
+    with_default(subscriber.clone(), || {
+        let from = "my span";
+        let span = span!(
+            Level::TRACE,
+            "foo",
+            bar = format_args!("hello from {}", from)
+        );
+        span.in_scope(|| {});
+    });
+
+    with_default(subscriber, || {
+        tracing::info!("hello from my event");
+    });
+
+    handle.assert_finished();
 }
