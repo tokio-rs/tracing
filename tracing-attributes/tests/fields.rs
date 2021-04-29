@@ -120,7 +120,7 @@ fn parameters_with_fields() {
     let span = span::mock().with_field(
         mock("foo")
             .with_value(&"bar")
-            .and(mock("param").with_value(&format_args!("1")))
+            .and(mock("param").with_value(&1u32))
             .only(),
     );
     run_test(span, || {
