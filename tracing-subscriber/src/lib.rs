@@ -160,10 +160,12 @@ pub use fmt::fmt;
 use std::default::Default;
 /// Tracks the currently executing span on a per-thread basis.
 #[derive(Debug)]
+#[deprecated(since = "0.2.18", note = "Will be removed in v0.3")]
 pub struct CurrentSpan {
     current: thread::Local<Vec<Id>>,
 }
 
+#[allow(deprecated)]
 impl CurrentSpan {
     /// Returns a new `CurrentSpan`.
     pub fn new() -> Self {
@@ -194,6 +196,7 @@ impl CurrentSpan {
     }
 }
 
+#[allow(deprecated)]
 impl Default for CurrentSpan {
     fn default() -> Self {
         Self::new()
