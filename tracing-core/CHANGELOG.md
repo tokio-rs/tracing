@@ -1,3 +1,22 @@
+# 0.1.18 (April 30, 2010)
+
+### Added
+
+- `Subscriber` impl for `Box<dyn Subscriber + Send + Sync + 'static>` ([#1358])
+- `Subscriber` impl for `Arc<dyn Subscriber + Send + Sync + 'static>` ([#1374])
+- Symmetric `From` impls for existing `Into` impls on `Current` and `Option<Id>`
+  ([#1335])
+- `Attributes::fields` accessor that returns the set of fields defined on a
+  span's `Attributes` ([#1331])
+
+
+Thanks to @Folyd for contributing to this release!
+
+[#1358]: https://github.com/tokio-rs/tracing/pull/1358
+[#1374]: https://github.com/tokio-rs/tracing/pull/1374
+[#1335]: https://github.com/tokio-rs/tracing/pull/1335
+[#1331]: https://github.com/tokio-rs/tracing/pull/1331
+
 # 0.1.17 (September 28, 2020)
 
 ### Fixed
