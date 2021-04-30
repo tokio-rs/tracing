@@ -209,7 +209,10 @@ where
 
             let current_span = if self.format.display_current_span || self.format.display_span_list
             {
-                ctx.ctx.current_span().id().and_then(|id| ctx.ctx.span(id))
+                event
+                    .parent()
+                    .and_then(|id| ctx.span(id))
+                    .or_else(|| ctx.lookup_current())
             } else {
                 None
             };
@@ -496,7 +499,8 @@ impl<'a> fmt::Debug for WriteAdaptor<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fmt::{test::MockMakeWriter, time::FormatTime, CollectorBuilder};
+    use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder};
+
     use tracing::{self, collect::with_default};
 
     use std::fmt;
@@ -613,31 +617,13 @@ mod test {
         // This test reproduces issue #707, where using `Span::record` causes
         // any events inside the span to be ignored.
 
-        let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt()
-            .json()
-            .with_writer(make_writer.clone())
-            .finish();
-
-        let parse_buf = || -> serde_json::Value {
-            let buf = String::from_utf8(make_writer.buf().to_vec()).unwrap();
-            let json = buf
-                .lines()
-                .last()
-                .expect("expected at least one line to be written!");
-            match serde_json::from_str(&json) {
-                Ok(v) => v,
-                Err(e) => panic!(
-                    "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",
-                    e, json
-                ),
-            }
-        };
+        let buffer = MockMakeWriter::default();
+        let subscriber = crate::fmt().json().with_writer(buffer.clone()).finish();
 
         with_default(subscriber, || {
             tracing::info!("an event outside the root span");
             assert_eq!(
-                parse_buf()["fields"]["message"],
+                parse_as_json(&buffer)["fields"]["message"],
                 "an event outside the root span"
             );
 
@@ -647,10 +633,111 @@ mod test {
 
             tracing::info!("an event inside the root span");
             assert_eq!(
-                parse_buf()["fields"]["message"],
+                parse_as_json(&buffer)["fields"]["message"],
                 "an event inside the root span"
             );
         });
+    }
+
+    #[test]
+    fn json_span_event_show_correct_context() {
+        let buffer = MockMakeWriter::default();
+        let subscriber = collector()
+            .with_writer(buffer.clone())
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(false)
+            .with_span_events(FmtSpan::FULL)
+            .finish();
+
+        with_default(subscriber, || {
+            let context = "parent";
+            let parent_span = tracing::info_span!("parent_span", context);
+
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "new");
+            assert_eq!(event["span"]["context"], "parent");
+
+            let _parent_enter = parent_span.enter();
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "enter");
+            assert_eq!(event["span"]["context"], "parent");
+
+            let context = "child";
+            let child_span = tracing::info_span!("child_span", context);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "new");
+            assert_eq!(event["span"]["context"], "child");
+
+            let _child_enter = child_span.enter();
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "enter");
+            assert_eq!(event["span"]["context"], "child");
+
+            drop(_child_enter);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "exit");
+            assert_eq!(event["span"]["context"], "child");
+
+            drop(child_span);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "close");
+            assert_eq!(event["span"]["context"], "child");
+
+            drop(_parent_enter);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "exit");
+            assert_eq!(event["span"]["context"], "parent");
+
+            drop(parent_span);
+            let event = parse_as_json(&buffer);
+            assert_eq!(event["fields"]["message"], "close");
+            assert_eq!(event["span"]["context"], "parent");
+        });
+    }
+
+    #[test]
+    fn json_span_event_with_no_fields() {
+        // Check span events serialize correctly.
+        // Discussion: https://github.com/tokio-rs/tracing/issues/829#issuecomment-661984255
+        //
+        let buffer = MockMakeWriter::default();
+        let subscriber = collector()
+            .with_writer(buffer.clone())
+            .flatten_event(false)
+            .with_current_span(false)
+            .with_span_list(false)
+            .with_span_events(FmtSpan::FULL)
+            .finish();
+
+        with_default(subscriber, || {
+            let span = tracing::info_span!("valid_json");
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "new");
+
+            let _enter = span.enter();
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "enter");
+
+            drop(_enter);
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "exit");
+
+            drop(span);
+            assert_eq!(parse_as_json(&buffer)["fields"]["message"], "close");
+        });
+    }
+
+    fn parse_as_json(buffer: &MockMakeWriter) -> serde_json::Value {
+        let buf = String::from_utf8(buffer.buf().to_vec()).unwrap();
+        let json = buf
+            .lines()
+            .last()
+            .expect("expected at least one line to be written!");
+        match serde_json::from_str(&json) {
+            Ok(v) => v,
+            Err(e) => panic!(
+                "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",
+                e, json
+            ),
+        }
     }
 
     fn test_json<T>(

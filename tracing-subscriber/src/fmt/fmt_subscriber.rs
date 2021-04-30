@@ -1006,7 +1006,7 @@ mod test {
         });
         let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
-            " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
+            "span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
         );
     }
