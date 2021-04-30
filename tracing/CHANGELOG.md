@@ -1,3 +1,35 @@
+# 0.1.26 (April 30, 2021)
+
+### Fixed
+
+- **attributes**: Compatibility between `#[instrument]` and `async-trait`
+  v0.1.43 and newer ([#1228])
+- Several documentation fixes ([#1305], [#1344])
+### Added
+
+- `Subscriber` impl for `Box<dyn Subscriber + Send + Sync + 'static>` ([#1358])
+- `Subscriber` impl for `Arc<dyn Subscriber + Send + Sync + 'static>` ([#1374])
+- Symmetric `From` impls for existing `Into` impls on `span::Current`, `Span`,
+  and `Option<Id>` ([#1335], [#1338])
+- `From<EnteredSpan>` implementation for `Option<Id>`, allowing `EnteredSpan` to
+  be used in a `span!` macro's `parent:` field ([#1325])
+- `Attributes::fields` accessor that returns the set of fields defined on a
+  span's `Attributes` ([#1331])
+
+
+Thanks to @Folyd, @nightmared, and new contributors @rmsc and @Fishrock123 for
+contributing to this release!
+
+[#1227]: https://github.com/tokio-rs/tracing/pull/1228
+[#1305]: https://github.com/tokio-rs/tracing/pull/1305
+[#1325]: https://github.com/tokio-rs/tracing/pull/1325
+[#1338]: https://github.com/tokio-rs/tracing/pull/1338
+[#1344]: https://github.com/tokio-rs/tracing/pull/1344
+[#1358]: https://github.com/tokio-rs/tracing/pull/1358
+[#1374]: https://github.com/tokio-rs/tracing/pull/1374
+[#1335]: https://github.com/tokio-rs/tracing/pull/1335
+[#1331]: https://github.com/tokio-rs/tracing/pull/1331
+
 # 0.1.25 (February 23, 2021)
 
 ### Added
