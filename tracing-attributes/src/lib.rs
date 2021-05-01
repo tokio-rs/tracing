@@ -96,10 +96,14 @@ use syn::{
 /// the function is called.
 ///
 /// Unless overriden, a span with `info` level will be generated.
-/// The generated span's name will be the name of the function. Any arguments
-/// to that function will be recorded as fields using [`fmt::Debug`] except to
-/// primitive types including `bool`, `u8`, `i8`, `u16`, `i16`, `u32`, `i32`,
-/// `u64`, `i64`, `usize`, and `isize`.
+/// The generated span's name will be the name of the function.
+/// By default, all arguments to the function are included as fields on the
+/// span. Arguments that are `tracing` [primitive types] implementing the
+/// [`Value` trait] will be recorded as fields of that type. Types which do
+/// not implement `Value` will be recorded using [`std::fmt::Debug`].
+///
+/// [primitive types]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html#foreign-impls
+/// [`Value` trait]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html
 ///
 /// To skip recording a function's or method's argument, pass the argument's name
 /// to the `skip` argument on the `#[instrument]` macro. For example,
@@ -864,18 +868,40 @@ impl Parse for Level {
     }
 }
 
-/// A enum indicates the field should be recorded as `Value` or `Debug`.
+/// Indicates whether a field should be recorded as `Value` or `Debug`.
 enum RecordType {
-    /// Represents the field should be recorded as it is.
+    /// The field should be recorded using its `Value` implementation.
     Value,
-    /// Represents the field should be recorded as `tracing::field::debug()`.
+    /// The field should be recorded using `tracing::field::debug()`.
     Debug,
 }
 
 impl RecordType {
     /// Array of primitive types which should be recorded as [RecordType::Value].
-    const TYPES_FOR_VALUE: [&'static str; 11] = [
-        "bool", "u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "usize", "isize",
+    const TYPES_FOR_VALUE: [&'static str; 23] = [
+        "bool",
+        "str",
+        "u8",
+        "i8",
+        "u16",
+        "i16",
+        "u32",
+        "i32",
+        "u64",
+        "i64",
+        "usize",
+        "isize",
+        "NonZeroU8",
+        "NonZeroI8",
+        "NonZeroU16",
+        "NonZeroI16",
+        "NonZeroU32",
+        "NonZeroI32",
+        "NonZeroU64",
+        "NonZeroI64",
+        "NonZeroUsize",
+        "NonZeroIsize",
+        "Wrapping",
     ];
 
     /// Parse `RecordType` from [syn::Type] by looking up
@@ -887,11 +913,11 @@ impl RecordType {
                     .segments
                     .iter()
                     .last()
-                    .filter(|path_segment| {
+                    .map(|path_segment| {
                         let ident = path_segment.ident.to_string();
                         Self::TYPES_FOR_VALUE.iter().any(|&t| t == ident)
                     })
-                    .is_some() =>
+                    .unwrap_or(false) =>
             {
                 RecordType::Value
             }
@@ -907,6 +933,10 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
     match pat {
         Pat::Ident(PatIdent { ident, .. }) => Box::new(iter::once((ident, record_type))),
         Pat::Reference(PatReference { pat, .. }) => param_names(*pat, record_type),
+        // We can't get the concrete type of fields in the struct/tuple
+        // patterns by using `syn`. e.g. `fn foo(Foo { x, y }: Foo) {}`.
+        // Therefore, the struct/tuple patterns in the arguments will just
+        // always be recorded as `RecordType::Debug`.
         Pat::Struct(PatStruct { fields, .. }) => Box::new(
             fields
                 .into_iter()
