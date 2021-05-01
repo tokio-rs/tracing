@@ -1,4 +1,32 @@
-# 0.2.17 (March 12, 2020)
+# 0.2.18 (April 30, 2021)
+
+### Deprecated
+
+- Deprecated the `CurrentSpan` type, which is inefficient and largely superseded
+  by the `registry` API ([#1321])
+
+### Fixed
+
+- **json**: Invalid JSON emitted for events in spans with no fields ([#1333])
+- **json**: Missing span data for synthesized new span, exit, and close events
+  ([#1334])
+- **fmt**: Extra space before log lines when timestamps are disabled ([#1355])
+
+### Added
+
+- **env-filter**: Support for filters on spans whose names contain any
+  characters other than `{` and `]` ([#1368])
+
+Thanks to @Folyd, and new contributors @akinnane and @aym-v for contributing to
+this release!
+
+[#1321]: https://github.com/tokio-rs/tracing/pull/1321
+[#1333]: https://github.com/tokio-rs/tracing/pull/1333
+[#1334]: https://github.com/tokio-rs/tracing/pull/1334
+[#1355]: https://github.com/tokio-rs/tracing/pull/1355
+[#1368]: https://github.com/tokio-rs/tracing/pull/1368
+
+# 0.2.17 (March 12, 2021)
 
 ### Fixed
 
@@ -24,7 +52,7 @@ Thanks to new contributors @cratelyn, @dignati, and @zicklag, as well as @Folyd,
 [#1290]: https://github.com/tokio-rs/tracing/pull/1290
 [#1277]: https://github.com/tokio-rs/tracing/pull/1277
 
-# 0.2.16 (February 19, 2020)
+# 0.2.16 (February 19, 2021)
 
 ### Fixed
 
