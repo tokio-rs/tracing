@@ -1268,14 +1268,14 @@ pub(crate) mod tests {
             .and_then(StringSubscriber2("subscriber_2".into()))
             .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
-        let subscriber =
-            Collect::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber>(&s)
+            .expect("subscriber 2 should downcast");
         assert_eq!(&subscriber.0, "subscriber_1");
-        let subscriber =
-            Collect::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber2>(&s)
+            .expect("subscriber 2 should downcast");
         assert_eq!(&subscriber.0, "subscriber_2");
-        let subscriber =
-            Collect::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber3>(&s)
+            .expect("subscriber 3 should downcast");
         assert_eq!(&subscriber.0, "subscriber_3");
     }
 }
