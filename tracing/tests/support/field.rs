@@ -77,6 +77,14 @@ impl From<MockField> for Expect {
 }
 
 impl Expect {
+    /// Expect a span with no fields attached to it.
+    pub fn no_fields() -> Self {
+        Self {
+            fields: Default::default(),
+            only: true,
+        }
+    }
+
     pub fn and(mut self, field: MockField) -> Self {
         self.fields.insert(field.name, field.value);
         self

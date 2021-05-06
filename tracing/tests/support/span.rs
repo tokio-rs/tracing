@@ -97,6 +97,14 @@ impl MockSpan {
         }
     }
 
+    pub fn with_no_fields(self) -> NewSpan {
+        NewSpan {
+            span: self,
+            fields: field::Expect::no_fields(),
+            ..Default::default()
+        }
+    }
+
     pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata<'_>) {
         self.metadata.check(actual, format_args!("span {}", self));
         assert!(actual.is_span(), "expected a span but got {:?}", actual);

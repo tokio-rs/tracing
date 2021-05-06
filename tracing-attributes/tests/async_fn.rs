@@ -95,7 +95,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestA for TestImpl {
-        #[instrument]
+        #[instrument(fields(?self, ?v))]
         async fn foo(&mut self, v: usize) {
             self.baz().await;
             self.0 = v;
@@ -105,7 +105,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestB for TestImpl {
-        #[instrument]
+        #[instrument(fields(?self))]
         async fn bar(&self) {
             tracing::trace!(val = self.0);
         }
@@ -113,7 +113,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestC for TestImpl {
-        #[instrument(skip(self))]
+        #[instrument]
         async fn baz(&self) {
             tracing::trace!(val = self.0);
         }
@@ -129,7 +129,7 @@ fn async_fn_with_async_trait() {
                 .with_field(field::mock("v")),
         )
         .enter(span.clone())
-        .new_span(span3.clone())
+        .new_span(span3.clone().with_no_fields())
         .enter(span3.clone())
         .event(event::mock().with_fields(field::mock("val").with_value(&2u64)))
         .exit(span3.clone())
@@ -173,7 +173,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
+        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5, ?_v))]
         async fn call(&mut self, _v: usize) {}
     }
 
@@ -299,7 +299,7 @@ fn out_of_scope_fields() {
     }
 
     impl Thing {
-        #[instrument(skip(self, _req), fields(app_id))]
+        #[instrument(fields(app_id))]
         fn call(&mut self, _req: ()) -> Pin<Box<dyn Future<Output = Arc<()>> + Send + Sync>> {
             // ...
             let metrics = self.metrics.clone();
