@@ -96,7 +96,7 @@ fn main() {
         // build but do not install the subscriber.
         .finish();
 
-    tracing::collector::with_default(collector, || {
+    tracing::subscriber::with_default(collector, || {
         info!("This will be logged to stdout");
     });
     info!("This will _not_ be logged to stdout");
