@@ -51,5 +51,5 @@ inferno = "0.10.0"
 tempdir = "0.3.7"
 
 # opentelemetry example
-opentelemetry = { version = "0.13", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.14", default-features = false, features = ["trace"] }
 opentelemetry-jaeger = "0.12"
