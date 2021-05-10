@@ -52,4 +52,4 @@ tempdir = "0.3.7"
 
 # opentelemetry example
 opentelemetry = { version = "0.13", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.12"
+opentelemetry-jaeger = "0.13"
