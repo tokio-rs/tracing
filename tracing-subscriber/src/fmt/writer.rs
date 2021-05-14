@@ -1,9 +1,11 @@
 //! Abstractions for creating [`io::Write`] instances.
 //!
 //! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-
-use io::Write;
-use std::{fmt::Debug, io};
+use std::{
+    fmt::Debug,
+    io::{self, Write},
+};
+use tracing_core::Metadata;
 
 /// A type that can create [`io::Write`] instances.
 ///
@@ -13,12 +15,75 @@ use std::{fmt::Debug, io};
 /// This trait is already implemented for function pointers and immutably-borrowing closures that
 /// return an instance of [`io::Write`], such as [`io::stdout`] and [`io::stderr`].
 ///
-/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-/// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
-/// [`fmt::Layer`]: ../../fmt/struct.Layer.html
-/// [`Event`]: https://docs.rs/tracing-core/0.1.5/tracing_core/event/struct.Event.html
-/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
-/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
+/// The [`MakeWriter::make_writer_for`] method takes [`Metadata`] describing a
+/// span or event and returns a writer. `MakeWriter`s can optionally provide
+/// implementations of this method with behaviors that differ based on the span
+/// or event being written. For example, events at different [levels] might be
+/// written to different output streams, or data from different [targets] might
+/// be written to separate log files. When the `MakeWriter` has no custom
+/// behavior based on metadata, the default implementation of `make_writer_for`
+/// simply calls `self.make_writer()`, ignoring the metadata. Therefore, when
+/// metadata _is_ available, callers should prefer to call `make_writer_for`,
+/// passing in that metadata, so that the `MakeWriter` implementation can choose
+/// the appropriate behavior.
+///
+/// # Examples
+///
+/// The simplest usage is to pass in a named function that returns a writer. For
+/// example, to log all events to stderr, we could write:
+/// ```
+/// let subscriber = tracing_subscriber::fmt()
+///     .with_writer(std::io::stderr)
+///     .finish();
+/// # drop(subscriber);
+/// ```
+///
+/// Any function that returns a writer can be used:
+///
+/// ```
+/// fn make_my_great_writer() -> impl std::io::Write {
+///     // ...
+///     # std::io::stdout()
+/// }
+///
+/// let subscriber = tracing_subscriber::fmt()
+///     .with_writer(make_my_great_writer)
+///     .finish();
+/// # drop(subscriber);
+/// ```
+///
+/// A closure can be used to introduce arbitrary logic into how the writer is
+/// created. Consider the (admittedly rather silly) example of sending every 5th
+/// event to stderr, and all other events to stdout:
+///
+/// ```
+/// use std::io;
+/// use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+///
+/// let n = AtomicUsize::new(0);
+/// let subscriber = tracing_subscriber::fmt()
+///     .with_writer(move || -> Box<dyn io::Write> {
+///         if n.fetch_add(1, Relaxed) % 5 == 0 {
+///             Box::new(io::stderr())
+///         } else {
+///             Box::new(io::stdout())
+///        }
+///     })
+///     .finish();
+/// # drop(subscriber);
+/// ```
+///
+/// [`io::Write`]: std::io::Write
+/// [`fmt::Collector`]: super::super::fmt::Collector
+/// [`fmt::Subscriber`]: super::super::fmt::Subscriber
+/// [`Event`]: tracing_core::event::Event
+/// [`io::stdout`]: std::io::stdout()
+/// [`io::stderr`]: std::io::stderr()
+/// [mutex]: std::sync::Mutex
+/// [`MakeWriter::make_writer_for`]: MakeWriter::make_writer_for
+/// [`Metadata`]: tracing_core::Metadata
+/// [levels]: tracing_core::Level
+/// [targets]: tracing_core::Metadata::target
 pub trait MakeWriter {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
@@ -36,11 +101,100 @@ pub trait MakeWriter {
     /// [`MakeWriter`] to improve performance.
     ///
     /// [`Writer`]: #associatedtype.Writer
-    /// [`fmt::Layer`]: ../../fmt/struct.Layer.html
-    /// [`fmt::Subscriber`]: ../../fmt/struct.Subscriber.html
-    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-    /// [`MakeWriter`]: trait.MakeWriter.html
+    /// [`fmt::Layer`]: crate::fmt::Layer
+    /// [`fmt::Subscriber`]: crate::fmt::Subscriber
+    /// [`io::Write`]: std::io::Write
     fn make_writer(&self) -> Self::Writer;
+
+    /// Returns a [`Writer`] for writing data from the span or event described
+    /// by the provided [`Metadata`].
+    ///
+    /// By default, this calls [`self.make_writer()`][make_writer], ignoring
+    /// the provided metadata, but implementations can override this to provide
+    /// metadata-specific behaviors.
+    ///
+    /// This method allows `MakeWriter` implementations to implement different
+    /// behaviors based on the span or event being written. The `MakeWriter`
+    /// type might return different writers based on the provided metadata, or
+    /// might write some values to the writer before or after providing it to
+    /// the caller.
+    ///
+    /// For example, we might want to write data from spans and events at the
+    /// [`ERROR`] and [`WARN`] levels to `stderr`, and data from spans or events
+    /// at lower levels to stdout:
+    ///
+    /// ```
+    /// use std::io::{self, Stdout, Stderr};
+    /// use tracing_subscriber::fmt::writer::MakeWriter;
+    /// use tracing_core::{Metadata, Level};
+    ///
+    /// pub struct MyMakeWriter {}
+    ///
+    /// /// A lock on either stdout or stderr, depending on the verbosity level
+    /// /// of the event being written.
+    /// pub enum Stdio {
+    ///     Stdout(Stdout),
+    ///     Stderr(Stderr),
+    /// }
+    ///
+    /// impl io::Write for Stdio {
+    ///     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    ///         match self {
+    ///             Stdio::Stdout(io) => io.write(buf),
+    ///             Stdio::Stderr(io) => io.write(buf),
+    ///         }
+    ///     }
+    ///
+    ///     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+    ///         // ...
+    ///         # match self {
+    ///         #     Stdio::Stdout(io) => io.write_all(buf),
+    ///         #     Stdio::Stderr(io) => io.write_all(buf),
+    ///         # }
+    ///     }
+    ///
+    ///     fn flush(&mut self) -> io::Result<()> {
+    ///         // ...
+    ///         # match self {
+    ///         #     Stdio::Stdout(io) => io.flush(),
+    ///         #     Stdio::Stderr(io) => io.flush(),
+    ///         # }
+    ///     }
+    /// }
+    ///
+    /// impl MakeWriter for MyMakeWriter {
+    ///     type Writer = Stdio;
+    ///
+    ///     fn make_writer(&self) -> Self::Writer {
+    ///         // We must have an implementation of `make_writer` that makes
+    ///         // a "default" writer without any configuring metadata. Let's
+    ///         // just return stdout in that case.
+    ///         Stdio::Stdout(io::stdout())
+    ///     }
+    ///
+    ///     fn make_writer_for(&self, meta: &Metadata<'_>) -> Self::Writer {
+    ///         // Here's where we can implement our special behavior. We'll
+    ///         // check if the metadata's verbosity level is WARN or ERROR,
+    ///         // and return stderr in that case.
+    ///         if meta.level() <= &Level::WARN {
+    ///             return Stdio::Stderr(io::stderr());
+    ///         }
+    ///
+    ///         // Otherwise, we'll return stdout.
+    ///         Stdio::Stdout(io::stdout())
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// [`Writer`]: MakeWriter::Writer
+    /// [`Metadata`]: tracing_core::Metadata
+    /// [make_writer]: MakeWriter::make_writer
+    /// [`WARN`]: tracing_core::Level::WARN
+    /// [`ERROR`]: tracing_core::Level::ERROR
+    fn make_writer_for(&self, meta: &Metadata<'_>) -> Self::Writer {
+        let _ = meta;
+        self.make_writer()
+    }
 }
 
 impl<F, W> MakeWriter for F
@@ -162,6 +316,10 @@ impl MakeWriter for BoxMakeWriter {
     fn make_writer(&self) -> Self::Writer {
         self.inner.make_writer()
     }
+
+    fn make_writer_for(&self, meta: &Metadata<'_>) -> Self::Writer {
+        self.inner.make_writer_for(meta)
+    }
 }
 
 struct Boxed<M>(M);
@@ -174,7 +332,13 @@ where
     type Writer = Box<dyn Write>;
 
     fn make_writer(&self) -> Self::Writer {
-        Box::new(self.0.make_writer())
+        let w = self.0.make_writer();
+        Box::new(w)
+    }
+
+    fn make_writer_for(&self, meta: &Metadata<'_>) -> Self::Writer {
+        let w = self.0.make_writer_for(meta);
+        Box::new(w)
     }
 }
 

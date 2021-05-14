@@ -740,7 +740,7 @@ where
 
             let ctx = self.make_ctx(ctx);
             if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
+                let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
@@ -913,11 +913,12 @@ impl Timings {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
         layer::Layer as _,
-        test::MockWriter,
+        test::{MockMakeWriter, MockWriter},
         time,
     };
     use crate::Registry;
@@ -1107,6 +1108,72 @@ mod test {
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: close timing timing\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn make_writer_based_on_meta() {
+        lazy_static! {
+            static ref BUF1: Mutex<Vec<u8>> = Mutex::new(vec![]);
+            static ref BUF2: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        }
+        struct MakeByTarget<'a> {
+            make_writer1: MockMakeWriter<'a>,
+            make_writer2: MockMakeWriter<'a>,
+        }
+
+        impl<'a> MakeWriter for MakeByTarget<'a> {
+            type Writer = MockWriter<'a>;
+
+            fn make_writer(&self) -> Self::Writer {
+                self.make_writer1.make_writer()
+            }
+
+            fn make_writer_for(&self, meta: &Metadata<'_>) -> Self::Writer {
+                if meta.target() == "writer2" {
+                    return self.make_writer2.make_writer();
+                }
+                self.make_writer()
+            }
+        }
+
+        let make_writer1 = MockMakeWriter::new(&BUF1);
+        let make_writer2 = MockMakeWriter::new(&BUF2);
+
+        let make_writer = MakeByTarget {
+            make_writer1: make_writer1.clone(),
+            make_writer2: make_writer2.clone(),
+        };
+
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_target(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::CLOSE)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("writer1_span", x = 42);
+            let _e = span1.enter();
+            tracing::info!(target: "writer2", "hello writer2!");
+            let span2 = tracing::info_span!(target: "writer2", "writer2_span");
+            let _e = span2.enter();
+            tracing::warn!(target: "writer1", "hello writer1!");
+        });
+
+        let actual = sanitize_timings(make_writer1.get_string());
+        assert_eq!(
+            "fake time writer1_span{x=42}:writer2_span: hello writer1!\n\
+             fake time writer1_span{x=42}: close timing timing\n",
+            actual.as_str()
+        );
+        let actual = sanitize_timings(make_writer2.get_string());
+        assert_eq!(
+            "fake time writer1_span{x=42}: hello writer2!\n\
+             fake time writer1_span{x=42}:writer2_span: close timing timing\n",
             actual.as_str()
         );
     }
