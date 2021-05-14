@@ -1135,11 +1135,7 @@ impl<'a, S> Context<'a, S> {
 impl<'a, S> Clone for Context<'a, S> {
     #[inline]
     fn clone(&self) -> Self {
-        let subscriber = if let Some(ref subscriber) = self.subscriber {
-            Some(*subscriber)
-        } else {
-            None
-        };
+        let subscriber = self.subscriber.as_ref().copied();
         Context { subscriber }
     }
 }
@@ -1271,8 +1267,8 @@ pub(crate) mod tests {
             .and_then(NopLayer)
             .and_then(NopLayer)
             .with_subscriber(StringSubscriber("subscriber".into()));
-        let subscriber =
-            Subscriber::downcast_ref::<StringSubscriber>(&s).expect("subscriber should downcast");
+        let subscriber = <dyn Subscriber>::downcast_ref::<StringSubscriber>(&s)
+            .expect("subscriber should downcast");
         assert_eq!(&subscriber.0, "subscriber");
     }
 
@@ -1282,11 +1278,14 @@ pub(crate) mod tests {
             .and_then(StringLayer2("layer_2".into()))
             .and_then(StringLayer3("layer_3".into()))
             .with_subscriber(NopSubscriber);
-        let layer = Subscriber::downcast_ref::<StringLayer>(&s).expect("layer 1 should downcast");
+        let layer =
+            <dyn Subscriber>::downcast_ref::<StringLayer>(&s).expect("layer 1 should downcast");
         assert_eq!(&layer.0, "layer_1");
-        let layer = Subscriber::downcast_ref::<StringLayer2>(&s).expect("layer 2 should downcast");
+        let layer =
+            <dyn Subscriber>::downcast_ref::<StringLayer2>(&s).expect("layer 2 should downcast");
         assert_eq!(&layer.0, "layer_2");
-        let layer = Subscriber::downcast_ref::<StringLayer3>(&s).expect("layer 3 should downcast");
+        let layer =
+            <dyn Subscriber>::downcast_ref::<StringLayer3>(&s).expect("layer 3 should downcast");
         assert_eq!(&layer.0, "layer_3");
     }
 }
