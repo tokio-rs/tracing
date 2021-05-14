@@ -1189,6 +1189,11 @@ mod test {
         pub(crate) fn buf(&self) -> MutexGuard<'a, Vec<u8>> {
             self.buf.lock().unwrap()
         }
+
+        pub(crate) fn get_string(&self) -> String {
+            String::from_utf8(self.buf.lock().unwrap().clone())
+                .expect("subscriber must write valid UTF-8")
+        }
     }
 
     impl<'a> MakeWriter for MockMakeWriter<'a> {
