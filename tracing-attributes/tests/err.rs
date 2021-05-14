@@ -152,7 +152,7 @@ fn impl_trait_return_type() {
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("x").with_value(&format_args!("10")).only()),
+                .with_field(field::mock("x").with_value(&10usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
