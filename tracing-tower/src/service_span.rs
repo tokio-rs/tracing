@@ -57,7 +57,7 @@ mod layer {
 
         fn layer(&self, inner: S) -> Self::Service {
             let span = self.get_span.span_for(&inner);
-            Service { span, inner }
+            Service { inner, span }
         }
     }
 
@@ -221,7 +221,7 @@ pub mod make {
 
 impl<S> Service<S> {
     pub fn new(inner: S, span: tracing::Span) -> Self {
-        Self { span, inner }
+        Self { inner, span }
     }
 }
 
