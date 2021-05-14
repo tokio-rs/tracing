@@ -827,7 +827,7 @@ where
         span: Option<&'a span::Id>,
         ansi: bool,
     ) -> Self {
-        Self { ctx, ansi, span }
+        Self { ctx, span, ansi }
     }
 
     #[cfg(not(feature = "ansi"))]
