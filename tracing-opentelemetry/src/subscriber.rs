@@ -210,7 +210,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
             SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
-            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned()),
+            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
             _ => {
                 let attribute = KeyValue::new(field.name(), value.to_string());
                 if let Some(attributes) = &mut self.0.attributes {
@@ -233,7 +233,9 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_STATUS_CODE_FIELD => {
                 self.0.status_code = str_to_status_code(&format!("{:?}", value))
             }
-            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(format!("{:?}", value)),
+            SPAN_STATUS_MESSAGE_FIELD => {
+                self.0.status_message = Some(format!("{:?}", value).into())
+            }
             _ => {
                 let attribute = Key::new(field.name()).string(format!("{:?}", value));
                 if let Some(attributes) = &mut self.0.attributes {
@@ -410,25 +412,12 @@ where
             .tracer
             .span_builder(attrs.metadata().name())
             .with_start_time(SystemTime::now())
+            .with_parent_context(self.parent_context(attrs, &ctx))
             // Eagerly assign span id so children have stable parent id
             .with_span_id(self.tracer.new_span_id());
 
-        // Set optional parent span context from attrs
-        builder.parent_context = Some(self.parent_context(attrs, &ctx));
-
-        // Ensure trace id exists so spans are associated with the proper trace.
-        //
-        // Parent contexts are in 4 possible states, first two require a new
-        // trace ids, second two have existing trace ids:
-        //   * Empty - explicit new tracing root span, needs new id
-        //   * A parent context containing no active or remote span, needs new id
-        //   * A parent context containing an active span, defer to that span's trace
-        //   * A parent context containing a remote span context, defer to remote trace
-        let needs_trace_id = builder.parent_context.as_ref().map_or(true, |cx| {
-            !cx.has_active_span() && cx.remote_span_context().is_none()
-        });
-
-        if needs_trace_id {
+        // Record new trace id if there is no active parent span
+        if !builder.parent_context.has_active_span() {
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
@@ -532,6 +521,7 @@ where
                     Key::new("level").string(meta.level().to_string()),
                     Key::new("target").string(meta.target().to_string()),
                 ],
+                0,
             );
             event.record(&mut SpanEventVisitor(&mut otel_event));
 
@@ -541,10 +531,10 @@ where
                     builder.status_code = Some(otel::StatusCode::Error);
                 }
 
-                if let Some(ref mut events) = builder.message_events {
+                if let Some(ref mut events) = builder.events {
                     events.push(otel_event);
                 } else {
-                    builder.message_events = Some(vec![otel_event]);
+                    builder.events = Some(vec![otel_event]);
                 }
             }
         };
@@ -611,6 +601,7 @@ impl Timings {
 mod tests {
     use super::*;
     use opentelemetry::trace::SpanKind;
+    use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
@@ -622,11 +613,17 @@ mod tests {
         fn invalid(&self) -> Self::Span {
             otel::NoopSpan::new()
         }
-        fn start_with_context(&self, _name: &str, _context: OtelContext) -> Self::Span {
+        fn start_with_context<T>(&self, _name: T, _context: OtelContext) -> Self::Span
+        where
+            T: Into<Cow<'static, str>>,
+        {
             self.invalid()
         }
-        fn span_builder(&self, name: &str) -> otel::SpanBuilder {
-            otel::SpanBuilder::from_name(name.to_string())
+        fn span_builder<T>(&self, name: T) -> otel::SpanBuilder
+        where
+            T: Into<Cow<'static, str>>,
+        {
+            otel::SpanBuilder::from_name(name)
         }
         fn build(&self, builder: otel::SpanBuilder) -> Self::Span {
             *self.0.lock().unwrap() = Some(builder);
@@ -649,17 +646,17 @@ mod tests {
     #[derive(Debug, Clone)]
     struct TestSpan(otel::SpanContext);
     impl otel::Span for TestSpan {
-        fn add_event_with_timestamp(&self, _: String, _: SystemTime, _: Vec<KeyValue>) {}
+        fn add_event_with_timestamp(&mut self, _: String, _: SystemTime, _: Vec<KeyValue>) {}
         fn span_context(&self) -> &otel::SpanContext {
             &self.0
         }
         fn is_recording(&self) -> bool {
             false
         }
-        fn set_attribute(&self, _attribute: KeyValue) {}
-        fn set_status(&self, _code: otel::StatusCode, _message: String) {}
-        fn update_name(&self, _new_name: String) {}
-        fn end_with_timestamp(&self, _timestamp: SystemTime) {}
+        fn set_attribute(&mut self, _attribute: KeyValue) {}
+        fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
+        fn update_name(&mut self, _new_name: String) {}
+        fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
     }
 
     #[test]
@@ -725,7 +722,7 @@ mod tests {
             .status_message
             .clone();
 
-        assert_eq!(recorded_status_message, Some(message.to_string()))
+        assert_eq!(recorded_status_message, Some(message.into()))
     }
 
     #[test]
@@ -754,8 +751,6 @@ mod tests {
             .as_ref()
             .unwrap()
             .parent_context
-            .as_ref()
-            .unwrap()
             .span()
             .span_context()
             .trace_id();
