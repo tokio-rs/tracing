@@ -406,7 +406,7 @@ where
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
-        builder.attributes = Some(Vec::with_capacity(attrs.metadata().fields().len()));
+        builder.attributes = Some(Vec::with_capacity(attrs.fields().len()));
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
         extensions.insert(builder);
     }
