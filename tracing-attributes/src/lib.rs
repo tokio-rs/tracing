@@ -983,7 +983,7 @@ impl Parse for Field {
         } else {
             None
         };
-        Ok(Self { name, kind, value })
+        Ok(Self { name, value, kind })
     }
 }
 
