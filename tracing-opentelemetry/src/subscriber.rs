@@ -421,6 +421,22 @@ where
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
+        let builder_attrs = builder.attributes.get_or_insert(Vec::new());
+
+        let meta = attrs.metadata();
+
+        if let Some(filename) = meta.file() {
+            builder_attrs.push(KeyValue::new("code.filepath", filename));
+        }
+
+        if let Some(module) = meta.module_path() {
+            builder_attrs.push(KeyValue::new("code.namespace", module));
+        }
+
+        if let Some(line) = meta.line() {
+            builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+        }
+
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
         extensions.insert(builder);
     }
