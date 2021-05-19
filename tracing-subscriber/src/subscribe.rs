@@ -1119,11 +1119,7 @@ impl<'a, C> Context<'a, C> {
 impl<'a, C> Clone for Context<'a, C> {
     #[inline]
     fn clone(&self) -> Self {
-        let subscriber = if let Some(ref subscriber) = self.subscriber {
-            Some(*subscriber)
-        } else {
-            None
-        };
+        let subscriber = self.subscriber.as_ref().copied();
         Context { subscriber }
     }
 }
@@ -1258,7 +1254,7 @@ pub(crate) mod tests {
             .and_then(NopSubscriber)
             .with_collector(StringCollector("collector".into()));
         let collector =
-            Collect::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
+            <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
         assert_eq!(&collector.0, "collector");
     }
 
@@ -1268,14 +1264,14 @@ pub(crate) mod tests {
             .and_then(StringSubscriber2("subscriber_2".into()))
             .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
-        let subscriber =
-            Collect::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber>(&s)
+            .expect("subscriber 2 should downcast");
         assert_eq!(&subscriber.0, "subscriber_1");
-        let subscriber =
-            Collect::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber2>(&s)
+            .expect("subscriber 2 should downcast");
         assert_eq!(&subscriber.0, "subscriber_2");
-        let subscriber =
-            Collect::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber3>(&s)
+            .expect("subscriber 3 should downcast");
         assert_eq!(&subscriber.0, "subscriber_3");
     }
 }
