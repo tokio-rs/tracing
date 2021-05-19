@@ -555,3 +555,137 @@ impl Interest {
         }
     }
 }
+
+#[cfg(feature = "alloc")]
+impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.as_ref().register_callsite(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().enabled(metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.as_ref().max_level_hint()
+    }
+
+    #[inline]
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        self.as_ref().new_span(span)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.as_ref().record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn enter(&self, span: &span::Id) {
+        self.as_ref().enter(span)
+    }
+
+    #[inline]
+    fn exit(&self, span: &span::Id) {
+        self.as_ref().exit(span)
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.as_ref().clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.as_ref().try_close(id)
+    }
+
+    #[inline]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        if id == TypeId::of::<Self>() {
+            return Some(NonNull::from(self).cast());
+        }
+
+        self.as_ref().downcast_raw(id)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.as_ref().register_callsite(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().enabled(metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.as_ref().max_level_hint()
+    }
+
+    #[inline]
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        self.as_ref().new_span(span)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.as_ref().record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn enter(&self, span: &span::Id) {
+        self.as_ref().enter(span)
+    }
+
+    #[inline]
+    fn exit(&self, span: &span::Id) {
+        self.as_ref().exit(span)
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.as_ref().clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.as_ref().try_close(id)
+    }
+
+    #[inline]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        if id == TypeId::of::<Self>() {
+            return Some(NonNull::from(self).cast());
+        }
+
+        self.as_ref().downcast_raw(id)
+    }
+}

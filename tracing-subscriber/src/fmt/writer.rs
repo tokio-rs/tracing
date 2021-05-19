@@ -7,6 +7,7 @@ use std::{
     io::{self, Write},
     sync::{Mutex, MutexGuard},
 };
+use tracing_core::Metadata;
 
 /// A type that can create [`io::Write`] instances.
 ///
@@ -18,6 +19,18 @@ use std::{
 /// as [`io::stdout`] and [`io::stderr`]. Additionally, it is implemented for
 /// [`std::sync::Mutex`][mutex] when the type inside the mutex implements
 /// [`io::Write`].
+///
+/// The [`MakeWriter::make_writer_for`] method takes [`Metadata`] describing a
+/// span or event and returns a writer. `MakeWriter`s can optionally provide
+/// implementations of this method with behaviors that differ based on the span
+/// or event being written. For example, events at different [levels] might be
+/// written to different output streams, or data from different [targets] might
+/// be written to separate log files. When the `MakeWriter` has no custom
+/// behavior based on metadata, the default implementation of `make_writer_for`
+/// simply calls `self.make_writer()`, ignoring the metadata. Therefore, when
+/// metadata _is_ available, callers should prefer to call `make_writer_for`,
+/// passing in that metadata, so that the `MakeWriter` implementation can choose
+/// the appropriate behavior.
 ///
 /// # Examples
 ///
@@ -89,6 +102,10 @@ use std::{
 /// [`io::stdout`]: std::io::stdout()
 /// [`io::stderr`]: std::io::stderr()
 /// [mutex]: std::sync::Mutex
+/// [`MakeWriter::make_writer_for`]: MakeWriter::make_writer_for
+/// [`Metadata`]: tracing_core::Metadata
+/// [levels]: tracing_core::Level
+/// [targets]: tracing_core::Metadata::target
 pub trait MakeWriter<'a> {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
@@ -100,16 +117,110 @@ pub trait MakeWriter<'a> {
     ///
     /// # Implementer notes
     ///
-    /// [`fmt::Subscriber`] or [`fmt::Collector`] will call this method each time an event is recorded. Ensure any state
-    /// that must be saved across writes is not lost when the [`Writer`] instance is dropped. If
-    /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
-    /// [`MakeWriter`] to improve performance.
+    /// [`fmt::Subscriber`] or [`fmt::Collector`] will call this method each
+    /// time an event is recorded. Ensure any state that must be saved across
+    /// writes is not lost when the [`Writer`] instance is dropped. If creating
+    /// a [`io::Write`] instance is expensive, be sure to cache it when
+    /// implementing [`MakeWriter`] to improve performance.
     ///
     /// [`Writer`]: MakeWriter::Writer
     /// [`fmt::Subscriber`]: super::super::fmt::Subscriber
     /// [`fmt::Collector`]: super::super::fmt::Collector
     /// [`io::Write`]: std::io::Write
     fn make_writer(&'a self) -> Self::Writer;
+
+    /// Returns a [`Writer`] for writing data from the span or event described
+    /// by the provided [`Metadata`].
+    ///
+    /// By default, this calls [`self.make_writer()`][make_writer], ignoring
+    /// the provided metadata, but implementations can override this to provide
+    /// metadata-specific behaviors.
+    ///
+    /// This method allows `MakeWriter` implementations to implement different
+    /// behaviors based on the span or event being written. The `MakeWriter`
+    /// type might return different writers based on the provided metadata, or
+    /// might write some values to the writer before or after providing it to
+    /// the caller.
+    ///
+    /// For example, we might want to write data from spans and events at the
+    /// [`ERROR`] and [`WARN`] levels to `stderr`, and data from spans or events
+    /// at lower levels to stdout:
+    ///
+    /// ```
+    /// use std::io::{self, Stdout, Stderr, StdoutLock, StderrLock};
+    /// use tracing_subscriber::fmt::writer::MakeWriter;
+    /// use tracing_core::{Metadata, Level};
+    ///
+    /// pub struct MyMakeWriter {
+    ///     stdout: Stdout,
+    ///     stderr: Stderr,
+    /// }
+    ///
+    /// /// A lock on either stdout or stderr, depending on the verbosity level
+    /// /// of the event being written.
+    /// pub enum StdioLock<'a> {
+    ///     Stdout(StdoutLock<'a>),
+    ///     Stderr(StderrLock<'a>),
+    /// }
+    ///
+    /// impl<'a> io::Write for StdioLock<'a> {
+    ///     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    ///         match self {
+    ///             StdioLock::Stdout(lock) => lock.write(buf),
+    ///             StdioLock::Stderr(lock) => lock.write(buf),
+    ///         }
+    ///     }
+    ///
+    ///     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+    ///         // ...
+    ///         # match self {
+    ///         #     StdioLock::Stdout(lock) => lock.write_all(buf),
+    ///         #     StdioLock::Stderr(lock) => lock.write_all(buf),
+    ///         # }
+    ///     }
+    ///
+    ///     fn flush(&mut self) -> io::Result<()> {
+    ///         // ...
+    ///         # match self {
+    ///         #     StdioLock::Stdout(lock) => lock.flush(),
+    ///         #     StdioLock::Stderr(lock) => lock.flush(),
+    ///         # }
+    ///     }
+    /// }
+    ///
+    /// impl<'a> MakeWriter<'a> for MyMakeWriter {
+    ///     type Writer = StdioLock<'a>;
+    ///
+    ///     fn make_writer(&'a self) -> Self::Writer {
+    ///         // We must have an implementation of `make_writer` that makes
+    ///         // a "default" writer without any configuring metadata. Let's
+    ///         // just return stdout in that case.
+    ///         StdioLock::Stdout(self.stdout.lock())
+    ///     }
+    ///
+    ///     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    ///         // Here's where we can implement our special behavior. We'll
+    ///         // check if the metadata's verbosity level is WARN or ERROR,
+    ///         // and return stderr in that case.
+    ///         if meta.level() <= &Level::WARN {
+    ///             return StdioLock::Stderr(self.stderr.lock());
+    ///         }
+    ///
+    ///         // Otherwise, we'll return stdout.
+    ///         StdioLock::Stdout(self.stdout.lock())
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// [`Writer`]: MakeWriter::Writer
+    /// [`Metadata`]: tracing_core::Metadata
+    /// [make_writer]: MakeWriter::make_writer
+    /// [`WARN`]: tracing_core::Level::WARN
+    /// [`ERROR`]: tracing_core::Level::ERROR
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        let _ = meta;
+        self.make_writer()
+    }
 }
 
 /// A type implementing [`io::Write`] for a [`MutexGuard`] where the type
@@ -248,6 +359,10 @@ impl<'a> MakeWriter<'a> for BoxMakeWriter {
     fn make_writer(&'a self) -> Self::Writer {
         self.inner.make_writer()
     }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        self.inner.make_writer_for(meta)
+    }
 }
 
 struct Boxed<M>(M);
@@ -260,6 +375,11 @@ where
 
     fn make_writer(&'a self) -> Self::Writer {
         let w = self.0.make_writer();
+        Box::new(w)
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        let w = self.0.make_writer_for(meta);
         Box::new(w)
     }
 }

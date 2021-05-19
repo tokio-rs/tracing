@@ -590,7 +590,7 @@ where
     }
 }
 
-impl<N, E, F, W> Into<tracing_core::Dispatch> for CollectorBuilder<N, E, F, W>
+impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
@@ -599,8 +599,8 @@ where
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
-    fn into(self) -> tracing_core::Dispatch {
-        tracing_core::Dispatch::new(self.finish())
+    fn from(builder: CollectorBuilder<N, E, F, W>) -> tracing_core::Dispatch {
+        tracing_core::Dispatch::new(builder.finish())
     }
 }
 

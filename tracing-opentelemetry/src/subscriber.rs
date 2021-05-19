@@ -12,8 +12,10 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::subscribe::Context;
 use tracing_subscriber::Subscribe;
 
-static SPAN_NAME_FIELD: &str = "otel.name";
-static SPAN_KIND_FIELD: &str = "otel.kind";
+const SPAN_NAME_FIELD: &str = "otel.name";
+const SPAN_KIND_FIELD: &str = "otel.kind";
+const SPAN_STATUS_CODE_FIELD: &str = "otel.status_code";
+const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 
 /// An [OpenTelemetry] propagation subscriber for use in a project that uses
 /// [tracing].
@@ -85,18 +87,22 @@ impl WithContext {
 }
 
 fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
-    if s.eq_ignore_ascii_case("SERVER") {
-        Some(otel::SpanKind::Server)
-    } else if s.eq_ignore_ascii_case("CLIENT") {
-        Some(otel::SpanKind::Client)
-    } else if s.eq_ignore_ascii_case("PRODUCER") {
-        Some(otel::SpanKind::Producer)
-    } else if s.eq_ignore_ascii_case("CONSUMER") {
-        Some(otel::SpanKind::Consumer)
-    } else if s.eq_ignore_ascii_case("INTERNAL") {
-        Some(otel::SpanKind::Internal)
-    } else {
-        None
+    match s {
+        s if s.eq_ignore_ascii_case("server") => Some(otel::SpanKind::Server),
+        s if s.eq_ignore_ascii_case("client") => Some(otel::SpanKind::Client),
+        s if s.eq_ignore_ascii_case("producer") => Some(otel::SpanKind::Producer),
+        s if s.eq_ignore_ascii_case("consumer") => Some(otel::SpanKind::Consumer),
+        s if s.eq_ignore_ascii_case("internal") => Some(otel::SpanKind::Internal),
+        _ => None,
+    }
+}
+
+fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
+    match s {
+        s if s.eq_ignore_ascii_case("unset") => Some(otel::StatusCode::Unset),
+        s if s.eq_ignore_ascii_case("ok") => Some(otel::StatusCode::Ok),
+        s if s.eq_ignore_ascii_case("error") => Some(otel::StatusCode::Error),
+        _ => None,
     }
 }
 
@@ -108,7 +114,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_bool(&mut self, field: &field::Field, value: bool) {
         match field.name() {
-            "message" => self.0.name = value.to_string(),
+            "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -123,7 +129,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_i64(&mut self, field: &field::Field, value: i64) {
         match field.name() {
-            "message" => self.0.name = value.to_string(),
+            "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -138,7 +144,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
         match field.name() {
-            "message" => self.0.name = value.to_string(),
+            "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -156,7 +162,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         match field.name() {
-            "message" => self.0.name = format!("{:?}", value),
+            "message" => self.0.name = format!("{:?}", value).into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
@@ -200,16 +206,18 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
-        if field.name() == SPAN_NAME_FIELD {
-            self.0.name = value.to_string();
-        } else if field.name() == SPAN_KIND_FIELD {
-            self.0.span_kind = str_to_span_kind(value);
-        } else {
-            let attribute = KeyValue::new(field.name(), value.to_string());
-            if let Some(attributes) = &mut self.0.attributes {
-                attributes.push(attribute);
-            } else {
-                self.0.attributes = Some(vec![attribute]);
+        match field.name() {
+            SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
+            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
+            SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
+            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
+            _ => {
+                let attribute = KeyValue::new(field.name(), value.to_string());
+                if let Some(attributes) = &mut self.0.attributes {
+                    attributes.push(attribute);
+                } else {
+                    self.0.attributes = Some(vec![attribute]);
+                }
             }
         }
     }
@@ -219,16 +227,22 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
-        if field.name() == SPAN_NAME_FIELD {
-            self.0.name = format!("{:?}", value);
-        } else if field.name() == SPAN_KIND_FIELD {
-            self.0.span_kind = str_to_span_kind(&format!("{:?}", value));
-        } else {
-            let attribute = Key::new(field.name()).string(format!("{:?}", value));
-            if let Some(attributes) = &mut self.0.attributes {
-                attributes.push(attribute);
-            } else {
-                self.0.attributes = Some(vec![attribute]);
+        match field.name() {
+            SPAN_NAME_FIELD => self.0.name = format!("{:?}", value).into(),
+            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&format!("{:?}", value)),
+            SPAN_STATUS_CODE_FIELD => {
+                self.0.status_code = str_to_status_code(&format!("{:?}", value))
+            }
+            SPAN_STATUS_MESSAGE_FIELD => {
+                self.0.status_message = Some(format!("{:?}", value).into())
+            }
+            _ => {
+                let attribute = Key::new(field.name()).string(format!("{:?}", value));
+                if let Some(attributes) = &mut self.0.attributes {
+                    attributes.push(attribute);
+                } else {
+                    self.0.attributes = Some(vec![attribute]);
+                }
             }
         }
     }
@@ -253,9 +267,10 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_pipeline()
     ///     .with_service_name("trace_demo")
-    ///     .install().expect("Error initializing Jaeger exporter");
+    ///     .install_simple()
+    ///     .expect("Error initializing Jaeger exporter");
     ///
     /// // Create a subscriber with the configured tracer
     /// let otel_subscriber = OpenTelemetrySubscriber::new(tracer);
@@ -287,9 +302,10 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_pipeline()
     ///     .with_service_name("trace_demo")
-    ///     .install().expect("Error initializing Jaeger exporter");
+    ///     .install_simple()
+    ///     .expect("Error initializing Jaeger exporter");
     ///
     /// // Create a subscriber with the configured tracer
     /// let otel_subscriber = tracing_opentelemetry::subscriber().with_tracer(tracer);
@@ -396,25 +412,12 @@ where
             .tracer
             .span_builder(attrs.metadata().name())
             .with_start_time(SystemTime::now())
+            .with_parent_context(self.parent_context(attrs, &ctx))
             // Eagerly assign span id so children have stable parent id
             .with_span_id(self.tracer.new_span_id());
 
-        // Set optional parent span context from attrs
-        builder.parent_context = Some(self.parent_context(attrs, &ctx));
-
-        // Ensure trace id exists so spans are associated with the proper trace.
-        //
-        // Parent contexts are in 4 possible states, first two require a new
-        // trace ids, second two have existing trace ids:
-        //   * Empty - explicit new tracing root span, needs new id
-        //   * A parent context containing no active or remote span, needs new id
-        //   * A parent context containing an active span, defer to that span's trace
-        //   * A parent context containing a remote span context, defer to remote trace
-        let needs_trace_id = builder.parent_context.as_ref().map_or(true, |cx| {
-            !cx.has_active_span() && cx.remote_span_context().is_none()
-        });
-
-        if needs_trace_id {
+        // Record new trace id if there is no active parent span
+        if !builder.parent_context.has_active_span() {
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
@@ -423,23 +426,31 @@ where
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if !self.tracked_inactivity {
+            return;
+        }
+
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
             let now = Instant::now();
-            timings.idle += (now - timings.last).as_nanos() as u64;
+            timings.idle += (now - timings.last).as_nanos() as i64;
             timings.last = now;
         }
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if !self.tracked_inactivity {
+            return;
+        }
+
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
             let now = Instant::now();
-            timings.busy += (now - timings.last).as_nanos() as u64;
+            timings.busy += (now - timings.last).as_nanos() as i64;
             timings.last = now;
         }
     }
@@ -510,6 +521,7 @@ where
                     Key::new("level").string(meta.level().to_string()),
                     Key::new("target").string(meta.target().to_string()),
                 ],
+                0,
             );
             event.record(&mut SpanEventVisitor(&mut otel_event));
 
@@ -519,10 +531,10 @@ where
                     builder.status_code = Some(otel::StatusCode::Error);
                 }
 
-                if let Some(ref mut events) = builder.message_events {
+                if let Some(ref mut events) = builder.events {
                     events.push(otel_event);
                 } else {
-                    builder.message_events = Some(vec![otel_event]);
+                    builder.events = Some(vec![otel_event]);
                 }
             }
         };
@@ -536,16 +548,18 @@ where
         let mut extensions = span.extensions_mut();
 
         if let Some(mut builder) = extensions.remove::<otel::SpanBuilder>() {
-            // Append busy/idle timings when enabled.
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let mut timings_attributes = vec![
-                    KeyValue::new("busy_ns", timings.busy.to_string()),
-                    KeyValue::new("idle_ns", timings.idle.to_string()),
-                ];
+            if self.tracked_inactivity {
+                // Append busy/idle timings when enabled.
+                if let Some(timings) = extensions.get_mut::<Timings>() {
+                    let busy_ns = KeyValue::new("busy_ns", timings.busy);
+                    let idle_ns = KeyValue::new("idle_ns", timings.idle);
 
-                match builder.attributes {
-                    Some(ref mut attributes) => attributes.append(&mut timings_attributes),
-                    None => builder.attributes = Some(timings_attributes),
+                    if let Some(ref mut attributes) = builder.attributes {
+                        attributes.push(busy_ns);
+                        attributes.push(idle_ns);
+                    } else {
+                        builder.attributes = Some(vec![busy_ns, idle_ns]);
+                    }
                 }
             }
 
@@ -568,8 +582,8 @@ where
 }
 
 struct Timings {
-    idle: u64,
-    busy: u64,
+    idle: i64,
+    busy: i64,
     last: Instant,
 }
 
@@ -587,6 +601,7 @@ impl Timings {
 mod tests {
     use super::*;
     use opentelemetry::trace::SpanKind;
+    use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
@@ -598,11 +613,17 @@ mod tests {
         fn invalid(&self) -> Self::Span {
             otel::NoopSpan::new()
         }
-        fn start_with_context(&self, _name: &str, _context: OtelContext) -> Self::Span {
+        fn start_with_context<T>(&self, _name: T, _context: OtelContext) -> Self::Span
+        where
+            T: Into<Cow<'static, str>>,
+        {
             self.invalid()
         }
-        fn span_builder(&self, name: &str) -> otel::SpanBuilder {
-            otel::SpanBuilder::from_name(name.to_string())
+        fn span_builder<T>(&self, name: T) -> otel::SpanBuilder
+        where
+            T: Into<Cow<'static, str>>,
+        {
+            otel::SpanBuilder::from_name(name)
         }
         fn build(&self, builder: otel::SpanBuilder) -> Self::Span {
             *self.0.lock().unwrap() = Some(builder);
@@ -625,17 +646,17 @@ mod tests {
     #[derive(Debug, Clone)]
     struct TestSpan(otel::SpanContext);
     impl otel::Span for TestSpan {
-        fn add_event_with_timestamp(&self, _: String, _: SystemTime, _: Vec<KeyValue>) {}
+        fn add_event_with_timestamp(&mut self, _: String, _: SystemTime, _: Vec<KeyValue>) {}
         fn span_context(&self) -> &otel::SpanContext {
             &self.0
         }
         fn is_recording(&self) -> bool {
             false
         }
-        fn set_attribute(&self, _attribute: KeyValue) {}
-        fn set_status(&self, _code: otel::StatusCode, _message: String) {}
-        fn update_name(&self, _new_name: String) {}
-        fn end_with_timestamp(&self, _timestamp: SystemTime) {}
+        fn set_attribute(&mut self, _attribute: KeyValue) {}
+        fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
+        fn update_name(&mut self, _new_name: String) {}
+        fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
     }
 
     #[test]
@@ -650,7 +671,7 @@ mod tests {
         });
 
         let recorded_name = tracer.0.lock().unwrap().as_ref().map(|b| b.name.clone());
-        assert_eq!(recorded_name, Some(dynamic_name))
+        assert_eq!(recorded_name, Some(dynamic_name.into()))
     }
 
     #[test]
@@ -665,6 +686,43 @@ mod tests {
 
         let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
         assert_eq!(recorded_kind, Some(otel::SpanKind::Server))
+    }
+
+    #[test]
+    fn span_status_code() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
+        });
+        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
+        assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
+    }
+
+    #[test]
+    fn span_status_message() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        let message = "message";
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.status_message = message);
+        });
+
+        let recorded_status_message = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .status_message
+            .clone();
+
+        assert_eq!(recorded_status_message, Some(message.into()))
     }
 
     #[test]
@@ -693,8 +751,6 @@ mod tests {
             .as_ref()
             .unwrap()
             .parent_context
-            .as_ref()
-            .unwrap()
             .span()
             .span_context()
             .trace_id();
