@@ -284,10 +284,10 @@ impl Level {
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: Level = Level(LevelInner::Trace);
 
-    /// Get the string representation of the `Level`.
+    /// Returns the string representation of the `Level`.
     ///
     /// This returns the same string as the `fmt::Display` implementation.
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match *self {
             Level::TRACE => "TRACE",
             Level::DEBUG => "DEBUG",
