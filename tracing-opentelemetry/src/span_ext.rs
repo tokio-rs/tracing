@@ -78,7 +78,9 @@ impl OpenTelemetrySpanExt for tracing::Span {
         self.with_collector(move |(id, collector)| {
             if let Some(get_context) = collector.downcast_ref::<WithContext>() {
                 get_context.with_context(collector, id, move |builder, _tracer| {
-                    builder.parent_context = cx.take();
+                    if let Some(cx) = cx.take() {
+                        builder.parent_context = cx;
+                    }
                 });
             }
         });
