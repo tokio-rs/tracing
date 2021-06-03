@@ -601,7 +601,7 @@ impl Span {
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
-    /// **Note**: The returned [`Entered`] guard guard does not
+    /// **Note**: The returned [`Entered`] guard does not
     /// implement `Send`. Dropping the guard will exit *this* span,
     /// and if the guard is sent to another thread and dropped there, that thread may
     /// never have entered this span. Thus, `Entered` should not be sent
