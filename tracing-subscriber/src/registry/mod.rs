@@ -58,7 +58,12 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [ctx]: crate::subscribe::Context
 //! [lookup]: crate::subscribe::Context::span()
-use tracing_core::{field::FieldSet, span::Id, Metadata};
+use crate::subscribe::{self, Subscribe};
+use tracing_core::{
+    field::FieldSet,
+    span::{self, Id},
+    Collect, Metadata,
+};
 
 /// A module containing a type map of span extensions.
 mod extensions;
@@ -68,7 +73,7 @@ cfg_feature!("registry", {
     mod stack;
 
     pub use sharded::Data;
-    pub use sharded::Registry;
+    pub use sharded::SpanStore;
 });
 
 pub use extensions::{Extensions, ExtensionsMut};
@@ -148,6 +153,11 @@ pub trait SpanData<'a> {
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
+}
+
+pub struct Registry<S = subscribe::Identity, T = sharded::SpanStore> {
+    spans: T,
+    subscribers: S,
 }
 
 /// A reference to [span data] and the associated [registry].
@@ -325,4 +335,116 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.pad("FromRoot { .. }")
     }
+}
+
+// === impl Registry ===
+
+impl<'a, S, T> LookupSpan<'a> for Registry<S, T>
+where
+    T: LookupSpan<'a>,
+{
+    type Data = T::Data;
+
+    #[inline]
+    fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
+        self.spans.span_data(id)
+    }
+}
+
+impl<S, T> Registry<S, T> {
+    pub fn with<S2>(self, mut subscriber: S2) -> Registry<subscribe::Layered<S2, S>, T>
+    where
+        S: subscribe::Subscribe<Self>,
+        T: Collect + 'static,
+    {
+        subscriber.register(&self);
+        Self {
+            subscribers: subscribe::Layered::new(subscriber, self.subscribers),
+            spans: self.spans,
+        }
+    }
+
+    #[inline]
+    fn ctx(&self) -> subscribe::Context<'_, Self> {
+        subscribe::Context::new(self)
+    }
+}
+
+impl<S, T> Collect for Registry<S, T>
+where
+    S: Subscribe<Self> + 'static,
+    T: Collect + 'static,
+{
+    fn register_callsite(
+        &self,
+        metadata: &'static Metadata<'static>,
+    ) -> tracing_core::collect::Interest {
+        self.spans.register_callsite(metadata);
+        self.subscribers.register_callsite(metadata)
+    }
+
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        if self.spans.enabled(metadata) {
+            self.subscribers.enabled(metadata, self.ctx())
+        }
+    }
+
+    fn max_level_hint(&self) -> Option<tracing_core::LevelFilter> {
+        self.subscribers.max_level_hint()
+    }
+
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        let id = self.spans.new_span(span);
+        self.subscribers.new_span(span, &id, self.ctx());
+        id
+    }
+
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.spans.record(span, values);
+        self.subscribers.on_record(span, values, self.ctx());
+    }
+
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.spans.record_follows_from(span, follows);
+        self.subscribers.on_follows_from(span, follows, self.ctx())
+    }
+
+    fn event(&self, event: &tracing_core::Event<'_>) {
+        // XXX(eliza): should we assume the subscriber nops?
+        self.spans.event(event);
+        self.subscribers.on_event(event, self.ctx());
+    }
+
+    fn enter(&self, span: &span::Id) {
+        self.spans.enter(span);
+        self.subscribers.on_enter(span, self.ctx());
+    }
+
+    fn exit(&self, span: &span::Id) {
+        self.spans.on_exit(span);
+        self.subscribers.on_exit(span, self.ctx());
+    }
+
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        let new_id = self.spans.clone_span(id);
+        if id != new_id {
+            self.subscribers.on_id_change(id, new_id, self.ctx());
+        }
+        new_id
+    }
+
+    fn try_close(&self, id: span::Id) -> bool {
+        if self.spans.try_close(id) {
+            self.subscribers.on_close(id, self.ctx())
+            // TODO(eliza): signal to complete processing close...
+        }
+    }
+
+    fn current_span(&self) -> span::Current {
+        self.spans.current_span()
+    }
+
+    // unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+    //     todo!()
+    // }
 }

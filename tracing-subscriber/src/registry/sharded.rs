@@ -42,7 +42,7 @@ cfg_feature!("registry", {
     /// [added]: crate::FmtSubscriber::with_collector()
     /// [extensions]: super::Extensions
     #[derive(Debug)]
-    pub struct Registry {
+    pub struct SpanStore {
         spans: Pool<DataInner>,
         current_spans: ThreadLocal<RefCell<SpanStack>>,
     }
@@ -81,7 +81,7 @@ struct DataInner {
 
 // === impl Registry ===
 
-impl Default for Registry {
+impl Default for SpanStore {
     fn default() -> Self {
         Self {
             spans: Pool::new(),
@@ -123,11 +123,11 @@ fn id_to_idx(id: &Id) -> usize {
 ///
 pub(crate) struct CloseGuard<'a> {
     id: Id,
-    registry: &'a Registry,
+    registry: &'a SpanStore,
     is_closing: bool,
 }
 
-impl Registry {
+impl SpanStore {
     fn get(&self, id: &Id) -> Option<Ref<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
@@ -157,7 +157,7 @@ thread_local! {
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
 }
 
-impl Collect for Registry {
+impl Collect for SpanStore {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::always()
     }
@@ -233,7 +233,11 @@ impl Collect for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert_ne!(refs, 0, "tried to clone a span ({:?}) that already closed", id);
+        assert_ne!(
+            refs, 0,
+            "tried to clone a span ({:?}) that already closed",
+            id
+        );
         id.clone()
     }
 
@@ -276,7 +280,7 @@ impl Collect for Registry {
     }
 }
 
-impl<'a> LookupSpan<'a> for Registry {
+impl<'a> LookupSpan<'a> for SpanStore {
     type Data = Data<'a>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
@@ -428,7 +432,7 @@ impl Clear for DataInner {
 
 #[cfg(test)]
 mod tests {
-    use super::Registry;
+    use super::SpanStore;
     use crate::{registry::LookupSpan, subscribe::Context, Subscribe};
     use std::{
         collections::HashMap,
@@ -454,7 +458,7 @@ mod tests {
 
     #[test]
     fn single_subscriber_can_access_closed_span() {
-        let subscriber = AssertionSubscriber.with_collector(Registry::default());
+        let subscriber = AssertionSubscriber.with_collector(SpanStore::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -466,7 +470,7 @@ mod tests {
     fn multiple_subscribers_can_access_closed_span() {
         let subscriber = AssertionSubscriber
             .and_then(AssertionSubscriber)
-            .with_collector(Registry::default());
+            .with_collector(SpanStore::default());
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -647,7 +651,7 @@ mod tests {
         let (close_subscriber, state) = CloseSubscriber::new();
         let subscriber = AssertionSubscriber
             .and_then(close_subscriber)
-            .with_collector(Registry::default());
+            .with_collector(SpanStore::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -675,7 +679,7 @@ mod tests {
         let (close_subscriber, state) = CloseSubscriber::new();
         let subscriber = AssertionSubscriber
             .and_then(close_subscriber)
-            .with_collector(Registry::default());
+            .with_collector(SpanStore::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -708,7 +712,7 @@ mod tests {
         let (close_subscriber, state) = CloseSubscriber::new();
         let subscriber = AssertionSubscriber
             .and_then(close_subscriber)
-            .with_collector(Registry::default());
+            .with_collector(SpanStore::default());
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
@@ -746,7 +750,7 @@ mod tests {
         // closes, and will then be closed.
 
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = close_subscriber.with_collector(Registry::default());
+        let subscriber = close_subscriber.with_collector(SpanStore::default());
 
         let dispatch = dispatch::Dispatch::new(subscriber);
 
@@ -773,7 +777,7 @@ mod tests {
         // is *itself* kept open by a child, closing the grandchild will close
         // both the parent *and* the grandparent.
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = close_subscriber.with_collector(Registry::default());
+        let subscriber = close_subscriber.with_collector(SpanStore::default());
 
         let dispatch = dispatch::Dispatch::new(subscriber);
 

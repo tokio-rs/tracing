@@ -202,6 +202,8 @@ where
     C: Collect,
     Self: 'static,
 {
+    fn register(&mut self, collector: &C) {}
+
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite, similarly
     /// to [`Collect::register_callsite`].
@@ -423,15 +425,13 @@ where
     ///     .and_then(BazSubscriber::new())
     ///     .with_collector(MyCollector::new());
     /// ```
-    fn and_then<S>(self, subscriber: S) -> Layered<S, Self, C>
+    fn and_then<S>(self, subscriber: S) -> Layered<S, Self>
     where
-        S: Subscribe<C>,
         Self: Sized,
     {
         Layered {
             subscriber,
             inner: self,
-            _s: PhantomData,
         }
     }
 
@@ -546,10 +546,9 @@ pub struct Context<'a, C> {
 /// [subscriber]: super::subscribe::Subscribe
 /// [collector]: tracing_core::Collect
 #[derive(Clone, Debug)]
-pub struct Layered<S, I, C = I> {
+pub struct Layered<S, I> {
     subscriber: S,
     inner: I,
-    _s: PhantomData<fn(C)>,
 }
 
 /// A Subscriber that does nothing.
@@ -572,6 +571,12 @@ pub struct Scope<'a, L: LookupSpan<'a>>(
 );
 
 // === impl Layered ===
+
+impl<S, I> Layered<S, I> {
+    pub(crate) fn new(subscriber: S, inner: I) -> Self {
+        Self { subscriber, inner }
+    }
+}
 
 impl<S, C> Collect for Layered<S, C>
 where
@@ -698,7 +703,7 @@ where
     }
 }
 
-impl<C, A, B> Subscribe<C> for Layered<A, B, C>
+impl<C, A, B> Subscribe<C> for Layered<A, B>
 where
     A: Subscribe<C>,
     B: Subscribe<C>,
@@ -888,30 +893,6 @@ where
     }
 }
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, S, C> LookupSpan<'a> for Layered<S, C>
-where
-    C: Collect + LookupSpan<'a>,
-{
-    type Data = C::Data;
-
-    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
-        self.inner.span_data(id)
-    }
-}
-
-impl<S, C> Layered<S, C>
-where
-    C: Collect,
-{
-    fn ctx(&self) -> Context<'_, C> {
-        Context {
-            collector: Some(&self.inner),
-        }
-    }
-}
-
 // impl<L, S> Layered<L, S> {
 //     // TODO(eliza): is there a compelling use-case for this being public?
 //     pub(crate) fn into_inner(self) -> S {
@@ -930,6 +911,10 @@ impl<'a, C> Context<'a, C>
 where
     C: Collect,
 {
+    pub(crate) fn new(collector: &'a C) -> Self {
+        Self { collector }
+    }
+
     /// Returns the wrapped subscriber's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
