@@ -154,7 +154,7 @@ pub struct Iter {
 ///         self.sum += value as i64;
 ///     }
 ///
-///     fn record_debug(&mut self, _field: &Field, _value: &fmt::Debug) {
+///     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
 ///         // Do nothing
 ///     }
 /// }
@@ -428,6 +428,19 @@ where
     }
 }
 
+impl<'a, T: ?Sized> crate::sealed::Sealed for &'a mut T where T: Value + crate::sealed::Sealed + 'a {}
+
+impl<'a, T: ?Sized> Value for &'a mut T
+where
+    T: Value + 'a,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        // Don't use `(*self).record(key, visitor)`, otherwise would
+        // cause stack overflow due to `unconditional_recursion`.
+        T::record(self, key, visitor)
+    }
+}
+
 impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
 
 impl<'a> Value for fmt::Arguments<'a> {
@@ -657,7 +670,7 @@ impl FieldSet {
     {
         ValueSet {
             fields: self,
-            values: &values.borrow()[..],
+            values: values.borrow(),
         }
     }
 

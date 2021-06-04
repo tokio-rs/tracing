@@ -1,4 +1,4 @@
-use crate::layer::WithContext;
+use crate::subscriber::WithContext;
 use std::fmt;
 use tracing::{Metadata, Span};
 

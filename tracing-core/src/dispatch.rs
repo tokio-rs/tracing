@@ -308,7 +308,16 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// [span]: super::span
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
-    if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
+    // if `compare_exchange` returns Result::Ok(_), then `new` has been set and
+    // `current`—now the prior value—has been returned in the `Ok()` branch.
+    if GLOBAL_INIT
+        .compare_exchange(
+            UNINITIALIZED,
+            INITIALIZING,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_ok()
     {
         #[cfg(feature = "alloc")]
         let collector = {
@@ -783,7 +792,7 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Collect::is::<T>(&*self.collector())
+        <dyn Collect>::is::<T>(&*self.collector())
     }
 
     /// Returns some reference to the [`Collect`] this `Dispatch` forwards to
@@ -792,7 +801,7 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Collect::downcast_ref(&*self.collector())
+        <dyn Collect>::downcast_ref(&*self.collector())
     }
 }
 
@@ -865,7 +874,7 @@ impl Registrar {
 #[cfg(feature = "std")]
 impl State {
     /// Replaces the current default dispatcher on this thread with the provided
-    /// dispatcher.Any
+    /// dispatcher.
     ///
     /// Dropping the returned `ResetGuard` will reset the default dispatcher to
     /// the previous value.

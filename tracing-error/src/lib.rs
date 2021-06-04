@@ -14,7 +14,7 @@
 //!
 //! * [`SpanTrace`], a captured trace of the current `tracing` [span] context
 //!
-//! * [`ErrorSubscriber`], a [subscriber layer] which enables capturing `SpanTrace`s
+//! * [`ErrorSubscriber`], a [subscriber] which enables capturing `SpanTrace`s
 //!
 //! **Note**: This crate is currently experimental.
 //!
@@ -161,7 +161,7 @@
 //! [span]: mod@tracing::span
 //! [events]: tracing::Event
 //! [collector]: tracing::Collect
-//! [subscriber layer]: tracing_subscriber::subscribe::Subscribe
+//! [subscriber]: tracing_subscriber::subscribe::Subscribe
 //!
 //! ## Supported Rust Versions
 //!
@@ -209,12 +209,12 @@
 mod backtrace;
 #[cfg(feature = "traced-error")]
 mod error;
-mod layer;
+mod subscriber;
 
 pub use self::backtrace::{SpanTrace, SpanTraceStatus};
 #[cfg(feature = "traced-error")]
 pub use self::error::{ExtractSpanTrace, InstrumentError, InstrumentResult, TracedError};
-pub use self::layer::ErrorSubscriber;
+pub use self::subscriber::ErrorSubscriber;
 
 #[cfg(feature = "traced-error")]
 #[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]

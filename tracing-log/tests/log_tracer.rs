@@ -21,7 +21,8 @@ struct OwnedMetadata {
 struct TestSubscriber(Arc<State>);
 
 impl Collect for TestSubscriber {
-    fn enabled(&self, _: &Metadata<'_>) -> bool {
+    fn enabled(&self, meta: &Metadata<'_>) -> bool {
+        dbg!(meta);
         true
     }
 
@@ -34,6 +35,7 @@ impl Collect for TestSubscriber {
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
     fn event(&self, event: &Event<'_>) {
+        dbg!(event);
         *self.0.last_normalized_metadata.lock().unwrap() = (
             event.is_log(),
             event.normalized_metadata().map(|normalized| OwnedMetadata {
@@ -107,7 +109,9 @@ fn normalized_metadata() {
 }
 
 fn last(state: &State, should_be_log: bool, expected: Option<OwnedMetadata>) {
-    let metadata = state.last_normalized_metadata.lock().unwrap();
-    assert_eq!(metadata.0, should_be_log);
-    assert_eq!(metadata.1, expected);
+    let lock = state.last_normalized_metadata.lock().unwrap();
+    let (is_log, metadata) = &*lock;
+    dbg!(&metadata);
+    assert_eq!(dbg!(*is_log), should_be_log);
+    assert_eq!(metadata.as_ref(), expected.as_ref());
 }

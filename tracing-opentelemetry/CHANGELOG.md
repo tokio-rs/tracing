@@ -1,3 +1,31 @@
+# 0.13.0 (May 15, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.14.0` of `opentelemetry` (#1394)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.14.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0140).
+
+# 0.12.0 (March 31, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.13.0` of `opentelemetry` (#1322)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.13.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0130).
+
+### Changed
+
+- Improve performance when tracked inactivity is disabled (#1315)
+
+# 0.11.0 (January 25, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.12.0` of `opentelemetry` (#1200)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.12.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0120).
+
 # 0.10.0 (December 30, 2020)
 
 ### Breaking Changes

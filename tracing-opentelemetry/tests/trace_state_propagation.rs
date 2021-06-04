@@ -12,12 +12,12 @@ use opentelemetry::{
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tracing::Collect;
-use tracing_opentelemetry::{layer, OpenTelemetrySpanExt};
+use tracing_opentelemetry::{subscriber, OpenTelemetrySpanExt};
 use tracing_subscriber::prelude::*;
 
 #[test]
 fn trace_with_active_otel_context() {
-    let (cx, subscriber, exporter, _provider) = build_sampled_context();
+    let (cx, subscriber, exporter, provider) = build_sampled_context();
     let attached = cx.attach();
 
     tracing::collect::with_default(subscriber, || {
@@ -25,6 +25,7 @@ fn trace_with_active_otel_context() {
     });
 
     drop(attached); // end implicit parent
+    drop(provider); // flush all spans
 
     let spans = exporter.0.lock().unwrap();
     assert_eq!(spans.len(), 2);
@@ -33,13 +34,14 @@ fn trace_with_active_otel_context() {
 
 #[test]
 fn trace_with_assigned_otel_context() {
-    let (cx, subscriber, exporter, _provider) = build_sampled_context();
+    let (cx, subscriber, exporter, provider) = build_sampled_context();
 
     tracing::collect::with_default(subscriber, || {
         let child = tracing::debug_span!("child");
         child.set_parent(cx);
     });
 
+    drop(provider); // flush all spans
     let spans = exporter.0.lock().unwrap();
     assert_eq!(spans.len(), 2);
     assert_shared_attrs_eq(&spans[0].span_context, &spans[1].span_context);
@@ -47,7 +49,7 @@ fn trace_with_assigned_otel_context() {
 
 #[test]
 fn trace_root_with_children() {
-    let (_tracer, _provider, exporter, subscriber) = test_tracer();
+    let (_tracer, provider, exporter, subscriber) = test_tracer();
 
     tracing::collect::with_default(subscriber, || {
         // Propagate trace information through tracing parent -> child
@@ -55,6 +57,7 @@ fn trace_root_with_children() {
         root.in_scope(|| tracing::debug_span!("child"));
     });
 
+    drop(provider); // flush all spans
     let spans = exporter.0.lock().unwrap();
     assert_eq!(spans.len(), 2);
     assert_shared_attrs_eq(&spans[0].span_context, &spans[1].span_context);
@@ -113,7 +116,7 @@ fn test_tracer() -> (Tracer, TracerProvider, TestExporter, impl Collect) {
         .with_simple_exporter(exporter.clone())
         .build();
     let tracer = provider.get_tracer("test", None);
-    let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+    let subscriber = tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
 
     (tracer, provider, exporter, subscriber)
 }
