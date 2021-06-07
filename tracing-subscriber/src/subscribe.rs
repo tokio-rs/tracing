@@ -52,7 +52,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// For example:
 /// ```rust
 /// use tracing_subscriber::Subscribe;
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing::Collect;
 ///
 /// pub struct MySubscriber {
@@ -94,7 +94,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// Multiple `Subscriber`s may be composed in the same manner:
 /// ```rust
 /// # use tracing_subscriber::Subscribe;
-/// # use tracing_subscriber::prelude::*;
+/// # use tracing_subscriber::subscribe::CollectExt;
 /// # use tracing::Collect;
 /// pub struct MyOtherSubscriber {
 ///     // ...

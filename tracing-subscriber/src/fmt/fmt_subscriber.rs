@@ -23,7 +23,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let collector = Registry::default()
 ///     .with(fmt::Subscriber::default());
@@ -35,7 +35,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let fmt_subscriber = fmt::subscriber()
 ///    .with_target(false) // don't include event targets when logging
@@ -49,7 +49,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::fmt::{self, format, time};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::Subscribe;
 ///
 /// let fmt = format().with_timer(time::Uptime::default());
 /// let fmt_subscriber = fmt::subscriber()
