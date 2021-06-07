@@ -120,6 +120,8 @@ pub trait WithSubscriber: Sized {
     }
 }
 
+impl<T: Sized> WithSubscriber for T {}
+
 pin_project! {
     /// A future that has been instrumented with a `tracing` subscriber.
     #[derive(Clone, Debug)]
