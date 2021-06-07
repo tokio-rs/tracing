@@ -601,7 +601,7 @@ impl Span {
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
-    /// **Note**: The returned [`Entered`] guard guard does not
+    /// **Note**: The returned [`Entered`] guard does not
     /// implement `Send`. Dropping the guard will exit *this* span,
     /// and if the guard is sent to another thread and dropped there, that thread may
     /// never have entered this span. Thus, `Entered` should not be sent
@@ -1297,15 +1297,27 @@ impl fmt::Debug for Span {
     }
 }
 
-impl<'a> Into<Option<&'a Id>> for &'a Span {
-    fn into(self) -> Option<&'a Id> {
-        self.inner.as_ref().map(|inner| &inner.id)
+impl<'a> From<&'a Span> for Option<&'a Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
+impl<'a> From<&'a Span> for Option<Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(Inner::id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(Inner::id)
     }
 }
 
@@ -1394,6 +1406,11 @@ impl Clone for Inner {
 // ===== impl Entered =====
 
 impl EnteredSpan {
+    /// Returns this span's `Id`, if it is enabled.
+    pub fn id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Inner::id)
+    }
+
     /// Exits this span, returning the underlying [`Span`].
     #[inline]
     pub fn exit(mut self) -> Span {
@@ -1445,6 +1462,7 @@ impl Drop for EnteredSpan {
 struct PhantomNotSend {
     ghost: PhantomData<*mut ()>,
 }
+
 #[allow(non_upper_case_globals)]
 const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 

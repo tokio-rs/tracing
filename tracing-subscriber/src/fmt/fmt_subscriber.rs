@@ -23,7 +23,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let collector = Registry::default()
 ///     .with(fmt::Subscriber::default());
@@ -35,7 +35,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let fmt_subscriber = fmt::subscriber()
 ///    .with_target(false) // don't include event targets when logging
@@ -49,7 +49,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::fmt::{self, format, time};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::Subscribe;
 ///
 /// let fmt = format().with_timer(time::Uptime::default());
 /// let fmt_subscriber = fmt::subscriber()
@@ -692,7 +692,7 @@ where
 
             let ctx = self.make_ctx(ctx);
             if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
+                let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
@@ -858,11 +858,12 @@ impl Timings {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
         subscribe::Subscribe as _,
-        test::MockMakeWriter,
+        test::{MockMakeWriter, MockWriter},
         time,
     };
     use crate::Registry;
@@ -1006,7 +1007,7 @@ mod test {
         });
         let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
-            " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
+            "span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
         );
     }
@@ -1032,6 +1033,68 @@ mod test {
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn make_writer_based_on_meta() {
+        struct MakeByTarget {
+            make_writer1: MockMakeWriter,
+            make_writer2: MockMakeWriter,
+        }
+
+        impl<'a> MakeWriter<'a> for MakeByTarget {
+            type Writer = MockWriter;
+
+            fn make_writer(&'a self) -> Self::Writer {
+                self.make_writer1.make_writer()
+            }
+
+            fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+                if meta.target() == "writer2" {
+                    return self.make_writer2.make_writer();
+                }
+                self.make_writer()
+            }
+        }
+
+        let make_writer1 = MockMakeWriter::default();
+        let make_writer2 = MockMakeWriter::default();
+
+        let make_writer = MakeByTarget {
+            make_writer1: make_writer1.clone(),
+            make_writer2: make_writer2.clone(),
+        };
+
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_target(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::CLOSE)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("writer1_span", x = 42);
+            let _e = span1.enter();
+            tracing::info!(target: "writer2", "hello writer2!");
+            let span2 = tracing::info_span!(target: "writer2", "writer2_span");
+            let _e = span2.enter();
+            tracing::warn!(target: "writer1", "hello writer1!");
+        });
+
+        let actual = sanitize_timings(make_writer1.get_string());
+        assert_eq!(
+            "fake time writer1_span{x=42}:writer2_span: hello writer1!\n\
+             fake time writer1_span{x=42}: close timing timing\n",
+            actual.as_str()
+        );
+        let actual = sanitize_timings(make_writer2.get_string());
+        assert_eq!(
+            "fake time writer1_span{x=42}: hello writer2!\n\
+             fake time writer1_span{x=42}:writer2_span: close timing timing\n",
             actual.as_str()
         );
     }

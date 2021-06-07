@@ -283,6 +283,19 @@ impl Level {
     ///
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: Level = Level(LevelInner::Trace);
+
+    /// Returns the string representation of the `Level`.
+    ///
+    /// This returns the same string as the `fmt::Display` implementation.
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            Level::TRACE => "TRACE",
+            Level::DEBUG => "DEBUG",
+            Level::INFO => "INFO",
+            Level::WARN => "WARN",
+            Level::ERROR => "ERROR",
+        }
+    }
 }
 
 impl fmt::Display for Level {
@@ -366,10 +379,10 @@ impl From<Option<Level>> for LevelFilter {
     }
 }
 
-impl Into<Option<Level>> for LevelFilter {
+impl From<LevelFilter> for Option<Level> {
     #[inline]
-    fn into(self) -> Option<Level> {
-        self.into_level()
+    fn from(filter: LevelFilter) -> Self {
+        filter.into_level()
     }
 }
 

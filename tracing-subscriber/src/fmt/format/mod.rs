@@ -1,5 +1,5 @@
 //! Formatters for logging `tracing` events.
-use super::time::{self, FormatTime, SystemTime};
+use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_subscriber::FmtContext,
@@ -253,6 +253,7 @@ pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
+    pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
@@ -265,6 +266,7 @@ impl Default for Format<Full, SystemTime> {
             format: Full,
             timer: SystemTime,
             ansi: true,
+            display_timestamp: true,
             display_target: true,
             display_level: true,
             display_thread_id: false,
@@ -283,6 +285,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: false,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -319,6 +322,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -348,6 +352,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -356,20 +361,22 @@ impl<F, T> Format<F, T> {
 
     /// Use the given [`timer`] for log message timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See [`time` module] for the provided timer implementations.
     ///
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`timer`]: super::time::FormatTime
+    /// [`time` module]: mod@super::time
+    /// [`ChronoUtc`]: super::time::ChronoUtc
+    /// [`ChronoLocal`]: super::time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
             timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -382,6 +389,7 @@ impl<F, T> Format<F, T> {
             format: self.format,
             timer: (),
             ansi: self.ansi,
+            display_timestamp: false,
             display_target: self.display_target,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
@@ -452,6 +460,34 @@ impl<F, T> Format<F, T> {
 
         Ok(())
     }
+
+    #[inline]
+    fn format_timestamp(&self, writer: &mut dyn fmt::Write) -> fmt::Result
+    where
+        T: FormatTime,
+    {
+        // If timestamps are disabled, do nothing.
+        if !self.display_timestamp {
+            return Ok(());
+        }
+
+        // If ANSI color codes are enabled, format the timestamp with ANSI
+        // colors.
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                let style = Style::new().dimmed();
+                write!(writer, "{}", style.prefix())?;
+                self.timer.format_time(writer)?;
+                write!(writer, "{} ", style.suffix())?;
+                return Ok(());
+            }
+        }
+
+        // Otherwise, just format the timestamp without ANSI formatting.
+        self.timer.format_time(writer)?;
+        writer.write_char(' ')
+    }
 }
 
 #[cfg(feature = "json")]
@@ -513,11 +549,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
 
+        self.format_timestamp(writer)?;
         self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
@@ -576,11 +609,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
 
+        self.format_timestamp(writer)?;
         self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
@@ -1237,6 +1267,22 @@ pub(super) mod test {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
             write!(w, "fake time")
         }
+    }
+
+    #[test]
+    fn disable_everything() {
+        // This test reproduces https://github.com/tokio-rs/tracing/issues/1354
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_thread_names(false);
+        #[cfg(feature = "ansi")]
+        let subscriber = subscriber.with_ansi(false);
+        run_test(subscriber, make_writer, "hello\n")
     }
 
     #[cfg(feature = "ansi")]
