@@ -62,6 +62,8 @@
 //! [lookup]: ../layer/struct.Context.html#method.span
 //! [`LookupSpan`]: trait.LookupSpan.html
 //! [`SpanData`]: trait.SpanData.html
+use std::fmt::Debug;
+
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
@@ -175,29 +177,31 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 ///
 /// This is returned by the [`SpanRef::scope`] method.
 #[derive(Debug)]
-pub struct SpanScope<'a, R> {
+pub struct Scope<'a, R> {
     registry: &'a R,
     next: Option<Id>,
 }
 
-impl<'a, R> SpanScope<'a, R>
+impl<'a, R> Scope<'a, R>
 where
     R: LookupSpan<'a>,
 {
     /// Flips the order of the iterator, so that it is ordered from root to leaf.
+
+    /// **Note**: if the "smallvec" feature flag is not enabled, this may allocate.
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_root(self) -> SpanScopeFromRoot<'a, R> {
+    pub fn from_root(self) -> ScopeFromRoot<'a, R> {
         #[cfg(feature = "smallvec")]
         type Buf<T> = smallvec::SmallVec<T>;
         #[cfg(not(feature = "smallvec"))]
         type Buf<T> = Vec<T>;
-        SpanScopeFromRoot {
+        ScopeFromRoot {
             spans: self.collect::<Buf<_>>().into_iter().rev(),
         }
     }
 }
 
-impl<'a, R> Iterator for SpanScope<'a, R>
+impl<'a, R> Iterator for Scope<'a, R>
 where
     R: LookupSpan<'a>,
 {
@@ -212,8 +216,8 @@ where
 
 /// An iterator over the parents of a span, ordered from root to leaf.
 ///
-/// This is returned by the [`SpanScope::from_root`] method.
-pub struct SpanScopeFromRoot<'a, R>
+/// This is returned by the [`Scope::from_root`] method.
+pub struct ScopeFromRoot<'a, R>
 where
     R: LookupSpan<'a>,
 {
@@ -223,14 +227,29 @@ where
     spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
 }
 
-impl<'a, R> Iterator for SpanScopeFromRoot<'a, R>
+impl<'a, R> Iterator for ScopeFromRoot<'a, R>
 where
     R: LookupSpan<'a>,
 {
     type Item = SpanRef<'a, R>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.spans.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.spans.size_hint()
+    }
+}
+
+impl<'a, R> Debug for ScopeFromRoot<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.pad("ScopeFromRoot { .. }")
     }
 }
 
@@ -239,11 +258,8 @@ where
 /// This is returned by the [`SpanRef::parents`] method.
 ///
 /// [`SpanRef::parents`]: struct.SpanRef.html#method.parents
-#[derive(Debug)]
-pub struct Parents<'a, R> {
-    registry: &'a R,
-    next: Option<Id>,
-}
+#[deprecated(note = "replaced by Scope")]
+pub type Parents<'a, R> = Scope<'a, R>;
 
 /// An iterator over a span's parents, starting with the root of the trace
 /// tree.
@@ -251,12 +267,8 @@ pub struct Parents<'a, R> {
 /// For additonal details, see [`SpanRef::from_root`].
 ///
 /// [`Span::from_root`]: struct.SpanRef.html#method.from_root
-pub struct FromRoot<'a, R: LookupSpan<'a>> {
-    #[cfg(feature = "smallvec")]
-    inner: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
-    #[cfg(not(feature = "smallvec"))]
-    inner: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
-}
+#[deprecated(note = "replaced by ScopeFromRoot")]
+pub type FromRoot<'a, R> = ScopeFromRoot<'a, R>;
 
 #[cfg(feature = "smallvec")]
 type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
@@ -309,8 +321,8 @@ where
     ///
     /// The iterator will first return the span, then the span's immediate parent,
     /// followed by that span's parent,  and so on, until it reaches a root span.
-    pub fn scope(&self) -> SpanScope<'a, R> {
-        SpanScope {
+    pub fn scope(&self) -> Scope<'a, R> {
+        Scope {
             registry: self.registry,
             next: Some(self.id()),
         }
@@ -322,11 +334,14 @@ where
     /// The iterator will first return the span's immediate parent, followed by
     /// that span's parent, followed by _that_ span's parent, and so on, until a
     /// it reaches a root span.
+    #[deprecated(
+        note = "equivalent to self.scope().skip(1), but consider whether the skip is actually intended"
+    )]
+    #[allow(deprecated)]
     pub fn parents(&self) -> Parents<'a, R> {
-        Parents {
-            registry: self.registry,
-            next: self.parent().map(|parent| parent.id()),
-        }
+        let mut scope = self.scope();
+        scope.next();
+        scope
     }
 
     /// Returns an iterator over all parents of this span, starting with the
@@ -338,18 +353,12 @@ where
     ///
     /// **Note**: if the "smallvec" feature flag is not enabled, this may
     /// allocate.
+    #[deprecated(
+        note = "equivalent to self.scope().skip(1).from_root(), but consider whether the skip is actually intended"
+    )]
+    #[allow(deprecated)]
     pub fn from_root(&self) -> FromRoot<'a, R> {
-        #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
-        #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
-
-        // an alternative way to handle this would be to the recursive approach that
-        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
-        // spans path.
-        let parents = self.parents().collect::<SpanRefVec<'a, _>>();
-        let inner = parents.into_iter().rev();
-        FromRoot { inner }
+        self.parents().from_root()
     }
 
     /// Returns a reference to this span's `Extensions`.
@@ -366,46 +375,5 @@ where
     /// describing the span.
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
-    }
-}
-
-impl<'a, R> Iterator for Parents<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let id = self.next.take()?;
-        let span = self.registry.span(&id)?;
-        self.next = span.parent().map(|parent| parent.id());
-        Some(span)
-    }
-}
-
-// === impl FromRoot ===
-
-impl<'span, R> Iterator for FromRoot<'span, R>
-where
-    R: LookupSpan<'span>,
-{
-    type Item = SpanRef<'span, R>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-impl<'span, R> std::fmt::Debug for FromRoot<'span, R>
-where
-    R: LookupSpan<'span>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("FromRoot { .. }")
     }
 }

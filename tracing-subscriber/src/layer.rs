@@ -7,7 +7,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
+use crate::registry::{self, LookupSpan, Registry};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -586,9 +586,8 @@ pub struct Identity {
 /// [`Context::scope`]: struct.Context.html#method.scope
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub struct Scope<'a, L: LookupSpan<'a>>(
-    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
-);
+#[deprecated(note = "moved to crate::registry::ScopeFromRoot")]
+pub type Scope<'a, L> = std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>;
 
 // === impl Layered ===
 
@@ -1114,15 +1113,20 @@ where
     /// [stored data]: ../registry/struct.SpanRef.html
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    #[deprecated(
+        note = "equivalent to self.lookup_current().into_iter().flat_map(|span| span.scope().from_root()), but consider whether lookup_current is a bug"
+    )]
+    #[allow(deprecated)]
     pub fn scope(&self) -> Scope<'_, S>
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
     {
-        let scope = self.lookup_current().map(|span| {
-            let parents = span.from_root();
-            parents.chain(std::iter::once(span))
-        });
-        Scope(scope)
+        self.lookup_current()
+            .as_ref()
+            .map(registry::SpanRef::scope)
+            .map(registry::Scope::from_root)
+            .into_iter()
+            .flatten()
     }
 }
 
@@ -1148,27 +1152,6 @@ impl Identity {
     /// Returns a new `Identity` layer.
     pub fn new() -> Self {
         Self { _p: () }
-    }
-}
-
-// === impl Scope ===
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
-    type Item = SpanRef<'a, L>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.as_mut()?.next()
-    }
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("Scope { .. }")
     }
 }
 
