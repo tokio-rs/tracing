@@ -160,7 +160,7 @@ where
         for span in ctx
             .lookup_current()
             .into_iter()
-            .flat_map(|span| span.scope())
+            .flat_map(|span| span.scope().from_root())
         {
             let exts = span.extensions();
             let fields = exts.get::<SpanFields>().expect("missing fields");
