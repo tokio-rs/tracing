@@ -398,11 +398,9 @@ where
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
 
-        if !self.config.empty_samples && first.from_root().count() == 0 {
+        if !self.config.empty_samples && first.parent().is_none() {
             return;
         }
-
-        let parents = first.from_root();
 
         let mut stack = String::new();
 
@@ -412,7 +410,11 @@ where
             stack += "all-threads";
         }
 
-        for parent in parents {
+        let mut parents = first.scope();
+        parents
+            .next()
+            .expect("expected: scope begins with leaf scope");
+        for parent in parents.from_root() {
             stack += "; ";
             write(&mut stack, parent, &self.config).expect("expected: write to String never fails");
         }
@@ -444,7 +446,6 @@ where
 
         let samples = self.time_since_last_event();
         let first = expect!(ctx.span(&id), "expected: span id exists in registry");
-        let parents = first.from_root();
 
         let mut stack = String::new();
         if !self.config.threads_collapsed {
@@ -452,20 +453,15 @@ where
         } else {
             stack += "all-threads";
         }
-        stack += "; ";
 
-        for parent in parents {
+        for parent in first.scope().from_root() {
+            stack += "; ";
             expect!(
                 write(&mut stack, parent, &self.config),
                 "expected: write to String never fails"
             );
-            stack += "; ";
         }
 
-        expect!(
-            write(&mut stack, first, &self.config),
-            "expected: write to String never fails"
-        );
         expect!(
             write!(&mut stack, " {}", samples.as_nanos()),
             "expected: write to String never fails"
