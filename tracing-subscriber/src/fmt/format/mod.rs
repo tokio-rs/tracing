@@ -7,10 +7,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::{
-    fmt::{self, Write},
-    iter,
-};
+use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field, Visit},
     span, Event, Level, Subscriber,
@@ -861,9 +858,7 @@ where
             .and_then(|id| self.ctx.ctx.span(&id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
+        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
 
         for span in scope {
             seen = true;
@@ -933,9 +928,7 @@ where
             .and_then(|id| self.ctx.ctx.span(&id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
+        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
 
         for span in scope {
             write!(f, "{}", bold.paint(span.metadata().name()))?;
