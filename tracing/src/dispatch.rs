@@ -118,9 +118,6 @@
 //!
 //! // `my_collector` is now the default
 //! ```
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!
