@@ -90,7 +90,7 @@ where
         let span = subscriber
             .span(id)
             .expect("registry should have a span for the current ID");
-        for span in span.scope().from_root() {
+        for span in span.scope() {
             let cont = if let Some(fields) = span.extensions().get::<FormattedFields<F>>() {
                 f(span.metadata(), fields.fields.as_str())
             } else {
