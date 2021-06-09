@@ -187,8 +187,12 @@ where
     /// Flips the order of the iterator, so that it is ordered from root to leaf.
     #[allow(clippy::wrong_self_convention)]
     pub fn from_root(self) -> SpanScopeFromRoot<'a, R> {
+        #[cfg(feature = "smallvec")]
+        type Buf<T> = smallvec::SmallVec<T>;
+        #[cfg(not(feature = "smallvec"))]
+        type Buf<T> = Vec<T>;
         SpanScopeFromRoot {
-            spans: self.collect::<Vec<_>>().into_iter().rev(),
+            spans: self.collect::<Buf<_>>().into_iter().rev(),
         }
     }
 }
@@ -213,6 +217,9 @@ pub struct SpanScopeFromRoot<'a, R>
 where
     R: LookupSpan<'a>,
 {
+    #[cfg(feature = "smallvec")]
+    spans: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
+    #[cfg(not(feature = "smallvec"))]
     spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
 }
 
