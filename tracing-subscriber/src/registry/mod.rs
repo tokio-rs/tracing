@@ -171,6 +171,62 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
     data: R::Data,
 }
 
+/// An iterator over the parents of a span, ordered from leaf to root.
+///
+/// This is returned by the [`SpanRef::scope`] method.
+#[derive(Debug)]
+pub struct SpanScope<'a, R> {
+    registry: &'a R,
+    next: Option<Id>,
+}
+
+impl<'a, R> SpanScope<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    /// Flips the order of the iterator, so that it is ordered from root to leaf.
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_root(self) -> SpanScopeFromRoot<'a, R> {
+        SpanScopeFromRoot {
+            spans: self.collect::<Vec<_>>().into_iter().rev(),
+        }
+    }
+}
+
+impl<'a, R> Iterator for SpanScope<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, R>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curr = self.registry.span(self.next.as_ref()?)?;
+        self.next = curr.parent_id().cloned();
+        Some(curr)
+    }
+}
+
+/// An iterator over the parents of a span, ordered from root to leaf.
+///
+/// This is returned by the [`SpanScope::from_root`] method.
+pub struct SpanScopeFromRoot<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
+}
+
+impl<'a, R> Iterator for SpanScopeFromRoot<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, R>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.spans.next()
+    }
+}
+
 /// An iterator over the parents of a span.
 ///
 /// This is returned by the [`SpanRef::parents`] method.
@@ -239,6 +295,18 @@ where
             registry: self.registry,
             data,
         })
+    }
+
+    /// Returns an iterator over all parents of this span, starting with this span,
+    /// ordered from leaf to root.
+    ///
+    /// The iterator will first return the span, then the span's immediate parent,
+    /// followed by that span's parent,  and so on, until it reaches a root span.
+    pub fn scope(&self) -> SpanScope<'a, R> {
+        SpanScope {
+            registry: self.registry,
+            next: Some(self.id()),
+        }
     }
 
     /// Returns an iterator over all parents of this span, starting with the
