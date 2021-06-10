@@ -56,22 +56,22 @@ fn many_children(c: &mut Criterion) {
 struct NoDataSpan;
 struct RegistryAccessCollector;
 
-impl<S> tracing_subscriber::Subscribe<S> for RegistryAccessCollector
+impl<C> tracing_subscriber::Subscribe<C> for RegistryAccessCollector
 where
-    S: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
+    C: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
     fn new_span(
         &self,
         _attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
-        ctx: tracing_subscriber::subscribe::Context<'_, S>,
+        ctx: tracing_subscriber::subscribe::Context<'_, C>,
     ) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         extensions.insert(NoDataSpan);
     }
 
-    fn on_close(&self, id: tracing::span::Id, ctx: tracing_subscriber::subscribe::Context<'_, S>) {
+    fn on_close(&self, id: tracing::span::Id, ctx: tracing_subscriber::subscribe::Context<'_, C>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
@@ -83,15 +83,15 @@ where
 
 struct OtelDataCollector;
 
-impl<S> tracing_subscriber::Subscribe<S> for OtelDataCollector
+impl<C> tracing_subscriber::Subscribe<C> for OtelDataCollector
 where
-    S: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
+    C: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
     fn new_span(
         &self,
         attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
-        ctx: tracing_subscriber::subscribe::Context<'_, S>,
+        ctx: tracing_subscriber::subscribe::Context<'_, C>,
     ) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
@@ -101,7 +101,7 @@ where
         );
     }
 
-    fn on_close(&self, id: tracing::span::Id, ctx: tracing_subscriber::subscribe::Context<'_, S>) {
+    fn on_close(&self, id: tracing::span::Id, ctx: tracing_subscriber::subscribe::Context<'_, C>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
