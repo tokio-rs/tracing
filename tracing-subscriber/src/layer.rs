@@ -994,6 +994,29 @@ where
         }
     }
 
+    /// Finds the [`SpanRef`] associated with an [`Event`], if it has one.
+    ///
+    /// Compared to [`Context::current_span`] and [`Context::lookup_current`],
+    /// this respects overrides provided by the [`Event`].
+    ///
+    /// Compared to [`Event::parent`], this automatically falls back to the contextual
+    /// span, if required.
+    #[inline]
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        if event.is_root() {
+            None
+        } else if event.is_contextual() {
+            self.lookup_current()
+        } else {
+            event.parent().and_then(|id| self.span(id))
+        }
+    }
+
     /// Returns metadata for the span with the given `id`, if it exists.
     ///
     /// If this returns `None`, then no span exists for that ID (either it has
