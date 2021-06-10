@@ -491,9 +491,9 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    pub fn new<S>(collector: S) -> Self
+    pub fn new<C>(collector: C) -> Self
     where
-        S: Collect + Send + Sync + 'static,
+        C: Collect + Send + Sync + 'static,
     {
         let me = Dispatch {
             collector: Kind::Scoped(Arc::new(collector)),
@@ -819,12 +819,12 @@ impl fmt::Debug for Dispatch {
 }
 
 #[cfg(feature = "std")]
-impl<S> From<S> for Dispatch
+impl<C> From<C> for Dispatch
 where
-    S: Collect + Send + Sync + 'static,
+    C: Collect + Send + Sync + 'static,
 {
     #[inline]
-    fn from(collector: S) -> Self {
+    fn from(collector: C) -> Self {
         Dispatch::new(collector)
     }
 }

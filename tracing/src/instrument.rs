@@ -87,9 +87,9 @@ pub trait WithCollector: Sized {
     ///
     /// [`Collect`]: super::Collect
     /// [default]: crate::dispatch#setting-the-default-collector
-    fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
+    fn with_collector<C>(self, collector: C) -> WithDispatch<Self>
     where
-        S: Into<Dispatch>,
+        C: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
