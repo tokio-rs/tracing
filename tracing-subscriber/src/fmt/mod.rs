@@ -411,7 +411,7 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
-pub fn subscriber<S>() -> Subscriber<S> {
+pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
 }
 
