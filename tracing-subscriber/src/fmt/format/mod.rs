@@ -63,7 +63,7 @@ use fmt::{Debug, Display};
 /// {
 ///     fn format_event(
 ///         &self,
-///         ctx: &FmtContext<'_, S, N>,
+///         ctx: &FmtContext<'_, C, N>,
 ///         writer: &mut dyn fmt::Write,
 ///         event: &Event<'_>,
 ///     ) -> fmt::Result {
