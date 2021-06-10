@@ -328,6 +328,8 @@ where
     ///
     /// The iterator will first return the span, then the span's immediate parent,
     /// followed by that span's parent,  and so on, until it reaches a root span.
+    ///
+    /// If the opposite order is desired then you can chain on a call to [`Scope::from_root`].
     pub fn scope(&self) -> Scope<'a, R> {
         Scope {
             registry: self.registry,
