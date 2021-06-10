@@ -187,8 +187,9 @@ where
     R: LookupSpan<'a>,
 {
     /// Flips the order of the iterator, so that it is ordered from root to leaf.
-
-    /// **Note**: if the "smallvec" feature flag is not enabled, this may allocate.
+    ///
+    /// **Note**: this will allocate if there are many spans remaining, or if the
+    /// "smallvec" feature flag is not enabled.
     #[allow(clippy::wrong_self_convention)]
     pub fn from_root(self) -> ScopeFromRoot<'a, R> {
         #[cfg(feature = "smallvec")]
@@ -351,8 +352,8 @@ where
     /// next span, and then the next, until this span's immediate parent is
     /// returned.
     ///
-    /// **Note**: if the "smallvec" feature flag is not enabled, this may
-    /// allocate.
+    /// **Note**: this will allocate if there are many spans remaining, or if the
+    /// "smallvec" feature flag is not enabled.
     #[deprecated(
         note = "equivalent to self.scope().skip(1).from_root(), but consider whether the skip is actually intended"
     )]
