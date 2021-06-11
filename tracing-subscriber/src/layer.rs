@@ -6,9 +6,8 @@ use tracing_core::{
     Event, LevelFilter,
 };
 
-use crate::registry::SpanRef;
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry};
+use crate::registry::{self, LookupSpan, Registry, SpanRef};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -593,6 +592,7 @@ pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::Scope
 where
     L: LookupSpan<'a>;
 
+#[cfg(feature = "registry")]
 #[allow(deprecated)]
 impl<'a, L> Iterator for Scope<'a, L>
 where
