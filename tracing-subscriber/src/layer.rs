@@ -6,6 +6,7 @@ use tracing_core::{
     Event, LevelFilter,
 };
 
+use crate::registry::SpanRef;
 #[cfg(feature = "registry")]
 use crate::registry::{self, LookupSpan, Registry};
 use std::{any::TypeId, marker::PhantomData};
@@ -587,7 +588,22 @@ pub struct Identity {
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[deprecated(note = "moved to crate::registry::ScopeFromRoot")]
-pub type Scope<'a, L> = std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>;
+#[derive(Debug)]
+pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>)
+where
+    L: LookupSpan<'a>;
+
+#[allow(deprecated)]
+impl<'a, L> Iterator for Scope<'a, L>
+where
+    L: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, L>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
 
 // === impl Layered ===
 
@@ -1121,12 +1137,14 @@ where
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
     {
-        self.lookup_current()
-            .as_ref()
-            .map(registry::SpanRef::scope)
-            .map(registry::Scope::from_root)
-            .into_iter()
-            .flatten()
+        Scope(
+            self.lookup_current()
+                .as_ref()
+                .map(registry::SpanRef::scope)
+                .map(registry::Scope::from_root)
+                .into_iter()
+                .flatten(),
+        )
     }
 }
 
