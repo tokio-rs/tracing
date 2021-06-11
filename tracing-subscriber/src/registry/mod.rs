@@ -327,7 +327,7 @@ where
     /// ordered from leaf to root.
     ///
     /// The iterator will first return the span, then the span's immediate parent,
-    /// followed by that span's parent,  and so on, until it reaches a root span.
+    /// followed by that span's parent, and so on, until it reaches a root span.
     ///
     /// ```rust
     /// use tracing_subscriber::registry::{Registry, LookupSpan};
