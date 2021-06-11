@@ -327,7 +327,7 @@ where
     /// ordered from leaf to root.
     ///
     /// The iterator will first return the span, then the span's immediate parent,
-    /// followed by that span's parent,  and so on, until it reaches a root span.
+    /// followed by that span's parent, and so on, until it reaches a root span.
     ///
     /// ```rust
     /// use tracing_subscriber::registry::{Registry, LookupSpan};
@@ -346,7 +346,8 @@ where
     /// });
     /// ```
     ///
-    /// If the opposite order is desired then you can chain on a call to [`Scope::from_root`].
+    /// If the opposite order (from the root to this span) is desired, calling [`Scope::from_root`] on
+    /// the returned iterator reverses the order.
     ///
     /// ```rust
     /// use tracing_subscriber::registry::{Registry, LookupSpan};
