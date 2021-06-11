@@ -329,7 +329,41 @@ where
     /// The iterator will first return the span, then the span's immediate parent,
     /// followed by that span's parent,  and so on, until it reaches a root span.
     ///
+    /// ```rust
+    /// use tracing_subscriber::registry::{Registry, LookupSpan};
+    /// tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+    ///     let _root = tracing::info_span!("root").entered();
+    ///     let _child = tracing::info_span!("child").entered();
+    ///     let leaf = tracing::info_span!("leaf");
+    ///     tracing::dispatcher::get_default(|dispatch| {
+    ///         let registry = dispatch.downcast_ref::<Registry>().unwrap();
+    ///         let leaf_scope = registry.span(&leaf.id().unwrap()).unwrap().scope();
+    ///         assert_eq!(
+    ///             leaf_scope.map(|span| span.name()).collect::<Vec<&str>>(),
+    ///             vec!["leaf", "child", "root"]
+    ///         );
+    ///     });
+    /// });
+    /// ```
+    ///
     /// If the opposite order is desired then you can chain on a call to [`Scope::from_root`].
+    ///
+    /// ```rust
+    /// use tracing_subscriber::registry::{Registry, LookupSpan};
+    /// tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+    ///     let _root = tracing::info_span!("root").entered();
+    ///     let _child = tracing::info_span!("child").entered();
+    ///     let leaf = tracing::info_span!("leaf");
+    ///     tracing::dispatcher::get_default(|dispatch| {
+    ///         let registry = dispatch.downcast_ref::<Registry>().unwrap();
+    ///         let leaf_scope = registry.span(&leaf.id().unwrap()).unwrap().scope();
+    ///         assert_eq!(
+    ///             leaf_scope.from_root().map(|span| span.name()).collect::<Vec<&str>>(),
+    ///             vec!["root", "child", "leaf"]
+    ///         );
+    ///     });
+    /// });
+    /// ```
     pub fn scope(&self) -> Scope<'a, R> {
         Scope {
             registry: self.registry,
