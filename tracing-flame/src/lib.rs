@@ -410,13 +410,12 @@ where
             stack += "all-threads";
         }
 
-        let mut parents = first.scope();
-        parents
-            .next()
-            .expect("expected: scope begins with leaf scope");
-        for parent in parents.from_root() {
-            stack += "; ";
-            write(&mut stack, parent, &self.config).expect("expected: write to String never fails");
+        if let Some(second) = first.parent() {
+            for parent in second.scope().from_root() {
+                stack += "; ";
+                write(&mut stack, parent, &self.config)
+                    .expect("expected: write to String never fails");
+            }
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
