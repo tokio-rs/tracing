@@ -618,6 +618,10 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
 
         self.as_ref().downcast_raw(id)
     }
+
+    fn current_span(&self) -> span::Current {
+        self.as_ref().current_span()
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -684,5 +688,9 @@ impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
         }
 
         self.as_ref().downcast_raw(id)
+    }
+
+    fn current_span(&self) -> span::Current {
+        self.as_ref().current_span()
     }
 }
