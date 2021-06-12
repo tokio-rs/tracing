@@ -75,8 +75,6 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
 //!     <code>Span::enter</code> may produce incorrect traces if the returned drop
@@ -121,12 +119,9 @@
 //! });
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: Since entering a span takes <code>&self</code<, and
+//! <strong>Note</strong>: Since entering a span takes <code>&self</code>, and
 //! <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
 //! <code>Sync</code>, it is entirely valid for multiple threads to enter the
 //! same span concurrently.
@@ -610,9 +605,7 @@ impl Span {
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
     /// `Span::enter` should be used very carefully or avoided entirely. Holding
     /// the drop guard returned by `Span::enter` across `.await` points will
-    /// result in incorrect traces.
-    ///
-    /// For example,
+    /// result in incorrect traces. For example,
     ///
     /// ```
     /// # use tracing::info_span;
@@ -820,9 +813,6 @@ impl Span {
     /// Furthermore, `entered` may be used when the span must be stored in some
     /// other struct or be passed to a function while remaining entered.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1039,9 +1029,6 @@ impl Span {
     /// }
     /// ```
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: The fields associated with a span are part of its
