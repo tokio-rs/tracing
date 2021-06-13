@@ -108,9 +108,6 @@
 //! // `my_subscriber` is now the default
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //! <strong>Note</strong>:the thread-local scoped dispatcher
@@ -211,9 +208,6 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// The default dispatcher is used when creating a new [span] or
 /// [`Event`].
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: This function required the Rust standard library.
@@ -239,9 +233,6 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// Sets the dispatch as the default dispatch for the duration of the lifetime
 /// of the returned DefaultGuard
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: This function required the Rust standard library.
@@ -268,8 +259,6 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// Returns `Err` if the global default has already been set.
 ///
 ///
-/// <div class="information">
-///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 /// </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 /// <strong>Warning</strong>: In general, libraries should <em>not</em> call
 /// <code>set_global_default()</code>! Doing so will cause conflicts when
@@ -585,9 +574,6 @@ impl Dispatch {
     /// This calls the [`drop_span`] function on the [`Subscriber`] that this
     ///  `Dispatch` forwards to.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
     /// <strong>Deprecated</strong>: The <a href="#method.try_close"><code>try_close</code></a>
     /// method is functionally identical, but returns <code>true</code> if the span is now closed.
