@@ -363,7 +363,7 @@ impl EnvFilter {
     }
 }
 
-impl<S: Collect> Subscribe<S> for EnvFilter {
+impl<C: Collect> Subscribe<C> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -397,7 +397,7 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         )
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -440,7 +440,7 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         false
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -448,13 +448,13 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
 
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -463,13 +463,13 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
         if self.cares_about_span(id) {
             SCOPE.with(|scope| scope.borrow_mut().pop());
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;

@@ -121,9 +121,6 @@
 //! // `my_collector` is now the default
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!
@@ -244,9 +241,6 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// The default dispatcher is used when creating a new [span] or
 /// [`Event`].
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: This function required the Rust standard library.
@@ -272,9 +266,6 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// Sets the dispatch as the default dispatch for the duration of the lifetime
 /// of the returned DefaultGuard
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///
@@ -300,8 +291,6 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// Returns `Err` if the global default has already been set.
 ///
 ///
-/// <div class="information">
-///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 /// </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 /// <strong>Warning</strong>: In general, libraries should <em>not</em> call
 /// <code>set_global_default()</code>! Doing so will cause conflicts when
@@ -494,9 +483,9 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    pub fn new<S>(collector: S) -> Self
+    pub fn new<C>(collector: C) -> Self
     where
-        S: Collect + Send + Sync + 'static,
+        C: Collect + Send + Sync + 'static,
     {
         let me = Dispatch {
             collector: Kind::Scoped(Arc::new(collector)),
@@ -738,9 +727,6 @@ impl Dispatch {
     /// This calls the [`drop_span`] function on the [`Collect`] that this
     ///  `Dispatch` forwards to.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
     ///
     /// **Deprecated**: The [`try_close`] method is functionally identical, but returns `true` if the span is now closed.
@@ -823,12 +809,12 @@ impl fmt::Debug for Dispatch {
 }
 
 #[cfg(feature = "std")]
-impl<S> From<S> for Dispatch
+impl<C> From<C> for Dispatch
 where
-    S: Collect + Send + Sync + 'static,
+    C: Collect + Send + Sync + 'static,
 {
     #[inline]
-    fn from(collector: S) -> Self {
+    fn from(collector: C) -> Self {
         Dispatch::new(collector)
     }
 }

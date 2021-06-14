@@ -60,7 +60,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MySubscriber {
+/// impl<C: Collect> Subscribe<C> for MySubscriber {
 ///     // ...
 /// }
 ///
@@ -103,7 +103,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyOtherSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyOtherSubscriber {
 ///     // ...
 /// }
 ///
@@ -111,11 +111,11 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyThirdSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyThirdSubscriber {
 ///     // ...
 /// }
 /// # pub struct MySubscriber {}
-/// # impl<S: Collect> Subscribe<S> for MySubscriber {}
+/// # impl<C: Collect> Subscribe<C> for MySubscriber {}
 /// # pub struct MyCollector { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
 /// # impl Collect for MyCollector {
@@ -213,9 +213,6 @@ where
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -257,9 +254,6 @@ where
     /// By default, this always returns `true`, allowing the wrapped collector
     /// to choose to disable the span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -353,11 +347,11 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for FooSubscriber {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for BarSubscriber {
+    /// impl<C: Collect> Subscribe<C> for BarSubscriber {
     ///     // ...
     /// }
     ///
@@ -394,8 +388,8 @@ where
     /// # pub struct FooSubscriber {}
     /// # pub struct BarSubscriber {}
     /// # pub struct MyCollector {}
-    /// # impl<S: Collect> Subscribe<S> for FooSubscriber {}
-    /// # impl<S: Collect> Subscribe<S> for BarSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for BarSubscriber {}
     /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
@@ -1007,9 +1001,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1031,9 +1022,6 @@ where
 
     /// Returns `true` if an active span exists for the given `Id`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1056,9 +1044,6 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1093,9 +1078,6 @@ where
     ///
     /// If this iterator is empty, then there are no spans in the current context.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
