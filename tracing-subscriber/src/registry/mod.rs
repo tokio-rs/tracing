@@ -379,7 +379,7 @@ where
     /// that span's parent, followed by _that_ span's parent, and so on, until a
     /// it reaches a root span.
     #[deprecated(
-        note = "equivalent to self.scope().skip(1), but consider whether the skip is actually intended"
+        note = "equivalent to `self.parent().into_iter().flat_map(SpanRef::scope)`, but consider whether excluding self is actually intended"
     )]
     #[allow(deprecated)]
     pub fn parents(&self) -> Parents<'a, R> {
@@ -398,7 +398,7 @@ where
     /// **Note**: this will allocate if there are many spans remaining, or if the
     /// "smallvec" feature flag is not enabled.
     #[deprecated(
-        note = "equivalent to self.scope().skip(1).from_root(), but consider whether the skip is actually intended"
+        note = "equivalent to `self.parent().into_iter().flat_map(|span| span.scope().from_root())`, but consider whether excluding self is actually intended"
     )]
     #[allow(deprecated)]
     pub fn from_root(&self) -> FromRoot<'a, R> {
