@@ -265,8 +265,21 @@ where
 /// This is returned by the [`SpanRef::parents`] method.
 ///
 /// [`SpanRef::parents`]: struct.SpanRef.html#method.parents
-#[deprecated(note = "replaced by Scope")]
-pub type Parents<'a, R> = Scope<'a, R>;
+#[deprecated(note = "replaced by `Scope`")]
+#[derive(Debug)]
+pub struct Parents<'a, R>(Scope<'a, R>);
+
+#[allow(deprecated)]
+impl<'a, R> Iterator for Parents<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, R>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
 
 /// An iterator over a span's parents, starting with the root of the trace
 /// tree.
@@ -274,8 +287,23 @@ pub type Parents<'a, R> = Scope<'a, R>;
 /// For additonal details, see [`SpanRef::from_root`].
 ///
 /// [`Span::from_root`]: struct.SpanRef.html#method.from_root
-#[deprecated(note = "replaced by ScopeFromRoot")]
-pub type FromRoot<'a, R> = ScopeFromRoot<'a, R>;
+#[deprecated(note = "replaced by `ScopeFromRoot`")]
+#[derive(Debug)]
+pub struct FromRoot<'a, R>(ScopeFromRoot<'a, R>)
+where
+    R: LookupSpan<'a>;
+
+#[allow(deprecated)]
+impl<'a, R> Iterator for FromRoot<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, R>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
 
 #[cfg(feature = "smallvec")]
 type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
@@ -383,9 +411,10 @@ where
     )]
     #[allow(deprecated)]
     pub fn parents(&self) -> Parents<'a, R> {
-        let mut scope = self.scope();
-        scope.next();
-        scope
+        Parents(Scope {
+            registry: self.registry,
+            next: self.parent_id().cloned(),
+        })
     }
 
     /// Returns an iterator over all parents of this span, starting with the
@@ -402,7 +431,7 @@ where
     )]
     #[allow(deprecated)]
     pub fn from_root(&self) -> FromRoot<'a, R> {
-        self.parents().from_root()
+        FromRoot(self.parents().0.from_root())
     }
 
     /// Returns a reference to this span's `Extensions`.
