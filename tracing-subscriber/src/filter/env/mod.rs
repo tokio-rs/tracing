@@ -271,7 +271,7 @@ impl EnvFilter {
                     let bold = Style::new().bold();
                     let mut warning = Color::Yellow.paint("warning");
                     warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.clone().paint(":"), bold.paint(msg))
+                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
                 };
                 eprintln!("{}", msg);
             };
@@ -308,7 +308,6 @@ impl EnvFilter {
                 };
                 let level = directive
                     .level
-                    .clone()
                     .into_level()
                     .expect("=off would not have enabled any filters");
                 ctx(&format!(
@@ -396,8 +395,8 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
             return Some(LevelFilter::TRACE);
         }
         std::cmp::max(
-            self.statics.max_level.clone().into(),
-            self.dynamics.max_level.clone().into(),
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
         )
     }
 
