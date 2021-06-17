@@ -287,10 +287,7 @@ where
 /// For additonal details, see [`SpanRef::from_root`].
 ///
 /// [`Span::from_root`]: struct.SpanRef.html#method.from_root
-#[deprecated(
-    note = "replaced by `ScopeFromRoot`",
-    since = "0.2.19",
-)]
+#[deprecated(note = "replaced by `ScopeFromRoot`", since = "0.2.19")]
 #[derive(Debug)]
 pub struct FromRoot<'a, R>(ScopeFromRoot<'a, R>)
 where
@@ -361,19 +358,37 @@ where
     /// followed by that span's parent, and so on, until it reaches a root span.
     ///
     /// ```rust
-    /// use tracing_subscriber::registry::{Registry, LookupSpan};
-    /// tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+    /// use tracing::{span, Subscriber};
+    /// use tracing_subscriber::{
+    ///     layer::{Context, Layer},
+    ///     prelude::*,
+    ///     registry::{LookupSpan, Registry},
+    /// };
+    /// # // Use static mut to avoid tainting the visible part of the example with state
+    /// # static mut last_entered_scope: Vec<&'static str> = vec![];
+    /// struct PrintingLayer;
+    /// impl<S> Layer<S> for PrintingLayer
+    /// where
+    ///     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_enter(&self, id: &span::Id, ctx: Context<S>) {
+    ///         let span = ctx.span(id).unwrap();
+    ///         let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
+    ///         println!("Entering span: {:?}", scope);
+    /// #       unsafe { last_entered_scope = scope; }
+    ///     }
+    /// }
+    /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
     ///     let _root = tracing::info_span!("root").entered();
+    ///     // Prints: Entering span: ["root"]
     ///     let _child = tracing::info_span!("child").entered();
-    ///     let leaf = tracing::info_span!("leaf");
-    ///     tracing::dispatcher::get_default(|dispatch| {
-    ///         let registry = dispatch.downcast_ref::<Registry>().unwrap();
-    ///         let leaf_scope = registry.span(&leaf.id().unwrap()).unwrap().scope();
-    ///         assert_eq!(
-    ///             leaf_scope.map(|span| span.name()).collect::<Vec<&str>>(),
-    ///             vec!["leaf", "child", "root"]
-    ///         );
-    ///     });
+    ///     // Prints: Entering span: ["child", "root"]
+    ///     let _leaf = tracing::info_span!("leaf").entered();
+    ///     // Prints: Entering span: ["leaf", "child", "root"]
+    /// #   assert_eq!(
+    /// #       unsafe { &last_entered_scope },
+    /// #       &["leaf", "child", "root"]
+    /// #   );
     /// });
     /// ```
     ///
@@ -381,19 +396,37 @@ where
     /// the returned iterator reverses the order.
     ///
     /// ```rust
-    /// use tracing_subscriber::registry::{Registry, LookupSpan};
-    /// tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+    /// # use tracing::{span, Subscriber};
+    /// # use tracing_subscriber::{
+    /// #     layer::{Context, Layer},
+    /// #     prelude::*,
+    /// #     registry::{LookupSpan, Registry},
+    /// # };
+    /// # // Use static mut to avoid tainting the visible part of the example with state
+    /// # static mut last_entered_scope: Vec<&'static str> = vec![];
+    /// # struct PrintingLayer;
+    /// impl<S> Layer<S> for PrintingLayer
+    /// where
+    ///     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_enter(&self, id: &span::Id, ctx: Context<S>) {
+    ///         let span = ctx.span(id).unwrap();
+    ///         let scope = span.scope().from_root().map(|span| span.name()).collect::<Vec<_>>();
+    ///         println!("Entering span: {:?}", scope);
+    /// #       unsafe { last_entered_scope = scope; }
+    ///     }
+    /// }
+    /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
     ///     let _root = tracing::info_span!("root").entered();
+    ///     // Prints: Entering span: ["root"]
     ///     let _child = tracing::info_span!("child").entered();
-    ///     let leaf = tracing::info_span!("leaf");
-    ///     tracing::dispatcher::get_default(|dispatch| {
-    ///         let registry = dispatch.downcast_ref::<Registry>().unwrap();
-    ///         let leaf_scope = registry.span(&leaf.id().unwrap()).unwrap().scope();
-    ///         assert_eq!(
-    ///             leaf_scope.from_root().map(|span| span.name()).collect::<Vec<&str>>(),
-    ///             vec!["root", "child", "leaf"]
-    ///         );
-    ///     });
+    ///     // Prints: Entering span: ["root", "child"]
+    ///     let _leaf = tracing::info_span!("leaf").entered();
+    ///     // Prints: Entering span: ["root", "child", "leaf"]
+    /// #   assert_eq!(
+    /// #       unsafe { &last_entered_scope },
+    /// #       &["root", "child", "leaf"]
+    /// #   );
     /// });
     /// ```
     pub fn scope(&self) -> Scope<'a, R> {
@@ -431,7 +464,7 @@ where
     /// "smallvec" feature flag is not enabled.
     #[deprecated(
         note = "equivalent to `self.parent().into_iter().flat_map(|span| span.scope().from_root())`, but consider whether excluding `self` is actually intended",
-        since = "0.2.19",
+        since = "0.2.19"
     )]
     #[allow(deprecated)]
     pub fn from_root(&self) -> FromRoot<'a, R> {
