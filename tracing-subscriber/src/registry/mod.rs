@@ -362,7 +362,7 @@ where
     ///     registry::{LookupSpan, Registry},
     /// };
     /// # // Use static mut to avoid tainting the visible part of the example with state
-    /// # static mut last_entered_scope: Vec<&'static str> = vec![];
+    /// # static mut last_entered_scope: Vec<&'static str> = Vec::new();
     /// struct PrintingLayer;
     /// impl<S> Layer<S> for PrintingLayer
     /// where
@@ -400,7 +400,7 @@ where
     /// #     registry::{LookupSpan, Registry},
     /// # };
     /// # // Use static mut to avoid tainting the visible part of the example with state
-    /// # static mut last_entered_scope: Vec<&'static str> = vec![];
+    /// # static mut last_entered_scope: Vec<&'static str> = Vec::new();
     /// # struct PrintingLayer;
     /// impl<S> Layer<S> for PrintingLayer
     /// where
