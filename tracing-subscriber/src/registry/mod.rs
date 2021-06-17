@@ -96,9 +96,6 @@ pub trait LookupSpan<'a> {
 
     /// Returns the [`SpanData`] for a given `Id`, if it exists.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: users of the <code>LookupSpan</code> trait should
