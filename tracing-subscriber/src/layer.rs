@@ -586,7 +586,10 @@ pub struct Identity {
 /// [`Context::scope`]: struct.Context.html#method.scope
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-#[deprecated(note = "moved to crate::registry::ScopeFromRoot")]
+#[deprecated(
+    note = "renamed to crate::registry::ScopeFromRoot",
+    since = "0.2.19",
+)]
 #[derive(Debug)]
 pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>)
 where
@@ -1130,7 +1133,8 @@ where
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     #[deprecated(
-        note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span"
+        note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span",
+        since = "0.2.19",
     )]
     #[allow(deprecated)]
     pub fn scope(&self) -> Scope<'_, S>
