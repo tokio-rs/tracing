@@ -829,10 +829,10 @@ mod tests {
             (LevelFilter::TRACE, Some(Level::TRACE)),
         ];
         for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), *level);
+            assert_eq!(filter.into_level(), *level);
             match level {
                 Some(level) => {
-                    let actual: LevelFilter = level.clone().into();
+                    let actual: LevelFilter = (*level).into();
                     assert_eq!(actual, *filter);
                 }
                 None => {

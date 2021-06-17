@@ -133,7 +133,6 @@ impl<'a> Visit for Event<'a> {
                 Style::new().bold().paint(format!("{:?}", value))
             )
             .unwrap();
-            self.comma = true;
         } else {
             write!(
                 &mut self.stderr,
@@ -142,8 +141,8 @@ impl<'a> Visit for Event<'a> {
                 value
             )
             .unwrap();
-            self.comma = true;
         }
+        self.comma = true;
     }
 }
 
