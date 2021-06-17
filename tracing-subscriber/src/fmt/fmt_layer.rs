@@ -868,7 +868,7 @@ where
     /// [stored data]: ../registry/struct.SpanRef.html
     #[deprecated(
         note = "wraps layer::Context::scope, which is deprecated",
-        since = "0.2.19",
+        since = "0.2.19"
     )]
     #[allow(deprecated)]
     pub fn scope(&self) -> crate::layer::Scope<'_, S>
