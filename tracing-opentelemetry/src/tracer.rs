@@ -2,8 +2,8 @@ use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, Tracer
 use opentelemetry::{
     trace as otel,
     trace::{
-        SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceId, TraceState,
-        TraceFlags
+        SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
+        TraceState,
     },
     Context as OtelContext,
 };
