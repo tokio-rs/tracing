@@ -359,10 +359,8 @@ where
     /// use tracing_subscriber::{
     ///     layer::{Context, Layer},
     ///     prelude::*,
-    ///     registry::{LookupSpan, Registry},
+    ///     registry::LookupSpan,
     /// };
-    /// # // Use static mut to avoid tainting the visible part of the example with state
-    /// # static mut last_entered_scope: Vec<&'static str> = Vec::new();
     /// struct PrintingLayer;
     /// impl<S> Layer<S> for PrintingLayer
     /// where
@@ -372,7 +370,6 @@ where
     ///         let span = ctx.span(id).unwrap();
     ///         let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
     ///         println!("Entering span: {:?}", scope);
-    /// #       unsafe { last_entered_scope = scope; }
     ///     }
     /// }
     /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
@@ -382,10 +379,6 @@ where
     ///     // Prints: Entering span: ["child", "root"]
     ///     let _leaf = tracing::info_span!("leaf").entered();
     ///     // Prints: Entering span: ["leaf", "child", "root"]
-    /// #   assert_eq!(
-    /// #       unsafe { &last_entered_scope },
-    /// #       &["leaf", "child", "root"]
-    /// #   );
     /// });
     /// ```
     ///
@@ -397,10 +390,8 @@ where
     /// # use tracing_subscriber::{
     /// #     layer::{Context, Layer},
     /// #     prelude::*,
-    /// #     registry::{LookupSpan, Registry},
+    /// #     registry::LookupSpan,
     /// # };
-    /// # // Use static mut to avoid tainting the visible part of the example with state
-    /// # static mut last_entered_scope: Vec<&'static str> = Vec::new();
     /// # struct PrintingLayer;
     /// impl<S> Layer<S> for PrintingLayer
     /// where
@@ -410,7 +401,6 @@ where
     ///         let span = ctx.span(id).unwrap();
     ///         let scope = span.scope().from_root().map(|span| span.name()).collect::<Vec<_>>();
     ///         println!("Entering span: {:?}", scope);
-    /// #       unsafe { last_entered_scope = scope; }
     ///     }
     /// }
     /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
@@ -420,10 +410,6 @@ where
     ///     // Prints: Entering span: ["root", "child"]
     ///     let _leaf = tracing::info_span!("leaf").entered();
     ///     // Prints: Entering span: ["root", "child", "leaf"]
-    /// #   assert_eq!(
-    /// #       unsafe { &last_entered_scope },
-    /// #       &["root", "child", "leaf"]
-    /// #   );
     /// });
     /// ```
     pub fn scope(&self) -> Scope<'a, R> {
@@ -482,5 +468,90 @@ where
     /// describing the span.
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        layer::{Context, Layer},
+        prelude::*,
+        registry::LookupSpan,
+    };
+    use std::sync::{Arc, Mutex};
+    use tracing::{span, Subscriber};
+
+    #[test]
+    fn spanref_scope_iteration_order() {
+        let last_entered_scope = Arc::new(Mutex::new(Vec::new()));
+        #[derive(Default)]
+        struct PrintingLayer {
+            last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
+        }
+        impl<S> Layer<S> for PrintingLayer
+        where
+            S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+        {
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+                let span = ctx.span(id).unwrap();
+                let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
+                *self.last_entered_scope.lock().unwrap() = scope;
+            }
+        }
+        tracing::subscriber::with_default(
+            crate::registry().with(PrintingLayer {
+                last_entered_scope: last_entered_scope.clone(),
+            }),
+            || {
+                let _root = tracing::info_span!("root").entered();
+                assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
+                let _child = tracing::info_span!("child").entered();
+                assert_eq!(&*last_entered_scope.lock().unwrap(), &["child", "root"]);
+                let _leaf = tracing::info_span!("leaf").entered();
+                assert_eq!(
+                    &*last_entered_scope.lock().unwrap(),
+                    &["leaf", "child", "root"]
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn spanref_scope_fromroot_iteration_order() {
+        let last_entered_scope = Arc::new(Mutex::new(Vec::new()));
+        #[derive(Default)]
+        struct PrintingLayer {
+            last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
+        }
+        impl<S> Layer<S> for PrintingLayer
+        where
+            S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+        {
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+                let span = ctx.span(id).unwrap();
+                let scope = span
+                    .scope()
+                    .from_root()
+                    .map(|span| span.name())
+                    .collect::<Vec<_>>();
+                *self.last_entered_scope.lock().unwrap() = scope;
+            }
+        }
+        tracing::subscriber::with_default(
+            crate::registry().with(PrintingLayer {
+                last_entered_scope: last_entered_scope.clone(),
+            }),
+            || {
+                let _root = tracing::info_span!("root").entered();
+                assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
+                let _child = tracing::info_span!("child").entered();
+                assert_eq!(&*last_entered_scope.lock().unwrap(), &["root", "child",]);
+                let _leaf = tracing::info_span!("leaf").entered();
+                assert_eq!(
+                    &*last_entered_scope.lock().unwrap(),
+                    &["root", "child", "leaf"]
+                );
+            },
+        );
     }
 }
