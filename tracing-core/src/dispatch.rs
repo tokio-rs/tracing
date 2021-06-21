@@ -29,7 +29,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -39,6 +39,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -55,7 +56,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -65,6 +66,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # let _my_collector = FooCollector::new();
@@ -91,7 +93,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -101,6 +103,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "std")]
@@ -504,7 +507,7 @@ impl Dispatch {
     ///    // ...
     /// }
     ///
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Event, Metadata};
+    /// # use tracing_core::{span::{Id, Attributes, Current, Record}, Event, Metadata};
     /// impl tracing_core::Collect for MyCollector {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -514,6 +517,7 @@ impl Dispatch {
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// }
     ///
     /// static COLLECTOR: MyCollector = MyCollector {
@@ -839,6 +843,10 @@ impl Collect for NoCollector {
 
     fn enter(&self, _span: &span::Id) {}
     fn exit(&self, _span: &span::Id) {}
+
+    fn current_span(&self) -> span::Current {
+        span::Current::none()
+    }
 }
 
 #[cfg(feature = "std")]
@@ -1003,6 +1011,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
         }
 
         with_default(&Dispatch::new(TestCollector), || {
@@ -1051,6 +1063,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
         }
 
         with_default(&Dispatch::new(TestCollector), mk_span)
@@ -1084,6 +1100,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
         }
         let guard = set_default(&Dispatch::new(TestCollector));
         let default_dispatcher = Dispatch::default();
