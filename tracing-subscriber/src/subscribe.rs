@@ -54,6 +54,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// use tracing_subscriber::Subscribe;
 /// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing::Collect;
+/// use tracing_core::span::Current;
 ///
 /// pub struct MySubscriber {
 ///     // ...
@@ -77,6 +78,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -96,6 +98,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// # use tracing_subscriber::Subscribe;
 /// # use tracing_subscriber::subscribe::CollectExt;
 /// # use tracing::Collect;
+/// # use tracing_core::span::Current;
 /// pub struct MyOtherSubscriber {
 ///     // ...
 /// }
@@ -123,6 +126,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -330,6 +334,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -368,6 +373,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .and_then(BarSubscriber::new())
@@ -378,7 +384,7 @@ where
     ///
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
-    /// # use tracing_core::Collect;
+    /// # use tracing_core::{Collect, span::Current};
     /// # pub struct FooSubscriber {}
     /// # pub struct BarSubscriber {}
     /// # pub struct MyCollector {}
@@ -402,6 +408,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// pub struct BazSubscriber {
     ///     // ...
@@ -439,6 +446,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -466,6 +474,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .with_collector(MyCollector::new());
@@ -1162,6 +1171,9 @@ pub(crate) mod tests {
         fn event(&self, _: &Event<'_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     struct NopSubscriber;
@@ -1202,6 +1214,9 @@ pub(crate) mod tests {
         fn event(&self, _: &Event<'_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     fn assert_collector(_s: impl Collect) {}
