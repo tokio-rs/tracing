@@ -1,6 +1,6 @@
 [package]
 name = "tracing-opentelemetry"
-version = "0.13.0"
+version = "0.14.0"
 authors = [
     "Julian Tescher <julian@tescher.me>",
     "Tokio Contributors <team@tokio.rs>"
@@ -22,7 +22,7 @@ edition = "2018"
 default = ["tracing-log"]
 
 [dependencies]
-opentelemetry = { version = "0.14", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.1", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.1" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.2", default-features = false, features = ["registry"] }
@@ -30,8 +30,8 @@ tracing-log = { path = "../tracing-log", version = "0.1", default-features = fal
 
 [dev-dependencies]
 async-trait = "0.1"
-opentelemetry-jaeger = "0.13"
 criterion = { version = "0.3", default_features = false }
+opentelemetry-jaeger = "0.14"
 
 [lib]
 bench = false

@@ -615,7 +615,7 @@ impl Timings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use opentelemetry::trace::SpanKind;
+    use opentelemetry::trace::{SpanKind, TraceFlags};
     use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
@@ -744,7 +744,7 @@ mod tests {
         let existing_cx = OtelContext::current_with_span(TestSpan(otel::SpanContext::new(
             trace_id,
             otel::SpanId::from_u64(1),
-            0,
+            TraceFlags::default(),
             false,
             Default::default(),
         )));
