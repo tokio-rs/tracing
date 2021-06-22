@@ -404,7 +404,7 @@ where
     ///         let scope = span.scope().from_root().map(|span| span.name()).collect::<Vec<_>>();
     ///         println!("Entering span: {:?}", scope);
     ///     }
-    /// } 
+    /// }
     ///
     /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
     ///     let _root = tracing::info_span!("root").entered();
@@ -492,7 +492,7 @@ mod tests {
         struct PrintingLayer {
             last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
         }
-        
+
         impl<S> Layer<S> for PrintingLayer
         where
             S: Subscriber + for<'lookup> LookupSpan<'lookup>,
@@ -503,13 +503,11 @@ mod tests {
                 *self.last_entered_scope.lock().unwrap() = scope;
             }
         }
-        
-        let _guard = tracing::subscriber::set_default(
-            crate::registry().with(PrintingLayer {
-                last_entered_scope: last_entered_scope.clone(),
-            })
-        );
-        
+
+        let _guard = tracing::subscriber::set_default(crate::registry().with(PrintingLayer {
+            last_entered_scope: last_entered_scope.clone(),
+        }));
+
         let _root = tracing::info_span!("root").entered();
         assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
         let _child = tracing::info_span!("child").entered();
@@ -524,12 +522,12 @@ mod tests {
     #[test]
     fn spanref_scope_fromroot_iteration_order() {
         let last_entered_scope = Arc::new(Mutex::new(Vec::new()));
-        
+
         #[derive(Default)]
         struct PrintingLayer {
             last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
         }
-        
+
         impl<S> Layer<S> for PrintingLayer
         where
             S: Subscriber + for<'lookup> LookupSpan<'lookup>,
@@ -544,22 +542,19 @@ mod tests {
                 *self.last_entered_scope.lock().unwrap() = scope;
             }
         }
-        
-        tracing::subscriber::with_default(
-            crate::registry().with(PrintingLayer {
-                last_entered_scope: last_entered_scope.clone(),
-            }),
-            || {
-                let _root = tracing::info_span!("root").entered();
-                assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
-                let _child = tracing::info_span!("child").entered();
-                assert_eq!(&*last_entered_scope.lock().unwrap(), &["root", "child",]);
-                let _leaf = tracing::info_span!("leaf").entered();
-                assert_eq!(
-                    &*last_entered_scope.lock().unwrap(),
-                    &["root", "child", "leaf"]
-                );
-            },
+
+        let _guard = tracing::subscriber::set_default(crate::registry().with(PrintingLayer {
+            last_entered_scope: last_entered_scope.clone(),
+        }));
+
+        let _root = tracing::info_span!("root").entered();
+        assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
+        let _child = tracing::info_span!("child").entered();
+        assert_eq!(&*last_entered_scope.lock().unwrap(), &["root", "child",]);
+        let _leaf = tracing::info_span!("leaf").entered();
+        assert_eq!(
+            &*last_entered_scope.lock().unwrap(),
+            &["root", "child", "leaf"]
         );
     }
 }
