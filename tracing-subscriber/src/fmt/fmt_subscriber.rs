@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{LookupSpan, SpanRef},
-    subscribe::{self, Context, Scope},
+    subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{
@@ -756,8 +756,10 @@ where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
         // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
+        if let Some(leaf) = self.ctx.lookup_current() {
+            for span in leaf.scope().from_root() {
+                f(&span)?;
+            }
         }
         Ok(())
     }
@@ -816,7 +818,12 @@ where
     /// the current span.
     ///
     /// [stored data]: SpanRef
-    pub fn scope(&self) -> Scope<'_, S>
+    #[deprecated(
+        note = "wraps layer::Context::scope, which is deprecated",
+        since = "0.2.19"
+    )]
+    #[allow(deprecated)]
+    pub fn scope(&self) -> crate::subscribe::Scope<'_, S>
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {

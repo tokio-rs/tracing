@@ -22,6 +22,6 @@ impl<S: Collect> crate::Subscribe<S> for LevelFilter {
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.clone().into()
+        Some(*self)
     }
 }

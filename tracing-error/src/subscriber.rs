@@ -98,8 +98,7 @@ where
         let span = subscriber
             .span(id)
             .expect("registry should have a span for the current ID");
-        let parents = span.parents();
-        for span in std::iter::once(span).chain(parents) {
+        for span in span.scope() {
             let cont = if let Some(fields) = span.extensions().get::<FormattedFields<F>>() {
                 f(span.metadata(), fields.fields.as_str())
             } else {
