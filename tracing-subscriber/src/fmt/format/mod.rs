@@ -7,10 +7,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::{
-    fmt::{self, Write},
-    iter,
-};
+use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field, Visit},
     span, Event, Level, Subscriber,
@@ -861,9 +858,7 @@ where
             .and_then(|id| self.ctx.ctx.span(&id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
+        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
 
         for span in scope {
             seen = true;
@@ -933,9 +928,7 @@ where
             .and_then(|id| self.ctx.ctx.span(&id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
+        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
 
         for span in scope {
             write!(f, "{}", bold.paint(span.metadata().name()))?;
@@ -1510,27 +1503,27 @@ pub(super) mod test {
     #[test]
     fn fmt_span_combinations() {
         let f = FmtSpan::NONE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::ACTIVE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::FULL;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::NEW | FmtSpan::CLOSE;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
     }
 }

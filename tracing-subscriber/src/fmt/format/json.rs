@@ -98,8 +98,10 @@ where
         use serde::ser::SerializeSeq;
         let mut serializer = serializer_o.serialize_seq(None)?;
 
-        for span in self.0.scope() {
-            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+        if let Some(leaf_span) = self.0.lookup_current() {
+            for span in leaf_span.scope().from_root() {
+                serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+            }
         }
 
         serializer.end()
