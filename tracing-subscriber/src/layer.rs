@@ -1269,6 +1269,8 @@ impl Identity {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use std::sync::{Arc, Mutex};
+
     use super::*;
 
     pub(crate) struct NopSubscriber;
@@ -1382,5 +1384,41 @@ pub(crate) mod tests {
         let layer =
             <dyn Subscriber>::downcast_ref::<StringLayer3>(&s).expect("layer 3 should downcast");
         assert_eq!(&layer.0, "layer_3");
+    }
+
+    #[test]
+    fn context_event_span() {
+        let last_event_span = Arc::new(Mutex::new(None));
+
+        struct RecordingLayer {
+            last_event_span: Arc<Mutex<Option<&'static str>>>,
+        }
+        impl<S> Layer<S> for RecordingLayer
+        where
+            S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+        {
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+                let span = ctx.event_span(event);
+                *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
+            }
+        }
+
+        tracing::subscriber::with_default(
+            crate::registry().with(RecordingLayer {
+                last_event_span: last_event_span.clone(),
+            }),
+            || {
+                tracing::info!("no span");
+                assert_eq!(*last_event_span.lock().unwrap(), None);
+
+                let parent = tracing::info_span!("explicit");
+                tracing::info!(parent: parent, "explicit span");
+                assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
+
+                let _guard = tracing::info_span!("contextual").entered();
+                tracing::info!("contextual span");
+                assert_eq!(*last_event_span.lock().unwrap(), Some("contextual"));
+            },
+        );
     }
 }
