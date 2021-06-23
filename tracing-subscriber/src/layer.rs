@@ -1052,9 +1052,6 @@ where
     /// });
     /// ```
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
@@ -1245,9 +1242,6 @@ where
     /// current context, starting with the parent span of the specified event,
     /// and ending with the root of the trace tree and ending with the current span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
@@ -1256,9 +1250,6 @@ where
     /// in case root-to-leaf ordering is desired.
     /// </pre></div>
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
@@ -1429,6 +1420,7 @@ pub(crate) mod tests {
         struct RecordingLayer {
             last_event_span: Arc<Mutex<Option<&'static str>>>,
         }
+        
         impl<S> Layer<S> for RecordingLayer
         where
             S: Subscriber + for<'lookup> LookupSpan<'lookup>,
