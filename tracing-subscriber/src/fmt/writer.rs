@@ -223,6 +223,23 @@ pub trait MakeWriter<'a> {
     }
 }
 
+pub trait MakeWriterExt<'a>: MakeWriter<'a> {
+    fn with_max_level(self, level: tracing_core::Level) -> WithMaxLevel<Self>
+    where
+        Self: Sized,
+    {
+        WithMaxLevel::new(self, level)
+    }
+
+    fn and<B>(self, other: B) -> Tee<Self, B>
+    where
+        Self: Sized,
+        B: MakeWriter<'a> + Sized,
+    {
+        Tee::new(self, other)
+    }
+}
+
 /// A type implementing [`io::Write`] for a [`MutexGuard`] where the type
 /// inside the [`Mutex`] implements [`io::Write`].
 ///
@@ -289,6 +306,34 @@ pub struct TestWriter {
 /// [`io::Write`]: std::io::Write
 pub struct BoxMakeWriter {
     inner: Box<dyn for<'a> MakeWriter<'a, Writer = Box<dyn Write + 'a>> + Send + Sync>,
+}
+
+/// A [writer] that is one of two types implementing [`io::Write`][writer].
+///
+/// This may be used by [`MakeWriter`] implementations that may conditionally
+/// return one of two writers.
+///
+/// [writer]: std::io::Write
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum EitherWriter<A, B> {
+    /// A writer of type `A`.
+    A(A),
+    /// A writer of type `B`.
+    B(B),
+}
+
+pub type OptionalWriter<T> = EitherWriter<T, std::io::Sink>;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct WithMaxLevel<M> {
+    make: M,
+    level: tracing_core::Level,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct Tee<A, B> {
+    a: A,
+    b: B,
 }
 
 impl<'a, F, W> MakeWriter<'a> for F
@@ -427,14 +472,182 @@ where
     }
 }
 
+// === impl EitherWriter ===
+
+impl<A, B> io::Write for EitherWriter<A, B>
+where
+    A: io::Write,
+    B: io::Write,
+{
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            EitherWriter::A(a) => a.write(buf),
+            EitherWriter::B(b) => b.write(buf),
+        }
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            EitherWriter::A(a) => a.flush(),
+            EitherWriter::B(b) => b.flush(),
+        }
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        match self {
+            EitherWriter::A(a) => a.write_vectored(bufs),
+            EitherWriter::B(b) => b.write_vectored(bufs),
+        }
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        match self {
+            EitherWriter::A(a) => a.write_all(buf),
+            EitherWriter::B(b) => b.write_all(buf),
+        }
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> io::Result<()> {
+        match self {
+            EitherWriter::A(a) => a.write_fmt(fmt),
+            EitherWriter::B(b) => b.write_fmt(fmt),
+        }
+    }
+}
+
+impl<T> OptionalWriter<T> {
+    pub fn none() -> Self {
+        EitherWriter::B(std::io::sink())
+    }
+
+    pub fn some(t: T) -> Self {
+        EitherWriter::A(t)
+    }
+}
+
+impl<T> From<Option<T>> for OptionalWriter<T> {
+    fn from(opt: Option<T>) -> Self {
+        match opt {
+            Some(writer) => Self::some(writer),
+            None => Self::none(),
+        }
+    }
+}
+// === impl WithMaxLevel ===
+
+impl<M> WithMaxLevel<M> {
+    pub fn new(make: M, level: tracing_core::Level) -> Self {
+        Self { make, level }
+    }
+}
+
+impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMaxLevel<M> {
+    type Writer = OptionalWriter<M::Writer>;
+
+    #[inline]
+    fn make_writer(&'a self) -> Self::Writer {
+        // If we don't know the level, assume it's disabled.
+        OptionalWriter::none()
+    }
+
+    #[inline]
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        if meta.level() <= &self.level {
+            return OptionalWriter::some(self.make.make_writer_for(meta));
+        }
+        OptionalWriter::none()
+    }
+}
+
+// === impl Tee ===
+
+impl<A, B> Tee<A, B> {
+    pub fn new(a: A, b: B) -> Self {
+        Self { a, b }
+    }
+}
+
+impl<'a, A, B> MakeWriter<'a> for Tee<A, B>
+where
+    A: MakeWriter<'a>,
+    B: MakeWriter<'a>,
+{
+    type Writer = Tee<A::Writer, B::Writer>;
+
+    #[inline]
+    fn make_writer(&'a self) -> Self::Writer {
+        Tee::new(self.a.make_writer(), self.b.make_writer())
+    }
+
+    #[inline]
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        Tee::new(self.a.make_writer_for(meta), self.b.make_writer_for(meta))
+    }
+}
+
+macro_rules! impl_tee {
+    ($self_:ident.$f:ident($($arg:ident),*)) => {
+        {
+            let res_a = $self_.a.$f($($arg),*);
+            let res_b = $self_.b.$f($($arg),*);
+            (res_a?, res_b?)
+        }
+    }
+}
+
+impl<A, B> io::Write for Tee<A, B>
+where
+    A: io::Write,
+    B: io::Write,
+{
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let (a, b) = impl_tee!(self.write(buf));
+        Ok(std::cmp::max(a, b))
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        impl_tee!(self.flush());
+        Ok(())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        let (a, b) = impl_tee!(self.write_vectored(bufs));
+        Ok(std::cmp::max(a, b))
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        impl_tee!(self.write_all(buf));
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> io::Result<()> {
+        impl_tee!(self.write_fmt(fmt));
+        Ok(())
+    }
+}
+
+// === blanket impls ===
+
+impl<'a, M> MakeWriterExt<'a> for M where M: MakeWriter<'a> {}
+
 #[cfg(test)]
 mod test {
-    use super::MakeWriter;
+    use super::*;
     use crate::fmt::format::Format;
     use crate::fmt::test::{MockMakeWriter, MockWriter};
     use crate::fmt::Collector;
     use std::sync::{Arc, Mutex};
-    use tracing::error;
+    use tracing::{debug, error, info, trace, warn};
     use tracing_core::dispatch::{self, Dispatch};
 
     fn test_writer<T>(make_writer: T, msg: &str, buf: &Mutex<Vec<u8>>)
@@ -443,21 +656,13 @@ mod test {
     {
         let subscriber = {
             #[cfg(feature = "ansi")]
-            {
-                let f = Format::default().without_time().with_ansi(false);
-                Collector::builder()
-                    .event_format(f)
-                    .with_writer(make_writer)
-                    .finish()
-            }
+            let f = Format::default().without_time().with_ansi(false);
             #[cfg(not(feature = "ansi"))]
-            {
-                let f = Format::default().without_time();
-                Collector::builder()
-                    .event_format(f)
-                    .with_writer(make_writer)
-                    .finish()
-            }
+            let f = Format::default().without_time();
+            Collector::builder()
+                .event_format(f)
+                .with_writer(make_writer)
+                .finish()
         };
         let dispatch = Dispatch::from(subscriber);
 
@@ -468,6 +673,19 @@ mod test {
         let expected = format!("ERROR {}: {}\n", module_path!(), msg);
         let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
         assert!(actual.contains(expected.as_str()));
+    }
+
+    fn has_lines(buf: &Mutex<Vec<u8>>, msgs: &[(tracing::Level, &str)]) {
+        let actual = String::from_utf8(buf.try_lock().unwrap().to_vec()).unwrap();
+        let mut expected_lines = msgs.iter();
+        for line in actual.lines() {
+            let line = dbg!(line).trim();
+            let (level, msg) = expected_lines
+                .next()
+                .unwrap_or_else(|| panic!("expected no more lines, but got: {:?}", line));
+            let expected = format!("{} {}: {}", level, module_path!(), msg);
+            assert_eq!(line, expected.as_str());
+        }
     }
 
     #[test]
@@ -494,5 +712,68 @@ mod test {
         let make_writer = Mutex::new(writer);
         let msg = "my mutex writer error";
         test_writer(make_writer, msg, &buf);
+    }
+
+    #[test]
+    fn level_filters() {
+        use tracing::Level;
+
+        let info_buf = Arc::new(Mutex::new(Vec::new()));
+        let info = MockMakeWriter::new(info_buf.clone());
+
+        let debug_buf = Arc::new(Mutex::new(Vec::new()));
+        let debug = MockMakeWriter::new(debug_buf.clone());
+
+        let warn_buf = Arc::new(Mutex::new(Vec::new()));
+        let warn = MockMakeWriter::new(warn_buf.clone());
+
+        let err_buf = Arc::new(Mutex::new(Vec::new()));
+        let err = MockMakeWriter::new(err_buf.clone());
+
+        let make_writer = info
+            .with_max_level(Level::INFO)
+            .and(debug.with_max_level(Level::DEBUG))
+            .and(warn.with_max_level(Level::WARN))
+            .and(err.with_max_level(Level::ERROR));
+
+        let c = {
+            #[cfg(feature = "ansi")]
+            let f = Format::default().without_time().with_ansi(false);
+            #[cfg(not(feature = "ansi"))]
+            let f = Format::default().without_time();
+            Collector::builder()
+                .event_format(f)
+                .with_writer(make_writer)
+                .with_max_level(Level::TRACE)
+                .finish()
+        };
+
+        let _s = tracing::collect::set_default(c);
+
+        trace!("trace");
+        debug!("debug");
+        info!("info");
+        warn!("warn");
+        error!("error");
+
+        let all_lines = [
+            (Level::TRACE, "trace"),
+            (Level::DEBUG, "debug"),
+            (Level::INFO, "info"),
+            (Level::WARN, "warn"),
+            (Level::ERROR, "error"),
+        ];
+
+        println!("max level debug");
+        has_lines(&debug_buf, &all_lines[1..]);
+
+        println!("max level info");
+        has_lines(&info_buf, &all_lines[2..]);
+
+        println!("max level warn");
+        has_lines(&warn_buf, &all_lines[3..]);
+
+        println!("max level error");
+        has_lines(&err_buf, &all_lines[4..]);
     }
 }
