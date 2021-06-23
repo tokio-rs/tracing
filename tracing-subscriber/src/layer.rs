@@ -994,13 +994,32 @@ where
         }
     }
 
-    /// Finds the [`SpanRef`] associated with an [`Event`], if it has one.
+    /// Returns a [`SpanRef`] for the parent span of the given [`Event`], if
+    /// it has a parent.
+    ///
+    /// If the event has an explicitly overridden parent, this method returns
+    /// a reference to that span. If the event's parent is the current span,
+    /// this returns a reference to the current span, if there is one. If this
+    /// returns `None`, then either the event's parent was explicitly set to
+    /// `None`, or the event's parent was defined contextually, but no span
+    /// is currently entered.
     ///
     /// Compared to [`Context::current_span`] and [`Context::lookup_current`],
     /// this respects overrides provided by the [`Event`].
     ///
     /// Compared to [`Event::parent`], this automatically falls back to the contextual
     /// span, if required.
+    ///
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
     #[inline]
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
