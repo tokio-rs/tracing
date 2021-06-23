@@ -587,7 +587,7 @@ where
         }
 
         // The intention behind calling `inner.register_callsite()` before the if statement
-        // was to ensure that the inner subscriber is informed that the callsite exists
+        // is to ensure that the inner subscriber is informed that the callsite exists
         // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
         if outer.is_sometimes() {
@@ -716,7 +716,7 @@ where
         }
 
         // The intention behind calling `inner.register_callsite()` before the if statement
-        // was to ensure that the inner subscriber is informed that the callsite exists
+        // is to ensure that the inner subscriber is informed that the callsite exists
         // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
         if outer.is_sometimes() {
