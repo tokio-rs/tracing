@@ -1019,6 +1019,39 @@ where
     /// Compared to [`Event::parent`], this automatically falls back to the contextual
     /// span, if required.
     ///
+    /// ```rust
+    /// use tracing::{Event, Subscriber};
+    /// use tracing_subscriber::{
+    ///     layer::{Context, Layer},
+    ///     prelude::*,
+    ///     registry::LookupSpan,
+    /// };
+    ///
+    /// struct PrintingLayer;
+    /// impl<S> Layer<S> for PrintingLayer
+    /// where
+    ///     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_event(&self, event: &Event, ctx: Context<S>) {
+    ///         let span = ctx.event_span(event);
+    ///         println!("Event in span: {:?}", span.map(|s| s.name()));
+    ///     }
+    /// }
+    ///
+    /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
+    ///     tracing::info!("no span");
+    ///     // Prints: Event in span: None
+    ///
+    ///     let span = tracing::info_span!("span");
+    ///     tracing::info!(parent: &span, "explicitly specified");
+    ///     // Prints: Event in span: Some("span")
+    ///
+    ///     let _guard = span.enter();
+    ///     tracing::info!("contextual span");
+    ///     // Prints: Event in span: Some("span")
+    /// });
+    /// ```
+    ///
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
