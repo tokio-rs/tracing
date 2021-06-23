@@ -1412,7 +1412,7 @@ pub(crate) mod tests {
                 assert_eq!(*last_event_span.lock().unwrap(), None);
 
                 let parent = tracing::info_span!("explicit");
-                tracing::info!(parent: parent, "explicit span");
+                tracing::info!(parent: &parent, "explicit span");
                 assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
 
                 let _guard = tracing::info_span!("contextual").entered();
