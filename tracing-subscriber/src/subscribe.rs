@@ -54,12 +54,13 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// use tracing_subscriber::Subscribe;
 /// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing::Collect;
+/// use tracing_core::span::Current;
 ///
 /// pub struct MySubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MySubscriber {
+/// impl<C: Collect> Subscribe<C> for MySubscriber {
 ///     // ...
 /// }
 ///
@@ -77,6 +78,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -96,11 +98,12 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// # use tracing_subscriber::Subscribe;
 /// # use tracing_subscriber::subscribe::CollectExt;
 /// # use tracing::Collect;
+/// # use tracing_core::span::Current;
 /// pub struct MyOtherSubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyOtherSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyOtherSubscriber {
 ///     // ...
 /// }
 ///
@@ -108,11 +111,11 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyThirdSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyThirdSubscriber {
 ///     // ...
 /// }
 /// # pub struct MySubscriber {}
-/// # impl<S: Collect> Subscribe<S> for MySubscriber {}
+/// # impl<C: Collect> Subscribe<C> for MySubscriber {}
 /// # pub struct MyCollector { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
 /// # impl Collect for MyCollector {
@@ -123,6 +126,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -209,9 +213,6 @@ where
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -253,9 +254,6 @@ where
     /// By default, this always returns `true`, allowing the wrapped collector
     /// to choose to disable the span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -336,6 +334,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -348,11 +347,11 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for FooSubscriber {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for BarSubscriber {
+    /// impl<C: Collect> Subscribe<C> for BarSubscriber {
     ///     // ...
     /// }
     ///
@@ -374,6 +373,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .and_then(BarSubscriber::new())
@@ -384,12 +384,12 @@ where
     ///
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
-    /// # use tracing_core::Collect;
+    /// # use tracing_core::{Collect, span::Current};
     /// # pub struct FooSubscriber {}
     /// # pub struct BarSubscriber {}
     /// # pub struct MyCollector {}
-    /// # impl<S: Collect> Subscribe<S> for FooSubscriber {}
-    /// # impl<S: Collect> Subscribe<S> for BarSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for BarSubscriber {}
     /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
@@ -408,6 +408,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// pub struct BazSubscriber {
     ///     // ...
@@ -445,6 +446,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -472,6 +474,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .with_collector(MyCollector::new());
@@ -1004,9 +1007,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1028,9 +1028,6 @@ where
 
     /// Returns `true` if an active span exists for the given `Id`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1053,9 +1050,6 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1090,9 +1084,6 @@ where
     ///
     /// If this iterator is empty, then there are no spans in the current context.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1186,6 +1177,9 @@ pub(crate) mod tests {
         fn event(&self, _: &Event<'_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     struct NopSubscriber;
@@ -1226,6 +1220,9 @@ pub(crate) mod tests {
         fn event(&self, _: &Event<'_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     fn assert_collector(_s: impl Collect) {}

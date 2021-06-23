@@ -166,9 +166,6 @@ pub struct Iter {
 /// `examples/counters.rs`, which demonstrates a very simple metrics system
 /// implemented using `tracing`.
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: The <code>record_error</code> trait method is only
@@ -204,9 +201,6 @@ pub trait Visit {
 
     /// Records a type implementing `Error`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This is only enabled when the Rust standard library is
@@ -631,9 +625,6 @@ impl FieldSet {
 
     /// Returns `true` if `self` contains the given `field`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: If <code>field</code> shares a name with a field
