@@ -4,6 +4,7 @@ extern crate test_log_support;
 
 use test_log_support::Test;
 use tracing::Level;
+use tracing_core::span::Current;
 
 pub struct NopCollector;
 
@@ -23,6 +24,9 @@ impl tracing::Collect for NopCollector {
     fn exit(&self, _: &tracing::span::Id) {}
     fn try_close(&self, _: tracing::span::Id) -> bool {
         true
+    }
+    fn current_span(&self) -> Current {
+        Current::unknown()
     }
 }
 

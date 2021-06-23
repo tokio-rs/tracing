@@ -33,9 +33,6 @@ use core::{
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///
@@ -283,6 +280,19 @@ impl Level {
     ///
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: Level = Level(LevelInner::Trace);
+
+    /// Returns the string representation of the `Level`.
+    ///
+    /// This returns the same string as the `fmt::Display` implementation.
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            Level::TRACE => "TRACE",
+            Level::DEBUG => "DEBUG",
+            Level::INFO => "INFO",
+            Level::WARN => "WARN",
+            Level::ERROR => "ERROR",
+        }
+    }
 }
 
 impl fmt::Display for Level {
@@ -819,10 +829,10 @@ mod tests {
             (LevelFilter::TRACE, Some(Level::TRACE)),
         ];
         for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), *level);
+            assert_eq!(filter.into_level(), *level);
             match level {
                 Some(level) => {
-                    let actual: LevelFilter = level.clone().into();
+                    let actual: LevelFilter = (*level).into();
                     assert_eq!(actual, *filter);
                 }
                 None => {
