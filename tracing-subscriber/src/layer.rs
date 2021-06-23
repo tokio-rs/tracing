@@ -1420,7 +1420,7 @@ pub(crate) mod tests {
         struct RecordingLayer {
             last_event_span: Arc<Mutex<Option<&'static str>>>,
         }
-        
+
         impl<S> Layer<S> for RecordingLayer
         where
             S: Subscriber + for<'lookup> LookupSpan<'lookup>,
