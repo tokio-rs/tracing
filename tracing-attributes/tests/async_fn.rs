@@ -173,15 +173,17 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
-        async fn call(&mut self, _v: usize) {}
+        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%v+5))]
+        async fn call(&mut self, v: usize) {
+            let _ = v;
+        }
     }
 
     let span = span::mock().named("call");
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("_v")
+                field::mock("v")
                     .with_value(&5usize)
                     .and(field::mock("test").with_value(&tracing::field::debug(10)))
                     .and(field::mock("val").with_value(&42u64))
@@ -299,7 +301,7 @@ fn out_of_scope_fields() {
     }
 
     impl Thing {
-        #[instrument(skip(self, _req), fields(app_id))]
+        #[instrument(skip(self), fields(app_id))]
         fn call(&mut self, _req: ()) -> Pin<Box<dyn Future<Output = Arc<()>> + Send + Sync>> {
             // ...
             let metrics = self.metrics.clone();
