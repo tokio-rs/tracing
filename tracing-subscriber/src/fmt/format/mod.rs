@@ -1414,27 +1414,27 @@ pub(super) mod test {
     #[test]
     fn fmt_span_combinations() {
         let f = FmtSpan::NONE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::ACTIVE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::FULL;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::NEW | FmtSpan::CLOSE;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
     }
 }
