@@ -33,9 +33,6 @@ use crate::stdlib::{
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: Although instances of <code>Metadata</code> cannot
@@ -832,10 +829,10 @@ mod tests {
             (LevelFilter::TRACE, Some(Level::TRACE)),
         ];
         for (filter, level) in mapping.iter() {
-            assert_eq!(filter.clone().into_level(), *level);
+            assert_eq!(filter.into_level(), *level);
             match level {
                 Some(level) => {
-                    let actual: LevelFilter = level.clone().into();
+                    let actual: LevelFilter = (*level).into();
                     assert_eq!(actual, *filter);
                 }
                 None => {

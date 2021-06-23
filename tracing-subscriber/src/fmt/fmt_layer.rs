@@ -1,7 +1,7 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
-    layer::{self, Context, Scope},
+    layer::{self, Context},
     registry::{LookupSpan, SpanRef},
 };
 use format::{FmtSpan, TimingDisplay};
@@ -804,8 +804,10 @@ where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
         // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
+        if let Some(leaf) = self.ctx.lookup_current() {
+            for span in leaf.scope().from_root() {
+                f(&span)?;
+            }
         }
         Ok(())
     }
@@ -864,7 +866,12 @@ where
     /// the current span.
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    pub fn scope(&self) -> Scope<'_, S>
+    #[deprecated(
+        note = "wraps layer::Context::scope, which is deprecated",
+        since = "0.2.19"
+    )]
+    #[allow(deprecated)]
+    pub fn scope(&self) -> crate::layer::Scope<'_, S>
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {

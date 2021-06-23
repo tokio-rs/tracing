@@ -212,9 +212,6 @@ where
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.enabled">
@@ -264,9 +261,6 @@ where
     /// By default, this always returns `true`, allowing the wrapped subscriber
     /// to choose to disable the span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.register_callsite">
@@ -586,9 +580,24 @@ pub struct Identity {
 /// [`Context::scope`]: struct.Context.html#method.scope
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub struct Scope<'a, L: LookupSpan<'a>>(
-    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
-);
+#[deprecated(note = "renamed to crate::registry::ScopeFromRoot", since = "0.2.19")]
+#[derive(Debug)]
+pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>)
+where
+    L: LookupSpan<'a>;
+
+#[cfg(feature = "registry")]
+#[allow(deprecated)]
+impl<'a, L> Iterator for Scope<'a, L>
+where
+    L: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, L>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
 
 // === impl Layered ===
 
@@ -1056,9 +1065,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
@@ -1080,9 +1086,6 @@ where
 
     /// Returns `true` if an active span exists for the given `Id`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
@@ -1105,9 +1108,6 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
@@ -1142,6 +1142,51 @@ where
     ///
     /// If this iterator is empty, then there are no spans in the current context.
     ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    #[deprecated(
+        note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span",
+        since = "0.2.19"
+    )]
+    #[allow(deprecated)]
+    pub fn scope(&self) -> Scope<'_, S>
+    where
+        S: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        Scope(
+            self.lookup_current()
+                .as_ref()
+                .map(registry::SpanRef::scope)
+                .map(registry::Scope::from_root)
+                .into_iter()
+                .flatten(),
+        )
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting with the specified span and ending with the
+    /// root of the trace tree and ending with the current span.
+    ///
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
@@ -1156,15 +1201,11 @@ where
     /// [stored data]: ../registry/struct.SpanRef.html
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-    pub fn scope(&self) -> Scope<'_, S>
+    pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, S>>
     where
         S: for<'lookup> registry::LookupSpan<'lookup>,
     {
-        let scope = self.lookup_current().map(|span| {
-            let parents = span.from_root();
-            parents.chain(std::iter::once(span))
-        });
-        Scope(scope)
+        Some(self.span(id)?.scope())
     }
 }
 
@@ -1190,27 +1231,6 @@ impl Identity {
     /// Returns a new `Identity` layer.
     pub fn new() -> Self {
         Self { _p: () }
-    }
-}
-
-// === impl Scope ===
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
-    type Item = SpanRef<'a, L>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.as_mut()?.next()
-    }
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("Scope { .. }")
     }
 }
 
