@@ -177,29 +177,28 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
 
 struct SpanAttributeVisitor<'a>(&'a mut otel::SpanBuilder);
 
+impl<'a> SpanAttributeVisitor<'a> {
+    fn record(&mut self, attribute: KeyValue) {
+        debug_assert!(self.0.attributes.is_some());
+        if let Some(v) = self.0.attributes.as_mut() {
+            v.push(attribute);
+        }
+    }
+}
+
 impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_bool(&mut self, field: &field::Field, value: bool) {
-        let attribute = KeyValue::new(field.name(), value);
-        if let Some(attributes) = &mut self.0.attributes {
-            attributes.push(attribute);
-        } else {
-            self.0.attributes = Some(vec![attribute]);
-        }
+        self.record(KeyValue::new(field.name(), value));
     }
 
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `i64` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_i64(&mut self, field: &field::Field, value: i64) {
-        let attribute = KeyValue::new(field.name(), value);
-        if let Some(attributes) = &mut self.0.attributes {
-            attributes.push(attribute);
-        } else {
-            self.0.attributes = Some(vec![attribute]);
-        }
+        self.record(KeyValue::new(field.name(), value));
     }
 
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `&str` values.
@@ -211,14 +210,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
             SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
             SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
-            _ => {
-                let attribute = KeyValue::new(field.name(), value.to_string());
-                if let Some(attributes) = &mut self.0.attributes {
-                    attributes.push(attribute);
-                } else {
-                    self.0.attributes = Some(vec![attribute]);
-                }
-            }
+            _ => self.record(KeyValue::new(field.name(), value.to_string())),
         }
     }
 
@@ -236,14 +228,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_STATUS_MESSAGE_FIELD => {
                 self.0.status_message = Some(format!("{:?}", value).into())
             }
-            _ => {
-                let attribute = Key::new(field.name()).string(format!("{:?}", value));
-                if let Some(attributes) = &mut self.0.attributes {
-                    attributes.push(attribute);
-                } else {
-                    self.0.attributes = Some(vec![attribute]);
-                }
-            }
+            _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
     }
 }
@@ -421,7 +406,9 @@ where
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
-        let builder_attrs = builder.attributes.get_or_insert(Vec::new());
+        let builder_attrs = builder
+            .attributes
+            .get_or_insert(Vec::with_capacity(attrs.fields().len() + 3));
 
         let meta = attrs.metadata();
 
