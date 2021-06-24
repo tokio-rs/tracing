@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{LookupSpan, SpanRef},
-    subscribe::{self, Context, Scope},
+    subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{
@@ -756,8 +756,10 @@ where
         F: FnMut(&SpanRef<'_, C>) -> Result<(), E>,
     {
         // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
+        if let Some(leaf) = self.ctx.lookup_current() {
+            for span in leaf.scope().from_root() {
+                f(&span)?;
+            }
         }
         Ok(())
     }
@@ -809,18 +811,6 @@ where
         C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.lookup_current()
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// [stored data]: SpanRef
-    pub fn scope(&self) -> Scope<'_, C>
-    where
-        C: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.scope()
     }
 
     /// Returns the current span for this formatter.
