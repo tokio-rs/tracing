@@ -8,7 +8,7 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
+use crate::registry::{self, LookupSpan, Registry};
 use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 
 /// A composable handler for `tracing` events.
@@ -558,34 +558,6 @@ pub struct Identity {
     _p: (),
 }
 
-/// An iterator over the [stored data] for all the spans in the
-/// current context, starting the root of the trace tree and ending with
-/// the current span.
-///
-/// This is returned by [`Context::scope`].
-///
-/// [stored data]: super::registry::SpanRef
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-#[deprecated(note = "renamed to crate::registry::ScopeFromRoot", since = "0.2.19")]
-#[derive(Debug)]
-pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>)
-where
-    L: LookupSpan<'a>;
-
-#[cfg(feature = "registry")]
-#[allow(deprecated)]
-impl<'a, L> Iterator for Scope<'a, L>
-where
-    L: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, L>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
 // === impl Layered ===
 
 impl<S, C> Collect for Layered<S, C>
@@ -1091,45 +1063,6 @@ where
             id,
         );
         span
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// If this iterator is empty, then there are no spans in the current context.
-    ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    ///
-    /// **Note**: This requires the wrapped subscriber to implement the [`LookupSpan`] trait.
-    /// See the documentation on [`Context`]'s declaration for details.
-    ///
-    /// </pre></div>
-    ///
-    /// [stored data]: super::registry::SpanRef
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-    #[deprecated(
-        note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn scope(&self) -> Scope<'_, C>
-    where
-        C: for<'lookup> registry::LookupSpan<'lookup>,
-    {
-        Scope(
-            self.lookup_current()
-                .as_ref()
-                .map(registry::SpanRef::scope)
-                .map(registry::Scope::from_root)
-                .into_iter()
-                .flatten(),
-        )
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the

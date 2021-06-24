@@ -813,23 +813,6 @@ where
         self.ctx.lookup_current()
     }
 
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// [stored data]: SpanRef
-    #[deprecated(
-        note = "wraps layer::Context::scope, which is deprecated",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn scope(&self) -> crate::subscribe::Scope<'_, S>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.scope()
-    }
-
     /// Returns the current span for this formatter.
     pub fn current_span(&self) -> Current {
         self.ctx.current_span()

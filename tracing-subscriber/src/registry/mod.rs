@@ -253,51 +253,6 @@ where
     }
 }
 
-/// An iterator over the parents of a span.
-///
-/// This is returned by the [`SpanRef::parents`] method.
-///
-/// [`SpanRef::parents`]: struct.SpanRef.html#method.parents
-#[deprecated(note = "replaced by `Scope`")]
-#[derive(Debug)]
-pub struct Parents<'a, R>(Scope<'a, R>);
-
-#[allow(deprecated)]
-impl<'a, R> Iterator for Parents<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
-/// An iterator over a span's parents, starting with the root of the trace
-/// tree.
-///
-/// For additional details, see [`SpanRef::from_root`].
-///
-/// [`Span::from_root`]: struct.SpanRef.html#method.from_root
-#[deprecated(note = "replaced by `ScopeFromRoot`", since = "0.2.19")]
-#[derive(Debug)]
-pub struct FromRoot<'a, R>(ScopeFromRoot<'a, R>)
-where
-    R: LookupSpan<'a>;
-
-#[allow(deprecated)]
-impl<'a, R> Iterator for FromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
 #[cfg(feature = "smallvec")]
 type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
 
@@ -416,41 +371,6 @@ where
             registry: self.registry,
             next: Some(self.id()),
         }
-    }
-
-    /// Returns an iterator over all parents of this span, starting with the
-    /// immediate parent.
-    ///
-    /// The iterator will first return the span's immediate parent, followed by
-    /// that span's parent, followed by _that_ span's parent, and so on, until a
-    /// it reaches a root span.
-    #[deprecated(
-        note = "equivalent to `self.parent().into_iter().flat_map(SpanRef::scope)`, but consider whether excluding `self` is actually intended"
-    )]
-    #[allow(deprecated)]
-    pub fn parents(&self) -> Parents<'a, R> {
-        Parents(Scope {
-            registry: self.registry,
-            next: self.parent_id().cloned(),
-        })
-    }
-
-    /// Returns an iterator over all parents of this span, starting with the
-    /// root of the trace tree.
-    ///
-    /// The iterator will return the root of the trace tree, followed by the
-    /// next span, and then the next, until this span's immediate parent is
-    /// returned.
-    ///
-    /// **Note**: this will allocate if there are many spans remaining, or if the
-    /// "smallvec" feature flag is not enabled.
-    #[deprecated(
-        note = "equivalent to `self.parent().into_iter().flat_map(|span| span.scope().from_root())`, but consider whether excluding `self` is actually intended",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn from_root(&self) -> FromRoot<'a, R> {
-        FromRoot(self.parents().0.from_root())
     }
 
     /// Returns a reference to this span's `Extensions`.
