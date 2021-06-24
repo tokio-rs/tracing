@@ -249,6 +249,40 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
     /// ```
     ///
+    /// Writing the `ERROR` and `WARN` levels to `stderr`, and everything else
+    /// to `stdout`:
+    ///
+    /// ```
+    /// # use tracing::Level;
+    /// # use tracing_subscriber::fmt::writer::MakeWriterExt;
+    ///
+    /// let mk_writer = std::io::stderr
+    ///     .with_max_level(Level::WARN)
+    ///     .or_else(std::io::stdout);
+    ///
+    /// tracing_subscriber::fmt().with_writer(mk_writer).init();
+    /// ```
+    ///
+    /// Writing the `ERROR` level to `stderr`, the `INFO` and `WARN` levels to
+    /// `stdout`, and the `INFO` and DEBUG` levels to a file:
+    ///
+    /// ```
+    /// use std::fs::File;
+    /// # // don't actually create the file when running the tests.
+    /// # fn docs() -> std::io::Result<()> {
+    /// let debug_log = File::create("debug.log")?;
+    ///
+    /// let mk_writer = std::io::stderr
+    ///     .with_max_level(Level::ERROR)
+    ///     .or_else(std::io::stdout
+    ///         .with_max_level(Level::INFO)
+    ///         .and(debug_log.with_max_level(Level::DEBUG))
+    ///     );
+    ///
+    /// tracing_subscriber::fmt().with_writer(mk_writer).init();
+    /// # Ok(()) }
+    /// ```
+    ///
     /// [`Level`]: tracing_core::Level
     /// [`io::Write`]: std::io::Write
     fn with_max_level(self, level: tracing_core::Level) -> WithMaxLevel<Self>
@@ -276,6 +310,21 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
     /// ```
+    /// This can be combined with [`MakeWriterExt::with_max_level`] to write
+    /// only within a range of levels:
+    ///
+    /// ```
+    /// # use tracing::Level;
+    /// # use tracing_subscriber::fmt::writer::MakeWriterExt;
+    /// // Only write the `DEBUG` and `INFO` levels to stdout.
+    /// let mk_writer = std::io::stdout
+    ///     .with_max_level(Level::DEBUG)
+    ///     .with_min_level(Level::INFO)
+    ///     // Write the `WARN` and `ERROR` levels to stderr.
+    ///     .and(std::io::stderr.with_min_level(Level::WARN));
+    ///
+    /// tracing_subscriber::fmt().with_writer(mk_writer).init();
+    /// ```
     /// [`Level`]: tracing_core::Level
     /// [`io::Write`]: std::io::Write
     fn with_min_level(self, level: tracing_core::Level) -> WithMinLevel<Self>
@@ -285,9 +334,88 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
         WithMinLevel::new(self, level)
     }
 
+    /// Wraps `self` with a predicate that takes a span or event's [`Metadata`]
+    /// and returns a `bool`. The returned [`MakeWriter`]'s
+    /// [`MakeWriter::make_writer_for`][mwf] method will check the predicate to
+    /// determine if  a writer should be produced for a given span or event.
+    ///
+    /// If the predicate returns `false`, the wrapped [`MakeWriter`]'s
+    /// [`make_writer_for`][mwf] will return [`OptionalWriter::none`].
+    /// Otherwise, it calls the wrapped [`MakeWriter`]'s
+    /// [`make_writer_for`][mwf] method, and returns the produced writer.
+    ///
+    /// This can be used to filter an output based on arbitrary [`Metadata`]
+    /// parameters.
+    ///
+    /// # Examples
+    ///
+    /// Writing events with a specific target to an HTTP access log, and other
+    /// events to stdout:
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::writer::MakeWriterExt;
+    /// use std::fs::File;
+    /// # // don't actually create the file when running the tests.
+    /// # fn docs() -> std::io::Result<()> {
+    /// let access_log = File::create("access.log")?;
+    ///
+    /// let mk_writer = access_log
+    ///     // Only write events with the target "http::access_log" to the
+    ///     // access log file.
+    ///     .with_filter(|meta| meta.target() == "http::access_log")
+    ///     // Write events with all other targets to stdout.
+    ///     .or_else(std::io::stdout);
+    ///
+    /// tracing_subscriber::fmt().with_writer(mk_writer).init();
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Conditionally enabling or disabling a log file:
+    /// ```
+    /// use tracing_subscriber::fmt::writer::MakeWriterExt;
+    /// use std::{sync::atomic::{AtomicBool, Ordering}, fs::File};
+    ///
+    /// static DEBUG_LOG_ENABLED: AtomicBool = AtomicBool::new(false);
+    ///
+    /// # // don't actually create the file when running the tests.
+    /// # fn docs() -> std::io::Result<()> {
+    /// // Create the debug log file
+    /// let debug_file = File::create("debug.log")?
+    ///     // Enable the debug log only if the flag is enabled.
+    ///     .with_filter(|_| DEBUG_LOG_ENABLED.load(Ordering::Acquire));
+    ///
+    /// // Always write to stdout
+    /// let mk_writer = std::io::stdout
+    ///     // Write to the debug file if it's enabled
+    ///     .and(debug_file);
+    ///
+    /// tracing_subscriber::fmt().with_writer(mk_writer).init();
+    ///
+    /// // ...
+    ///
+    /// // Later, we can toggle on or off the debug log file.
+    /// DEBUG_LOG_ENABLED.store(true, Ordering::Release);
+    /// # Ok(())
+    /// # }
+    ///
+    /// [`Metadata`]: tracing_core::Metadata
+    fn with_filter<F>(self, filter: F) -> WithFilter<Self, F>
+    where
+        Self: Sized,
+        F: Fn(&Metadata<'_>) -> bool,
+    {
+        WithFilter::new(self, filter)
+    }
+
     /// Combines `self` with another type implementing [`MakeWriter`], returning
     /// a new [`MakeWriter`] that produces [writers] that write to *both*
     /// outputs.
+    ///
+    /// If writing to either writer returns an error, the returned writer will
+    /// return that error. However, both writers will still be written to before
+    /// the error is returned, so it is possible for one writer to fail while
+    /// the other is written to successfully.
     ///
     /// # Examples
     ///
@@ -299,6 +427,9 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
     /// ```
+    ///
+    /// `and` can be used in conjunction with filtering combinators. For
+    /// example, if we want to write to a number of outputs depending on
     fn and<B>(self, other: B) -> Tee<Self, B>
     where
         Self: Sized,
@@ -456,26 +587,38 @@ pub struct WithMinLevel<M> {
     level: tracing_core::Level,
 }
 
-/// A [`MakeWriter`] combinator that only returns an enabled [writer] for spans
-/// and events with metadata at or above a specified verbosity [`Level`].
+/// A [`MakeWriter`] combinator that wraps a [`MakeWriter`] with a predicate for
+/// span and event [`Metadata`], so that the [`MakeWriterExt::make_writer_for`]
+/// method returns [`OptionalWriter::some`] when the predicate returns `true`,
+/// and [`OptionalWriter::none`] when the predicate returns `false`.
 ///
-/// This is returned by the [`MakeWriterExt::with_min_level] method. See the
+/// This is returned by the [`MakeWriterExt::with_filter`] method. See the
 /// method documentation for details.
 ///
-/// [writer]: std::io::Write
-/// [`Level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct WithFilter<M, F> {
     make: M,
     filter: F,
 }
 
+/// Combines a [`MakeWriter`] that returns an [`OptionalWriter`] with another
+/// [`MakeWriter`], so that the second [`MakeWriter`] is used when the first
+/// [`MakeWriter`] returns [`OptionalWriter::none`].
+///
+/// This is returned by the [`MakeWriterExt::or_else] method. See the
+/// method documentation for details.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct OrElse<A, B> {
     inner: A,
     or_else: B,
 }
 
+/// Combines two types implementing [`MakeWriter`] (or [`std::io::Write`]) to
+/// produce a writer that writes to both [`MakeWriter`]'s returned writers.
+///
+/// This is returned by the [`MakeWriterExt::and`] method. See the method
+/// documentation for details.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tee<A, B> {
     a: A,
@@ -491,6 +634,13 @@ where
 
     fn make_writer(&'a self) -> Self::Writer {
         (self)()
+    }
+}
+
+impl<'a> MakeWriter<'a> for std::fs::File {
+    type Writer = &'a std::fs::File;
+    fn make_writer(&'a self) -> Self::Writer {
+        self
     }
 }
 
@@ -670,16 +820,29 @@ where
 }
 
 impl<T> OptionalWriter<T> {
+    /// Returns a [disabled writer].
+    ///
+    /// Any bytes written to the returned writer are discarded.
+    ///
+    /// This is equivalent to returning [`Option::None`].
+    ///
+    /// [disabled writer]: std::io::sink
+    #[inline]
     pub fn none() -> Self {
         EitherWriter::B(std::io::sink())
     }
 
+    /// Returns an enabled writer of type `T`.
+    ///
+    /// This is equivalent to returning [`Option::Some`].
+    #[inline]
     pub fn some(t: T) -> Self {
         EitherWriter::A(t)
     }
 }
 
 impl<T> From<Option<T>> for OptionalWriter<T> {
+    #[inline]
     fn from(opt: Option<T>) -> Self {
         match opt {
             Some(writer) => Self::some(writer),
@@ -691,6 +854,13 @@ impl<T> From<Option<T>> for OptionalWriter<T> {
 // === impl WithMaxLevel ===
 
 impl<M> WithMaxLevel<M> {
+    /// Wraps the provided [`MakeWriter`] with a maximum [`Level`], so that it
+    /// returns [`OptionalWriter::none`] for spans and events whose level is
+    /// more verbose than the maximum level.
+    ///
+    /// See [`MakeWriterExt::with_max_level`] for details.
+    ///
+    /// [`Level`]: tracing_core::Level
     pub fn new(make: M, level: tracing_core::Level) -> Self {
         Self { make, level }
     }
@@ -717,6 +887,13 @@ impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMaxLevel<M> {
 // === impl WithMinLevel ===
 
 impl<M> WithMinLevel<M> {
+    /// Wraps the provided [`MakeWriter`] with a minimum [`Level`], so that it
+    /// returns [`OptionalWriter::none`] for spans and events whose level is
+    /// less verbose than the maximum level.
+    ///
+    /// See [`MakeWriterExt::with_min_level`] for details.
+    ///
+    /// [`Level`]: tracing_core::Level
     pub fn new(make: M, level: tracing_core::Level) -> Self {
         Self { make, level }
     }
@@ -746,6 +923,8 @@ impl<M, F> WithFilter<M, F> {
     /// Wraps `make` with the provided `filter`, returning a [`MakeWriter`] that
     /// will call `make.make_writer_for()` when `filter` returns `true` for a
     /// span or event's [`Metadata`], and returns a [`sink`] otherwise.
+    ///
+    /// See [`MakeWriterExt::with_filter`] for details.
     ///
     /// [`Metadata`]: tracing_core::Metadata
     /// [`sink`]: std::io::sink
@@ -782,6 +961,11 @@ where
 // === impl Tee ===
 
 impl<A, B> Tee<A, B> {
+    /// Combines two types implementing [`MakeWriter`], returning
+    /// a new [`MakeWriter`] that produces [writers] that write to *both*
+    /// outputs.
+    ///
+    /// See the documentation for [`MakeWriterExt::and`] for details.
     pub fn new(a: A, b: B) -> Self {
         Self { a, b }
     }
@@ -1071,6 +1255,60 @@ mod test {
     }
 
     #[test]
+    fn combinators_or_else_chain() {
+        let info_buf = Arc::new(Mutex::new(Vec::new()));
+        let info = MockMakeWriter::new(info_buf.clone());
+
+        let debug_buf = Arc::new(Mutex::new(Vec::new()));
+        let debug = MockMakeWriter::new(debug_buf.clone());
+
+        let warn_buf = Arc::new(Mutex::new(Vec::new()));
+        let warn = MockMakeWriter::new(warn_buf.clone());
+
+        let err_buf = Arc::new(Mutex::new(Vec::new()));
+        let err = MockMakeWriter::new(err_buf.clone());
+
+        let make_writer = err.with_max_level(Level::ERROR).or_else(
+            warn.with_max_level(Level::WARN).or_else(
+                info.with_max_level(Level::INFO)
+                    .or_else(debug.with_max_level(Level::DEBUG)),
+            ),
+        );
+
+        let c = {
+            #[cfg(feature = "ansi")]
+            let f = Format::default().without_time().with_ansi(false);
+            #[cfg(not(feature = "ansi"))]
+            let f = Format::default().without_time();
+            Collector::builder()
+                .event_format(f)
+                .with_writer(make_writer)
+                .with_max_level(Level::TRACE)
+                .finish()
+        };
+
+        let _s = tracing::collect::set_default(c);
+
+        trace!("trace");
+        debug!("debug");
+        info!("info");
+        warn!("warn");
+        error!("error");
+
+        println!("max level debug");
+        has_lines(&debug_buf, &[(Level::DEBUG, "debug")]);
+
+        println!("max level info");
+        has_lines(&info_buf, &[(Level::INFO, "info")]);
+
+        println!("max level warn");
+        has_lines(&warn_buf, &[(Level::WARN, "warn")]);
+
+        println!("max level error");
+        has_lines(&err_buf, &[(Level::ERROR, "error")]);
+    }
+
+    #[test]
     fn combinators_and() {
         let a_buf = Arc::new(Mutex::new(Vec::new()));
         let a = MockMakeWriter::new(a_buf.clone());
@@ -1078,7 +1316,7 @@ mod test {
         let b_buf = Arc::new(Mutex::new(Vec::new()));
         let b = MockMakeWriter::new(b_buf.clone());
 
-        let lines = &[(Level::INFO, "world"), (Level::INFO, "goodbye")];
+        let lines = &[(Level::INFO, "hello"), (Level::INFO, "world")];
 
         let make_writer = a.and(b);
         let c = {
