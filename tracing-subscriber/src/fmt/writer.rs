@@ -267,6 +267,8 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// `stdout`, and the `INFO` and DEBUG` levels to a file:
     ///
     /// ```
+    /// # use tracing::Level;
+    /// # use tracing_subscriber::fmt::writer::MakeWriterExt;
     /// use std::fs::File;
     /// # // don't actually create the file when running the tests.
     /// # fn docs() -> std::io::Result<()> {
@@ -398,7 +400,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// DEBUG_LOG_ENABLED.store(true, Ordering::Release);
     /// # Ok(())
     /// # }
-    ///
+    /// ```
     /// [`Metadata`]: tracing_core::Metadata
     fn with_filter<F>(self, filter: F) -> WithFilter<Self, F>
     where
@@ -450,7 +452,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// // Produces a writer that writes to `stderr` if the level is >= WARN,
     /// // or returns `OptionalWriter::none()` otherwise.
-    /// let mk_writer = std::io::stderr.with_max_level(Level::WARN);
+    /// let stderr = std::io::stderr.with_max_level(Level::WARN);
     ///
     /// // If the `stderr` `MakeWriter` is disabled by the max level filter,
     /// // write to stdout instead:
