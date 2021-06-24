@@ -9,7 +9,6 @@ use crate::{
 
 use std::{
     fmt::{self, Write},
-    iter,
     marker::PhantomData,
 };
 use tracing_core::{
@@ -650,10 +649,7 @@ where
             .and_then(|id| ctx.ctx.span(&id))
             .or_else(|| ctx.ctx.lookup_current());
 
-        let scope = span.into_iter().flat_map(|span| {
-            let parents = span.parents();
-            iter::once(span).chain(parents)
-        });
+        let scope = span.into_iter().flat_map(|span| span.scope());
         #[cfg(feature = "ansi")]
         let dimmed = if self.ansi {
             Style::new().dimmed()
@@ -876,9 +872,7 @@ where
             .and_then(|id| self.ctx.ctx.span(&id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
+        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
 
         for span in scope {
             write!(f, "{}", bold.paint(span.metadata().name()))?;
