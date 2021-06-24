@@ -464,6 +464,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     where
         Self: MakeWriter<'a, Writer = OptionalWriter<W>> + Sized,
         B: MakeWriter<'a> + Sized,
+        W: Write,
     {
         OrElse::new(self, other)
     }
