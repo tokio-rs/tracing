@@ -5,7 +5,7 @@ use tracing_core::{
     collect::Collect,
     event::Event,
     metadata::Metadata,
-    span::{Attributes, Id, Record},
+    span::{Attributes, Current, Id, Record},
 };
 use tracing_serde::AsSerde;
 
@@ -77,6 +77,10 @@ impl Collect for JsonCollector {
             "exit": span.as_serde(),
         });
         println!("{}", json);
+    }
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
     }
 }
 

@@ -76,8 +76,6 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
 //!  **Warning**: In asynchronous code that uses async/await syntax,
@@ -106,12 +104,9 @@
 //! });
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: Since entering a span takes <code>&self</code<, and
+//! <strong>Note</strong>: Since entering a span takes <code>&self</code>, and
 //! <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
 //! <code>Sync</code>, it is entirely valid for multiple threads to enter the
 //! same span concurrently.
@@ -595,13 +590,10 @@ impl Span {
     /// will call [`Collect::exit`]. If the span is disabled, this does
     /// nothing.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
-    /// **Note**: The returned [`Entered`] guard guard does not
+    /// **Note**: The returned [`Entered`] guard does not
     /// implement `Send`. Dropping the guard will exit *this* span,
     /// and if the guard is sent to another thread and dropped there, that thread may
     /// never have entered this span. Thus, `Entered` should not be sent
@@ -612,9 +604,7 @@ impl Span {
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
     /// [`Span::enter`] should be used very carefully or avoided entirely. Holding
     /// the drop guard returned by `Span::enter` across `.await` points will
-    /// result in incorrect traces.
-    ///
-    /// For example,
+    /// result in incorrect traces. For example,
     ///
     /// ```
     /// # use tracing::info_span;
@@ -824,9 +814,6 @@ impl Span {
     /// Furthermore, `entered` may be used when the span must be stored in some
     /// other struct or be passed to a function while remaining entered.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1043,9 +1030,6 @@ impl Span {
     /// }
     /// ```
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1297,15 +1281,27 @@ impl fmt::Debug for Span {
     }
 }
 
-impl<'a> Into<Option<&'a Id>> for &'a Span {
-    fn into(self) -> Option<&'a Id> {
-        self.inner.as_ref().map(|inner| &inner.id)
+impl<'a> From<&'a Span> for Option<&'a Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
+impl<'a> From<&'a Span> for Option<Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(Inner::id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(Inner::id)
     }
 }
 
@@ -1394,6 +1390,11 @@ impl Clone for Inner {
 // ===== impl Entered =====
 
 impl EnteredSpan {
+    /// Returns this span's `Id`, if it is enabled.
+    pub fn id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Inner::id)
+    }
+
     /// Exits this span, returning the underlying [`Span`].
     #[inline]
     pub fn exit(mut self) -> Span {
@@ -1445,6 +1446,7 @@ impl Drop for EnteredSpan {
 struct PhantomNotSend {
     ghost: PhantomData<*mut ()>,
 }
+
 #[allow(non_upper_case_globals)]
 const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 

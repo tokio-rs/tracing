@@ -29,7 +29,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -39,6 +39,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -55,7 +56,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -65,6 +66,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -92,7 +94,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -102,6 +104,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -118,9 +121,6 @@
 //!
 //! // `my_collector` is now the default
 //! ```
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!

@@ -2,12 +2,11 @@ use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, Tracer
 use opentelemetry::{
     trace as otel,
     trace::{
-        SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceId, TraceState,
-        TRACE_FLAG_SAMPLED,
+        SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
+        TraceState,
     },
-    Context as OtelContext, KeyValue,
+    Context as OtelContext,
 };
-use std::time::SystemTime;
 
 /// An interface for authors of OpenTelemetry SDKs to build pre-sampled tracers.
 ///
@@ -51,10 +50,7 @@ pub trait PreSampledTracer {
 
 impl PreSampledTracer for otel::NoopTracer {
     fn sampled_context(&self, builder: &mut otel::SpanBuilder) -> OtelContext {
-        builder
-            .parent_context
-            .clone()
-            .unwrap_or_else(OtelContext::new)
+        builder.parent_context.clone()
     }
 
     fn new_trace_id(&self) -> otel::TraceId {
@@ -73,9 +69,7 @@ impl PreSampledTracer for Tracer {
             return OtelContext::new();
         }
         let provider = self.provider().unwrap();
-
-        // Ensure parent context exists and contains data necessary for sampling
-        let parent_cx = build_parent_context(&builder);
+        let parent_cx = &builder.parent_context;
 
         // Gather trace state
         let (no_parent, trace_id, remote_parent, parent_trace_flags) =
@@ -85,7 +79,7 @@ impl PreSampledTracer for Tracer {
         let (flags, trace_state) = if let Some(result) = &builder.sampling_result {
             process_sampling_result(result, parent_trace_flags)
         } else if no_parent || remote_parent {
-            builder.sampling_result = Some(provider.config().default_sampler.should_sample(
+            builder.sampling_result = Some(provider.config().sampler.should_sample(
                 Some(&parent_cx),
                 trace_id,
                 &builder.name,
@@ -109,7 +103,7 @@ impl PreSampledTracer for Tracer {
 
         let span_id = builder.span_id.unwrap_or_else(SpanId::invalid);
         let span_context = SpanContext::new(trace_id, span_id, flags, false, trace_state);
-        parent_cx.with_span(CompatSpan(span_context))
+        parent_cx.with_remote_span_context(span_context)
     }
 
     fn new_trace_id(&self) -> otel::TraceId {
@@ -125,31 +119,14 @@ impl PreSampledTracer for Tracer {
     }
 }
 
-fn build_parent_context(builder: &SpanBuilder) -> OtelContext {
-    builder
-        .parent_context
-        .as_ref()
-        .map(|cx| {
-            // Sampling expects to be able to access the parent span via `span` so wrap remote span
-            // context in a wrapper span if necessary. Remote span contexts will be passed to
-            // subsequent context's, so wrapping is only necessary if there is no active span.
-            match cx.remote_span_context() {
-                Some(remote_sc) if !cx.has_active_span() => {
-                    cx.with_span(CompatSpan(remote_sc.clone()))
-                }
-                _ => cx.clone(),
-            }
-        })
-        .unwrap_or_default()
-}
-
 fn current_trace_state(
     builder: &SpanBuilder,
     parent_cx: &OtelContext,
     provider: &TracerProvider,
-) -> (bool, TraceId, bool, u8) {
+) -> (bool, TraceId, bool, TraceFlags) {
     if parent_cx.has_active_span() {
-        let sc = parent_cx.span().span_context();
+        let span = parent_cx.span();
+        let sc = span.span_context();
         (false, sc.trace_id(), sc.is_remote(), sc.trace_flags())
     } else {
         (
@@ -158,15 +135,15 @@ fn current_trace_state(
                 .trace_id
                 .unwrap_or_else(|| provider.config().id_generator.new_trace_id()),
             false,
-            0,
+            Default::default(),
         )
     }
 }
 
 fn process_sampling_result(
     sampling_result: &SamplingResult,
-    trace_flags: u8,
-) -> Option<(u8, TraceState)> {
+    trace_flags: TraceFlags,
+) -> Option<(TraceFlags, TraceState)> {
     match sampling_result {
         SamplingResult {
             decision: SamplingDecision::Drop,
@@ -176,64 +153,12 @@ fn process_sampling_result(
             decision: SamplingDecision::RecordOnly,
             trace_state,
             ..
-        } => Some((trace_flags & !TRACE_FLAG_SAMPLED, trace_state.clone())),
+        } => Some((trace_flags & !TraceFlags::SAMPLED, trace_state.clone())),
         SamplingResult {
             decision: SamplingDecision::RecordAndSample,
             trace_state,
             ..
-        } => Some((trace_flags | TRACE_FLAG_SAMPLED, trace_state.clone())),
-    }
-}
-
-#[derive(Debug)]
-struct CompatSpan(otel::SpanContext);
-impl otel::Span for CompatSpan {
-    fn add_event_with_timestamp(
-        &self,
-        _name: String,
-        _timestamp: std::time::SystemTime,
-        _attributes: Vec<KeyValue>,
-    ) {
-        #[cfg(debug_assertions)]
-        panic!(
-            "OpenTelemetry and tracing APIs cannot be mixed, use `tracing::event!` macro instead."
-        );
-    }
-
-    /// This method is used by OpenTelemetry propagators to inject span context
-    /// information into [`Injector`]s.
-    ///
-    /// [`Injector`]: opentelemetry::propagation::Injector
-    fn span_context(&self) -> &otel::SpanContext {
-        &self.0
-    }
-
-    fn is_recording(&self) -> bool {
-        #[cfg(debug_assertions)]
-        panic!("cannot record via OpenTelemetry API when using extracted span in tracing");
-
-        #[cfg(not(debug_assertions))]
-        false
-    }
-
-    fn set_attribute(&self, _attribute: KeyValue) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead.");
-    }
-
-    fn set_status(&self, _code: otel::StatusCode, _message: String) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead.");
-    }
-
-    fn update_name(&self, _new_name: String) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `span.record()` with `otel.name` instead.");
-    }
-
-    fn end_with_timestamp(&self, _timestamp: SystemTime) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, span end times are set when the underlying tracing span closes.");
+        } => Some((trace_flags | TraceFlags::SAMPLED, trace_state.clone())),
     }
 }
 
@@ -241,7 +166,7 @@ impl otel::Span for CompatSpan {
 mod tests {
     use super::*;
     use opentelemetry::sdk::trace::{config, Sampler, TracerProvider};
-    use opentelemetry::trace::{SpanBuilder, SpanId, TracerProvider as _, TRACE_FLAG_NOT_SAMPLED};
+    use opentelemetry::trace::{SpanBuilder, SpanId, TracerProvider as _};
 
     #[test]
     fn assigns_default_trace_id_if_missing() {
@@ -251,7 +176,8 @@ mod tests {
         builder.span_id = Some(SpanId::from_u64(1));
         builder.trace_id = None;
         let cx = tracer.sampled_context(&mut builder);
-        let span_context = cx.span().span_context();
+        let span = cx.span();
+        let span_context = span.span_context();
 
         assert!(span_context.is_valid());
     }
@@ -264,10 +190,10 @@ mod tests {
             ("empty_parent_cx_always_off", Sampler::AlwaysOff, OtelContext::new(), None, false),
 
             // Remote parent samples
-            ("remote_parent_cx_always_on", Sampler::AlwaysOn, OtelContext::new().with_remote_span_context(span_context(TRACE_FLAG_SAMPLED, true)), None, true),
-            ("remote_parent_cx_always_off", Sampler::AlwaysOff, OtelContext::new().with_remote_span_context(span_context(TRACE_FLAG_SAMPLED, true)), None, false),
-            ("sampled_remote_parent_cx_parent_based", Sampler::ParentBased(Box::new(Sampler::AlwaysOff)), OtelContext::new().with_remote_span_context(span_context(TRACE_FLAG_SAMPLED, true)), None, true),
-            ("unsampled_remote_parent_cx_parent_based", Sampler::ParentBased(Box::new(Sampler::AlwaysOn)), OtelContext::new().with_remote_span_context(span_context(TRACE_FLAG_NOT_SAMPLED, true)), None, false),
+            ("remote_parent_cx_always_on", Sampler::AlwaysOn, OtelContext::new().with_remote_span_context(span_context(TraceFlags::SAMPLED, true)), None, true),
+            ("remote_parent_cx_always_off", Sampler::AlwaysOff, OtelContext::new().with_remote_span_context(span_context(TraceFlags::SAMPLED, true)), None, false),
+            ("sampled_remote_parent_cx_parent_based", Sampler::ParentBased(Box::new(Sampler::AlwaysOff)), OtelContext::new().with_remote_span_context(span_context(TraceFlags::SAMPLED, true)), None, true),
+            ("unsampled_remote_parent_cx_parent_based", Sampler::ParentBased(Box::new(Sampler::AlwaysOn)), OtelContext::new().with_remote_span_context(span_context(TraceFlags::default(), true)), None, false),
 
             // Existing sampling result defers
             ("previous_drop_result_always_on", Sampler::AlwaysOn, OtelContext::new(), Some(SamplingResult { decision: SamplingDecision::Drop, attributes: vec![], trace_state: Default::default() }), false),
@@ -283,11 +209,11 @@ mod tests {
     fn sampled_context() {
         for (name, sampler, parent_cx, previous_sampling_result, is_sampled) in sampler_data() {
             let provider = TracerProvider::builder()
-                .with_config(config().with_default_sampler(sampler))
+                .with_config(config().with_sampler(sampler))
                 .build();
             let tracer = provider.get_tracer("test", None);
             let mut builder = SpanBuilder::from_name("parent".to_string());
-            builder.parent_context = Some(parent_cx);
+            builder.parent_context = parent_cx;
             builder.sampling_result = previous_sampling_result;
             let sampled = tracer.sampled_context(&mut builder);
 
@@ -300,7 +226,7 @@ mod tests {
         }
     }
 
-    fn span_context(trace_flags: u8, is_remote: bool) -> SpanContext {
+    fn span_context(trace_flags: TraceFlags, is_remote: bool) -> SpanContext {
         SpanContext::new(
             TraceId::from_u128(1),
             SpanId::from_u64(1),

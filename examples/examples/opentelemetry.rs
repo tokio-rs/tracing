@@ -15,10 +15,13 @@ fn expensive_work() -> &'static str {
 }
 
 fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    // Install an otel pipeline with a simple span processor that exports data one at a time when
+    // spans end. See the `install_batch` option on each exporter's pipeline builder to see how to
+    // export in batches.
+    let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("report_example")
-        .install()?;
-    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+        .install_simple()?;
+    let opentelemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
     tracing_subscriber::registry()
         .with(opentelemetry)
         .try_init()?;

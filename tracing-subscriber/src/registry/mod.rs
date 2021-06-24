@@ -17,8 +17,8 @@
 //! # use tracing_core::Collect;
 //! # pub struct FooSubscriber {}
 //! # pub struct BarSubscriber {}
-//! # impl<S: Collect> Subscribe<S> for FooSubscriber {}
-//! # impl<S: Collect> Subscribe<S> for BarSubscriber {}
+//! # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+//! # impl<C: Collect> Subscribe<C> for BarSubscriber {}
 //! # impl FooSubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
@@ -43,9 +43,9 @@
 //!     // ...
 //! }
 //!
-//! impl<S> Subscribe<S> for MySubscriber
+//! impl<C> Subscribe<C> for MySubscriber
 //! where
-//!     S: Collect + for<'a> registry::LookupSpan<'a>,
+//!     C: Collect + for<'a> registry::LookupSpan<'a>,
 //! {
 //!     // ...
 //! }
@@ -88,9 +88,6 @@ pub trait LookupSpan<'a> {
 
     /// Returns the [`SpanData`] for a given [`Id`], if it exists.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
