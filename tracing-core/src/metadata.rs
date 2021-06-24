@@ -33,9 +33,6 @@ use core::{
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///

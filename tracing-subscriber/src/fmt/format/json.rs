@@ -174,20 +174,20 @@ where
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Json, T>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result
     where
-        S: Collect + for<'a> LookupSpan<'a>,
+        C: Collect + for<'a> LookupSpan<'a>,
     {
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
