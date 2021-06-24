@@ -1046,6 +1046,7 @@ impl<A, B> OrElse<A, B> {
     where
         A: MakeWriter<'a, Writer = OptionalWriter<W>>,
         B: MakeWriter<'a>,
+        W: Write,
     {
         Self { inner, or_else }
     }
