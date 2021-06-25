@@ -114,15 +114,15 @@ pub struct Kind(KindInner);
 ///
 /// # Filtering
 ///
-/// Typically, `Level`s are used to implement *filtering* that determines which
+/// `Level`s are typically used to implement filtering that determines which
 /// spans and events are enabled. Depending on the use case, more or less
-/// verbose diagnostics may be desired &mdash; for example, when running in
-/// development, [`DEBUG`]-level traces may be enabled by default, and when
-/// running in production, we might choose to enable only [`INFO`]-level and
-/// lower. Libraries may include very verbose diagnostics at the [`DEBUG`]
-/// and/or [`TRACE`] levels, which applications using those libraries might
-/// typically choose to ignore. However, when debugging an issue involving those
-/// libraries, it may be useful to temporarily enable those traces.
+/// verbose diagnostics may be desired. For example, when running in
+/// development, [`DEBUG`]-level traces may be enabled by default. When running in
+/// production, only [`INFO`]-level and lower traces might be enabled. Libraries 
+/// may include very verbose diagnostics at the [`DEBUG`] and/or [`TRACE`] levels.
+/// Applications using those libraries typically chose to ignore those traces. However, when
+/// debugging an issue involving said libraries, it may be useful to temporarily 
+/// enable the more verbose traces.
 ///
 /// The [`LevelFilter`] type is provided to enable filtering traces by
 /// verbosity. `Level`s can be compared against [`LevelFilter`]s, and
@@ -142,13 +142,14 @@ pub struct Kind(KindInner);
 /// assert!(LevelFilter::INFO >= Level::INFO);
 /// ```
 ///
-/// As a simple example of how a [collector] could implement filtering, a
-/// [`LevelFilter`] is provided when the collector is constructed. Then, when a
-/// span or event is recorded, the [`Collect::enabled`] method would compare the
-/// span or event's `Level` against the configured [`LevelFilter`]. The optional
-/// [`Collect::max_level_hint`] method can also be implemented to allow spans and
-/// events above a maximum verbosity level to be skipped more efficiently,
-/// improving performance.
+/// ## Examples
+///
+/// Below is a simple example of how a [collector] could implement filtering through
+/// a [`LevelFilter`]. When a span or event is recorded, the [`Collect::enabled`] method 
+/// compares the span or event's `Level` against the configured [`LevelFilter`].
+/// The optional [`Collect::max_level_hint`] method can also be implemented to  allow spans 
+/// and events above a maximum verbosity level to be skipped more efficiently,
+/// often improving performance in short-lived programs.
 ///
 /// ```
 /// use tracing_core::{span, Event, Level, LevelFilter, Collect, Metadata};
@@ -208,7 +209,7 @@ pub struct Kind(KindInner);
 /// }
 /// ```
 ///
-/// In addition, the `tracing-subscriber` crate provides [additional
+/// It is worth noting that the `tracing-subscriber` crate provides [additional
 /// APIs][envfilter] for performing more sophisticated filtering, such as
 /// enabling different levels based on which module or crate a span or event is
 /// recorded in.
