@@ -402,7 +402,9 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// # Ok(())
     /// # }
     /// ```
+    ///
     /// [`Metadata`]: tracing_core::Metadata
+    /// [mwf]: MakeWriter::make_writer_for
     fn with_filter<F>(self, filter: F) -> WithFilter<Self, F>
     where
         Self: Sized,
