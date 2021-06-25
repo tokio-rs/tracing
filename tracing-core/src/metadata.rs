@@ -14,7 +14,9 @@ use core::{
 ///   or event occurred. The `tracing` macros default to using the module
 ///   path where the span or event originated as the target, but it may be
 ///   overridden.
-/// - A [verbosity level].
+/// - A [verbosity level]. This determines how verbose a given span or event
+///   is, and allows enabling or disabling more verbose diagnostics
+///   situationally. See the documentation for the [`Level`] type for details.
 /// - The names of the [fields] defined by the span or event.
 /// - Whether the metadata corresponds to a span or event.
 ///
