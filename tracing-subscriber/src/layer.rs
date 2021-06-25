@@ -90,7 +90,7 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// Multiple `Layer`s may be composed in the same manner:
 /// ```rust
-/// # use tracing_subscriber::{Layer, SubscriberExt};
+/// # use tracing_subscriber::{Layer, layer::SubscriberExt};
 /// # use tracing::Subscriber;
 /// pub struct MyOtherLayer {
 ///     // ...
