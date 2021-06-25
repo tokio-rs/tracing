@@ -118,10 +118,10 @@ pub struct Kind(KindInner);
 /// spans and events are enabled. Depending on the use case, more or less
 /// verbose diagnostics may be desired. For example, when running in
 /// development, [`DEBUG`]-level traces may be enabled by default. When running in
-/// production, only [`INFO`]-level and lower traces might be enabled. Libraries 
+/// production, only [`INFO`]-level and lower traces might be enabled. Libraries
 /// may include very verbose diagnostics at the [`DEBUG`] and/or [`TRACE`] levels.
 /// Applications using those libraries typically chose to ignore those traces. However, when
-/// debugging an issue involving said libraries, it may be useful to temporarily 
+/// debugging an issue involving said libraries, it may be useful to temporarily
 /// enable the more verbose traces.
 ///
 /// The [`LevelFilter`] type is provided to enable filtering traces by
@@ -145,9 +145,9 @@ pub struct Kind(KindInner);
 /// ## Examples
 ///
 /// Below is a simple example of how a [collector] could implement filtering through
-/// a [`LevelFilter`]. When a span or event is recorded, the [`Collect::enabled`] method 
+/// a [`LevelFilter`]. When a span or event is recorded, the [`Collect::enabled`] method
 /// compares the span or event's `Level` against the configured [`LevelFilter`].
-/// The optional [`Collect::max_level_hint`] method can also be implemented to  allow spans 
+/// The optional [`Collect::max_level_hint`] method can also be implemented to  allow spans
 /// and events above a maximum verbosity level to be skipped more efficiently,
 /// often improving performance in short-lived programs.
 ///
