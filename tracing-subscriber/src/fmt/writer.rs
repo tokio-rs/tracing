@@ -231,7 +231,8 @@ pub trait MakeWriter<'a> {
 /// used.
 pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// Wraps `self` and returns a [`MakeWriter`] that will only write output
-    /// for events at or below the provided verbosity [`Level`].
+    /// for events at or below the provided verbosity [`Level`]. For instance,
+    /// `Level::TRACE` is considered to be _more verbose` than `Level::INFO`.
     ///
     /// Events whose level is more verbose than `level` will be ignored, and no
     /// output will be written.
