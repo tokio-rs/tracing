@@ -113,6 +113,8 @@ use syn::{
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
+/// Alternatively, pass `skip_all` to skip all of the arguments.
+///
 /// You can also pass additional fields (key-value pairs with arbitrary data)
 /// to the generated span. This is achieved using the `fields` argument on the
 /// `#[instrument]` macro. You can use a string, integer or boolean literal as
@@ -167,6 +169,18 @@ use syn::{
 ///
 /// #[instrument(skip(non_debug))]
 /// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+/// ```
+///
+/// To skip recording all arguments, pass `skip_all`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// struct NonDebug;
+///
+/// #[instrument(skip_all)]
+/// fn my_function(dont_care: usize, non_debug: NonDebug) {
 ///     // ...
 /// }
 /// ```
@@ -455,7 +469,7 @@ fn gen_block(
         let quoted_fields: Vec<_> = param_names
             .iter()
             .filter(|(param, _)| {
-                if args.skips.contains(param) {
+                if args.skips.contains(param) || args.skip_all {
                     return false;
                 }
 
@@ -564,6 +578,7 @@ struct InstrumentArgs {
     level: Option<Level>,
     name: Option<LitStr>,
     target: Option<LitStr>,
+    skip_all: bool,
     skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
@@ -679,6 +694,9 @@ impl Parse for InstrumentArgs {
                     return Err(input.error("expected only a single `level` argument"));
                 }
                 args.level = Some(input.parse()?);
+            } else if lookahead.peek(kw::skip_all) {
+                let _ = input.parse::<kw::skip_all>()?;
+                args.skip_all = true;
             } else if lookahead.peek(kw::skip) {
                 if !args.skips.is_empty() {
                     return Err(input.error("expected only a single `skip` argument"));
@@ -967,6 +985,7 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
 mod kw {
     syn::custom_keyword!(fields);
     syn::custom_keyword!(skip);
+    syn::custom_keyword!(skip_all);
     syn::custom_keyword!(level);
     syn::custom_keyword!(target);
     syn::custom_keyword!(name);
