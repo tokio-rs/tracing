@@ -1,0 +1,26 @@
+[package]
+name = "tracing-syslog"
+version = "0.1.0"
+authors = ["Max Heller <max.a.heller@gmail.com>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+description = "syslog subscriber for `tracing`"
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+]
+keywords = ["tracing", "syslog"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+libc = "0.2"
+tracing-core = { path = "../tracing-core", version = "0.2" }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
+
+[dev-dependencies]
+tracing = { path = "../tracing", version = "0.2" }
