@@ -1,3 +1,35 @@
+# 0.2.19 (June 25, 2021)
+
+### Deprecated
+
+- **registry**: `SpanRef::parents`, `SpanRef::from_root`, and `Context::scope`
+  iterators, which are replaced by new `SpanRef::scope` and `Scope::from_root`
+  iterators ([#1413])
+
+### Added
+
+- **registry**: `SpanRef::scope` method, which returns a leaf-to-root `Iterator`
+  including the leaf span ([#1413])
+- **registry**: `Scope::from_root` method, which reverses the `scope` iterator
+  to iterate root-to-leaf ([#1413])
+- **registry**: `Context::event_span` method, which looks up the parent span of
+  an event ([#1434])
+- **registry**: `Context::event_scope` method, returning a `Scope` iterator over
+  the span scope of an event ([#1434])
+- **fmt**: `MakeWriter::make_writer_for` method, which allows returning a
+  different writer based on a span or event's metadata ([#1141])
+- **fmt**: `MakeWriterExt` trait, with `with_max_level`, `with_min_level`,
+  `with_filter`, `and`, and `or_else` combinators ([#1274])
+- **fmt**: `MakeWriter` implementation for `Arc<W> where &W: io::Write`
+  ([#1274])
+  
+Thanks to @teozkr and @Folyd for contributing to this release!
+
+[#1413]: https://github.com/tokio-rs/tracing/pull/1413
+[#1434]: https://github.com/tokio-rs/tracing/pull/1434
+[#1141]: https://github.com/tokio-rs/tracing/pull/1141
+[#1274]: https://github.com/tokio-rs/tracing/pull/1274
+
 # 0.2.18 (April 30, 2021)
 
 ### Deprecated
