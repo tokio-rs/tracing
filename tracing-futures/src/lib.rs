@@ -102,7 +102,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #[cfg(feature = "std-future")]
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 
 #[cfg(feature = "std-future")]
 use core::{pin::Pin, task::Context};
@@ -239,30 +239,44 @@ pub trait WithCollector: Sized {
     }
 }
 
+#[cfg(feature = "std-future")]
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
+    #[derive(Debug, Clone)]
+    pub struct Instrumented<T> {
+        #[pin]
+        inner: T,
+        span: Span,
+    }
+}
+
 /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
-#[cfg_attr(feature = "std-future", pin_project)]
+#[cfg(not(feature = "std-future"))]
 #[derive(Debug, Clone)]
 pub struct Instrumented<T> {
-    #[cfg(feature = "std-future")]
-    #[pin]
-    inner: T,
-    #[cfg(not(feature = "std-future"))]
     inner: T,
     span: Span,
 }
 
+#[cfg(all(feature = "std", feature = "std-future"))]
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a
+    /// `tracing` subscriber.
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[derive(Clone, Debug)]
+    pub struct WithDispatch<T> {
+        #[pin]
+        inner: T,
+        dispatch: Dispatch,
+    }
+}
+
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "std-future")))]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-#[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
-    // cfg_attr doesn't work inside structs, apparently...
-    #[cfg(feature = "std-future")]
-    #[pin]
-    inner: T,
-    #[cfg(not(feature = "std-future"))]
     inner: T,
     dispatch: Dispatch,
 }
