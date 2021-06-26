@@ -79,6 +79,10 @@ harness = false
 name = "global_subscriber"
 harness = false
 
+[[bench]]
+name = "compare"
+harness = false
+
 [badges]
 maintenance = { status = "actively-developed" }
 
