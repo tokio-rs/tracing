@@ -19,7 +19,9 @@ license = "MIT"
 edition = "2018"
 
 [features]
-default = ["tracing-log"]
+default = ["tracing-log", "fmt"]
+fmt = ["tracing-subscriber/fmt"]
+ansi = ["tracing-subscriber/ansi", "ansi_term"]
 
 [dependencies]
 opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
@@ -27,6 +29,7 @@ tracing = { path = "../tracing", version = "0.2", default-features = false, feat
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
 tracing-log = { path = "../tracing-log", version = "0.2", default-features = false, optional = true }
+ansi_term = { version = "0.12", optional = true }
 
 [dev-dependencies]
 async-trait = "0.1"
