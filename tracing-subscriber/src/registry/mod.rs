@@ -140,12 +140,21 @@ pub trait SpanData<'a> {
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    ///
+    /// This method acquires a read lock to the extensions that will be held as
+    /// long as the returned value lives. To prevent deadlocks, never acquire
+    /// extensions of multiple spans (e.g. of the parent and the active one) at
+    /// the same time.
     fn extensions(&self) -> Extensions<'_>;
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    ///
+    /// This method acquires a write lock to the extensions that will be held as
+    /// long as the returned value lives. To prevent deadlocks, never acquire
+    /// extensions of multiple spans (e.g. of the parent and the active one) at
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
 }
 
