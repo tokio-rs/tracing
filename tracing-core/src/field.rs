@@ -199,6 +199,11 @@ pub trait Visit {
         self.record_debug(field, &value)
     }
 
+    /// Visit a byte array value.
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.record_debug(field, &value)
+    }
+
     /// Records a type implementing `Error`.
     ///
     /// <div class="example-wrap" style="display:inline-block">
@@ -397,6 +402,14 @@ impl crate::sealed::Sealed for str {}
 impl Value for str {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_str(key, &self)
+    }
+}
+
+impl crate::sealed::Sealed for [u8] {}
+
+impl Value for [u8] {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_bytes(key, &self)
     }
 }
 
@@ -975,5 +988,31 @@ mod test {
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, String::from("123"));
+    }
+
+    #[test]
+    fn record_bytes_fn() {
+        let fields = TEST_META_1.fields();
+        let values = &[
+            (
+                &fields.field("foo").unwrap(),
+                Some(&(b"1" as &[u8]) as &dyn Value),
+            ),
+            (
+                &fields.field("bar").unwrap(),
+                Some(&(b"2" as &[u8]) as &dyn Value),
+            ),
+            (
+                &fields.field("baz").unwrap(),
+                Some(&(b"3" as &[u8]) as &dyn Value),
+            ),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use crate::stdlib::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, "[49][50][51]".to_owned());
     }
 }
