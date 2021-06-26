@@ -426,7 +426,7 @@
 //!     Level::DEBUG,
 //!     question.answer = answer,
 //!     question.tricky = true,
-//!     "the answer to {} is {}.", question, answer
+//!     "{} is {}.", question, answer
 //! );
 //! # }
 //! ```
