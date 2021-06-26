@@ -51,6 +51,11 @@ where
     }
 
     #[inline]
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.0.record_f64(field, value)
+    }
+
+    #[inline]
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.0.record_bool(field, value)
     }

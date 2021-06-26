@@ -95,6 +95,11 @@ where
         self.inner.record_u64(field, value);
     }
 
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.delimit();
+        self.inner.record_f64(field, value);
+    }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.delimit();
         self.inner.record_bool(field, value);
