@@ -93,8 +93,11 @@ fn fields() {
 fn skip() {
     struct UnDebug(pub u32);
 
-    #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
-    fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
+    #[instrument(target = "my_target", level = "debug", skip(arg2, arg3))]
+    fn my_fn(arg1: usize, arg2: UnDebug, arg3: UnDebug) {
+        let _ = arg2;
+        let _ = arg3;
+    }
 
     let span = span::mock()
         .named("my_fn")
