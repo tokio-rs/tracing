@@ -31,6 +31,7 @@
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
+//! - `reload`: Allows the `Collect` or `Subscribe` to be reloaded dynamically at runtime.
 //!
 //! ### Optional Dependencies
 //!
@@ -111,6 +112,8 @@ pub mod filter;
 pub mod fmt;
 pub mod prelude;
 pub mod registry;
+#[cfg(feature = "reload")]
+#[cfg_attr(docsrs, doc(cfg(feature = "reload")))]
 pub mod reload;
 pub mod subscribe;
 pub(crate) mod sync;

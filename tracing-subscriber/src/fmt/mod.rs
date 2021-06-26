@@ -297,8 +297,12 @@ use crate::subscribe::Subscribe as _;
 use crate::{
     filter::LevelFilter,
     registry::{LookupSpan, Registry},
-    reload, subscribe,
+    subscribe,
 };
+
+cfg_feature!("reload", {
+    use crate::reload;
+});
 
 #[doc(inline)]
 pub use self::{
@@ -829,6 +833,8 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     }
 }
 
+#[cfg(feature = "reload")]
+#[cfg_attr(docsrs, doc(cfg(feature = "reload")))]
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
 where
     Formatter<N, E, W>: tracing_core::Collect + 'static,
@@ -1010,6 +1016,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// [`reload_handle`]: CollectorBuilder::reload_handle
     /// [`reload::Handle`]: crate::reload::Handle
+    #[cfg(feature = "reload")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "reload")))]
     pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Subscriber<F>, W> {
         let (filter, _) = reload::Subscriber::new(self.filter);
         CollectorBuilder {

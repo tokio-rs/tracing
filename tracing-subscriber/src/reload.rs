@@ -1,3 +1,5 @@
+#![cfg(feature = "reload")]
+#![cfg_attr(docsrs, doc(cfg(feature = "reload")))]
 //! Wrapper for a `Collect` or `Subscribe` to allow it to be dynamically reloaded.
 //!
 //! This module provides a type implementing [`Subscribe`] which wraps another type implementing

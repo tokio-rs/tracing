@@ -29,6 +29,7 @@ fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
+reload = []
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2" }
