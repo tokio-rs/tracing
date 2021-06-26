@@ -75,7 +75,7 @@
 //! // no default collector
 //!
 //! # #[cfg(feature = "std")]
-//! dispatch::with_default(&my_dispatch, || {
+//! dispatch::with_default(my_dispatch, || {
 //!     // my_collector is the default
 //! });
 //!
@@ -254,7 +254,7 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// [`Event`]: super::event::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
+pub fn with_default<T>(dispatcher: Dispatch, f: impl FnOnce() -> T) -> T {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this (rather than simply resetting after calling
     // `f`) ensures that we always reset to the prior dispatcher even if `f`
@@ -276,11 +276,11 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the dispatcher."]
-pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
+pub fn set_default(dispatcher: Dispatch) -> DefaultGuard {
     // When this guard is dropped, the default dispatcher will be reset to the
     // prior default. Using this ensures that we always reset to the prior
     // dispatcher even if the thread calling this function panics.
-    State::set_default(dispatcher.clone())
+    State::set_default(dispatcher)
 }
 
 /// Sets this dispatch as the global default for the duration of the entire program.
@@ -1017,7 +1017,7 @@ mod test {
             }
         }
 
-        with_default(&Dispatch::new(TestCollector), || {
+        with_default(Dispatch::new(TestCollector), || {
             Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
         })
     }
@@ -1069,7 +1069,7 @@ mod test {
             }
         }
 
-        with_default(&Dispatch::new(TestCollector), mk_span)
+        with_default(Dispatch::new(TestCollector), mk_span)
     }
 
     #[test]
@@ -1105,7 +1105,7 @@ mod test {
                 span::Current::unknown()
             }
         }
-        let guard = set_default(&Dispatch::new(TestCollector));
+        let guard = set_default(Dispatch::new(TestCollector));
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<TestCollector>());
 

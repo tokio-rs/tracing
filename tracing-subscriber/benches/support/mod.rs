@@ -34,7 +34,7 @@ impl MultithreadedBench {
         let this = self.clone();
         thread::spawn(move || {
             let dispatch = this.dispatch.clone();
-            tracing::dispatch::with_default(&dispatch, move || {
+            tracing::dispatch::with_default(dispatch, move || {
                 f(&*this.start);
                 this.end.wait();
             })

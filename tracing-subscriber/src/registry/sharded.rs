@@ -656,7 +656,7 @@ mod tests {
         // registry.
         let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatch::with_default(&dispatch, || {
+        dispatch::with_default(dispatch.clone(), || {
             let span = tracing::debug_span!("span1");
             drop(span);
             let span = tracing::info_span!("span2");
@@ -666,7 +666,7 @@ mod tests {
         state.assert_removed("span1");
         state.assert_removed("span2");
 
-        // Ensure the registry itself outlives the span.
+        // Ensure the registry itself outlives the spans.
         drop(dispatch);
     }
 
@@ -684,7 +684,7 @@ mod tests {
         // registry.
         let dispatch = dispatch::Dispatch::new(subscriber);
 
-        let span2 = dispatch::with_default(&dispatch, || {
+        let span2 = dispatch::with_default(dispatch.clone(), || {
             let span = tracing::debug_span!("span1");
             drop(span);
             let span2 = tracing::info_span!("span2");
@@ -699,7 +699,7 @@ mod tests {
         drop(span2);
         state.assert_removed("span1");
 
-        // Ensure the registry itself outlives the span.
+        // Ensure the registry itself outlives the spans.
         drop(dispatch);
     }
 
@@ -717,7 +717,7 @@ mod tests {
         // registry.
         let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatch::with_default(&dispatch, || {
+        dispatch::with_default(dispatch.clone(), || {
             let span1 = tracing::debug_span!("span1");
             let span2 = tracing::info_span!("span2");
 
@@ -737,6 +737,8 @@ mod tests {
             state.assert_removed("span1");
             state.assert_removed("span2");
         });
+
+        drop(dispatch);
     }
 
     #[test]
@@ -750,7 +752,7 @@ mod tests {
 
         let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatch::with_default(&dispatch, || {
+        dispatch::with_default(dispatch.clone(), || {
             let span1 = tracing::info_span!("parent");
             let span2 = tracing::info_span!(parent: &span1, "child");
 
@@ -765,6 +767,8 @@ mod tests {
             state.assert_closed("parent");
             state.assert_closed("child");
         });
+
+        drop(dispatch);
     }
 
     #[test]
@@ -777,7 +781,7 @@ mod tests {
 
         let dispatch = dispatch::Dispatch::new(subscriber);
 
-        dispatch::with_default(&dispatch, || {
+        dispatch::with_default(dispatch.clone(), || {
             let span1 = tracing::info_span!("grandparent");
             let span2 = tracing::info_span!(parent: &span1, "parent");
             let span3 = tracing::info_span!(parent: &span2, "child");
@@ -796,5 +800,6 @@ mod tests {
 
             state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
+        drop(dispatch);
     }
 }

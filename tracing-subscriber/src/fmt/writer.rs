@@ -1111,7 +1111,7 @@ mod test {
         };
         let dispatch = Dispatch::from(subscriber);
 
-        dispatch::with_default(&dispatch, || {
+        dispatch::with_default(dispatch, || {
             error!("{}", msg);
         });
 

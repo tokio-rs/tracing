@@ -21,7 +21,7 @@ pub fn with_default<T, C>(collector: C, f: impl FnOnce() -> T) -> T
 where
     C: Collect + Send + Sync + 'static,
 {
-    crate::dispatch::with_default(&crate::Dispatch::new(collector), f)
+    crate::dispatch::with_default(crate::Dispatch::new(collector), f)
 }
 
 /// Sets this collector as the global default for the duration of the entire program.
@@ -60,7 +60,7 @@ pub fn set_default<C>(collector: C) -> DefaultGuard
 where
     C: Collect + Send + Sync + 'static,
 {
-    crate::dispatch::set_default(&crate::Dispatch::new(collector))
+    crate::dispatch::set_default(crate::Dispatch::new(collector))
 }
 
 pub use tracing_core::dispatch::SetGlobalDefaultError;

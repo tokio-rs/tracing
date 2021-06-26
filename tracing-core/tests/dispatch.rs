@@ -12,7 +12,7 @@ fn set_default_dispatch() {
     set_global_default(Dispatch::new(TestCollectorA)).expect("global dispatch set failed");
     get_default(|current| assert!(current.is::<TestCollectorA>(), "global dispatch get failed"));
 
-    let guard = set_default(&Dispatch::new(TestCollectorB));
+    let guard = set_default(Dispatch::new(TestCollectorB));
     get_default(|current| assert!(current.is::<TestCollectorB>(), "set_default get failed"));
 
     // Drop the guard, setting the dispatch back to the global dispatch
@@ -24,7 +24,7 @@ fn set_default_dispatch() {
 #[cfg(feature = "std")]
 #[test]
 fn nested_set_default() {
-    let _guard = set_default(&Dispatch::new(TestCollectorA));
+    let _guard = set_default(Dispatch::new(TestCollectorA));
     get_default(|current| {
         assert!(
             current.is::<TestCollectorA>(),
@@ -32,7 +32,7 @@ fn nested_set_default() {
         )
     });
 
-    let inner_guard = set_default(&Dispatch::new(TestCollectorB));
+    let inner_guard = set_default(Dispatch::new(TestCollectorB));
     get_default(|current| {
         assert!(
             current.is::<TestCollectorB>(),

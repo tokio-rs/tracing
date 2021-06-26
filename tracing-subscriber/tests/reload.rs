@@ -64,7 +64,7 @@ fn reload_handle() {
 
     let dispatcher = tracing_core::dispatch::Dispatch::new(subscriber.with_collector(NopCollector));
 
-    tracing_core::dispatch::with_default(&dispatcher, || {
+    tracing_core::dispatch::with_default(dispatcher, || {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
 
