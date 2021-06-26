@@ -28,9 +28,10 @@
 //! ```
 use crate::inner::InnerAppender;
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
+use std::ffi::{OsStr, OsString};
 use std::fmt::Debug;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -82,14 +83,20 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
+        let path = file_name_prefix.as_ref();
+        let template = in_directory(directory).with_prefix(path.as_os_str());
+        RollingFileAppender::with_custom_template(rotation, template)
+    }
+
+    /// Create a new [`RollingFileAppender`] that uses a custom template for
+    /// generating log files.
+    pub fn with_custom_template<T>(rotation: Rotation, template: T) -> RollingFileAppender
+    where
+        T: FilenameTemplate,
+    {
         RollingFileAppender {
-            inner: InnerAppender::new(
-                directory.as_ref(),
-                file_name_prefix.as_ref(),
-                rotation,
-                Utc::now(),
-            )
-            .expect("Failed to create appender"),
+            inner: InnerAppender::new(template, rotation, Utc::now())
+                .expect("Failed to create appender"),
         }
     }
 }
@@ -327,14 +334,99 @@ impl Rotation {
             }
         }
     }
+}
 
-    pub(crate) fn join_date(&self, filename: &str, date: &DateTime<Utc>) -> String {
-        match *self {
-            Rotation::MINUTELY => format!("{}.{}", filename, date.format("%F-%H-%M")),
-            Rotation::HOURLY => format!("{}.{}", filename, date.format("%F-%H")),
-            Rotation::DAILY => format!("{}.{}", filename, date.format("%F")),
-            Rotation::NEVER => filename.to_string(),
+/// A template that can be used to get the name of the next log file.
+pub trait FilenameTemplate: Send + Sync + 'static {
+    /// Get the filename that corresponds to this timestamp.
+    fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf;
+}
+
+impl<F> FilenameTemplate for F
+where
+    F: FnMut(&DateTime<Utc>, &Rotation) -> PathBuf + Send + Sync + 'static,
+{
+    fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
+        (self)(date, rotation)
+    }
+}
+
+impl FilenameTemplate for Box<dyn FilenameTemplate + Send + Sync + 'static> {
+    fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
+        (**self).next_log_file(date, rotation)
+    }
+}
+
+/// Create a new [`FilenameTemplate`] which will create log files like
+/// `log.2020-07-26` in the specified directory.
+pub fn in_directory(directory: impl AsRef<Path>) -> Template {
+    Template {
+        log_directory: directory.as_ref().to_owned(),
+        prefix: OsString::from("log."),
+        extension: None,
+    }
+}
+
+/// A builder type that can be used as a [`FilenameTemplate`].
+///
+/// A [`Template`] will generate log files which look something like
+/// `/path/to/logs/Prefix.2020-07-26.log`, where the user can specify:
+///
+/// - the log directory (e.g. `/path/to/logs/`),
+/// - a prefix (e.g. `Prefix`), and
+/// - an optional extension (e.g. `log`)
+///
+/// If the [`Rotation`] is time-based (i.e. anything except [`Rotation::NEVER`]),
+/// a timestamp will be inserted between the prefix and extension.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Template {
+    log_directory: PathBuf,
+    prefix: OsString,
+    extension: Option<OsString>,
+}
+
+impl Template {
+    /// Override the [`Template`]'s prefix.
+    pub fn with_prefix(self, prefix: impl AsRef<OsStr>) -> Self {
+        Template {
+            prefix: prefix.as_ref().to_owned(),
+            ..self
         }
+    }
+
+    /// Override the [`Template`]'s extension.
+    pub fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
+        Template {
+            extension: Some(extension.as_ref().to_owned()),
+            ..self
+        }
+    }
+}
+
+impl FilenameTemplate for Template {
+    fn next_log_file(&mut self, date: &DateTime<Utc>, rotation: &Rotation) -> PathBuf {
+        let mut last_segment = self.prefix.clone();
+
+        if let Some(timestamp) = format_date_for_rotation(date, rotation) {
+            last_segment.push(".");
+            last_segment.push(&timestamp);
+        }
+
+        if let Some(ext) = &self.extension {
+            last_segment.push(".");
+            last_segment.push(&ext);
+        }
+
+        self.log_directory.join(last_segment)
+    }
+}
+
+fn format_date_for_rotation(date: &DateTime<Utc>, rotation: &Rotation) -> Option<String> {
+    match *rotation {
+        Rotation::MINUTELY => Some(date.format("%F-%H-%M").to_string()),
+        Rotation::HOURLY => Some(date.format("%F-%H").to_string()),
+        Rotation::DAILY => Some(date.format("%F").to_string()),
+        Rotation::NEVER => None,
     }
 }
 
@@ -532,26 +624,29 @@ mod test {
 
     #[test]
     fn test_rotation_path_minutely() {
+        let mut template = in_directory("").with_prefix("MyApplication.log");
         let r = Rotation::MINUTELY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01-10-03", path);
+        let path = template.next_log_file(&mock_now, &r);
+        assert_eq!(Path::new("MyApplication.log.2020-02-01-10-03"), path);
     }
 
     #[test]
     fn test_rotation_path_hourly() {
+        let mut template = in_directory("").with_prefix("MyApplication.log");
         let r = Rotation::HOURLY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01-10", path);
+        let path = template.next_log_file(&mock_now, &r);
+        assert_eq!(Path::new("MyApplication.log.2020-02-01-10"), path);
     }
 
     #[test]
     fn test_rotation_path_daily() {
+        let mut template = in_directory("").with_prefix("MyApplication.log");
         let r = Rotation::DAILY;
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01", path);
+        let path = template.next_log_file(&mock_now, &r);
+        assert_eq!(Path::new("MyApplication.log.2020-02-01"), path);
     }
 
     #[test]
@@ -578,10 +673,24 @@ mod test {
 
     #[test]
     fn test_join_date_never() {
+        let mut template = in_directory("").with_prefix("Hello.log");
         let r = Rotation::NEVER;
 
         let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let joined_date = r.join_date("Hello.log", &mock_now);
-        assert_eq!(joined_date, "Hello.log");
+        let joined_date = template.next_log_file(&mock_now, &r);
+        assert_eq!(joined_date, Path::new("Hello.log"));
+    }
+
+    #[test]
+    fn daily_with_name_with_extension() {
+        let mut template = in_directory("/var/log")
+            .with_prefix("MyApplication")
+            .with_extension("log");
+
+        let date = Utc.ymd(2020, 2, 1).and_hms(12, 20, 15);
+        let rotation = Rotation::DAILY;
+
+        let filename = template.next_log_file(&date, &rotation);
+        assert_eq!(filename, Path::new("/var/log/MyApplication.2020-02-01.log"));
     }
 }
