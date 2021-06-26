@@ -214,6 +214,17 @@ pub trait Visit {
 
     /// Visit a value implementing `fmt::Debug`.
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug);
+
+    /// Visit an Option
+    fn record_option(&mut self, field: &Field, value: Option<&(dyn Value + 'static)>)
+    where
+        Self: std::marker::Sized,
+    {
+        if let Some(inner_value) = value {
+            inner_value.record(field, self)
+        } else {
+        }
+    }
 }
 
 /// A field value of an erased type.
@@ -443,6 +454,15 @@ impl<'a> Value for fmt::Arguments<'a> {
     }
 }
 
+impl<T> Value for Option<T>
+where
+    T: Value + 'static,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_option(key, self.as_ref().map(|v| v as &dyn Value))
+    }
+}
+
 impl fmt::Debug for dyn Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We are only going to be recording the field value, so we don't
@@ -477,6 +497,8 @@ impl fmt::Display for dyn Value {
         fmt::Debug::fmt(self, f)
     }
 }
+
+impl<T> crate::sealed::Sealed for Option<T> {}
 
 // ===== impl DisplayValue =====
 
