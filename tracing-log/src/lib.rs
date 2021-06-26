@@ -194,11 +194,11 @@ pub(crate) fn dispatch_record(record: &log::Record<'_>) {
 
 /// Trait implemented for `tracing` types that can be converted to a `log`
 /// equivalent.
-pub trait AsLog: crate::sealed::Sealed {
+pub trait AsLog<'a>: crate::sealed::Sealed {
     /// The `log` type that this type can be converted into.
     type Log;
     /// Returns the `log` equivalent of `self`.
-    fn as_log(&self) -> Self::Log;
+    fn as_log(&'a self) -> Self::Log;
 }
 
 /// Trait implemented for `log` types that can be converted to a `tracing`
@@ -212,12 +212,12 @@ pub trait AsTrace: crate::sealed::Sealed {
 
 impl<'a> crate::sealed::Sealed for Metadata<'a> {}
 
-impl<'a> AsLog for Metadata<'a> {
+impl<'a> AsLog<'a> for Metadata<'a> {
     type Log = log::Metadata<'a>;
-    fn as_log(&self) -> Self::Log {
+    fn as_log(&'a self) -> Self::Log {
         log::Metadata::builder()
             .level(self.level().as_log())
-            .target(self.target())
+            .target(&self.target())
             .build()
     }
 }
@@ -374,7 +374,7 @@ impl<'a> AsTrace for log::Record<'a> {
 
 impl crate::sealed::Sealed for tracing_core::Level {}
 
-impl AsLog for tracing_core::Level {
+impl<'a> AsLog<'a> for tracing_core::Level {
     type Log = log::Level;
     fn as_log(&self) -> log::Level {
         match *self {

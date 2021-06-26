@@ -268,8 +268,8 @@ where
     }
 
     /// Returns the span's name,
-    pub fn name(&self) -> &'static str {
-        self.data.metadata().name()
+    pub fn name(&self) -> &str {
+        self.metadata().name()
     }
 
     /// Returns a list of [fields] defined by the span.

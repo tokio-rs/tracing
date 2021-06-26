@@ -1,5 +1,7 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
+#[cfg(feature = "alloc")]
+use alloc::borrow::Cow;
 use core::{
     cmp, fmt,
     str::FromStr,
@@ -59,10 +61,16 @@ use core::{
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
-    name: &'static str,
+    #[cfg(feature = "alloc")]
+    name: Cow<'a, str>,
+    #[cfg(not(feature = "alloc"))]
+    name: &'a str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
+    #[cfg(feature = "alloc")]
+    target: Cow<'a, str>,
+    #[cfg(not(feature = "alloc"))]
     target: &'a str,
 
     /// The level of verbosity of the described span.
@@ -70,10 +78,16 @@ pub struct Metadata<'a> {
 
     /// The name of the Rust module where the span occurred, or `None` if this
     /// could not be determined.
+    #[cfg(feature = "alloc")]
+    module_path: Option<Cow<'a, str>>,
+    #[cfg(not(feature = "alloc"))]
     module_path: Option<&'a str>,
 
     /// The name of the source code file where the span occurred, or `None` if
     /// this could not be determined.
+    #[cfg(feature = "alloc")]
+    file: Option<Cow<'a, str>>,
+    #[cfg(not(feature = "alloc"))]
     file: Option<&'a str>,
 
     /// The line number in the source code file where the span occurred, or
@@ -253,7 +267,7 @@ impl<'a> Metadata<'a> {
     /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
     pub const fn new(
-        name: &'static str,
+        name: &'a str,
         target: &'a str,
         level: Level,
         file: Option<&'a str>,
@@ -262,12 +276,61 @@ impl<'a> Metadata<'a> {
         fields: field::FieldSet,
         kind: Kind,
     ) -> Self {
+        #[cfg(feature = "alloc")]
+        let file = {
+            if let Some(file) = file {
+                Some(Cow::Borrowed(file))
+            } else {
+                None
+            }
+        };
+        #[cfg(feature = "alloc")]
+        let module_path = {
+            if let Some(module_path) = module_path {
+                Some(Cow::Borrowed(module_path))
+            } else {
+                None
+            }
+        };
+
         Metadata {
+            #[cfg(feature = "alloc")]
+            name: Cow::Borrowed(name),
+            #[cfg(not(feature = "alloc"))]
             name,
+            #[cfg(feature = "alloc")]
+            target: Cow::Borrowed(target),
+            #[cfg(not(feature = "alloc"))]
             target,
             level,
             module_path,
             file,
+            line,
+            fields,
+            kind,
+        }
+    }
+
+    /// Construct new metadata for a span or event, with a name, target, level, field
+    /// names, and optional source code location using dynamically allocated data.
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
+    pub fn from_cow(
+        name: impl Into<Cow<'a, str>>,
+        target: impl Into<Cow<'a, str>>,
+        level: Level,
+        file: Option<impl Into<Cow<'a, str>>>,
+        line: Option<u32>,
+        module_path: Option<impl Into<Cow<'a, str>>>,
+        fields: field::FieldSet,
+        kind: Kind,
+    ) -> Self {
+        Metadata {
+            name: name.into(),
+            target: target.into(),
+            level,
+            module_path: module_path.map(Into::into),
+            file: file.map(Into::into),
             line,
             fields,
             kind,
@@ -285,8 +348,8 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the name of the span.
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Returns a string describing the part of the system where the span or
@@ -294,20 +357,20 @@ impl<'a> Metadata<'a> {
     ///
     /// Typically, this is the module path, but alternate targets may be set
     /// when spans or events are constructed.
-    pub fn target(&self) -> &'a str {
-        self.target
+    pub fn target(&self) -> &str {
+        &self.target
     }
 
     /// Returns the path to the Rust module where the span occurred, or
     /// `None` if the module path is unknown.
-    pub fn module_path(&self) -> Option<&'a str> {
-        self.module_path
+    pub fn module_path(&'a self) -> Option<&'a str> {
+        self.module_path.as_ref().map(|p| p.as_ref())
     }
 
     /// Returns the name of the source code file where the span
     /// occurred, or `None` if the file is unknown
-    pub fn file(&self) -> Option<&'a str> {
-        self.file
+    pub fn file(&'a self) -> Option<&'a str> {
+        self.file.as_ref().map(|f| f.as_ref())
     }
 
     /// Returns the line number in the source code file where the span
@@ -943,6 +1006,12 @@ impl PartialOrd<Level> for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "alloc")]
+    use crate::{
+        callsite::{Callsite, Identifier},
+        field::FieldSet,
+        Interest,
+    };
     use core::mem;
 
     #[test]
@@ -1006,5 +1075,32 @@ mod tests {
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn create_metadata_from_dynamic_data() {
+        struct TestCallsite;
+        static CS1: TestCallsite = TestCallsite;
+
+        impl Callsite for TestCallsite {
+            fn set_interest(&self, _interest: Interest) {}
+            fn metadata(&self) -> &Metadata<'_> {
+                unimplemented!("not needed for this test")
+            }
+        }
+        let callsite_id = Identifier(&CS1);
+        let field_set = FieldSet::new(&["one", "fine", "day"], callsite_id);
+
+        let _metadata = Metadata::from_cow(
+            "a name".to_string(),
+            "a target",
+            Level::TRACE,
+            Some("a file".to_string()),
+            None,
+            None::<Cow<'_, str>>,
+            field_set,
+            Kind::EVENT,
+        );
     }
 }

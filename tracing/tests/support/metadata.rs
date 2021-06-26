@@ -13,7 +13,7 @@ impl Expect {
         if let Some(ref expected_name) = self.name {
             let name = actual.name();
             assert!(
-                expected_name == name,
+                *expected_name == name,
                 "expected {} to be named `{}`, but got one named `{}`",
                 ctx,
                 expected_name,

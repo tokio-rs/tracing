@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 use super::{field, metadata, Parent};
+use std::borrow::Cow;
 use std::fmt;
 
 /// A mock span.
@@ -60,7 +61,7 @@ impl MockSpan {
 
     pub fn with_explicit_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Explicit(name.into()),
+            Some(name) => Parent::Explicit(name.to_string()),
             None => Parent::ExplicitRoot,
         };
         NewSpan {
@@ -72,7 +73,7 @@ impl MockSpan {
 
     pub fn with_contextual_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Contextual(name.into()),
+            Some(name) => Parent::Contextual(name.to_string()),
             None => Parent::ContextualRoot,
         };
         NewSpan {
@@ -82,8 +83,8 @@ impl MockSpan {
         }
     }
 
-    pub fn name(&self) -> Option<&str> {
-        self.metadata.name.as_ref().map(String::as_ref)
+    pub fn name(&self) -> Option<Cow<'static, str>> {
+        self.metadata.name.as_ref().map(|s| Cow::Owned(s.clone()))
     }
 
     pub fn with_field<I>(self, fields: I) -> NewSpan
@@ -97,7 +98,7 @@ impl MockSpan {
         }
     }
 
-    pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata<'_>) {
+    pub(in crate::support) fn check_metadata(&self, actual: &'static tracing::Metadata<'_>) {
         self.metadata.check(actual, format_args!("span {}", self));
         assert!(actual.is_span(), "expected a span but got {:?}", actual);
     }
@@ -125,7 +126,7 @@ impl From<MockSpan> for NewSpan {
 impl NewSpan {
     pub fn with_explicit_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Explicit(name.into()),
+            Some(name) => Parent::Explicit(name.to_string()),
             None => Parent::ExplicitRoot,
         };
         NewSpan {
@@ -136,7 +137,7 @@ impl NewSpan {
 
     pub fn with_contextual_parent(self, parent: Option<&str>) -> NewSpan {
         let parent = match parent {
-            Some(name) => Parent::Contextual(name.into()),
+            Some(name) => Parent::Contextual(name.to_string()),
             None => Parent::ContextualRoot,
         };
         NewSpan {

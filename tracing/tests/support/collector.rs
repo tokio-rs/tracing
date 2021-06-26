@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+
 use super::{
     event::MockEvent,
     field as mock_field,
@@ -247,9 +248,9 @@ where
                     }
                     Some(Parent::Explicit(expected_parent)) => {
                         let actual_parent =
-                            event.parent().and_then(|id| spans.get(id)).map(|s| s.name);
+                            event.parent().and_then(|id| spans.get(id)).map(|s| s.name.to_string());
                         assert_eq!(
-                            Some(expected_parent.as_ref()),
+                            Some(expected_parent.clone()),
                             actual_parent,
                             "[{}] expected {:?} to have explicit parent {:?}",
                             self.name,
@@ -280,9 +281,9 @@ where
                         );
                         let stack = self.current.lock().unwrap();
                         let actual_parent =
-                            stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
+                            stack.last().and_then(|id| spans.get(id)).map(|s| s.name.to_string());
                         assert_eq!(
-                            Some(expected_parent.as_ref()),
+                            Some(expected_parent.clone()),
                             actual_parent,
                             "[{}] expected {:?} to have contextual parent {:?}",
                             self.name,
@@ -339,9 +340,9 @@ where
                     }
                     Some(Parent::Explicit(expected_parent)) => {
                         let actual_parent =
-                            span.parent().and_then(|id| spans.get(id)).map(|s| s.name);
+                            span.parent().and_then(|id| spans.get(id)).map(|s| s.name.to_string());
                         assert_eq!(
-                            Some(expected_parent.as_ref()),
+                            Some(expected_parent.clone()),
                             actual_parent,
                             "[{}] expected {:?} to have explicit parent {:?}",
                             self.name,
@@ -372,9 +373,11 @@ where
                         );
                         let stack = self.current.lock().unwrap();
                         let actual_parent =
-                            stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
+                            stack.last()
+                                .and_then(|id| spans.get(id))
+                                .map(|s| s.name.to_string());
                         assert_eq!(
-                            Some(expected_parent.as_ref()),
+                            Some(expected_parent.clone()),
                             actual_parent,
                             "[{}] expected {:?} to have contextual parent {:?}",
                             self.name,
@@ -439,7 +442,7 @@ where
                     "[{}] exited span {:?}, but the current span was {:?}",
                     self.name,
                     span.name,
-                    curr.as_ref().and_then(|id| spans.get(id)).map(|s| s.name)
+                    curr.as_ref().and_then(|id| spans.get(id)).map(|s| &s.name)
                 );
             }
             Some(ex) => ex.bad(&self.name, format_args!("exited span {:?}", span.name)),
@@ -448,7 +451,7 @@ where
 
     fn clone_span(&self, id: &Id) -> Id {
         let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
-            let name = span.name;
+            let name = span.name.to_string();
             println!(
                 "[{}] clone_span: {}; id={:?}; refs={:?};",
                 self.name, name, id, span.refs
@@ -463,7 +466,7 @@ where
         let was_expected = if let Some(Expect::CloneSpan(ref span)) = expected.front() {
             assert_eq!(
                 name,
-                span.name(),
+                span.name().map(|s| s.to_string()),
                 "[{}] expected to clone a span named {:?}",
                 self.name,
                 span.name()
@@ -482,7 +485,7 @@ where
         let mut is_event = false;
         let name = if let Ok(mut spans) = self.spans.try_lock() {
             spans.get_mut(&id).map(|span| {
-                let name = span.name;
+                let name = span.name.to_string();
                 if name.contains("event") {
                     is_event = true;
                 }
@@ -505,7 +508,7 @@ where
                     // Don't assert if this function was called while panicking,
                     // as failing the assertion can cause a double panic.
                     if !::std::thread::panicking() {
-                        assert_eq!(name, span.name());
+                        assert_eq!(name, span.name().map(|s| s.to_string() ));
                     }
                     true
                 }
