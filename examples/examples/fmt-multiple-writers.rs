@@ -8,10 +8,10 @@ use std::io;
 use tempdir::TempDir;
 use tracing_subscriber::{fmt, subscribe::CollectExt, EnvFilter};
 
-fn main() {
+fn main() -> io::Result<()> {
     let dir = TempDir::new("directory").expect("Failed to create tempdir");
 
-    let file_appender = tracing_appender::rolling::hourly(dir, "example.log");
+    let file_appender = tracing_appender::rolling::hourly(dir, "example.log")?;
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     let collector = tracing_subscriber::registry()
@@ -29,4 +29,5 @@ fn main() {
         all_yaks_shaved = number_shaved == number_of_yaks,
         "yak shaving completed."
     );
+    Ok(())
 }

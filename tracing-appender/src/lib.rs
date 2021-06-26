@@ -30,7 +30,7 @@
 //!
 //! ```rust
 //! # fn docs() {
-//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log").expect("Unable to create a rolling appender");
 //! # }
 //! ```
 //! This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
@@ -99,7 +99,7 @@
 //!
 //! ```rust
 //! # fn docs() {
-//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+//! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log").expect("Unable to create a rolling appender");
 //! let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 //! tracing_subscriber::fmt()
 //!     .with_writer(non_blocking)
