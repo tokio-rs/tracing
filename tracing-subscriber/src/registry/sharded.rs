@@ -75,7 +75,7 @@ cfg_feature!("registry", {
     /// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
     /// [slab]: https://docs.rs/crate/sharded-slab/
     /// [subscriber]: crate::Subscribe
-    /// [added]: crate::FmtSubscriber::with_collector()
+    /// [added]: crate::subscribe::Subscribe#composing-subscribers
     /// [extensions]: super::Extensions
     /// [closed]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
     /// [considered closed]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.try_close
