@@ -39,6 +39,9 @@ cfg_feature!("registry", {
     ///
     /// # Span ID Generation
     ///
+    /// Span IDs are not globally unique, but the registry ensures that
+    /// no two currently active spans have the same ID within a process.
+    ///
     /// One of the primary responsibilities of the registry is to generate [span
     /// IDs]. Therefore, it's important for other code that interacts with the
     /// registry, such as [subscriber]s, to understand the guarantees of the
