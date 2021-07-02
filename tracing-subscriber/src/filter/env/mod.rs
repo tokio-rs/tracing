@@ -267,7 +267,7 @@ impl EnvFilter {
                     let bold = Style::new().bold();
                     let mut warning = Color::Yellow.paint("warning");
                     warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.clone().paint(":"), bold.paint(msg))
+                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
                 };
                 eprintln!("{}", msg);
             };
@@ -304,7 +304,6 @@ impl EnvFilter {
                 };
                 let level = directive
                     .level
-                    .clone()
                     .into_level()
                     .expect("=off would not have enabled any filters");
                 ctx(&format!(
@@ -363,7 +362,7 @@ impl EnvFilter {
     }
 }
 
-impl<S: Collect> Subscribe<S> for EnvFilter {
+impl<C: Collect> Subscribe<C> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -392,12 +391,12 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
             return Some(LevelFilter::TRACE);
         }
         std::cmp::max(
-            self.statics.max_level.clone().into(),
-            self.dynamics.max_level.clone().into(),
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
         )
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -440,7 +439,7 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         false
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -448,13 +447,13 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
 
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -463,13 +462,13 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
         if self.cares_about_span(id) {
             SCOPE.with(|scope| scope.borrow_mut().pop());
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -591,6 +590,9 @@ mod tests {
         }
         fn enter(&self, _span: &span::Id) {}
         fn exit(&self, _span: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     struct Cs;

@@ -178,20 +178,24 @@ impl FromStr for Directive {
         lazy_static! {
             static ref DIRECTIVE_RE: Regex = Regex::new(
                 r"(?x)
-                ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])$ |
+                ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
+                 #                 ^^^.
+                 #                     `note: we match log level names case-insensitively
                 ^
                 (?: # target name or span name
                     (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
                 ){1,2}
                 (?: # level or nothing
-                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])?
+                    =(?P<level>(?i:trace|debug|info|warn|error|off|[0-5]))?
+                     #          ^^^.
+                     #              `note: we match log level names case-insensitively
                 )?
                 $
                 "
             )
             .unwrap();
             static ref SPAN_PART_RE: Regex =
-                Regex::new(r#"(?P<name>\w+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
+                Regex::new(r#"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
             static ref FIELD_FILTER_RE: Regex =
                 // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
                 // characters. We should fix that.
@@ -832,6 +836,32 @@ mod test {
     }
 
     #[test]
+    fn parse_directives_ralith_uc() {
+        let dirs = parse_directives("common=INFO,server=DEBUG");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[1].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_ralith_mixed() {
+        let dirs = parse_directives("common=iNfo,server=dEbUg");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[1].in_span, None);
+    }
+
+    #[test]
     fn parse_directives_valid() {
         let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
         assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
@@ -1003,6 +1033,39 @@ mod test {
         assert_eq!(dirs[1].in_span, None);
     }
 
+    // helper function for tests below
+    fn test_parse_bare_level(directive_to_test: &str, level_expected: LevelFilter) {
+        let dirs = parse_directives(directive_to_test);
+        assert_eq!(
+            dirs.len(),
+            1,
+            "\ninput: \"{}\"; parsed: {:#?}",
+            directive_to_test,
+            dirs
+        );
+        assert_eq!(dirs[0].target, None);
+        assert_eq!(dirs[0].level, level_expected);
+        assert_eq!(dirs[0].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_lc() {
+        // test parse_directives with no crate, in isolation, all lowercase
+        test_parse_bare_level("warn", LevelFilter::WARN);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_uc() {
+        // test parse_directives with no crate, in isolation, all uppercase
+        test_parse_bare_level("WARN", LevelFilter::WARN);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_mixed() {
+        // test parse_directives with no crate, in isolation, mixed case
+        test_parse_bare_level("wArN", LevelFilter::WARN);
+    }
+
     #[test]
     fn parse_directives_valid_with_spans() {
         let dirs = parse_directives("crate1::mod1[foo]=error,crate1::mod2[bar],crate2[baz]=debug");
@@ -1027,5 +1090,35 @@ mod test {
         assert_eq!(dirs[0].target, Some("target-name".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_with_dash_in_span_name() {
+        // Reproduces https://github.com/tokio-rs/tracing/issues/1367
+
+        let dirs = parse_directives("target[span-name]=info");
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_special_characters_in_span_name() {
+        let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~[}";
+
+        let dirs = parse_directives(format!("target[{}]=info", span_name));
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some(span_name.to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_invalid_span_chars() {
+        let invalid_span_name = "]{";
+
+        let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
+        assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
     }
 }

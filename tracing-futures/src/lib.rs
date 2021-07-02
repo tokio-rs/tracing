@@ -100,7 +100,7 @@
     while_true
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #[cfg(feature = "std-future")]
 use pin_project::pin_project;
 
@@ -207,9 +207,9 @@ pub trait WithCollector: Sized {
     ///
     /// [collector]: tracing::collect::Collect
     /// [default]: tracing::dispatch#setting-the-default-collector
-    fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
+    fn with_collector<C>(self, collector: C) -> WithDispatch<Self>
     where
-        S: Into<Dispatch>,
+        C: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,

@@ -9,7 +9,7 @@ use pin_project_lite::pin_project;
 /// Extension trait allowing futures to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]:  ../struct.Span.html
+/// [span]:  super::Span
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
@@ -87,9 +87,9 @@ pub trait WithCollector: Sized {
     ///
     /// [`Collect`]: super::Collect
     /// [default]: crate::dispatch#setting-the-default-collector
-    fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
+    fn with_collector<C>(self, collector: C) -> WithDispatch<Self>
     where
-        S: Into<Dispatch>,
+        C: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,

@@ -37,7 +37,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
 use std::{fmt, io, io::Write};
@@ -127,7 +126,7 @@ where
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
-        let depth = span.parents().count();
+        let depth = span.scope().skip(1).count();
 
         writeln!(buf, "S{}_NAME", depth).unwrap();
         put_value(&mut buf, span.name().as_bytes());
@@ -144,7 +143,7 @@ where
 
     fn on_record(&self, id: &Id, values: &Record, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
-        let depth = span.parents().count();
+        let depth = span.scope().skip(1).count();
         let mut exts = span.extensions_mut();
         let buf = &mut exts.get_mut::<SpanFields>().expect("missing fields").0;
         values.record(&mut SpanVisitor {
@@ -158,7 +157,11 @@ where
         let mut buf = Vec::with_capacity(256);
 
         // Record span fields
-        for span in ctx.scope() {
+        for span in ctx
+            .lookup_current()
+            .into_iter()
+            .flat_map(|span| span.scope().from_root())
+        {
             let exts = span.extensions();
             let fields = exts.get::<SpanFields>().expect("missing fields");
             buf.extend_from_slice(&fields.0);

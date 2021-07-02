@@ -257,11 +257,12 @@
 //!
 //! ### Composing Subscribers
 //!
-//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](../fmt/struct.Subscriber.html):
+//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
-//! use tracing_subscriber::prelude::*;
+//! use tracing_subscriber::subscribe::CollectExt;
+//! use tracing_subscriber::util::SubscriberInitExt;
 //!
 //! let fmt_subscriber = fmt::subscriber()
 //!     .with_target(false);
@@ -283,7 +284,7 @@
 //! [`Collect`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
-use std::{any::TypeId, error::Error, io};
+use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
 mod fmt_subscriber;
@@ -308,11 +309,11 @@ pub use self::{
 
 /// A `Collector` that logs formatted representations of `tracing` events.
 ///
-/// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
+/// This consists of an inner `Formatter` wrapped in a subscriber that performs filtering.
 #[derive(Debug)]
 pub struct Collector<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -321,17 +322,14 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
-pub type Formatter<
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
+    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -341,7 +339,7 @@ pub struct CollectorBuilder<
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
 ///
-/// This is essentially shorthand for [`CollectorBuilder::default()]`.
+/// This is essentially shorthand for [`CollectorBuilder::default()`].
 ///
 /// # Examples
 ///
@@ -413,7 +411,7 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
-pub fn subscriber<S>() -> Subscriber<S> {
+pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
 }
 
@@ -450,7 +448,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
     fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
 {
@@ -510,9 +508,14 @@ where
         self.inner.try_close(id)
     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    #[inline]
+    fn max_level_hint(&self) -> Option<tracing_core::LevelFilter> {
+        self.inner.max_level_hint()
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const Self as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             self.inner.downcast_raw(id)
         }
@@ -545,7 +548,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
@@ -569,12 +572,9 @@ where
     /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        use crate::util::SubscriberInitExt;
+        self.finish().try_init()?;
 
-        tracing_core::dispatch::set_global_default(tracing_core::dispatch::Dispatch::new(
-            self.finish(),
-        ))?;
         Ok(())
     }
 
@@ -591,17 +591,17 @@ where
     }
 }
 
-impl<N, E, F, W> Into<tracing_core::Dispatch> for CollectorBuilder<N, E, F, W>
+impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
-    fn into(self) -> tracing_core::Dispatch {
-        tracing_core::Dispatch::new(self.finish())
+    fn from(builder: CollectorBuilder<N, E, F, W>) -> tracing_core::Dispatch {
+        tracing_core::Dispatch::new(builder.finish())
     }
 }
 
@@ -643,17 +643,32 @@ where
     /// - `FmtSpan::NONE`: No events will be synthesized when spans are
     ///    created, entered, exited, or closed. Data from spans will still be
     ///    included as the context for formatted events. This is the default.
-    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
-    ///    or exited.
+    /// - `FmtSpan::NEW`: An event will be synthesized when spans are created.
+    /// - `FmtSpan::ENTER`: An event will be synthesized when spans are entered.
+    /// - `FmtSpan::EXIT`: An event will be synthesized when spans are exited.
     /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
     ///    [timestamps are enabled][time] for this formatter, the generated
     ///    event will contain fields with the span's _busy time_ (the total
     ///    time for which it was entered) and _idle time_ (the total time that
     ///    the span existed but was not entered).
+    /// - `FmtSpan::ACTIVE`: An event will be synthesized when spans are entered
+    ///    or exited.
     /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
     ///    created, entered, exited, or closed. If timestamps are enabled, the
     ///    close event will contain the span's busy and idle time, as
     ///    described above.
+    ///
+    /// The options can be enabled in any combination. For instance, the following
+    /// will synthesize events whenever spans are created and closed:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format::FmtSpan;
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let subscriber = fmt()
+    ///     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+    ///     .finish();
+    /// ```
     ///
     /// Note that the generated events will only be part of the log output by
     /// this formatter; they will not be recorded by other `Collector`s or by
@@ -663,18 +678,18 @@ where
     /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_span_events(kind),
+            ..self
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
+    /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_ansi(ansi),
+            ..self
         }
     }
 
@@ -684,8 +699,8 @@ where
         display_target: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_target(display_target),
+            ..self
         }
     }
 
@@ -695,36 +710,36 @@ where
         display_level: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_level(display_level),
+            ..self
         }
     }
 
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_names(display_thread_names),
+            ..self
         }
     }
 
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_ids(display_thread_ids),
+            ..self
         }
     }
 
@@ -755,7 +770,7 @@ where
 
     /// Sets the collector being built to use a JSON formatter.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
@@ -774,7 +789,7 @@ where
 impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
     /// Sets the json collector being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -788,7 +803,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -802,7 +817,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -832,12 +847,12 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// For example:
     /// ```rust
     /// use tracing_subscriber::fmt::format;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::field::MakeExt;
     ///
     /// let formatter =
     ///     // Construct a custom formatter for `Debug` fields
     ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
-    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+    ///         // Use the `tracing_subscriber::MakeExt` trait to wrap the
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
@@ -968,7 +983,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// ```
     /// use tracing::Level;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::util::SubscriberInitExt;
     ///
     /// let builder = tracing_subscriber::fmt()
     ///      // Set a max level filter on the collector
@@ -1009,7 +1024,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
-        W: MakeWriter + 'static,
+        W: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1034,7 +1049,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
-        W2: MakeWriter + 'static,
+        W2: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1144,16 +1159,16 @@ mod test {
     };
     use std::{
         io,
-        sync::{Mutex, MutexGuard, TryLockError},
+        sync::{Arc, Mutex, MutexGuard, TryLockError},
     };
     use tracing_core::dispatch::Dispatch;
 
-    pub(crate) struct MockWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    pub(crate) struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
         }
 
@@ -1164,12 +1179,12 @@ mod test {
             }
         }
 
-        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'_, Vec<u8>>> {
             self.buf.try_lock().map_err(Self::map_error)
         }
     }
 
-    impl<'a> io::Write for MockWriter<'a> {
+    impl io::Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             self.buf()?.write(buf)
         }
@@ -1179,21 +1194,35 @@ mod test {
         }
     }
 
-    pub(crate) struct MockMakeWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    #[derive(Clone, Default)]
+    pub(crate) struct MockMakeWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockMakeWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockMakeWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
+        }
+
+        pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
+            self.buf.lock().unwrap()
+        }
+
+        pub(crate) fn get_string(&self) -> String {
+            let mut buf = self.buf.lock().expect("lock shouldn't be poisoned");
+            let string = std::str::from_utf8(&buf[..])
+                .expect("formatter should not have produced invalid utf-8")
+                .to_owned();
+            buf.clear();
+            string
         }
     }
 
-    impl<'a> MakeWriter for MockMakeWriter<'a> {
-        type Writer = MockWriter<'a>;
+    impl<'a> MakeWriter<'a> for MockMakeWriter {
+        type Writer = MockWriter;
 
-        fn make_writer(&self) -> Self::Writer {
-            MockWriter::new(self.buf)
+        fn make_writer(&'a self) -> Self::Writer {
+            MockWriter::new(self.buf.clone())
         }
     }
 

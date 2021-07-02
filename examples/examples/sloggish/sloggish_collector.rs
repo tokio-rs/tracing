@@ -1,20 +1,9 @@
-//! A simple example demonstrating how one might implement a custom
-//! subscriber.
-//!
-//! This subscriber implements a tree-structured logger similar to
-//! the "compact" formatter in [`slog-term`]. The demo mimics the
-//! example output in the screenshot in the [`slog` README].
-//!
-//! Note that this logger isn't ready for actual production use.
-//! Several corners were cut to make the example simple.
-//!
-//! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
-//! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
 use ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
-    Collect, Id, Level,
+    Collect, Id, Level, Metadata,
 };
+use tracing_core::span::Current;
 
 use std::{
     cell::RefCell,
@@ -63,7 +52,7 @@ impl CurrentSpanPerThread {
     }
 }
 
-pub struct SloggishSubscriber {
+pub struct SloggishCollector {
     // TODO: this can probably be unified with the "stack" that's used for
     // printing?
     current: CurrentSpanPerThread,
@@ -77,6 +66,7 @@ pub struct SloggishSubscriber {
 struct Span {
     parent: Option<Id>,
     kvs: Vec<(&'static str, String)>,
+    metadata: &'static Metadata<'static>,
 }
 
 struct Event<'a> {
@@ -104,6 +94,7 @@ impl Span {
         let mut span = Self {
             parent,
             kvs: Vec::new(),
+            metadata: attrs.metadata(),
         };
         attrs.record(&mut span);
         span
@@ -133,7 +124,6 @@ impl<'a> Visit for Event<'a> {
                 Style::new().bold().paint(format!("{:?}", value))
             )
             .unwrap();
-            self.comma = true;
         } else {
             write!(
                 &mut self.stderr,
@@ -142,12 +132,12 @@ impl<'a> Visit for Event<'a> {
                 value
             )
             .unwrap();
-            self.comma = true;
         }
+        self.comma = true;
     }
 }
 
-impl SloggishSubscriber {
+impl SloggishCollector {
     pub fn new(indent_amount: usize) -> Self {
         Self {
             current: CurrentSpanPerThread::new(),
@@ -194,7 +184,7 @@ impl SloggishSubscriber {
     }
 }
 
-impl Collect for SloggishSubscriber {
+impl Collect for SloggishCollector {
     fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }
@@ -276,5 +266,19 @@ impl Collect for SloggishSubscriber {
     fn try_close(&self, _id: tracing::Id) -> bool {
         // TODO: GC unneeded spans.
         false
+    }
+
+    fn current_span(&self) -> Current {
+        if let Some(id) = self.current.id() {
+            let metadata = self
+                .spans
+                .lock()
+                .unwrap()
+                .get(&id)
+                .unwrap_or_else(|| panic!("no metadata stored for span with ID {:?}", id))
+                .metadata;
+            return Current::new(id, metadata);
+        }
+        Current::none()
     }
 }

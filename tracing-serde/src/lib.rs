@@ -6,7 +6,7 @@
 //! [![Documentation (master)][docs-master-badge]][docs-master-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
-//! [docs-url]: https://docs.rs/tracing-serde
+//! [docs-url]: crate
 //! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 //! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
@@ -66,7 +66,7 @@
 //!
 //! ```rust
 //! # use tracing_core::{Collect, Metadata, Event};
-//! # use tracing_core::span::{Attributes, Id, Record};
+//! # use tracing_core::span::{Attributes, Current, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
 //! use serde_json::json;
@@ -102,6 +102,7 @@
 //!     # fn exit(&self, _: &Id) {}
 //!     # fn record(&self, _: &Id, _: &Record<'_>) {}
 //!     # fn record_follows_from(&self, _: &Id, _: &Id) {}
+//!     # fn current_span(&self) -> Current { Current::unknown() }
 //! }
 //! ```
 //!
@@ -146,7 +147,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     // missing_docs, // TODO: add documentation

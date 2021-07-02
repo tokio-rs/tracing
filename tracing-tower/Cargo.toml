@@ -24,7 +24,7 @@ tower-make = [
 ]
 
 [dependencies]
-tracing = { path = "../tracing", version = "0.2"}
+tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 tracing-futures = { version = "0.3", path = "../tracing-futures", features = ["std-future"] }
 futures = "0.3"
 tower-service = "0.3"

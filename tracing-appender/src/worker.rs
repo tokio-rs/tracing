@@ -7,6 +7,7 @@ use std::{io, thread};
 pub(crate) struct Worker<T: Write + Send + Sync + 'static> {
     writer: T,
     receiver: Receiver<Msg>,
+    shutdown: Receiver<()>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -18,8 +19,12 @@ pub(crate) enum WorkerState {
 }
 
 impl<T: Write + Send + Sync + 'static> Worker<T> {
-    pub(crate) fn new(receiver: Receiver<Msg>, writer: T) -> Worker<T> {
-        Self { writer, receiver }
+    pub(crate) fn new(receiver: Receiver<Msg>, writer: T, shutdown: Receiver<()>) -> Worker<T> {
+        Self {
+            writer,
+            receiver,
+            shutdown,
+        }
     }
 
     fn handle_recv(&mut self, result: &Result<Msg, RecvError>) -> io::Result<WorkerState> {
@@ -67,7 +72,10 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
             loop {
                 match self.work() {
                     Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
-                    Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => break,
+                    Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => {
+                        let _ = self.shutdown.recv();
+                        break;
+                    }
                     Err(_) => {
                         // TODO: Expose a metric for IO Errors, or print to stderr
                     }

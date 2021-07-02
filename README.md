@@ -169,7 +169,7 @@ pub fn shave_all(yaks: usize) -> usize {
 
         if let Err(ref error) = res {
             // Like spans, events can also use the field initialization shorthand.
-            // In this instance, `yak` is the field being initalized.
+            // In this instance, `yak` is the field being initialized.
             error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
             yaks_shaved += 1;
@@ -192,7 +192,7 @@ set the default later.
 
 ### In Asynchronous Code
 
-To trace `async fn`s, the preferred method is using the [`#[instrument]`] attribute:
+To trace `async fn`s, the preferred method is using the [`#[instrument]`][instrument] attribute:
 
 ```rust
 use tracing::{info, instrument};
@@ -244,14 +244,14 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-Under the hood, the `#[instrument]` macro performs same the explicit span
+Under the hood, the [`#[instrument]`][instrument] macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
 [`tracing-futures`]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
 
 ## Supported Rust Versions
 
@@ -399,6 +399,7 @@ are not maintained by the `tokio` project. These include:
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
+- [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -426,6 +427,8 @@ please let us know!)
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 [Tracy]: https://github.com/wolfpld/tracy
+[`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+[Elastic APM]: https://www.elastic.co/apm
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -439,6 +442,7 @@ Tracing.
 #### Blog Posts
 
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
+* [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
@@ -453,6 +457,7 @@ Tracing.
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
 [rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
 [rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
+[production-logging-2020]: https://medium.com/better-programming/production-grade-logging-in-rust-applications-2c7fffd108a6
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

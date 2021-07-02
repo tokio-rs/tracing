@@ -88,7 +88,7 @@
 //!
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
-//! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [write]: std::io::Write
 //! [non_blocking]: mod@non_blocking
 //! [guard]: non_blocking::WorkerGuard
 //! [make_writer]: tracing_subscriber::fmt::MakeWriter
@@ -127,7 +127,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     missing_docs,

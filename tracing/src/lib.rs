@@ -52,14 +52,13 @@
 //! The [`span` module][mod@span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
-//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
-//!     guard is held across an await point. See
-//!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
-//!     for details.
+//!
+//!  **Warning**: In asynchronous code that uses async/await syntax,
+//!  `Span::enter` may produce incorrect traces if the returned drop
+//!  guard is held across an await point. See
+//!  [the method documentation][Span#in-asynchronous-code] for details.
+//!
 //! </pre></div>
 //!
 //! ## Events
@@ -173,10 +172,29 @@
 //! # fn main() {}
 //! ```
 //!
+//! For functions which don't have built-in tracing support and can't have
+//! the `#[instrument]` attribute applied (such as from an external crate,
+//! the [`Span` struct][`Span`] has a [`in_scope()` method][`in_scope`]
+//! which can be used to easily wrap synchonous code in a span.
+//!
+//! For example:
+//! ```rust
+//! use tracing::info_span;
+//!
+//! # fn doc() -> Result<(), ()> {
+//! # mod serde_json {
+//! #    pub(crate) fn from_slice(buf: &[u8]) -> Result<(), ()> { Ok(()) }
+//! # }
+//! # let buf: [u8; 0] = [];
+//! let json = info_span!("json.parse").in_scope(|| serde_json::from_slice(&buf))?;
+//! # let _ = json; // suppress unused variable warning
+//! # Ok(())
+//! # }
+//! ```
 //!
 //! You can find more examples showing how to use this crate [here][examples].
 //!
-//! [RAII]: https://github.com/rust-unofficial/patterns/blob/master/patterns/RAII.md
+//! [RAII]: https://github.com/rust-unofficial/patterns/blob/master/patterns/behavioural/RAII.md
 //! [examples]: https://github.com/tokio-rs/tracing/tree/master/examples
 //!
 //! ### Events
@@ -419,9 +437,9 @@
 //! [target]: Metadata::target()
 //! [parent span]: span::Attributes::parent()
 //! [determined contextually]: span::Attributes::is_contextual()
-//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
-//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
-//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//! [`fmt::Debug`]: std::fmt::Debug
+//! [`fmt::Display`]: std::fmt::Display
+//! [fmt]: std::fmt#usage
 //! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
@@ -539,6 +557,7 @@
 //! ```
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # use tracing_core::span::Current;
 //! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -547,6 +566,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector {
 //! #   fn new() -> Self { FooCollector }
@@ -562,7 +582,6 @@
 //! ```
 //!
 //! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //! <strong>Warning</strong>: In general, libraries should <em>not</em> call
 //! <code>set_global_default()</code>! Doing so will cause conflicts when
@@ -581,6 +600,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # use tracing_core::span::Current;
 //! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -589,6 +609,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector {
 //! #   fn new() -> Self { FooCollector }
@@ -716,7 +737,7 @@
 //! All other features of `tracing` should behave identically with and
 //! without `std` and `alloc`.
 //!
-//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`libstd`]: std
 //! [`Dispatch::new`]: crate::dispatch::Dispatch::new
 //! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
 //! [`Dispatch::set_default`]: crate::dispatch::set_default
@@ -776,6 +797,7 @@
 //!  - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
+//!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -801,10 +823,9 @@
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 //! [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 //! [Tracy]: https://github.com/wolfpld/tracy
+//! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+//! [Elastic APM]: https://www.elastic.co/apm
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //! <strong>Note</strong>: Some of these ecosystem crates are currently
@@ -873,7 +894,7 @@
 //! [instrument]: tracing_attributes::instrument
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing/0.1.21")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

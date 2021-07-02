@@ -66,13 +66,13 @@ impl MockField {
     }
 }
 
-impl Into<Expect> for MockField {
-    fn into(self) -> Expect {
+impl From<MockField> for Expect {
+    fn from(field: MockField) -> Self {
         Expect {
             fields: HashMap::new(),
             only: false,
         }
-        .and(self)
+        .and(field)
     }
 }
 

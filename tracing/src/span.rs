@@ -76,14 +76,13 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
-//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
-//!     guard is held across an await point. See
-//!     <a href="struct.Span.html#in-asynchronous-code">the method documentation</a>
-//!     for details.
+//!
+//!  **Warning**: In asynchronous code that uses async/await syntax,
+//!  [`Span::enter`] may produce incorrect traces if the returned drop
+//!  guard is held across an await point. See
+//!  [the method documentation][Span#in-asynchronous-code] for details.
+//!
 //! </pre></div>
 //!
 //! `in_scope` takes a closure or function pointer and executes it inside the
@@ -105,12 +104,9 @@
 //! });
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: Since entering a span takes <code>&self</code<, and
+//! <strong>Note</strong>: Since entering a span takes <code>&self</code>, and
 //! <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
 //! <code>Sync</code>, it is entirely valid for multiple threads to enter the
 //! same span concurrently.
@@ -321,6 +317,8 @@ use core::{
     cmp, fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,
+    mem,
+    ops::Deref,
 };
 
 /// Trait implemented by types which have a span `Id`.
@@ -378,7 +376,36 @@ pub(crate) struct Inner {
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
     span: &'a Span,
-    _not_send: PhantomData<*mut ()>,
+
+    /// ```compile_fail
+    /// use tracing::span::*;
+    /// trait AssertSend: Send {}
+    ///
+    /// impl AssertSend for Entered<'_> {}
+    /// ```
+    _not_send: PhantomNotSend,
+}
+
+/// An owned version of [`Entered`], a guard representing a span which has been
+/// entered and is currently executing.
+///
+/// When the guard is dropped, the span will be exited.
+///
+/// This is returned by the [`Span::entered`] function.
+///
+/// [`Span::entered`]: super::Span::entered()
+#[derive(Debug)]
+#[must_use = "once a span has been entered, it should be exited"]
+pub struct EnteredSpan {
+    span: Span,
+
+    /// ```compile_fail
+    /// use tracing::span::*;
+    /// trait AssertSend: Send {}
+    ///
+    /// impl AssertSend for EnteredSpan {}
+    /// ```
+    _not_send: PhantomNotSend,
 }
 
 /// `log` target for all span lifecycle (creation/enter/exit/close) records.
@@ -400,7 +427,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: mod@super::metadata
     /// [collector]: super::collect::Collect
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
@@ -425,7 +452,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: mod@super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
@@ -449,7 +476,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
+    /// [metadata]: mod@super::metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
@@ -544,7 +571,7 @@ impl Span {
             meta: Some(meta),
         };
 
-        if_log_enabled! {{
+        if_log_enabled! { *meta.level(), {
             let target = if attrs.is_empty() {
                 LIFECYCLE_LOG_TARGET
             } else {
@@ -555,6 +582,7 @@ impl Span {
 
         span
     }
+
     /// Enters this span, returning a guard that will exit the span when dropped.
     ///
     /// If this span is enabled by the current collector, then this function will
@@ -562,24 +590,21 @@ impl Span {
     /// will call [`Collect::exit`]. If the span is disabled, this does
     /// nothing.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: The returned
-    /// <a href="../struct.Entered.html"><code>Entered</code></a> guard does not
-    /// implement <code>Send</code>. Dropping the guard will exit <em>this</em> span,
+    ///
+    /// **Note**: The returned [`Entered`] guard does not
+    /// implement `Send`. Dropping the guard will exit *this* span,
     /// and if the guard is sent to another thread and dropped there, that thread may
-    /// never have entered this span. Thus, <code>Entered</code> should not be sent
-    /// between threads.</pre></div>
+    /// never have entered this span. Thus, `Entered` should not be sent
+    /// between threads.
+    ///
+    /// </pre></div>
     ///
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
-    /// `Span::enter` should be used very carefully or avoided entirely. Holding
+    /// [`Span::enter`] should be used very carefully or avoided entirely. Holding
     /// the drop guard returned by `Span::enter` across `.await` points will
-    /// result in incorrect traces.
-    ///
-    /// For example,
+    /// result in incorrect traces. For example,
     ///
     /// ```
     /// # use tracing::info_span;
@@ -753,21 +778,157 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
+    #[inline]
     pub fn enter(&self) -> Entered<'_> {
-        if let Some(ref inner) = self.inner.as_ref() {
+        self.do_enter();
+        Entered {
+            span: self,
+            _not_send: PhantomNotSend,
+        }
+    }
+
+    /// Enters this span, consuming it and returning a [guard][`EnteredSpan`]
+    /// that will exit the span when dropped.
+    ///
+    /// If this span is enabled by the current collector, then this function will
+    /// call [`Collect::enter`] with the span's [`Id`], and dropping the guard
+    /// will call [`Collect::exit`]. If the span is disabled, this does
+    /// nothing.
+    ///
+    /// This is similar to the [`Span::enter`] method, except that it moves the
+    /// span by value into the returned guard, rather than borrowing it.
+    /// Therefore, this method can be used to create and enter a span in a
+    /// single expression, without requiring a `let`-binding. For example:
+    ///
+    /// ```
+    /// # use tracing::info_span;
+    /// let _span = info_span!("something_interesting").entered();
+    /// ```
+    /// rather than:
+    /// ```
+    /// # use tracing::info_span;
+    /// let span = info_span!("something_interesting");
+    /// let _e = span.enter();
+    /// ```
+    ///
+    /// Furthermore, `entered` may be used when the span must be stored in some
+    /// other struct or be passed to a function while remaining entered.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///
+    /// **Note**: The returned [`EnteredSpan`] guard does not
+    /// implement `Send`. Dropping the guard will exit *this* span,
+    /// and if the guard is sent to another thread and dropped there, that thread may
+    /// never have entered this span. Thus, `EnteredSpan`s should not be sent
+    /// between threads.
+    ///
+    /// </pre></div>
+    ///
+    /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
+    /// [`Span::entered`] should be used very carefully or avoided entirely. Holding
+    /// the drop guard returned by `Span::entered` across `.await` points will
+    /// result in incorrect traces. See the documentation for the
+    /// [`Span::enter`] method for details.
+    ///
+    /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
+    ///
+    /// # Examples
+    ///
+    /// The returned guard can be [explicitly exited][EnteredSpan::exit],
+    /// returning the un-entered span:
+    ///
+    /// ```
+    /// # use tracing::{Level, span};
+    /// let span = span!(Level::INFO, "doing_something").entered();
+    ///
+    /// // code here is within the span
+    ///
+    /// // explicitly exit the span, returning it
+    /// let span = span.exit();
+    ///
+    /// // code here is no longer within the span
+    ///
+    /// // enter the span again
+    /// let span = span.entered();
+    ///
+    /// // now we are inside the span once again
+    /// ```
+    ///
+    /// Guards need not be explicitly dropped:
+    ///
+    /// ```
+    /// # use tracing::trace_span;
+    /// fn my_function() -> String {
+    ///     // enter a span for the duration of this function.
+    ///     let span = trace_span!("my_function").entered();
+    ///
+    ///     // anything happening in functions we call is still inside the span...
+    ///     my_other_function();
+    ///
+    ///     // returning from the function drops the guard, exiting the span.
+    ///     return "Hello world".to_owned();
+    /// }
+    ///
+    /// fn my_other_function() {
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// Since the [`EnteredSpan`] guard can dereference to the [`Span`] itself,
+    /// the span may still be accessed while entered. For example:
+    ///
+    /// ```rust
+    /// # use tracing::info_span;
+    /// use tracing::field;
+    ///
+    /// // create the span with an empty field, and enter it.
+    /// let span = info_span!("my_span", some_field = field::Empty).entered();
+    ///
+    /// // we can still record a value for the field while the span is entered.
+    /// span.record("some_field", &"hello world!");
+    /// ```
+    ///
+    /// [`Collect::enter`]: super::collect::Collect::enter()
+    /// [`Collect::exit`]: super::collect::Collect::exit()
+    /// [`Id`]: super::Id
+    #[inline]
+    pub fn entered(self) -> EnteredSpan {
+        self.do_enter();
+        EnteredSpan {
+            span: self,
+            _not_send: PhantomNotSend,
+        }
+    }
+
+    #[inline]
+    fn do_enter(&self) {
+        if let Some(inner) = self.inner.as_ref() {
             inner.collector.enter(&inner.id);
         }
 
-        if_log_enabled! {{
+        if_log_enabled! { crate::Level::TRACE, {
             if let Some(ref meta) = self.meta {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
             }
         }}
+    }
 
-        Entered {
-            span: self,
-            _not_send: PhantomData,
+    // Called from [`Entered`] and [`EnteredSpan`] drops.
+    //
+    // Running this behaviour on drop rather than with an explicit function
+    // call means that spans may still be exited when unwinding.
+    #[inline]
+    fn do_exit(&self) {
+        if let Some(inner) = self.inner.as_ref() {
+            inner.collector.exit(&inner.id);
         }
+
+        if_log_enabled! { crate::Level::TRACE, {
+            if let Some(ref _meta) = self.meta {
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+            }
+        }}
     }
 
     /// Executes the given function in the context of this span.
@@ -812,7 +973,7 @@ impl Span {
         f()
     }
 
-    /// Returns a [`Field`](../field/struct.Field.html) for the field with the
+    /// Returns a [`Field`](super::field::Field) for the field with the
     /// given `name`, if one exists,
     pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
     where
@@ -822,7 +983,7 @@ impl Span {
     }
 
     /// Returns true if this `Span` has a field for the given
-    /// [`Field`](../field/struct.Field.html) or field name.
+    /// [`Field`](super::field::Field) or field name.
     #[inline]
     pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
     where
@@ -869,17 +1030,16 @@ impl Span {
     /// }
     /// ```
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: The fields associated with a span are part of its
-    /// <a href="../struct.Metadata.html"><code>Metadata</code></a>.
-    /// The <a href="../struct.Metadata.html"><code>Metadata</code></a>. describing a particular
+    ///
+    /// **Note**: The fields associated with a span are part of its [`Metadata`].
+    /// The [`Metadata`] describing a particular
     /// span is constructed statically when the span is created and cannot be extended later to
     /// add new fields. Therefore, you cannot record a value for a field that was not specified
-    /// when the span was created:</pre></div>
+    /// when the span was created:
+    ///
+    /// </pre></div>
     ///
     /// ```
     /// use tracing::{trace_span, field};
@@ -928,16 +1088,16 @@ impl Span {
             inner.record(&record);
         }
 
-        if_log_enabled! {{
-            if let Some(ref meta) = self.meta {
+        if let Some(ref _meta) = self.meta {
+            if_log_enabled! { *_meta.level(), {
                 let target = if record.is_empty() {
                     LIFECYCLE_LOG_TARGET
                 } else {
-                    meta.target()
+                    _meta.target()
                 };
-                self.log(target, level_to_log!(*meta.level()), format_args!("{}{}", meta.name(), FmtValues(&record)));
-            }
-        }}
+                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+            }}
+        }
 
         self
     }
@@ -1121,15 +1281,27 @@ impl fmt::Debug for Span {
     }
 }
 
-impl<'a> Into<Option<&'a Id>> for &'a Span {
-    fn into(self) -> Option<&'a Id> {
-        self.inner.as_ref().map(|inner| &inner.id)
+impl<'a> From<&'a Span> for Option<&'a Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Span {
-    fn into(self) -> Option<Id> {
-        self.inner.as_ref().map(Inner::id)
+impl<'a> From<&'a Span> for Option<Id> {
+    fn from(span: &'a Span) -> Self {
+        span.inner.as_ref().map(Inner::id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(Inner::id)
     }
 }
 
@@ -1143,15 +1315,15 @@ impl Drop for Span {
             collector.try_close(id.clone());
         }
 
-        if_log_enabled!({
-            if let Some(ref meta) = self.meta {
+        if let Some(ref _meta) = self.meta {
+            if_log_enabled! { crate::Level::TRACE, {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", meta.name()),
+                    format_args!("-- {}", _meta.name()),
                 );
-            }
-        })
+            }}
+        }
     }
 }
 
@@ -1217,42 +1389,71 @@ impl Clone for Inner {
 
 // ===== impl Entered =====
 
-/// # Safety
-///
-/// Technically, `Entered` _can_ implement both `Send` *and* `Sync` safely. It
-/// doesn't, because it has a `PhantomData<*mut ()>` field, specifically added
-/// in order to make it `!Send`.
+impl EnteredSpan {
+    /// Returns this span's `Id`, if it is enabled.
+    pub fn id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Inner::id)
+    }
+
+    /// Exits this span, returning the underlying [`Span`].
+    #[inline]
+    pub fn exit(mut self) -> Span {
+        // One does not simply move out of a struct with `Drop`.
+        let span = mem::replace(&mut self.span, Span::none());
+        span.do_exit();
+        span
+    }
+}
+
+impl Deref for EnteredSpan {
+    type Target = Span;
+
+    #[inline]
+    fn deref(&self) -> &Span {
+        &self.span
+    }
+}
+
+impl<'a> Drop for Entered<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        self.span.do_exit()
+    }
+}
+
+impl Drop for EnteredSpan {
+    #[inline]
+    fn drop(&mut self) {
+        self.span.do_exit()
+    }
+}
+
+/// Technically, `Entered` (or `EnteredSpan`) _can_ implement both `Send` *and*
+/// `Sync` safely. It doesn't, because it has a `PhantomNotSend` field,
+/// specifically added in order to make it `!Send`.
 ///
 /// Sending an `Entered` guard between threads cannot cause memory unsafety.
 /// However, it *would* result in incorrect behavior, so we add a
-/// `PhantomData<*mut ()>` to prevent it from being sent between threads. This
-/// is because it must be *dropped* on the same thread that it was created;
+/// `PhantomNotSend` to prevent it from being sent between threads. This is
+/// because it must be *dropped* on the same thread that it was created;
 /// otherwise, the span will never be exited on the thread where it was entered,
 /// and it will attempt to exit the span on a thread that may never have entered
 /// it. However, we still want them to be `Sync` so that a struct holding an
 /// `Entered` guard can be `Sync`.
 ///
 /// Thus, this is totally safe.
-unsafe impl<'a> Sync for Entered<'a> {}
-
-impl<'a> Drop for Entered<'a> {
-    #[inline]
-    fn drop(&mut self) {
-        // Dropping the guard exits the span.
-        //
-        // Running this behaviour on drop rather than with an explicit function
-        // call means that spans may still be exited when unwinding.
-        if let Some(inner) = self.span.inner.as_ref() {
-            inner.collector.exit(&inner.id);
-        }
-
-        if_log_enabled! {{
-            if let Some(ref meta) = self.span.meta {
-                self.span.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", meta.name()));
-            }
-        }}
-    }
+#[derive(Debug)]
+struct PhantomNotSend {
+    ghost: PhantomData<*mut ()>,
 }
+
+#[allow(non_upper_case_globals)]
+const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
+
+/// # Safety
+///
+/// Trivially safe, as `PhantomNotSend` doesn't have any API.
+unsafe impl Sync for PhantomNotSend {}
 
 #[cfg(feature = "log")]
 struct FmtValues<'a>(&'a Record<'a>);
@@ -1295,4 +1496,6 @@ mod test {
 
     trait AssertSync: Sync {}
     impl AssertSync for Span {}
+    impl AssertSync for Entered<'_> {}
+    impl AssertSync for EnteredSpan {}
 }

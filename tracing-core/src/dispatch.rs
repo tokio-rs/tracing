@@ -13,7 +13,10 @@
 //! ## Setting the Default Collector
 //!
 //! By default, the current collector is an empty implementation that does
-//! nothing. To use a collector implementation, it must be set as the default.
+//! nothing. Trace data provided to this "do nothing" implementation is
+//! immediately discarded, and is not available for any purpose.
+//!
+//! To use another collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
 //! [`set_global_default`]. `with_default` sets the default collector for the
 //! duration of a scope, while `set_global_default` sets a default collector
@@ -26,7 +29,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -36,6 +39,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -52,7 +56,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -62,6 +66,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # let _my_collector = FooCollector::new();
@@ -88,7 +93,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -98,6 +103,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "std")]
@@ -115,9 +121,6 @@
 //! // `my_collector` is now the default
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!
@@ -238,9 +241,6 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// The default dispatcher is used when creating a new [span] or
 /// [`Event`].
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: This function required the Rust standard library.
@@ -266,9 +266,6 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// Sets the dispatch as the default dispatch for the duration of the lifetime
 /// of the returned DefaultGuard
 ///
-/// <div class="information">
-///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-/// </div>
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///
@@ -294,8 +291,6 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// Returns `Err` if the global default has already been set.
 ///
 ///
-/// <div class="information">
-///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 /// </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 /// <strong>Warning</strong>: In general, libraries should <em>not</em> call
 /// <code>set_global_default()</code>! Doing so will cause conflicts when
@@ -305,7 +300,16 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// [span]: super::span
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
-    if GLOBAL_INIT.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst) == UNINITIALIZED
+    // if `compare_exchange` returns Result::Ok(_), then `new` has been set and
+    // `current`—now the prior value—has been returned in the `Ok()` branch.
+    if GLOBAL_INIT
+        .compare_exchange(
+            UNINITIALIZED,
+            INITIALIZING,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_ok()
     {
         #[cfg(feature = "alloc")]
         let collector = {
@@ -479,9 +483,9 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-    pub fn new<S>(collector: S) -> Self
+    pub fn new<C>(collector: C) -> Self
     where
-        S: Collect + Send + Sync + 'static,
+        C: Collect + Send + Sync + 'static,
     {
         let me = Dispatch {
             collector: Kind::Scoped(Arc::new(collector)),
@@ -503,7 +507,7 @@ impl Dispatch {
     ///    // ...
     /// }
     ///
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Event, Metadata};
+    /// # use tracing_core::{span::{Id, Attributes, Current, Record}, Event, Metadata};
     /// impl tracing_core::Collect for MyCollector {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -513,6 +517,7 @@ impl Dispatch {
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// }
     ///
     /// static COLLECTOR: MyCollector = MyCollector {
@@ -722,9 +727,6 @@ impl Dispatch {
     /// This calls the [`drop_span`] function on the [`Collect`] that this
     ///  `Dispatch` forwards to.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
     ///
     /// **Deprecated**: The [`try_close`] method is functionally identical, but returns `true` if the span is now closed.
@@ -780,7 +782,7 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Collect::is::<T>(&*self.collector())
+        <dyn Collect>::is::<T>(&*self.collector())
     }
 
     /// Returns some reference to the [`Collect`] this `Dispatch` forwards to
@@ -789,7 +791,7 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Collect::downcast_ref(&*self.collector())
+        <dyn Collect>::downcast_ref(&*self.collector())
     }
 }
 
@@ -807,12 +809,12 @@ impl fmt::Debug for Dispatch {
 }
 
 #[cfg(feature = "std")]
-impl<S> From<S> for Dispatch
+impl<C> From<C> for Dispatch
 where
-    S: Collect + Send + Sync + 'static,
+    C: Collect + Send + Sync + 'static,
 {
     #[inline]
-    fn from(collector: S) -> Self {
+    fn from(collector: C) -> Self {
         Dispatch::new(collector)
     }
 }
@@ -841,6 +843,10 @@ impl Collect for NoCollector {
 
     fn enter(&self, _span: &span::Id) {}
     fn exit(&self, _span: &span::Id) {}
+
+    fn current_span(&self) -> span::Current {
+        span::Current::none()
+    }
 }
 
 #[cfg(feature = "std")]
@@ -862,7 +868,7 @@ impl Registrar {
 #[cfg(feature = "std")]
 impl State {
     /// Replaces the current default dispatcher on this thread with the provided
-    /// dispatcher.Any
+    /// dispatcher.
     ///
     /// Dropping the returned `ResetGuard` will reset the default dispatcher to
     /// the previous value.
@@ -1005,6 +1011,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
         }
 
         with_default(&Dispatch::new(TestCollector), || {
@@ -1053,6 +1063,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
         }
 
         with_default(&Dispatch::new(TestCollector), mk_span)
@@ -1086,6 +1100,10 @@ mod test {
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
         }
         let guard = set_default(&Dispatch::new(TestCollector));
         let default_dispatcher = Dispatch::default();
