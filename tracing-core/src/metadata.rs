@@ -94,7 +94,7 @@ pub struct Metadata<'a> {
 pub struct Kind(KindInner);
 
 /// Describes the level of verbosity of a span or event.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity `Level`.
@@ -107,7 +107,7 @@ pub struct Level(LevelInner);
 /// addition of an `OFF` level that completely disables all trace
 /// instrumentation.
 #[repr(transparent)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
