@@ -378,7 +378,6 @@ macro_rules! impl_taps {
 
 impl_taps! {
     &'static str,
-    String,
     bool,
     char,
     u8,
@@ -390,7 +389,12 @@ impl_taps! {
     u64,
     i64,
     usize,
-    isize,
+    isize
+}
+
+#[cfg(feature = "std")]
+impl_taps! {
+    String,
     std::num::NonZeroU8,
     std::num::NonZeroI8,
     std::num::NonZeroU16,
