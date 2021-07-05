@@ -278,6 +278,9 @@ pub trait Collect: 'static {
     /// follow from _b_), it may silently do nothing.
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id);
 
+    /// Tap
+    fn tap(&self, _span: &span::Id, _value: &dyn span::Tap) {}
+
     /// Records that an [`Event`] has occurred.
     ///
     /// This method will be invoked when an Event is constructed by

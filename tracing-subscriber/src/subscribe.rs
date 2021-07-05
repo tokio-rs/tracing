@@ -308,6 +308,9 @@ where
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
 
+    /// Tap
+    fn on_tap(&self, _span: &span::Id, _ctx: Context<'_, C>, _value: &dyn span::Tap) {}
+
     /// Notifies this subscriber that an event has occurred.
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
 
@@ -623,6 +626,11 @@ where
         self.subscriber.on_follows_from(span, follows, self.ctx());
     }
 
+    fn tap(&self, span: &span::Id, value: &dyn span::Tap) {
+        self.inner.tap(span, value);
+        self.subscriber.on_tap(span, self.ctx(), value);
+    }
+
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
         self.subscriber.on_event(event, self.ctx());
@@ -748,6 +756,12 @@ where
     }
 
     #[inline]
+    fn on_tap(&self, span: &span::Id, ctx: Context<'_, C>, value: &dyn span::Tap) {
+        self.inner.on_tap(span, ctx.clone(), value);
+        self.subscriber.on_tap(span, ctx, value);
+    }
+
+    #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         self.inner.on_event(event, ctx.clone());
         self.subscriber.on_event(event, ctx);
@@ -835,6 +849,13 @@ where
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_follows_from(span, follows, ctx);
+        }
+    }
+
+    #[inline]
+    fn on_tap(&self, span: &span::Id, ctx: Context<'_, C>, value: &dyn span::Tap) {
+        if let Some(ref inner) = self {
+            inner.on_tap(span, ctx, value);
         }
     }
 
