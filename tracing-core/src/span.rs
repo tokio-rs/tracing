@@ -1,5 +1,7 @@
 //! Spans represent periods of time in the execution of a program.
+use core::any::{Any, TypeId};
 use core::num::NonZeroU64;
+use core::ptr::NonNull;
 
 use crate::field::FieldSet;
 use crate::parent::Parent;
@@ -331,4 +333,76 @@ impl<'a> From<&'a Current> for Option<&'static Metadata<'static>> {
     fn from(cur: &'a Current) -> Self {
         cur.metadata()
     }
+}
+
+/// Tap trait.
+pub trait Tap: 'static {
+    /// Downcast
+    ///
+    /// # Safety
+    ///
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        if id == TypeId::of::<Self>() {
+            Some(NonNull::from(self).cast())
+        } else {
+            None
+        }
+    }
+}
+
+impl dyn Tap {
+    /// Returns `true` if this `Tap` is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `Tap` value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            Some(&*(raw.cast().as_ptr()))
+        }
+    }
+}
+
+impl<T: Tap> Tap for &'static T {}
+
+macro_rules! impl_taps {
+    ($($ty:ty),+) => {
+        $(
+            impl $crate::span::Tap for $ty {}
+        )+
+    };
+}
+
+impl_taps! {
+    &'static str,
+    bool,
+    char,
+    u8,
+    i8,
+    u16,
+    i16,
+    u32,
+    i32,
+    u64,
+    i64,
+    usize,
+    isize
+}
+
+#[cfg(feature = "std")]
+impl_taps! {
+    String,
+    std::num::NonZeroU8,
+    std::num::NonZeroI8,
+    std::num::NonZeroU16,
+    std::num::NonZeroI16,
+    std::num::NonZeroU32,
+    std::num::NonZeroI32,
+    std::num::NonZeroU64,
+    std::num::NonZeroI64,
+    std::num::NonZeroUsize,
+    std::num::NonZeroIsize
 }

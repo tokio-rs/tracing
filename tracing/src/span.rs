@@ -307,7 +307,7 @@
 //! [`follows_from`]: Span::follows_from()
 //! [guard]: Entered
 //! [parent]: #span-relationships
-pub use tracing_core::span::{Attributes, Id, Record};
+pub use tracing_core::span::{Attributes, Id, Record, Tap};
 
 use crate::{
     dispatch::{self, Dispatch},
@@ -1102,6 +1102,14 @@ impl Span {
         self
     }
 
+    /// Tap
+    pub fn tap(&self, value: impl Tap) -> &Self {
+        if let Some(ref inner) = self.inner {
+            inner.tap(value);
+        }
+        self
+    }
+
     /// Returns `true` if this span was disabled by the collector and does not
     /// exist.
     ///
@@ -1356,6 +1364,10 @@ impl Inner {
 
     fn record(&self, values: &Record<'_>) {
         self.collector.record(&self.id, values)
+    }
+
+    fn tap(&self, value: impl Tap) {
+        self.collector.tap(&self.id, value)
     }
 
     fn new(id: Id, collector: &Dispatch) -> Self {

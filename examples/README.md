@@ -35,6 +35,7 @@ This directory contains a collection of examples that demonstrate the use of the
     both the terminal and the system journal.
   + `toggle-subscribers` : Demonstrates how subscribers can be wrapped with an `Option` allowing
     them to be dynamically toggled.
+  + `tap`: Demostrates how to use tracing Span's tap API.  
 - **tracing-futures**:
   + `spawny-thing`: Demonstrates the use of the `#[instrument]` attribute macro
     asynchronous functions.

@@ -647,6 +647,12 @@ impl Dispatch {
         self.collector().record_follows_from(span, follows)
     }
 
+    /// Tap
+    #[inline]
+    pub fn tap(&self, span: &span::Id, value: impl span::Tap) {
+        self.collector().tap(span, &value as &dyn span::Tap);
+    }
+
     /// Returns true if a span with the specified [metadata] would be
     /// recorded.
     ///
