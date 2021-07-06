@@ -649,8 +649,8 @@ impl Dispatch {
 
     /// Tap
     #[inline]
-    pub fn tap(&self, span: &span::Id, value: &dyn span::Tap) {
-        self.collector().tap(span, value);
+    pub fn tap(&self, span: &span::Id, value: impl span::Tap) {
+        self.collector().tap(span, &value as &dyn span::Tap);
     }
 
     /// Returns true if a span with the specified [metadata] would be

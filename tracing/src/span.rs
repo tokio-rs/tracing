@@ -1103,7 +1103,7 @@ impl Span {
     }
 
     /// Tap
-    pub fn tap(&self, value: &dyn Tap) -> &Self {
+    pub fn tap(&self, value: impl Tap) -> &Self {
         if let Some(ref inner) = self.inner {
             inner.tap(value);
         }
@@ -1366,7 +1366,7 @@ impl Inner {
         self.collector.record(&self.id, values)
     }
 
-    fn tap(&self, value: &dyn Tap) {
+    fn tap(&self, value: impl Tap) {
         self.collector.tap(&self.id, value)
     }
 

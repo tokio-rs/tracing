@@ -75,8 +75,8 @@ fn main() {
     tracing_subscriber::registry().with(tap_subscriber).init();
 
     let span = info_span!("my_span").entered();
-    span.tap(&"fist step");
-    span.tap(&"second step");
-    span.tap(&"third step");
-    span.tap(&"fourth step");
+    span.tap("fist step");
+    span.tap("second step");
+    span.tap("third step");
+    span.tap("fourth step");
 }
