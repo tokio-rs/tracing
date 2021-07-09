@@ -1,3 +1,27 @@
+# 0.14.0 (July 9, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.15.0` of `opentelemetry` ([#1441])
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.14.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0140).
+
+### Added
+
+- Spans now include Opentelemetry `code.namespace`, `code.filepath`, and
+  `code.lineno` attributes ([#1411])
+
+### Changed
+
+- Improve performance by pre-allocating attribute `Vec`s ([#1327])
+
+Thanks to @Drevoed, @lilymara-onesignal, and @Folyd for contributing
+to this release!
+
+[#1441]: https://github.com/tokio-rs/tracing/pull/1441
+[#1411]: https://github.com/tokio-rs/tracing/pull/1411
+[#1327]: https://github.com/tokio-rs/tracing/pull/1327
+
 # 0.13.0 (May 15, 2021)
 
 ### Breaking Changes
