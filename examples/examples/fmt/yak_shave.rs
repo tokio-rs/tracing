@@ -71,9 +71,6 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     trace!(excitement = "yay!", "hello! I'm gonna shave a yak");
     if yak == 3 {
         warn!("could not locate yak");
-        // note that this is intended to demonstrate `tracing`'s features, not idiomatic
-        // error handling! in a library or application, you should consider returning
-        // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
         return Err(YakError::MissingYak {
             source: MissingYakError::OutOfSpace {
                 source: OutOfSpaceError::OutOfCash,
