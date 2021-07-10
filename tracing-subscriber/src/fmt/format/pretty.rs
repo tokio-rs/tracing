@@ -332,12 +332,12 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             self.record_debug(
                 field,
                 &format_args!(
-                    "{}, {}{}.source{}: {}",
+                    "{}, {}{}.sources{}: {}",
                     value,
                     bold.prefix(),
                     field,
                     bold.infix(self.style),
-                    source,
+                    ErrorSourceList(source),
                 ),
             )
         } else {
