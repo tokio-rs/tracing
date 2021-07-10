@@ -763,7 +763,7 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
         if let Some(source) = value.source() {
             self.record_debug(
                 field,
-                &format_args!("{}, {}.sources: {}", value, field, ErrorSourceList(source)),
+                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
             )
         } else {
             self.record_debug(field, &format_args!("{}", value))
