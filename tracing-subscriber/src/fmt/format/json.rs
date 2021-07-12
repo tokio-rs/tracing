@@ -204,8 +204,13 @@ where
 
             let mut serializer = serializer.serialize_map(None)?;
 
-            serializer.serialize_entry("timestamp", &timestamp)?;
-            serializer.serialize_entry("level", &meta.level().as_serde())?;
+            if self.display_timestamp {
+                serializer.serialize_entry("timestamp", &timestamp)?;
+            }
+
+            if self.display_level {
+                serializer.serialize_entry("level", &meta.level().as_serde())?;
+            }
 
             let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 
