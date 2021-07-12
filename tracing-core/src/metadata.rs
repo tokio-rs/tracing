@@ -723,6 +723,81 @@ impl fmt::Display for ParseLevelFilterError {
 #[cfg(feature = "std")]
 impl std::error::Error for ParseLevelFilterError {}
 
+impl ParseLevelFilterError {
+    /// Constructor to create an empty [`ParseLevelFilterError`].
+    ///
+    /// # Examples
+    ///
+    /// Constructing an empty [`ParseLevelFilterError`] may be useful in code
+    /// that instantiates [`LevelFilter`] from parsed string input, in order
+    /// to override the built-in default policy of how to treat empty string
+    /// input.
+    ///
+    /// By default, [`LevelFilter::from_str`] treats empty string input as
+    /// meaning "no default preference provided", so applies the default
+    /// policy of creating [`LevelFilter::ERROR`].
+    ///
+    /// In a context in which the available input is tightly controlled, an
+    /// empty string input may represent a misconfiguration. In such
+    /// situations, it may be desirable to override the built-in policy, but
+    /// still support roughly the same interface as [`LevelFilter::from_str`]
+    /// of emitting [`ParseLevelFilterError`] when rejecting the empty string
+    /// input.
+    ///
+    /// ```rust
+    /// use core::str::FromStr;
+    /// use tracing_core::metadata::{
+    ///     LevelFilter,
+    ///     ParseLevelFilterError,
+    /// };
+    ///
+    /// struct MyLevelFilterNewtype(LevelFilter);
+    ///
+    /// impl FromStr for MyLevelFilterNewtype {
+    ///     type Err = ParseLevelFilterError;
+    ///
+    ///     fn from_str(from: &str) -> Result<Self, Self::Err> {
+    ///
+    ///         // Override default policy: Reject empty string value
+    ///         // rather than defaulting to LevelFilter::ERROR
+    ///         if "" == from {
+    ///             return Err( ParseLevelFilterError::empty() );
+    ///         }
+    ///
+    ///         match LevelFilter::from_str(from) {
+    ///             Ok(level_filter) => Ok( MyLevelFilterNewtype(level_filter) ),
+    ///             Err(err) => Err(err),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// # // When parsing legit level name strings, LevelFilter and MyLevelFilterNewtype
+    /// # // behave the same in that a LevelFilter of the specified level name is obtained...
+    /// # match LevelFilter::from_str("DEBUG") {
+    /// #     Ok(LevelFilter::DEBUG) => (),
+    /// #     Ok(_) | Err(_) => panic!("Expected LevelFilter::DEBUG from parsed \"DEBUG\" string"),
+    /// # }
+    /// # match MyLevelFilterNewtype::from_str("DEBUG") {
+    /// #     Ok( MyLevelFilterNewtype(LevelFilter::DEBUG) ) => (),
+    /// #     Ok(_) | Err(_) => panic!("Expected MyLevelFilterNewtype(LevelFilter::DEBUG) from parsed \"DEBUG\" string"),
+    /// # }
+    /// #
+    /// # // ...but when empty string input is provided, LevelFilter creates a LevelFilter::ERROR,
+    /// # // whereas MyLevelFilterNewtype rejects the empty string as invalid.
+    /// # match LevelFilter::from_str("") {
+    /// #     Ok(LevelFilter::ERROR) => (),
+    /// #     Ok(_) | Err(_) => panic!("Expected LevelFilter::ERROR due to default policy for empty string"),
+    /// # }
+    /// # match MyLevelFilterNewtype::from_str("") {
+    /// #     Err(_) => (), // empty string rejected
+    /// #     Ok(_) => panic!("Expected empty string to have been rejected with a ParseLevelFilterError(())"),
+    /// # }
+    /// ```
+    pub fn empty() -> Self {
+        ParseLevelFilterError(())
+    }
+}
+
 // ==== Level and LevelFilter comparisons ====
 
 // /!\ BIG, IMPORTANT WARNING /!\
@@ -1005,6 +1080,13 @@ mod tests {
                 mem::transmute::<LevelFilter, usize>(filter)
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
+        }
+    }
+
+    #[test]
+    fn parse_level_filter_error_ctor_empty() {
+        match ParseLevelFilterError::empty() {
+            ParseLevelFilterError(()) => (),
         }
     }
 }
