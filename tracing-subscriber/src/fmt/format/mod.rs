@@ -814,16 +814,13 @@ struct ErrorSourceList<'a>(&'a (dyn std::error::Error + 'static));
 
 impl<'a> Display for ErrorSourceList<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_char('[')?;
+        let mut list = f.debug_list();
         let mut curr = Some(self.0);
         while let Some(curr_err) = curr {
-            f.write_fmt(format_args!("{}", curr_err))?;
+            list.entry(&format_args!("{}", curr_err));
             curr = curr_err.source();
-            if curr.is_some() {
-                f.write_str(", ")?;
-            }
         }
-        f.write_char(']')
+        list.finish()
     }
 }
 
