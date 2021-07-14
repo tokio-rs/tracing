@@ -1,62 +1,7 @@
-use std::{error::Error, fmt::Display};
+use snafu::{ResultExt, Snafu};
+use std::error::Error;
+use thiserror::Error;
 use tracing::{debug, error, info, span, trace, warn, Level};
-
-#[derive(Debug)]
-enum OutOfSpaceError {
-    OutOfCash,
-}
-
-impl Error for OutOfSpaceError {}
-
-impl Display for OutOfSpaceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OutOfSpaceError::OutOfCash => f.write_str("out of cash"),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum MissingYakError {
-    OutOfSpace { source: OutOfSpaceError },
-}
-
-impl Error for MissingYakError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            MissingYakError::OutOfSpace { source } => Some(source),
-        }
-    }
-}
-
-impl Display for MissingYakError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MissingYakError::OutOfSpace { .. } => f.write_str("out of space"),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum YakError {
-    MissingYak { source: MissingYakError },
-}
-
-impl Error for YakError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            YakError::MissingYak { source } => Some(source),
-        }
-    }
-}
-
-impl Display for YakError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            YakError::MissingYak { .. } => f.write_str("missing yak"),
-        }
-    }
-}
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
@@ -71,12 +16,11 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     trace!(excitement = "yay!", "hello! I'm gonna shave a yak");
     if yak == 3 {
         warn!("could not locate yak");
-        return Err(YakError::MissingYak {
-            source: MissingYakError::OutOfSpace {
-                source: OutOfSpaceError::OutOfCash,
-            },
-        }
-        .into());
+        return OutOfCash
+            .fail()
+            .map_err(|source| MissingYakError::OutOfSpace { source })
+            .context(MissingYak)
+            .map_err(|err| err.into());
     } else {
         trace!("yak shaved successfully");
     }
@@ -112,4 +56,24 @@ pub fn shave_all(yaks: usize) -> usize {
     }
 
     yaks_shaved
+}
+
+// Error types
+// Usually you would pick one error handling library to use, but they can be mixed freely
+#[derive(Debug, Snafu)]
+enum OutOfSpaceError {
+    #[snafu(display("out of cash"))]
+    OutOfCash,
+}
+
+#[derive(Debug, Error)]
+enum MissingYakError {
+    #[error("out of space")]
+    OutOfSpace { source: OutOfSpaceError },
+}
+
+#[derive(Debug, Snafu)]
+enum YakError {
+    #[snafu(display("missing yak"))]
+    MissingYak { source: MissingYakError },
 }

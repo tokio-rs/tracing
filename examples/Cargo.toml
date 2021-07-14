@@ -55,3 +55,7 @@ tempdir = "0.3.7"
 # opentelemetry example
 opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
 opentelemetry-jaeger = "0.14"
+
+# fmt examples
+snafu = "0.6.10"
+thiserror = "1.0.26"
