@@ -95,3 +95,7 @@ harness = false
 [[bench]]
 name = "reload"
 harness = false
+
+[[bench]]
+name = "iter_scope"
+harness = false
