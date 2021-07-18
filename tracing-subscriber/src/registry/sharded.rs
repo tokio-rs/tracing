@@ -490,11 +490,11 @@ mod tests {
 
     struct SetRemoved(Arc<()>);
 
-    impl<S> Subscribe<S> for CloseSubscriber
+    impl<C> Subscribe<C> for CloseSubscriber
     where
-        S: Collect + for<'a> LookupSpan<'a>,
+        C: Collect + for<'a> LookupSpan<'a>,
     {
-        fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");
             let mut lock = self.inner.lock().unwrap();
             let is_removed = Arc::new(());
@@ -508,7 +508,7 @@ mod tests {
             extensions.insert(SetRemoved(is_removed));
         }
 
-        fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        fn on_close(&self, id: Id, ctx: Context<'_, C>) {
             let span = if let Some(span) = ctx.span(&id) {
                 span
             } else {

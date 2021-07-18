@@ -36,9 +36,9 @@ where
 /// [span]: super::span
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
-pub fn set_global_default<S>(collector: S) -> Result<(), SetGlobalDefaultError>
+pub fn set_global_default<C>(collector: C) -> Result<(), SetGlobalDefaultError>
 where
-    S: Collect + Send + Sync + 'static,
+    C: Collect + Send + Sync + 'static,
 {
     crate::dispatch::set_global_default(crate::Dispatch::new(collector))
 }
@@ -56,9 +56,9 @@ where
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the collector."]
-pub fn set_default<S>(collector: S) -> DefaultGuard
+pub fn set_default<C>(collector: C) -> DefaultGuard
 where
-    S: Collect + Send + Sync + 'static,
+    C: Collect + Send + Sync + 'static,
 {
     crate::dispatch::set_default(&crate::Dispatch::new(collector))
 }

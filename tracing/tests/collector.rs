@@ -54,6 +54,10 @@ fn event_macros_dont_infinite_loop() {
         fn enter(&self, _: &Id) {}
 
         fn exit(&self, _: &Id) {}
+
+        fn current_span(&self) -> tracing_core::span::Current {
+            tracing_core::span::Current::unknown()
+        }
     }
 
     with_default(TestCollector, || {

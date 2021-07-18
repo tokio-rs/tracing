@@ -261,7 +261,8 @@
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
-//! use tracing_subscriber::prelude::*;
+//! use tracing_subscriber::subscribe::CollectExt;
+//! use tracing_subscriber::util::SubscriberInitExt;
 //!
 //! let fmt_subscriber = fmt::subscriber()
 //!     .with_target(false);
@@ -410,7 +411,7 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
-pub fn subscriber<S>() -> Subscriber<S> {
+pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
 }
 
@@ -846,12 +847,12 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// For example:
     /// ```rust
     /// use tracing_subscriber::fmt::format;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::field::MakeExt;
     ///
     /// let formatter =
     ///     // Construct a custom formatter for `Debug` fields
     ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
-    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+    ///         // Use the `tracing_subscriber::MakeExt` trait to wrap the
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
@@ -982,7 +983,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// ```
     /// use tracing::Level;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::util::SubscriberInitExt;
     ///
     /// let builder = tracing_subscriber::fmt()
     ///      // Set a max level filter on the collector

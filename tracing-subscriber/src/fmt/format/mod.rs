@@ -9,7 +9,6 @@ use crate::{
 
 use std::{
     fmt::{self, Write},
-    iter,
     marker::PhantomData,
 };
 use tracing_core::{
@@ -56,14 +55,14 @@ use fmt::{Debug, Display};
 ///
 /// struct MyFormatter;
 ///
-/// impl<S, N> FormatEvent<S, N> for MyFormatter
+/// impl<C, N> FormatEvent<C, N> for MyFormatter
 /// where
-///     S: Collect + for<'a> LookupSpan<'a>,
+///     C: Collect + for<'a> LookupSpan<'a>,
 ///     N: for<'a> FormatFields<'a> + 'static,
 /// {
 ///     fn format_event(
 ///         &self,
-///         ctx: &FmtContext<'_, S, N>,
+///         ctx: &FmtContext<'_, C, N>,
 ///         writer: &mut dyn fmt::Write,
 ///         event: &Event<'_>,
 ///     ) -> fmt::Result {
@@ -116,29 +115,29 @@ use fmt::{Debug, Display};
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
-pub trait FormatEvent<S, N>
+pub trait FormatEvent<C, N>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<S, N> FormatEvent<S, N>
-    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+impl<C, N> FormatEvent<C, N>
+    for fn(ctx: &FmtContext<'_, C, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -531,15 +530,15 @@ impl<T> Format<Json, T> {
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Full, T>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -591,15 +590,15 @@ where
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Compact, T>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -650,10 +649,7 @@ where
             .and_then(|id| ctx.ctx.span(&id))
             .or_else(|| ctx.ctx.lookup_current());
 
-        let scope = span.into_iter().flat_map(|span| {
-            let parents = span.parents();
-            iter::once(span).chain(parents)
-        });
+        let scope = span.into_iter().flat_map(|span| span.scope());
         #[cfg(feature = "ansi")]
         let dimmed = if self.ansi {
             Style::new().dimmed()
@@ -820,25 +816,25 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
     }
 }
 
-struct FullCtx<'a, S, N>
+struct FullCtx<'a, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    ctx: &'a FmtContext<'a, S, N>,
+    ctx: &'a FmtContext<'a, C, N>,
     span: Option<&'a span::Id>,
     #[cfg(feature = "ansi")]
     ansi: bool,
 }
 
-impl<'a, S, N: 'a> FullCtx<'a, S, N>
+impl<'a, C, N: 'a> FullCtx<'a, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     #[cfg(feature = "ansi")]
     pub(crate) fn new(
-        ctx: &'a FmtContext<'a, S, N>,
+        ctx: &'a FmtContext<'a, C, N>,
         span: Option<&'a span::Id>,
         ansi: bool,
     ) -> Self {
@@ -846,7 +842,7 @@ where
     }
 
     #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
+    pub(crate) fn new(ctx: &'a FmtContext<'a, C, N>, span: Option<&'a span::Id>) -> Self {
         Self { ctx, span }
     }
 
@@ -862,9 +858,9 @@ where
     }
 }
 
-impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
+impl<'a, C, N> fmt::Display for FullCtx<'a, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -876,9 +872,7 @@ where
             .and_then(|id| self.ctx.ctx.span(&id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
+        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
 
         for span in scope {
             write!(f, "{}", bold.paint(span.metadata().name()))?;
@@ -1414,27 +1408,27 @@ pub(super) mod test {
     #[test]
     fn fmt_span_combinations() {
         let f = FmtSpan::NONE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::ACTIVE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::FULL;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::NEW | FmtSpan::CLOSE;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
     }
 }
