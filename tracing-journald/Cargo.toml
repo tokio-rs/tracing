@@ -16,4 +16,4 @@ keywords = ["tracing", "journald"]
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
