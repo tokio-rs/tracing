@@ -1,5 +1,5 @@
 use crate::subscriber::WithContext;
-use opentelemetry::Context;
+use opentelemetry::{trace::TraceContextExt, Context};
 
 /// Utility functions to allow tracing [`Span`]s to accept and return
 /// [OpenTelemetry] [`Context`]s.
@@ -42,6 +42,40 @@ pub trait OpenTelemetrySpanExt {
     /// ```
     fn set_parent(&self, cx: Context);
 
+    /// Associates `self` with a given OpenTelemetry trace, using the provided
+    /// followed span [`Context`].
+    ///
+    /// [`Context`]: opentelemetry::Context
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
+    /// use opentelemetry::sdk::propagation::TraceContextPropagator;
+    /// use tracing_opentelemetry::OpenTelemetrySpanExt;
+    /// use std::collections::HashMap;
+    /// use tracing::Span;
+    ///
+    /// // Example carrier, could be a framework header map that impls otel's `Extract`.
+    /// let mut carrier = HashMap::new();
+    ///
+    /// // Propagator can be swapped with b3 propagator, jaeger propagator, etc.
+    /// let propagator = TraceContextPropagator::new();
+    ///
+    /// // Extract otel parent context via the chosen propagator
+    /// let parent_context = propagator.extract(&carrier);
+    ///
+    /// // Generate a tracing span as usual
+    /// let app_root = tracing::span!(tracing::Level::INFO, "app_start");
+    ///
+    /// // Assign parent trace from external context
+    /// app_root.add_link(parent_context.clone());
+    ///
+    /// // Or if the current span has been created elsewhere:
+    /// Span::current().add_link(parent_context);
+    /// ```
+    fn add_link(&self, cx: Context);
+
     /// Extracts an OpenTelemetry [`Context`] from `self`.
     ///
     /// [`Context`]: opentelemetry::Context
@@ -80,6 +114,26 @@ impl OpenTelemetrySpanExt for tracing::Span {
                 get_context.with_context(collector, id, move |builder, _tracer| {
                     if let Some(cx) = cx.take() {
                         builder.parent_context = cx;
+                    }
+                });
+            }
+        });
+    }
+
+    fn add_link(&self, cx: Context) {
+        let mut cx = Some(cx);
+        self.with_collector(move |(id, collector)| {
+            if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                get_context.with_context(collector, id, move |builder, _tracer| {
+                    if let Some(cx) = cx.take() {
+                        let follows_context = cx.span().span_context().clone();
+                        let follows_link =
+                            opentelemetry::trace::Link::new(follows_context, Vec::new());
+                        if let Some(ref mut links) = builder.links {
+                            links.push(follows_link);
+                        } else {
+                            builder.links = Some(vec![follows_link]);
+                        }
                     }
                 });
             }
