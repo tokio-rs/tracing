@@ -714,7 +714,7 @@ impl Dispatch {
     /// [`new_span`]: super::collect::Collect::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.collector().clone_span(&id)
+        self.collector().clone_span(id)
     }
 
     /// Notifies the collector that a [span ID] has been dropped.
@@ -888,7 +888,7 @@ impl State {
     #[inline]
     fn enter(&self) -> Option<Entered<'_>> {
         if self.can_enter.replace(false) {
-            Some(Entered(&self))
+            Some(Entered(self))
         } else {
             None
         }

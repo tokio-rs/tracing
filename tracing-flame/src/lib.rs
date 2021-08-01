@@ -440,7 +440,7 @@ where
         }
 
         let samples = self.time_since_last_event();
-        let first = expect!(ctx.span(&id), "expected: span id exists in registry");
+        let first = expect!(ctx.span(id), "expected: span id exists in registry");
 
         let mut stack = String::new();
         if !self.config.threads_collapsed {
