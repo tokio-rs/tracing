@@ -143,7 +143,7 @@ impl Registry {
         });
         CloseGuard {
             id,
-            registry: &self,
+            registry: self,
             is_closing: false,
         }
     }
@@ -225,7 +225,7 @@ impl Collect for Registry {
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
         let span = self
-            .get(&id)
+            .get(id)
             .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
         // Like `std::sync::Arc`, adds to the ref count (on clone) don't require
         // a strong ordering; if we call` clone_span`, the reference count must
@@ -233,7 +233,11 @@ impl Collect for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert_ne!(refs, 0, "tried to clone a span ({:?}) that already closed", id);
+        assert_ne!(
+            refs, 0,
+            "tried to clone a span ({:?}) that already closed",
+            id
+        );
         id.clone()
     }
 
