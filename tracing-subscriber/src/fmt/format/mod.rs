@@ -648,10 +648,27 @@ where
             write!(writer, "{}:", meta.target())?;
         }
         ctx.format_fields(writer, event)?;
-        let span = ctx.ctx.current_span();
-        if let Some(id) = span.id() {
-            if let Some(span) = ctx.ctx.metadata(id) {
-                write!(writer, "{}", span.fields()).unwrap_or(());
+
+        let span = event
+            .parent()
+            .and_then(|id| ctx.ctx.span(id))
+            .or_else(|| ctx.ctx.lookup_current());
+
+        let scope = span.into_iter().flat_map(|span| span.scope());
+        #[cfg(feature = "ansi")]
+        let dimmed = if self.ansi {
+            Style::new().dimmed()
+        } else {
+            Style::new()
+        };
+        for span in scope {
+            let exts = span.extensions();
+            if let Some(fields) = exts.get::<FormattedFields<N>>() {
+                if !fields.is_empty() {
+                    #[cfg(feature = "ansi")]
+                    let fields = dimmed.paint(fields.as_str());
+                    write!(writer, " {}", fields)?;
+                }
             }
         }
         writeln!(writer)
