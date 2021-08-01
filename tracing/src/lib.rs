@@ -934,7 +934,10 @@ pub mod subscriber;
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::Callsite;
-    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+    use crate::stdlib::{
+        fmt,
+        sync::atomic::{AtomicUsize, Ordering},
+    };
     use crate::{subscriber::Interest, Metadata};
     use tracing_core::Once;
 
@@ -946,7 +949,6 @@ pub mod __macro_support {
     /// by the `tracing` macros, but it is not part of the stable versioned API.
     /// Breaking changes to this module may occur in small-numbered versions
     /// without warning.
-    #[derive(Debug)]
     pub struct MacroCallsite {
         interest: AtomicUsize,
         meta: &'static Metadata<'static>,
@@ -1043,6 +1045,16 @@ pub mod __macro_support {
         #[inline(always)]
         fn metadata(&self) -> &Metadata<'static> {
             self.meta
+        }
+    }
+
+    impl fmt::Debug for MacroCallsite {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("MacroCallsite")
+                .field("interest", &self.interest)
+                .field("meta", &self.meta)
+                .field("registration", &self.registration)
+                .finish()
         }
     }
 }
