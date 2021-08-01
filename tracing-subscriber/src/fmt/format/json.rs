@@ -134,7 +134,7 @@ where
         // We should probably rework this to use a `serde_json::Value` or something
         // similar in a JSON-specific layer, but I'd (david)
         // rather have a uglier fix now rather than shipping broken JSON.
-        match serde_json::from_str::<serde_json::Value>(&data) {
+        match serde_json::from_str::<serde_json::Value>(data) {
             Ok(serde_json::Value::Object(fields)) => {
                 for field in fields {
                     serializer.serialize_entry(&field.0, &field.1)?;
@@ -428,25 +428,25 @@ impl<'a> field::Visit for JsonVisitor<'a> {
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -486,7 +486,7 @@ impl<'a> io::Write for WriteAdaptor<'a> {
             std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
         self.fmt_write
-            .write_str(&s)
+            .write_str(s)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(s.as_bytes().len())
@@ -738,7 +738,7 @@ mod test {
             .lines()
             .last()
             .expect("expected at least one line to be written!");
-        match serde_json::from_str(&json) {
+        match serde_json::from_str(json) {
             Ok(v) => v,
             Err(e) => panic!(
                 "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",

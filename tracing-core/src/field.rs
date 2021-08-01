@@ -396,7 +396,7 @@ impl crate::sealed::Sealed for str {}
 
 impl Value for str {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_str(key, &self)
+        visitor.record_str(key, self)
     }
 }
 

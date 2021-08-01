@@ -646,7 +646,7 @@ where
 
         let span = event
             .parent()
-            .and_then(|id| ctx.ctx.span(&id))
+            .and_then(|id| ctx.ctx.span(id))
             .or_else(|| ctx.ctx.lookup_current());
 
         let scope = span.into_iter().flat_map(|span| span.scope());
@@ -869,7 +869,7 @@ where
 
         let span = self
             .span
-            .and_then(|id| self.ctx.ctx.span(&id))
+            .and_then(|id| self.ctx.ctx.span(id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
         let scope = span.into_iter().flat_map(|span| span.scope().from_root());

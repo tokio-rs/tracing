@@ -1092,7 +1092,7 @@ pub mod __macro_support {
 
         #[inline(always)]
         fn metadata(&self) -> &Metadata<'static> {
-            &self.meta
+            self.meta
         }
     }
 
