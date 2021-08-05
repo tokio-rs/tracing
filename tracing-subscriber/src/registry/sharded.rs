@@ -235,7 +235,11 @@ impl Subscriber for Registry {
     fn clone_span(&self, id: &span::Id) -> span::Id {
         let span = self
             .get(&id)
-            .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
+            .unwrap_or_else(|| panic!(
+                "tried to clone {:?}, but no span exists with that ID\n\
+                This may be caused by consuming a parent span (`parent: span`) rather than borrowing it (`parent: &span`).",
+                id,
+            ));
         // Like `std::sync::Arc`, adds to the ref count (on clone) don't require
         // a strong ordering; if we call` clone_span`, the reference count must
         // always at least 1. The only synchronization necessary is between
