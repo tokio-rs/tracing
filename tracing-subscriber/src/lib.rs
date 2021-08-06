@@ -103,7 +103,6 @@
 
 use tracing_core::span::Id;
 
-#[macro_use]
 macro_rules! try_lock {
     ($lock:expr) => {
         try_lock!($lock, else return)

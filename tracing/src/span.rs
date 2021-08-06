@@ -907,7 +907,7 @@ impl Span {
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(ref meta) = self.meta {
+            if let Some(meta) = self.meta {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
             }
         }}
@@ -924,7 +924,7 @@ impl Span {
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(ref _meta) = self.meta {
+            if let Some(_meta) = self.meta {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
             }
         }}
@@ -1065,7 +1065,7 @@ impl Span {
         Q: field::AsField,
         V: field::Value,
     {
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             if let Some(field) = field.as_field(meta) {
                 self.record_all(
                     &meta
@@ -1085,7 +1085,7 @@ impl Span {
             inner.record(&record);
         }
 
-        if let Some(ref _meta) = self.meta {
+        if let Some(_meta) = self.meta {
             if_log_enabled! { *_meta.level(), {
                 let target = if record.is_empty() {
                     LIFECYCLE_LOG_TARGET
@@ -1194,7 +1194,7 @@ impl Span {
     #[cfg(feature = "log")]
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             if level_to_log!(*meta.level()) <= log::max_level() {
                 let logger = log::logger();
                 let log_meta = log::Metadata::builder().level(level).target(target).build();
@@ -1257,7 +1257,7 @@ impl Hash for Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut span = f.debug_struct("Span");
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             span.field("name", &meta.name())
                 .field("level", &meta.level())
                 .field("target", &meta.target());
@@ -1327,7 +1327,7 @@ impl Drop for Span {
             subscriber.try_close(id.clone());
         }
 
-        if let Some(ref _meta) = self.meta {
+        if let Some(_meta) = self.meta {
             if_log_enabled! { crate::Level::TRACE, {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
@@ -1358,7 +1358,7 @@ impl Inner {
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
     fn follows_from(&self, from: &Id) {
-        self.subscriber.record_follows_from(&self.id, &from)
+        self.subscriber.record_follows_from(&self.id, from)
     }
 
     /// Returns the span's ID.
