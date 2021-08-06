@@ -636,7 +636,7 @@ where
         let fmt_ctx = {
             #[cfg(feature = "ansi")]
             {
-                FmtCtx::new(&ctx, event.parent(), self.ansi)
+                FmtCtx::new(ctx, event.parent(), self.ansi)
             }
             #[cfg(not(feature = "ansi"))]
             {
@@ -855,7 +855,7 @@ where
 
         let span = self
             .span
-            .and_then(|id| self.ctx.ctx.span(&id))
+            .and_then(|id| self.ctx.ctx.span(id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
         let scope = span.into_iter().flat_map(|span| span.scope().from_root());
@@ -925,7 +925,7 @@ where
 
         let span = self
             .span
-            .and_then(|id| self.ctx.ctx.span(&id))
+            .and_then(|id| self.ctx.ctx.span(id))
             .or_else(|| self.ctx.ctx.lookup_current());
 
         let scope = span.into_iter().flat_map(|span| span.scope().from_root());

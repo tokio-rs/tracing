@@ -124,7 +124,7 @@ pub trait LookupSpan<'a> {
     where
         Self: Sized,
     {
-        let data = self.span_data(&id)?;
+        let data = self.span_data(id)?;
         Some(SpanRef {
             registry: self,
             data,

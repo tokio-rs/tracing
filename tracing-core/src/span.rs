@@ -300,7 +300,7 @@ impl Current {
     /// Borrows the `Metadata` of the current span, if one exists and is known.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
         match self.inner {
-            CurrentInner::Current { ref metadata, .. } => Some(*metadata),
+            CurrentInner::Current { metadata, .. } => Some(metadata),
             _ => None,
         }
     }
