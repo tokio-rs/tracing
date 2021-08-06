@@ -761,7 +761,10 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            self.record_debug(field, &format_args!("{}, {}: {}", value, field, source))
+            self.record_debug(
+                field,
+                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
+            )
         } else {
             self.record_debug(field, &format_args!("{}", value))
         }
@@ -803,6 +806,21 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
             .field("is_empty", &self.is_empty)
             .field("result", &self.result)
             .finish()
+    }
+}
+
+/// Renders an error into a list of sources, *including* the error
+struct ErrorSourceList<'a>(&'a (dyn std::error::Error + 'static));
+
+impl<'a> Display for ErrorSourceList<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut list = f.debug_list();
+        let mut curr = Some(self.0);
+        while let Some(curr_err) = curr {
+            list.entry(&format_args!("{}", curr_err));
+            curr = curr_err.source();
+        }
+        list.finish()
     }
 }
 
