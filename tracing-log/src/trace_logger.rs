@@ -252,7 +252,7 @@ impl Subscriber for TraceLogger {
         let parent = self.current_id();
         if self.settings.parent_fields {
             let mut next_parent = parent.as_ref();
-            while let Some(ref parent) = next_parent.and_then(|p| spans.get(&p)) {
+            while let Some(parent) = next_parent.and_then(|p| spans.get(p)) {
                 write!(&mut fields, "{}", parent.fields).expect("write to string cannot fail");
                 next_parent = parent.parent.as_ref();
             }
@@ -298,7 +298,7 @@ impl Subscriber for TraceLogger {
                     let current_id = self.current_id();
                     let current_fields = current_id
                         .as_ref()
-                        .and_then(|id| spans.get(&id))
+                        .and_then(|id| spans.get(id))
                         .map(|span| span.fields.as_ref())
                         .unwrap_or("");
                     if self.settings.log_ids {

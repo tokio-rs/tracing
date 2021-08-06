@@ -1000,7 +1000,7 @@ where
     /// [`Context::enabled`]: #method.enabled
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        if let Some(ref subscriber) = self.subscriber {
+        if let Some(subscriber) = self.subscriber {
             subscriber.event(event);
         }
     }
@@ -1159,7 +1159,7 @@ where
         let subscriber = self.subscriber.as_ref()?;
         let current = subscriber.current_span();
         let id = current.id()?;
-        let span = subscriber.span(&id);
+        let span = subscriber.span(id);
         debug_assert!(
             span.is_some(),
             "the subscriber should have data for the current span ({:?})!",

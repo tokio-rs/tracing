@@ -636,7 +636,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_never());
     }
 
@@ -654,7 +654,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_always());
     }
 
@@ -673,7 +673,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_always());
     }
 
@@ -692,7 +692,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_never());
     }
 

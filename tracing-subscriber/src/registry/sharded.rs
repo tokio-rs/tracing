@@ -151,7 +151,7 @@ impl Registry {
         });
         CloseGuard {
             id,
-            registry: &self,
+            registry: self,
             is_closing: false,
         }
     }
@@ -234,7 +234,7 @@ impl Subscriber for Registry {
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
         let span = self
-            .get(&id)
+            .get(id)
             .unwrap_or_else(|| panic!(
                 "tried to clone {:?}, but no span exists with that ID\n\
                 This may be caused by consuming a parent span (`parent: span`) rather than borrowing it (`parent: &span`).",
