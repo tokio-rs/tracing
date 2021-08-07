@@ -22,7 +22,7 @@ edition = "2018"
 default = ["tracing-log"]
 
 [dependencies]
-opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
@@ -31,7 +31,7 @@ tracing-log = { path = "../tracing-log", version = "0.2", default-features = fal
 [dev-dependencies]
 async-trait = "0.1"
 criterion = { version = "0.3", default_features = false }
-opentelemetry-jaeger = "0.14"
+opentelemetry-jaeger = "0.15"
 
 [lib]
 bench = false
