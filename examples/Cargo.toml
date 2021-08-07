@@ -46,13 +46,13 @@ ansi_term = "0.12"
 humantime = "2.0"
 log = "0.4"
 
-# infero example
+# inferno example
 inferno = "0.10.0"
 tempdir = "0.3.7"
 
 # opentelemetry example
-opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.14"
+opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.15"
 
 # fmt examples
 snafu = "0.6.10"
