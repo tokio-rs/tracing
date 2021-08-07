@@ -115,7 +115,7 @@ where
         };
 
         if self.display_level {
-            write!(writer, "{}", super::FmtLevel::new(meta.level(), self.ansi))?;
+            write!(writer, "{} ", super::FmtLevel::new(meta.level(), self.ansi))?;
         }
 
         if self.display_target {
