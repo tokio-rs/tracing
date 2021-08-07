@@ -2,8 +2,7 @@
 use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    fmt::fmt_subscriber::FmtContext,
-    fmt::fmt_subscriber::FormattedFields,
+    fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
 
@@ -487,6 +486,17 @@ impl<F, T> Format<F, T> {
         self.timer.format_time(writer)?;
         writer.write_char(' ')
     }
+
+    fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
+    }
 }
 
 #[cfg(feature = "json")]
@@ -570,21 +580,32 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let full_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FullCtx::new(ctx, event.parent(), self.ansi)
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FullCtx::new(ctx, event.parent())
-            }
-        };
+        if let Some(scope) = ctx.ctx.event_scope(event) {
+            let bold = self.bold();
+            let mut seen = false;
 
-        write!(writer, "{}", full_ctx)?;
+            for span in scope {
+                write!(writer, "{}", bold.paint(span.metadata().name()))?;
+                seen = true;
+
+                let ext = span.extensions();
+                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+                    }
+                }
+                writer.write_char(':')?;
+            }
+
+            if seen {
+                writer.write_char(' ')?;
+            }
+        }
+
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
+
         ctx.format_fields(writer, event)?;
         writeln!(writer)
     }
@@ -644,19 +665,13 @@ where
 
         ctx.format_fields(writer, event)?;
 
-        let span = event
-            .parent()
-            .and_then(|id| ctx.ctx.span(id))
-            .or_else(|| ctx.ctx.lookup_current());
-
-        let scope = span.into_iter().flat_map(|span| span.scope());
         #[cfg(feature = "ansi")]
         let dimmed = if self.ansi {
             Style::new().dimmed()
         } else {
             Style::new()
         };
-        for span in scope {
+        for span in ctx.ctx.event_scope(event).into_iter().flatten() {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
@@ -815,86 +830,6 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
             .finish()
     }
 }
-
-struct FullCtx<'a, C, N>
-where
-    C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    ctx: &'a FmtContext<'a, C, N>,
-    span: Option<&'a span::Id>,
-    #[cfg(feature = "ansi")]
-    ansi: bool,
-}
-
-impl<'a, C, N: 'a> FullCtx<'a, C, N>
-where
-    C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    #[cfg(feature = "ansi")]
-    pub(crate) fn new(
-        ctx: &'a FmtContext<'a, C, N>,
-        span: Option<&'a span::Id>,
-        ansi: bool,
-    ) -> Self {
-        Self { ctx, span, ansi }
-    }
-
-    #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, C, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
-    }
-
-    fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi {
-                return Style::new().bold();
-            }
-        }
-
-        Style::new()
-    }
-}
-
-impl<'a, C, N> fmt::Display for FullCtx<'a, C, N>
-where
-    C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bold = self.bold();
-        let mut seen = false;
-
-        let span = self
-            .span
-            .and_then(|id| self.ctx.ctx.span(id))
-            .or_else(|| self.ctx.ctx.lookup_current());
-
-        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
-
-        for span in scope {
-            write!(f, "{}", bold.paint(span.metadata().name()))?;
-            seen = true;
-
-            let ext = span.extensions();
-            let fields = &ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
-                write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
-            }
-            f.write_char(':')?;
-        }
-
-        if seen {
-            f.write_char(' ')?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(not(feature = "ansi"))]
 struct Style;
 
