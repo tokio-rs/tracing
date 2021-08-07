@@ -4,6 +4,7 @@ use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
+    registry::Scope,
 };
 
 use std::{
@@ -584,7 +585,7 @@ where
             let bold = self.bold();
             let mut seen = false;
 
-            for span in scope {
+            for span in scope.from_root() {
                 write!(writer, "{}", bold.paint(span.metadata().name()))?;
                 seen = true;
 
@@ -671,7 +672,13 @@ where
         } else {
             Style::new()
         };
-        for span in ctx.ctx.event_scope(event).into_iter().flatten() {
+        for span in ctx
+            .ctx
+            .event_scope(event)
+            .into_iter()
+            .map(Scope::from_root)
+            .flatten()
+        {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
@@ -928,11 +935,11 @@ impl LevelNames for Full {
     const ERROR_STR: &'static str = "ERROR";
 }
 impl LevelNames for Compact {
-    const TRACE_STR: &'static str = "T";
-    const DEBUG_STR: &'static str = "D";
-    const INFO_STR: &'static str = "I";
-    const WARN_STR: &'static str = "W";
-    const ERROR_STR: &'static str = "!";
+    const TRACE_STR: &'static str = ".";
+    const DEBUG_STR: &'static str = ":";
+    const INFO_STR: &'static str = "i";
+    const WARN_STR: &'static str = "!";
+    const ERROR_STR: &'static str = "X";
 }
 
 struct FmtLevel<F: ?Sized> {
