@@ -73,14 +73,14 @@ impl PreSampledTracer for Tracer {
 
         // Gather trace state
         let (no_parent, trace_id, remote_parent, parent_trace_flags) =
-            current_trace_state(&builder, &parent_cx, &provider);
+            current_trace_state(builder, parent_cx, &provider);
 
         // Sample or defer to existing sampling decisions
         let (flags, trace_state) = if let Some(result) = &builder.sampling_result {
             process_sampling_result(result, parent_trace_flags)
         } else if no_parent || remote_parent {
             builder.sampling_result = Some(provider.config().sampler.should_sample(
-                Some(&parent_cx),
+                Some(parent_cx),
                 trace_id,
                 &builder.name,
                 builder.span_kind.as_ref().unwrap_or(&SpanKind::Internal),

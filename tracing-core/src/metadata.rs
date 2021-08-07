@@ -221,7 +221,7 @@ pub struct Kind(KindInner);
 /// [`Collect::max_level_hint`]: crate::collect::Collect::max_level_hint
 /// [collector]: crate::collect::Collect
 /// [envfilter]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity [`Level`].
@@ -238,7 +238,7 @@ pub struct Level(LevelInner);
 ///
 /// [`OFF`]: LevelFilter::OFF
 #[repr(transparent)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
