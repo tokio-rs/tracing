@@ -645,7 +645,7 @@ where
         };
         write!(writer, "{}", fmt_ctx)?;
         if self.display_target {
-            write!(writer, "{}:", meta.target())?;
+            write!(writer, "{}: ", meta.target())?;
         }
         ctx.format_fields(writer, event)?;
         let span = ctx.ctx.current_span();
