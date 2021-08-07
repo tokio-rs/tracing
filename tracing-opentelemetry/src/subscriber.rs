@@ -1,5 +1,8 @@
 use crate::PreSampledTracer;
-use opentelemetry::{trace as otel, trace::TraceContextExt, Context as OtelContext, Key, KeyValue};
+use opentelemetry::{
+    trace::{self as otel, noop, TraceContextExt},
+    Context as OtelContext, Key, KeyValue,
+};
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
@@ -29,12 +32,12 @@ pub struct OpenTelemetrySubscriber<C, T> {
     _registry: marker::PhantomData<C>,
 }
 
-impl<C> Default for OpenTelemetrySubscriber<C, otel::NoopTracer>
+impl<C> Default for OpenTelemetrySubscriber<C, noop::NoopTracer>
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
-        OpenTelemetrySubscriber::new(otel::NoopTracer::new())
+        OpenTelemetrySubscriber::new(noop::NoopTracer::new())
     }
 }
 
@@ -53,7 +56,7 @@ where
 /// let subscriber = Registry::default().with(tracing_opentelemetry::subscriber());
 /// # drop(subscriber);
 /// ```
-pub fn subscriber<C>() -> OpenTelemetrySubscriber<C, otel::NoopTracer>
+pub fn subscriber<C>() -> OpenTelemetrySubscriber<C, noop::NoopTracer>
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
@@ -603,7 +606,7 @@ impl Timings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use opentelemetry::trace::{SpanKind, TraceFlags};
+    use opentelemetry::trace::{noop, SpanKind, TraceFlags};
     use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
@@ -612,9 +615,9 @@ mod tests {
     #[derive(Debug, Clone)]
     struct TestTracer(Arc<Mutex<Option<otel::SpanBuilder>>>);
     impl otel::Tracer for TestTracer {
-        type Span = otel::NoopSpan;
+        type Span = noop::NoopSpan;
         fn invalid(&self) -> Self::Span {
-            otel::NoopSpan::new()
+            noop::NoopSpan::new()
         }
         fn start_with_context<T>(&self, _name: T, _context: OtelContext) -> Self::Span
         where
