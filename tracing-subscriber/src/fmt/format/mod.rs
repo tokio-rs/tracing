@@ -647,13 +647,15 @@ where
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
+
         ctx.format_fields(writer, event)?;
-        let span = ctx.ctx.current_span();
-        if let Some(id) = span.id() {
-            if let Some(span) = ctx.ctx.metadata(id) {
-                write!(writer, "{}", span.fields()).unwrap_or(());
+
+        if let Some(current_span) = ctx.lookup_current() {
+            if let Some(fields) = current_span.extensions().get::<FormattedFields<N>>() {
+                write!(writer, " {}", fields)?;
             }
         }
+
         writeln!(writer)
     }
 }
