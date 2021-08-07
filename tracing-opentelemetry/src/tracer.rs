@@ -2,7 +2,7 @@ use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, Tracer
 use opentelemetry::{
     trace as otel,
     trace::{
-        SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
+        noop, SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
         TraceState,
     },
     Context as OtelContext,
@@ -48,7 +48,7 @@ pub trait PreSampledTracer {
     fn new_span_id(&self) -> otel::SpanId;
 }
 
-impl PreSampledTracer for otel::NoopTracer {
+impl PreSampledTracer for noop::NoopTracer {
     fn sampled_context(&self, builder: &mut otel::SpanBuilder) -> OtelContext {
         builder.parent_context.clone()
     }
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn assigns_default_trace_id_if_missing() {
         let provider = TracerProvider::default();
-        let tracer = provider.get_tracer("test", None);
+        let tracer = provider.tracer("test", None);
         let mut builder = SpanBuilder::from_name("empty".to_string());
         builder.span_id = Some(SpanId::from_u64(1));
         builder.trace_id = None;
@@ -211,7 +211,7 @@ mod tests {
             let provider = TracerProvider::builder()
                 .with_config(config().with_sampler(sampler))
                 .build();
-            let tracer = provider.get_tracer("test", None);
+            let tracer = provider.tracer("test", None);
             let mut builder = SpanBuilder::from_name("parent".to_string());
             builder.parent_context = parent_cx;
             builder.sampling_result = previous_sampling_result;
