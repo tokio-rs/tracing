@@ -449,11 +449,11 @@ Tracing.
 
 #### Talks
 
-* [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+* [Bay Area Rust Meetup talk and Q&A][bay-rust-2019-03], March 2019
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 
-[bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
+[bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
 [rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
