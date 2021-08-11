@@ -13,7 +13,7 @@ fn many_children(c: &mut Criterion) {
 
     group.bench_function("spec_baseline", |b| {
         let provider = TracerProvider::default();
-        let tracer = provider.get_tracer("bench", None);
+        let tracer = provider.tracer("bench", None);
         b.iter(|| {
             fn dummy(tracer: &Tracer, cx: &Context) {
                 for _ in 0..99 {
@@ -41,7 +41,7 @@ fn many_children(c: &mut Criterion) {
 
     {
         let provider = TracerProvider::default();
-        let tracer = provider.get_tracer("bench", None);
+        let tracer = provider.tracer("bench", None);
         let otel_layer = tracing_opentelemetry::layer()
             .with_tracer(tracer)
             .with_tracked_inactivity(false);
