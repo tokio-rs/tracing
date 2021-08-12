@@ -300,7 +300,7 @@ use crate::{
     filter::LevelFilter,
     registry::{self, LookupSpan, Registry},
     reload, subscribe,
-    subscribe::{CollectExt, Layered, Subscribe},
+    subscribe::{Layered, Subscribe},
 };
 
 #[doc(inline)]

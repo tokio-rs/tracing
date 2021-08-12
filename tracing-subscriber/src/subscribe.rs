@@ -8,8 +8,8 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
+use crate::registry::{self, LookupSpan, SpanRef};
+use std::{any::TypeId, ptr::NonNull};
 
 /// A composable handler for `tracing` events.
 ///
@@ -206,7 +206,9 @@ where
     C: Collect,
     Self: 'static,
 {
-    fn register(&mut self, collector: &mut C) {}
+    fn register(&mut self, collector: &mut C) {
+        let _ = collector;
+    }
 
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite, similarly

@@ -841,7 +841,6 @@ mod test {
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
-        subscribe::Subscribe as _,
         test::{MockMakeWriter, MockWriter},
         time,
     };

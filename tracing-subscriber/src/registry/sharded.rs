@@ -10,7 +10,7 @@ use crate::{
     sync::RwLock,
 };
 use std::{
-    cell::{Cell, RefCell},
+    cell::RefCell,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -98,33 +98,6 @@ fn idx_to_id(idx: usize) -> Id {
 #[inline]
 fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
-}
-
-/// A guard that tracks how many [`Registry`]-backed `Subscriber`s have
-/// processed an `on_close` event.
-///
-/// This is needed to enable a [`Registry`]-backed Subscriber to access span
-/// data after the subscriber has received the `on_close` callback.
-///
-/// Once all subscribers have processed this event, the [`Registry`] knows
-/// that is able to safely remove the span tracked by `id`. `CloseGuard`
-/// accomplishes this through a two-step process:
-/// 1. Whenever a [`Registry`]-backed `Subscriber::on_close` method is
-///    called, `Registry::start_close` is closed.
-///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
-///    by 1 and returns a `CloseGuard`.
-/// 2. The `CloseGuard` is dropped at the end of `Subscribe::on_close`. On
-///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
-///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
-///    `id` from the registry, as all subscribers that might have seen the
-///    `on_close` notification have processed it. If `CLOSE_COUNT` is
-///    greater than 0, `CloseGuard` decrements the counter by one and
-///    _does not_ remove the span from the [`Registry`].
-///
-pub(crate) struct CloseGuard<'a> {
-    id: Id,
-    registry: &'a SpanStore,
-    is_closing: bool,
 }
 
 impl SpanStore {

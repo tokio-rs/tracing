@@ -404,7 +404,6 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        prelude::*,
         registry::LookupSpan,
         subscribe::{Context, Subscribe},
     };

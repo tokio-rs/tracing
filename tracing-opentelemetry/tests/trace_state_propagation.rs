@@ -13,7 +13,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tracing::Collect;
 use tracing_opentelemetry::{subscriber, OpenTelemetrySpanExt};
-use tracing_subscriber::prelude::*;
 
 #[test]
 fn trace_with_active_otel_context() {
