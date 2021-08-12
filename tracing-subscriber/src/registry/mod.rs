@@ -123,6 +123,14 @@ pub trait LookupSpan<'a> {
             data,
         })
     }
+
+    fn parent_of(&'a self, data: &Self::Data) -> Option<Self::Data>
+    where
+        Self: Sized,
+    {
+        let id = data.parent()?;
+        self.span_data(id)
+    }
 }
 
 /// A stored representation of data associated with a span.
@@ -288,8 +296,7 @@ where
     /// Returns a `SpanRef` describing this span's parent, or `None` if this
     /// span is the root of its trace tree.
     pub fn parent(&self) -> Option<Self> {
-        let id = self.data.parent()?;
-        let data = self.registry.span_data(id)?;
+        let data = self.registry.parent_of(&self.data)?;
         Some(Self {
             registry: self.registry,
             data,

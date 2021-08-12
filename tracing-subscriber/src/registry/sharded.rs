@@ -1,4 +1,7 @@
-use sharded_slab::{pool::Ref, Clear, Pool};
+use sharded_slab::{
+    pool::{OwnedRef, Ref},
+    Clear, Pool,
+};
 use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
@@ -11,7 +14,10 @@ use crate::{
 };
 use std::{
     cell::{Cell, RefCell},
-    sync::atomic::{fence, AtomicUsize, Ordering},
+    sync::{
+        atomic::{fence, AtomicUsize, Ordering},
+        Arc,
+    },
 };
 use tracing_core::{
     dispatch::{self, Dispatch},
@@ -43,7 +49,7 @@ cfg_feature!("registry", {
     /// [extensions]: super::Extensions
     #[derive(Debug)]
     pub struct Registry {
-        spans: Pool<DataInner>,
+        spans: Arc<Pool<DataInner>>,
         current_spans: ThreadLocal<RefCell<SpanStack>>,
     }
 
@@ -59,7 +65,7 @@ cfg_feature!("registry", {
     #[derive(Debug)]
     pub struct Data<'a> {
         /// Immutable reference to the pooled `DataInner` entry.
-        inner: Ref<'a, DataInner>,
+        inner: RefKind<'a>,
     }
 });
 
@@ -71,12 +77,21 @@ cfg_feature!("registry", {
 /// implementations for this type are load-bearing.
 #[derive(Debug)]
 struct DataInner {
+    id: Id,
     metadata: &'static Metadata<'static>,
-    parent: Option<Id>,
+    parent: Option<OwnedRef<DataInner>>,
     ref_count: AtomicUsize,
     // The span's `Extensions` typemap. Allocations for the `HashMap` backing
     // this are pooled and reused in place.
     pub(crate) extensions: RwLock<ExtensionsInner>,
+}
+
+// TODO(eliza): we could get rid of this if `sharded-slab` exposed an
+// `&'a OwnedRef<T>` -> Ref<'a, T>` conversion?
+#[derive(Debug)]
+enum RefKind<'a> {
+    Ref(Ref<'a, DataInner>),
+    OwnedRef(OwnedRef<DataInner>),
 }
 
 // === impl Registry ===
@@ -84,7 +99,7 @@ struct DataInner {
 impl Default for Registry {
     fn default() -> Self {
         Self {
-            spans: Pool::new(),
+            spans: Arc::new(Pool::new()),
             current_spans: ThreadLocal::new(),
         }
     }
@@ -132,6 +147,13 @@ impl Registry {
         self.spans.get(id_to_idx(id))
     }
 
+    #[inline]
+    fn get_parent(&self, id: &Id) -> Option<OwnedRef<DataInner>> {
+        let span = self.spans.clone().get_owned(id_to_idx(id))?;
+        span.inc_refs();
+        Some(span)
+    }
+
     /// Returns a guard which tracks how many `Subscriber`s have
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
@@ -171,26 +193,29 @@ impl Collect for Registry {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
-            self.current_span().id().map(|id| self.clone_span(id))
+            self.current_span().id().and_then(|id| self.get_parent(id))
         } else {
-            attrs.parent().map(|id| self.clone_span(id))
+            attrs.parent().and_then(|id| self.get_parent(id))
         };
 
-        let id = self
+        // Check out a `DataInner` entry from the pool for the new span. If
+        // there are free entries already allocated in the pool, this will
+        // preferentially reuse one; otherwise, a new `DataInner` is
+        // allocated and added to the pool.
+        let mut data = self
             .spans
-            // Check out a `DataInner` entry from the pool for the new span. If
-            // there are free entries already allocated in the pool, this will
-            // preferentially reuse one; otherwise, a new `DataInner` is
-            // allocated and added to the pool.
-            .create_with(|data| {
-                data.metadata = attrs.metadata();
-                data.parent = parent;
-                let refs = data.ref_count.get_mut();
-                debug_assert_eq!(*refs, 0);
-                *refs = 1;
-            })
+            .create()
             .expect("Unable to allocate another span");
-        idx_to_id(id)
+        let id = idx_to_id(data.key());
+        // Set span data
+        data.metadata = attrs.metadata();
+        data.parent = parent;
+        let refs = data.ref_count.get_mut();
+        debug_assert_eq!(*refs, 0);
+        *refs = 1;
+        data.id = id.clone();
+        // Return the allocated ID
+        id
     }
 
     /// This is intentionally not implemented, as recording fields
@@ -224,16 +249,9 @@ impl Collect for Registry {
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
-        let span = self
-            .get(&id)
-            .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
-        // Like `std::sync::Arc`, adds to the ref count (on clone) don't require
-        // a strong ordering; if we call` clone_span`, the reference count must
-        // always at least 1. The only synchronization necessary is between
-        // calls to `try_close`: we have to ensure that all threads have
-        // dropped their refs to the span before the span is closed.
-        let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert_ne!(refs, 0, "tried to clone a span ({:?}) that already closed", id);
+        self.get(&id)
+            .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id))
+            .inc_refs();
         id.clone()
     }
 
@@ -281,7 +299,16 @@ impl<'a> LookupSpan<'a> for Registry {
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         let inner = self.get(id)?;
-        Some(Data { inner })
+        Some(Data {
+            inner: RefKind::Ref(inner),
+        })
+    }
+
+    fn parent_of(&'a self, span: &Data<'a>) -> Option<Self::Data> {
+        let parent = span.inner().parent.as_ref()?;
+        Some(Data {
+            inner: RefKind::OwnedRef(parent.clone()),
+        })
     }
 }
 
@@ -322,26 +349,37 @@ impl<'a> Drop for CloseGuard<'a> {
 
 impl<'a> SpanData<'a> for Data<'a> {
     fn id(&self) -> Id {
-        idx_to_id(self.inner.key())
+        idx_to_id(match self.inner {
+            RefKind::Ref(ref x) => x.key(),
+            RefKind::OwnedRef(ref x) => x.key(),
+        })
     }
 
     fn metadata(&self) -> &'static Metadata<'static> {
-        (*self).inner.metadata
+        (*self).inner().metadata
     }
 
     fn parent(&self) -> Option<&Id> {
-        self.inner.parent.as_ref()
+        self.inner().parent.as_ref().map(|parent| &parent.id)
     }
 
     fn extensions(&self) -> Extensions<'_> {
-        Extensions::new(self.inner.extensions.read().expect("Mutex poisoned"))
+        Extensions::new(self.inner().extensions.read().expect("Mutex poisoned"))
     }
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
-        ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
+        ExtensionsMut::new(self.inner().extensions.write().expect("Mutex poisoned"))
     }
 }
 
+impl<'a> Data<'a> {
+    fn inner(&self) -> &DataInner {
+        match self.inner {
+            RefKind::Ref(ref x) => x,
+            RefKind::OwnedRef(x) => x,
+        }
+    }
+}
 // === impl DataInner ===
 
 impl Default for DataInner {
@@ -380,6 +418,7 @@ impl Default for DataInner {
         };
 
         Self {
+            id: Id::from_u64(u64::MAX),
             metadata: &NULL_METADATA,
             parent: None,
             ref_count: AtomicUsize::new(0),
@@ -410,7 +449,7 @@ impl Clear for DataInner {
             // itself directly, the subscribers wouldn't see the close notification.
             let subscriber = dispatch::get_default(Dispatch::clone);
             if let Some(parent) = self.parent.take() {
-                let _ = subscriber.try_close(parent);
+                let _ = subscriber.try_close(parent.id.clone());
             }
         }
 
@@ -426,6 +465,22 @@ impl Clear for DataInner {
     }
 }
 
+impl DataInner {
+    #[inline]
+    fn inc_refs(&self) {
+        // Like `std::sync::Arc`, adds to the ref count (on clone) don't require
+        // a strong ordering; if we call` clone_span`, the reference count must
+        // always at least 1. The only synchronization necessary is between
+        // calls to `try_close`: we have to ensure that all threads have
+        // dropped their refs to the span before the span is closed.
+        let refs = self.ref_count.fetch_add(1, Ordering::Relaxed);
+        assert_ne!(
+            refs, 0,
+            "tried to clone a span ({:?}) that already closed",
+            self
+        );
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::Registry;
