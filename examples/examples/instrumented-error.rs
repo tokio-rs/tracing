@@ -4,7 +4,6 @@
 use std::error::Error;
 use std::fmt;
 use tracing_error::{prelude::*, ErrorSubscriber};
-use tracing_subscriber::prelude::*;
 
 #[derive(Debug)]
 struct FooError {

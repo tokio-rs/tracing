@@ -1,6 +1,4 @@
 use tracing_futures::{Instrument, WithCollector};
-use tracing_subscriber::prelude::*;
-
 #[tokio::test]
 async fn future_with_subscriber() {
     let _default = tracing_subscriber::registry().init();

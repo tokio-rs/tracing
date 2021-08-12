@@ -11,7 +11,6 @@
 ///
 use clap::{App, Arg};
 use tracing::info;
-use tracing_subscriber::util::SubscriberInitExt;
 
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;

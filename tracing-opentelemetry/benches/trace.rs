@@ -6,7 +6,6 @@ use opentelemetry::{
 };
 use std::time::SystemTime;
 use tracing::trace_span;
-use tracing_subscriber::prelude::*;
 
 fn many_children(c: &mut Criterion) {
     let mut group = c.benchmark_group("otel_many_children");

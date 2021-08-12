@@ -6,7 +6,6 @@
 use std::error::Error;
 use std::fmt;
 use tracing_error::{prelude::*, ErrorSubscriber, TracedError};
-use tracing_subscriber::prelude::*;
 
 fn main() {
     tracing_subscriber::registry()

@@ -549,6 +549,7 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
     F: Subscribe<registry::SpanStore> + Send + Sync + 'static,
     Registry<Layered<F, Subscriber<N, E, W>>>: Collect + Send + Sync + 'static,
+    tracing_core::Dispatch: From<Collector<N, E, F, W>>,
 {
     /// Finish the builder, returning a new `FmtCollector`.
     pub fn finish(self) -> Collector<N, E, F, W> {
@@ -567,11 +568,10 @@ where
     /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        // use crate::util::SubscriberInitExt;
-        // self.finish().try_init()?;
+        use crate::util::SubscriberInitExt;
+        self.finish().try_init()?;
 
-        // Ok(())
-        todo!("eliza do this")
+        Ok(())
     }
 
     /// Install this collector as the global default.

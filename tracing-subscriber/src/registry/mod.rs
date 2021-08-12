@@ -59,8 +59,9 @@
 //! [ctx]: crate::subscribe::Context
 //! [lookup]: crate::subscribe::Context::span()
 use crate::subscribe::{self, Layered, Subscribe};
-use std::fmt::Debug;
+use std::{any::TypeId, fmt::Debug, ptr::NonNull};
 use tracing_core::{
+    dispatch,
     field::FieldSet,
     span::{self, Id},
     Collect, Metadata,
@@ -128,6 +129,15 @@ pub trait LookupSpan<'a> {
         })
     }
 
+    /// Called when all [subscribers] attached to a [`Registry`] have completed
+    /// their [`Subscribe::on_close`] callbacks for the span with the given
+    /// [`Id`].
+    ///
+    /// If data stored for that span was kept for the duration of the `on_close`
+    /// callbacks, the data may now be removed.
+    ///
+    /// This method will only be called _after_ the `LookupSpan`'s
+    /// [`Collect::try_close`] method returned `true` for that span.
     fn finish_close(&self, id: Id) {
         drop(id)
     }
@@ -513,8 +523,8 @@ where
 
 impl<S, T> Registry<S, T>
 where
-    S: Subscribe<T> + 'static,
-    T: Collect + for<'a> LookupSpan<'a> + 'static,
+    S: Subscribe<T>,
+    T: Collect + for<'a> LookupSpan<'a>,
 {
     pub fn with<S2>(mut self, mut subscriber: S2) -> Registry<Layered<S2, S>, T>
     where
@@ -530,6 +540,82 @@ where
     #[inline]
     fn ctx(&self) -> subscribe::Context<'_, T> {
         subscribe::Context::new(&self.spans)
+    }
+}
+
+impl<S, T> Registry<S, T>
+where
+    S: Subscribe<T> + Send + Sync + 'static,
+    T: Collect + for<'a> LookupSpan<'a> + Send + Sync + 'static,
+{
+    /// Sets `self` as the [default subscriber] in the current scope, returning a
+    /// guard that will unset it when dropped.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also initialize
+    /// a [`log`] compatibility subscriber. This allows the subscriber to consume
+    /// `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// [default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    pub fn set_default(self) -> dispatch::DefaultGuard {
+        #[cfg(feature = "tracing-log")]
+        let _ = tracing_log::LogTracer::init();
+
+        dispatch::set_default(&dispatch::Dispatch::from(self))
+    }
+
+    /// Attempts to set `self` as the [global default subscriber] in the current
+    /// scope, returning an error if one is already set.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also attempt to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
+    /// consume `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// This method returns an error if a global default subscriber has already
+    /// been set, or if a `log` logger has already been set (when the
+    /// "tracing-log" feature is enabled).
+    ///
+    /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    pub fn try_init(self) -> Result<(), crate::util::TryInitError> {
+        #[cfg(feature = "tracing-log")]
+        use tracing_log::AsLog;
+
+        use crate::util::TryInitError;
+
+        dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
+
+        // Since we are setting the global default subscriber, we can
+        // opportunistically go ahead and set its global max level hint as
+        // the max level for the `log` crate as well. This should make
+        // skipping `log` diagnostics much faster.
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::builder()
+            // Note that we must call this *after* setting the global default
+            // subscriber, so that we get its max level hint.
+            .with_max_level(tracing_core::LevelFilter::current().as_log())
+            .init()
+            .map_err(TryInitError::new)?;
+
+        Ok(())
+    }
+
+    /// Attempts to set `self` as the [global default subscriber] in the current
+    /// scope, panicking if this fails.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also attempt to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
+    /// consume `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// This method panics if a global default subscriber has already been set,
+    /// or if a `log` logger has already been set (when the "tracing-log"
+    /// feature is enabled).
+    ///
+    /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    pub fn init(self) {
+        self.try_init()
+            .expect("failed to set global default subscriber")
     }
 }
 
@@ -617,9 +703,13 @@ where
         self.spans.current_span()
     }
 
-    // unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
-    //     todo!()
-    // }
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        match id {
+            _ if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast::<()>()),
+            _ if id == TypeId::of::<T>() => Some(NonNull::from(&self.spans).cast::<()>()),
+            _ => self.subscribers.downcast_raw(id),
+        }
+    }
 }
 
 impl Default for Registry {

@@ -98,7 +98,7 @@ pub struct TryInitError {
 // ==== impl TryInitError ====
 
 impl TryInitError {
-    fn new(e: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
+    pub(crate) fn new(e: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
         Self { inner: e.into() }
     }
 }

@@ -874,9 +874,7 @@ mod test {
         let fmt = fmt::Subscriber::default().event_format(f);
         let collect = Registry::default().with(fmt);
         let dispatch = Dispatch::new(collect);
-        assert!(dispatch
-            .downcast_ref::<fmt::Subscriber<Registry>>()
-            .is_some());
+        assert!(dispatch.downcast_ref::<fmt::Subscriber>().is_some());
     }
 
     #[test]
