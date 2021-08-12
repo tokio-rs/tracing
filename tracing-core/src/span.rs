@@ -61,15 +61,12 @@ enum CurrentInner {
 impl Id {
     /// Constructs a new span ID from the given `u64`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: Span IDs must be greater than zero.</pre></div>
     ///
     /// # Panics
-    /// - If the provided `u64` is 0
+    /// - If the provided `u64` is 0.
     pub fn from_u64(u: u64) -> Self {
         Id(NonZeroU64::new(u).expect("span IDs must be > 0"))
     }
@@ -244,7 +241,7 @@ impl<'a> Record<'a> {
 
 impl Current {
     /// Constructs a new `Current` that indicates the current context is a span
-    /// with the given `metadata` and `metadata`.
+    /// with the given `id` and `metadata`.
     pub fn new(id: Id, metadata: &'static Metadata<'static>) -> Self {
         Self {
             inner: CurrentInner::Current { id, metadata },
@@ -261,7 +258,7 @@ impl Current {
 
     /// Constructs a new `Current` that indicates the collector does not
     /// track a current span.
-    pub(crate) fn unknown() -> Self {
+    pub fn unknown() -> Self {
         Self {
             inner: CurrentInner::Unknown,
         }

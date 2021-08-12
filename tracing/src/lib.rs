@@ -52,8 +52,6 @@
 //! The [`span` module][mod@span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
 //!  **Warning**: In asynchronous code that uses async/await syntax,
@@ -559,6 +557,7 @@
 //! ```
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # use tracing_core::span::Current;
 //! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -567,6 +566,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector {
 //! #   fn new() -> Self { FooCollector }
@@ -582,7 +582,6 @@
 //! ```
 //!
 //! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //! <strong>Warning</strong>: In general, libraries should <em>not</em> call
 //! <code>set_global_default()</code>! Doing so will cause conflicts when
@@ -601,6 +600,7 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
+//! # use tracing_core::span::Current;
 //! # impl tracing::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -609,6 +609,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector {
 //! #   fn new() -> Self { FooCollector }
@@ -825,9 +826,6 @@
 //! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 //! [Elastic APM]: https://www.elastic.co/apm
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //! <strong>Note</strong>: Some of these ecosystem crates are currently

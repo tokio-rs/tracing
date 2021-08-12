@@ -1,8 +1,9 @@
 use ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
-    Collect, Id, Level,
+    Collect, Id, Level, Metadata,
 };
+use tracing_core::span::Current;
 
 use std::{
     cell::RefCell,
@@ -65,6 +66,7 @@ pub struct SloggishCollector {
 struct Span {
     parent: Option<Id>,
     kvs: Vec<(&'static str, String)>,
+    metadata: &'static Metadata<'static>,
 }
 
 struct Event<'a> {
@@ -92,6 +94,7 @@ impl Span {
         let mut span = Self {
             parent,
             kvs: Vec::new(),
+            metadata: attrs.metadata(),
         };
         attrs.record(&mut span);
         span
@@ -121,7 +124,6 @@ impl<'a> Visit for Event<'a> {
                 Style::new().bold().paint(format!("{:?}", value))
             )
             .unwrap();
-            self.comma = true;
         } else {
             write!(
                 &mut self.stderr,
@@ -130,8 +132,8 @@ impl<'a> Visit for Event<'a> {
                 value
             )
             .unwrap();
-            self.comma = true;
         }
+        self.comma = true;
     }
 }
 
@@ -264,5 +266,19 @@ impl Collect for SloggishCollector {
     fn try_close(&self, _id: tracing::Id) -> bool {
         // TODO: GC unneeded spans.
         false
+    }
+
+    fn current_span(&self) -> Current {
+        if let Some(id) = self.current.id() {
+            let metadata = self
+                .spans
+                .lock()
+                .unwrap()
+                .get(&id)
+                .unwrap_or_else(|| panic!("no metadata stored for span with ID {:?}", id))
+                .metadata;
+            return Current::new(id, metadata);
+        }
+        Current::none()
     }
 }

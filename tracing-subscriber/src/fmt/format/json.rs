@@ -95,8 +95,10 @@ where
         use serde::ser::SerializeSeq;
         let mut serializer = serializer_o.serialize_seq(None)?;
 
-        for span in self.0.scope() {
-            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+        if let Some(leaf_span) = self.0.lookup_current() {
+            for span in leaf_span.scope().from_root() {
+                serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+            }
         }
 
         serializer.end()
@@ -172,20 +174,20 @@ where
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Json, T>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result
     where
-        S: Collect + for<'a> LookupSpan<'a>,
+        C: Collect + for<'a> LookupSpan<'a>,
     {
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -202,8 +204,13 @@ where
 
             let mut serializer = serializer.serialize_map(None)?;
 
-            serializer.serialize_entry("timestamp", &timestamp)?;
-            serializer.serialize_entry("level", &meta.level().as_serde())?;
+            if self.display_timestamp {
+                serializer.serialize_entry("timestamp", &timestamp)?;
+            }
+
+            if self.display_level {
+                serializer.serialize_entry("level", &meta.level().as_serde())?;
+            }
 
             let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 

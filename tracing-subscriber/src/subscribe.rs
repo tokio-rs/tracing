@@ -52,14 +52,15 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// For example:
 /// ```rust
 /// use tracing_subscriber::Subscribe;
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing::Collect;
+/// use tracing_core::span::Current;
 ///
 /// pub struct MySubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MySubscriber {
+/// impl<C: Collect> Subscribe<C> for MySubscriber {
 ///     // ...
 /// }
 ///
@@ -77,6 +78,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -94,13 +96,14 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// Multiple `Subscriber`s may be composed in the same manner:
 /// ```rust
 /// # use tracing_subscriber::Subscribe;
-/// # use tracing_subscriber::prelude::*;
+/// # use tracing_subscriber::subscribe::CollectExt;
 /// # use tracing::Collect;
+/// # use tracing_core::span::Current;
 /// pub struct MyOtherSubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyOtherSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyOtherSubscriber {
 ///     // ...
 /// }
 ///
@@ -108,11 +111,11 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyThirdSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyThirdSubscriber {
 ///     // ...
 /// }
 /// # pub struct MySubscriber {}
-/// # impl<S: Collect> Subscribe<S> for MySubscriber {}
+/// # impl<C: Collect> Subscribe<C> for MySubscriber {}
 /// # pub struct MyCollector { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
 /// # impl Collect for MyCollector {
@@ -123,6 +126,7 @@ use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -211,9 +215,6 @@ where
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -255,9 +256,6 @@ where
     /// By default, this always returns `true`, allowing the wrapped collector
     /// to choose to disable the span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -338,6 +336,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -350,11 +349,11 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for FooSubscriber {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for BarSubscriber {
+    /// impl<C: Collect> Subscribe<C> for BarSubscriber {
     ///     // ...
     /// }
     ///
@@ -376,6 +375,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .and_then(BarSubscriber::new())
@@ -386,12 +386,12 @@ where
     ///
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
-    /// # use tracing_core::Collect;
+    /// # use tracing_core::{Collect, span::Current};
     /// # pub struct FooSubscriber {}
     /// # pub struct BarSubscriber {}
     /// # pub struct MyCollector {}
-    /// # impl<S: Collect> Subscribe<S> for FooSubscriber {}
-    /// # impl<S: Collect> Subscribe<S> for BarSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for BarSubscriber {}
     /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
@@ -410,6 +410,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// pub struct BazSubscriber {
     ///     // ...
@@ -445,6 +446,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -472,6 +474,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .with_collector(MyCollector::new());
@@ -556,19 +559,6 @@ pub struct Identity {
     _p: (),
 }
 
-/// An iterator over the [stored data] for all the spans in the
-/// current context, starting the root of the trace tree and ending with
-/// the current span.
-///
-/// This is returned by [`Context::scope`].
-///
-/// [stored data]: super::registry::SpanRef
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub struct Scope<'a, L: LookupSpan<'a>>(
-    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
-);
-
 // === impl Layered ===
 
 impl<S, I> Layered<S, I> {
@@ -603,6 +593,9 @@ where
             return outer;
         }
 
+        // The intention behind calling `inner.register_callsite()` before the if statement
+        // is to ensure that the inner subscriber is informed that the callsite exists
+        // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
@@ -729,6 +722,9 @@ where
             return outer;
         }
 
+        // The intention behind calling `inner.register_callsite()` before the if statement
+        // is to ensure that the inner subscriber is informed that the callsite exists
+        // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
@@ -977,6 +973,78 @@ where
         }
     }
 
+    /// Returns a [`SpanRef`] for the parent span of the given [`Event`], if
+    /// it has a parent.
+    ///
+    /// If the event has an explicitly overridden parent, this method returns
+    /// a reference to that span. If the event's parent is the current span,
+    /// this returns a reference to the current span, if there is one. If this
+    /// returns `None`, then either the event's parent was explicitly set to
+    /// `None`, or the event's parent was defined contextually, but no span
+    /// is currently entered.
+    ///
+    /// Compared to [`Context::current_span`] and [`Context::lookup_current`],
+    /// this respects overrides provided by the [`Event`].
+    ///
+    /// Compared to [`Event::parent`], this automatically falls back to the contextual
+    /// span, if required.
+    ///
+    /// ```rust
+    /// use tracing::{Collect, Event};
+    /// use tracing_subscriber::{
+    ///     subscribe::{Context, Subscribe},
+    ///     prelude::*,
+    ///     registry::LookupSpan,
+    /// };
+    ///
+    /// struct PrintingSubscriber;
+    /// impl<C> Subscribe<C> for PrintingSubscriber
+    /// where
+    ///     C: Collect + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_event(&self, event: &Event, ctx: Context<C>) {
+    ///         let span = ctx.event_span(event);
+    ///         println!("Event in span: {:?}", span.map(|s| s.name()));
+    ///     }
+    /// }
+    ///
+    /// tracing::collect::with_default(tracing_subscriber::registry().with(PrintingSubscriber), || {
+    ///     tracing::info!("no span");
+    ///     // Prints: Event in span: None
+    ///
+    ///     let span = tracing::info_span!("span");
+    ///     tracing::info!(parent: &span, "explicitly specified");
+    ///     // Prints: Event in span: Some("span")
+    ///
+    ///     let _guard = span.enter();
+    ///     tracing::info!("contextual span");
+    ///     // Prints: Event in span: Some("span")
+    /// });
+    /// ```
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    #[inline]
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, C>>
+    where
+        C: for<'lookup> LookupSpan<'lookup>,
+    {
+        if event.is_root() {
+            None
+        } else if event.is_contextual() {
+            self.lookup_current()
+        } else {
+            event.parent().and_then(|id| self.span(id))
+        }
+    }
+
     /// Returns metadata for the span with the given `id`, if it exists.
     ///
     /// If this returns `None`, then no span exists for that ID (either it has
@@ -997,9 +1065,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1021,9 +1086,6 @@ where
 
     /// Returns `true` if an active span exists for the given `Id`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1046,9 +1108,6 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1078,34 +1137,66 @@ where
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// If this iterator is empty, then there are no spans in the current context.
+    /// current context, starting with the specified span and ending with the
+    /// root of the trace tree and ending with the current span.
     ///
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    ///
-    /// **Note**: This requires the wrapped subscriber to implement the [`LookupSpan`] trait.
-    /// See the documentation on [`Context`]'s declaration for details.
-    ///
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
     /// </pre></div>
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-    pub fn scope(&self) -> Scope<'_, C>
+    pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> registry::LookupSpan<'lookup>,
     {
-        let scope = self.lookup_current().map(|span| {
-            let parents = span.from_root();
-            parents.chain(std::iter::once(span))
-        });
-        Scope(scope)
+        Some(self.span(id)?.scope())
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting with the parent span of the specified event,
+    /// and ending with the root of the trace tree and ending with the current span.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, C>>
+    where
+        C: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        Some(self.event_span(event)?.scope())
     }
 }
 
@@ -1134,29 +1225,10 @@ impl Identity {
     }
 }
 
-// === impl Scope ===
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
-    type Item = SpanRef<'a, L>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.as_mut()?.next()
-    }
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("Scope { .. }")
-    }
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
+    // use std::sync::{Arc, Mutex};
+
     // use super::*;
 
     // pub(crate) struct NopCollector;
@@ -1179,6 +1251,9 @@ pub(crate) mod tests {
     //     fn event(&self, _: &Event<'_>) {}
     //     fn enter(&self, _: &span::Id) {}
     //     fn exit(&self, _: &span::Id) {}
+    //     fn current_span(&self) -> span::Current {
+    //         span::Current::unknown()
+    //     }
     // }
 
     // struct NopSubscriber;
@@ -1219,6 +1294,9 @@ pub(crate) mod tests {
     //     fn event(&self, _: &Event<'_>) {}
     //     fn enter(&self, _: &span::Id) {}
     //     fn exit(&self, _: &span::Id) {}
+    //     fn current_span(&self) -> span::Current {
+    //         span::Current::unknown()
+    //     }
     // }
 
     // fn assert_collector(_s: impl Collect) {}
@@ -1272,5 +1350,42 @@ pub(crate) mod tests {
     //     let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber3>(&s)
     //         .expect("subscriber 3 should downcast");
     //     assert_eq!(&subscriber.0, "subscriber_3");
+    // }
+
+    // #[test]
+    // fn context_event_span() {
+    //     let last_event_span = Arc::new(Mutex::new(None));
+
+    //     struct RecordingSubscriber {
+    //         last_event_span: Arc<Mutex<Option<&'static str>>>,
+    //     }
+
+    //     impl<S> Subscribe<S> for RecordingSubscriber
+    //     where
+    //         S: Collect + for<'lookup> LookupSpan<'lookup>,
+    //     {
+    //         fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    //             let span = ctx.event_span(event);
+    //             *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
+    //         }
+    //     }
+
+    //     tracing::collect::with_default(
+    //         crate::registry().with(RecordingSubscriber {
+    //             last_event_span: last_event_span.clone(),
+    //         }),
+    //         || {
+    //             tracing::info!("no span");
+    //             assert_eq!(*last_event_span.lock().unwrap(), None);
+
+    //             let parent = tracing::info_span!("explicit");
+    //             tracing::info!(parent: &parent, "explicit span");
+    //             assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
+
+    //             let _guard = tracing::info_span!("contextual").entered();
+    //             tracing::info!("contextual span");
+    //             assert_eq!(*last_event_span.lock().unwrap(), Some("contextual"));
+    //         },
+    //     );
     // }
 }

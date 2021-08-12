@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{LookupSpan, SpanRef},
-    subscribe::{self, Context, Scope},
+    subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{
@@ -23,7 +23,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let collector = Registry::default()
 ///     .with(fmt::Subscriber::default());
@@ -35,7 +35,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let fmt_subscriber = fmt::subscriber()
 ///    .with_target(false) // don't include event targets when logging
@@ -49,7 +49,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::fmt::{self, format, time};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::Subscribe;
 ///
 /// let fmt = format().with_timer(time::Uptime::default());
 /// let fmt_subscriber = fmt::subscriber()
@@ -525,14 +525,14 @@ macro_rules! with_event_from_span {
     };
 }
 
-impl<S, N, E, W> subscribe::Subscribe<S> for Subscriber<N, E, W>
+impl<C, N, E, W> subscribe::Subscribe<C> for Subscriber<N, E, W>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
+    E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
@@ -563,7 +563,7 @@ where
         }
     }
 
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(FormattedFields { ref mut fields, .. }) =
@@ -582,7 +582,7 @@ where
         }
     }
 
-    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &Id, ctx: Context<'_, C>) {
         if self.fmt_span.trace_enter() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
@@ -602,7 +602,7 @@ where
         }
     }
 
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, ctx: Context<'_, C>) {
         if self.fmt_span.trace_exit() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
@@ -622,7 +622,7 @@ where
         }
     }
 
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: Id, ctx: Context<'_, C>) {
         if self.fmt_span.trace_close() {
             let span = ctx.span(&id).expect("Span not found, this is a bug");
             let extensions = span.extensions();
@@ -659,7 +659,7 @@ where
         }
     }
 
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         thread_local! {
             static BUF: RefCell<String> = RefCell::new(String::new());
         }
@@ -705,20 +705,20 @@ where
 }
 
 /// Provides the current span context to a formatter.
-pub struct FmtContext<'a, S, N> {
-    pub(crate) ctx: Context<'a, S>,
+pub struct FmtContext<'a, C, N> {
+    pub(crate) ctx: Context<'a, C>,
     pub(crate) fmt_fields: &'a N,
 }
 
-impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
+impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FmtContext").finish()
     }
 }
 
-impl<'cx, 'writer, S, N> FormatFields<'writer> for FmtContext<'cx, S, N>
+impl<'cx, 'writer, C, N> FormatFields<'writer> for FmtContext<'cx, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
@@ -730,9 +730,9 @@ where
     }
 }
 
-impl<'a, S, N> FmtContext<'a, S, N>
+impl<'a, C, N> FmtContext<'a, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
@@ -742,11 +742,13 @@ where
     /// and so on until a root span is reached.
     pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
     where
-        F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
+        F: FnMut(&SpanRef<'_, C>) -> Result<(), E>,
     {
         // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
+        if let Some(leaf) = self.ctx.lookup_current() {
+            for span in leaf.scope().from_root() {
+                f(&span)?;
+            }
         }
         Ok(())
     }
@@ -758,7 +760,7 @@ where
     #[inline]
     pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.metadata(id)
     }
@@ -770,9 +772,9 @@ where
     ///
     /// [stored data]: SpanRef
     #[inline]
-    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
+    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.span(id)
     }
@@ -781,7 +783,7 @@ where
     #[inline]
     pub fn exists(&self, id: &Id) -> bool
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.exists(id)
     }
@@ -793,23 +795,11 @@ where
     ///
     /// [stored data]: SpanRef
     #[inline]
-    pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
+    pub fn lookup_current(&self) -> Option<SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.lookup_current()
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// [stored data]: SpanRef
-    pub fn scope(&self) -> Scope<'_, S>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.scope()
     }
 
     /// Returns the current span for this formatter.

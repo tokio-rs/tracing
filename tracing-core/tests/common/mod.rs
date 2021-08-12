@@ -13,6 +13,9 @@ impl Collect for TestCollectorA {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
 }
 pub struct TestCollectorB;
 impl Collect for TestCollectorB {
@@ -27,4 +30,7 @@ impl Collect for TestCollectorB {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
 }
