@@ -1,3 +1,11 @@
+# 0.15.0 (August 7, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.16.0` of `opentelemetry` (#1497)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.16.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0160).
+
 # 0.14.0 (July 9, 2021)
 
 ### Breaking Changes
