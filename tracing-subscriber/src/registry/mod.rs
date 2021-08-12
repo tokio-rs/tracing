@@ -58,7 +58,7 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [ctx]: crate::subscribe::Context
 //! [lookup]: crate::subscribe::Context::span()
-use crate::subscribe::{self, Subscribe};
+use crate::subscribe::{self, Layered, Subscribe};
 use tracing_core::{
     field::FieldSet,
     span::{self, Id},
@@ -129,6 +129,10 @@ pub trait LookupSpan<'a> {
             data,
         })
     }
+
+    fn finish_close(&self, id: Id) {
+        drop(id)
+    }
 }
 
 /// A stored representation of data associated with a span.
@@ -155,6 +159,7 @@ pub trait SpanData<'a> {
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
 }
 
+#[derive(Debug)]
 pub struct Registry<S = subscribe::Identity, T = sharded::SpanStore> {
     spans: T,
     subscribers: S,
@@ -351,29 +356,44 @@ where
     }
 }
 
-impl<S, T> Registry<S, T> {
-    pub fn with<S2>(self, mut subscriber: S2) -> Registry<subscribe::Layered<S2, S>, T>
-    where
-        S: subscribe::Subscribe<Self>,
-        T: Collect + 'static,
-    {
-        subscriber.register(&self);
+impl<T> Registry<subscribe::Identity, T>
+where
+    T: Collect + for<'a> LookupSpan<'a> + 'static,
+{
+    pub fn with_span_store(spans: T) -> Self {
         Self {
+            spans,
+            subscribers: subscribe::Identity::default(),
+        }
+    }
+}
+
+impl<S, T> Registry<S, T>
+where
+    S: Subscribe<T> + 'static,
+    T: Collect + for<'a> LookupSpan<'a> + 'static,
+{
+    pub fn with<S2>(mut self, mut subscriber: S2) -> Registry<Layered<S2, S>, T>
+    where
+        S2: Subscribe<T>,
+    {
+        subscriber.register(&mut self.spans);
+        Registry {
             subscribers: subscribe::Layered::new(subscriber, self.subscribers),
             spans: self.spans,
         }
     }
 
     #[inline]
-    fn ctx(&self) -> subscribe::Context<'_, Self> {
-        subscribe::Context::new(self)
+    fn ctx(&self) -> subscribe::Context<'_, T> {
+        subscribe::Context::new(&self.spans)
     }
 }
 
 impl<S, T> Collect for Registry<S, T>
 where
-    S: Subscribe<Self> + 'static,
-    T: Collect + 'static,
+    S: Subscribe<T> + 'static,
+    T: Collect + for<'a> LookupSpan<'a> + 'static,
 {
     fn register_callsite(
         &self,
@@ -384,9 +404,12 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        if self.spans.enabled(metadata) {
-            self.subscribers.enabled(metadata, self.ctx())
+        if !self.spans.enabled(metadata) {
+            return false;
         }
+
+        // TODO(eliza): per-layer filtering goes here
+        self.subscribers.enabled(metadata, self.ctx())
     }
 
     fn max_level_hint(&self) -> Option<tracing_core::LevelFilter> {
@@ -421,23 +444,30 @@ where
     }
 
     fn exit(&self, span: &span::Id) {
-        self.spans.on_exit(span);
+        self.spans.exit(span);
         self.subscribers.on_exit(span, self.ctx());
     }
 
     fn clone_span(&self, id: &span::Id) -> span::Id {
         let new_id = self.spans.clone_span(id);
-        if id != new_id {
-            self.subscribers.on_id_change(id, new_id, self.ctx());
+        if id != &new_id {
+            self.subscribers.on_id_change(id, &new_id, self.ctx());
         }
         new_id
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        if self.spans.try_close(id) {
-            self.subscribers.on_close(id, self.ctx())
-            // TODO(eliza): signal to complete processing close...
+        if !self.spans.try_close(id.clone()) {
+            return false;
         }
+
+        // Run the subscribers' on-close logic.
+        self.subscribers.on_close(id.clone(), self.ctx());
+        // Tell the span store that the close has been processed and the span
+        // can be removed.
+        self.spans.finish_close(id);
+
+        true
     }
 
     fn current_span(&self) -> span::Current {
@@ -447,4 +477,13 @@ where
     // unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
     //     todo!()
     // }
+}
+
+impl Default for Registry {
+    fn default() -> Self {
+        Self {
+            spans: sharded::SpanStore::default(),
+            subscribers: subscribe::Identity::new(),
+        }
+    }
 }
