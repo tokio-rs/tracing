@@ -749,6 +749,21 @@ where
     }
 
     #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        // TODO(eliza): per-layer filtering
+        self.subscriber
+            .max_level_hint()
+            .map(|outer_hint| {
+                if let Some(inner_hint) = self.inner.max_level_hint() {
+                    std::cmp::max(outer_hint, inner_hint)
+                } else {
+                    outer_hint
+                }
+            })
+            .or_else(|| self.inner.max_level_hint())
+    }
+
+    #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         self.inner.new_span(attrs, id, ctx.clone());
         self.subscriber.new_span(attrs, id, ctx);
