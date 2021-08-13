@@ -985,7 +985,7 @@ where
     /// [`Context::enabled`]: Layered::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        if let Some(ref collector) = self.collector {
+        if let Some(collector) = self.collector {
             collector.event(event);
         }
     }
@@ -1144,7 +1144,7 @@ where
         let collector = self.collector.as_ref()?;
         let current = collector.current_span();
         let id = current.id()?;
-        let span = collector.span(&id);
+        let span = collector.span(id);
         debug_assert!(
             span.is_some(),
             "the subscriber should have data for the current span ({:?})!",

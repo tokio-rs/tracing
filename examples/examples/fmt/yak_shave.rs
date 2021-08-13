@@ -1,4 +1,6 @@
-use std::{error::Error, io};
+use snafu::{ResultExt, Snafu};
+use std::error::Error;
+use thiserror::Error;
 use tracing::{debug, error, info, span, trace, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
@@ -14,10 +16,11 @@ pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     trace!(excitement = "yay!", "hello! I'm gonna shave a yak");
     if yak == 3 {
         warn!("could not locate yak");
-        // note that this is intended to demonstrate `tracing`'s features, not idiomatic
-        // error handling! in a library or application, you should consider returning
-        // a dedicated `YakError`. libraries like snafu or thiserror make this easy.
-        return Err(io::Error::new(io::ErrorKind::Other, "missing yak").into());
+        return OutOfCash
+            .fail()
+            .map_err(|source| MissingYakError::OutOfSpace { source })
+            .context(MissingYak)
+            .map_err(|err| err.into());
     } else {
         trace!("yak shaved successfully");
     }
@@ -53,4 +56,24 @@ pub fn shave_all(yaks: usize) -> usize {
     }
 
     yaks_shaved
+}
+
+// Error types
+// Usually you would pick one error handling library to use, but they can be mixed freely
+#[derive(Debug, Snafu)]
+enum OutOfSpaceError {
+    #[snafu(display("out of cash"))]
+    OutOfCash,
+}
+
+#[derive(Debug, Error)]
+enum MissingYakError {
+    #[error("out of space")]
+    OutOfSpace { source: OutOfSpaceError },
+}
+
+#[derive(Debug, Snafu)]
+enum YakError {
+    #[snafu(display("missing yak"))]
+    MissingYak { source: MissingYakError },
 }
