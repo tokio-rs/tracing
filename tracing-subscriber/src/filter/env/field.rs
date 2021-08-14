@@ -36,12 +36,21 @@ pub(crate) struct MatchVisitor<'a> {
     inner: &'a SpanMatch,
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub(crate) enum ValueMatch {
     Bool(bool),
+    F64(f64),
     U64(u64),
     I64(i64),
     Pat(Box<MatchPattern>),
+}
+
+impl Eq for ValueMatch {}
+
+impl Ord for ValueMatch {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -134,6 +143,7 @@ impl FromStr for ValueMatch {
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
             .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
+            .or_else(|_| s.parse::<f64>().map(ValueMatch::F64))
             .or_else(|_| {
                 s.parse::<MatchPattern>()
                     .map(|p| ValueMatch::Pat(Box::new(p)))
@@ -145,6 +155,7 @@ impl fmt::Display for ValueMatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ValueMatch::Bool(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::F64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::I64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::U64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::Pat(ref inner) => fmt::Display::fmt(inner, f),
@@ -275,6 +286,15 @@ impl SpanMatch {
 }
 
 impl<'a> Visit for MatchVisitor<'a> {
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::F64(ref e), ref matched)) if value == *e => {
+                matched.store(true, Release);
+            }
+            _ => {}
+        }
+    }
+
     fn record_i64(&mut self, field: &Field, value: i64) {
         use std::convert::TryInto;
 
