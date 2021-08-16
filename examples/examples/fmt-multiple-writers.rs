@@ -5,11 +5,10 @@
 mod yak_shave;
 
 use std::io;
-use tempdir::TempDir;
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
 fn main() {
-    let dir = TempDir::new("directory").expect("Failed to create tempdir");
+    let dir = tempfile::tempdir().expect("Failed to create tempdir");
 
     let file_appender = tracing_appender::rolling::hourly(dir, "example.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
