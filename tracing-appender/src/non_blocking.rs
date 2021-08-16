@@ -51,7 +51,7 @@ use crate::Msg;
 use crossbeam_channel::{bounded, SendTimeoutError, Sender};
 use std::io;
 use std::io::Write;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -124,7 +124,7 @@ pub struct WorkerGuard {
 /// [fmt]: mod@tracing_subscriber::fmt
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
-    error_counter: Arc<AtomicU64>,
+    error_counter: Arc<AtomicUsize>,
     channel: Sender<Msg>,
     is_lossy: bool,
 }
@@ -157,7 +157,7 @@ impl NonBlocking {
         (
             Self {
                 channel: sender,
-                error_counter: Arc::new(AtomicU64::new(0)),
+                error_counter: Arc::new(AtomicUsize::new(0)),
                 is_lossy,
             },
             worker_guard,
@@ -166,7 +166,7 @@ impl NonBlocking {
 
     /// Returns a counter for the number of times logs where dropped. This will always return zero if
     /// `NonBlocking` is not lossy.
-    pub fn error_counter(&self) -> Arc<AtomicU64> {
+    pub fn error_counter(&self) -> Arc<AtomicUsize> {
         self.error_counter.clone()
     }
 }
