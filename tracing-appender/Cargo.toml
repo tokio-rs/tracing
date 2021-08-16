@@ -31,4 +31,4 @@ features = ["fmt"]
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
-tempdir = "0.3"
+tempfile = "3"
