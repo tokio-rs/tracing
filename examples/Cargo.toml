@@ -39,7 +39,7 @@ http = "0.2"
 hyper = { version = "0.14", features = ["full"] }
 rand = "0.7"
 bytes = "1"
-clap = "2.33"
+argh = "0.1.5"
 
 # sloggish example
 ansi_term = "0.12"
