@@ -7,17 +7,32 @@ on:
   pull_request: {}
 
 jobs:
-  check:
-    # Run `cargo check` first to ensure that the pushed code at least compiles.
+  check-msrv:
+    # Run `cargo check` on our minimum supported Rust version (1.42.0).
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, 1.42.0]
+    rust: 1.42.0
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: 1.42.0
+        profile: minimal
+        override: true
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --all --bins --tests
+
+  check:
+    # Run `cargo check` first to ensure that the pushed code at least compiles.
+    runs-on: ubuntu-latest
+    rust: stable
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
         profile: minimal
         override: true
     - name: Check
