@@ -1,4 +1,20 @@
-# 0.1.18 (April 30, 2010)
+# 0.1.19 (August 17, 2021)
+### Added
+
+- `Level::as_str` ([#1413])
+- `Hash` implementation for `Level` and `LevelFilter` ([#1456])
+- `Value` implementation for `&mut T where T: Value` ([#1385])
+- Multiple documentation fixes and improvements ([#1435], [#1446])
+
+Thanks to @Folyd, @teozkr, and @dvdplm for contributing to this release!
+
+[#1413]: https://github.com/tokio-rs/tracing/pull/1413
+[#1456]: https://github.com/tokio-rs/tracing/pull/1456
+[#1385]: https://github.com/tokio-rs/tracing/pull/1385
+[#1435]: https://github.com/tokio-rs/tracing/pull/1435
+[#1446]: https://github.com/tokio-rs/tracing/pull/1446
+
+# 0.1.19 (April 30, 2021)
 
 ### Added
 
