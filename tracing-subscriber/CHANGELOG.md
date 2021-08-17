@@ -1,3 +1,29 @@
+# 0.2.20 (August 17, 2021)
+
+### Fixed
+
+- **fmt**: Fixed `fmt` printing only the first `source` for errors with a chain
+  of sources ([#1460])
+- **fmt**: Fixed missing space between level and event in the `Pretty` formatter
+  ([#1498])
+- **json**: Fixed `Json` formatter not honoring `without_time` and `with_level`
+  configurations ([#1463])
+
+### Added
+
+- **registry**: Improved panic message when cloning a span whose ID doesn't
+  exist, to aid in debugging issues with multiple subscribers ([#1483])
+- **registry**: Improved documentation on span ID generation ([#1453])
+
+[#1460]: https://github.com/tokio-rs/tracing/pull/1460
+[#1483]: https://github.com/tokio-rs/tracing/pull/1483
+[#1463]: https://github.com/tokio-rs/tracing/pull/1463
+[#1453]: https://github.com/tokio-rs/tracing/pull/1453
+[#1498]: https://github.com/tokio-rs/tracing/pull/1498
+
+Thanks to new contributors @joshtriplett and @lerouxrgd, and returning
+contributor @teozkr, for contributing to this release!
+
 # 0.2.19 (June 25, 2021)
 
 ### Deprecated
@@ -22,7 +48,7 @@
   `with_filter`, `and`, and `or_else` combinators ([#1274])
 - **fmt**: `MakeWriter` implementation for `Arc<W> where &W: io::Write`
   ([#1274])
-  
+
 Thanks to @teozkr and @Folyd for contributing to this release!
 
 [#1413]: https://github.com/tokio-rs/tracing/pull/1413
