@@ -7,17 +7,30 @@ on:
   pull_request: {}
 
 jobs:
-  check:
-    # Run `cargo check` first to ensure that the pushed code at least compiles.
+  check-msrv:
+    # Run `cargo check` on our minimum supported Rust version (1.42.0).
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, 1.42.0]
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: 1.42.0
+        profile: minimal
+        override: true
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --all --bins
+
+  check:
+    # Run `cargo check` first to ensure that the pushed code at least compiles.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
         profile: minimal
         override: true
     - name: Check
@@ -127,32 +140,6 @@ jobs:
       with:
         command: test
         args: --all
-
-  test-msrv:
-    # Test against the minimum supported Rust version
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@main
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: 1.42.0
-        profile: minimal
-        override: true
-    # We can't use `cargo test --all`, as that will also compile the examples.
-    # We don't guarantee the examples will work on the MSRV, because they have
-    # external dependencies which may not comply with our MSRV policy, but don't
-    # actually impact users on our MSRV.
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --workspace --lib --tests
-    - name: Run doctests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --workspace --doc
 
   test-build-wasm:
     needs: check
