@@ -25,7 +25,7 @@
 
 #![deny(rust_2018_idioms)]
 
-use clap::{arg_enum, value_t, App, Arg, ArgMatches};
+use argh::FromArgs;
 use futures::{future::try_join, prelude::*};
 use std::net::SocketAddr;
 use tokio::{
@@ -70,61 +70,50 @@ async fn transfer(mut inbound: TcpStream, proxy_addr: SocketAddr) -> Result<(), 
     Ok(())
 }
 
-arg_enum! {
-    #[derive(PartialEq, Debug)]
-    pub enum LogFormat {
-        Plain,
-        Json,
-    }
+#[derive(FromArgs)]
+#[argh(description = "Proxy server example")]
+pub struct Args {
+    /// how to format the logs.
+    #[argh(option, default = "LogFormat::Plain")]
+    log_format: LogFormat,
+
+    /// address to listen on.
+    #[argh(option, default = "default_listen_addr()")]
+    listen_addr: SocketAddr,
+
+    /// address to proxy to.
+    #[argh(option, default = "default_server_addr()")]
+    server_addr: SocketAddr,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum LogFormat {
+    Plain,
+    Json,
+}
+
+fn default_listen_addr() -> SocketAddr {
+    SocketAddr::from(([127, 0, 0, 1], 8081))
+}
+
+fn default_server_addr() -> SocketAddr {
+    SocketAddr::from(([127, 0, 0, 1], 3000))
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let matches = App::new("Proxy Server Example")
-        .version("1.0")
-        .arg(
-            Arg::with_name("log_format")
-                .possible_values(&LogFormat::variants())
-                .case_insensitive(true)
-                .long("log_format")
-                .value_name("log_format")
-                .help("Formatting of the logs")
-                .required(false)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("listen_addr")
-                .long("listen_addr")
-                .help("Address to listen on")
-                .takes_value(true)
-                .required(false),
-        )
-        .arg(
-            Arg::with_name("server_addr")
-                .long("server_addr")
-                .help("Address to proxy to")
-                .takes_value(false)
-                .required(false),
-        )
-        .get_matches();
+    let args: Args = argh::from_env();
+    set_global_default(args.log_format)?;
 
-    set_global_default(&matches)?;
+    let listener = TcpListener::bind(&args.listen_addr).await?;
 
-    let listen_addr = matches.value_of("listen_addr").unwrap_or("127.0.0.1:8081");
-    let listen_addr = listen_addr.parse::<SocketAddr>()?;
-
-    let server_addr = matches.value_of("server_addr").unwrap_or("127.0.0.1:3000");
-    let server_addr = server_addr.parse::<SocketAddr>()?;
-
-    let mut listener = TcpListener::bind(&listen_addr).await?;
-
-    info!("Listening on: {}", listen_addr);
-    info!("Proxying to: {}", server_addr);
+    info!("Listening on: {}", args.listen_addr);
+    info!("Proxying to: {}", args.server_addr);
 
     while let Ok((inbound, client_addr)) = listener.accept().await {
         info!(client.addr = %client_addr, "client connected");
 
-        let transfer = transfer(inbound, server_addr).map(|r| {
+        let transfer = transfer(inbound, args.server_addr).map(|r| {
             if let Err(err) = r {
                 // Don't panic, maybe the client just disconnected too soon
                 debug!(error = %err);
@@ -137,17 +126,28 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn set_global_default(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn set_global_default(format: LogFormat) -> Result<(), Error> {
     let filter = tracing_subscriber::EnvFilter::from_default_env()
-        .add_directive("proxy_server=trace".parse()?);
-    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
-    match value_t!(matches, "log_format", LogFormat).unwrap_or(LogFormat::Plain) {
+        .add_directive(concat!(module_path!(), "=trace").parse()?);
+    let builder = tracing_subscriber::fmt().with_env_filter(filter);
+    match format {
         LogFormat::Json => {
-            subscriber.json().try_init()?;
+            builder.json().try_init()?;
         }
         LogFormat::Plain => {
-            subscriber.try_init()?;
+            builder.try_init()?;
         }
     }
     Ok(())
+}
+
+impl std::str::FromStr for LogFormat {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim() {
+            s if s.eq_ignore_ascii_case("plain") => Ok(Self::Plain),
+            s if s.eq_ignore_ascii_case("json") => Ok(Self::Json),
+            _ => Err("expected either `plain` or `json`"),
+        }
+    }
 }

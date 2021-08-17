@@ -376,6 +376,7 @@ are not maintained by the `tokio` project. These include:
   `tracing` events and generates histograms.
 - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
 - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
+- [`tracing-actix-web`] provides `tracing` integration for the `actix-web` web framework.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
@@ -409,6 +410,7 @@ please let us know!)
 [`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
+[`tracing-actix-web`]: https://crates.io/crates/tracing-actix-web
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
@@ -447,11 +449,11 @@ Tracing.
 
 #### Talks
 
-* [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+* [Bay Area Rust Meetup talk and Q&A][bay-rust-2019-03], March 2019
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 
-[bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
+[bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
 [rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM

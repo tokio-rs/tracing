@@ -907,8 +907,8 @@ impl Span {
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
+            if let Some(_meta) = self.meta {
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
             }
         }}
     }
