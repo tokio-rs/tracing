@@ -19,6 +19,7 @@
 [#1483]: https://github.com/tokio-rs/tracing/pull/1483
 [#1463]: https://github.com/tokio-rs/tracing/pull/1463
 [#1453]: https://github.com/tokio-rs/tracing/pull/1453
+[#1498]: https://github.com/tokio-rs/tracing/pull/1498
 
 Thanks to new contributors @joshtriplett and @lerouxgd, and returning
 contributor @teozkr, for contributing to this release!
