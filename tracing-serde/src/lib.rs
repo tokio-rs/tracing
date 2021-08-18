@@ -66,7 +66,7 @@
 //!
 //! ```rust
 //! # use tracing_core::{Collect, Metadata, Event};
-//! # use tracing_core::span::{Attributes, Id, Record};
+//! # use tracing_core::span::{Attributes, Current, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
 //! use serde_json::json;
@@ -102,6 +102,7 @@
 //!     # fn exit(&self, _: &Id) {}
 //!     # fn record(&self, _: &Id, _: &Record<'_>) {}
 //!     # fn record_follows_from(&self, _: &Id, _: &Id) {}
+//!     # fn current_span(&self) -> Current { Current::unknown() }
 //! }
 //! ```
 //!

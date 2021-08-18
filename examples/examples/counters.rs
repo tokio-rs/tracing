@@ -6,6 +6,8 @@ use tracing::{
     info, span, warn, Event, Id, Level, Metadata,
 };
 
+use tracing_core::span::Current;
+
 use std::{
     collections::HashMap,
     fmt,
@@ -99,6 +101,9 @@ impl Collect for CounterCollector {
 
     fn enter(&self, _span: &Id) {}
     fn exit(&self, _span: &Id) {}
+    fn current_span(&self) -> Current {
+        Current::unknown()
+    }
 }
 
 impl Counters {

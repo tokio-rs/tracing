@@ -22,11 +22,11 @@ use tracing_subscriber::{
 /// [`SpanTrace`]: super::SpanTrace
 /// [field formatter]: tracing_subscriber::fmt::FormatFields
 /// [default format]: tracing_subscriber::fmt::format::DefaultFields
-pub struct ErrorSubscriber<S, F = DefaultFields> {
+pub struct ErrorSubscriber<C, F = DefaultFields> {
     format: F,
 
     get_context: WithContext,
-    _subscriber: PhantomData<fn(S)>,
+    _collector: PhantomData<fn(C)>,
 }
 
 // this function "remembers" the types of the subscriber and the formatter,
@@ -36,9 +36,9 @@ pub(crate) struct WithContext(
     fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
 );
 
-impl<S, F> Subscribe<S> for ErrorSubscriber<S, F>
+impl<C, F> Subscribe<C> for ErrorSubscriber<C, F>
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
     F: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Notifies this subscriber that a new span was constructed with the given
@@ -47,7 +47,7 @@ where
         &self,
         attrs: &span::Attributes<'_>,
         id: &span::Id,
-        ctx: subscribe::Context<'_, S>,
+        ctx: subscribe::Context<'_, C>,
     ) {
         let span = ctx.span(id).expect("span must already exist!");
         if span.extensions().get::<FormattedFields<F>>().is_some() {
@@ -71,10 +71,10 @@ where
     }
 }
 
-impl<S, F> ErrorSubscriber<S, F>
+impl<C, F> ErrorSubscriber<C, F>
 where
     F: for<'writer> FormatFields<'writer> + 'static,
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
 {
     /// Returns a new `ErrorSubscriber` with the provided [field formatter].
     ///
@@ -83,7 +83,7 @@ where
         Self {
             format,
             get_context: WithContext(Self::get_context),
-            _subscriber: PhantomData,
+            _collector: PhantomData,
         }
     }
 
@@ -92,14 +92,13 @@ where
         id: &span::Id,
         f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool,
     ) {
-        let subscriber = dispatch
-            .downcast_ref::<S>()
-            .expect("subscriber should downcast to expected type; this is a bug!");
-        let span = subscriber
+        let collector = dispatch
+            .downcast_ref::<C>()
+            .expect("collector should downcast to expected type; this is a bug!");
+        let span = collector
             .span(id)
             .expect("registry should have a span for the current ID");
-        let parents = span.parents();
-        for span in std::iter::once(span).chain(parents) {
+        for span in span.scope() {
             let cont = if let Some(fields) = span.extensions().get::<FormattedFields<F>>() {
                 f(span.metadata(), fields.fields.as_str())
             } else {
@@ -123,20 +122,20 @@ impl WithContext {
     }
 }
 
-impl<S> Default for ErrorSubscriber<S>
+impl<C> Default for ErrorSubscriber<C>
 where
-    S: Collect + for<'span> LookupSpan<'span>,
+    C: Collect + for<'span> LookupSpan<'span>,
 {
     fn default() -> Self {
         Self::new(DefaultFields::default())
     }
 }
 
-impl<S, F: fmt::Debug> fmt::Debug for ErrorSubscriber<S, F> {
+impl<C, F: fmt::Debug> fmt::Debug for ErrorSubscriber<C, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ErrorSubscriber")
             .field("format", &self.format)
-            .field("subscriber", &format_args!("{}", type_name::<S>()))
+            .field("collector", &format_args!("{}", type_name::<C>()))
             .finish()
     }
 }

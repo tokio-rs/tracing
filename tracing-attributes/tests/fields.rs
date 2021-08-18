@@ -61,12 +61,12 @@ fn fields() {
 fn expr_field() {
     let span = span::mock().with_field(
         mock("s")
-            .with_value(&tracing::field::debug("hello world"))
+            .with_value(&"hello world")
             .and(mock("len").with_value(&"hello world".len()))
             .only(),
     );
     run_test(span, || {
-        fn_expr_field(&"hello world");
+        fn_expr_field("hello world");
     });
 }
 
@@ -74,13 +74,13 @@ fn expr_field() {
 fn two_expr_fields() {
     let span = span::mock().with_field(
         mock("s")
-            .with_value(&tracing::field::debug("hello world"))
+            .with_value(&"hello world")
             .and(mock("s.len").with_value(&"hello world".len()))
             .and(mock("s.is_empty").with_value(&false))
             .only(),
     );
     run_test(span, || {
-        fn_two_expr_fields(&"hello world");
+        fn_two_expr_fields("hello world");
     });
 }
 
@@ -95,12 +95,12 @@ fn clashy_expr_field() {
             .only(),
     );
     run_test(span, || {
-        fn_clashy_expr_field(&"hello world");
+        fn_clashy_expr_field("hello world");
     });
 
     let span = span::mock().with_field(mock("s").with_value(&"s").only());
     run_test(span, || {
-        fn_clashy_expr_field2(&"hello world");
+        fn_clashy_expr_field2("hello world");
     });
 }
 
@@ -120,7 +120,7 @@ fn parameters_with_fields() {
     let span = span::mock().with_field(
         mock("foo")
             .with_value(&"bar")
-            .and(mock("param").with_value(&format_args!("1")))
+            .and(mock("param").with_value(&1u32))
             .only(),
     );
     run_test(span, || {

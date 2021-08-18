@@ -60,7 +60,7 @@ fn setup_global_subscriber() -> impl Drop {
     tracing_subscriber::registry()
         .with(fmt_layer)
         .with(flame_layer)
-        .init().
+        .init();
     _guard
 }
 

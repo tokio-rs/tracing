@@ -343,7 +343,6 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
-    use tempdir::TempDir;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -367,7 +366,8 @@ mod test {
         appender.flush().expect("Failed to flush!");
     }
 
-    fn test_appender(rotation: Rotation, directory: TempDir, file_prefix: &str) {
+    fn test_appender(rotation: Rotation, file_prefix: &str) {
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
         let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix);
 
         let expected_value = "Hello";
@@ -381,38 +381,22 @@ mod test {
 
     #[test]
     fn write_minutely_log() {
-        test_appender(
-            Rotation::HOURLY,
-            TempDir::new("minutely").expect("Failed to create tempdir"),
-            "minutely.log",
-        );
+        test_appender(Rotation::HOURLY, "minutely.log");
     }
 
     #[test]
     fn write_hourly_log() {
-        test_appender(
-            Rotation::HOURLY,
-            TempDir::new("hourly").expect("Failed to create tempdir"),
-            "hourly.log",
-        );
+        test_appender(Rotation::HOURLY, "hourly.log");
     }
 
     #[test]
     fn write_daily_log() {
-        test_appender(
-            Rotation::DAILY,
-            TempDir::new("daily").expect("Failed to create tempdir"),
-            "daily.log",
-        );
+        test_appender(Rotation::DAILY, "daily.log");
     }
 
     #[test]
     fn write_never_log() {
-        test_appender(
-            Rotation::NEVER,
-            TempDir::new("never").expect("Failed to create tempdir"),
-            "never.log",
-        );
+        test_appender(Rotation::NEVER, "never.log");
     }
 
     #[test]

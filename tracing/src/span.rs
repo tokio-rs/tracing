@@ -76,8 +76,6 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! <div class="information">
-//!     <div class="tooltip compile_fail" style="">&#x26a0; &#xfe0f;<span class="tooltiptext">Warning</span></div>
 //! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
 //!  **Warning**: In asynchronous code that uses async/await syntax,
@@ -106,12 +104,9 @@
 //! });
 //! ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: Since entering a span takes <code>&self</code<, and
+//! <strong>Note</strong>: Since entering a span takes <code>&self</code>, and
 //! <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
 //! <code>Sync</code>, it is entirely valid for multiple threads to enter the
 //! same span concurrently.
@@ -595,13 +590,10 @@ impl Span {
     /// will call [`Collect::exit`]. If the span is disabled, this does
     /// nothing.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
-    /// **Note**: The returned [`Entered`] guard guard does not
+    /// **Note**: The returned [`Entered`] guard does not
     /// implement `Send`. Dropping the guard will exit *this* span,
     /// and if the guard is sent to another thread and dropped there, that thread may
     /// never have entered this span. Thus, `Entered` should not be sent
@@ -612,9 +604,7 @@ impl Span {
     /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
     /// [`Span::enter`] should be used very carefully or avoided entirely. Holding
     /// the drop guard returned by `Span::enter` across `.await` points will
-    /// result in incorrect traces.
-    ///
-    /// For example,
+    /// result in incorrect traces. For example,
     ///
     /// ```
     /// # use tracing::info_span;
@@ -824,9 +814,6 @@ impl Span {
     /// Furthermore, `entered` may be used when the span must be stored in some
     /// other struct or be passed to a function while remaining entered.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -921,8 +908,8 @@ impl Span {
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(ref meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
+            if let Some(_meta) = self.meta {
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
             }
         }}
     }
@@ -938,7 +925,7 @@ impl Span {
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(ref _meta) = self.meta {
+            if let Some(_meta) = self.meta {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
             }
         }}
@@ -1043,9 +1030,6 @@ impl Span {
     /// }
     /// ```
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1084,7 +1068,7 @@ impl Span {
         Q: field::AsField,
         V: field::Value,
     {
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             if let Some(field) = field.as_field(meta) {
                 self.record_all(
                     &meta
@@ -1104,7 +1088,7 @@ impl Span {
             inner.record(&record);
         }
 
-        if let Some(ref _meta) = self.meta {
+        if let Some(_meta) = self.meta {
             if_log_enabled! { *_meta.level(), {
                 let target = if record.is_empty() {
                     LIFECYCLE_LOG_TARGET
@@ -1204,7 +1188,7 @@ impl Span {
     #[cfg(feature = "log")]
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             if level_to_log!(*meta.level()) <= log::max_level() {
                 let logger = log::logger();
                 let log_meta = log::Metadata::builder().level(level).target(target).build();
@@ -1267,7 +1251,7 @@ impl Hash for Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut span = f.debug_struct("Span");
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             span.field("name", &meta.name())
                 .field("level", &meta.level())
                 .field("target", &meta.target());
@@ -1309,6 +1293,18 @@ impl<'a> From<&'a Span> for Option<Id> {
     }
 }
 
+impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(|inner| &inner.id)
+    }
+}
+
+impl<'a> From<&'a EnteredSpan> for Option<Id> {
+    fn from(span: &'a EnteredSpan) -> Self {
+        span.inner.as_ref().map(Inner::id)
+    }
+}
+
 impl Drop for Span {
     fn drop(&mut self) {
         if let Some(Inner {
@@ -1319,7 +1315,7 @@ impl Drop for Span {
             collector.try_close(id.clone());
         }
 
-        if let Some(ref _meta) = self.meta {
+        if let Some(_meta) = self.meta {
             if_log_enabled! { crate::Level::TRACE, {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
@@ -1350,7 +1346,7 @@ impl Inner {
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
     fn follows_from(&self, from: &Id) {
-        self.collector.record_follows_from(&self.id, &from)
+        self.collector.record_follows_from(&self.id, from)
     }
 
     /// Returns the span's ID.
@@ -1394,6 +1390,11 @@ impl Clone for Inner {
 // ===== impl Entered =====
 
 impl EnteredSpan {
+    /// Returns this span's `Id`, if it is enabled.
+    pub fn id(&self) -> Option<Id> {
+        self.inner.as_ref().map(Inner::id)
+    }
+
     /// Exits this span, returning the underlying [`Span`].
     #[inline]
     pub fn exit(mut self) -> Span {
@@ -1445,6 +1446,7 @@ impl Drop for EnteredSpan {
 struct PhantomNotSend {
     ghost: PhantomData<*mut ()>,
 }
+
 #[allow(non_upper_case_globals)]
 const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 
