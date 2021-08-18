@@ -2,7 +2,7 @@ use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, Tracer
 use opentelemetry::{
     trace as otel,
     trace::{
-        SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
+        noop, SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
         TraceState,
     },
     Context as OtelContext,
@@ -48,7 +48,7 @@ pub trait PreSampledTracer {
     fn new_span_id(&self) -> otel::SpanId;
 }
 
-impl PreSampledTracer for otel::NoopTracer {
+impl PreSampledTracer for noop::NoopTracer {
     fn sampled_context(&self, builder: &mut otel::SpanBuilder) -> OtelContext {
         builder.parent_context.clone()
     }
@@ -73,14 +73,14 @@ impl PreSampledTracer for Tracer {
 
         // Gather trace state
         let (no_parent, trace_id, remote_parent, parent_trace_flags) =
-            current_trace_state(&builder, &parent_cx, &provider);
+            current_trace_state(builder, parent_cx, &provider);
 
         // Sample or defer to existing sampling decisions
         let (flags, trace_state) = if let Some(result) = &builder.sampling_result {
             process_sampling_result(result, parent_trace_flags)
         } else if no_parent || remote_parent {
             builder.sampling_result = Some(provider.config().sampler.should_sample(
-                Some(&parent_cx),
+                Some(parent_cx),
                 trace_id,
                 &builder.name,
                 builder.span_kind.as_ref().unwrap_or(&SpanKind::Internal),
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn assigns_default_trace_id_if_missing() {
         let provider = TracerProvider::default();
-        let tracer = provider.get_tracer("test", None);
+        let tracer = provider.tracer("test", None);
         let mut builder = SpanBuilder::from_name("empty".to_string());
         builder.span_id = Some(SpanId::from_u64(1));
         builder.trace_id = None;
@@ -211,7 +211,7 @@ mod tests {
             let provider = TracerProvider::builder()
                 .with_config(config().with_sampler(sampler))
                 .build();
-            let tracer = provider.get_tracer("test", None);
+            let tracer = provider.tracer("test", None);
             let mut builder = SpanBuilder::from_name("parent".to_string());
             builder.parent_context = parent_cx;
             builder.sampling_result = previous_sampling_result;

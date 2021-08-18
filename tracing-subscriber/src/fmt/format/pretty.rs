@@ -180,7 +180,7 @@ where
         };
         let span = event
             .parent()
-            .and_then(|id| ctx.span(&id))
+            .and_then(|id| ctx.span(id))
             .or_else(|| ctx.lookup_current());
 
         let scope = span.into_iter().flat_map(|span| span.scope());
@@ -331,12 +331,12 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             self.record_debug(
                 field,
                 &format_args!(
-                    "{}, {}{}.source{}: {}",
+                    "{}, {}{}.sources{}: {}",
                     value,
                     bold.prefix(),
                     field,
                     bold.infix(self.style),
-                    source,
+                    ErrorSourceList(source),
                 ),
             )
         } else {

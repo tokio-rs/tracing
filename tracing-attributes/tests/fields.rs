@@ -66,7 +66,7 @@ fn expr_field() {
             .only(),
     );
     run_test(span, || {
-        fn_expr_field(&"hello world");
+        fn_expr_field("hello world");
     });
 }
 
@@ -80,7 +80,7 @@ fn two_expr_fields() {
             .only(),
     );
     run_test(span, || {
-        fn_two_expr_fields(&"hello world");
+        fn_two_expr_fields("hello world");
     });
 }
 
@@ -95,12 +95,12 @@ fn clashy_expr_field() {
             .only(),
     );
     run_test(span, || {
-        fn_clashy_expr_field(&"hello world");
+        fn_clashy_expr_field("hello world");
     });
 
     let span = span::mock().with_field(mock("s").with_value(&"s").only());
     run_test(span, || {
-        fn_clashy_expr_field2(&"hello world");
+        fn_clashy_expr_field2("hello world");
     });
 }
 
