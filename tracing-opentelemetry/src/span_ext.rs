@@ -129,10 +129,10 @@ impl OpenTelemetrySpanExt for tracing::Span {
                         let follows_context = cx.span().span_context().clone();
                         let follows_link =
                             opentelemetry::trace::Link::new(follows_context, Vec::new());
-                        if let Some(ref mut links) = builder.links {
-                            links.push(follows_link);
-                        } else {
-                            builder.links = Some(vec![follows_link]);
+                        builder
+                            .links
+                            .get_or_insert_with(|| Vec::with_capacity(1))
+                            .push(follows_link);
                         }
                     }
                 });
