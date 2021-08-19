@@ -372,6 +372,9 @@ pub fn set_global_scoped(dispatcher: Dispatch) -> DefaultGuard {
     } else {
         None
     };
+
+    EXISTS.store(true, Ordering::Release);
+
     DefaultGuard(GuardInner::Global { prev, state })
 }
 
