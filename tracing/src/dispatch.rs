@@ -138,18 +138,12 @@
 //! instrumentation.
 //!
 //! [`Collect`]: tracing_core::Collect
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatch::set_default;
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatch::with_default;
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatch::DefaultGuard;
 pub use tracing_core::dispatch::{
     get_default, set_global_default, Dispatch, SetGlobalDefaultError,
 };
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use tracing_core::dispatch::{set_default, set_global_scoped, with_default, DefaultGuard};
 
 /// Private API for internal use by tracing's macros.
 ///

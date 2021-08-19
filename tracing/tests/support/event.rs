@@ -20,6 +20,10 @@ pub fn mock() -> MockEvent {
     }
 }
 
+pub fn msg(msg: impl fmt::Display) -> MockEvent {
+    mock().with_fields(field::mock("message").with_value(&tracing::field::display(msg)))
+}
+
 impl MockEvent {
     pub fn named<I>(self, name: I) -> Self
     where
