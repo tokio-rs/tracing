@@ -212,7 +212,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         self.record(KeyValue::new(field.name(), value));
     }
 
-    /// Set attributes on the underlying OpenTelemetry [`Span`] from `i64` values.
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `f64` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_f64(&mut self, field: &field::Field, value: f64) {
