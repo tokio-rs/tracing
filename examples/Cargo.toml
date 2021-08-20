@@ -36,10 +36,10 @@ env_logger = "0.8"
 # tower examples
 tower = { version = "0.4.4", features = ["full"] }
 http = "0.2"
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "0.14.11", features = ["full"] }
 rand = "0.7"
 bytes = "1"
-clap = "2.33"
+argh = "0.1.5"
 
 # sloggish example
 ansi_term = "0.12"
@@ -48,7 +48,7 @@ log = "0.4"
 
 # inferno example
 inferno = "0.10.0"
-tempdir = "0.3.7"
+tempfile = "3"
 
 # opentelemetry example
 opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
