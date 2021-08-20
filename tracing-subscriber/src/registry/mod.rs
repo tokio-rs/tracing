@@ -64,6 +64,7 @@
 //! [`SpanData`]: trait.SpanData.html
 use std::fmt::Debug;
 
+use crate::filter::FilterId;
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 /// A module containing a type map of span extensions.
@@ -128,7 +129,13 @@ pub trait LookupSpan<'a> {
         Some(SpanRef {
             registry: self,
             data,
+            filter: None,
         })
+    }
+
+    fn is_enabled_for(&self, id: &Id, filter: FilterId) -> bool {
+        let _ = (id, filter);
+        true
     }
 }
 
@@ -168,6 +175,7 @@ pub trait SpanData<'a> {
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
     data: R::Data,
+    filter: Option<FilterId>,
 }
 
 /// An iterator over the parents of a span, ordered from leaf to root.
@@ -176,6 +184,7 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 #[derive(Debug)]
 pub struct Scope<'a, R> {
     registry: &'a R,
+    filter: Option<FilterId>,
     next: Option<Id>,
 }
 
@@ -212,9 +221,25 @@ where
     type Item = SpanRef<'a, R>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let curr = self.registry.span(self.next.as_ref()?)?;
-        self.next = curr.parent_id().cloned();
-        Some(curr)
+        loop {
+            let curr = self
+                .registry
+                .span(self.next.as_ref()?)?
+                .with_filter(self.filter);
+            self.next = curr.parent_id().cloned();
+
+            // If the `Scope` is filtered, check if the current span is enabled
+            // by the selected filter ID.
+            if let Some(filter) = self.filter {
+                if !self.registry.is_enabled_for(&curr.id(), filter) {
+                    // The current span in the chain is disabled for this
+                    // filter. Try its parent.
+                    continue;
+                }
+            }
+
+            return Some(curr);
+        }
     }
 }
 
@@ -334,18 +359,54 @@ where
     /// Returns the ID of this span's parent, or `None` if this span is the root
     /// of its trace tree.
     pub fn parent_id(&self) -> Option<&Id> {
+        // XXX(eliza): this doesn't work with PLF because the ID is potentially
+        // borrowed from a parent we got from the registry, rather than from
+        // `self`, so we can't return a borrowed parent. so, right now, we just
+        // return the actual parent ID, and ignore PLF. which is not great.
+        //
+        // i think if we want this to play nice with PLF, we should just change
+        // it to return the `Id` by value instead of `&Id` (which we ought to do
+        // anyway since an `Id` is just a word) but that's a breaking change.
+        // alternatively, we could deprecate this method since it can't support
+        // PLF in its current form (which is what we would want to do if we want
+        // to release PLF in a minor version)...
+
+        // let mut id = self.data.parent()?;
+        // loop {
+        //     // Is this parent enabled by our filter?
+        //     if self
+        //         .filter
+        //         .map(|filter| self.registry.is_enabled_for(id, filter))
+        //         .unwrap_or(true)
+        //     {
+        //         return Some(id);
+        //     }
+        //     id = self.registry.span_data(id)?.parent()?;
+        // }
         self.data.parent()
     }
 
     /// Returns a `SpanRef` describing this span's parent, or `None` if this
     /// span is the root of its trace tree.
     pub fn parent(&self) -> Option<Self> {
-        let id = self.data.parent()?;
-        let data = self.registry.span_data(id)?;
-        Some(Self {
-            registry: self.registry,
-            data,
-        })
+        let mut id = self.data.parent().cloned()?;
+        let mut data = self.registry.span_data(&id)?;
+        loop {
+            // Is this parent enabled by our filter?
+            if self
+                .filter
+                .map(|filter| self.registry.is_enabled_for(&id, filter))
+                .unwrap_or(true)
+            {
+                return Some(Self {
+                    registry: self.registry,
+                    filter: self.filter,
+                    data,
+                });
+            }
+            id = data.parent().cloned()?;
+            data = self.registry.span_data(&id)?;
+        }
     }
 
     /// Returns an iterator over all parents of this span, starting with this span,
@@ -419,6 +480,7 @@ where
         Scope {
             registry: self.registry,
             next: Some(self.id()),
+            filter: self.filter,
         }
     }
 
@@ -436,6 +498,7 @@ where
         Parents(Scope {
             registry: self.registry,
             next: self.parent_id().cloned(),
+            filter: self.filter,
         })
     }
 
@@ -471,6 +534,10 @@ where
     /// describing the span.
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
+    }
+
+    pub(crate) fn with_filter(self, filter: Option<FilterId>) -> Self {
+        Self { filter, ..self }
     }
 }
 

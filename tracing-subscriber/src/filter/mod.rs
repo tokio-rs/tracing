@@ -13,6 +13,7 @@ pub use self::level::{LevelFilter, ParseError as LevelParseError};
 pub use self::env::*;
 
 use crate::layer::Context;
+use std::num::NonZeroU64;
 use tracing_core::{subscriber::Interest, Metadata};
 
 /// A filter that determines whether a span or event is enabled.
@@ -21,5 +22,5 @@ pub trait Filter<S> {
     fn callsite_enabled(&self, meta: &'static Metadata<'static>, cx: Context<'_, S>) -> Interest;
 }
 
-#[derive(Clone, Debug)]
-pub struct FilterId(u64);
+#[derive(Copy, Clone, Debug)]
+pub struct FilterId(NonZeroU64);
