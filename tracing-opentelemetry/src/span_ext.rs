@@ -1,5 +1,5 @@
 use crate::subscriber::WithContext;
-use opentelemetry::{trace::TraceContextExt, Context};
+use opentelemetry::{trace::SpanContext, Context, KeyValue};
 
 /// Utility functions to allow tracing [`Span`]s to accept and return
 /// [OpenTelemetry] [`Context`]s.
@@ -43,9 +43,9 @@ pub trait OpenTelemetrySpanExt {
     fn set_parent(&self, cx: Context);
 
     /// Associates `self` with a given OpenTelemetry trace, using the provided
-    /// followed span [`Context`].
+    /// followed span [`SpanContext`].
     ///
-    /// [`Context`]: opentelemetry::Context
+    /// [`SpanContext`]: opentelemetry::trace::SpanContext
     ///
     /// # Examples
     ///
@@ -62,19 +62,29 @@ pub trait OpenTelemetrySpanExt {
     /// // Propagator can be swapped with b3 propagator, jaeger propagator, etc.
     /// let propagator = TraceContextPropagator::new();
     ///
-    /// // Extract otel parent context via the chosen propagator
-    /// let parent_context = propagator.extract(&carrier);
+    /// // Extract otel context of linked span via the chosen propagator
+    /// let linked_span_otel_context = propagator.extract(&carrier);
+    ///
+    /// // Extract the linked span context from the otel context
+    /// let linked_span_context = linked_span_otel_context.span().span_context().clone();
     ///
     /// // Generate a tracing span as usual
     /// let app_root = tracing::span!(tracing::Level::INFO, "app_start");
     ///
-    /// // Assign parent trace from external context
-    /// app_root.add_link(parent_context.clone());
+    /// // Assign linked trace from external context
+    /// app_root.add_link(linked_span_context);
     ///
     /// // Or if the current span has been created elsewhere:
-    /// Span::current().add_link(parent_context);
+    /// let linked_span_context = linked_span_otel_context.span().span_context().clone();
+    /// Span::current().add_link(linked_span_context);
     /// ```
-    fn add_link(&self, cx: Context);
+    fn add_link(&self, cx: SpanContext);
+
+    /// Associates `self` with a given OpenTelemetry trace, using the provided
+    /// followed span [`SpanContext`] and attributes.
+    ///
+    /// [`SpanContext`]: opentelemetry::trace::SpanContext
+    fn add_link_with_attributes(&self, cx: SpanContext, attributes: Vec<KeyValue>);
 
     /// Extracts an OpenTelemetry [`Context`] from `self`.
     ///
@@ -120,24 +130,29 @@ impl OpenTelemetrySpanExt for tracing::Span {
         });
     }
 
-    fn add_link(&self, cx: Context) {
-        let mut cx = Some(cx);
-        self.with_collector(move |(id, collector)| {
-            if let Some(get_context) = collector.downcast_ref::<WithContext>() {
-                get_context.with_context(collector, id, move |builder, _tracer| {
-                    if let Some(cx) = cx.take() {
-                        let follows_context = cx.span().span_context().clone();
-                        let follows_link =
-                            opentelemetry::trace::Link::new(follows_context, Vec::new());
-                        builder
-                            .links
-                            .get_or_insert_with(|| Vec::with_capacity(1))
-                            .push(follows_link);
+    fn add_link(&self, cx: SpanContext) {
+        self.add_link_with_attributes(cx, Vec::new())
+    }
+
+    fn add_link_with_attributes(&self, cx: SpanContext, attributes: Vec<KeyValue>) {
+        if cx.is_valid() {
+            let mut cx = Some(cx);
+            let mut att = Some(attributes);
+            self.with_collector(move |(id, collector)| {
+                if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                    get_context.with_context(collector, id, move |builder, _tracer| {
+                        if let Some(cx) = cx.take() {
+                            let attr = att.take().unwrap_or_default();
+                            let follows_link = opentelemetry::trace::Link::new(cx, attr);
+                            builder
+                                .links
+                                .get_or_insert_with(|| Vec::with_capacity(1))
+                                .push(follows_link);
                         }
-                    }
-                });
-            }
-        });
+                    });
+                }
+            });
+        }
     }
 
     fn context(&self) -> Context {
