@@ -1383,6 +1383,33 @@ where
     {
         Some(self.event_span(event)?.scope())
     }
+
+    pub(crate) fn with_filter(self, filter: FilterId) -> Self {
+        Self {
+            filter: Some(filter),
+            ..self
+        }
+    }
+
+    pub(crate) fn is_enabled_for(&self, span: &span::Id, filter: FilterId) -> bool
+    where
+        S: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        self.subscriber
+            .map(|s| s.is_enabled_for(span, filter))
+            .unwrap_or(false)
+    }
+
+    pub(crate) fn if_enabled_for(self, span: &span::Id, filter: FilterId) -> Option<Self>
+    where
+        S: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        if self.subscriber?.is_enabled_for(span, filter) {
+            Some(self.with_filter(filter))
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a, S> Context<'a, S> {
