@@ -16,7 +16,7 @@ use crate::{
     layer::{Context, Layer},
     registry,
 };
-use std::num::NonZeroU64;
+use std::{fmt, num::NonZeroU8};
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
@@ -40,7 +40,12 @@ pub struct Filtered<L, F> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct FilterId(NonZeroU64);
+pub struct FilterId(NonZeroU8);
+
+#[derive(Copy, Clone, Default)]
+pub(crate) struct FilterMap {
+    bits: usize,
+}
 
 // === impl Filtered ===
 
@@ -125,5 +130,33 @@ where
         if let Some(cx) = cx.if_enabled_for(old, self.id) {
             self.layer.on_id_change(old, new, cx)
         }
+    }
+}
+
+// === impl FilterMap ===
+
+impl FilterMap {
+    pub(crate) fn set(&mut self, FilterId(idx): FilterId, enabled: bool) {
+        let idx = idx.get() - 1;
+        debug_assert!(idx < 64);
+        if enabled {
+            self.bits |= 1 << idx;
+        } else {
+            self.bits ^= 1 << idx;
+        }
+    }
+
+    pub(crate) fn is_enabled(&self, FilterId(idx): FilterId) -> bool {
+        let idx = idx.get() - 1;
+        debug_assert!(idx < 64);
+        self.bits & (1 << idx) != 0
+    }
+}
+
+impl fmt::Debug for FilterMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FilterMap")
+            .field("bits", &format_args!("{:#b}", self.bits))
+            .finish()
     }
 }
