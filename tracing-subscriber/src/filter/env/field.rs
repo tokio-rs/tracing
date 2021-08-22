@@ -354,7 +354,7 @@ impl<'a> Visit for MatchVisitor<'a> {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::F64(ref e), ref matched)) if value == *e => {
+            Some((ValueMatch::F64(ref e), ref matched)) if (value - *e).abs() < f64::EPSILON => {
                 matched.store(true, Release);
             }
             _ => {}
