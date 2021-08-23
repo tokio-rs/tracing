@@ -1,13 +1,15 @@
 use std::thread::sleep;
 use std::time::Duration;
-use tempdir::TempDir;
 use tracing::{span, Level};
 use tracing_flame::FlameSubscriber;
 use tracing_subscriber::registry::Registry;
 
 #[test]
 fn capture_supported() {
-    let tmp_dir = TempDir::new("flamegraphs").unwrap();
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("tracing-flamegraph-test-")
+        .tempdir()
+        .expect("failed to create tempdir");
     let path = tmp_dir.path().join("tracing.folded");
     let (flame_layer, flame_guard) = FlameSubscriber::with_file(&path).unwrap();
 
@@ -37,4 +39,6 @@ fn capture_supported() {
     let traces = std::fs::read_to_string(&path).unwrap();
     println!("{}", traces);
     assert_eq!(5, traces.lines().count());
+
+    tmp_dir.close().expect("failed to delete tempdir");
 }

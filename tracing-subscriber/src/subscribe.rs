@@ -741,7 +741,7 @@ where
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         if self.subscriber.enabled(metadata, ctx.clone()) {
             // if the outer subscriber enables the callsite metadata, ask the inner subscriber.
-            self.subscriber.enabled(metadata, ctx)
+            self.inner.enabled(metadata, ctx)
         } else {
             // otherwise, the callsite is disabled by this subscriber
             false
