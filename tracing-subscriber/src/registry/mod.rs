@@ -138,6 +138,15 @@ pub trait LookupSpan<'a> {
         true
     }
 
+    // XXX(eliza): this feels kind of implementation detail leaky?
+    fn set_enabled_for(&self, id: &Id, filter: FilterId, enabled: bool) {
+        let _ = (id, filter, enabled);
+        panic!(
+            "{} does not currently support filters",
+            std::any::type_name::<Self>()
+        )
+    }
+
     fn register_filter(&mut self) -> FilterId {
         panic!(
             "{} does not currently support filters",
