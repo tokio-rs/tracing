@@ -127,6 +127,21 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
         }
     }
 
+    /// Record events on the underlying OpenTelemetry [`Span`] from `f64` values.
+    ///
+    /// [`Span`]: opentelemetry::trace::Span
+    fn record_f64(&mut self, field: &field::Field, value: f64) {
+        match field.name() {
+            "message" => self.0.name = value.to_string().into(),
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => (),
+            name => {
+                self.0.attributes.push(KeyValue::new(name, value));
+            }
+        }
+    }
+
     /// Record events on the underlying OpenTelemetry [`Span`] from `i64` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
@@ -194,6 +209,13 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_bool(&mut self, field: &field::Field, value: bool) {
+        self.record(KeyValue::new(field.name(), value));
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] from `f64` values.
+    ///
+    /// [`Span`]: opentelemetry::trace::Span
+    fn record_f64(&mut self, field: &field::Field, value: f64) {
         self.record(KeyValue::new(field.name(), value));
     }
 
