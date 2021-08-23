@@ -7,6 +7,7 @@ mod env;
 mod level;
 
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
@@ -42,9 +43,9 @@ pub struct Filtered<L, F> {
 #[derive(Copy, Clone, Debug)]
 pub struct FilterId(NonZeroU8);
 
-#[derive(Copy, Clone, Default)]
+#[derive(Default)]
 pub(crate) struct FilterMap {
-    bits: usize,
+    bits: AtomicU64,
 }
 
 // === impl Filtered ===
@@ -55,6 +56,11 @@ where
     F: Filter<S> + 'static,
     L: Layer<S>,
 {
+    fn on_register(&mut self, subscriber: &mut S) {
+        self.id = subscriber.register_filter();
+        self.layer.on_register(subscriber);
+    }
+
     // TODO(eliza): can we figure out a nice way to make the `Filtered` layer
     // not call `is_enabled_for` in hooks that the inner layer doesn't actually
     // have real implementations of? probably not...
@@ -136,27 +142,34 @@ where
 // === impl FilterMap ===
 
 impl FilterMap {
-    pub(crate) fn set(&mut self, FilterId(idx): FilterId, enabled: bool) {
+    pub(crate) fn set(&self, FilterId(idx): FilterId, enabled: bool) {
         let idx = idx.get() - 1;
         debug_assert!(idx < 64);
         if enabled {
-            self.bits |= 1 << idx;
+            self.bits.fetch_or(1 << idx, Ordering::AcqRel);
         } else {
-            self.bits ^= 1 << idx;
+            self.bits.fetch_and(!(1 << idx), Ordering::AcqRel);
         }
     }
 
     pub(crate) fn is_enabled(&self, FilterId(idx): FilterId) -> bool {
         let idx = idx.get() - 1;
         debug_assert!(idx < 64);
-        self.bits & (1 << idx) != 0
+        self.bits.load(Ordering::Acquire) & (1 << idx) != 0
+    }
+
+    pub(crate) fn clear(&self) {
+        self.bits.store(0, Ordering::Release)
     }
 }
 
 impl fmt::Debug for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FilterMap")
-            .field("bits", &format_args!("{:#b}", self.bits))
+            .field(
+                "bits",
+                &format_args!("{:#b}", self.bits.load(Ordering::Acquire)),
+            )
             .finish()
     }
 }

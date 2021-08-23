@@ -137,6 +137,13 @@ pub trait LookupSpan<'a> {
         let _ = (id, filter);
         true
     }
+
+    fn register_filter(&mut self) -> FilterId {
+        panic!(
+            "{} does not currently support filters",
+            std::any::type_name::<Self>()
+        )
+    }
 }
 
 /// A stored representation of data associated with a span.

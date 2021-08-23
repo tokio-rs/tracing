@@ -212,6 +212,7 @@ where
     S: Subscriber,
     Self: 'static,
 {
+    fn on_register(&mut self, subscriber: &mut S) {}
     /// Registers a new callsite with this layer, returning whether or not
     /// the layer is interested in being notified about the callsite, similarly
     /// to [`Subscriber::register_callsite`].
@@ -496,10 +497,11 @@ where
     ///```
     ///
     /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
-    fn with_subscriber(self, inner: S) -> Layered<Self, S>
+    fn with_subscriber(mut self, mut inner: S) -> Layered<Self, S>
     where
         Self: Sized,
     {
+        self.on_register(&mut inner);
         Layered {
             layer: self,
             inner,
@@ -734,6 +736,11 @@ where
     B: Layer<S>,
     S: Subscriber,
 {
+    fn on_register(&mut self, subscriber: &mut S) {
+        self.layer.on_register(subscriber);
+        self.inner.on_register(subscriber);
+    }
+
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.layer.register_callsite(metadata);
         if outer.is_never() {
@@ -830,6 +837,12 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
+    fn on_register(&mut self, subscriber: &mut S) {
+        if let Some(ref mut layer) = self {
+            layer.on_register(subscriber)
+        }
+    }
+
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {

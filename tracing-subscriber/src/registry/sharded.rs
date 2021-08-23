@@ -3,6 +3,7 @@ use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
 use crate::{
+    filter::{FilterId, FilterMap},
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
         LookupSpan, SpanData,
@@ -91,6 +92,7 @@ use tracing_core::{
 pub struct Registry {
     spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
+    next_filter_id: u8,
 }
 
 /// Span data stored in a [`Registry`].
@@ -119,6 +121,7 @@ pub struct Data<'a> {
 /// implementations for this type are load-bearing.
 #[derive(Debug)]
 struct DataInner {
+    filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
@@ -134,6 +137,7 @@ impl Default for Registry {
         Self {
             spans: Pool::new(),
             current_spans: ThreadLocal::new(),
+            next_filter_id: 0,
         }
     }
 }
@@ -342,6 +346,12 @@ impl<'a> LookupSpan<'a> for Registry {
         let inner = self.get(id)?;
         Some(Data { inner })
     }
+
+    fn is_enabled_for(&self, id: &Id, filter: FilterId) -> bool {
+        self.get(id)
+            .map(|span| span.filter_map.is_enabled(filter))
+            .unwrap_or(false)
+    }
 }
 
 // === impl CloseGuard ===
@@ -439,6 +449,7 @@ impl Default for DataInner {
         };
 
         Self {
+            filter_map: FilterMap::default(),
             metadata: &NULL_METADATA,
             parent: None,
             ref_count: AtomicUsize::new(0),
@@ -482,6 +493,8 @@ impl Clear for DataInner {
                 l.into_inner()
             })
             .clear();
+
+        self.filter_map.clear();
     }
 }
 
