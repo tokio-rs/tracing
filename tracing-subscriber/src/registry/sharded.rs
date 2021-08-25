@@ -240,6 +240,8 @@ impl Subscriber for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
+                data.filter_map = crate::filter::FILTERING
+                    .with(|filtering| filtering.replace(FilterMap::default()));
                 let refs = data.ref_count.get_mut();
                 debug_assert_eq!(*refs, 0);
                 *refs = 1;
@@ -257,7 +259,10 @@ impl Subscriber for Registry {
 
     /// This is intentionally not implemented, as recording events
     /// is the responsibility of layers atop of this registry.
-    fn event(&self, _: &Event<'_>) {}
+    fn event(&self, _: &Event<'_>) {
+        // clear filter map
+        crate::filter::FILTERING.with(|filtering| filtering.set(FilterMap::default()));
+    }
 
     fn enter(&self, id: &span::Id) {
         if self

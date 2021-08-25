@@ -7,7 +7,7 @@ mod env;
 mod level;
 
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{cell::Cell, thread_local};
 
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
@@ -43,12 +43,22 @@ pub struct Filtered<L, F> {
 #[derive(Copy, Clone, Debug)]
 pub struct FilterId(NonZeroU8);
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub(crate) struct FilterMap {
-    bits: AtomicU64,
+    bits: u64,
+}
+
+thread_local! {
+    pub(crate) static FILTERING: Cell<FilterMap> = Cell::new(FilterMap::default());
 }
 
 // === impl Filtered ===
+
+impl<L, F> Filtered<L, F> {
+    fn did_enable(&self) -> bool {
+        FILTERING.with(|filtering| filtering.get().is_enabled(self.id))
+    }
+}
 
 impl<S, L, F> Layer<S> for Filtered<L, F>
 where
@@ -70,20 +80,18 @@ where
     // almsot certainly impossible...right?
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.enabled(metadata, Context::none()) {
-            Interest::always()
-        } else {
-            Interest::never()
-        }
-    }
-
-    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
         todo!()
     }
 
+    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
+        let enabled = self.filter.enabled(metadata, &cx);
+        FILTERING.with(|filtering| filtering.set(filtering.get().set(self.id, enabled)));
+        enabled
+    }
+
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(id, self.id) {
-            self.layer.new_span(attrs, id, cx)
+        if self.did_enable() {
+            self.layer.new_span(attrs, id, cx.with_filter(self.id));
         }
     }
 
@@ -107,8 +115,7 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
-        // XXX(eliza) don't re-evaluate `enabled` here :(
-        if self.filter.enabled(event.metadata(), &cx) {
+        if self.did_enable() {
             self.layer.on_event(event, cx.with_filter(self.id))
         }
     }
@@ -142,34 +149,31 @@ where
 // === impl FilterMap ===
 
 impl FilterMap {
-    pub(crate) fn set(&self, FilterId(idx): FilterId, enabled: bool) {
+    pub(crate) fn set(self, FilterId(idx): FilterId, enabled: bool) -> Self {
         let idx = idx.get() - 1;
         debug_assert!(idx < 64);
         if enabled {
-            self.bits.fetch_or(1 << idx, Ordering::AcqRel);
+            Self {
+                bits: self.bits & !(1 << idx),
+            }
         } else {
-            self.bits.fetch_and(!(1 << idx), Ordering::AcqRel);
+            Self {
+                bits: self.bits | (1 << idx),
+            }
         }
     }
 
     pub(crate) fn is_enabled(&self, FilterId(idx): FilterId) -> bool {
         let idx = idx.get() - 1;
         debug_assert!(idx < 64);
-        self.bits.load(Ordering::Acquire) & (1 << idx) != 0
-    }
-
-    pub(crate) fn clear(&self) {
-        self.bits.store(0, Ordering::Release)
+        self.bits & 1 << idx == 0
     }
 }
 
 impl fmt::Debug for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FilterMap")
-            .field(
-                "bits",
-                &format_args!("{:#b}", self.bits.load(Ordering::Acquire)),
-            )
+            .field("bits", &format_args!("{:#b}", self.bits))
             .finish()
     }
 }
