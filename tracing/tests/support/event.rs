@@ -78,7 +78,7 @@ impl MockEvent {
         }
     }
 
-    pub(in crate::support) fn check(&mut self, event: &tracing::Event<'_>) {
+    pub fn check(&mut self, event: &tracing::Event<'_>) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata

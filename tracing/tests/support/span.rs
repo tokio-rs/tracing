@@ -154,6 +154,17 @@ impl NewSpan {
             ..self
         }
     }
+
+    pub fn check(&mut self, span: &tracing_core::span::Attributes<'_>) {
+        let meta = span.metadata();
+        let name = meta.name();
+        self.span
+            .metadata
+            .check(meta, format_args!("span `{}`", name));
+        let mut checker = self.fields.checker(name.to_string());
+        span.record(&mut checker);
+        checker.finish();
+    }
 }
 
 impl fmt::Display for NewSpan {

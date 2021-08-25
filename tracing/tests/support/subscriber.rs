@@ -22,7 +22,7 @@ use tracing::{
 };
 
 #[derive(Debug, Eq, PartialEq)]
-enum Expect {
+pub enum Expect {
     Event(MockEvent),
     Enter(MockSpan),
     Exit(MockSpan),
@@ -523,6 +523,10 @@ where
 }
 
 impl MockHandle {
+    pub fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
+        Self(expected, name)
+    }
+
     pub fn assert_finished(&self) {
         if let Ok(ref expected) = self.0.lock() {
             assert!(
@@ -536,7 +540,7 @@ impl MockHandle {
 }
 
 impl Expect {
-    fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
+    pub fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
         let name = name.as_ref();
         match self {
             Expect::Event(e) => panic!("[{}] expected event {}, but {} instead", name, e, what,),
