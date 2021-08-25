@@ -146,6 +146,12 @@ where
     }
 }
 
+// === impl FilterId ===
+impl FilterId {
+    pub(crate) fn new(id: u8) -> Self {
+        Self(NonZeroU8::new(id).expect("filter IDs may not be 0"))
+    }
+}
 // === impl FilterMap ===
 
 impl FilterMap {

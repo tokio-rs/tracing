@@ -137,7 +137,7 @@ impl Default for Registry {
         Self {
             spans: Pool::new(),
             current_spans: ThreadLocal::new(),
-            next_filter_id: 0,
+            next_filter_id: 1,
         }
     }
 }
@@ -357,6 +357,15 @@ impl<'a> LookupSpan<'a> for Registry {
             .map(|span| span.filter_map.is_enabled(filter))
             .unwrap_or(false)
     }
+
+    fn register_filter(&mut self) -> FilterId {
+        self.next_filter_id += 1;
+        assert!(
+            self.next_filter_id <= 64,
+            "cannot register more than 64 per-layer filters"
+        );
+        FilterId::new(self.next_filter_id)
+    }
 }
 
 // === impl CloseGuard ===
@@ -499,7 +508,7 @@ impl Clear for DataInner {
             })
             .clear();
 
-        self.filter_map.clear();
+        self.filter_map = FilterMap::default();
     }
 }
 
