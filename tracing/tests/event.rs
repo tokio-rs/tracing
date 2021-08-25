@@ -145,6 +145,7 @@ fn one_with_everything() {
                         )))
                         .and(field::mock("foo").with_value(&666))
                         .and(field::mock("bar").with_value(&false))
+                        .and(field::mock("like_a_butterfly").with_value(&42.0))
                         .only(),
                 )
                 .at_level(Level::ERROR)
@@ -157,7 +158,7 @@ fn one_with_everything() {
         event!(
             target: "whatever",
             Level::ERROR,
-            { foo = 666, bar = false },
+            { foo = 666, bar = false, like_a_butterfly = 42.0 },
              "{:#x} make me one with{what:.>20}", 4_277_009_102u64, what = "everything"
         );
     });
