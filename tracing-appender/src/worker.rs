@@ -30,7 +30,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     fn handle_recv(&mut self, result: &Result<Msg, RecvError>) -> io::Result<WorkerState> {
         match result {
             Ok(Msg::Line(msg)) => {
-                self.writer.write_all(&msg)?;
+                self.writer.write_all(msg)?;
                 Ok(WorkerState::Continue)
             }
             Ok(Msg::Shutdown) => Ok(WorkerState::Shutdown),
@@ -41,7 +41,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     fn handle_try_recv(&mut self, result: &Result<Msg, TryRecvError>) -> io::Result<WorkerState> {
         match result {
             Ok(Msg::Line(msg)) => {
-                self.writer.write_all(&msg)?;
+                self.writer.write_all(msg)?;
                 Ok(WorkerState::Continue)
             }
             Ok(Msg::Shutdown) => Ok(WorkerState::Shutdown),

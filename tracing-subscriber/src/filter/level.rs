@@ -8,7 +8,7 @@ pub use tracing_core::metadata::{LevelFilter, ParseLevelFilterError as ParseErro
 
 // === impl LevelFilter ===
 
-impl<S: Collect> crate::Subscribe<S> for LevelFilter {
+impl<C: Collect> crate::Subscribe<C> for LevelFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self >= metadata.level() {
             Interest::always()
@@ -17,11 +17,11 @@ impl<S: Collect> crate::Subscribe<S> for LevelFilter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: crate::subscribe::Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: crate::subscribe::Context<'_, C>) -> bool {
         self >= metadata.level()
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.clone().into()
+        (*self).into()
     }
 }

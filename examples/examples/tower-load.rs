@@ -248,7 +248,7 @@ impl Service<Request<Body>> for AdminSvc {
 impl AdminSvc {
     fn set_from(&self, bytes: Bytes) -> Result<(), String> {
         use std::str;
-        let body = str::from_utf8(&bytes.as_ref()).map_err(|e| format!("{}", e))?;
+        let body = str::from_utf8(bytes.as_ref()).map_err(|e| format!("{}", e))?;
         trace!(request.body = ?body);
         let new_filter = body
             .parse::<tracing_subscriber::filter::EnvFilter>()

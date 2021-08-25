@@ -5,6 +5,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
 use tracing::{span, Event, Id, Metadata};
+use tracing_core::span::Current;
 
 /// A collector that is enabled but otherwise does nothing.
 struct EnabledCollector;
@@ -38,6 +39,10 @@ impl tracing::Collect for EnabledCollector {
 
     fn exit(&self, span: &Id) {
         let _ = span;
+    }
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
     }
 }
 

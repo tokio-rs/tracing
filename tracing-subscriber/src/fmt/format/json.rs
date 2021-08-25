@@ -95,8 +95,10 @@ where
         use serde::ser::SerializeSeq;
         let mut serializer = serializer_o.serialize_seq(None)?;
 
-        for span in self.0.scope() {
-            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+        if let Some(leaf_span) = self.0.lookup_current() {
+            for span in leaf_span.scope().from_root() {
+                serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+            }
         }
 
         serializer.end()
@@ -132,7 +134,7 @@ where
         // We should probably rework this to use a `serde_json::Value` or something
         // similar in a JSON-specific layer, but I'd (david)
         // rather have a uglier fix now rather than shipping broken JSON.
-        match serde_json::from_str::<serde_json::Value>(&data) {
+        match serde_json::from_str::<serde_json::Value>(data) {
             Ok(serde_json::Value::Object(fields)) => {
                 for field in fields {
                     serializer.serialize_entry(&field.0, &field.1)?;
@@ -172,20 +174,20 @@ where
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Json, T>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result
     where
-        S: Collect + for<'a> LookupSpan<'a>,
+        C: Collect + for<'a> LookupSpan<'a>,
     {
         let mut timestamp = String::new();
         self.timer.format_time(&mut timestamp)?;
@@ -202,8 +204,13 @@ where
 
             let mut serializer = serializer.serialize_map(None)?;
 
-            serializer.serialize_entry("timestamp", &timestamp)?;
-            serializer.serialize_entry("level", &meta.level().as_serde())?;
+            if self.display_timestamp {
+                serializer.serialize_entry("timestamp", &timestamp)?;
+            }
+
+            if self.display_level {
+                serializer.serialize_entry("level", &meta.level().as_serde())?;
+            }
 
             let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 
@@ -418,28 +425,34 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
 }
 
 impl<'a> field::Visit for JsonVisitor<'a> {
+    /// Visit a double precision floating point value.
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.values
+            .insert(field.name(), serde_json::Value::from(value));
+    }
+
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         self.values
-            .insert(&field.name(), serde_json::Value::from(value));
+            .insert(field.name(), serde_json::Value::from(value));
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -479,7 +492,7 @@ impl<'a> io::Write for WriteAdaptor<'a> {
             std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
         self.fmt_write
-            .write_str(&s)
+            .write_str(s)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(s.as_bytes().len())
@@ -731,7 +744,7 @@ mod test {
             .lines()
             .last()
             .expect("expected at least one line to be written!");
-        match serde_json::from_str(&json) {
+        match serde_json::from_str(json) {
             Ok(v) => v,
             Err(e) => panic!(
                 "assertion failed: JSON shouldn't be malformed\n  error: {}\n  json: {}",

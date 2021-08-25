@@ -79,7 +79,7 @@ pub use self::make::MakeService;
 #[cfg_attr(docsrs, doc(cfg(feature = "tower-make")))]
 pub mod make {
     use super::*;
-    use pin_project::pin_project;
+    use pin_project_lite::pin_project;
 
     #[derive(Debug)]
     pub struct MakeService<S, R, G = fn(&R) -> tracing::Span> {
@@ -99,13 +99,14 @@ pub mod make {
         _p: PhantomData<fn(T, R)>,
     }
 
-    #[pin_project]
-    #[derive(Debug)]
-    pub struct MakeFuture<F, R, G = fn(&R) -> tracing::Span> {
-        get_span: Option<G>,
-        #[pin]
-        inner: F,
-        _p: PhantomData<fn(R)>,
+    pin_project! {
+        #[derive(Debug)]
+        pub struct MakeFuture<F, R, G = fn(&R) -> tracing::Span> {
+            get_span: Option<G>,
+            #[pin]
+            inner: F,
+            _p: PhantomData<fn(R)>,
+        }
     }
 
     #[cfg(feature = "tower-layer")]
