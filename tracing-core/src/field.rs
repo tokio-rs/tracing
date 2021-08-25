@@ -16,9 +16,9 @@
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
-//! (`i64`, `u64`, `bool`, and `&str`) or using a `fmt::Display` or `fmt::Debug`
-//! implementation. Collectors are provided these primitive value types as
-//! `dyn Value` trait objects.
+//! (`i64`, `u64`, `f64`, `bool`, and `&str`) or using a `fmt::Display` or
+//! `fmt::Debug` implementation. Collectors are provided these primitive
+//! value types as `dyn Value` trait objects.
 //!
 //! These trait objects can be formatted using `fmt::Debug`, but may also be
 //! recorded as typed data by calling the [`Value::record`] method on these
@@ -179,6 +179,11 @@ pub struct Iter {
 /// [set of `Value`s added to a `Span`]: super::collect::Collect::record
 /// [`Event`]: super::event::Event
 pub trait Visit {
+    /// Visit a double-precision floating point value.
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.record_debug(field, &value)
+    }
+
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.record_debug(field, &value)
@@ -330,6 +335,12 @@ macro_rules! ty_to_nonzero {
 }
 
 macro_rules! impl_one_value {
+    (f32, $op:expr, $record:ident) => {
+        impl_one_value!(normal, f32, $op, $record);
+    };
+    (f64, $op:expr, $record:ident) => {
+        impl_one_value!(normal, f64, $op, $record);
+    };
     (bool, $op:expr, $record:ident) => {
         impl_one_value!(normal, bool, $op, $record);
     };
@@ -382,7 +393,8 @@ impl_values! {
     record_u64(usize, u32, u16, u8 as u64),
     record_i64(i64),
     record_i64(isize, i32, i16, i8 as i64),
-    record_bool(bool)
+    record_bool(bool),
+    record_f64(f64, f32 as f64)
 }
 
 impl<T: crate::sealed::Sealed> crate::sealed::Sealed for Wrapping<T> {}
