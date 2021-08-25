@@ -682,7 +682,8 @@ where
         }
     }
 
-    /// Configures whether or not to include the span context.
+    /// Configures whether or not to print the spans in the current trace as context
+    /// when formatting events.
     pub fn with_span_context(self, with_span_context: bool) -> Self {
         CollectorBuilder {
             inner: self.inner.with_span_context(with_span_context),
