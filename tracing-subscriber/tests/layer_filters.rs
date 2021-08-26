@@ -76,7 +76,7 @@ fn basic_layer_filters_spans() {
 
 #[test]
 fn global_filters_layers_still_work() {
-    let (expect, handle) = layer::named("trace")
+    let (expect, handle) = layer::mock()
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::ERROR))
@@ -85,6 +85,29 @@ fn global_filters_layers_still_work() {
 
     let _subscriber = tracing_subscriber::registry()
         .with(expect)
+        .with(LevelFilter::INFO)
+        .set_default();
+
+    tracing::trace!("hello trace");
+    tracing::debug!("hello debug");
+    tracing::info!("hello info");
+    tracing::warn!("hello warn");
+    tracing::error!("hello error");
+
+    handle.assert_finished();
+}
+
+#[test]
+fn global_filters_affect_layer_filters() {
+    let (expect, handle) = layer::named("debug")
+        .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::WARN))
+        .event(event::mock().at_level(Level::ERROR))
+        .done()
+        .run_with_handle();
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(expect.with_filter(LevelFilter::DEBUG))
         .with(LevelFilter::INFO)
         .set_default();
 
