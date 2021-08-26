@@ -878,7 +878,7 @@ enum RecordType {
 
 impl RecordType {
     /// Array of primitive types which should be recorded as [RecordType::Value].
-    const TYPES_FOR_VALUE: [&'static str; 25] = [
+    const TYPES_FOR_VALUE: &'static [&'static str] = &[
         "bool",
         "str",
         "u8",
