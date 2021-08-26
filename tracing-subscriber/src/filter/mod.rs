@@ -128,7 +128,7 @@ where
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
         let enabled = self.filter.enabled(metadata, &cx.with_filter(self.id));
         FILTERING.with(|filtering| filtering.set(filtering.get().set(self.id, enabled)));
-        enabled
+        true // keep filtering
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
@@ -217,13 +217,17 @@ impl FilterMap {
         }
     }
 
-    pub(crate) fn is_enabled(&self, FilterId(idx): FilterId) -> bool {
+    pub(crate) fn is_enabled(self, FilterId(idx): FilterId) -> bool {
         debug_assert!(idx < 64 || idx == 255);
         if idx >= 64 {
             return false;
         }
 
         self.bits & (1 << idx) == 0
+    }
+
+    pub(crate) fn any_enabled(self) -> bool {
+        self.bits != u64::MAX
     }
 }
 

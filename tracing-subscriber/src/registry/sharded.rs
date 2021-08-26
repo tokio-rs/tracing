@@ -201,6 +201,10 @@ impl Registry {
             is_closing: false,
         }
     }
+
+    pub(crate) fn has_per_layer_filters(&self) -> bool {
+        self.next_filter_id > 0
+    }
 }
 
 thread_local! {
@@ -218,6 +222,9 @@ impl Subscriber for Registry {
     }
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
+        if self.has_per_layer_filters() {
+            return crate::filter::FILTERING.with(|filtering| filtering.get().any_enabled());
+        }
         true
     }
 

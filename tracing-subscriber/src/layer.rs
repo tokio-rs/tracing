@@ -641,7 +641,13 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.layer.enabled(metadata, self.ctx()) || self.inner.enabled(metadata)
+        if self.layer.enabled(metadata, self.ctx()) {
+            // if the outer layer enables the callsite metadata, ask the subscriber.
+            self.inner.enabled(metadata)
+        } else {
+            // otherwise, the callsite is disabled by the layer
+            false
+        }
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
@@ -745,30 +751,36 @@ where
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.layer.register_callsite(metadata);
-        // if outer.is_never() {
-        //     // if the outer layer has disabled the callsite, return now so that
-        //     // inner layers don't get their hopes up.
-        //     return outer;
-        // }
+        if outer.is_never() {
+            // if the outer layer has disabled the callsite, return now so that
+            // inner layers don't get their hopes up.
+            return outer;
+        }
 
         // // The intention behind calling `inner.register_callsite()` before the if statement
         // // is to ensure that the inner subscriber is informed that the callsite exists
         // // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
-        // if outer.is_sometimes() {
-        //     // if this interest is "sometimes", return "sometimes" to ensure that
-        //     // filters are reevaluated.
-        //     outer
-        // } else {
-        //     // otherwise, allow the inner layer to weigh in.
-        //     inner
-        // }
+        if outer.is_sometimes() {
+            // if this interest is "sometimes", return "sometimes" to ensure that
+            // filters are reevaluated.
+            outer
+        } else {
+            // otherwise, allow the inner layer to weigh in.
+            inner
+        }
         // TODO(eliza): make work with PLF
-        Interest::sometimes()
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        self.layer.enabled(metadata, ctx.clone()) || self.inner.enabled(metadata, ctx)
+        dbg!(std::any::type_name::<Self>());
+        if dbg!(self.layer.enabled(metadata, ctx.clone())) {
+            // if the outer subscriber enables the callsite metadata, ask the inner layer.
+            dbg!(self.inner.enabled(metadata, ctx))
+        } else {
+            // otherwise, the callsite is disabled by this layer
+            false
+        }
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
