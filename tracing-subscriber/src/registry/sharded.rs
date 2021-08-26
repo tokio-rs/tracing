@@ -137,7 +137,7 @@ impl Default for Registry {
         Self {
             spans: Pool::new(),
             current_spans: ThreadLocal::new(),
-            next_filter_id: 1,
+            next_filter_id: 0,
         }
     }
 }
@@ -240,8 +240,7 @@ impl Subscriber for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
-                data.filter_map = crate::filter::FILTERING
-                    .with(|filtering| filtering.replace(FilterMap::default()));
+                data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.get());
                 let refs = data.ref_count.get_mut();
                 debug_assert_eq!(*refs, 0);
                 *refs = 1;
@@ -259,10 +258,7 @@ impl Subscriber for Registry {
 
     /// This is intentionally not implemented, as recording events
     /// is the responsibility of layers atop of this registry.
-    fn event(&self, _: &Event<'_>) {
-        // clear filter map
-        crate::filter::FILTERING.with(|filtering| filtering.set(FilterMap::default()));
-    }
+    fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
         if self
@@ -359,12 +355,9 @@ impl<'a> LookupSpan<'a> for Registry {
     }
 
     fn register_filter(&mut self) -> FilterId {
+        let id = FilterId::new(self.next_filter_id);
         self.next_filter_id += 1;
-        assert!(
-            self.next_filter_id <= 64,
-            "cannot register more than 64 per-layer filters"
-        );
-        FilterId::new(self.next_filter_id)
+        id
     }
 }
 

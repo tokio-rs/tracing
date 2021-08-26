@@ -17,7 +17,7 @@ use crate::{
     layer::{Context, Layer},
     registry,
 };
-use std::{fmt, num::NonZeroU8};
+use std::{fmt, marker::PhantomData};
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
@@ -27,21 +27,27 @@ use tracing_core::{
 /// A filter that determines whether a span or event is enabled.
 pub trait Filter<S> {
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool;
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>, cx: &Context<'_, S>) -> Interest;
+
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        let _ = meta;
+        Interest::sometimes()
+    }
+
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Filtered<L, F> {
+pub struct Filtered<L, F, S> {
     filter: F,
     layer: L,
     id: FilterId,
+    _s: PhantomData<fn(S)>,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct FilterId(NonZeroU8);
+pub struct FilterId(u8);
 
 #[derive(Default, Copy, Clone)]
 pub(crate) struct FilterMap {
@@ -52,15 +58,50 @@ thread_local! {
     pub(crate) static FILTERING: Cell<FilterMap> = Cell::new(FilterMap::default());
 }
 
-// === impl Filtered ===
+// === impl Filter ===
 
-impl<L, F> Filtered<L, F> {
-    fn did_enable(&self) -> bool {
-        FILTERING.with(|filtering| filtering.get().is_enabled(self.id))
+impl<S> Filter<S> for LevelFilter {
+    fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+        meta.level() <= self
+    }
+
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        if meta.level() <= self {
+            Interest::always()
+        } else {
+            Interest::never()
+        }
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        Some(*self)
     }
 }
 
-impl<S, L, F> Layer<S> for Filtered<L, F>
+// === impl Filtered ===
+
+impl<L, F, S> Filtered<L, F, S> {
+    pub fn new(layer: L, filter: F) -> Self {
+        Self {
+            layer,
+            filter,
+            id: FilterId(255),
+            _s: PhantomData,
+        }
+    }
+
+    fn did_enable(&self, f: impl FnOnce()) {
+        FILTERING.with(|filtering| {
+            if filtering.get().is_enabled(self.id) {
+                f();
+
+                filtering.set(filtering.get().set(self.id, true));
+            }
+        })
+    }
+}
+
+impl<S, L, F> Layer<S> for Filtered<L, F, S>
 where
     S: Subscriber + for<'span> registry::LookupSpan<'span> + 'static,
     F: Filter<S> + 'static,
@@ -80,19 +121,20 @@ where
     // almsot certainly impossible...right?
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        todo!()
+        // self.filter.callsite_enabled(metadata)
+        Interest::sometimes()
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
-        let enabled = self.filter.enabled(metadata, &cx);
+        let enabled = self.filter.enabled(metadata, &cx.with_filter(self.id));
         FILTERING.with(|filtering| filtering.set(filtering.get().set(self.id, enabled)));
         enabled
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
-        if self.did_enable() {
+        self.did_enable(|| {
             self.layer.new_span(attrs, id, cx.with_filter(self.id));
-        }
+        })
     }
 
     #[doc(hidden)]
@@ -115,9 +157,9 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
-        if self.did_enable() {
-            self.layer.on_event(event, cx.with_filter(self.id))
-        }
+        self.did_enable(|| {
+            self.layer.on_event(event, cx.with_filter(self.id));
+        })
     }
 
     fn on_enter(&self, id: &span::Id, cx: Context<'_, S>) {
@@ -147,17 +189,23 @@ where
 }
 
 // === impl FilterId ===
+
 impl FilterId {
     pub(crate) fn new(id: u8) -> Self {
-        Self(NonZeroU8::new(id).expect("filter IDs may not be 0"))
+        assert!(id < 64, "filter IDs may not be greater than 64");
+        Self(id)
     }
 }
+
 // === impl FilterMap ===
 
 impl FilterMap {
     pub(crate) fn set(self, FilterId(idx): FilterId, enabled: bool) -> Self {
-        let idx = idx.get() - 1;
-        debug_assert!(idx < 64);
+        debug_assert!(idx < 64 || idx == 255);
+        if idx >= 64 {
+            return self;
+        }
+
         if enabled {
             Self {
                 bits: self.bits & !(1 << idx),
@@ -170,9 +218,12 @@ impl FilterMap {
     }
 
     pub(crate) fn is_enabled(&self, FilterId(idx): FilterId) -> bool {
-        let idx = idx.get() - 1;
-        debug_assert!(idx < 64);
-        self.bits & 1 << idx == 0
+        debug_assert!(idx < 64 || idx == 255);
+        if idx >= 64 {
+            return false;
+        }
+
+        self.bits & (1 << idx) == 0
     }
 }
 

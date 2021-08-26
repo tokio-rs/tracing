@@ -6,7 +6,7 @@ use tracing_core::{
     Event, LevelFilter,
 };
 
-use crate::filter::FilterId;
+use crate::filter::{self, FilterId};
 #[cfg(feature = "registry")]
 use crate::registry::Registry;
 use crate::registry::{self, LookupSpan, SpanRef};
@@ -509,6 +509,14 @@ where
         }
     }
 
+    fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
+    where
+        Self: Sized,
+        F: filter::Filter<S>,
+    {
+        filter::Filtered::new(self, filter)
+    }
+
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
@@ -545,7 +553,7 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
 /// pub struct MyLayer;
 ///
 /// impl<S> Layer<S> for MyLayer
-/// where`
+/// where
 ///     S: Subscriber + for<'a> LookupSpan<'a>,
 /// {
 ///     // ...
@@ -633,13 +641,7 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        if self.layer.enabled(metadata, self.ctx()) {
-            // if the outer layer enables the callsite metadata, ask the subscriber.
-            self.inner.enabled(metadata)
-        } else {
-            // otherwise, the callsite is disabled by the layer
-            false
-        }
+        self.layer.enabled(metadata, self.ctx()) || self.inner.enabled(metadata)
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
@@ -743,34 +745,34 @@ where
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.layer.register_callsite(metadata);
-        if outer.is_never() {
-            // if the outer layer has disabled the callsite, return now so that
-            // inner layers don't get their hopes up.
-            return outer;
-        }
+        // if outer.is_never() {
+        //     // if the outer layer has disabled the callsite, return now so that
+        //     // inner layers don't get their hopes up.
+        //     return outer;
+        // }
 
-        // The intention behind calling `inner.register_callsite()` before the if statement
-        // is to ensure that the inner subscriber is informed that the callsite exists
-        // regardless of the outer subscriber's filtering decision.
+        // // The intention behind calling `inner.register_callsite()` before the if statement
+        // // is to ensure that the inner subscriber is informed that the callsite exists
+        // // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
-        if outer.is_sometimes() {
-            // if this interest is "sometimes", return "sometimes" to ensure that
-            // filters are reevaluated.
-            outer
-        } else {
-            // otherwise, allow the inner layer to weigh in.
-            inner
-        }
+        // if outer.is_sometimes() {
+        //     // if this interest is "sometimes", return "sometimes" to ensure that
+        //     // filters are reevaluated.
+        //     outer
+        // } else {
+        //     // otherwise, allow the inner layer to weigh in.
+        //     inner
+        // }
+        // TODO(eliza): make work with PLF
+        Interest::sometimes()
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        if self.layer.enabled(metadata, ctx.clone()) {
-            // if the outer layer enables the callsite metadata, ask the inner layer.
-            self.inner.enabled(metadata, ctx)
-        } else {
-            // otherwise, the callsite is disabled by this layer
-            false
-        }
+        self.layer.enabled(metadata, ctx.clone()) || self.inner.enabled(metadata, ctx)
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        std::cmp::max(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     #[inline]
@@ -1037,6 +1039,14 @@ where
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
+    }
+
+    fn is_enabled_for(&self, id: &span::Id, filter: FilterId) -> bool {
+        self.inner.is_enabled_for(id, filter)
+    }
+
+    fn register_filter(&mut self) -> FilterId {
+        self.inner.register_filter()
     }
 }
 
