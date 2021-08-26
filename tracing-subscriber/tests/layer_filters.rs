@@ -1,7 +1,7 @@
 mod support;
 use self::support::*;
 
-use tracing::{level_filters::LevelFilter, Level, Subscriber};
+use tracing::{level_filters::LevelFilter, Level};
 use tracing_subscriber::prelude::*;
 
 #[test]
@@ -72,4 +72,27 @@ fn basic_layer_filters_spans() {
     trace_handle.assert_finished();
     debug_handle.assert_finished();
     info_handle.assert_finished();
+}
+
+#[test]
+fn global_filters_layers_still_work() {
+    let (expect, handle) = layer::named("trace")
+        .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::WARN))
+        .event(event::mock().at_level(Level::ERROR))
+        .done()
+        .run_with_handle();
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(expect)
+        .with(LevelFilter::INFO)
+        .set_default();
+
+    tracing::trace!("hello trace");
+    tracing::debug!("hello debug");
+    tracing::info!("hello info");
+    tracing::warn!("hello warn");
+    tracing::error!("hello error");
+
+    handle.assert_finished();
 }
