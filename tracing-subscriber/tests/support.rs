@@ -169,7 +169,7 @@ where
             None => {}
             Some(Expect::Event(mut expected)) => {
                 // let spans = self.spans.lock().unwrap();
-                expected.check(event);
+                expected.check(event, &self.name);
                 // match expected.parent {
                 //     Some(Parent::ExplicitRoot) => {
                 //         assert!(
@@ -251,7 +251,7 @@ where
         let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                expected.check(span);
+                expected.check(span, &self.name);
                 // match expected.parent {
                 //     Some(Parent::ExplicitRoot) => {
                 //         assert!(

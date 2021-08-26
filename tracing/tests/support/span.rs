@@ -96,11 +96,6 @@ impl MockSpan {
             ..Default::default()
         }
     }
-
-    pub(in crate::support) fn check_metadata(&self, actual: &tracing::Metadata<'_>) {
-        self.metadata.check(actual, format_args!("span {}", self));
-        assert!(actual.is_span(), "expected a span but got {:?}", actual);
-    }
 }
 
 impl fmt::Display for MockSpan {
@@ -155,13 +150,13 @@ impl NewSpan {
         }
     }
 
-    pub fn check(&mut self, span: &tracing_core::span::Attributes<'_>) {
+    pub fn check(&mut self, span: &tracing_core::span::Attributes<'_>, subscriber_name: &str) {
         let meta = span.metadata();
         let name = meta.name();
         self.span
             .metadata
-            .check(meta, format_args!("span `{}`", name));
-        let mut checker = self.fields.checker(name.to_string());
+            .check(meta, format_args!("span `{}`", name), subscriber_name);
+        let mut checker = self.fields.checker(name, subscriber_name);
         span.record(&mut checker);
         checker.finish();
     }

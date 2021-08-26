@@ -220,7 +220,8 @@ where
                 if let Some(name) = expected_span.name() {
                     assert_eq!(name, span.name);
                 }
-                let mut checker = expected_values.checker(format!("span {}: ", span.name));
+                let context = format!("span {}: ", span.name);
+                let mut checker = expected_values.checker(&context, &self.name);
                 values.record(&mut checker);
                 checker.finish();
             }
@@ -234,7 +235,7 @@ where
             None => {}
             Some(Expect::Event(mut expected)) => {
                 let spans = self.spans.lock().unwrap();
-                expected.check(event);
+                expected.check(event, &self.name);
                 match expected.parent {
                     Some(Parent::ExplicitRoot) => {
                         assert!(
@@ -320,13 +321,7 @@ where
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
                 let name = meta.name();
-                expected
-                    .span
-                    .metadata
-                    .check(meta, format_args!("span `{}`", name));
-                let mut checker = expected.fields.checker(name.to_string());
-                span.record(&mut checker);
-                checker.finish();
+                expected.check(span, &self.name);
                 match expected.parent {
                     Some(Parent::ExplicitRoot) => {
                         assert!(
