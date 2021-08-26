@@ -78,7 +78,12 @@ impl MockEvent {
         }
     }
 
-    pub fn check(&mut self, event: &tracing::Event<'_>, subscriber_name: &str) {
+    pub fn check(
+        &mut self,
+        event: &tracing::Event<'_>,
+        get_parent_name: impl FnOnce() -> Option<String>,
+        subscriber_name: &str,
+    ) {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata
@@ -94,6 +99,16 @@ impl MockEvent {
             let mut checker = expected_fields.checker(name, subscriber_name);
             event.record(&mut checker);
             checker.finish();
+        }
+
+        if let Some(ref expected_parent) = self.parent {
+            let actual_parent = get_parent_name();
+            expected_parent.check_parent_name(
+                actual_parent.as_deref(),
+                event.parent().cloned(),
+                event.metadata().name(),
+                subscriber_name,
+            )
         }
     }
 }

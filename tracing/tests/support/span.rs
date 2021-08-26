@@ -150,7 +150,12 @@ impl NewSpan {
         }
     }
 
-    pub fn check(&mut self, span: &tracing_core::span::Attributes<'_>, subscriber_name: &str) {
+    pub fn check(
+        &mut self,
+        span: &tracing_core::span::Attributes<'_>,
+        get_parent_name: impl FnOnce() -> Option<String>,
+        subscriber_name: &str,
+    ) {
         let meta = span.metadata();
         let name = meta.name();
         self.span
@@ -159,6 +164,16 @@ impl NewSpan {
         let mut checker = self.fields.checker(name, subscriber_name);
         span.record(&mut checker);
         checker.finish();
+
+        if let Some(expected_parent) = self.parent.as_ref() {
+            let actual_parent = get_parent_name();
+            expected_parent.check_parent_name(
+                actual_parent.as_deref(),
+                span.parent().cloned(),
+                format_args!("span `{}`", name),
+                subscriber_name,
+            )
+        }
     }
 }
 

@@ -162,70 +162,14 @@ where
         // }
     }
 
-    fn on_event(&self, event: &Event<'_>, _: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
         let name = event.metadata().name();
         println!("[{}] event: {};", self.name, name);
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
-                // let spans = self.spans.lock().unwrap();
-                expected.check(event, &self.name);
-                // match expected.parent {
-                //     Some(Parent::ExplicitRoot) => {
-                //         assert!(
-                //             event.is_root(),
-                //             "[{}] expected {:?} to be an explicit root event",
-                //             self.name,
-                //             name
-                //         );
-                //     }
-                //     Some(Parent::Explicit(expected_parent)) => {
-                //         let actual_parent =
-                //             event.parent().and_then(|id| spans.get(id)).map(|s| s.name);
-                //         assert_eq!(
-                //             Some(expected_parent.as_ref()),
-                //             actual_parent,
-                //             "[{}] expected {:?} to have explicit parent {:?}",
-                //             self.name,
-                //             name,
-                //             expected_parent,
-                //         );
-                //     }
-                //     Some(Parent::ContextualRoot) => {
-                //         assert!(
-                //             event.is_contextual(),
-                //             "[{}] expected {:?} to have a contextual parent",
-                //             self.name,
-                //             name
-                //         );
-                //         assert!(
-                //             self.current.lock().unwrap().last().is_none(),
-                //             "[{}] expected {:?} to be a root, but we were inside a span",
-                //             self.name,
-                //             name
-                //         );
-                //     }
-                //     Some(Parent::Contextual(expected_parent)) => {
-                //         assert!(
-                //             event.is_contextual(),
-                //             "[{}] expected {:?} to have a contextual parent",
-                //             self.name,
-                //             name
-                //         );
-                //         let stack = self.current.lock().unwrap();
-                //         let actual_parent =
-                //             stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
-                //         assert_eq!(
-                //             Some(expected_parent.as_ref()),
-                //             actual_parent,
-                //             "[{}] expected {:?} to have contextual parent {:?}",
-                //             self.name,
-                //             name,
-                //             expected_parent,
-                //         );
-                //     }
-                //     None => {}
-                // }
+                let get_parent_name = || cx.event_span(event).map(|span| span.name().to_string());
+                expected.check(event, get_parent_name, &self.name);
             }
             Some(ex) => ex.bad(
                 &self.name,
@@ -238,7 +182,7 @@ where
         // TODO: it should be possible to expect spans to follow from other spans
     }
 
-    fn new_span(&self, span: &Attributes<'_>, id: &Id, _: Context<'_, S>) {
+    fn new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
         let meta = span.metadata();
         println!(
             "[{}] new_span: name={:?}; target={:?}; id={:?};",
@@ -251,63 +195,13 @@ where
         let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                expected.check(span, &self.name);
-                // match expected.parent {
-                //     Some(Parent::ExplicitRoot) => {
-                //         assert!(
-                //             span.is_root(),
-                //             "[{}] expected {:?} to be an explicit root span",
-                //             self.name,
-                //             name
-                //         );
-                //     }
-                //     Some(Parent::Explicit(expected_parent)) => {
-                //         let actual_parent =
-                //             span.parent().and_then(|id| spans.get(id)).map(|s| s.name);
-                //         assert_eq!(
-                //             Some(expected_parent.as_ref()),
-                //             actual_parent,
-                //             "[{}] expected {:?} to have explicit parent {:?}",
-                //             self.name,
-                //             name,
-                //             expected_parent,
-                //         );
-                //     }
-                //     Some(Parent::ContextualRoot) => {
-                //         assert!(
-                //             span.is_contextual(),
-                //             "[{}] expected {:?} to have a contextual parent",
-                //             self.name,
-                //             name
-                //         );
-                //         assert!(
-                //             self.current.lock().unwrap().last().is_none(),
-                //             "[{}] expected {:?} to be a root, but we were inside a span",
-                //             self.name,
-                //             name
-                //         );
-                //     }
-                //     Some(Parent::Contextual(expected_parent)) => {
-                //         assert!(
-                //             span.is_contextual(),
-                //             "[{}] expected {:?} to have a contextual parent",
-                //             self.name,
-                //             name
-                //         );
-                //         let stack = self.current.lock().unwrap();
-                //         let actual_parent =
-                //             stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
-                //         assert_eq!(
-                //             Some(expected_parent.as_ref()),
-                //             actual_parent,
-                //             "[{}] expected {:?} to have contextual parent {:?}",
-                //             self.name,
-                //             name,
-                //             expected_parent,
-                //         );
-                //     }
-                //     None => {}
-                // }
+                let get_parent_name = || {
+                    span.parent()
+                        .and_then(|id| cx.span(id))
+                        .or_else(|| cx.lookup_current())
+                        .map(|span| span.name().to_string())
+                };
+                expected.check(span, get_parent_name, &self.name);
             }
         }
     }
