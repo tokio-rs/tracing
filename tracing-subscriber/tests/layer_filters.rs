@@ -183,3 +183,36 @@ fn filter_fn() {
     bar_handle.assert_finished();
     all_handle.assert_finished();
 }
+
+#[test]
+fn layer_filters_dont_break_other_layers() {
+    let (unfiltered, unfiltered_handle) = layer::named("unfiltered")
+        .event(event::mock().at_level(Level::TRACE))
+        .event(event::mock().at_level(Level::DEBUG))
+        .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::WARN))
+        .event(event::mock().at_level(Level::ERROR))
+        .done()
+        .run_with_handle();
+
+    let (filtered, filtered_handle) = layer::named("filtered")
+        .event(event::mock().at_level(Level::INFO))
+        .event(event::mock().at_level(Level::WARN))
+        .event(event::mock().at_level(Level::ERROR))
+        .done()
+        .run_with_handle();
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(unfiltered)
+        .with(filtered.with_filter(LevelFilter::INFO))
+        .set_default();
+
+    tracing::trace!("hello trace");
+    tracing::debug!("hello debug");
+    tracing::info!("hello info");
+    tracing::warn!("hello warn");
+    tracing::error!("hello error");
+
+    unfiltered_handle.assert_finished();
+    filtered_handle.assert_finished();
+}

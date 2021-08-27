@@ -138,6 +138,14 @@ impl<S> Layer<S> for ExpectLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
+    fn register_callsite(
+        &self,
+        metadata: &'static tracing::Metadata<'static>,
+    ) -> tracing_core::Interest {
+        println!("[{}] register_callsite {:#?}", self.name, metadata);
+        tracing_core::Interest::always()
+    }
+
     fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, S>) {
         // let spans = self.spans.lock().unwrap();
         // let mut expected = self.expected.lock().unwrap();
@@ -164,7 +172,12 @@ where
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
         let name = event.metadata().name();
-        println!("[{}] event: {};", self.name, name);
+        println!(
+            "[{}] event: {}; level: {}",
+            self.name,
+            name,
+            event.metadata().level()
+        );
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
