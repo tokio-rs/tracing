@@ -40,6 +40,7 @@ pub struct Extensions<'a> {
 }
 
 impl<'a> Extensions<'a> {
+    #[cfg(feature = "registry")]
     pub(crate) fn new(inner: RwLockReadGuard<'a, ExtensionsInner>) -> Self {
         Self { inner }
     }
@@ -57,6 +58,7 @@ pub struct ExtensionsMut<'a> {
 }
 
 impl<'a> ExtensionsMut<'a> {
+    #[cfg(feature = "registry")]
     pub(crate) fn new(inner: RwLockWriteGuard<'a, ExtensionsInner>) -> Self {
         Self { inner }
     }
@@ -117,6 +119,7 @@ pub(crate) struct ExtensionsInner {
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
     #[inline]
+    #[cfg(any(test, feature = "registry"))]
     pub(crate) fn new() -> ExtensionsInner {
         ExtensionsInner {
             map: AnyMap::default(),
@@ -175,6 +178,7 @@ impl ExtensionsInner {
     ///
     /// This permits the hash map allocation to be pooled by the registry so
     /// that future spans will not need to allocate new hashmaps.
+    #[cfg(any(test, feature = "registry"))]
     pub(crate) fn clear(&mut self) {
         self.map.clear();
     }
