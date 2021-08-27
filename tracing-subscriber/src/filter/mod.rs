@@ -7,7 +7,11 @@ mod env;
 mod level;
 
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
-use std::{any::type_name, cell::Cell, thread_local};
+use std::{
+    any::type_name,
+    cell::{Cell, RefCell},
+    thread_local,
+};
 
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
@@ -92,15 +96,24 @@ pub(crate) struct FilterMap {
 ///    doesn't want to enable that span or event. In that case, the
 ///    `Registry`'s `enabled` method will return `false`, so that we can
 ///    skip recording it entirely.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct FilterState {
     enabled: Cell<FilterMap>,
+    // TODO(eliza): `Interest`s should _probably_ be `Copy`. The only reason
+    // they're not is our Obsessive Commitment to Forwards-Compatibility. If
+    // this changes in tracing-core`, we can make this a `Cell` rather than
+    // `RefCell`...
+    interest: RefCell<Option<Interest>>,
+
     #[cfg(debug_assertions)]
     in_current_filter_pass: Cell<usize>,
+
+    #[cfg(debug_assertions)]
+    in_current_interest_pass: Cell<usize>,
 }
 
 thread_local! {
-    pub(crate) static FILTERING: FilterState = FilterState::default();
+    pub(crate) static FILTERING: FilterState = FilterState::new();
 }
 
 // === impl Filter ===
@@ -160,14 +173,15 @@ where
     // almsot certainly impossible...right?
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        // self.filter.callsite_enabled(metadata)
-        Interest::sometimes()
+        let interest = self.filter.callsite_enabled(metadata);
+        FILTERING.with(|filtering| filtering.add_interest(interest));
+        Interest::always() // don't short circuit!
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
         let enabled = self.filter.enabled(metadata, &cx.with_filter(self.id));
         FILTERING.with(|filtering| filtering.set(self.id, enabled));
-        true // keep filtering
+        true // don't short circuit, keep filtering
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
@@ -426,6 +440,11 @@ impl FilterMap {
     pub(crate) fn any_enabled(self) -> bool {
         self.bits != u64::MAX
     }
+
+    #[inline]
+    pub(crate) fn all_disabled(self) -> bool {
+        self.bits == u64::MAX
+    }
 }
 
 impl fmt::Debug for FilterMap {
@@ -439,7 +458,24 @@ impl fmt::Debug for FilterMap {
 // === impl FilterState ===
 
 impl FilterState {
-    pub(crate) fn set(&self, filter: FilterId, enabled: bool) {
+    fn new() -> Self {
+        Self {
+            enabled: Cell::new(FilterMap::default()),
+            interest: RefCell::new(None),
+
+            #[cfg(debug_assertions)]
+            in_current_filter_pass: Cell::new(0),
+
+            #[cfg(debug_assertions)]
+            in_current_interest_pass: Cell::new(0),
+        }
+    }
+
+    // pub(crate) fn set_interest(&self, interest: &Interest) {
+    //     let mut current = self.interest.borrow_mut().unwrap();
+    // }
+
+    fn set(&self, filter: FilterId, enabled: bool) {
         #[cfg(debug_assertions)]
         {
             let in_current_pass = self.in_current_filter_pass.get();
@@ -447,19 +483,59 @@ impl FilterState {
                 debug_assert_eq!(self.enabled.get(), FilterMap::default());
             }
             self.in_current_filter_pass.set(in_current_pass + 1);
+            debug_assert_eq!(
+                self.in_current_interest_pass.get(),
+                0,
+                "if we are in or starting a filter pass, we must not be in an interest pass."
+            )
         }
 
         self.enabled.set(self.enabled.get().set(filter, enabled))
     }
 
-    pub(crate) fn any_enabled(&self) -> bool {
+    fn add_interest(&self, interest: Interest) {
+        let mut curr_interest = self.interest.borrow_mut();
         #[cfg(debug_assertions)]
         {
-            if self.in_current_filter_pass.get() == 0 {
-                debug_assert_eq!(self.enabled.get(), FilterMap::default());
+            let in_current_pass = self.in_current_interest_pass.get();
+            if in_current_pass == 0 {
+                debug_assert!(curr_interest.is_none());
             }
+            self.in_current_interest_pass.set(in_current_pass + 1);
         }
-        self.enabled.get().any_enabled()
+
+        if let Some(curr_interest) = curr_interest.as_mut() {
+            if (curr_interest.is_always() && !interest.is_always())
+                || (curr_interest.is_never() && !interest.is_never())
+            {
+                *curr_interest = Interest::sometimes();
+            }
+            // If the two interests are the same, do nothing. If the current
+            // interest is `sometimes`, stay sometimes.
+        } else {
+            *curr_interest = Some(interest);
+        }
+    }
+
+    pub(crate) fn event_enabled() -> bool {
+        FILTERING
+            .try_with(|this| {
+                let enabled = this.enabled.get().any_enabled();
+                #[cfg(debug_assertions)]
+                {
+                    if this.in_current_filter_pass.get() == 0 {
+                        debug_assert_eq!(this.enabled.get(), FilterMap::default());
+                    }
+
+                    // Nothing enabled this event, we won't tick back down the
+                    // counter in `did_enable`. Reset it.
+                    if !enabled {
+                        this.in_current_filter_pass.set(0);
+                    }
+                }
+                enabled
+            })
+            .unwrap_or(true)
     }
 
     pub(crate) fn did_enable(&self, filter: FilterId, f: impl FnOnce()) {
@@ -477,17 +553,43 @@ impl FilterState {
             }
             self.in_current_filter_pass
                 .set(in_current_pass.saturating_sub(1));
+            debug_assert_eq!(
+                self.in_current_interest_pass.get(),
+                0,
+                "if we are in a filter pass, we must not be in an interest pass."
+            )
         }
+    }
+
+    pub(crate) fn take_interest() -> Option<Interest> {
+        FILTERING
+            .try_with(|filtering| {
+                #[cfg(debug_assertions)]
+                {
+                    if filtering.in_current_interest_pass.get() == 0 {
+                        debug_assert!(filtering.interest.try_borrow().ok()?.is_none());
+                    }
+                    filtering.in_current_interest_pass.set(0);
+                }
+                filtering.interest.try_borrow_mut().ok()?.take()
+            })
+            .ok()?
     }
 
     pub(crate) fn filter_map(&self) -> FilterMap {
         let map = self.enabled.get();
         #[cfg(debug_assertions)]
-        {
-            if self.in_current_filter_pass.get() == 0 {
-                debug_assert_eq!(map, FilterMap::default());
-            }
+        if self.in_current_filter_pass.get() == 0 {
+            debug_assert_eq!(map, FilterMap::default());
         }
+
+        // if map.all_disabled() {
+        //     // Nothing enabled this callsite, we won't tick back down the
+        //     // counter in `did_enable`. Reset it.
+        //     #[cfg(debug_assertions)]
+        //     self.in_current_filter_pass.set(0);
+        //     self.enabled.set(FilterMap::default());
+        // }
         map
     }
 }

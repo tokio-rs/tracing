@@ -3,7 +3,7 @@ use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
 use crate::{
-    filter::{FilterId, FilterMap},
+    filter::{FilterId, FilterMap, FilterState},
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
         LookupSpan, SpanData,
@@ -218,12 +218,16 @@ thread_local! {
 
 impl Subscriber for Registry {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        if self.has_per_layer_filters() {
+            return FilterState::take_interest().unwrap_or_else(Interest::always);
+        }
+
         Interest::always()
     }
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         if self.has_per_layer_filters() {
-            return crate::filter::FILTERING.with(|filtering| filtering.any_enabled());
+            return FilterState::event_enabled();
         }
         true
     }
