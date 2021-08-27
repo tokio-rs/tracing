@@ -7,7 +7,8 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
+use crate::registry::Registry;
+use crate::registry::{self, LookupSpan, SpanRef};
 use std::{any::TypeId, marker::PhantomData};
 
 /// A composable handler for `tracing` events.
@@ -577,15 +578,12 @@ pub struct Identity {
 ///
 /// [stored data]: ../registry/struct.SpanRef.html
 /// [`Context::scope`]: struct.Context.html#method.scope
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[deprecated(note = "renamed to crate::registry::ScopeFromRoot", since = "0.2.19")]
 #[derive(Debug)]
 pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>)
 where
     L: LookupSpan<'a>;
 
-#[cfg(feature = "registry")]
 #[allow(deprecated)]
 impl<'a, L> Iterator for Scope<'a, L>
 where
@@ -915,8 +913,6 @@ where
     }
 }
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, L, S> LookupSpan<'a> for Layered<L, S>
 where
     S: Subscriber + LookupSpan<'a>,
@@ -1062,8 +1058,6 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -1082,8 +1076,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -1107,8 +1099,6 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -1126,8 +1116,6 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn exists(&self, id: &span::Id) -> bool
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -1150,8 +1138,6 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -1183,8 +1169,6 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     #[deprecated(
         note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span",
         since = "0.2.19"
@@ -1192,7 +1176,7 @@ where
     #[allow(deprecated)]
     pub fn scope(&self) -> Scope<'_, S>
     where
-        S: for<'lookup> registry::LookupSpan<'lookup>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         Scope(
             self.lookup_current()
@@ -1231,11 +1215,9 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, S>>
     where
-        S: for<'lookup> registry::LookupSpan<'lookup>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         Some(self.span(id)?.scope())
     }
@@ -1261,11 +1243,9 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, S>>
     where
-        S: for<'lookup> registry::LookupSpan<'lookup>,
+        S: for<'lookup> LookupSpan<'lookup>,
     {
         Some(self.event_span(event)?.scope())
     }
