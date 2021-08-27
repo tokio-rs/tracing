@@ -2,7 +2,7 @@ mod support;
 use self::support::*;
 
 use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter, prelude::*};
 
 #[test]
 fn basic_layer_filters() {
@@ -118,4 +118,40 @@ fn global_filters_affect_layer_filters() {
     tracing::error!("hello error");
 
     handle.assert_finished();
+}
+
+#[test]
+fn filter_fn() {
+    let (all, all_handle) = layer::named("all_targets")
+        .event(event::msg("hello foo"))
+        .event(event::msg("hello bar"))
+        .done()
+        .run_with_handle();
+
+    let (foo, foo_handle) = layer::named("foo_target")
+        .event(event::msg("hello foo"))
+        .done()
+        .run_with_handle();
+
+    let (bar, bar_handle) = layer::named("bar_target")
+        .event(event::msg("hello bar"))
+        .done()
+        .run_with_handle();
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(all)
+        .with(foo.with_filter(filter::filter_fn(|meta, _| {
+            meta.target().starts_with("foo")
+        })))
+        .with(bar.with_filter(filter::filter_fn(|meta, _| {
+            meta.target().starts_with("bar")
+        })))
+        .set_default();
+
+    tracing::trace!(target: "foo", "hello foo");
+    tracing::trace!(target: "bar", "hello bar");
+
+    foo_handle.assert_finished();
+    bar_handle.assert_finished();
+    all_handle.assert_finished();
 }
