@@ -217,7 +217,7 @@ pub struct Kind(KindInner);
 /// [`TRACE`]: Level::TRACE
 /// [`Subscriber::enabled`]: crate::subscriber::Subscriber::enabled
 /// [`Subscriber::max_level_hint`]: crate::subscriber::Subscriber::max_level_hint
-/// [subscriber]: crate::subscriber::Subscriber
+/// [`Subscriber`]: crate::subscriber::Subscriber
 /// [envfilter]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Level(LevelInner);
