@@ -223,7 +223,7 @@ impl Subscriber for Registry {
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         if self.has_per_layer_filters() {
-            return crate::filter::FILTERING.with(|filtering| filtering.get().any_enabled());
+            return crate::filter::FILTERING.with(|filtering| filtering.any_enabled());
         }
         true
     }
@@ -247,7 +247,14 @@ impl Subscriber for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
-                data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.get());
+                data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
+                #[cfg(debug_assertions)]
+                {
+                    if data.filter_map != FilterMap::default() {
+                        debug_assert!(self.has_per_layer_filters());
+                    }
+                }
+
                 let refs = data.ref_count.get_mut();
                 debug_assert_eq!(*refs, 0);
                 *refs = 1;
