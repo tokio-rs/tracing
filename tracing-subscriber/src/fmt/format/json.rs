@@ -21,13 +21,13 @@ use tracing_serde::AsSerde;
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-/// Marker for `Format` that indicates that the verbose json log format should be used.
+/// Marker for `Format` that indicates that the verbose JSON log format should be used.
 ///
 /// The full format includes fields from all entered spans.
 ///
 /// # Example Output
 ///
-/// ```ignore,json
+/// ```json
 /// {
 ///     "timestamp":"Feb 20 11:28:15.096",
 ///     "level":"INFO",
