@@ -250,27 +250,6 @@ jobs:
         command: fmt
         args: --all -- --check
 
-  check-docs:
-    # Check docs compile.
-    name "Check RustDoc"
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@main
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: rustdoc
-        profile: minimal
-        override: true
-    - name: rustdoc check
-      uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --workspace --all-features
-        env:
-          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
-
   warnings:
     # Check for any warnings. This is informational and thus is allowed to fail.
     runs-on: ubuntu-latest
