@@ -1011,5 +1011,16 @@ mod tests {
             "registry={:#?}",
             registry
         );
+
+        let registry = Registry::default().with(
+            DoesNothing
+                .and_then(DoesNothing)
+                .with_filter(LevelFilter::INFO),
+        );
+        assert!(
+            !as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
     }
 }
