@@ -315,8 +315,8 @@ where
         None
     }
 
-    #[doc(hidden)]
-    const HAS_PER_LAYER_FILTERS: bool = false;
+    // #[doc(hidden)]
+    // const HAS_PER_LAYER_FILTERS: bool = false;
 
     /// Notifies this layer that a span with the given `Id` recorded the given
     /// `values`.
@@ -455,8 +455,9 @@ where
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
-        let inner_is_plf = Self::HAS_PER_LAYER_FILTERS;
-        let has_plf_filter_rules = L::HAS_PER_LAYER_FILTERS && !inner_is_plf && !inner_is_registry;
+        let inner_is_plf = filter::layer_has_plf(&self);
+        let has_plf_filter_rules =
+            filter::layer_has_plf(&layer) && !inner_is_plf && !inner_is_registry;
 
         Layered {
             layer,
@@ -518,9 +519,9 @@ where
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
-        let inner_is_plf = (&inner as &dyn Subscriber).is::<FilterId>();
+        let inner_is_plf = filter::subscriber_has_plf(&inner);
         let has_plf_filter_rules =
-            Self::HAS_PER_LAYER_FILTERS && !inner_is_plf && !inner_is_registry;
+            filter::layer_has_plf(&self) && !inner_is_plf && !inner_is_registry;
 
         self.on_register(&mut inner);
         Layered {
@@ -601,6 +602,10 @@ pub struct Context<'a, S> {
 pub struct Layered<L, I, S = I> {
     layer: L,
     inner: I,
+    /// Does this layer follow special per-layer filter rules for `Interest`s
+    /// and `max_level_hint`s?
+    ///
+    /// If this is set, then:
     has_plf_filter_rules: bool,
     _s: PhantomData<fn(S)>,
 }
@@ -836,8 +841,8 @@ where
         std::cmp::max(self.layer.max_level_hint(), inner_hint)
     }
 
-    #[doc(hidden)]
-    const HAS_PER_LAYER_FILTERS: bool = A::HAS_PER_LAYER_FILTERS || B::HAS_PER_LAYER_FILTERS;
+    // #[doc(hidden)]
+    // const HAS_PER_LAYER_FILTERS: bool = A::HAS_PER_LAYER_FILTERS || B::HAS_PER_LAYER_FILTERS;
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
@@ -940,8 +945,8 @@ where
         }
     }
 
-    #[doc(hidden)]
-    const HAS_PER_LAYER_FILTERS: bool = L::HAS_PER_LAYER_FILTERS;
+    // #[doc(hidden)]
+    // const HAS_PER_LAYER_FILTERS: bool = L::HAS_PER_LAYER_FILTERS;
 
     #[inline]
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {

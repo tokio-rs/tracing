@@ -46,7 +46,7 @@ pub trait Filter<S> {
 pub struct Filtered<L, F, S> {
     filter: F,
     layer: L,
-    id: FilterId,
+    id: MagicPlfDowncastMarker,
     _s: PhantomData<fn(S)>,
 }
 
@@ -143,13 +143,18 @@ impl<L, F, S> Filtered<L, F, S> {
         Self {
             layer,
             filter,
-            id: FilterId(255),
+            id: MagicPlfDowncastMarker(FilterId(255)),
             _s: PhantomData,
         }
     }
 
+    #[inline(always)]
+    fn id(&self) -> FilterId {
+        self.id.0
+    }
+
     fn did_enable(&self, f: impl FnOnce()) {
-        FILTERING.with(|filtering| filtering.did_enable(self.id, f))
+        FILTERING.with(|filtering| filtering.did_enable(self.id(), f))
     }
 }
 
@@ -160,7 +165,7 @@ where
     L: Layer<S>,
 {
     fn on_register(&mut self, subscriber: &mut S) {
-        self.id = subscriber.register_filter();
+        self.id = MagicPlfDowncastMarker(subscriber.register_filter());
         self.layer.on_register(subscriber);
     }
 
@@ -179,14 +184,14 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
-        let enabled = self.filter.enabled(metadata, &cx.with_filter(self.id));
-        FILTERING.with(|filtering| filtering.set(self.id, enabled));
+        let enabled = self.filter.enabled(metadata, &cx.with_filter(self.id()));
+        FILTERING.with(|filtering| filtering.set(self.id(), enabled));
         true // don't short circuit, keep filtering
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
         self.did_enable(|| {
-            self.layer.new_span(attrs, id, cx.with_filter(self.id));
+            self.layer.new_span(attrs, id, cx.with_filter(self.id()));
         })
     }
 
@@ -197,52 +202,52 @@ where
     }
 
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(span, self.id) {
+        if let Some(cx) = cx.if_enabled_for(span, self.id()) {
             self.layer.on_record(span, values, cx)
         }
     }
 
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, cx: Context<'_, S>) {
         // only call `on_follows_from` if both spans are enabled by us
-        if cx.is_enabled_for(span, self.id) && cx.is_enabled_for(follows, self.id) {
+        if cx.is_enabled_for(span, self.id()) && cx.is_enabled_for(follows, self.id()) {
             self.layer
-                .on_follows_from(span, follows, cx.with_filter(self.id))
+                .on_follows_from(span, follows, cx.with_filter(self.id()))
         }
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
         self.did_enable(|| {
-            self.layer.on_event(event, cx.with_filter(self.id));
+            self.layer.on_event(event, cx.with_filter(self.id()));
         })
     }
 
     fn on_enter(&self, id: &span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(id, self.id) {
+        if let Some(cx) = cx.if_enabled_for(id, self.id()) {
             self.layer.on_enter(id, cx)
         }
     }
 
     fn on_exit(&self, id: &span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(id, self.id) {
+        if let Some(cx) = cx.if_enabled_for(id, self.id()) {
             self.layer.on_exit(id, cx)
         }
     }
 
     fn on_close(&self, id: span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(&id, self.id) {
+        if let Some(cx) = cx.if_enabled_for(&id, self.id()) {
             self.layer.on_close(id, cx)
         }
     }
 
     // XXX(eliza): the existence of this method still makes me sad...
     fn on_id_change(&self, old: &span::Id, new: &span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(old, self.id) {
+        if let Some(cx) = cx.if_enabled_for(old, self.id()) {
             self.layer.on_id_change(old, new, cx)
         }
     }
 
-    #[doc(hidden)]
-    const HAS_PER_LAYER_FILTERS: bool = true;
+    // #[doc(hidden)]
+    // const HAS_PER_LAYER_FILTERS: bool = true;
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
@@ -250,7 +255,9 @@ where
             id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
             id if id == TypeId::of::<L>() => Some(&self.layer as *const _ as *const ()),
             id if id == TypeId::of::<F>() => Some(&self.filter as *const _ as *const ()),
-            id if id == TypeId::of::<FilterId>() => Some(&self.id as *const _ as *const ()),
+            id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
+                Some(&self.id as *const _ as *const ())
+            }
             _ => None,
         }
     }
@@ -606,5 +613,30 @@ impl FilterState {
         //     self.enabled.set(FilterMap::default());
         // }
         map
+    }
+}
+
+pub(crate) fn subscriber_has_plf<S>(subscriber: &S) -> bool
+where
+    S: Subscriber,
+{
+    (subscriber as &dyn Subscriber).is::<MagicPlfDowncastMarker>()
+}
+
+pub(crate) fn layer_has_plf<L, S>(layer: &L) -> bool
+where
+    L: Layer<S>,
+    S: Subscriber,
+{
+    unsafe { layer.downcast_raw(TypeId::of::<MagicPlfDowncastMarker>()) }.is_some()
+}
+
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+struct MagicPlfDowncastMarker(FilterId);
+
+impl fmt::Debug for MagicPlfDowncastMarker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
     }
 }
