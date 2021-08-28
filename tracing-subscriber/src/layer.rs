@@ -316,9 +316,7 @@ where
     }
 
     #[doc(hidden)]
-    fn has_per_layer_filters(&self) -> bool {
-        false
-    }
+    const HAS_PER_LAYER_FILTERS: bool = false;
 
     /// Notifies this layer that a span with the given `Id` recorded the given
     /// `values`.
@@ -455,7 +453,8 @@ where
         Layered {
             layer,
             inner: self,
-            depth: None,
+            inner_is_plf: Self::HAS_PER_LAYER_FILTERS,
+            inner_is_registry: false,
             _s: PhantomData,
         }
     }
@@ -507,12 +506,19 @@ where
     where
         Self: Sized,
     {
-        let depth = registry::incr_depth(&inner);
+        #[cfg(feature = "registry")]
+        let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
+        #[cfg(not(feature = "registry"))]
+        let inner_is_registry = false;
+
+        let inner_is_plf = (&inner as &dyn Subscriber).is::<FilterId>();
+
         self.on_register(&mut inner);
         Layered {
             layer: self,
             inner,
-            depth,
+            inner_is_plf,
+            inner_is_registry,
             _s: PhantomData,
         }
     }
@@ -587,7 +593,8 @@ pub struct Context<'a, S> {
 pub struct Layered<L, I, S = I> {
     layer: L,
     inner: I,
-    depth: Option<usize>,
+    inner_is_plf: bool,
+    inner_is_registry: bool,
     _s: PhantomData<fn(S)>,
 }
 
@@ -632,7 +639,8 @@ where
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.layer.register_callsite(metadata);
-        let outer_is_per_layer = self.layer.has_per_layer_filters();
+        let outer_is_per_layer =
+            L::HAS_PER_LAYER_FILTERS && !(self.inner_is_registry || self.inner_is_plf);
         if outer.is_never() && !outer_is_per_layer {
             // if the outer layer has disabled the callsite, return now so that
             // the subscriber doesn't get its hopes up.
@@ -673,7 +681,7 @@ where
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         let inner_hint = self.inner.max_level_hint();
-        if self.layer.has_per_layer_filters() {
+        if L::HAS_PER_LAYER_FILTERS {
             return inner_hint;
         }
         std::cmp::max(self.layer.max_level_hint(), inner_hint)
@@ -772,13 +780,9 @@ where
     fn on_register(&mut self, subscriber: &mut S) {
         self.layer.on_register(subscriber);
         self.inner.on_register(subscriber);
-        if self.depth.is_none() {
-            self.depth = registry::incr_depth(&*subscriber);
-        }
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        println!("REGISTER_CALLSITE (L): {}", std::any::type_name::<Self>());
         let outer = dbg!(self.layer.register_callsite(metadata));
         if outer.is_never() {
             // if the outer layer has disabled the callsite, return now so that
@@ -814,10 +818,7 @@ where
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         let inner_hint = self.inner.max_level_hint();
-        match (
-            self.layer.has_per_layer_filters(),
-            self.inner.has_per_layer_filters(),
-        ) {
+        match (A::HAS_PER_LAYER_FILTERS, B::HAS_PER_LAYER_FILTERS) {
             (true, false) => self.layer.max_level_hint(),
             (false, true) => self.inner.max_level_hint(),
             // both branches either have or don't have PLF. let them fight!! >:D
@@ -826,9 +827,7 @@ where
     }
 
     #[doc(hidden)]
-    fn has_per_layer_filters(&self) -> bool {
-        self.layer.has_per_layer_filters() && self.inner.has_per_layer_filters()
-    }
+    const HAS_PER_LAYER_FILTERS: bool = A::HAS_PER_LAYER_FILTERS || B::HAS_PER_LAYER_FILTERS;
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
@@ -931,12 +930,8 @@ where
         }
     }
 
-    fn has_per_layer_filters(&self) -> bool {
-        self.as_ref()
-            .map(Layer::has_per_layer_filters)
-            // if we don't know what the option is, assume it's evil...
-            .unwrap_or(false)
-    }
+    #[doc(hidden)]
+    const HAS_PER_LAYER_FILTERS: bool = L::HAS_PER_LAYER_FILTERS;
 
     #[inline]
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {

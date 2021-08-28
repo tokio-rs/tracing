@@ -21,7 +21,7 @@ use crate::{
     layer::{Context, Layer},
     registry,
 };
-use std::{fmt, marker::PhantomData};
+use std::{any::TypeId, fmt, marker::PhantomData};
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
@@ -241,8 +241,18 @@ where
         }
     }
 
-    fn has_per_layer_filters(&self) -> bool {
-        true
+    #[doc(hidden)]
+    const HAS_PER_LAYER_FILTERS: bool = true;
+
+    #[doc(hidden)]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        match id {
+            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<L>() => Some(&self.layer as *const _ as *const ()),
+            id if id == TypeId::of::<F>() => Some(&self.filter as *const _ as *const ()),
+            id if id == TypeId::of::<FilterId>() => Some(&self.id as *const _ as *const ()),
+            _ => None,
+        }
     }
 }
 
