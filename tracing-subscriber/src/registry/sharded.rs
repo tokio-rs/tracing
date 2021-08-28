@@ -93,6 +93,7 @@ pub struct Registry {
     spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
     next_filter_id: u8,
+    total_num_layers: AtomicUsize,
 }
 
 /// Span data stored in a [`Registry`].
@@ -138,6 +139,7 @@ impl Default for Registry {
             spans: Pool::new(),
             current_spans: ThreadLocal::new(),
             next_filter_id: 0,
+            total_num_layers: AtomicUsize::new(0),
         }
     }
 }
@@ -205,6 +207,22 @@ impl Registry {
     pub(crate) fn has_per_layer_filters(&self) -> bool {
         self.next_filter_id > 0
     }
+
+    pub(crate) fn has_non_plf_layers(&self) -> bool {
+        self.total_num_layers.load(Ordering::Relaxed) > self.next_filter_id as usize
+    }
+}
+
+pub(crate) fn incr_depth<S>(subscriber: &S) -> Option<usize>
+where
+    S: Subscriber + 'static,
+{
+    let prev_num = (subscriber as &(dyn Subscriber + 'static))
+        .downcast_ref::<Registry>()?
+        .total_num_layers
+        .fetch_add(1, Ordering::Relaxed);
+
+    Some(prev_num + 1)
 }
 
 thread_local! {
@@ -219,7 +237,7 @@ thread_local! {
 impl Subscriber for Registry {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         if self.has_per_layer_filters() {
-            return FilterState::take_interest().unwrap_or_else(Interest::always);
+            return dbg!(FilterState::take_interest().unwrap_or_else(Interest::always));
         }
 
         Interest::always()
@@ -227,7 +245,8 @@ impl Subscriber for Registry {
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         if self.has_per_layer_filters() {
-            return FilterState::event_enabled();
+            /*return*/
+            FilterState::event_enabled();
         }
         true
     }
@@ -525,7 +544,8 @@ impl Clear for DataInner {
 
 #[cfg(test)]
 mod tests {
-    use super::Registry;
+    use super::*;
+    use crate::layer::SubscriberExt;
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::{
         collections::HashMap,
@@ -537,6 +557,10 @@ mod tests {
         span::{Attributes, Id},
         Subscriber,
     };
+
+    #[derive(Debug)]
+    struct DoesNothing;
+    impl<S: Subscriber> Layer<S> for DoesNothing {}
 
     struct AssertionLayer;
     impl<S> Layer<S> for AssertionLayer
@@ -893,5 +917,99 @@ mod tests {
 
             state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
+    }
+
+    fn as_registry<S: Subscriber>(registry: &S) -> &Registry {
+        (registry as &dyn Subscriber)
+            .downcast_ref::<Registry>()
+            .expect("must downcast to registry!")
+    }
+
+    #[track_caller]
+    fn check_depth<S: Subscriber + std::fmt::Debug>(registry: &S, expected: usize) {
+        let depth = as_registry(registry)
+            .total_num_layers
+            .load(Ordering::Relaxed);
+        assert_eq!(depth, expected, "registry={:#?}", registry);
+    }
+
+    #[test]
+    fn depth_basically_works() {
+        use crate::layer::SubscriberExt;
+
+        let registry = Registry::default().with(DoesNothing);
+        check_depth(&registry, 1);
+
+        let registry = registry.with(DoesNothing);
+        check_depth(&registry, 2);
+
+        let registry = DoesNothing.with_subscriber(registry);
+        check_depth(&registry, 3);
+    }
+
+    #[test]
+    fn depth_works_with_layered() {
+        let two_layers = DoesNothing.and_then(DoesNothing);
+        let registry = Registry::default().with(two_layers);
+        check_depth(&registry, 2);
+
+        let registry = registry.with(DoesNothing);
+        check_depth(&registry, 3);
+
+        let three_layers = DoesNothing.and_then(DoesNothing).and_then(DoesNothing);
+        let registry = registry.with(three_layers);
+        check_depth(&registry, 6);
+    }
+
+    #[test]
+    fn has_non_plf_layers() {
+        use crate::filter::LevelFilter;
+        let registry = Registry::default().with(DoesNothing);
+        assert!(
+            as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
+
+        let registry = Registry::default().with(DoesNothing).with(DoesNothing);
+        assert!(
+            as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
+
+        let registry = Registry::default()
+            .with(DoesNothing.with_filter(LevelFilter::INFO))
+            .with(DoesNothing);
+        assert!(
+            as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
+
+        let registry = Registry::default()
+            .with(DoesNothing)
+            .with(DoesNothing.with_filter(LevelFilter::INFO));
+        assert!(
+            as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
+
+        let registry = Registry::default().with(DoesNothing.with_filter(LevelFilter::INFO));
+        assert!(
+            !as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
+
+        let registry = Registry::default()
+            .with(DoesNothing.with_filter(LevelFilter::INFO))
+            .with(DoesNothing.with_filter(LevelFilter::INFO));
+        assert!(
+            !as_registry(&registry).has_non_plf_layers(),
+            "registry={:#?}",
+            registry
+        );
     }
 }

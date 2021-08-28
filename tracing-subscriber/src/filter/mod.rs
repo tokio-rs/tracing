@@ -192,7 +192,8 @@ where
 
     #[doc(hidden)]
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.filter.max_level_hint()
+        // self.filter.max_level_hint()
+        None
     }
 
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, S>) {
@@ -238,6 +239,10 @@ where
         if let Some(cx) = cx.if_enabled_for(old, self.id) {
             self.layer.on_id_change(old, new, cx)
         }
+    }
+
+    fn has_per_layer_filters(&self) -> bool {
+        false
     }
 }
 

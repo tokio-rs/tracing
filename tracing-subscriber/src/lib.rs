@@ -205,3 +205,4 @@ impl Default for CurrentSpan {
 mod sealed {
     pub trait Sealed<A = ()> {}
 }
+

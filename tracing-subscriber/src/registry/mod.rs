@@ -632,3 +632,14 @@ mod tests {
         );
     }
 }
+
+#[cfg(feature = "registry")]
+pub(crate) use sharded::incr_depth;
+
+#[cfg(not(feature = "registry"))]
+pub(crate) fn incr_depth<S>(_: &S) -> Option<usize>
+where
+    S: Subscriber + 'static,
+{
+    None
+}

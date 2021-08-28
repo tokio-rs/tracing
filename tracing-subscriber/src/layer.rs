@@ -315,6 +315,11 @@ where
         None
     }
 
+    #[doc(hidden)]
+    fn has_per_layer_filters(&self) -> bool {
+        false
+    }
+
     /// Notifies this layer that a span with the given `Id` recorded the given
     /// `values`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
@@ -450,6 +455,7 @@ where
         Layered {
             layer,
             inner: self,
+            depth: None,
             _s: PhantomData,
         }
     }
@@ -501,10 +507,12 @@ where
     where
         Self: Sized,
     {
+        let depth = registry::incr_depth(&inner);
         self.on_register(&mut inner);
         Layered {
             layer: self,
             inner,
+            depth,
             _s: PhantomData,
         }
     }
@@ -579,6 +587,7 @@ pub struct Context<'a, S> {
 pub struct Layered<L, I, S = I> {
     layer: L,
     inner: I,
+    depth: Option<usize>,
     _s: PhantomData<fn(S)>,
 }
 
@@ -622,18 +631,22 @@ where
     S: Subscriber,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        let outer = self.layer.register_callsite(metadata);
-        if outer.is_never() {
+        println!("REGISTER_CALLSITE (S): {}", std::any::type_name::<Self>());
+        let outer = dbg!(self.layer.register_callsite(metadata));
+        let outer_is_per_layer = self.layer.has_per_layer_filters();
+        if outer.is_never() && !outer_is_per_layer {
             // if the outer layer has disabled the callsite, return now so that
             // the subscriber doesn't get its hopes up.
             return outer;
         }
 
-        let inner = self.inner.register_callsite(metadata);
+        let inner = dbg!(self.inner.register_callsite(metadata));
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
+        } else if outer_is_per_layer && outer.is_never() && !inner.is_never() {
+            Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.
             inner
@@ -651,7 +664,11 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        std::cmp::max(self.layer.max_level_hint(), self.inner.max_level_hint())
+        let inner_hint = self.inner.max_level_hint();
+        if self.layer.has_per_layer_filters() {
+            return inner_hint;
+        }
+        std::cmp::max(self.layer.max_level_hint(), inner_hint)
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
@@ -747,10 +764,14 @@ where
     fn on_register(&mut self, subscriber: &mut S) {
         self.layer.on_register(subscriber);
         self.inner.on_register(subscriber);
+        if self.depth.is_none() {
+            self.depth = registry::incr_depth(&*subscriber);
+        }
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        let outer = self.layer.register_callsite(metadata);
+        println!("REGISTER_CALLSITE (L): {}", std::any::type_name::<Self>());
+        let outer = dbg!(self.layer.register_callsite(metadata));
         if outer.is_never() {
             // if the outer layer has disabled the callsite, return now so that
             // inner layers don't get their hopes up.
@@ -760,7 +781,7 @@ where
         // // The intention behind calling `inner.register_callsite()` before the if statement
         // // is to ensure that the inner subscriber is informed that the callsite exists
         // // regardless of the outer subscriber's filtering decision.
-        let inner = self.inner.register_callsite(metadata);
+        let inner = dbg!(self.inner.register_callsite(metadata));
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
@@ -784,7 +805,21 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        std::cmp::max(self.layer.max_level_hint(), self.inner.max_level_hint())
+        let inner_hint = self.inner.max_level_hint();
+        match (
+            self.layer.has_per_layer_filters(),
+            self.inner.has_per_layer_filters(),
+        ) {
+            (true, false) => self.layer.max_level_hint(),
+            (false, true) => self.inner.max_level_hint(),
+            // both branches either have or don't have PLF. let them fight!! >:D
+            _ => std::cmp::max(self.layer.max_level_hint(), inner_hint),
+        }
+    }
+
+    #[doc(hidden)]
+    fn has_per_layer_filters(&self) -> bool {
+        self.layer.has_per_layer_filters() && self.inner.has_per_layer_filters()
     }
 
     #[inline]
@@ -886,6 +921,13 @@ where
             Some(ref inner) => inner.max_level_hint(),
             None => None,
         }
+    }
+
+    fn has_per_layer_filters(&self) -> bool {
+        self.as_ref()
+            .map(Layer::has_per_layer_filters)
+            // if we don't know what the option is, assume it's evil...
+            .unwrap_or(false)
     }
 
     #[inline]

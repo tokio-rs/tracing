@@ -146,7 +146,8 @@ where
     // almsot certainly impossible...right?
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        // self.filter.callsite_enabled(metadata)
+        let interest = self.filter.callsite_enabled(metadata);
+        FilterState::set_interest(interest);
         Interest::sometimes()
     }
 
@@ -164,7 +165,8 @@ where
 
     #[doc(hidden)]
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.filter.max_level_hint()
+        // self.filter.max_level_hint()
+        None
     }
 
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, S>) {
