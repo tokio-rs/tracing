@@ -197,8 +197,7 @@ where
 
     #[doc(hidden)]
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        // self.filter.max_level_hint()
-        None
+        self.filter.max_level_hint()
     }
 
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, S>) {
