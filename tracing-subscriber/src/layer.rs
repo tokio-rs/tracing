@@ -631,8 +631,7 @@ where
     S: Subscriber,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        println!("REGISTER_CALLSITE (S): {}", std::any::type_name::<Self>());
-        let outer = dbg!(self.layer.register_callsite(metadata));
+        let outer = self.layer.register_callsite(metadata);
         let outer_is_per_layer = self.layer.has_per_layer_filters();
         if outer.is_never() && !outer_is_per_layer {
             // if the outer layer has disabled the callsite, return now so that
@@ -640,12 +639,21 @@ where
             return outer;
         }
 
-        let inner = dbg!(self.inner.register_callsite(metadata));
+        let inner = self.inner.register_callsite(metadata);
+        println!(
+            "REGISTER_CALLSITE\n\tlayer={};\n\tsubscriber={};\n\touter={:?}; inner={:?}; has_plf={:?};\nCALLSITE={:#?}",
+            std::any::type_name::<L>(),
+            std::any::type_name::<S>(),
+            outer,
+            inner,
+            outer_is_per_layer,
+            metadata
+        );
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
-        } else if outer_is_per_layer && outer.is_never() && !inner.is_never() {
+        } else if outer_is_per_layer && !outer.is_never() && inner.is_never() {
             Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.

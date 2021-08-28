@@ -242,7 +242,7 @@ where
     }
 
     fn has_per_layer_filters(&self) -> bool {
-        false
+        true
     }
 }
 
