@@ -450,11 +450,18 @@ where
         L: Layer<S>,
         Self: Sized,
     {
+        #[cfg(feature = "registry")]
+        let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
+        #[cfg(not(feature = "registry"))]
+        let inner_is_registry = false;
+
+        let inner_is_plf = Self::HAS_PER_LAYER_FILTERS;
+        let has_plf_filter_rules = L::HAS_PER_LAYER_FILTERS && !inner_is_plf && !inner_is_registry;
+
         Layered {
             layer,
             inner: self,
-            inner_is_plf: Self::HAS_PER_LAYER_FILTERS,
-            inner_is_registry: false,
+            has_plf_filter_rules,
             _s: PhantomData,
         }
     }
@@ -512,13 +519,14 @@ where
         let inner_is_registry = false;
 
         let inner_is_plf = (&inner as &dyn Subscriber).is::<FilterId>();
+        let has_plf_filter_rules =
+            Self::HAS_PER_LAYER_FILTERS && !inner_is_plf && !inner_is_registry;
 
         self.on_register(&mut inner);
         Layered {
             layer: self,
             inner,
-            inner_is_plf,
-            inner_is_registry,
+            has_plf_filter_rules,
             _s: PhantomData,
         }
     }
@@ -593,8 +601,7 @@ pub struct Context<'a, S> {
 pub struct Layered<L, I, S = I> {
     layer: L,
     inner: I,
-    inner_is_plf: bool,
-    inner_is_registry: bool,
+    has_plf_filter_rules: bool,
     _s: PhantomData<fn(S)>,
 }
 
@@ -639,9 +646,7 @@ where
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let outer = self.layer.register_callsite(metadata);
-        let outer_is_per_layer =
-            L::HAS_PER_LAYER_FILTERS && !(self.inner_is_registry || self.inner_is_plf);
-        if outer.is_never() && !outer_is_per_layer {
+        if outer.is_never() && !self.has_plf_filter_rules {
             // if the outer layer has disabled the callsite, return now so that
             // the subscriber doesn't get its hopes up.
             return outer;
@@ -654,14 +659,14 @@ where
             std::any::type_name::<S>(),
             outer,
             inner,
-            outer_is_per_layer,
+            self.has_plf_filter_rules,
             metadata
         );
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
-        } else if outer_is_per_layer && !outer.is_never() && inner.is_never() {
+        } else if self.has_plf_filter_rules && !outer.is_never() && inner.is_never() {
             Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.
@@ -681,7 +686,7 @@ where
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         let inner_hint = self.inner.max_level_hint();
-        if L::HAS_PER_LAYER_FILTERS {
+        if self.has_plf_filter_rules {
             return inner_hint;
         }
         std::cmp::max(self.layer.max_level_hint(), inner_hint)
@@ -783,26 +788,33 @@ where
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        let outer = dbg!(self.layer.register_callsite(metadata));
-        if outer.is_never() {
+        let outer = self.layer.register_callsite(metadata);
+        if outer.is_never() && !self.has_plf_filter_rules {
             // if the outer layer has disabled the callsite, return now so that
-            // inner layers don't get their hopes up.
+            // the subscriber doesn't get its hopes up.
             return outer;
         }
 
-        // // The intention behind calling `inner.register_callsite()` before the if statement
-        // // is to ensure that the inner subscriber is informed that the callsite exists
-        // // regardless of the outer subscriber's filtering decision.
-        let inner = dbg!(self.inner.register_callsite(metadata));
+        let inner = self.inner.register_callsite(metadata);
+        println!(
+            "REGISTER_CALLSITE\n\tlayer={};\n\tinner_layer={};\n\touter={:?}; inner={:?}; has_plf={:?};\nCALLSITE={:#?}",
+            std::any::type_name::<A>(),
+            std::any::type_name::<B>(),
+            outer,
+            inner,
+            self.has_plf_filter_rules,
+            metadata
+        );
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
+        } else if self.has_plf_filter_rules && !outer.is_never() && inner.is_never() {
+            Interest::sometimes()
         } else {
-            // otherwise, allow the inner layer to weigh in.
+            // otherwise, allow the inner subscriber to weigh in.
             inner
         }
-        // TODO(eliza): make work with PLF
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
@@ -818,12 +830,10 @@ where
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         let inner_hint = self.inner.max_level_hint();
-        match (A::HAS_PER_LAYER_FILTERS, B::HAS_PER_LAYER_FILTERS) {
-            (true, false) => self.layer.max_level_hint(),
-            (false, true) => self.inner.max_level_hint(),
-            // both branches either have or don't have PLF. let them fight!! >:D
-            _ => std::cmp::max(self.layer.max_level_hint(), inner_hint),
+        if self.has_plf_filter_rules {
+            return inner_hint;
         }
+        std::cmp::max(self.layer.max_level_hint(), inner_hint)
     }
 
     #[doc(hidden)]
