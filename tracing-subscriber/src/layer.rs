@@ -658,15 +658,6 @@ where
         }
 
         let inner = self.inner.register_callsite(metadata);
-        println!(
-            "REGISTER_CALLSITE\n\tlayer={};\n\tsubscriber={};\n\touter={:?}; inner={:?}; has_plf={:?};\nCALLSITE={:#?}",
-            std::any::type_name::<L>(),
-            std::any::type_name::<S>(),
-            outer,
-            inner,
-            self.has_plf_filter_rules,
-            metadata
-        );
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
@@ -801,15 +792,6 @@ where
         }
 
         let inner = self.inner.register_callsite(metadata);
-        println!(
-            "REGISTER_CALLSITE\n\tlayer={};\n\tinner_layer={};\n\touter={:?}; inner={:?}; has_plf={:?};\nCALLSITE={:#?}",
-            std::any::type_name::<A>(),
-            std::any::type_name::<B>(),
-            outer,
-            inner,
-            self.has_plf_filter_rules,
-            metadata
-        );
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
@@ -823,10 +805,9 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        dbg!(std::any::type_name::<Self>());
-        if dbg!(self.layer.enabled(metadata, ctx.clone())) {
+        if self.layer.enabled(metadata, ctx.clone()) {
             // if the outer subscriber enables the callsite metadata, ask the inner layer.
-            dbg!(self.inner.enabled(metadata, ctx))
+            self.inner.enabled(metadata, ctx)
         } else {
             // otherwise, the callsite is disabled by this layer
             false
