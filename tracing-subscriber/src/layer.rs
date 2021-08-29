@@ -455,14 +455,15 @@ where
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
+        let is_per_layer_filtered = filter::layer_has_plf(&layer);
         let inner_is_plf = filter::layer_has_plf(&self);
-        let has_plf_filter_rules =
-            filter::layer_has_plf(&layer) && !inner_is_plf && !inner_is_registry;
+        let has_plf_filter_rules = is_per_layer_filtered && !inner_is_plf && !inner_is_registry;
 
         Layered {
             layer,
             inner: self,
             has_plf_filter_rules,
+            is_per_layer_filtered,
             _s: PhantomData,
         }
     }
@@ -519,14 +520,15 @@ where
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
+        let is_per_layer_filtered = filter::layer_has_plf(&self);
         let inner_is_plf = filter::subscriber_has_plf(&inner);
-        let has_plf_filter_rules =
-            filter::layer_has_plf(&self) && !inner_is_plf && !inner_is_registry;
+        let has_plf_filter_rules = is_per_layer_filtered && !inner_is_plf && !inner_is_registry;
 
         self.on_register(&mut inner);
         Layered {
             layer: self,
             inner,
+            is_per_layer_filtered,
             has_plf_filter_rules,
             _s: PhantomData,
         }
@@ -607,6 +609,7 @@ pub struct Layered<L, I, S = I> {
     ///
     /// If this is set, then:
     has_plf_filter_rules: bool,
+    is_per_layer_filtered: bool,
     _s: PhantomData<fn(S)>,
 }
 
@@ -684,6 +687,9 @@ where
         let inner_hint = self.inner.max_level_hint();
         if self.has_plf_filter_rules {
             return inner_hint;
+        }
+        if self.is_per_layer_filtered && inner_hint.is_none() {
+            return None;
         }
         std::cmp::max(self.layer.max_level_hint(), inner_hint)
     }
@@ -818,6 +824,9 @@ where
         let inner_hint = self.inner.max_level_hint();
         if self.has_plf_filter_rules {
             return inner_hint;
+        }
+        if self.is_per_layer_filtered && inner_hint.is_none() {
+            return None;
         }
         std::cmp::max(self.layer.max_level_hint(), inner_hint)
     }
