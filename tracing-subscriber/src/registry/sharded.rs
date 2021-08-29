@@ -367,12 +367,6 @@ impl<'a> LookupSpan<'a> for Registry {
         Some(Data { inner })
     }
 
-    fn is_enabled_for(&self, id: &Id, filter: FilterId) -> bool {
-        self.get(id)
-            .map(|span| span.filter_map.is_enabled(filter))
-            .unwrap_or(false)
-    }
-
     fn register_filter(&mut self) -> FilterId {
         let id = FilterId::new(self.next_filter_id);
         self.next_filter_id += 1;

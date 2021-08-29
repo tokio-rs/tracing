@@ -133,11 +133,6 @@ pub trait LookupSpan<'a> {
         })
     }
 
-    fn is_enabled_for(&self, id: &Id, filter: FilterId) -> bool {
-        let _ = (id, filter);
-        true
-    }
-
     fn register_filter(&mut self) -> FilterId {
         panic!(
             "{} does not currently support filters",
@@ -168,6 +163,11 @@ pub trait SpanData<'a> {
     /// The extensions may be used by `Layer`s to store additional data
     /// describing the span.
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
+
+    fn is_enabled_for(&self, filter: FilterId) -> bool {
+        let _ = filter;
+        true
+    }
 }
 
 /// A reference to [span data] and the associated [registry].
@@ -238,7 +238,7 @@ where
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
             if let Some(filter) = self.filter {
-                if !self.registry.is_enabled_for(&curr.id(), filter) {
+                if !curr.is_enabled_for(filter) {
                     // The current span in the chain is disabled for this
                     // filter. Try its parent.
                     continue;
@@ -402,7 +402,7 @@ where
             // Is this parent enabled by our filter?
             if self
                 .filter
-                .map(|filter| self.registry.is_enabled_for(&id, filter))
+                .map(|filter| data.is_enabled_for(filter))
                 .unwrap_or(true)
             {
                 return Some(Self {
@@ -543,7 +543,27 @@ where
         self.data.extensions_mut()
     }
 
-    pub(crate) fn with_filter(self, filter: Option<FilterId>) -> Self {
+    pub(crate) fn try_with_filter(self, filter: Option<FilterId>) -> Option<Self> {
+        match filter {
+            // If there's no filter, just return the span ref, clearing any
+            // previous filters.
+            None => Some(self.with_filter(None)),
+            // If the span ref is enabled for that filter, return it, but add
+            // the filter.
+            Some(id) if self.is_enabled_for(id) => Some(self.with_filter(filter)),
+            // If there's a filter, and the span ref is not enabled for it,
+            // return `None`.
+            Some(_) => None,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn is_enabled_for(&self, filter: FilterId) -> bool {
+        self.data.is_enabled_for(filter)
+    }
+
+    #[inline]
+    fn with_filter(self, filter: Option<FilterId>) -> Self {
         Self { filter, ..self }
     }
 }

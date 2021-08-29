@@ -1113,10 +1113,6 @@ where
         self.inner.span_data(id)
     }
 
-    fn is_enabled_for(&self, id: &span::Id, filter: FilterId) -> bool {
-        self.inner.is_enabled_for(id, filter)
-    }
-
     fn register_filter(&mut self) -> FilterId {
         self.inner.register_filter()
     }
@@ -1322,16 +1318,10 @@ where
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        let subscriber = self.subscriber.as_ref()?;
-        if let Some(filter) = self.filter {
-            if !subscriber.is_enabled_for(id, filter) {
-                return None;
-            }
-        }
-
-        subscriber
-            .span(id)
-            .map(|span| span.with_filter(self.filter))
+        self.subscriber
+            .as_ref()?
+            .span(id)?
+            .try_with_filter(self.filter)
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
@@ -1380,7 +1370,7 @@ where
             id,
         );
         // TODO: should properly worh with filters
-        Some(span?.with_filter(self.filter))
+        span?.try_with_filter(self.filter)
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
@@ -1490,20 +1480,25 @@ where
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber
-            .map(|s| s.is_enabled_for(span, filter))
-            .unwrap_or(false)
+        self.is_enabled_inner(span, filter).unwrap_or(false)
     }
 
     pub(crate) fn if_enabled_for(self, span: &span::Id, filter: FilterId) -> Option<Self>
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        if self.subscriber?.is_enabled_for(span, filter) {
+        if self.is_enabled_inner(span, filter)? {
             Some(self.with_filter(filter))
         } else {
             None
         }
+    }
+
+    fn is_enabled_inner(&self, span: &span::Id, filter: FilterId) -> Option<bool>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        Some(self.span(span)?.is_enabled_for(filter))
     }
 }
 
