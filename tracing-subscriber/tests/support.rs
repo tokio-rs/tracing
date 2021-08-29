@@ -147,7 +147,7 @@ impl ExpectLayer {
             assert_eq!(
                 actual.name(),
                 exp_name,
-                "[{}] expected {} a span named {:?}\n\
+                "\n[{}] expected {} a span named {:?}\n\
                  [{}] but it was named {:?} instead (span {} {:?})",
                 self.name,
                 what_happened,
@@ -164,7 +164,7 @@ impl ExpectLayer {
             assert_eq!(
                 actual_level,
                 &exp_level,
-                "[{}] expected {} a span at {:?}\n\
+                "\n[{}] expected {} a span at {:?}\n\
                  [{}] but it was at {:?} instead (span {} {:?})",
                 self.name,
                 what_happened,
@@ -181,7 +181,7 @@ impl ExpectLayer {
             assert_eq!(
                 actual_target,
                 exp_target,
-                "[{}] expected {} a span with target {:?}\n\
+                "\n[{}] expected {} a span with target {:?}\n\
                  [{}] but it had the target {:?} instead (span {} {:?})",
                 self.name,
                 what_happened,
