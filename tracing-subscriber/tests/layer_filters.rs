@@ -348,12 +348,13 @@ fn basic_trees() {
         .run_with_handle();
 
     let info_tree = info
-        .and_then(
-            with_target.with_filter(filter::filter_fn(|meta, _| meta.target() == "my_target")),
-        )
+        .and_then(with_target.with_filter(filter::filter_fn(|meta, _| {
+            dbg!(meta.target()) == "my_target"
+        })))
         .with_filter(LevelFilter::INFO);
+
     let _subscriber = tracing_subscriber::registry()
-        .with(info_tree)
+        .with(dbg!(info_tree))
         .with(all)
         .set_default();
 
@@ -362,9 +363,9 @@ fn basic_trees() {
     tracing::info!(target: "my_target", "hi to my target");
     tracing::trace!(target: "my_target", "hi to my target at trace");
 
-    with_target_handle.assert_finished();
-    info_handle.assert_finished();
     all_handle.assert_finished();
+    info_handle.assert_finished();
+    with_target_handle.assert_finished();
 }
 mod dont_break_other_layers {
     use super::*;

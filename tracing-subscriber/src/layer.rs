@@ -1510,10 +1510,11 @@ where
     }
 
     pub(crate) fn with_filter(self, filter: FilterId) -> Self {
-        Self {
-            filter: Some(filter),
-            ..self
-        }
+        let filter = self
+            .filter
+            .map(|my_filter| my_filter.and(filter))
+            .or(Some(filter));
+        Self { filter, ..self }
     }
 
     pub(crate) fn is_enabled_for(&self, span: &span::Id, filter: FilterId) -> bool

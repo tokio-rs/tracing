@@ -48,6 +48,8 @@ pub struct ExpectLayerBuilder {
     expected: VecDeque<Expect>,
     name: String,
 }
+
+#[derive(Debug)]
 pub struct ExpectLayer {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,

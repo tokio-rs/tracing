@@ -49,8 +49,8 @@ pub struct FilterFn<
     _s: PhantomData<fn(S)>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct FilterId(u8);
+#[derive(Copy, Clone)]
+pub struct FilterId(u64);
 
 #[derive(Default, Copy, Clone, Eq, PartialEq)]
 pub(crate) struct FilterMap {
@@ -168,13 +168,22 @@ where
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
         FILTERING.with(|filtering| filtering.add_interest(interest));
-        Interest::always() // don't short circuit!
+        // Interest::always() // don't short circuit!
+        self.layer.register_callsite(metadata);
+        Interest::always()
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
-        let enabled = self.filter.enabled(metadata, &cx.with_filter(self.id()));
+        let cx = cx.with_filter(self.id());
+        let enabled = self.filter.enabled(metadata, &cx);
+        println!("enabled {}? = {:?}", std::any::type_name::<F>(), enabled);
         FILTERING.with(|filtering| filtering.set(self.id(), enabled));
-        true // don't short circuit, keep filtering
+        // don't short circuit, keep filtering
+        if enabled {
+            self.layer.enabled(metadata, cx)
+        } else {
+            true
+        }
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
@@ -412,47 +421,49 @@ where
 impl FilterId {
     pub(crate) fn new(id: u8) -> Self {
         assert!(id < 64, "filter IDs may not be greater than 64");
-        Self(id)
+        Self(1 << id as usize)
+    }
+
+    pub(crate) fn and(self, FilterId(other): Self) -> Self {
+        Self(self.0 | other)
+    }
+}
+
+impl fmt::Debug for FilterId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("FilterId")
+            .field(&format_args!("{:b}", self.0))
+            .finish()
     }
 }
 
 // === impl FilterMap ===
 
 impl FilterMap {
-    pub(crate) fn set(self, FilterId(idx): FilterId, enabled: bool) -> Self {
-        debug_assert!(idx < 64 || idx == 255);
-        if idx >= 64 {
+    pub(crate) fn set(self, FilterId(mask): FilterId, enabled: bool) -> Self {
+        if mask == u64::MAX {
             return self;
         }
 
         if enabled {
             Self {
-                bits: self.bits & !(1 << idx),
+                bits: self.bits & (!mask),
             }
         } else {
             Self {
-                bits: self.bits | (1 << idx),
+                bits: self.bits | mask,
             }
         }
     }
 
-    pub(crate) fn is_enabled(self, FilterId(idx): FilterId) -> bool {
-        debug_assert!(idx < 64 || idx == 255);
-        if idx >= 64 {
-            return false;
-        }
-
-        self.bits & (1 << idx) == 0
+    #[inline]
+    pub(crate) fn is_enabled(self, FilterId(mask): FilterId) -> bool {
+        self.bits & mask == 0
     }
 
     #[inline]
     pub(crate) fn any_enabled(self) -> bool {
         self.bits != u64::MAX
-    }
-
-    #[inline]
-    pub(crate) fn all_disabled(self) -> bool {
-        self.bits == u64::MAX
     }
 }
 
