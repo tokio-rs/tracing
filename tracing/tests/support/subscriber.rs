@@ -424,7 +424,7 @@ impl MockHandle {
         if let Ok(ref expected) = self.0.lock() {
             assert!(
                 !expected.iter().any(|thing| thing != &Expect::Nothing),
-                "[{}] more notifications expected: {:?}",
+                "\n[{}] more notifications expected: {:#?}",
                 self.1,
                 **expected
             );

@@ -234,10 +234,11 @@ where
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
         let name = event.metadata().name();
         println!(
-            "[{}] event: {}; level: {}",
+            "[{}] event: {}; level: {}; target: {}",
             self.name,
             name,
-            event.metadata().level()
+            event.metadata().level(),
+            event.metadata().target(),
         );
         match self.expected.lock().unwrap().pop_front() {
             None => {}
