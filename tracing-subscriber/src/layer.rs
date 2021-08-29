@@ -1365,14 +1365,28 @@ where
         }
 
         #[cfg(feature = "registry")]
-        if let Some(registry) = (subscriber as &dyn Subscriber).downcast_ref::<Registry>() {
-            return registry
-                .span_stack()
-                .iter()
-                .find_map(|id| subscriber.span(id)?.try_with_filter(self.filter));
-        }
+        return self.lookup_current_filtered(subscriber);
 
+        #[cfg(not(feature = "registry"))]
         None
+    }
+
+    /// Slow path for when the current span is disabled by PLF and we have a
+    /// registry.
+    #[inline(never)]
+    #[cfg(feature = "registry")]
+    fn lookup_current_filtered<'lookup>(
+        &self,
+        subscriber: &'lookup S,
+    ) -> Option<registry::SpanRef<'lookup, S>>
+    where
+        S: LookupSpan<'lookup>,
+    {
+        let registry = (subscriber as &dyn Subscriber).downcast_ref::<Registry>()?;
+        registry
+            .span_stack()
+            .iter()
+            .find_map(|id| subscriber.span(id)?.try_with_filter(self.filter))
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
