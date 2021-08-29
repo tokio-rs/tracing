@@ -139,6 +139,14 @@ pub trait LookupSpan<'a> {
             std::any::type_name::<Self>()
         )
     }
+
+    // fn with_current_spans<F, T>(&'a self, f: F) -> Option<T>
+    // where
+    //     F: FnOnce(&mut dyn Iterator<Item = SpanRef<'a, Self>>) -> T,
+    //     Self: Sized,
+    // {
+    //     None
+    // }
 }
 
 /// A stored representation of data associated with a span.
