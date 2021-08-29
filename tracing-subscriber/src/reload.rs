@@ -62,8 +62,8 @@ where
     L: crate::Layer<S> + 'static,
     S: Subscriber,
 {
-    fn on_register(&mut self, subscriber: &mut S) {
-        try_lock!(self.inner.write(), else return).on_register(subscriber);
+    fn on_layer(&mut self, subscriber: &mut S) {
+        try_lock!(self.inner.write(), else return).on_layer(subscriber);
     }
 
     #[inline]

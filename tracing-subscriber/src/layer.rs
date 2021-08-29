@@ -212,7 +212,7 @@ where
     S: Subscriber,
     Self: 'static,
 {
-    fn on_register(&mut self, subscriber: &mut S) {}
+    fn on_layer(&mut self, subscriber: &mut S) {}
     /// Registers a new callsite with this layer, returning whether or not
     /// the layer is interested in being notified about the callsite, similarly
     /// to [`Subscriber::register_callsite`].
@@ -524,7 +524,7 @@ where
         let inner_is_plf = filter::subscriber_has_plf(&inner);
         let has_plf_filter_rules = is_per_layer_filtered && !inner_is_plf && !inner_is_registry;
 
-        self.on_register(&mut inner);
+        self.on_layer(&mut inner);
         Layered {
             layer: self,
             inner,
@@ -784,9 +784,9 @@ where
     B: Layer<S>,
     S: Subscriber,
 {
-    fn on_register(&mut self, subscriber: &mut S) {
-        self.layer.on_register(subscriber);
-        self.inner.on_register(subscriber);
+    fn on_layer(&mut self, subscriber: &mut S) {
+        self.layer.on_layer(subscriber);
+        self.inner.on_layer(subscriber);
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -898,9 +898,9 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
-    fn on_register(&mut self, subscriber: &mut S) {
+    fn on_layer(&mut self, subscriber: &mut S) {
         if let Some(ref mut layer) = self {
-            layer.on_register(subscriber)
+            layer.on_layer(subscriber)
         }
     }
 

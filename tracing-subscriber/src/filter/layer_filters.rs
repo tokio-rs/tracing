@@ -152,9 +152,9 @@ where
     F: Filter<S> + 'static,
     L: Layer<S>,
 {
-    fn on_register(&mut self, subscriber: &mut S) {
+    fn on_layer(&mut self, subscriber: &mut S) {
         self.id = MagicPlfDowncastMarker(subscriber.register_filter());
-        self.layer.on_register(subscriber);
+        self.layer.on_layer(subscriber);
     }
 
     // TODO(eliza): can we figure out a nice way to make the `Filtered` layer
