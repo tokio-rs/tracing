@@ -670,7 +670,11 @@ where
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
-        } else if inner.is_never() && !outer.is_never() && self.inner_per_layer_filtered {
+        } else if inner.is_never()
+            && !outer.is_never()
+            && !self.is_per_layer_filtered
+            && self.inner_per_layer_filtered
+        {
             Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.
@@ -807,7 +811,11 @@ where
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
-        } else if inner.is_never() && !outer.is_never() && self.inner_per_layer_filtered {
+        } else if inner.is_never()
+            && !outer.is_never()
+            && !self.is_per_layer_filtered
+            && self.inner_per_layer_filtered
+        {
             Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.
