@@ -279,8 +279,8 @@ fn filters_interleaved_span_scopes() {
         .enter(span::mock().with_target("b"))
         .enter(span::mock().with_target("a"))
         .event(event::msg("hello world").in_scope(vec![
-            span::mock().with_target("b"),
             span::mock().with_target("a"),
+            span::mock().with_target("b"),
         ]))
         .exit(span::mock().with_target("a"))
         .exit(span::mock().with_target("b"))
@@ -289,15 +289,21 @@ fn filters_interleaved_span_scopes() {
 
     let _subscriber = tracing_subscriber::registry()
         .with(all_layer.with_filter(LevelFilter::INFO))
-        .with(a_layer.with_filter(filter::filter_fn(|meta, _| meta.target() == "a")))
-        .with(b_layer.with_filter(filter::filter_fn(|meta, _| meta.target() == "b")))
+        .with(a_layer.with_filter(filter::filter_fn(|meta, _| {
+            let target = meta.target();
+            target == "a" || target == module_path!()
+        })))
+        .with(b_layer.with_filter(filter::filter_fn(|meta, _| {
+            let target = meta.target();
+            target == "b" || target == module_path!()
+        })))
         .set_default();
 
     {
-        let _a1 = tracing::trace_span!(target: "a", "a/trace");
-        let _b1 = tracing::info_span!(target: "b", "b/info");
-        let _a2 = tracing::info_span!(target: "a", "a/info");
-        let _b2 = tracing::trace_span!(target: "b", "b/trace");
+        let _a1 = tracing::trace_span!(target: "a", "a/trace").entered();
+        let _b1 = tracing::info_span!(target: "b", "b/info").entered();
+        let _a2 = tracing::info_span!(target: "a", "a/info").entered();
+        let _b2 = tracing::trace_span!(target: "b", "b/trace").entered();
         tracing::info!("hello world");
         tracing::debug!(target: "a", "hello to my target");
         tracing::debug!(target: "b", "hello to my target");
