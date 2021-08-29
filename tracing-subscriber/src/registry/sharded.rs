@@ -227,8 +227,7 @@ impl Subscriber for Registry {
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         if self.has_per_layer_filters() {
-            /*return*/
-            FilterState::event_enabled();
+            return FilterState::event_enabled();
         }
         true
     }
