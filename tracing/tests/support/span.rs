@@ -6,7 +6,7 @@ use std::fmt;
 ///
 /// This is intended for use with the mock subscriber API in the
 /// `subscriber` module.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct MockSpan {
     pub(in crate::support) metadata: metadata::Expect,
 }
@@ -103,6 +103,26 @@ impl MockSpan {
             fields: fields.into(),
             ..Default::default()
         }
+    }
+}
+
+impl fmt::Debug for MockSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("MockSpan");
+
+        if let Some(name) = self.name() {
+            s.field("name", &name);
+        }
+
+        if let Some(level) = self.level() {
+            s.field("level", &level);
+        }
+
+        if let Some(target) = self.target() {
+            s.field("target", &target);
+        }
+
+        s.finish()
     }
 }
 

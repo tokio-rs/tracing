@@ -245,18 +245,37 @@ where
                 let get_parent_name = || cx.event_span(event).map(|span| span.name().to_string());
                 expected.check(event, get_parent_name, &self.name);
                 let mut current_scope = cx.event_scope(event).into_iter().flatten();
-                let mut expected_scope = expected.scope_mut().iter_mut();
-                for (i, (expected, actual)) in
-                    (&mut expected_scope).zip(&mut current_scope).enumerate()
-                {
+                let expected_scope = expected.scope_mut();
+                let mut i = 0;
+                for (expected, actual) in expected_scope.iter_mut().zip(&mut current_scope) {
+                    println!(
+                        "[{}] event_scope[{}] actual={} ({:?}); expected={}",
+                        self.name,
+                        i,
+                        actual.name(),
+                        actual.id(),
+                        expected
+                    );
                     self.check_span_ref(
                         expected,
                         &actual,
                         format_args!("the {}th span in the event's scope to be", i),
                     );
+                    i += 1;
                 }
-                assert_eq!(expected_scope.next(), None);
-                assert!(current_scope.next().is_none());
+                let remaining_expected = &expected_scope[i..];
+                assert!(
+                    remaining_expected.is_empty(),
+                    "\n[{}] did not observe all expected spans in event scope!\n[{}] missing: {:#?}",
+                    self.name,
+                    self.name,
+                    remaining_expected,
+                );
+                assert!(
+                    current_scope.next().is_none(),
+                    "\n[{}] did not expect all spans in the actual event scope!",
+                    self.name,
+                );
             }
             Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
         }
