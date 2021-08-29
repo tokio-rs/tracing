@@ -1351,22 +1351,6 @@ where
         S: for<'lookup> LookupSpan<'lookup>,
     {
         let subscriber = *self.subscriber.as_ref()?;
-        // let filtered = subscriber.with_current_spans(|spans| {
-        //     spans
-        //         .filter_map(|span| span.try_with_filter(self.filter))
-        //         .next()
-        // });
-        // if let Some(filtered) = filtered {
-        //     return filtered;
-        // }
-        #[cfg(feature = "registry")]
-        if let Some(registry) = (subscriber as &dyn Subscriber).downcast_ref::<Registry>() {
-            return registry
-                .span_stack()
-                .iter()
-                .find_map(|id| subscriber.span(id)?.try_with_filter(self.filter));
-        }
-
         let current = subscriber.current_span();
         let id = current.id()?;
         let span = subscriber.span(id);
@@ -1375,7 +1359,20 @@ where
             "the subscriber should have data for the current span ({:?})!",
             id,
         );
-        span?.try_with_filter(self.filter)
+
+        if let Some(span) = span?.try_with_filter(self.filter) {
+            return Some(span);
+        }
+
+        #[cfg(feature = "registry")]
+        if let Some(registry) = (subscriber as &dyn Subscriber).downcast_ref::<Registry>() {
+            return registry
+                .span_stack()
+                .iter()
+                .find_map(|id| subscriber.span(id)?.try_with_filter(self.filter));
+        }
+
+        None
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
