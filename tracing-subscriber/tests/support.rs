@@ -17,7 +17,7 @@ use tracing_core::{
 };
 use tracing_subscriber::{
     layer::{Context, Layer},
-    registry::LookupSpan,
+    registry::{LookupSpan, SpanRef},
 };
 
 use std::{
@@ -134,6 +134,67 @@ impl ExpectLayerBuilder {
     }
 }
 
+impl ExpectLayer {
+    fn check_span_ref<'spans, S>(
+        &self,
+        expected: &MockSpan,
+        actual: &SpanRef<'spans, S>,
+        what_happened: impl fmt::Display,
+    ) where
+        S: LookupSpan<'spans>,
+    {
+        if let Some(exp_name) = expected.name() {
+            assert_eq!(
+                actual.name(),
+                exp_name,
+                "[{}] expected {} a span named {:?}\n\
+                 [{}] but it was named {:?} instead (span {} {:?})",
+                self.name,
+                what_happened,
+                exp_name,
+                self.name,
+                actual.name(),
+                actual.name(),
+                actual.id()
+            );
+        }
+
+        if let Some(exp_level) = expected.level() {
+            let actual_level = actual.metadata().level();
+            assert_eq!(
+                actual_level,
+                &exp_level,
+                "[{}] expected {} a span at {:?}\n\
+                 [{}] but it was at {:?} instead (span {} {:?})",
+                self.name,
+                what_happened,
+                exp_level,
+                self.name,
+                actual_level,
+                actual.name(),
+                actual.id(),
+            );
+        }
+
+        if let Some(exp_target) = expected.target() {
+            let actual_target = actual.metadata().target();
+            assert_eq!(
+                actual_target,
+                exp_target,
+                "[{}] expected {} a span with target {:?}\n\
+                 [{}] but it had the target {:?} instead (span {} {:?})",
+                self.name,
+                what_happened,
+                exp_target,
+                self.name,
+                actual_target,
+                actual.name(),
+                actual.id(),
+            );
+        }
+    }
+}
+
 impl<S> Layer<S> for ExpectLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -183,6 +244,19 @@ where
             Some(Expect::Event(mut expected)) => {
                 let get_parent_name = || cx.event_span(event).map(|span| span.name().to_string());
                 expected.check(event, get_parent_name, &self.name);
+                let mut current_scope = cx.event_scope(event).into_iter().flatten();
+                let mut expected_scope = expected.scope_mut().iter_mut();
+                for (i, (expected, actual)) in
+                    (&mut expected_scope).zip(&mut current_scope).enumerate()
+                {
+                    self.check_span_ref(
+                        expected,
+                        &actual,
+                        format_args!("the {}th span in the event's scope to be", i),
+                    );
+                }
+                assert_eq!(expected_scope.next(), None);
+                assert!(current_scope.next().is_none());
             }
             Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
         }
@@ -224,9 +298,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Enter(ref expected_span)) => {
-                if let Some(name) = expected_span.name() {
-                    assert_eq!(name, span.name());
-                }
+                self.check_span_ref(expected_span, &span, "to enter");
             }
             Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name())),
         }
@@ -247,9 +319,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                if let Some(name) = expected_span.name() {
-                    assert_eq!(name, span.name());
-                }
+                self.check_span_ref(expected_span, &span, "to exit");
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
@@ -281,11 +351,13 @@ where
         }
         if let Ok(mut expected) = self.expected.try_lock() {
             let was_expected = match expected.front() {
-                Some(Expect::DropSpan(ref span)) => {
+                Some(Expect::DropSpan(ref expected_span)) => {
                     // Don't assert if this function was called while panicking,
                     // as failing the assertion can cause a double panic.
                     if !::std::thread::panicking() {
-                        assert_eq!(name, span.name());
+                        if let Some(ref span) = span {
+                            self.check_span_ref(expected_span, span, "to close");
+                        }
                     }
                     true
                 }

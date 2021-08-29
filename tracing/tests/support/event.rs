@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, metadata, Parent};
+use super::{field, metadata, span, Parent};
 
 use std::fmt;
 
@@ -11,6 +11,7 @@ use std::fmt;
 pub struct MockEvent {
     pub fields: Option<field::Expect>,
     pub(in crate::support) parent: Option<Parent>,
+    in_spans: Vec<span::MockSpan>,
     metadata: metadata::Expect,
 }
 
@@ -114,6 +115,17 @@ impl MockEvent {
                 subscriber_name,
             )
         }
+    }
+
+    pub fn in_scope(self, spans: impl IntoIterator<Item = span::MockSpan>) -> Self {
+        Self {
+            in_spans: spans.into_iter().collect(),
+            ..self
+        }
+    }
+
+    pub fn scope_mut(&mut self) -> &mut [span::MockSpan] {
+        &mut self.in_spans[..]
     }
 }
 
