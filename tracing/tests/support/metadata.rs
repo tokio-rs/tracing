@@ -19,7 +19,7 @@ impl Expect {
             let name = actual.name();
             assert!(
                 expected_name == name,
-                "[{}] expected {} to be named `{}`, but got one named `{}`",
+                "\n[{}] expected {} to be named `{}`, but got one named `{}`",
                 subscriber_name,
                 ctx,
                 expected_name,
@@ -31,7 +31,7 @@ impl Expect {
             let level = actual.level();
             assert!(
                 expected_level == level,
-                "[{}] expected {} to be at level `{:?}`, but it was at level `{:?}` instead",
+                "\n[{}] expected {} to be at level `{:?}`, but it was at level `{:?}` instead",
                 subscriber_name,
                 ctx,
                 expected_level,
@@ -43,7 +43,7 @@ impl Expect {
             let target = actual.target();
             assert!(
                 expected_target == target,
-                "[{}] expected {} to have target `{}`, but it had target `{}` instead",
+                "\n[{}] expected {} to have target `{}`, but it had target `{}` instead",
                 subscriber_name,
                 ctx,
                 expected_target,
