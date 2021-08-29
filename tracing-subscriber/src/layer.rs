@@ -456,14 +456,16 @@ where
         let inner_is_registry = false;
 
         let is_per_layer_filtered = filter::layer_has_plf(&layer);
-        let inner_is_plf = filter::layer_has_plf(&self);
-        let has_plf_filter_rules = is_per_layer_filtered && !inner_is_plf && !inner_is_registry;
+        let inner_per_layer_filtered = filter::layer_has_plf(&self);
+        let has_plf_filter_rules =
+            is_per_layer_filtered && !inner_per_layer_filtered && !inner_is_registry;
 
         Layered {
             layer,
             inner: self,
             has_plf_filter_rules,
             is_per_layer_filtered,
+            inner_per_layer_filtered,
             _s: PhantomData,
         }
     }
@@ -521,14 +523,16 @@ where
         let inner_is_registry = false;
 
         let is_per_layer_filtered = filter::layer_has_plf(&self);
-        let inner_is_plf = filter::subscriber_has_plf(&inner);
-        let has_plf_filter_rules = is_per_layer_filtered && !inner_is_plf && !inner_is_registry;
+        let inner_per_layer_filtered = filter::subscriber_has_plf(&inner);
+        let has_plf_filter_rules =
+            is_per_layer_filtered && !inner_per_layer_filtered && !inner_is_registry;
 
         self.on_layer(&mut inner);
         Layered {
             layer: self,
             inner,
             is_per_layer_filtered,
+            inner_per_layer_filtered,
             has_plf_filter_rules,
             _s: PhantomData,
         }
@@ -610,6 +614,7 @@ pub struct Layered<L, I, S = I> {
     /// If this is set, then:
     has_plf_filter_rules: bool,
     is_per_layer_filtered: bool,
+    inner_per_layer_filtered: bool,
     _s: PhantomData<fn(S)>,
 }
 
@@ -665,7 +670,7 @@ where
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
-        } else if self.has_plf_filter_rules && !outer.is_never() && inner.is_never() {
+        } else if inner.is_never() && !outer.is_never() && self.inner_per_layer_filtered {
             Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.
@@ -802,7 +807,7 @@ where
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             outer
-        } else if self.has_plf_filter_rules && !outer.is_never() && inner.is_never() {
+        } else if inner.is_never() && !outer.is_never() && self.inner_per_layer_filtered {
             Interest::sometimes()
         } else {
             // otherwise, allow the inner subscriber to weigh in.
@@ -825,10 +830,18 @@ where
         if self.has_plf_filter_rules {
             return inner_hint;
         }
+
         if self.is_per_layer_filtered && inner_hint.is_none() {
             return None;
         }
-        std::cmp::max(self.layer.max_level_hint(), inner_hint)
+
+        let outer_hint = self.layer.max_level_hint();
+
+        if self.inner_per_layer_filtered && outer_hint.is_none() {
+            return None;
+        }
+
+        std::cmp::max(outer_hint, inner_hint)
     }
 
     // #[doc(hidden)]
