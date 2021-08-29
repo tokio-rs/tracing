@@ -1,8 +1,8 @@
 mod support;
 use self::support::*;
 
-use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{filter, prelude::*};
+use tracing::{level_filters::LevelFilter, Level, Metadata};
+use tracing_subscriber::{filter, layer::Context, prelude::*};
 
 #[test]
 fn basic_layer_filters() {
@@ -249,6 +249,64 @@ fn filters_span_scopes() {
     warn_handle.assert_finished();
 }
 
+#[test]
+fn filters_interleaved_span_scopes() {
+    fn target_layer(target: &'static str) -> (ExpectLayer, subscriber::MockHandle) {
+        layer::named(format!("target_{}", target))
+            .enter(span::mock().with_target(target))
+            .enter(span::mock().with_target(target))
+            .event(event::msg("hello world").in_scope(vec![
+                span::mock().with_target(target),
+                span::mock().with_target(target),
+            ]))
+            .event(
+                event::msg("hello to my target")
+                    .in_scope(vec![
+                        span::mock().with_target(target),
+                        span::mock().with_target(target),
+                    ])
+                    .with_target(target),
+            )
+            .exit(span::mock().with_target(target))
+            .exit(span::mock().with_target(target))
+            .done()
+            .run_with_handle()
+    }
+
+    let (a_layer, a_handle) = target_layer("a");
+    let (b_layer, b_handle) = target_layer("b");
+    let (all_layer, all_handle) = layer::named("all")
+        .enter(span::mock().with_target("b"))
+        .enter(span::mock().with_target("a"))
+        .event(event::msg("hello world").in_scope(vec![
+            span::mock().with_target("b"),
+            span::mock().with_target("a"),
+        ]))
+        .exit(span::mock().with_target("a"))
+        .exit(span::mock().with_target("b"))
+        .done()
+        .run_with_handle();
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(all_layer.with_filter(LevelFilter::INFO))
+        .with(a_layer.with_filter(filter::filter_fn(|meta, _| meta.target() == "a")))
+        .with(b_layer.with_filter(filter::filter_fn(|meta, _| meta.target() == "b")))
+        .set_default();
+
+    {
+        let _a1 = tracing::trace_span!(target: "a", "a/trace");
+        let _b1 = tracing::info_span!(target: "b", "b/info");
+        let _a2 = tracing::info_span!(target: "a", "a/info");
+        let _b2 = tracing::trace_span!(target: "b", "b/trace");
+        tracing::info!("hello world");
+        tracing::debug!(target: "a", "hello to my target");
+        tracing::debug!(target: "b", "hello to my target");
+    }
+
+    a_handle.assert_finished();
+    b_handle.assert_finished();
+    all_handle.assert_finished();
+}
 mod dont_break_other_layers {
     use super::*;
 
