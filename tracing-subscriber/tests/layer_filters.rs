@@ -197,6 +197,10 @@ fn filters_span_scopes() {
             span::mock().at_level(Level::INFO),
             span::mock().at_level(Level::DEBUG),
         ]))
+        .exit(span::mock().at_level(Level::ERROR))
+        .exit(span::mock().at_level(Level::WARN))
+        .exit(span::mock().at_level(Level::INFO))
+        .exit(span::mock().at_level(Level::DEBUG))
         .done()
         .run_with_handle();
     let (info_layer, info_handle) = layer::named("info")
@@ -208,6 +212,9 @@ fn filters_span_scopes() {
             span::mock().at_level(Level::WARN),
             span::mock().at_level(Level::INFO),
         ]))
+        .exit(span::mock().at_level(Level::ERROR))
+        .exit(span::mock().at_level(Level::WARN))
+        .exit(span::mock().at_level(Level::INFO))
         .done()
         .run_with_handle();
     let (warn_layer, warn_handle) = layer::named("warn")
@@ -217,6 +224,8 @@ fn filters_span_scopes() {
             span::mock().at_level(Level::ERROR),
             span::mock().at_level(Level::WARN),
         ]))
+        .exit(span::mock().at_level(Level::ERROR))
+        .exit(span::mock().at_level(Level::WARN))
         .done()
         .run_with_handle();
 
@@ -226,12 +235,14 @@ fn filters_span_scopes() {
         .with(warn_layer.with_filter(LevelFilter::WARN))
         .set_default();
 
-    let _trace = tracing::trace_span!("my_span").entered();
-    let _debug = tracing::debug_span!("my_span").entered();
-    let _info = tracing::info_span!("my_span").entered();
-    let _warn = tracing::warn_span!("my_span").entered();
-    let _error = tracing::error_span!("my_span").entered();
-    tracing::error!("hello world");
+    {
+        let _trace = tracing::trace_span!("my_span").entered();
+        let _debug = tracing::debug_span!("my_span").entered();
+        let _info = tracing::info_span!("my_span").entered();
+        let _warn = tracing::warn_span!("my_span").entered();
+        let _error = tracing::error_span!("my_span").entered();
+        tracing::error!("hello world");
+    }
 
     debug_handle.assert_finished();
     info_handle.assert_finished();
