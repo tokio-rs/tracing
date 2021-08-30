@@ -431,6 +431,19 @@ impl FilterId {
 
 impl fmt::Debug for FilterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            f.debug_struct("FilterId")
+                .field("ids", &FmtBitset(self.0))
+                .field("bits", &format_args!("{:b}", self.0))
+                .finish()
+        } else {
+            f.debug_tuple("FilterId").field(&FmtBitset(self.0)).finish()
+        }
+    }
+}
+
+impl fmt::Binary for FilterId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("FilterId")
             .field(&format_args!("{:b}", self.0))
             .finish()
@@ -469,9 +482,38 @@ impl FilterMap {
 
 impl fmt::Debug for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alt = f.alternate();
+        let mut s = f.debug_struct("FilterMap");
+        s.field("disabled_by", &FmtBitset(self.bits));
+
+        if alt {
+            s.field("bits", &format_args!("{:b}", self.bits));
+        }
+
+        s.finish()
+    }
+}
+
+impl fmt::Binary for FilterMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FilterMap")
-            .field("bits", &format_args!("{:#b}", self.bits))
+            .field("bits", &format_args!("{:b}", self.bits))
             .finish()
+    }
+}
+
+struct FmtBitset(u64);
+
+impl fmt::Debug for FmtBitset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut set = f.debug_set();
+        for bit in 0..64 {
+            // if the `bit`-th bit is set, add it to the debug set
+            if self.0 & (1 << bit) != 0 {
+                set.entry(&bit);
+            }
+        }
+        set.finish()
     }
 }
 
