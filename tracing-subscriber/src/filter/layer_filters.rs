@@ -131,7 +131,7 @@ impl<L, F, S> Filtered<L, F, S> {
         Self {
             layer,
             filter,
-            id: MagicPlfDowncastMarker(FilterId(255)),
+            id: MagicPlfDowncastMarker(FilterId::DISABLED),
             _s: PhantomData,
         }
     }
@@ -419,12 +419,18 @@ where
 // === impl FilterId ===
 
 impl FilterId {
+    const DISABLED: FilterId = FilterId(u64::MAX);
+
     pub(crate) fn new(id: u8) -> Self {
         assert!(id < 64, "filter IDs may not be greater than 64");
-        Self(1 << id as usize)
+        dbg!(Self(1 << id as usize))
     }
 
     pub(crate) fn and(self, FilterId(other): Self) -> Self {
+        if self.0 == Self::DISABLED.0 {
+            return Self(other);
+        }
+
         Self(self.0 | other)
     }
 }
