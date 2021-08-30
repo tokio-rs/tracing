@@ -49,7 +49,6 @@ pub struct ExpectLayerBuilder {
     name: String,
 }
 
-#[derive(Debug)]
 pub struct ExpectLayer {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
@@ -404,5 +403,26 @@ where
 
     fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, S>) {
         panic!("well-behaved subscribers should never do this to us, lol");
+    }
+}
+
+impl fmt::Debug for ExpectLayer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("ExpectLayer");
+        s.field("name", &self.name);
+
+        if let Ok(expected) = self.expected.try_lock() {
+            s.field("expected", &expected);
+        } else {
+            s.field("expected", &format_args!("<locked>"));
+        }
+
+        if let Ok(current) = self.current.try_lock() {
+            s.field("current", &format_args!("{:?}", &current));
+        } else {
+            s.field("current", &format_args!("<locked>"));
+        }
+
+        s.finish()
     }
 }

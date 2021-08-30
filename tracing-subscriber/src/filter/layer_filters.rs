@@ -433,7 +433,7 @@ impl fmt::Debug for FilterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             f.debug_struct("FilterId")
-                .field("ids", &FmtBitset(self.0))
+                .field("ids", &format_args!("{:?}", FmtBitset(self.0)))
                 .field("bits", &format_args!("{:b}", self.0))
                 .finish()
         } else {
@@ -484,7 +484,7 @@ impl fmt::Debug for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let alt = f.alternate();
         let mut s = f.debug_struct("FilterMap");
-        s.field("disabled_by", &FmtBitset(self.bits));
+        s.field("disabled_by", &format_args!("{:?}", &FmtBitset(self.bits)));
 
         if alt {
             s.field("bits", &format_args!("{:b}", self.bits));
