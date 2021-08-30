@@ -464,8 +464,8 @@ where
             layer,
             inner: self,
             has_plf_filter_rules,
-            is_per_layer_filtered,
-            inner_per_layer_filtered,
+            has_layer_filter: is_per_layer_filtered,
+            inner_has_layer_filter: inner_per_layer_filtered,
             _s: PhantomData,
         }
     }
@@ -531,8 +531,8 @@ where
         Layered {
             layer: self,
             inner,
-            is_per_layer_filtered,
-            inner_per_layer_filtered,
+            has_layer_filter: is_per_layer_filtered,
+            inner_has_layer_filter: inner_per_layer_filtered,
             has_plf_filter_rules,
             _s: PhantomData,
         }
@@ -613,8 +613,8 @@ pub struct Layered<L, I, S = I> {
     ///
     /// If this is set, then:
     has_plf_filter_rules: bool,
-    is_per_layer_filtered: bool,
-    inner_per_layer_filtered: bool,
+    has_layer_filter: bool,
+    inner_has_layer_filter: bool,
     _s: PhantomData<fn(S)>,
 }
 
@@ -658,28 +658,9 @@ where
     S: Subscriber,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        let outer = self.layer.register_callsite(metadata);
-        if outer.is_never() && !self.has_plf_filter_rules {
-            // if the outer layer has disabled the callsite, return now so that
-            // the subscriber doesn't get its hopes up.
-            return outer;
-        }
-
-        let inner = self.inner.register_callsite(metadata);
-        if outer.is_sometimes() {
-            // if this interest is "sometimes", return "sometimes" to ensure that
-            // filters are reevaluated.
-            outer
-        } else if inner.is_never()
-            && !outer.is_never()
-            && !self.is_per_layer_filtered
-            && self.inner_per_layer_filtered
-        {
-            Interest::sometimes()
-        } else {
-            // otherwise, allow the inner subscriber to weigh in.
-            inner
-        }
+        self.pick_interest(self.layer.register_callsite(metadata), || {
+            self.inner.register_callsite(metadata)
+        })
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
@@ -693,14 +674,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        let inner_hint = self.inner.max_level_hint();
-        if self.has_plf_filter_rules {
-            return inner_hint;
-        }
-        if self.is_per_layer_filtered && inner_hint.is_none() {
-            return None;
-        }
-        std::cmp::max(self.layer.max_level_hint(), inner_hint)
+        self.pick_level_hint(|| self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
@@ -799,28 +773,9 @@ where
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        let outer = self.layer.register_callsite(metadata);
-        if outer.is_never() && !self.has_plf_filter_rules {
-            // if the outer layer has disabled the callsite, return now so that
-            // the subscriber doesn't get its hopes up.
-            return outer;
-        }
-
-        let inner = self.inner.register_callsite(metadata);
-        if outer.is_sometimes() {
-            // if this interest is "sometimes", return "sometimes" to ensure that
-            // filters are reevaluated.
-            outer
-        } else if inner.is_never()
-            && !outer.is_never()
-            && !self.is_per_layer_filtered
-            && self.inner_per_layer_filtered
-        {
-            Interest::sometimes()
-        } else {
-            // otherwise, allow the inner subscriber to weigh in.
-            inner
-        }
+        self.pick_interest(self.layer.register_callsite(metadata), || {
+            self.inner.register_callsite(metadata)
+        })
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
@@ -834,22 +789,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        let inner_hint = self.inner.max_level_hint();
-        if self.has_plf_filter_rules {
-            return inner_hint;
-        }
-
-        if self.is_per_layer_filtered && inner_hint.is_none() {
-            return None;
-        }
-
-        let outer_hint = self.layer.max_level_hint();
-
-        if self.inner_per_layer_filtered && outer_hint.is_none() {
-            return None;
-        }
-
-        std::cmp::max(outer_hint, inner_hint)
+        self.pick_level_hint(|| self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     // #[doc(hidden)]
@@ -1138,6 +1078,55 @@ where
             subscriber: Some(&self.inner),
             filter: None,
         }
+    }
+}
+
+impl<A, B, S> Layered<A, B, S> {
+    fn pick_interest(&self, outer: Interest, inner: impl FnOnce() -> Interest) -> Interest {
+        if outer.is_never() && !self.has_plf_filter_rules {
+            // if the outer layer has disabled the callsite, return now so that
+            // the subscriber doesn't get its hopes up.
+            return outer;
+        }
+        if outer.is_sometimes() {
+            // if this interest is "sometimes", return "sometimes" to ensure that
+            // filters are reevaluated.
+            return outer;
+        }
+
+        let inner = inner();
+        if inner.is_never()
+            && !outer.is_never()
+            && !self.has_layer_filter
+            && self.inner_has_layer_filter
+        {
+            return Interest::sometimes();
+        }
+
+        // otherwise, allow the inner subscriber to weigh in.
+        inner
+    }
+
+    fn pick_level_hint(
+        &self,
+        outer: impl FnOnce() -> Option<LevelFilter>,
+        inner_hint: Option<LevelFilter>,
+    ) -> Option<LevelFilter> {
+        if self.has_plf_filter_rules {
+            return inner_hint;
+        }
+
+        if self.has_layer_filter && inner_hint.is_none() {
+            return None;
+        }
+
+        let outer_hint = outer();
+
+        if self.inner_has_layer_filter && outer_hint.is_none() {
+            return None;
+        }
+
+        std::cmp::max(outer_hint, inner_hint)
     }
 }
 
