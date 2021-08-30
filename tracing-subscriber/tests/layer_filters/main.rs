@@ -7,8 +7,8 @@ mod dont_break_other_layers;
 mod filter_scopes;
 mod trees;
 
-use tracing::{level_filters::LevelFilter, Level, Metadata};
-use tracing_subscriber::{filter, layer::Context, prelude::*};
+use tracing::{level_filters::LevelFilter, Level};
+use tracing_subscriber::{filter, prelude::*};
 
 #[test]
 fn basic_layer_filters() {
