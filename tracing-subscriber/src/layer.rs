@@ -1137,12 +1137,20 @@ where
         let alt = f.alternate();
         let mut s = f.debug_struct("Layered");
         s.field("layer", &self.layer).field("inner", &self.inner);
+
+        // These additional fields are more verbose and usually only necessary
+        // for internal debugging purposes, so only print them if alternate mode
+        // is enabled.
         if alt {
             s.field(
                 "subscriber",
                 &format_args!("PhantomData<{}>", type_name::<S>()),
-            );
-        };
+            )
+            .field("has_plf_filter_rules", &self.has_plf_filter_rules)
+            .field("has_layer_filter", &self.has_layer_filter)
+            .field("inner_has_layer_filter", &self.inner_has_layer_filter);
+        }
+
         s.finish()
     }
 }
