@@ -168,7 +168,7 @@ where
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
         FILTERING.with(|filtering| filtering.add_interest(interest));
-        // Interest::always() // don't short circuit!
+        // don't short circuit!
         self.layer.register_callsite(metadata);
         Interest::always()
     }
@@ -176,7 +176,6 @@ where
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
         let cx = cx.with_filter(self.id());
         let enabled = self.filter.enabled(metadata, &cx);
-        println!("enabled {}? = {:?}", std::any::type_name::<F>(), enabled);
         FILTERING.with(|filtering| filtering.set(self.id(), enabled));
         // don't short circuit, keep filtering
         if enabled {
@@ -451,7 +450,7 @@ impl FilterId {
 
     pub(crate) fn new(id: u8) -> Self {
         assert!(id < 64, "filter IDs may not be greater than 64");
-        dbg!(Self(1 << id as usize))
+        Self(1 << id as usize)
     }
 
     pub(crate) fn and(self, FilterId(other): Self) -> Self {
@@ -583,8 +582,7 @@ impl FilterState {
     }
 
     fn add_interest(&self, interest: Interest) {
-        let mut curr_interest = dbg!(self.interest.borrow_mut());
-        let interest = dbg!(interest);
+        let mut curr_interest = self.interest.borrow_mut();
 
         #[cfg(debug_assertions)]
         {
@@ -606,7 +604,6 @@ impl FilterState {
         } else {
             *curr_interest = Some(interest);
         }
-        dbg!(&curr_interest);
     }
 
     pub(crate) fn event_enabled() -> bool {
