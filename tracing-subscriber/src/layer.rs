@@ -509,7 +509,7 @@ where
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
     where
         Self: Sized,
-        F: filter::Filter<S>,
+        F: filter::LayerFilter<S>,
     {
         filter::Filtered::new(self, filter)
     }

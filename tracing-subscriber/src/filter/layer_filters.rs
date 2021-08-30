@@ -17,7 +17,7 @@ use tracing_core::{
 };
 
 /// A filter that determines whether a span or event is enabled.
-pub trait Filter<S> {
+pub trait LayerFilter<S> {
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool;
 
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -106,7 +106,7 @@ thread_local! {
 
 // === impl Filter ===
 
-impl<S> Filter<S> for LevelFilter {
+impl<S> LayerFilter<S> for LevelFilter {
     fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
         meta.level() <= self
     }
@@ -149,7 +149,7 @@ impl<L, F, S> Filtered<L, F, S> {
 impl<S, L, F> Layer<S> for Filtered<L, F, S>
 where
     S: Subscriber + for<'span> registry::LookupSpan<'span> + 'static,
-    F: Filter<S> + 'static,
+    F: LayerFilter<S> + 'static,
     L: Layer<S>,
 {
     fn on_layer(&mut self, subscriber: &mut S) {
@@ -349,7 +349,7 @@ where
     }
 }
 
-impl<S, F, R> Filter<S> for FilterFn<S, F, R>
+impl<S, F, R> LayerFilter<S> for FilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
     R: Fn(&'static Metadata<'static>) -> Interest,
