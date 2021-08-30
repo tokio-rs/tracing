@@ -487,7 +487,7 @@ where
     fn default_callsite_enabled(&self, metadata: &Metadata<'_>) -> Interest {
         // If it's below the configured max level, assume that `enabled` will
         // never enable it...
-        if self.is_below_max_level(metadata) {
+        if !self.is_below_max_level(metadata) {
             debug_assert!(
                 !(self.enabled)(metadata, &Context::none()),
                 "FilterFn<{}> claimed it would only enable {:?} and below, \
