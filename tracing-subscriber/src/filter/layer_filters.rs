@@ -21,9 +21,72 @@ use tracing_core::{
 /// for an individual layer.
 ///
 /// [`Layer`]: crate::Layer
+#[doc(alias = "Filter")]
+#[cfg_attr(docsrs, doc(notable_trait))]
 pub trait LayerFilter<S> {
+    /// Returns `true` if this layer is interested in a span or event with the
+    /// given [`Metadata`] in the current [`Context`], similarly to
+    /// [`Subscriber::enabled`].
+    ///
+    /// If this returns `false`, the span or this will be disabled _for the
+    /// wrapped [`Layer`]_. Unlike [`Layer::enabled`], the span or event will
+    /// still be recorded if any _other_ layers choose to enable it. However,
+    /// the layer [filtered] by this filter will skip recording that span or
+    /// event.
+    ///
+    /// If all layers indicate that they do not wish to see this span or event,
+    /// it will be disabled.
+    ///
+    /// [`metadata`]: tracing_core::Metadata
+    /// [`context`]: crate::layer::Context
+    /// [`Subscriber::enabled`]: tracing_core::Subscriber::enabled
+    /// [`Layer`]: crate::Layer
+    /// [`Layer::enabled`]: crate::Layer::enabled
+    /// [filtered]: Filtered
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool;
 
+    /// Returns an [`Interest`] indicating whether this layer will [always],
+    /// [sometimes], or [never] be interested in the given [`Metadata`].
+    ///
+    /// This method is broadly similar to [`Subscriber::register_callsite`];
+    /// however, since the returned value represents only the interest of
+    /// *this* layer, the resulting behavior is somewhat different.
+    ///
+    /// If a [`Subscriber`] returns [`Interest::always()`][always] or
+    /// [`Interest::never()`][never] for a given [`Metadata`], its [`enabled`]
+    /// method is then *guaranteed* to never be called for that callsite. On the
+    /// other hand, when a `LayerFilter` returns [`Interest::always()`][always] or
+    /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`s] may have
+    /// differing interests in that callsite. If this is the case, the callsite
+    /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
+    /// method will still be called for that callsite when it records a span or
+    /// event.
+    ///
+    /// Returning [`Interest::always()`][always] or [`Interest::never()`][never] from
+    /// `LayerFilter::callsite_enabled` will permanently enable or disable a
+    /// callsite (without requiring subsequent calls to [`enabled`]) if and only
+    /// if the following is true:
+    ///
+    /// - all [`Layer`]s that comprise the subscriber include `LayerFilter`s
+    ///   (this includes a tree of [`Layered`] layers that share the same
+    ///   `LayerFilter`)
+    /// - all those `LayerFilter`s return the same [`Interest`].
+    ///
+    /// For example, if a [`Subscriber`] consists of two [`Filtered`] layers,
+    /// and both of those layers return [`Interest::never()`][never], that
+    /// callsite *will* never be enabled, and the [`enabled`] methods of those
+    /// [`LayerFilter`s] will not be called.
+    ///
+    /// [`Metadata`]: tracing_core::Metadata
+    /// [`Interest`]: tracing_core::Interest
+    /// [always]: tracing_core::Interest::always
+    /// [sometimes]: tracing_core::Interest::sometimes
+    /// [never]: tracing_core::Interest::never
+    /// [`Subscriber::register_callsite`]: tracing_core::Subscriber::register_callsite
+    /// [`Subscriber`]: tracing_core::Subscriber
+    /// [`enabled`]: LayerFilter::enabled
+    /// [`Layer`]: crate::Layer
+    /// [`Layered`]: crate::layer::Layered
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
         let _ = meta;
         Interest::sometimes()
@@ -44,8 +107,10 @@ pub struct Filtered<L, F, S> {
     _s: PhantomData<fn(S)>,
 }
 
+/// A [`LayerFilter`] implemented by a closure or function pointer.
 pub struct FilterFn<
     S,
+    // TODO(eliza): should these just be boxed functions?
     F = fn(&Metadata<'_>, &Context<'_, S>) -> bool,
     R = fn(&'static Metadata<'static>) -> Interest,
 > {
@@ -55,9 +120,34 @@ pub struct FilterFn<
     _s: PhantomData<fn(S)>,
 }
 
+/// Uniquely identifies an individual [`LayerFilter`] instance in the context of
+/// a [`Subscriber`].
+///
+/// When adding a [`Filtered`] [`Layer`] to a [`Subscriber`], the [`Subscriber`]
+/// generates a `FilterId` for that [`Filtered`] layer. The [`Filtered`] layer
+/// will then use the generated ID to query whether a particular span was
+/// previously enabled by that layer's [`LayerFilter`].
+///
+/// **Note**: Currently, the [`Registry`] type provided by this crate is the
+/// **only** [`Subscriber`] implementation capable of participating in per-layer
+/// filtering. Therefore, the `FilterId` type cannot currently be constructed by
+/// user code. In the future, new APIs will be added to `tracing-subscriber` to
+/// allow user-implemented [`Subscriber`]s to also participate in per-layer
+/// filtering. When those APIs are added, user subscribers will be responsible
+/// for generating and assigning `FilterId`s.
+///
+/// [`Subscriber`]: tracing_core::Subscriber
+/// [`Layer`]: crate::layer::Layer
+/// [`Registry`]: crate::registry::Registry
 #[derive(Copy, Clone)]
 pub struct FilterId(u64);
 
+/// A bitmap tracking which [`FilterId`]s have implemented a given span or
+/// event.
+///
+/// This is currently a private type that's used exclusively by the
+/// [`Registry`]. However, in the future, this may become a public API, in order
+/// to allow user subscribers to host [`LayerFilter`]s.
 #[derive(Default, Copy, Clone, Eq, PartialEq)]
 pub(crate) struct FilterMap {
     bits: u64,
@@ -207,9 +297,26 @@ where
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
+
+        // If the filter didn't disable the callsite, allow the inner layer to
+        // register it --- since `register_callsite` is also used for purposes
+        // such as reserving/caching per-callsite data, we want the inner layer
+        // to be able to perform any other registration steps. However, we'll
+        // ignore its `Interest`.
+        if !interest.is_never() {
+            self.layer.register_callsite(metadata);
+        }
+
+        // Add our `Interest` to the current sum of per-layer filter `Interest`s
+        // for this callsite.
         FILTERING.with(|filtering| filtering.add_interest(interest));
-        // don't short circuit!
-        self.layer.register_callsite(metadata);
+
+        // don't short circuit! if the stack consists entirely of `Layer`s with
+        // per-layer filters, the `Registry` will return the actual `Interest`
+        // value that's the sum of all the `register_callsite` calls to those
+        // per-layer filters. if we returned an actual `never` interest here, a
+        // `Layered` layer would short-circuit and not allow any `Filtered`
+        // layers below us if _they_ are interested in the callsite.
         Interest::always()
     }
 
@@ -396,7 +503,7 @@ where
         // Otherwise, we can't really guarantee if the `enabled` is dynamic or
         // not, so don't assume it will always enable this callsite, and just
         // ask it dynamically.
-        // TODO(eliza): is it better to assume this or not
+        // TODO(eliza): is it better to assume this or not??
         Interest::sometimes()
     }
 }
