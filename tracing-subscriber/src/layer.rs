@@ -9,7 +9,11 @@ use tracing_core::{
 #[cfg(feature = "registry")]
 use crate::registry::Registry;
 use crate::registry::{self, LookupSpan, SpanRef};
-use std::{any::TypeId, marker::PhantomData};
+use std::{
+    any::{type_name, TypeId},
+    fmt,
+    marker::PhantomData,
+};
 
 /// A composable handler for `tracing` events.
 ///
@@ -557,7 +561,7 @@ pub struct Context<'a, S> {
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Layered<L, I, S = I> {
     layer: L,
     inner: I,
@@ -941,6 +945,25 @@ where
 //         self.inner
 //     }
 // }
+
+impl<A, B, S> fmt::Debug for Layered<A, B, S>
+where
+    A: fmt::Debug,
+    B: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alt = f.alternate();
+        let mut s = f.debug_struct("Layered");
+        s.field("layer", &self.layer).field("inner", &self.inner);
+        if alt {
+            s.field(
+                "subscriber",
+                &format_args!("PhantomData<{}>", type_name::<S>()),
+            );
+        };
+        s.finish()
+    }
+}
 
 // === impl SubscriberExt ===
 
