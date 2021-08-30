@@ -1,22 +1,26 @@
-use super::LevelFilter;
-use std::{
-    any::type_name,
-    cell::{Cell, RefCell},
-    thread_local,
-};
-
 use crate::{
+    filter::LevelFilter,
     layer::{Context, Layer},
     registry,
 };
-use std::{any::TypeId, fmt, marker::PhantomData};
+use std::{
+    any::{type_name, TypeId},
+    cell::{Cell, RefCell},
+    fmt,
+    marker::PhantomData,
+    sync::Arc,
+    thread_local,
+};
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
     Event, Metadata,
 };
 
-/// A filter that determines whether a span or event is enabled.
+/// A per-[`Layer`] filter that determines whether a span or event is enabled
+/// for an individual layer.
+///
+/// [`Layer`]: crate::Layer
 pub trait LayerFilter<S> {
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool;
 
@@ -30,6 +34,8 @@ pub trait LayerFilter<S> {
     }
 }
 
+/// A [`Layer`] that wraps an inner [`Layer`] and adds a [`LayerFilter`] which
+/// controls what spans and events are enabled for that layer.
 #[derive(Clone)]
 pub struct Filtered<L, F, S> {
     filter: F,
@@ -121,6 +127,40 @@ impl<S> LayerFilter<S> for LevelFilter {
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         Some(*self)
+    }
+}
+
+impl<S> LayerFilter<S> for Arc<dyn LayerFilter<S> + Send + Sync + 'static> {
+    #[inline]
+    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+        (**self).enabled(meta, cx)
+    }
+
+    #[inline]
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        (**self).callsite_enabled(meta)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        (**self).max_level_hint()
+    }
+}
+
+impl<S> LayerFilter<S> for Box<dyn LayerFilter<S> + Send + Sync + 'static> {
+    #[inline]
+    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+        (**self).enabled(meta, cx)
+    }
+
+    #[inline]
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        (**self).callsite_enabled(meta)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        (**self).max_level_hint()
     }
 }
 
@@ -241,9 +281,6 @@ where
         }
     }
 
-    // #[doc(hidden)]
-    // const HAS_PER_LAYER_FILTERS: bool = true;
-
     #[doc(hidden)]
     #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
@@ -341,11 +378,26 @@ where
     }
 
     fn default_callsite_enabled(&self, metadata: &Metadata<'_>) -> Interest {
-        if (self.enabled)(metadata, &Context::none()) {
-            Interest::always()
-        } else {
-            Interest::never()
+        // If it's below the configured max level, assume that `enabled` will
+        // never enable it...
+        if self.is_below_max_level(metadata) {
+            debug_assert!(
+                !(self.enabled)(metadata, &Context::none()),
+                "FilterFn<{}> claimed it would only enable {:?} and below, \
+                but it enabled metadata with the {:?} level\nmetadata={:#?}",
+                type_name::<F>(),
+                self.max_level_hint.unwrap(),
+                metadata.level(),
+                metadata,
+            );
+            return Interest::never();
         }
+
+        // Otherwise, we can't really guarantee if the `enabled` is dynamic or
+        // not, so don't assume it will always enable this callsite, and just
+        // ask it dynamically.
+        // TODO(eliza): is it better to assume this or not
+        Interest::sometimes()
     }
 }
 
