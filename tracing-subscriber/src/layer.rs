@@ -450,24 +450,8 @@ where
         L: Layer<S>,
         Self: Sized,
     {
-        #[cfg(feature = "registry")]
-        let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
-        #[cfg(not(feature = "registry"))]
-        let inner_is_registry = false;
-
-        let is_per_layer_filtered = filter::layer_has_plf(&layer);
-        let inner_per_layer_filtered = filter::layer_has_plf(&self);
-        let has_plf_filter_rules =
-            is_per_layer_filtered && !inner_per_layer_filtered && !inner_is_registry;
-
-        Layered {
-            layer,
-            inner: self,
-            has_plf_filter_rules,
-            has_layer_filter: is_per_layer_filtered,
-            inner_has_layer_filter: inner_per_layer_filtered,
-            _s: PhantomData,
-        }
+        let inner_has_layer_filter = filter::layer_has_plf(&self);
+        Layered::new(layer, self, inner_has_layer_filter)
     }
 
     /// Composes this `Layer` with the given [`Subscriber`], returning a
@@ -517,25 +501,9 @@ where
     where
         Self: Sized,
     {
-        #[cfg(feature = "registry")]
-        let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
-        #[cfg(not(feature = "registry"))]
-        let inner_is_registry = false;
-
-        let is_per_layer_filtered = filter::layer_has_plf(&self);
-        let inner_per_layer_filtered = filter::subscriber_has_plf(&inner);
-        let has_plf_filter_rules =
-            is_per_layer_filtered && !inner_per_layer_filtered && !inner_is_registry;
-
+        let inner_has_layer_filter = filter::subscriber_has_plf(&inner);
         self.on_layer(&mut inner);
-        Layered {
-            layer: self,
-            inner,
-            has_layer_filter: is_per_layer_filtered,
-            inner_has_layer_filter: inner_per_layer_filtered,
-            has_plf_filter_rules,
-            _s: PhantomData,
-        }
+        Layered::new(self, inner, inner_has_layer_filter)
     }
 
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
@@ -1081,7 +1049,30 @@ where
     }
 }
 
-impl<A, B, S> Layered<A, B, S> {
+impl<A, B, S> Layered<A, B, S>
+where
+    A: Layer<S>,
+    S: Subscriber,
+{
+    fn new(layer: A, inner: B, inner_has_layer_filter: bool) -> Self {
+        #[cfg(feature = "registry")]
+        let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
+        #[cfg(not(feature = "registry"))]
+        let inner_is_registry = false;
+
+        let has_layer_filter = filter::layer_has_plf(&layer);
+        let has_plf_filter_rules =
+            has_layer_filter && !inner_has_layer_filter && !inner_is_registry;
+        Self {
+            layer,
+            inner,
+            has_layer_filter,
+            inner_has_layer_filter,
+            has_plf_filter_rules,
+            _s: PhantomData,
+        }
+    }
+
     fn pick_interest(&self, outer: Interest, inner: impl FnOnce() -> Interest) -> Interest {
         if outer.is_never() && !self.has_plf_filter_rules {
             // if the outer layer has disabled the callsite, return now so that
