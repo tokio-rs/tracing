@@ -30,7 +30,7 @@ pub trait Filter<S> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Filtered<L, F, S> {
     filter: F,
     layer: L,
@@ -246,6 +246,7 @@ where
     // const HAS_PER_LAYER_FILTERS: bool = true;
 
     #[doc(hidden)]
+    #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         match id {
             id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
@@ -256,6 +257,27 @@ where
             }
             _ => None,
         }
+    }
+}
+
+impl<F, L, S> fmt::Debug for Filtered<F, L, S>
+where
+    F: fmt::Debug,
+    L: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alt = f.alternate();
+        let mut s = f.debug_struct("Filtered");
+        s.field("filter", &self.filter)
+            .field("layer", &self.layer)
+            .field("id", &self.id);
+        if alt {
+            s.field(
+                "subscriber",
+                &format_args!("PhantomData<{}>", type_name::<S>()),
+            );
+        }
+        s.finish()
     }
 }
 
@@ -375,6 +397,7 @@ where
 
 impl<S, F, R> fmt::Debug for FilterFn<S, F, R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alt = f.alternate();
         let mut s = f.debug_struct("FilterFn");
         s.field("enabled", &format_args!("{}", type_name::<F>()));
         if self.register_callsite.is_some() {
@@ -386,9 +409,14 @@ impl<S, F, R> fmt::Debug for FilterFn<S, F, R> {
             s.field("register_callsite", &format_args!("None"));
         }
 
-        s.field("max_level_hint", &self.max_level_hint)
-            .field("subscriber_type", &format_args!("{}", type_name::<S>()))
-            .finish()
+        s.field("max_level_hint", &self.max_level_hint);
+        if alt {
+            s.field(
+                "subscriber",
+                &format_args!("PhantomData<{}>", type_name::<S>()),
+            );
+        }
+        s.finish()
     }
 }
 
@@ -437,6 +465,14 @@ impl FilterId {
 
 impl fmt::Debug for FilterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // don't print a giant set of the numbers 0..63 if the filter ID is disabled.
+        if self.0 == Self::DISABLED.0 {
+            return f
+                .debug_tuple("FilterId")
+                .field(&format_args!("DISABLED"))
+                .finish();
+        }
+
         if f.alternate() {
             f.debug_struct("FilterId")
                 .field("ids", &format_args!("{:?}", FmtBitset(self.0)))

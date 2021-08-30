@@ -39,9 +39,7 @@ fn basic_trees() {
         })))
         .with_filter(LevelFilter::INFO);
 
-    let subscriber = tracing_subscriber::registry()
-        .with(dbg!(info_tree))
-        .with(all);
+    let subscriber = tracing_subscriber::registry().with(info_tree).with(all);
     let _guard = dbg!(subscriber).set_default();
 
     tracing::info!("hello world");
@@ -127,7 +125,7 @@ fn filter_span_scopes() {
         .with_filter(LevelFilter::INFO);
 
     let subscriber = tracing_subscriber::registry()
-        .with(dbg!(info_tree))
+        .with(info_tree)
         .with(all_layer);
     let _guard = dbg!(subscriber).set_default();
 
