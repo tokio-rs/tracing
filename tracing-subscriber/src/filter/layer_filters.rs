@@ -48,6 +48,18 @@ pub trait LayerFilter<S> {
     /// Returns an [`Interest`] indicating whether this layer will [always],
     /// [sometimes], or [never] be interested in the given [`Metadata`].
     ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: If a <code>LayerFilter</code> will perform
+    /// <em>dynamic filtering</em> that depends on the current context in which
+    /// a span or event was observered (e.g. only enabling an event when it
+    /// occurs within a particular span), it <strong>must</strong> return
+    /// <code>Interest::sometimes()</code> from this method. Otherwise, its
+    /// <code>enabled</code> method may not be called when a particular instance
+    /// of that span or event is recorded.
+    /// </pre>
+    /// </div>
+    ///
     /// This method is broadly similar to [`Subscriber::register_callsite`];
     /// however, since the returned value represents only the interest of
     /// *this* layer, the resulting behavior is somewhat different.
@@ -77,6 +89,57 @@ pub trait LayerFilter<S> {
     /// callsite *will* never be enabled, and the [`enabled`] methods of those
     /// [`LayerFilter`s] will not be called.
     ///
+    /// ## Default Implementation
+    ///
+    /// The default implementation of this method assumes that the
+    /// `LayerFilter`'s [`enabled`] method _may_ perform dynamic filtering, and
+    /// returns [`Interest::sometimes()`][sometimes], to ensure that [`enabled`]
+    /// is called to determine whether a particular _instance_ of the callsite
+    /// is enabled in the current context. If this is *not* the case, and the
+    /// `LayerFilter`'s [`enabled`] method will always return the same result
+    /// for a particular [`Metadata`], this method can be overridden as
+    /// follows:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     layer::Context,
+    ///     filter::LayerFilter,
+    /// };
+    /// use tracing_core::{Metadata, subscriber::Interest};
+    ///
+    /// struct MyLayerFilter {
+    ///     // ...
+    /// }
+    ///
+    /// impl MyLayerFilter {
+    ///     // The actual logic for determining whether a `Metadata` is enabled
+    ///     // must be factored out from the `enabled` method, so that it can be
+    ///     // called without a `Context` (which is not provided to the
+    ///     // `callsite_enabled` method).
+    ///     fn is_enabled(&self, metadata: &Metadata<'_>) -> bool {
+    ///         // ...
+    ///         # drop(metadata); true
+    ///     }
+    /// }
+    ///
+    /// impl<S> LayerFilter<S> for MyLayerFilter {
+    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+    ///         self.is_enabled(metadata)
+    ///     }
+    ///
+    ///     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+    ///         // The result of `self.enabled(metadata, ...)` will always be
+    ///         // the same for any given `Metadata`, so we can convert it into
+    ///         // an `Interest`:
+    ///         if self.is_enabled(metadata) {
+    ///             Interest::always()
+    ///         } else {
+    ///             Interest::never()
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
     /// [`Metadata`]: tracing_core::Metadata
     /// [`Interest`]: tracing_core::Interest
     /// [always]: tracing_core::Interest::always
@@ -92,6 +155,35 @@ pub trait LayerFilter<S> {
         Interest::sometimes()
     }
 
+    /// Returns an optional hint of the highest [verbosity level][level] that
+    /// this `LayerFilter` will enable.
+    ///
+    /// If this method returns a [`LevelFilter`], it will be used as a hint to
+    /// determine the most verbose level that will be enabled. This will allow
+    /// spans and events which are more verbose than that level to be skipped
+    /// more efficiently. An implementation of this method is optional, but
+    /// strongly encouraged.
+    ///
+    /// If the maximum level the `LayerFilter` will enable can change over the
+    /// course of its lifetime, it is free to return a different value from
+    /// multiple invocations of this method. However, note that changes in the
+    /// maximum level will **only** be reflected after the callsite [`Interest`]
+    /// cache is rebuilt, by calling the
+    /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
+    /// Therefore, if the `LayerFilter will change the value returned by this
+    /// method, it is responsible for ensuring that
+    /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+    /// level changes.
+    ///
+    /// ## Default Implementation
+    ///
+    /// By default, this method returns `None`, indicating that the maximum
+    /// level is unknown.
+    ///
+    /// [level]: tracing_core::metadata::Level
+    /// [`LevelFilter`]: crate::filter::LevelFilter
+    /// [`Interest`]: tracing_core::subscriber::Interest
+    /// [rebuild]: tracing_core::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
@@ -257,6 +349,7 @@ impl<S> LayerFilter<S> for Box<dyn LayerFilter<S> + Send + Sync + 'static> {
 // === impl Filtered ===
 
 impl<L, F, S> Filtered<L, F, S> {
+    /// Wraps the provided `layer` so that it is filtered by `filter`.
     pub fn new(layer: L, filter: F) -> Self {
         Self {
             layer,
@@ -426,6 +519,26 @@ where
 
 // === impl FilterFn ===
 
+/// Constructs a [`FilterFn`], which implements the [`LayerFilter`] trait, from
+/// a function or closure that returns `true` if a span or event should be enabled.
+///
+/// This is equivalent to calling [`FilterFn::new`].
+///
+/// # Examples
+///
+/// ```
+/// use tracing_subscriber::filter;
+///
+/// let my_filter = filter::filter_fn(|metadata, _| {
+///     // Only enable spans or events with the target "interesting_target"
+///     metadata.target() == "interesting_target"
+/// });
+///
+/// let my_layer = /* ... */ # filter::LevelFilter::INFO;
+/// tracing_subscriber::registry()
+///     .with(my_layer.with_filter(my_filter))
+///     .init();
+/// ```
 pub fn filter_fn<S, F>(f: F) -> FilterFn<S, F>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
@@ -437,6 +550,24 @@ impl<S, F> FilterFn<S, F>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
+    /// Constructs a [`LayerFilter`] from a function or closure that returns `true`
+    /// if a span or event should be enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::FilterFn;
+    ///
+    /// let my_filter = FilterFn::new(|metadata, _| {
+    ///     // Only enable spans or events with the target "interesting_target"
+    ///     metadata.target() == "interesting_target"
+    /// });
+    ///
+    /// let my_layer = /* ... */ # tracing_subscriber::filter::LevelFilter::INFO;
+    /// tracing_subscriber::registry()
+    ///     .with(my_layer.with_filter(my_filter))
+    ///     .init();
+    /// ```
     pub fn new(enabled: F) -> Self {
         Self {
             enabled,
@@ -451,6 +582,34 @@ impl<S, F, R> FilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
+    /// Sets the highest verbosity [`Level`] the filter function will enable.
+    ///
+    /// The value passed to this method will be returned by this `FilterFn`'s
+    /// [`LayerFilter::max_level_hint`] method.
+    ///
+    /// If the provided function will not enable all levels, it is recommended
+    /// to call this method to configure it with the most verbose level it will
+    /// enable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    ///
+    /// let my_filter = filter_fn(|metadata, _| {
+    ///     // Only enable spans or events with targets starting with `my_crate`
+    ///     // and levels at or below `INFO`.
+    ///     metadata.level() <= Level::INFO && metadata.target().starts_with("my_crate")
+    /// })
+    ///     // Since the filter closure will only enable the `INFO` level and
+    ///     // below, set the max level hint
+    ///     .with_max_level_hint(LevelFilter::INFO);
+    ///
+    /// let my_layer = /* ... */ # filter::LevelFilter::INFO;
+    /// tracing_subscriber::registry()
+    ///     .with(my_layer.with_filter(my_filter))
+    ///     .init();
+    /// ```
     pub fn with_max_level_hint(self, max_level_hint: LevelFilter) -> Self {
         Self {
             max_level_hint: Some(max_level_hint),
