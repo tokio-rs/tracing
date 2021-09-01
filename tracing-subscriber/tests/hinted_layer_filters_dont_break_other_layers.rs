@@ -63,6 +63,8 @@ fn out_of_order() {
     assert_eq!(subscriber.max_level_hint(), None);
     let _subscriber = subscriber.set_default();
 
+    events();
+
     unfiltered1_handle.assert_finished();
     unfiltered2_handle.assert_finished();
     filtered1_handle.assert_finished();
@@ -82,6 +84,14 @@ fn mixed_layered() {
     let subscriber = tracing_subscriber::registry().with(layered1).with(layered2);
     assert_eq!(subscriber.max_level_hint(), None);
     let _subscriber = subscriber.set_default();
+
+    events();
+
+    unfiltered1_handle.assert_finished();
+    unfiltered2_handle.assert_finished();
+    filtered1_handle.assert_finished();
+    filtered2_handle.assert_finished();
+}
 
 fn events() {
     tracing::trace!("hello trace");
