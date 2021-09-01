@@ -133,6 +133,22 @@ pub trait LookupSpan<'a> {
         })
     }
 
+    /// Registers a [`LayerFilter`] for [per-layer filtering] with this
+    /// [`Subscriber`].
+    ///
+    /// The [`LayerFilter`] can then use the returned [`FilterId`] to
+    /// [check if it previously enabled a span][check].
+    ///
+    /// # Panics
+    ///
+    /// If this `Subscriber` does not support [per-layer filtering].
+    ///
+    ///
+    /// [`LayerFilter`]: crate::filter::LayerFilter
+    /// [per-layer filtering]: crate::layer::Layer#per-layer-filtering
+    /// [`Subscriber`]: tracing_core::Subscriber
+    /// [`FilterId`]: crate::filter::FilterId
+    /// [check]: SpanData::is_enabled_for
     fn register_filter(&mut self) -> FilterId {
         panic!(
             "{} does not currently support filters",
@@ -172,6 +188,16 @@ pub trait SpanData<'a> {
     /// describing the span.
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
 
+    /// Returns `true` if this span is enabled for the [per-layer filter][plf]
+    /// corresponding to the provided [`FilterId`].
+    ///
+    /// ## Default Implementation
+    ///
+    /// By default, this method assumes that the [`LookupSpan`] implementation
+    /// does not support [per-layer filtering][plf], and always returns `true`.
+    ///
+    /// [plf]: crate::layer::Layer#per-layer-filtering
+    /// [`FilterId`]: crate::filter::FilterId
     fn is_enabled_for(&self, filter: FilterId) -> bool {
         let _ = filter;
         true

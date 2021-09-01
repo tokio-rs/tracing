@@ -630,6 +630,15 @@ where
         Layered::new(self, inner, inner_has_layer_filter)
     }
 
+    /// Combines `self` with a [`LayerFilter`], returning a [`Filtered`] layer.
+    ///
+    /// The [`LayerFilter`] will control which spans and events are enabled for
+    /// this layer. See [the trait-level documentation][plf] for details on
+    /// per-layer filtering.
+    ///
+    /// [`LayerFilter`]: crate::filter::LayerFilter
+    /// [`Filtered`]: crate::filter::Filtered
+    /// [plf]: #per-layer-filtering
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
     where
         Self: Sized,
