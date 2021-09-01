@@ -321,14 +321,14 @@ where
         outer_hint: Option<LevelFilter>,
         inner_hint: Option<LevelFilter>,
     ) -> Option<LevelFilter> {
-        use std::cmp;
+        use std::cmp::max;
 
-        if dbg!(self.inner_is_registry) {
-            return dbg!(outer_hint);
+        if self.inner_is_registry {
+            return outer_hint;
         }
 
-        if dbg!(self.has_layer_filter && self.inner_has_layer_filter) {
-            return dbg!(Some(cmp::max(outer_hint?, inner_hint?)));
+        if self.has_layer_filter && self.inner_has_layer_filter {
+            return Some(max(outer_hint?, inner_hint?));
         }
 
         if self.has_layer_filter && inner_hint.is_none() {
@@ -339,7 +339,7 @@ where
             return None;
         }
 
-        cmp::max(outer_hint, inner_hint)
+        max(outer_hint, inner_hint)
     }
 }
 
