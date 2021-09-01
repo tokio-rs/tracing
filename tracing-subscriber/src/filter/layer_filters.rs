@@ -552,9 +552,9 @@ where
     /// ```
     ///
     /// [`Level`]: tracing_core::Level
-    pub fn with_max_level_hint(self, max_level_hint: LevelFilter) -> Self {
+    pub fn with_max_level_hint(self, max_level_hint: impl Into<LevelFilter>) -> Self {
         Self {
-            max_level_hint: Some(max_level_hint),
+            max_level_hint: Some(max_level_hint.into()),
             ..self
         }
     }
