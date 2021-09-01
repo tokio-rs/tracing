@@ -19,6 +19,12 @@ use tracing_core::{
 
 /// A [`Layer`] that wraps an inner [`Layer`] and adds a [`Filter`] which
 /// controls what spans and events are enabled for that layer.
+///
+/// This is returned by the [`Layer::with_filter`] method. See the
+/// [documentation on per-layer filtering][plf] for details.
+///
+/// [`Filter`]: crate::layer::Filter
+/// [plf]: crate::Layer#per-layer-filtering
 #[derive(Clone)]
 pub struct Filtered<L, F, S> {
     filter: F,
@@ -27,7 +33,12 @@ pub struct Filtered<L, F, S> {
     _s: PhantomData<fn(S)>,
 }
 
-/// A [`Filter`] implemented by a closure or function pointer.
+/// A per-layer [`Filter`] implemented by a closure or function pointer.
+///
+/// See the [documentation on per-layer filtering][plf] for details.
+///
+/// [`Filter`]: crate::layer::Filter
+/// [plf]: crate::Layer#per-layer-filtering
 pub struct FilterFn<
     S,
     // TODO(eliza): should these just be boxed functions?
@@ -57,6 +68,7 @@ pub struct FilterFn<
 /// filtering. When those APIs are added, user subscribers will be responsible
 /// for generating and assigning `FilterId`s.
 ///
+/// [`Filter`]: crate::layer::Filter
 /// [`Subscriber`]: tracing_core::Subscriber
 /// [`Layer`]: crate::layer::Layer
 /// [`Registry`]: crate::registry::Registry
@@ -178,7 +190,15 @@ impl<S> layer::Filter<S> for Box<dyn layer::Filter<S> + Send + Sync + 'static> {
 // === impl Filtered ===
 
 impl<L, F, S> Filtered<L, F, S> {
-    /// Wraps the provided `layer` so that it is filtered by `filter`.
+    /// Wraps the provided [`Layer`] so that it is filtered by the given
+    /// [`Filter`].
+    ///
+    /// This is equivalent to calling the [`Layer::with_filter`] method.
+    ///
+    /// See the [documentation on per-layer filtering][plf] for details.
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    /// [plf]: crate::Layer#per-layer-filtering
     pub fn new(layer: L, filter: F) -> Self {
         Self {
             layer,
@@ -353,6 +373,12 @@ where
 ///
 /// This is equivalent to calling [`FilterFn::new`].
 ///
+/// See the [documentation on per-layer filtering][plf] for details on using
+/// [`Filter`]s.
+///
+/// [`Filter`]: crate::layer::Filter
+/// [plf]: crate::Layer#per-layer-filtering
+///
 /// # Examples
 ///
 /// ```
@@ -389,6 +415,12 @@ where
     /// Constructs a [`Filter`] from a function or closure that returns `true`
     /// if a span or event should be enabled.
     ///
+    /// See the [documentation on per-layer filtering][plf] for details on using
+    /// [`Filter`]s.
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    /// [plf]: crate::Layer#per-layer-filtering
+    ///
     /// # Examples
     ///
     /// ```
@@ -420,7 +452,8 @@ where
         }
     }
 
-    /// Indicates that the result of the [`enabled`] can be cached.
+    /// Indicates that the result of the [`enabled`][`Filter::enabled`] function
+    /// can be cached.
     ///
     /// By default, a `FilterFn` assumes that the supplied [`Filter::enabled`]
     /// function _may_ be dynamic: it may decide whether a given span or event
@@ -499,10 +532,19 @@ where
     ///
     /// If a user-provided `callsite_enabled` function has already been added to
     /// this `FilterFn` (by calling [`with_callsite_filter`]).
+    ///
+    /// [`Filter::enabled`]: crate::layer::Filter::enabled
+    /// [`Metadata`]: tracing_core::Metadata
+    /// [span context]: crate::layer::Context
+    /// [`Filter::callsite_enabled`]: crate::layer::Filter::callsite_enabled
+    /// [`Interest::sometimes`]: tracing_core::subscriber::Interest::sometimes
+    /// [`Interest::always`]: tracing_core::subscriber::Interest::always
+    /// [`Interest::never`]: tracing_core::subscriber::Interest::never
+    /// [`with_callsite_filter`]: FilterFn::with_callsite_filter
     pub fn cacheable(self) -> Self {
         assert!(
             self.register_callsite.is_none(),
-            "`FilterFn::cachable` does nothing if a user-provided \
+            "`FilterFn::cacheable` does nothing if a user-provided \
             `callsite_enabled` function has been supplied"
         );
         Self {
@@ -552,6 +594,7 @@ where
     /// ```
     ///
     /// [`Level`]: tracing_core::Level
+    /// [`Filter::max_level_hint`]: crate::layer::Filter::max_level_hint
     pub fn with_max_level_hint(self, max_level_hint: impl Into<LevelFilter>) -> Self {
         Self {
             max_level_hint: Some(max_level_hint.into()),
@@ -567,7 +610,11 @@ where
     /// # Panics
     ///
     /// If this `FilterFn`'s [`enabled`] method has been previously marked as
-    /// [`cachable`].
+    /// [`cacheable`].
+    ///
+    /// [`Filter::callsite_enabled`]: crate::layer::Filter::callsite_enabled
+    /// [`enabled`]: crate::layer::Filter::enabled
+    /// [`cacheable`]: FilterFn::cacheable
     pub fn with_callsite_filter<R2>(self, callsite_enabled: R2) -> FilterFn<S, F, R2>
     where
         R2: Fn(&'static Metadata<'static>) -> Interest,

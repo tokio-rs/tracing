@@ -143,8 +143,7 @@ pub trait LookupSpan<'a> {
     ///
     /// If this `Subscriber` does not support [per-layer filtering].
     ///
-    ///
-    /// [`Filter`]: crate::filter::Filter
+    /// [`Filter`]: crate::layer::Filter
     /// [per-layer filtering]: crate::layer::Layer#per-layer-filtering
     /// [`Subscriber`]: tracing_core::Subscriber
     /// [`FilterId`]: crate::filter::FilterId

@@ -298,7 +298,6 @@ pub use self::{context::*, layered::*};
 /// [`Layer::register_callsite`]: #method.register_callsite
 /// [`Layer::enabled`]: #method.enabled
 /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-/// [`Filter`]: crate::filter::Filter
 /// [`Filtered`]: crate::filter::Filtered
 pub trait Layer<S>
 where
@@ -331,6 +330,7 @@ where
     /// [`Filtered`]: crate::filter::Filtered
     /// [`register_filter`]: crate::registry::LookupSpan::register_filter
     /// [per-layer filtering]: #per-layer-filtering
+    /// [`FilterId`]: crate::filter::FilterId
     fn on_layer(&mut self, subscriber: &mut S) {
         let _ = subscriber;
     }
@@ -634,7 +634,6 @@ where
     /// this layer. See [the trait-level documentation][plf] for details on
     /// per-layer filtering.
     ///
-    /// [`Filter`]: crate::filter::Filter
     /// [`Filtered`]: crate::filter::Filtered
     /// [plf]: #per-layer-filtering
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
@@ -777,6 +776,7 @@ pub trait Filter<S> {
     /// [`Subscriber::register_callsite`]: tracing_core::Subscriber::register_callsite
     /// [`Subscriber`]: tracing_core::Subscriber
     /// [`enabled`]: Filter::enabled
+    /// [`Filtered`]: crate::filter::Filtered
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
         let _ = meta;
         Interest::sometimes()
