@@ -302,7 +302,7 @@ where
         // If the outer layer has disabled the callsite, return now so that
         // the inner layer/subscriber doesn't get its hopes up.
         if outer.is_never() {
-            return dbg!(outer);
+            return outer;
         }
 
         // The intention behind calling `inner.register_callsite()` before the if statement
