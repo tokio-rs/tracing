@@ -1,8 +1,8 @@
 #![cfg(feature = "registry")]
 mod support;
 use self::support::*;
-use tracing::{Level, Metadata};
-use tracing_subscriber::{filter::FilterFn, layer::Context, prelude::*};
+use tracing::Level;
+use tracing_subscriber::{filter::FilterFn, prelude::*};
 
 #[test]
 fn layer_filters() {
