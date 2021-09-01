@@ -32,6 +32,7 @@ pub struct Layered<L, I, S = I> {
     ///
     /// If this is set, then:
     has_plf_filter_rules: bool,
+    inner_is_registry: bool,
     has_layer_filter: bool,
     inner_has_layer_filter: bool,
     _s: PhantomData<fn(S)>,
@@ -61,7 +62,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.pick_level_hint(|| self.layer.max_level_hint(), self.inner.max_level_hint())
+        self.pick_level_hint(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
@@ -176,7 +177,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.pick_level_hint(|| self.layer.max_level_hint(), self.inner.max_level_hint())
+        self.pick_level_hint(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     // #[doc(hidden)]
@@ -285,6 +286,7 @@ where
             has_layer_filter,
             inner_has_layer_filter,
             has_plf_filter_rules,
+            inner_is_registry,
             _s: PhantomData,
         }
     }
@@ -316,24 +318,28 @@ where
 
     fn pick_level_hint(
         &self,
-        outer: impl FnOnce() -> Option<LevelFilter>,
+        outer_hint: Option<LevelFilter>,
         inner_hint: Option<LevelFilter>,
     ) -> Option<LevelFilter> {
-        if self.has_plf_filter_rules {
-            return inner_hint;
+        use std::cmp;
+
+        if dbg!(self.inner_is_registry) {
+            return dbg!(outer_hint);
+        }
+
+        if dbg!(self.has_layer_filter && self.inner_has_layer_filter) {
+            return dbg!(Some(cmp::max(outer_hint?, inner_hint?)));
         }
 
         if self.has_layer_filter && inner_hint.is_none() {
             return None;
         }
 
-        let outer_hint = outer();
-
         if self.inner_has_layer_filter && outer_hint.is_none() {
             return None;
         }
 
-        std::cmp::max(outer_hint, inner_hint)
+        cmp::max(outer_hint, inner_hint)
     }
 }
 

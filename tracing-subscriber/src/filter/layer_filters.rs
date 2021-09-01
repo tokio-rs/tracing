@@ -1069,5 +1069,15 @@ mod tests {
                 .with(NopLayer.with_filter(LevelFilter::DEBUG));
             assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
         }
+
+        #[test]
+        fn many_plf_only_picks_max() {
+            let subscriber = crate::registry()
+                .with(NopLayer.with_filter(LevelFilter::WARN))
+                .with(NopLayer.with_filter(LevelFilter::DEBUG))
+                .with(NopLayer.with_filter(LevelFilter::INFO))
+                .with(NopLayer.with_filter(LevelFilter::ERROR));
+            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+        }
     }
 }
