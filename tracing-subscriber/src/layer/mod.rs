@@ -1079,7 +1079,7 @@ pub(crate) mod tests {
         fn exit(&self, _: &span::Id) {}
     }
 
-    struct NopLayer;
+    pub(crate) struct NopLayer;
     impl<S: Subscriber> Layer<S> for NopLayer {}
 
     #[allow(dead_code)]

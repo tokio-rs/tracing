@@ -1007,3 +1007,67 @@ impl fmt::Debug for FmtBitset {
         set.finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{layer::tests::*, prelude::*};
+    use tracing::Subscriber;
+
+    #[cfg(feature = "registry")]
+    mod max_level_hints {
+        use super::*;
+
+        #[test]
+        fn mixed_with_unfiltered() {
+            let subscriber = crate::registry()
+                .with(NopLayer)
+                .with(NopLayer.with_filter(LevelFilter::INFO));
+            assert_eq!(subscriber.max_level_hint(), None);
+        }
+
+        #[test]
+        fn mixed_with_unfiltered_layered() {
+            let subscriber = crate::registry().with(NopLayer).with(
+                NopLayer
+                    .with_filter(LevelFilter::INFO)
+                    .and_then(NopLayer.with_filter(LevelFilter::TRACE)),
+            );
+            assert_eq!(subscriber.max_level_hint(), None);
+        }
+
+        #[test]
+        fn mixed_interleaved() {
+            let subscriber = crate::registry()
+                .with(NopLayer)
+                .with(NopLayer.with_filter(LevelFilter::INFO))
+                .with(NopLayer)
+                .with(NopLayer.with_filter(LevelFilter::INFO));
+            assert_eq!(subscriber.max_level_hint(), None);
+        }
+
+        #[test]
+        fn mixed_layered() {
+            let subscriber = crate::registry()
+                .with(NopLayer.with_filter(LevelFilter::INFO).and_then(NopLayer))
+                .with(NopLayer.and_then(NopLayer.with_filter(LevelFilter::INFO)));
+            assert_eq!(subscriber.max_level_hint(), None);
+        }
+
+        #[test]
+        fn plf_only_unhinted() {
+            let subscriber = crate::registry()
+                .with(NopLayer.with_filter(LevelFilter::INFO))
+                .with(NopLayer.with_filter(filter_fn(|_, _| true)));
+            assert_eq!(subscriber.max_level_hint(), None);
+        }
+
+        #[test]
+        fn plf_only_picks_max() {
+            let subscriber = crate::registry()
+                .with(NopLayer.with_filter(LevelFilter::WARN))
+                .with(NopLayer.with_filter(LevelFilter::DEBUG));
+            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+        }
+    }
+}
