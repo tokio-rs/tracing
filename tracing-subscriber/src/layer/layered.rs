@@ -280,9 +280,9 @@ where
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
+        let inner_has_layer_filter = inner_has_layer_filter || inner_is_registry;
         let has_layer_filter = filter::layer_has_plf(&layer);
-        let has_plf_filter_rules =
-            has_layer_filter && !inner_has_layer_filter && !inner_is_registry;
+        let has_plf_filter_rules = has_layer_filter && !inner_has_layer_filter;
         Self {
             layer,
             inner,
@@ -295,27 +295,31 @@ where
     }
 
     fn pick_interest(&self, outer: Interest, inner: impl FnOnce() -> Interest) -> Interest {
-        if outer.is_never() && !self.has_plf_filter_rules {
-            // if the outer layer has disabled the callsite, return now so that
-            // the subscriber doesn't get its hopes up.
-            return outer;
+        if self.has_layer_filter {
+            return inner();
         }
+
+        // If the outer layer has disabled the callsite, return now so that
+        // the inner layer/subscriber doesn't get its hopes up.
+        if outer.is_never() {
+            return dbg!(outer);
+        }
+
+        // The intention behind calling `inner.register_callsite()` before the if statement
+        // is to ensure that the inner subscriber is informed that the callsite exists
+        // regardless of the outer layer's filtering decision.
+        let inner = inner();
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
             // filters are reevaluated.
             return outer;
         }
 
-        let inner = inner();
-        if inner.is_never()
-            && !outer.is_never()
-            && !self.has_layer_filter
-            && self.inner_has_layer_filter
-        {
+        if inner.is_never() && !outer.is_never() && self.inner_has_layer_filter {
             return Interest::sometimes();
         }
 
-        // otherwise, allow the inner subscriber to weigh in.
+        // otherwise, allow the inner subscriber or collector to weigh in.
         inner
     }
 
