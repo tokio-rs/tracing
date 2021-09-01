@@ -985,7 +985,7 @@ where
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-struct MagicPlfDowncastMarker(FilterId);
+pub(crate) struct MagicPlfDowncastMarker(FilterId);
 
 impl fmt::Debug for MagicPlfDowncastMarker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -236,6 +236,9 @@ where
         if id == TypeId::of::<Self>() {
             return Some(self as *const _ as *const ());
         }
+        if id == TypeId::of::<filter::MagicPlfDowncastMarker>() {
+            return self.layer.downcast_raw(id).and(self.inner.downcast_raw(id));
+        }
         self.layer
             .downcast_raw(id)
             .or_else(|| self.inner.downcast_raw(id))
