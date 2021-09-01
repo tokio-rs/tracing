@@ -1,4 +1,8 @@
-use super::*;
+#![cfg(feature = "registry")]
+mod support;
+use self::support::*;
+use tracing::Level;
+use tracing_subscriber::{filter::LevelFilter, prelude::*};
 
 #[test]
 fn layer_filters() {
@@ -7,7 +11,7 @@ fn layer_filters() {
 
     let _subscriber = tracing_subscriber::registry()
         .with(unfiltered)
-        .with(filtered.with_filter(LevelFilter::INFO))
+        .with(filtered.with_filter(filter()))
         .set_default();
 
     events();
@@ -25,8 +29,8 @@ fn layered_layer_filters() {
     let (filtered1, filtered1_handle) = filtered("filtered_1");
     let (filtered2, filtered2_handle) = filtered("filtered_2");
     let filtered = filtered1
-        .with_filter(LevelFilter::INFO)
-        .and_then(filtered2.with_filter(LevelFilter::INFO));
+        .with_filter(filter())
+        .and_then(filtered2.with_filter(filter()));
 
     let _subscriber = tracing_subscriber::registry()
         .with(unfiltered)
@@ -51,9 +55,9 @@ fn out_of_order() {
 
     let _subscriber = tracing_subscriber::registry()
         .with(unfiltered1)
-        .with(filtered1.with_filter(LevelFilter::INFO))
+        .with(filtered1.with_filter(filter()))
         .with(unfiltered2)
-        .with(filtered2.with_filter(LevelFilter::INFO))
+        .with(filtered2.with_filter(filter()))
         .set_default();
     events();
 
@@ -70,10 +74,8 @@ fn mixed_layered() {
     let (filtered1, filtered1_handle) = filtered("filtered_1");
     let (filtered2, filtered2_handle) = filtered("filtered_2");
 
-    let layered1 = filtered1
-        .with_filter(LevelFilter::INFO)
-        .and_then(unfiltered1);
-    let layered2 = unfiltered2.and_then(filtered2.with_filter(LevelFilter::INFO));
+    let layered1 = filtered1.with_filter(filter()).and_then(unfiltered1);
+    let layered2 = unfiltered2.and_then(filtered2.with_filter(filter()));
 
     let _subscriber = tracing_subscriber::registry()
         .with(layered1)
@@ -86,6 +88,18 @@ fn mixed_layered() {
     unfiltered2_handle.assert_finished();
     filtered1_handle.assert_finished();
     filtered2_handle.assert_finished();
+}
+
+fn events() {
+    tracing::trace!("hello trace");
+    tracing::debug!("hello debug");
+    tracing::info!("hello info");
+    tracing::warn!("hello warn");
+    tracing::error!("hello error");
+}
+
+fn filter() -> LevelFilter {
+    LevelFilter::INFO
 }
 
 fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
@@ -106,12 +120,4 @@ fn filtered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
         .event(event::mock().at_level(Level::ERROR))
         .done()
         .run_with_handle()
-}
-
-fn events() {
-    tracing::trace!("hello trace");
-    tracing::debug!("hello debug");
-    tracing::info!("hello info");
-    tracing::warn!("hello warn");
-    tracing::error!("hello error");
 }

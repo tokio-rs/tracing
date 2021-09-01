@@ -2,8 +2,6 @@
 #[path = "../support.rs"]
 mod support;
 use self::support::*;
-
-mod dont_break_other_layers;
 mod filter_scopes;
 mod trees;
 
