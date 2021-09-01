@@ -167,44 +167,14 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        match id {
-            // If downcasting to `Self`, return a pointer to `self`.
-            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
-
-            // Oh, we're looking for per-layer filters!
-            //
-            // This should only happen if we are inside of another `Layered`,
-            // and it's trying to determine how it should combine `Interest`s
-            // and max level hints.
-            //
-            // In that case, we should be considered to be "per-layer filtered"
-            // if *both* the outer layer and the inner layer/subscriber have
-            // per-layer filters. Otherwise, we should be considered to *not* be
-            // per-layer filtered (even if one or the other has per layer
-            // filters). This is because *we* are expected to handle the
-            // `Interest`/level hint combining at this level, and will be
-            // propagating a non-PLF hint/interest.
-            //
-            // Yes, this rule *is* slightly counter-intuitive, but it's
-            // necessary due to a weird edge case that can occur when two
-            // `Layered`s where one side is per-layer filtered and the other
-            // isn't are `Layered` together to form a tree. If we didn't have
-            // this rule, we would actually end up *ignoring* `Interest`s from
-            // the non-per-layer-filtered layers, since both branches would
-            // claim to have PLF.
-            //
-            // If you don't understand this...that's fine, just don't mess with
-            // it. :)
-            id if id == TypeId::of::<filter::MagicPlfDowncastMarker>() => {
-                self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
-            }
-
-            // Otherwise, try to downcast both branches normally...
-            _ => self
-                .layer
-                .downcast_raw(id)
-                .or_else(|| self.inner.downcast_raw(id)),
+        // If downcasting to `Self`, return a pointer to `self`.
+        if id == TypeId::of::<Self>() {
+            return Some(self as *const _ as *const ());
         }
+
+        self.layer
+            .downcast_raw(id)
+            .or_else(|| self.inner.downcast_raw(id))
     }
 }
 
@@ -295,9 +265,28 @@ where
 
             // Oh, we're looking for per-layer filters!
             //
-            // There's a slightly weird rule for how this works; see the comment
-            // on the similar match arm in the `Subscriber::downcast_raw` impl
-            // for `Layered` for details.
+            // This should only happen if we are inside of another `Layered`,
+            // and it's trying to determine how it should combine `Interest`s
+            // and max level hints.
+            //
+            // In that case, we should be considered to be "per-layer filtered"
+            // if *both* the outer layer and the inner layer/subscriber have
+            // per-layer filters. Otherwise, we should be considered to *not* be
+            // per-layer filtered (even if one or the other has per layer
+            // filters). This is because *we* are expected to handle the
+            // `Interest`/level hint combining at this level, and will be
+            // propagating a non-PLF hint/interest.
+            //
+            // Yes, this rule *is* slightly counter-intuitive, but it's
+            // necessary due to a weird edge case that can occur when two
+            // `Layered`s where one side is per-layer filtered and the other
+            // isn't are `Layered` together to form a tree. If we didn't have
+            // this rule, we would actually end up *ignoring* `Interest`s from
+            // the non-per-layer-filtered layers, since both branches would
+            // claim to have PLF.
+            //
+            // If you don't understand this...that's fine, just don't mess with
+            // it. :)
             id if id == TypeId::of::<filter::MagicPlfDowncastMarker>() => {
                 self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
             }
